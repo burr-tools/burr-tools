@@ -24,6 +24,7 @@
 #include "Images.h"
 
 #include "Layouter.h"
+#include "solveprogresscache.h"
 
 #include <memory>
 #include <string>
@@ -74,6 +75,18 @@ class mainWindow_c : public LFl_Double_Window {
   std::unique_ptr<solveThread_c> assmThread;
   bool SolutionEmpty;
 
+  /* What the solve tab last painted for each problem.
+   *
+   * assmThread is destroyed the moment the worker reports ACT_PAUSING, and the
+   * assembler that outlives it reports progress from live search state the
+   * abort has already unwound. Without this the bar drops to 0% and the time
+   * estimate vanishes the instant the user presses Stop, losing numbers that
+   * were on screen a moment before. updateInterface() writes a snapshot on
+   * every poll of a running solve and falls back to it when there is no
+   * worker to ask.
+   */
+  solveProgressCache_c solveProgress;
+
   /* While a problem is being solved the view can track a solution as the list
    * changes underneath it. Two clear states:
    *   followingTail - if true, we follow the END of the list. What the end is
@@ -98,6 +111,11 @@ class mainWindow_c : public LFl_Double_Window {
 
   // record what the view should track, given the currently selected index
   void rememberFollow(problem_c * pr, unsigned int idx);
+
+  /* Drop solveProgress entries that no longer describe anything: problems the
+   * puzzle no longer has, and problems an edit has reset to SS_UNKNOWN.
+   */
+  void pruneSolveProgress(void);
 
   bool changed;
   int editSymmetries;

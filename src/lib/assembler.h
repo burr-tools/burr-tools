@@ -224,6 +224,22 @@ public:
   virtual unsigned int getNumThreads(void) const { return numThreads; }
 
   /**
+   * How many worker threads the *next* assemble() call will actually run with.
+   *
+   * This is not the same question as the configured thread count. An assembler
+   * that carries a partially searched state -- a resumed solve -- cannot start
+   * its task generator from it and runs serially however many threads are
+   * configured, and each engine has its own condition for that. Progress
+   * reporting weighs the assembly phase in worker-seconds, so charging a serial
+   * resume for N threads over-weights that phase by exactly N; callers
+   * converting elapsed wall time into worker-seconds must ask here.
+   *
+   * The default is 1: a back end with no parallel path of its own runs on one
+   * thread. Both engines that have one override this.
+   */
+  virtual unsigned int getRunThreads(void) const { return 1; }
+
+  /**
    * this function returns a number reflecting the complexity of the
    * puzzle. This could be the number of placements tried, or
    * some other value

@@ -107,6 +107,9 @@ private:
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
   void parallelMultiSearch(unsigned int workers);
 
+  /* true when the next assemble() call will take the parallel path */
+  bool willRunParallel(unsigned int threads) const;
+
   bool canUseSimd(void) const;
   void simdSearch(void);
   std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
@@ -115,6 +118,66 @@ private:
 
   std::vector<SubtreeTask_1> parallelTasks;
   std::unordered_set<uint64_t> emittedSignatures;
+
+  /* getFinished() has two progress sources and this picks between them: the
+   * task-based one used for the whole of a parallel run, and the
+   * single-threaded finished_a/finished_b estimate used otherwise. totalTasks
+   * cannot make the choice on its own -- it is 0 while the task list is still
+   * being generated, and it keeps an aborted parallel run's value afterwards.
+   *
+   * Both parallel back ends report through the one task-based expression,
+   * completed tasks plus each in-flight worker's fraction of the task it
+   * holds. The SIMD back end has no in-flight hook, and publishes no worker
+   * slots at all, so for it that expression is just completed over total
+   * tasks -- which is exactly what it can report.
+   *
+   * assemble() clears this, and the task counters with it, for a non-parallel
+   * run; see the note there.
+   */
+  std::atomic<bool> inFlightProgress{false};
+
+  /* Each in-flight worker publishes how far into its current subtree task it
+   * has got, so a long-running task contributes continuously instead of
+   * nothing until it completes. Read by the GUI thread via getFinished();
+   * never dereferences a worker's private matrix.
+   *
+   * Tasks are weighted EQUALLY here -- one slot is worth 1/totalTasks -- and
+   * that is a measured decision, not an omission. assembler_0_c weights its
+   * tasks by their structural share of the search tree; the same weighting was
+   * implemented for this engine and rejected, because assembler_1_c generates
+   * its tasks by running the real search to a cutoff depth and so meets the
+   * search's own pruning while doing so. On Burr-Glar that handed instantly
+   * dead subtrees 96.9% of the weight inside the first 10 ms, and the bar sat
+   * at 0.9694 for a whole 3 s sample -- strictly worse than the unweighted bar
+   * it would have replaced.
+   *
+   * assembler_0_c's structural share has since been measured too, and shows
+   * the same anti-correlation at a smaller scale: it opens DiagonalCube at
+   * 0.5 before any worker starts. It is kept there rather than rejected; see
+   * the prunedTaskShare note in assembler_0.h for the numbers and the reason.
+   *
+   * std::atomic is neither copyable nor movable, so the slots are held by
+   * pointer rather than by value.
+   *
+   * The slots themselves are atomic, but the vector holding them is not:
+   * getFinished() runs on the GUI thread and is already being polled while
+   * parallelMultiSearch() is still sizing the vector, which ThreadSanitizer
+   * duly flags. progressMutex guards the vector's structure -- not the slot
+   * values, which the workers keep publishing lock-free. It is only ever held
+   * while the vector is (re)built and while getFinished() walks it, so a
+   * worker never blocks on it and the GUI contends with nothing.
+   */
+  struct WorkerProgress {
+    std::atomic<float> fraction{0.0f};
+  };
+  mutable std::mutex progressMutex;
+  std::vector<std::unique_ptr<WorkerProgress>> workerProgress;
+
+  /* true only after a search drained without being aborted. "not running" is
+   * not the same as "finished": a prepared-but-unstarted assembler is also
+   * not running.
+   */
+  std::atomic<bool> searchComplete{false};
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing; such a position is
@@ -326,6 +389,7 @@ public:
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }
+  unsigned int getRunThreads(void) const override;
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;

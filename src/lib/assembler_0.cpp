@@ -718,6 +718,7 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
 
   complete = comp;
   parallelTasks.clear();
+  prunedTaskShare = 0.0f;
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
@@ -772,6 +773,8 @@ assembler_0_c::errState assembler_0_c::createMatrix(bool keepMirror, bool keepRo
   pos = 0;
   iterations.store(0, std::memory_order_relaxed);
   resetTaskProgress();
+  completedShare.store(0.0, std::memory_order_relaxed);
+  searchComplete.store(false, std::memory_order_relaxed);
 
   if (keepMirror) {
     /* prepare() may already have allocated the mirror info via
@@ -1433,6 +1436,12 @@ void assembler_0_c::iterativeMultiSearch(void) {
     }
   }
 
+  /* debug-stepping can break out via debug_loops <= 0 with the stop token
+   * still unfired; that is not completion, so gate the flag on !debug too.
+   */
+  if (!runTok.stop_requested() && !debug)
+    searchComplete.store(true, std::memory_order_relaxed);
+
   running.store(false, std::memory_order_relaxed);
 }
 
@@ -1451,6 +1460,10 @@ public:
   unsigned int pos;
   unsigned long local_iterations;
   unsigned long flushed_iterations;
+  /* high-water mark of localFraction() within the current task; see the
+   * publication site in searchSubtree()
+   */
+  float publishedFraction;
 
   assemblerWorker_c(assembler_0_c & p, std::stop_token stop_ = {}) :
     parent(p),
@@ -1463,7 +1476,8 @@ public:
     columns(p.piecenumber, 0),
     pos(0),
     local_iterations(0),
-    flushed_iterations(0)
+    flushed_iterations(0),
+    publishedFraction(0)
   {}
 
   void cover(unsigned int col) {
@@ -1512,8 +1526,45 @@ public:
     parent.handleSolution(rows.data(), pos, stop);
   }
 
-  void searchSubtree(const assembler_0_c::SubtreeTask & task) {
+  /* fraction of this worker's own subtree explored so far, in [0,1].
+   *
+   * This is the nested-path walk getFinished() uses for the single-threaded
+   * search, stopping at the task's prefix depth instead of at the root: the
+   * prefix placements are fixed for the whole task, so everything below them
+   * is what this worker still has to get through. The up()/down() macros
+   * resolve against this worker's own upDown vector, and rows/columns/colCount
+   * are worker-private too, so nothing here touches shared state.
+   */
+  float localFraction(unsigned int prefixDepth) const {
+    float erg = 0;
+    for (int i = static_cast<int>(pos) - 1; i >= static_cast<int>(prefixDepth); i--) {
+      unsigned int r = rows[i];
+      unsigned int l = colCount[columns[i]];
+
+      while (l && r && (r != down(columns[i]))) {
+        erg += 1;
+        r = up(r);
+        l--;
+      }
+
+      /* a zero count would put inf/NaN into the fraction, which clamps to 1.0
+       * and reads as a finished search while workers are still live
+       */
+      if (colCount[columns[i]] == 0)
+        continue;
+      erg /= colCount[columns[i]];
+    }
+    return erg;
+  }
+
+  void searchSubtree(const assembler_0_c::SubtreeTask & task,
+                     assembler_0_c::WorkerProgress * slot) {
     unsigned int prefixDepth = task.prefix.size();
+
+    /* the ratchet is per task -- the caller has already reset the slot's
+     * published fraction to 0 for this task
+     */
+    publishedFraction = 0;
 
     // Apply prefix
     for (unsigned int d = 0; d < prefixDepth; d++) {
@@ -1544,6 +1595,34 @@ public:
       if ((local_iterations - flushed_iterations) >= 128) {
         parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
         flushed_iterations = local_iterations;
+      }
+
+      /* The walk is O(depth x colCount), so it must not run per node.
+       *
+       * The interval was measured rather than guessed. On Burr-Glar (4
+       * workers, the DLX path) the search runs at essentially the same node
+       * rate with publication compiled out, publishing every 64K nodes, and
+       * publishing every 4K nodes -- all three sit inside the run-to-run
+       * noise. 4K is kept because 64K is too coarse to be useful here: at
+       * ~180K nodes/s per worker it would publish once every ~360 ms, longer
+       * than the 250 ms GUI refresh, so the bar would still visibly step. 4K
+       * publishes roughly every 23 ms per worker.
+       *
+       * Only the high-water mark is published. The nested-path estimate is
+       * not itself monotone -- the covering and uncovering of columns moves
+       * the colCount denominators under it, and there is a window during a
+       * backtrack where the level just left has been dropped from the sum but
+       * the level above it has not yet been advanced -- so publishing it raw
+       * makes the bar visibly run backwards. Progress that goes backwards is
+       * the defect this whole change exists to remove, so the estimate is
+       * ratcheted.
+       */
+      if ((local_iterations & 0xFFF) == 0 && slot) {
+        float f = localFraction(prefixDepth);
+        if (f > publishedFraction) {
+          publishedFraction = f;
+          slot->fraction.store(f, std::memory_order_relaxed);
+        }
       }
 
       if (!rows[pos]) {
@@ -1710,9 +1789,19 @@ public:
     }
 
     if (s) {
+      /* colCount[c] (== s) is still live here: c has not been covered yet,
+       * so this reads the same local branching factor generateSubtreeTasks()
+       * would multiply into a fresh task's share. Dividing task.share by s
+       * is that same product taken one step further rather than recomputed
+       * from scratch, and since this loop creates exactly s children, their
+       * shares sum back to task.share exactly -- the split conserves share
+       * the same way the original generation does.
+       */
+      float childShare = task.share / static_cast<float>(s);
       for (unsigned int r = down(c); r != c; r = down(r)) {
         assembler_0_c::SubtreeTask child = task;
         child.prefix.push_back({c, r});
+        child.share = childShare;
         children.push_back(std::move(child));
       }
     }
@@ -1727,10 +1816,13 @@ public:
 void assembler_0_c::generateSubtreeTasks(
     std::vector<SubtreeTask> & tasks,
     unsigned int targetTasks,
-    unsigned int maxDepth)
+    unsigned int maxDepth,
+    float & prunedShare)
 {
   tasks.clear();
+  prunedShare = 0.0f;
   SubtreeTask rootTask;
+  rootTask.share = 1.0f;
   tasks.push_back(rootTask);
 
   unsigned int currentDepth = 0;
@@ -1789,11 +1881,42 @@ void assembler_0_c::generateSubtreeTasks(
         }
       }
 
+      /* s == 0 here (a dead column, or the holes prune above) means this
+       * subtree has zero solutions: there is no work left to do in it, so it
+       * is genuinely finished, not merely unrepresented. Its share must still
+       * be accounted for, or the shares of the tasks that do get published
+       * would sum to less than 1 and getFinished() would top out below 100%
+       * for the whole run. Fold it into prunedShare instead of dropping it,
+       * so the caller can seed completedShare with it.
+       */
+      if (s == 0)
+        prunedShare += t.share;
+
       if (s > 0) {
         anyExpanded = true;
         for (unsigned int r = down(c); r != c; r = down(r)) {
           SubtreeTask child = t;
           child.prefix.push_back({ c, r });
+
+          /* colCount is stable at this point: every ancestor column in
+           * child.prefix was covered in prefix order by the loop above, so
+           * cover() has frozen each one's colCount at the row count it had
+           * when that step was chosen (cover() only decrements OTHER,
+           * still-active columns' counts, never the one it just removed).
+           * The just-chosen column c has not been covered yet, so colCount[c]
+           * still reads live as s. The product below therefore reproduces
+           * each step's true local branching factor, and since this loop
+           * creates exactly s children, the s children's shares sum back to
+           * t.share exactly: shares are conserved, so they sum to 1 by
+           * construction rather than merely being normalised to it.
+           */
+          float share = 1.0f;
+          for (const auto & step : child.prefix) {
+            unsigned int stepCount = colCount[step.col];
+            if (stepCount) share /= static_cast<float>(stepCount);
+          }
+          child.share = share;
+
           nextTasks.push_back(child);
         }
       }
@@ -1804,10 +1927,18 @@ void assembler_0_c::generateSubtreeTasks(
       }
     }
 
+    /* nextTasks must replace tasks unconditionally, even when nothing
+     * expanded this round: a task pruned this round (its share already folded
+     * into prunedShare above) is excluded from nextTasks, and the stale tasks
+     * list still contains it. Discarding nextTasks here would silently
+     * double-count that task's share (once in prunedShare, once still sitting
+     * in the returned task list).
+     */
+    tasks = std::move(nextTasks);
+
     if (!anyExpanded)
       break;
 
-    tasks = std::move(nextTasks);
     currentDepth++;
   }
 }
@@ -1829,12 +1960,35 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 16);
     unsigned int maxDepth = std::min(piecenumber > 1 ? piecenumber - 1 : 1u, 5u);
-    generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
-    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+    generateSubtreeTasks(parallelTasks, targetTasks, maxDepth, prunedTaskShare);
     completedTasks.store(0, std::memory_order_relaxed);
+
+    /* Fresh task list: the only work already finished is what generation
+     * itself proved empty (prunedTaskShare). A resumed run skips this
+     * whole block -- parallelTasks is non-empty, holding exactly the
+     * remainder pool.drain() saved back below -- so completedShare is left
+     * untouched here and keeps exactly what the paused run had already
+     * folded into it.
+     */
+    completedShare.store(prunedTaskShare, std::memory_order_release);
+
+    /* Published with release ordering, matched by getFinished()'s acquire
+     * load of totalTasks: a reader that sees a nonzero total always sees the
+     * matching share. Stored only here, inside the fresh-generation branch,
+     * not on every call: although totalTasks is just a >0 gate for this
+     * engine (the actual fraction comes from completedShare and the worker
+     * slots, not from dividing by it), re-storing it on a resumed run would
+     * still publish the pool remainder's smaller count in place of the
+     * original total, which assembler_1_c's copy of this block does divide
+     * by -- the two engines' copies are kept identical here so the pattern
+     * does not silently diverge into a real bug in one of them.
+     */
+    totalTasks.store(parallelTasks.size(), std::memory_order_release);
   }
 
   if (parallelTasks.empty()) {
+    if (!runTok.stop_requested())
+      searchComplete.store(true, std::memory_order_relaxed);
     running.store(false, std::memory_order_relaxed);
     return;
   }
@@ -1890,14 +2044,89 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     return pool.has_waiting_workers() && pool.queued() < 2u * workers;
   };
 
+  /* One published slot per worker, sized here -- before any worker starts --
+   * and left alone until they have all joined. The GUI thread is already
+   * polling getFinished() at this point, so the vector is built under
+   * progressMutex; without it a reader can walk the vector while push_back is
+   * reallocating it. (The naive assumption that the reader cannot see a
+   * resize is false: totalTasks, which opens the branch that walks this
+   * vector, is published above, before the vector exists.)
+   */
+  {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    workerProgress.clear();
+    workerProgress.reserve(workers);
+    for (unsigned int i = 0; i < workers; i++)
+      workerProgress.push_back(std::make_unique<WorkerProgress>());
+  }
+
+  /* The single task-accounting path, shared by the SIMD and the DLX worker
+   * loop. Every task passes through exactly one beginTask/finishTask pair, so
+   * its share reaches completedShare exactly once; adding it in more than one
+   * place would drive completedShare -- and with it getFinished() -- toward
+   * 2.0. Splitting a task does not go through this pair: it replaces one
+   * live task with several smaller ones whose shares sum back to the
+   * original (see splitPrefix), so nothing is completed or begun by a split.
+   *
+   * `completed` mirrors what this base already does with the retry-on-stop
+   * path below: a task the run token cut short is not done, so its share is
+   * not folded in. The slot is cleared either way, so a stop never leaves a
+   * dead worker's in-flight term standing.
+   *
+   * The order inside finishTask matters, and program order alone does not
+   * deliver it. getFinished() reads completedShare first and the slots
+   * afterwards, and the slot's share is cleared *before* the share is folded
+   * into completedShare, so the only value a reader can catch part-way
+   * through the handoff is a momentarily low one. With both accesses relaxed
+   * the two are unordered, and on arm64 -- the development and CI platform --
+   * a reader really can observe the incremented accumulator while still
+   * seeing the slot's old share, which double-counts that task. The two
+   * publications a reader depends on are therefore releases, paired with
+   * acquire loads in getFinished(), and each carries the slot store that
+   * precedes it:
+   *
+   *   finishTask  slot->share = 0        then  completedShare += share
+   *   beginTask   slot->fraction = 0     then  slot->share = task.share
+   *
+   * beginTask needs it for the same reason at the other end of the handoff:
+   * getFinished() reports share * fraction, so a reader that caught the new
+   * share alongside the finishing task's fraction -- which sits just below 1
+   * -- would over-report by very nearly a whole task's share. That matters
+   * because solvethread.cpp treats getFinished() >= 1 as a finished search: a
+   * transient over-report there would end the solve with workers still live.
+   */
+  auto beginTask = [](WorkerProgress * slot, const SubtreeTask & task) {
+    if (!slot) return;
+    slot->fraction.store(0.0f, std::memory_order_relaxed);
+    slot->share.store(task.share, std::memory_order_release);
+  };
+  auto finishTask = [this](WorkerProgress * slot, const SubtreeTask & task,
+                           bool completed) {
+    if (slot)
+      slot->share.store(0.0f, std::memory_order_relaxed);
+    if (!completed)
+      return;
+    completedTasks.fetch_add(1, std::memory_order_relaxed);
+    completedShare.fetch_add(task.share, std::memory_order_release);
+  };
+
   if (canUseSimd()) {
     auto solver = createSimdSolver();
 
-    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit, runTok](std::stop_token st = {}) {
+    /* The SIMD backend has no hook to report how far into a subtree it has
+     * got, so beginTask() publishes its task's share and leaves the fraction
+     * at 0 -- i.e. it keeps the old whole-task granularity. In-flight
+     * reporting is a property of the DLX path below. (Burr-Glar, the puzzle
+     * the stalling regression was reported against, takes the DLX path:
+     * canUseSimd() is false for it.)
+     */
+    auto simdWorkerFunc = [this, &pool, &solver, &workerException, &exceptionMutex, &shouldSplit,
+                           &beginTask, &finishTask, runTok](std::stop_token st, unsigned int workerIdx) {
       try {
         // Scratch DLX copy at root state, used only for splitting prefixes.
         // The SIMD solver itself is shared read-only and never mutated here.
         assemblerWorker_c splitter(*this, runTok);
+        WorkerProgress * slot = workerProgress[workerIdx].get();
         SubtreeTask task;
         while (pool.pop_task(task, runTok, st)) {
           try {
@@ -1910,6 +2139,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                                      std::memory_order_relaxed);
               }
             }
+
+            beginTask(slot, task);
 
             std::vector<unsigned int> prefix_nodes;
             prefix_nodes.reserve(task.prefix.size());
@@ -1924,17 +2155,19 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             }, runTok, task_iter);
 
             iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-            if (!runTok.stop_requested() && !st.stop_requested()) {
-              completedTasks.fetch_add(1, std::memory_order_relaxed);
-            } else {
+            const bool completed = !runTok.stop_requested() && !st.stop_requested();
+            if (!completed) {
               // Interrupted mid-task: re-queue the whole prefix so an
               // in-session continue re-searches it from scratch. Assemblies
-              // reported twice are suppressed via emittedSignatures.
+              // reported twice are suppressed via emittedSignatures. This is
+              // the same task re-added to the pool, not new work, so it must
+              // not inflate totalTasks -- see the matching note in
+              // assembler_1_c's worker loop.
               std::vector<SubtreeTask> retry;
               retry.push_back(task);
-              totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(retry));
             }
+            finishTask(slot, task, completed);
           } catch (...) {
             pool.finishTask();
             throw;
@@ -1955,19 +2188,21 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     threads.reserve(workers - 1);
 
     for (unsigned int i = 1; i < workers; i++) {
-      threads.emplace_back(simdWorkerFunc);
+      threads.emplace_back(simdWorkerFunc, i);
     }
 
-    simdWorkerFunc();
+    simdWorkerFunc(std::stop_token{}, 0);
 
     for (auto & t : threads) {
       if (t.joinable())
         t.join();
     }
   } else {
-    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, &shouldSplit, runTok](std::stop_token st = {}) {
+    auto dlxWorkerFunc = [this, &pool, &workerException, &exceptionMutex, &shouldSplit,
+                          &beginTask, &finishTask, runTok](std::stop_token st, unsigned int workerIdx) {
       try {
         assemblerWorker_c worker(*this, runTok);
+        WorkerProgress * slot = workerProgress[workerIdx].get();
 
         SubtreeTask task;
         while (pool.pop_task(task, runTok, st)) {
@@ -1981,16 +2216,18 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                                      std::memory_order_relaxed);
               }
             }
-            worker.searchSubtree(task);
-            if (!runTok.stop_requested() && !st.stop_requested()) {
-              completedTasks.fetch_add(1, std::memory_order_relaxed);
-            } else {
-              // See SIMD branch: re-queue interrupted tasks for continue.
+            beginTask(slot, task);
+            worker.searchSubtree(task, slot);
+            const bool completed = !runTok.stop_requested() && !st.stop_requested();
+            if (!completed) {
+              // See SIMD branch: re-queue interrupted tasks for continue,
+              // without inflating totalTasks -- it is the same task, not
+              // new work.
               std::vector<SubtreeTask> retry;
               retry.push_back(task);
-              totalTasks.fetch_add(pool.push_tasks(std::move(retry)),
-                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(retry));
             }
+            finishTask(slot, task, completed);
           } catch (...) {
             pool.finishTask();
             throw;
@@ -2012,15 +2249,25 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     threads.reserve(workers - 1);
 
     for (unsigned int i = 1; i < workers; i++) {
-      threads.emplace_back(dlxWorkerFunc);
+      threads.emplace_back(dlxWorkerFunc, i);
     }
 
-    dlxWorkerFunc();
+    dlxWorkerFunc(std::stop_token{}, 0);
 
     for (auto & t : threads) {
       if (t.joinable())
         t.join();
     }
+  }
+
+  /* Every worker has joined, so the slots are dead: drop them rather than
+   * leave the last published in-flight terms standing for a later poll to add
+   * to completedShare. Under progressMutex for the same reason they were
+   * built under it -- the GUI thread may still be walking the vector.
+   */
+  {
+    std::lock_guard<std::mutex> lock(progressMutex);
+    workerProgress.clear();
   }
 
   if (workerException) {
@@ -2031,8 +2278,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   if (!runTok.stop_requested()) {
     pos = piecenumber + 1;
     parallelTasks.clear();
+    prunedTaskShare = 0.0f;
     emittedSignatures.clear();
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. In-memory continue is fine -- the pool remainder is
      * saved back into parallelTasks and anything a half-searched task repeats
@@ -2148,6 +2397,7 @@ void assembler_0_c::simdSearch(void) {
   if (!runTok.stop_requested()) {
     pos = piecenumber + 1;
     parallelInterrupted = false;
+    searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* The SIMD search keeps its position in the solver, not in pos/rows[], so
      * an aborted run leaves pos == 0 -- indistinguishable from "not started".
@@ -2160,32 +2410,67 @@ void assembler_0_c::simdSearch(void) {
   running.store(false, std::memory_order_relaxed);
 }
 
+bool assembler_0_c::willRunParallel(unsigned int threads) const {
+  /* the condition assemble() dispatches on, in one place. pos != 0 is a
+   * resumed search that carries a partial DLX stack the task generator cannot
+   * start from, so it always runs serially however many threads are
+   * configured.
+   */
+  return (errorsState == ERR_NONE) && (pos == 0) && (threads > 1);
+}
+
+unsigned int assembler_0_c::getRunThreads(void) const {
+  const unsigned int threads = getEffectiveThreads();
+  return willRunParallel(threads) ? threads : 1;
+}
+
 void assembler_0_c::assemble(assembler_cb * callback) {
 
   debug = false;
+
+  if (errorsState != ERR_NONE)
+    return;
 
   // Canonical per-run refresh: everything below (serial or parallel,
   // SIMD or DLX) observes this run's token; a second assemble() starts
   // unstopped.
   std::stop_token runTok = beginRun();
 
-  if (errorsState == ERR_NONE) {
-    asm_bc = callback;
-    unsigned int threads = getEffectiveThreads();
-    if (pos == 0 && threads > 1) {
-      parallelMultiSearch(threads);
-    } else {
-      // Serial path (single thread or in-session continue): hold a budget
-      // token too, so the cap covers resume runs as well. Skipped only when
-      // stopping (no token with a callback set).
-      BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
-                         runTok);
-      if (callback == nullptr || budget.holds()) {
-        if (canUseSimd()) {
-          simdSearch();
-        } else {
-          iterativeMultiSearch();
-        }
+  asm_bc = callback;
+  const unsigned int threads = getEffectiveThreads();
+  const bool runParallel = willRunParallel(threads);
+
+  /* The task counters are switched OFF for a non-parallel run, not merely
+   * left alone. A solve aborted on the parallel path leaves totalTasks and
+   * completedShare holding that run's numbers, and totalTasks is what gates
+   * the task-based branch of getFinished() -- so a resume that falls to the
+   * serial path would otherwise report the abandoned run's constant share for
+   * the whole of the serial search.
+   *
+   * totalTasks is stored first, closing the branch, before the values that
+   * branch reads are cleared: a concurrent getFinished() then sees either the
+   * whole of the old state or none of it, never a zeroed share paired with a
+   * live total.
+   */
+  if (!runParallel) {
+    totalTasks.store(0, std::memory_order_release);
+    completedTasks.store(0, std::memory_order_relaxed);
+    completedShare.store(0.0, std::memory_order_relaxed);
+  }
+
+  if (runParallel) {
+    parallelMultiSearch(threads);
+  } else {
+    // Serial path (single thread or in-session continue): hold a budget
+    // token too, so the cap covers resume runs as well. Skipped only when
+    // stopping (no token with a callback set).
+    BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
+                       runTok);
+    if (callback == nullptr || budget.holds()) {
+      if (canUseSimd()) {
+        simdSearch();
+      } else {
+        iterativeMultiSearch();
       }
     }
   }
@@ -2193,11 +2478,82 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
 float assembler_0_c::getFinished(void) const {
 
-  size_t total = totalTasks.load(std::memory_order_relaxed);
+  if (searchComplete.load(std::memory_order_relaxed))
+    return 1.0f;
+
+  size_t total = totalTasks.load(std::memory_order_acquire);
   if (total > 0) {
-    if (!running.load(std::memory_order_relaxed) && !currentRunToken().stop_requested())
-      return 1.0f;
-    return static_cast<float>(completedTasks.load(std::memory_order_relaxed)) / static_cast<float>(total);
+    /* Completed tasks plus how far each running worker has got into its own
+     * task. Without the second term a task contributes nothing until it
+     * finishes, which is what made the bar sit still on the tail task.
+     *
+     * Only published atomics are read here. A worker's matrix is private to
+     * its thread and is never touched from this (GUI) thread.
+     *
+     * completedShare is read before the slots on purpose, and both it and
+     * each slot's share are read with acquire ordering -- see the ordering
+     * note on beginTask()/finishTask() in parallelMultiSearch().
+     *
+     * The sum is accumulated in double, not float: see completedShare's
+     * declaration.
+     */
+    /* The accumulator and the slots are read as a SNAPSHOT, seqlock style:
+     * read completedShare, walk the slots, read it again, and accept the pair
+     * only if it did not move. This is what makes the value monotone, and it
+     * is the same code assembler_1_c::getFinished() runs -- the two engines'
+     * progress blocks have diverged four times over this work, so they are
+     * kept line for line alike. The long-form argument lives there; in short:
+     *
+     * finishTask() hands a task over in two steps -- clear my slot, then fold
+     * my share into completedShare -- and a reader must never see both the
+     * fold AND the slot's outgoing share, because that counts the task twice
+     * and an over-report is what pushes the sum to 1.0 and ends a solve with
+     * work left. Reading the accumulator first makes a torn read LOW rather
+     * than high, which is safe but not monotone. Re-reading the accumulator
+     * and taking the larger answer narrows the window but does not close it:
+     * it recovers the finished task only by discarding every other worker's
+     * in-flight term, and loses whenever those sum to less than one task's
+     * share. Retaking the snapshot recovers both. Giving up after a few tries
+     * falls back to the accumulator alone, which is monotone and cannot
+     * over-report.
+     */
+    double done = completedShare.load(std::memory_order_acquire);
+    double best = 0;
+
+    for (unsigned int attempt = 0; attempt < 4; attempt++) {
+      double sum = 0;
+      {
+        std::lock_guard<std::mutex> lock(progressMutex);
+        for (const auto & w : workerProgress)
+          if (w)
+            sum += static_cast<double>(w->share.load(std::memory_order_acquire))
+                 * static_cast<double>(w->fraction.load(std::memory_order_relaxed));
+      }
+
+      /* Every attempt's pair is kept as a floor, not just the consistent one;
+       * see the long note in assembler_1_c::getFinished(). `done` was read
+       * before this walk, so a slot still showing a task folded in since is
+       * not a second copy of it and the pair can only under-report. The
+       * exhaustion path needs this: four failed attempts move `done` by at
+       * most four tasks while discarding in-flight terms worth up to one per
+       * worker, and here even four workers can do it -- four tiny shares can
+       * be folded in while one large share is still running.
+       */
+      const double candidate = done + sum;
+      if (candidate > best)
+        best = candidate;
+
+      const double after = completedShare.load(std::memory_order_acquire);
+      if (after == done)
+        break;
+
+      /* a handoff landed inside the walk: `sum` and `after` disagree about
+       * that task, so retake the pair
+       */
+      done = after;
+    }
+
+    return (best > 1.0) ? 1.0f : static_cast<float>(best);
   }
 
   /* we don't need locking, as I hope that I have written the
@@ -2225,6 +2581,9 @@ float assembler_0_c::getFinished(void) const {
       l--;
     }
 
+    /* see localFraction(): a zero count must not reach the divide */
+    if (colCount[columns[i]] == 0)
+      continue;
     erg /= colCount[columns[i]];
   }
 
@@ -2262,6 +2621,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
    */
   bt_assert(pos == 0);
   parallelTasks.clear();
+  prunedTaskShare = 0.0f;
 
   /* check for the right version */
   if (strcmp(version, ASSEMBLER_VERSION) != 0)
