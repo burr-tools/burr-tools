@@ -12,10 +12,7 @@
 #ifndef __VIEW_CUBE_H__
 #define __VIEW_CUBE_H__
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <FL/Fl.H>
-#pragma GCC diagnostic pop
+#include <FL/platform_types.h>  /* Fl_Timestamp */
 
 class rotater_c;
 

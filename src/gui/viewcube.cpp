@@ -78,7 +78,7 @@ static void slerpQuat(const float a[4], const float b[4], float t, float out[4])
 static const int kSizeFraction = 7;  // widget side length is winMin/kSizeFraction (~40% smaller than /4)
 static const int kMinSize = 36;  // floor for the cube itself; see minimumHostSize()
 static const int kMaxSize = 132;
-static const int kMargin = 6;
+static const int kMargin = 20;  /* must cover nav arrow reach: gap(7)+ts(11)+pad */
 static const int kHouse = 29;
 static const float kExtent = 1.55f;
 static const float kChamfer = 0.40f;  // wider = bigger edge/corner hit zone
