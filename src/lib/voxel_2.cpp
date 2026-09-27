@@ -233,8 +233,13 @@ bool voxel_2_c::transform(unsigned int nr) {
 
 void voxel_2_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
-  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
-  bt_assert(((*x+*y+*z) & 1) == 0);
+  // Input validation, not debug checks: callers (and the grid-invariants
+  // test) rely on rejection in release builds too, so these deliberately
+  // bypass bt_assert (which compiles away under NDEBUG).
+  if (trans >= NUM_TRANSFORMATIONS_MIRROR)
+    bt_te("trans < NUM_TRANSFORMATIONS_MIRROR");
+  if (((*x+*y+*z) & 1) != 0)
+    bt_te("((*x+*y+*z) & 1) == 0");
 
   double xp = *x * sqrt(0.5);
   double yp = *y * sqrt(0.5);

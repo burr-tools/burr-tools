@@ -127,8 +127,11 @@ coverage-html: setup-cov
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
-bench *args: build
-    ./bench/run_snapshot.sh {{args}}
+# Always measures the release+ndebug binary (dev-build assertion overhead
+# would pollute every snapshot), then prints a comparison against the
+# previous snapshot so one command shows the change's impact.
+bench *args: build-release
+    ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
@@ -149,6 +152,25 @@ build-win:
 build-werror:
     @if [ ! -d "build-werror" ]; then meson setup build-werror --werror; fi
     ninja -C build-werror
+
+# Build an optimized release binary (assertions off) for benchmarking.
+# The default `build` dir carries _GLIBCXX_ASSERTIONS and live bt_assert
+# checks, which cost ~15-30% solver time in the exact-cover hot loops
+# (see design/2026-09-24-benchmark-speedup-analysis.md). Benchmarks must
+# use this binary, never the dev build.
+# --werror is deliberate: this mirrors the CI ship jobs, so warnings that
+# would fail a PR (including NDEBUG-gated ones invisible to `just build`)
+# fail here first.
+build-release:
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true --werror; else meson configure build-rel --buildtype=release -Db_ndebug=true -Dwerror=true; fi
+    ninja -C build-rel
+
+# Run the test suites against the release binary (the configuration CI
+# ships and gates on). Required before pushing: the dev build neither
+# treats warnings as errors nor disables assertions, so `just test-all`
+# alone cannot catch what CI will fail on.
+test-release:
+    meson test -C build-rel --suite fast --suite slow --print-errorlogs
 
 # Headless GUI invariant check (menu table consistency)
 check-gui: build

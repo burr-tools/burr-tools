@@ -361,6 +361,8 @@ TEST_CASE("grid: transformPoint on the coordinate basis does not recover a linea
   };
 
   SECTION("the sphere grid rejects the basis probe instead of answering") {
+    // transformPoint() validates its inputs unconditionally (via bt_te, not
+    // bt_assert), so the probe is rejected in release builds too.
     gridType_c gt(gridType_c::GT_SPHERES);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, BOX, BOX, BOX);
 

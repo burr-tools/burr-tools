@@ -56,7 +56,7 @@ void gridEditor_2_c::calcParameters(int *szx, int *szy, int *tx, int *ty) {
   *ty = y()+h()-1 - (h() - cy*sy) / 2;
 }
 
-void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
+void gridEditor_2_c::drawNormalTile(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
 
   bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
@@ -69,7 +69,7 @@ void gridEditor_2_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
   fl_pie(tx+x*sx, ty-y*sy-sy, sxc, syc, 0, 360);
 }
 
-void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
+void gridEditor_2_c::drawVariableTile(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
 
   bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
@@ -82,7 +82,7 @@ void gridEditor_2_c::drawVariableTile(int x, int y, int z, int tx, int ty, int s
   fl_pie(tx+x*sx+2, ty-y*sy+2-sy, sxc-4, syc-4, 0, 360);
 }
 
-void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
+void gridEditor_2_c::drawTileFrame(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
 
   bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 
@@ -95,7 +95,7 @@ void gridEditor_2_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, 
   fl_arc(tx+x*sx, ty-y*sy-sy, sxc, syc, 0, 360);
 }
 
-void gridEditor_2_c::drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) {
+void gridEditor_2_c::drawTileColor(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
 
   bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
 

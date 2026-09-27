@@ -328,9 +328,12 @@ TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
     unsigned int offset = capacity - 7;
     auto solver = tier.make(capacity, 3);
 
-    // Boundary check: col == capacity is out of bounds and must throw assert_exception
+    // Boundary check: col == capacity is out of bounds and must throw assert_exception.
+    // Guarded: under NDEBUG bt_assert compiles to ((void)0) and nothing is thrown.
+#ifndef NDEBUG
     CHECK_THROWS_AS(solver->setRequiredColumn(capacity), assert_exception);
     CHECK_THROWS_AS(solver->addRow(99, 0, {capacity}), assert_exception);
+#endif
 
     for (unsigned int i = 0; i < 7; i++) {
       solver->setRequiredColumn(offset + i);
@@ -572,6 +575,9 @@ TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][thre
 }
 
 TEST_CASE("SimdExactCover256 bounds check assertions", "[simd][exact_cover]") {
+  // Guarded: these assert via bt_assert, which compiles to ((void)0) under
+  // NDEBUG so nothing is thrown there.
+#ifndef NDEBUG
   CHECK_THROWS_AS(SimdExactCover256(257, 1), assert_exception);
 
   SimdExactCover256 solver(10, 2);
@@ -582,6 +588,7 @@ TEST_CASE("SimdExactCover256 bounds check assertions", "[simd][exact_cover]") {
   CHECK_THROWS_AS(bitset.set(256), assert_exception);
   CHECK_THROWS_AS(bitset.reset(256), assert_exception);
   CHECK_THROWS_AS(bitset.test(256), assert_exception);
+#endif
 }
 
 #include "src/lib/simd_huang_cover.h"
@@ -764,6 +771,50 @@ TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel"
     TestType solver(7, 2);
     CHECK(std::string(solver.activeKernel()) != "avx512");
   }
+}
+
+/* Range-column pivots must not duplicate assemblies. A range pivot branches
+ * over covering rows without the same-shape monotonic filter that shape
+ * pivots use, so two compatible range rows were reported once per order
+ * ({r1,r2} and {r2,r1}). The solver therefore never pivots on the range
+ * column when there are no variable voxels (exact voxel cover already
+ * forces the range weight); this fixture is built so the range column wins
+ * MRV and would duplicate without that rule.
+ */
+TEMPLATE_TEST_CASE("SimdHuangCover range pivot reports each assembly once", "[simd][huang][range]",
+                   SimdHuangCover256, SimdHuangCover512) {
+  // col 1: shape, exactly 2 pieces. cols 2-5: voxels, required. col 6: range.
+  TestType solver(6, 1);
+  solver.setColumnBounds(1, 2, 2, false, true, false, false);
+  for (unsigned int v = 2; v <= 5; v++)
+    solver.setColumnBounds(v, 1, 1, true, false, false, false);
+  solver.setColumnBounds(6, 1, 100, false, false, true, false);
+
+  // A and B each cover half the voxels and carry range weight; C-F are
+  // range-free decoys arranged so every voxel is covered by 3 rows (MRV
+  // metric 3) while only A and B cover range (metric 2 x need 1 = 2, wins).
+  // Unique solution: {A, B} (rows 1, 2). Every other pair either conflicts
+  // or leaves range below its minimum.
+  solver.addRow(1, 0, 1, 0, 1, {1, 2, 3, 6}, {1, 1, 1, 1});
+  solver.addRow(2, 0, 1, 1, 1, {1, 4, 5, 6}, {1, 1, 1, 1});
+  solver.addRow(3, 0, 1, 2, 0, {1, 2, 4}, {1, 1, 1});
+  solver.addRow(4, 0, 1, 3, 0, {1, 3, 5}, {1, 1, 1});
+  solver.addRow(5, 0, 1, 4, 0, {1, 2, 5}, {1, 1, 1});
+  solver.addRow(6, 0, 1, 5, 0, {1, 3, 4}, {1, 1, 1});
+
+  std::vector<std::vector<unsigned int>> sols;
+  std::stop_source stopSrc;
+  std::atomic<uint64_t> iterations{0};
+  solver.solve([&](const std::vector<unsigned int> & s) {
+    std::vector<unsigned int> sorted = s;
+    std::sort(sorted.begin(), sorted.end());
+    sols.push_back(sorted);
+    return true;
+  }, stopSrc.get_token(), iterations);
+  std::sort(sols.begin(), sols.end());
+
+  REQUIRE(sols.size() == 1);
+  CHECK(sols[0] == std::vector<unsigned int>{1, 2});
 }
 
 /* Hole limits. A hole column is a variable voxel: it may be left empty, but

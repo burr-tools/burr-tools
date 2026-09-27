@@ -142,7 +142,11 @@ bool voxel_0_c::transform(unsigned int nr) {
 
 void voxel_0_c::transformPoint(int * x, int * y, int * z, unsigned int trans) const {
 
-  bt_assert(trans < NUM_TRANSFORMATIONS_MIRROR);
+  // Input validation, not a debug check: out-of-range access into the
+  // rotation tables below must be rejected in release builds too, so this
+  // deliberately bypasses bt_assert (which compiles away under NDEBUG).
+  if (trans >= NUM_TRANSFORMATIONS_MIRROR)
+    bt_te("trans < NUM_TRANSFORMATIONS_MIRROR");
 
   int sx = *x;
   int sy = *y;

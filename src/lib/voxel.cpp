@@ -1045,7 +1045,8 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
                 // first find out which neighbour we are relative to our neighbour n
 
                 int n2 = 0;
-                bool found = false;
+                // Only read by the bt_assert below; kept for NDEBUG -Werror.
+                [[maybe_unused]] bool found = false;
                 int mx, my, mz;
 
                 while (getNeighbor(n2, 0, nx, ny, nz, &mx, &my, &mz))

@@ -264,6 +264,10 @@ TEST_CASE("Puzzle metadata inspection and modern accessors", "[metadata]") {
 }
 
 TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[assert]") {
+  // bt_assert compiles to ((void)0) under NDEBUG, so only the passing half
+  // applies there; the throwing half is debug-only (same guard idiom as
+  // test_halfedge.cpp).
+#ifndef NDEBUG
   try {
     bt_assert(1 == 2);
     FAIL("bt_assert should have thrown assert_exception");
@@ -273,12 +277,16 @@ TEST_CASE("bt_assert throws assert_exception with C++20 source_location", "[asse
     CHECK(e.line > 0);
     CHECK(std::string(e.what()) == "1 == 2");
   }
+#endif
 
   // Passing assertion does not throw
   CHECK_NOTHROW([&] { bt_assert(2 + 2 == 4); }());
 }
 
 TEST_CASE("assert_log correctly records lines", "[assert]") {
+  // bt_assert_line compiles to nothing under NDEBUG, so there is nothing
+  // to record there -- same guard idiom as test_halfedge.cpp.
+#ifndef NDEBUG
   REQUIRE(assert_log != nullptr);
   unsigned int initialLines = assert_log->lines();
   bt_assert_line("first assert log entry");
@@ -286,6 +294,7 @@ TEST_CASE("assert_log correctly records lines", "[assert]") {
   CHECK(assert_log->lines() == initialLines + 2);
   CHECK(std::string(assert_log->line(initialLines)) == "first assert log entry");
   CHECK(std::string(assert_log->line(initialLines + 1)) == "second assert log entry");
+#endif
 }
 
 TEST_CASE("Symmetry calculation for non-cube grids with unaligned bounding boxes", "[symmetry]") {
@@ -1009,6 +1018,11 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
     {"examples/CubeInCage.xmpuzzle",               0, false},
     {"examples/Bermuda.xmpuzzle",                  0, false},
     {"examples/AugmentedSecondStellation.xmpuzzle",0, false},
+    /* range puzzles: the SIMD Huang solver models the piece-count range
+     * column explicitly, so these must agree too (DemoMirrorParadox above
+     * is also a range puzzle and counts here as well) */
+    {"examples/PiecesOfEight.xmpuzzle",            0, true},
+    {"examples/DemoPieceGenerator.xmpuzzle",       0, false},
   };
 
   bool tookDifferentPaths = false;
@@ -1039,11 +1053,13 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
       tookDifferentPaths = true;
   }
 
-  /* Guard the premise: not every puzzle qualifies for the SIMD solver (a range
-   * column, >32768 matrix columns, or variable voxels combined with a shape
-   * whose min differs from its max all disqualify it), but if *none* of them
-   * does then this case has silently stopped comparing anything and is only
+  /* Guard the premise: not every puzzle qualifies for the SIMD solver
+   * (>32768 matrix columns, or variable voxels combined with a shape whose
+   * min differs from its max, disqualify it), but if *none* of them does
+   * then this case has silently stopped comparing anything and is only
    * running DLX twice. Keep at least one SIMD-eligible puzzle in the list.
+   * (Range columns used to disqualify as well; since the range-column
+   * support they take the SIMD path like the rest.)
    */
   INFO("at least one puzzle must actually take the SIMD path");
   CHECK(tookDifferentPaths);

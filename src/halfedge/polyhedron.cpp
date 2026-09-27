@@ -531,14 +531,17 @@ bool Polyhedron::check ( bool holesFilled ) const
 {
   for ( unsigned i=0 ; i<_vertices.size() ; i++ )
   {
-    const Vertex* V = _vertices[i];
+    // Used only by the bt_asserts below; keep it (marked unused) so NDEBUG
+    // builds with -Werror don't fail on it.
+    [[maybe_unused]] const Vertex* V = _vertices[i];
     bt_assert ( V->index() == ( int ) i );
     bt_assert ( V->check ( holesFilled ) );
   }
 
   for ( Polyhedron::const_edge_iterator it=eBegin() ; it!=eEnd() ; ++it )
   {
-    const HalfEdge* he = *it;
+    // Used only by the bt_asserts below; see above.
+    [[maybe_unused]] const HalfEdge* he = *it;
     bt_assert ( _halfEdges[he->index() ] == *it );
     bt_assert ( he->check ( holesFilled ) );
     if ( holesFilled )
