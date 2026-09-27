@@ -709,43 +709,28 @@ void voxelFrame_c::drawVoxelSpace() {
 
       glPushMatrix();
 
-      float hx = 0, hy = 0, hz = 0;
-
-      if (shape->shape)
-      {
-        hx = shape->shape->getHx();
-        hy = shape->shape->getHy();
-        hz = shape->shape->getHz();
-
-        shape->shape->recalcSpaceCoordinates(&hx, &hy, &hz);
-      }
+      // the centre of the entry's own bounds, which the first two modes put on
+      // the rotation origin. entryBounds() mirrors this chain; keep them in step.
+      const float mx = 0.5f*(shape->bboxMin[0] + shape->bboxMax[0]);
+      const float my = 0.5f*(shape->bboxMin[1] + shape->bboxMax[1]);
+      const float mz = 0.5f*(shape->bboxMin[2] + shape->bboxMax[2]);
 
       switch(trans) {
       case ScaleRotateTranslate:
         glTranslatef(shape->x, shape->y, shape->z);
         glScalef(shape->scale, shape->scale, shape->scale);
         rotater->addTransform();
-        if (shape->shape)
-        {
-          float cx, cy, cz;
-          shape->shape->calculateSize(&cx, &cy, &cz);
-          glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
-        }
+        glTranslatef(-mx, -my, -mz);
         break;
       case TranslateRoateScale:
         rotater->addTransform();
         glTranslatef(shape->x, shape->y, shape->z);
-        if (shape->shape)
-        {
-          float cx, cy, cz;
-          shape->shape->calculateSize(&cx, &cy, &cz);
-          glTranslatef(-0.5*cx, -0.5*cy, -0.5*cz);
-        }
+        glTranslatef(-mx, -my, -mz);
         glScalef(shape->scale, shape->scale, shape->scale);
         break;
       case CenterTranslateRoateScale:
         rotater->addTransform();
-        glTranslatef(shape->x - hx, shape->y - hy, shape->z - hz);
+        glTranslatef(shape->x - shape->hot[0], shape->y - shape->hot[1], shape->z - shape->hot[2]);
         glTranslatef(-centerX, -centerY, -centerZ);
         glScalef(shape->scale, shape->scale, shape->scale);
         break;
@@ -896,12 +881,12 @@ float voxelFrame_c::previewHintRadius(void) const {
   if (previewShapeIndex < 0 || (unsigned int)previewShapeIndex >= shapes.size())
     return 1.0f;
   const shapeInfo & s = shapes[previewShapeIndex];
-  if (!s.shape)
-    return 1.0f;
   // deliberately small and capped rather than scaled to the piece's own bounding
   // radius: this is a compact indicator sitting near the origin/rotation axis,
   // not a ring meant to hug the piece's outer surface
-  float r = 0.2f*sqrtf((float)s.shape->getDiagonal()) + 0.5f;
+  double centre[3], offset[3], radius;
+  entryBounds(s, centre, offset, &radius);
+  float r = 0.4f*(float)radius + 0.5f;
   return r < 2.0f ? r : 2.0f;
 }
 
@@ -1028,12 +1013,30 @@ void voxelFrame_c::drawPreviewStraightArrow(bool doubleHeaded) const {
     drawPreviewArrowHead(negEnd, negAxis, cross, radius*0.3f);
 }
 
+void voxelFrame_c::setEntryShape(shapeInfo & s, const voxel_c * vx) {
+  s.shape = vx;
+
+  // a voxel space is drawn from its origin out to calculateSize()
+  float cx, cy, cz;
+  vx->calculateSize(&cx, &cy, &cz);
+  s.bboxMin[0] = s.bboxMin[1] = s.bboxMin[2] = 0;
+  s.bboxMax[0] = cx;
+  s.bboxMax[1] = cy;
+  s.bboxMax[2] = cz;
+
+  float hx = vx->getHx(), hy = vx->getHy(), hz = vx->getHz();
+  vx->recalcSpaceCoordinates(&hx, &hy, &hz);
+  s.hot[0] = hx;
+  s.hot[1] = hy;
+  s.hot[2] = hz;
+}
+
 unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   shapeInfo i;
 
   i.r = i.g = i.b = 1;
   i.a = 1;
-  i.shape = vx;
+  setEntryShape(i, vx);
   i.useChecker = true;
 
   i.mode = normal;
@@ -1271,24 +1274,24 @@ void voxelFrame_c::showMesh(Polyhedron * poly)
 
   i.mode = normal;
 
-  // calculate the bounding box of the polygon to properly center is for display
-  Vector3Df bbox[2];
-  bbox[0] = bbox[1] = (*poly->vBegin())->position();
+  // the mesh's bounds are its vertices' bounding box; drawVoxelSpace() centres
+  // the entry on them, like every other entry
+  const Vector3Df & first = (*poly->vBegin())->position();
+  for (int k = 0; k < 3; k++)
+    i.bboxMin[k] = i.bboxMax[k] = first[k];
   for (Polyhedron::const_vertex_iterator it=poly->vBegin() ; it!=poly->vEnd() ; ++it)
   {
     const Vector3Df& v = (*it)->position();
-    for (int i=0 ; i<3 ; i++)
+    for (int k = 0; k < 3; k++)
     {
-      if (v[i] < bbox[0][i])
-        bbox[0][i] = v[i];
-      if (v[i] > bbox[1][i])
-        bbox[1][i] = v[i];
+      if (v[k] < i.bboxMin[k])
+        i.bboxMin[k] = v[k];
+      if (v[k] > i.bboxMax[k])
+        i.bboxMax[k] = v[k];
     }
   }
 
-  i.x = -0.5*(bbox[0][0]+bbox[1][0]);
-  i.y = -0.5*(bbox[0][1]+bbox[1][1]);
-  i.z = -0.5*(bbox[0][2]+bbox[1][2]);
+  i.x = i.y = i.z = 0;
   i.scale = 1;
 
   i.dim = false;
@@ -1598,7 +1601,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
     // or we only place the shape and only remove the openGL list and polyhedron
     if (placeOnly)
     {
-      shapes[0].shape = vx;
+      setEntryShape(shapes[0], vx);
       if (shapes[0].list)
       {
         glDeleteLists(shapes[0].list, 1);
@@ -2121,17 +2124,18 @@ double voxelFrame_c::computeFitSize(void) const {
 
   for (const shapeInfo & s : shapes) {
 
-    if (!s.shape)
-      continue;
+    double centre[3], offset[3], radius;
+    entryBounds(s, centre, offset, &radius);
 
-    double radius = 0.5*sqrt((double)s.shape->getDiagonal())*s.scale;
-    double dx = fabs(s.x) + radius;
-    double dy = fabs(s.y) + radius;
+    // the centre rotates with the view, so only its distance is known here
+    double reach = sqrt(centre[0]*centre[0] + centre[1]*centre[1] + centre[2]*centre[2]) + radius;
+    double dx = fabs(offset[0]) + reach;
+    double dy = fabs(offset[1]) + reach;
 
-    // shape.z is an extra camera-space depth offset on top of the outer -size*2
-    // translate (see ScaleRotateTranslate/TranslateRoateScale in drawVoxelSpace()),
-    // so it directly reduces (or, if positive, increases) the size needed to frame it
-    double depthOffset = 0.5*s.z;
+    // the camera-space depth offset sits on top of the outer -size*2 translate
+    // in draw(), so it directly reduces (or, if positive, increases) the size
+    // needed to frame the entry
+    double depthOffset = 0.5*offset[2];
 
     double sizeForX = dx/(2*tanH) + depthOffset;
     double sizeForY = dy/(2*tanV) + depthOffset;
@@ -2154,16 +2158,55 @@ double voxelFrame_c::computeContentRadius(void) const {
 
   for (const shapeInfo & s : shapes) {
 
-    if (!s.shape)
-      continue;
+    double centre[3], offset[3], radius;
+    entryBounds(s, centre, offset, &radius);
 
-    double radius = 0.5*sqrt((double)s.shape->getDiagonal())*s.scale;
-    double dist = sqrt((double)s.x*s.x + (double)s.y*s.y + (double)s.z*s.z) + radius;
+    double dist = sqrt(centre[0]*centre[0] + centre[1]*centre[1] + centre[2]*centre[2])
+                + sqrt(offset[0]*offset[0] + offset[1]*offset[1] + offset[2]*offset[2])
+                + radius;
 
     if (dist > r) r = dist;
   }
 
   return r;
+}
+
+void voxelFrame_c::entryBounds(const shapeInfo & s, double centre[3], double offset[3], double * radius) const {
+
+  double mid[3], half[3];
+  for (int k = 0; k < 3; k++) {
+    mid[k]  = 0.5*((double)s.bboxMin[k] + s.bboxMax[k]);
+    half[k] = 0.5*((double)s.bboxMax[k] - s.bboxMin[k]);
+    centre[k] = 0;
+    offset[k] = 0;
+  }
+
+  *radius = s.scale*sqrt(half[0]*half[0] + half[1]*half[1] + half[2]*half[2]);
+
+  const double pos[3] = { s.x, s.y, s.z };
+
+  // the same chain as drawVoxelSpace(), read innermost (the geometry) outwards
+  switch (trans) {
+    case ScaleRotateTranslate:
+      // T(pos) S R T(-mid): centred on the rotation origin, moved in camera space
+      for (int k = 0; k < 3; k++)
+        offset[k] = pos[k];
+      break;
+    case TranslateRoateScale:
+      // R T(pos) T(-mid) S: scaled about its own origin, then centred, then moved
+      for (int k = 0; k < 3; k++)
+        centre[k] = s.scale*mid[k] - mid[k] + pos[k];
+      break;
+    case CenterTranslateRoateScale:
+      // R T(pos - hot) T(-center) S: no centring, the hotspot and the frame's
+      // centre place it
+      {
+        const double center[3] = { centerX, centerY, centerZ };
+        for (int k = 0; k < 3; k++)
+          centre[k] = s.scale*mid[k] + pos[k] - s.hot[k] - center[k];
+      }
+      break;
+  }
 }
 
 void voxelFrame_c::getNearFar(double * nearPlane, double * farPlane) const {
