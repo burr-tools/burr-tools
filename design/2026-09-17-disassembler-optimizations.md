@@ -82,6 +82,30 @@ M. The current pipeline is producer (assembler) → inline consumer
   are small placement lists; bound the queue and apply back-pressure by
   blocking the producer when full).
 
+### Measurement (A-shared-cache, 2026-09-27) — risk confirmed, do not land as-is
+
+Interleaved release-binary A/B (master vs shared cache, `-Db_ndebug=true`,
+8 cores, `--runs 3` over the 10-puzzle corpus with disassembly, plus a
+1/2/4/8 thread scaling run on Simplicity + kangaroo). Outputs identical
+everywhere (assemblies/solutions/iterations).
+
+* Memory wins everywhere sharing matters: peak RSS kangaroo 36.7→18.9 MB
+  (-49%), Pelikan -24%, SolidSix -14%, Simplicity -28%. One cache instead
+  of one per worker does what it says.
+* Wall time does NOT win: 6/10 puzzles neutral, Pelikan 0.71x, Excelsior
+  0.78x, kangaroo 0.71x, Simplicity 0.15x (~7x slower). Total CPU rises
+  with it (Simplicity 0.97→6.25 CPU-s), so this is not serialization
+  shifting fixed work in time — it is extra coherency/futex cost.
+* Thread scaling on Simplicity (before→after speedup): t1 0.96x, t2 0.54x,
+  t4 0.23x, t8 0.15x. Single-threaded the lock is free; the regression
+  grows monotonically with worker count. At t8 the after-binary spends
+  4.2 s in sys (vs 0.03 s before) — a futex wait/wake storm on the one
+  coarse mutex guarding millions of fine-grained `getMoValue` lookups.
+* Verdict: the flagged risk materialized. Landing needs sharding (striped
+  table+locks) or a design where workers share only misses, not every
+  lookup. The memory win alone does not justify a wall regression of up
+  to 7x. See PR #123 for the full tables.
+
 ## B revert — verdict: complexity without payoff (REVERTED, kept as record below)
 
 The full B2/B3 + memo + `insertOrUpdate` stack was reverted; only B1
