@@ -103,6 +103,8 @@
 #include <FL/fl_ask.H>
 #pragma GCC diagnostic pop
 
+#include <algorithm>
+#include <climits>
 #include <fstream>
 #include <string>
 
@@ -2200,6 +2202,12 @@ void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
 
   puzzle = std::move(NewPuzzle);
 
+  /* Every snapshot belonged to the puzzle just dropped. Problems of the new
+   * one are unrelated, and would otherwise be free to collide with an old
+   * entry by address.
+   */
+  solveProgress.clear();
+
   auto nggt = std::make_unique<guiGridType_c>(puzzle->getGridType());
 
   // now replace all gridtype dependent gui elements with
@@ -2478,7 +2486,37 @@ static void setLiveMenuActive(Fl_Menu_ * m, int index, bool active) {
   m->mode(index, flags);
 }
 
+void mainWindow_c::pruneSolveProgress(void) {
+
+  /* Two ways a snapshot stops describing anything.
+   *
+   * The problem can be gone. Entries are keyed by address, and deleting a
+   * problem frees an address that the next one allocated can be handed, so an
+   * entry left behind would be inherited by an unrelated problem. Running this
+   * on every interface update keeps that window to a single refresh.
+   *
+   * Or the problem can have been edited, which makeUnknown() puts back to
+   * SS_UNKNOWN and strips of its assembler. The search the snapshot describes
+   * no longer exists, and the bar must start over from nothing rather than
+   * resume at a number the puzzle can no longer reach.
+   */
+  std::vector<const void *> live;
+
+  if (puzzle) {
+    live.reserve(puzzle->getNumberOfProblems());
+    for (unsigned int i = 0; i < puzzle->getNumberOfProblems(); i++) {
+      problem_c * pr = puzzle->getProblem(i);
+      if (pr->getSolveState() != SS_UNKNOWN)
+        live.push_back(pr);
+    }
+  }
+
+  solveProgress.keepOnly(live);
+}
+
 void mainWindow_c::updateInterface(void) {
+
+  pruneSolveProgress();
 
   // update the menu items activate state
 
@@ -2751,10 +2789,55 @@ void mainWindow_c::updateInterface(void) {
 
   } else {
 
-    float finished = ((prob < puzzle->getNumberOfProblems()) &&
-        puzzle->getProblem(prob)->getAssembler())
-          ? puzzle->getProblem(prob)->getAssembler()->getFinished()
-          : 0;
+    /* While a solve is running the thread reports whole-solve progress,
+     * covering the concurrent disassembly pool as well; with no live thread
+     * (a saved or paused puzzle) only the assembler's own fraction exists.
+     *
+     * Guarded to the problem actually being solved, as every sibling block in
+     * this function is. solutionProblem is never deactivated during a solve
+     * and cb_SolProbSel calls updateInterface() directly, so without the guard
+     * switching the Solve tab to another problem paints the running problem's
+     * live percentage onto the unrelated one and freezes it there.
+     */
+
+    /* Three sources, in descending order of how much they know:
+     *
+     * the running worker, which sees both phases; then what this tab last
+     * painted for the problem, which is all that is left the moment the worker
+     * is destroyed -- pressing Stop retires it at ACT_PAUSING, and then the
+     * assembler reports progress from search state the abort has unwound, so
+     * without the snapshot the bar drops to 0%; and last the assembler itself,
+     * for a problem restored from a file, which this tab has never painted and
+     * so has no snapshot of.
+     *
+     * The snapshot is claimed only while the problem is still SS_SOLVING, i.e.
+     * stopped part way with the search resumable. A solve that ran to the end
+     * leaves SS_SOLVED and belongs to the assembler, which answers 1.0 for it:
+     * preferring the snapshot there would pin the bar just short of 100% on
+     * the last value painted before the worker announced it had finished.
+     */
+    const solveSnapshot_c * lastShown = nullptr;
+    if ((prob < puzzle->getNumberOfProblems()) &&
+        (puzzle->getProblem(prob)->getSolveState() == SS_SOLVING))
+      lastShown = solveProgress.recall(puzzle->getProblem(prob));
+
+    float finished = 0;
+    if (assmThread && assmThread->currentAction() != solveThread_c::ACT_FINISHED &&
+        (prob < puzzle->getNumberOfProblems()) &&
+        (&(assmThread->getProblem()) == puzzle->getProblem(prob))) {
+      /* Each worker keeps its own monotone guard, and a resumed solve starts a
+       * new one at the assembler's carried-over fraction: until disassembly
+       * evidence accumulates again its blend can sit below what the previous
+       * worker last painted. The snapshot is the floor across that handover.
+       */
+      finished = assmThread->getProgress();
+      if (lastShown)
+        finished = std::max(finished, lastShown->progress);
+    } else if (lastShown)
+      finished = lastShown->progress;
+    else if ((prob < puzzle->getNumberOfProblems()) &&
+             puzzle->getProblem(prob)->getAssembler())
+      finished = puzzle->getProblem(prob)->getAssembler()->getFinished();
 
     if (prob < puzzle->getNumberOfProblems()) {
 
@@ -3070,13 +3153,31 @@ void mainWindow_c::updateInterface(void) {
         ut = assmThread->getTime();
 
       TimeUsed->value(timeToString(ut));
-      if (finished != 0)
-        TimeEst->value(timeToString(ut/finished-ut));
+
+      const bool estKnown = (finished != 0);
+      /* double, and clamped before the cast: at a tiny fraction ut/finished
+       * exceeds UINT_MAX, and an out-of-range float-to-unsigned conversion is
+       * undefined behaviour
+       */
+      const double estSeconds = estKnown ? ut / (double)finished - ut : 0.0;
+      const unsigned int est =
+          (unsigned int)std::clamp(estSeconds, 0.0, (double)UINT_MAX);
+
+      if (estKnown)
+        TimeEst->value(timeToString(est));
       else
         TimeEst->value("unknown");
 
       TimeUsed->show();
       TimeEst->show();
+      TimeEst->activate();
+
+      /* Remember what was painted, so that it survives the worker. This is the
+       * only place the two numbers exist together, and taking the snapshot
+       * here rather than recomputing it elsewhere is what keeps the frozen
+       * display identical to the last live one.
+       */
+      solveProgress.remember(pr, solveSnapshot_c{finished, est, estKnown});
 
     } else {
 
@@ -3088,7 +3189,20 @@ void mainWindow_c::updateInterface(void) {
         TimeUsed->hide();
       }
 
-      TimeEst->hide();
+      /* No worker, but this tab painted an estimate for the problem before one
+       * went away: hold it rather than blanking the field. lastShown is
+       * already limited to a solve that stopped part way, so a finished one
+       * still hides the field -- there is no time left to report. Deactivated,
+       * so that a number which is no longer counting down does not read as one
+       * that is; FLTK greys it while leaving it legible.
+       */
+      if (lastShown && lastShown->timeLeftKnown) {
+        TimeEst->value(timeToString(lastShown->timeLeft));
+        TimeEst->show();
+        TimeEst->deactivate();
+      } else {
+        TimeEst->hide();
+      }
     }
 
     if (assmThread) {
@@ -3957,7 +4071,7 @@ void mainWindow_c::CreateSolveTab(void) {
     (new LFl_Box(0, 10))->setMinimumSize(0, SZ_GAP);
 
     SolvingProgress = new LFl_Progress(0, 11, 1, 1);
-    SolvingProgress->tooltip(" Percentage of solution space searched ");
+    SolvingProgress->tooltip(" Progress of the whole solve: assembly search, and disassembly when it is enabled ");
     SolvingProgress->box(FL_ENGRAVED_BOX);
     SolvingProgress->selection_color((Fl_Color)4);
     SolvingProgress->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE);

@@ -101,6 +101,20 @@ public:
   bool isAborted() const { return aborted.load(std::memory_order_relaxed); }
   bool isStopRequested() const { return stop_requested.load(std::memory_order_relaxed); }
 
+  /* Progress instrumentation. Counts are monotone; the cost is the summed
+   * wall time of completed disassembly tasks across all pool workers, used
+   * to weight disassembly against assembly in progressModel_c.
+   */
+  uint64_t submittedCount(void) const {
+    return next_submit_seq.load(std::memory_order_relaxed);
+  }
+  uint64_t completedCount(void) const {
+    return completed_count.load(std::memory_order_relaxed);
+  }
+  double accumulatedCostSeconds(void) const {
+    return cost_seconds.load(std::memory_order_relaxed);
+  }
+
 private:
   struct Task {
     uint64_t seqNo = 0;
@@ -125,6 +139,9 @@ private:
 
   std::atomic<uint64_t> next_submit_seq{0};
   std::atomic<uint64_t> next_merge_seq{0};
+
+  std::atomic<uint64_t> completed_count{0};
+  std::atomic<double> cost_seconds{0.0};
 
   std::mutex lifecycle_mutex;
 
