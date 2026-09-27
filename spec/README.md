@@ -87,8 +87,8 @@ properties. Read in this order:
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
 | `TaskConservation` | **SPEC-POOL-2**: no task lost/duplicated across splits (pool inventory only; unseeded tasks sit in `genList`) |
 | `GenShape` | Generation emits the 1..k prefix in order |
-| `NoPartialResume` | **SPEC-POOL-4** (PR #118): stopped generation ⇒ no list, no seeding, nothing searched |
-| `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` |
+| `NoPartialResume` | **SPEC-POOL-4** (PR #118, unmerged — master still keeps the partial list): stopped generation ⇒ no list, no seeding, nothing searched |
+| `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` (ditto: lands with PR #118) |
 | `CleanExit` | **SPEC-POOL-3**: exits leak no tasks/tokens |
 | `AllTerminate` | Liveness: generate, drain-to-quiescence, or stop always ends the search |
 
