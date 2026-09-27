@@ -187,6 +187,22 @@ public:
   using SolutionCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes)>;
 
   virtual void setRequiredColumn(unsigned int col) = 0;
+  /**
+   * Mark a column optional (assembler_0 variable voxels): it may be covered
+   * at most once like any other column (disjointness still applies), but it
+   * is never selected as a pivot, an empty option list never dead-ends the
+   * search, and the goal does not require it. Uncovered optionals at any
+   * point count against the hole budget (see setHoleBudget).
+   */
+  virtual void setOptionalColumn(unsigned int col) = 0;
+  /**
+   * How many optional columns may be simultaneously uncovered and
+   * uncoverable ("holes"). Mirrors assembler_0's holes budget: the search
+   * prunes a node whose hole count exceeds it. There is deliberately no
+   * budget check at the goal itself, matching DLX (which checks holes at
+   * column-selection time but reports as soon as ring 0 is empty).
+   */
+  virtual void setHoleBudget(unsigned int h) = 0;
   virtual uint32_t addRow(unsigned int node_id, unsigned int piece_id, const std::vector<unsigned int> &cols) = 0;
   virtual void registerNodeAlias(unsigned int node_id, uint32_t row_idx) = 0;
 
@@ -233,6 +249,8 @@ public:
 
   void setRequiredColumn(unsigned int col) override;
   void setRequiredColumns(const BitsetType &required);
+  void setOptionalColumn(unsigned int col) override;
+  void setHoleBudget(unsigned int h) override { holes = h; }
   uint32_t addRow(unsigned int node_id, unsigned int piece_id, const std::vector<unsigned int> &cols) override;
   void registerNodeAlias(unsigned int node_id, uint32_t row_idx) override;
 
@@ -257,6 +275,9 @@ private:
   unsigned int num_columns;
   unsigned int num_pieces;
   BitsetType required_columns;
+  BitsetType optional_columns;
+  std::vector<unsigned int> optional_column_list;
+  unsigned int holes = 0;
   std::vector<Row> rows;
   std::vector<unsigned int> active_column_list;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
@@ -269,7 +290,24 @@ private:
     std::vector<unsigned int> current_solution;
     std::vector<uint32_t> col_counts;
     uint64_t local_iterations = 0;
+    // Nodes already published to the shared counter (see flushIterations):
+    // batching keeps per-node overhead at one increment plus a predictable
+    // branch, while readers still observe advancing -- never frozen -- counts.
+    uint64_t flushed_iterations = 0;
   };
+
+  // Publish visited-but-unpublished nodes to the shared counter. Exact:
+  // every node is published exactly once (batches of 256 plus remainders).
+  // Called at each reported solution so live readers (GUI progress, the
+  // Python iterator API) observe iterations > 0 as soon as the first
+  // assembly exists, even for searches shorter than one batch.
+  static void flushIterations(SearchContext &ctx, std::atomic<uint64_t> &iterations) {
+    uint64_t unflushed = ctx.local_iterations - ctx.flushed_iterations;
+    if (unflushed > 0) {
+      iterations.fetch_add(unflushed, std::memory_order_relaxed);
+      ctx.flushed_iterations = ctx.local_iterations;
+    }
+  }
 
   // Recursive hot path: the token is borrowed, not copied, so billions of
   // backtracking nodes pay no atomic refcount traffic. Safe: every caller

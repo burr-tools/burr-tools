@@ -240,6 +240,21 @@ class voxelFrame_c : public Fl_Gl_Window {
       Polyhedron * pickPoly = nullptr;  // the flat mesh of the edge-line style, used to pick in the other styles
       GLuint list = 0;  // the display list for this shape 0 means no list defined
 
+      /* The entry's own geometry bounds, in its local drawing units, before the
+       * position, scale and centring transforms drawVoxelSpace() applies: a voxel
+       * shape spans [0, calculateSize()], a mesh its vertices' bounding box. This
+       * is the one place an entry's size lives. Centring it for display, the
+       * fit-to-content zoom, the clip planes and the preview hint all read it,
+       * so none of them has to know what kind of geometry the entry holds --
+       * which is how the STL preview mesh once fell through every size
+       * computation and was clipped to a slab. */
+      float bboxMin[3] = { 0.0f, 0.0f, 0.0f };
+      float bboxMax[3] = { 0.0f, 0.0f, 0.0f };
+
+      /* the hotspot in drawing units; CenterTranslateRoateScale positions the
+       * entry by it. A mesh has none. */
+      float hot[3] = { 0.0f, 0.0f, 0.0f };
+
     };
 
     struct colorInfo {
@@ -249,6 +264,17 @@ class voxelFrame_c : public Fl_Gl_Window {
     std::vector<colorInfo> palette;
 
     void drawShape(shapeInfo * shape);
+
+    /* give an entry a voxel shape, recording its bounds and hotspot; the only
+     * way `shape` is ever set */
+    static void setEntryShape(shapeInfo & s, const voxel_c * vx);
+
+    /* the entry's geometry as a bounding sphere, mirroring the transform chain
+     * drawVoxelSpace() applies under the current `trans` mode: `centre` in the
+     * space the view rotation acts on, `offset` the camera-space translation
+     * ScaleRotateTranslate applies outside the rotation (zero in the other
+     * modes), radius with the entry's scale applied. */
+    void entryBounds(const shapeInfo & s, double centre[3], double offset[3], double * radius) const;
 
     /* the marker position */
     int mX1 = 0, mY1 = 0, mZ = 0, mX2 = 0, mY2 = 0;

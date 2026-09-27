@@ -27,6 +27,7 @@
 #include "puzzle.h"
 #include "gridtype.h"
 
+#include <chrono>
 #include <cstdlib>
 #include <algorithm>
 
@@ -120,8 +121,13 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
     uint64_t seq = next_submit_seq++;
     std::unique_ptr<separation_c> s;
     if (a && a->placementCount() > 1) {
+      auto t0 = std::chrono::steady_clock::now();
       s = inline_dis->disassemble(a.get());
+      double secs = std::chrono::duration<double>(
+          std::chrono::steady_clock::now() - t0).count();
+      cost_seconds.fetch_add(secs, std::memory_order_relaxed);
     }
+    completed_count.fetch_add(1, std::memory_order_relaxed);
     if (on_result) {
       on_result(seq, std::move(a), std::move(s));
     }
@@ -237,8 +243,13 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
 
       std::unique_ptr<separation_c> sep;
       if (task.assembly && task.assembly->placementCount() > 1 && !st.stop_requested() && !aborted.load(std::memory_order_relaxed)) {
+        auto t0 = std::chrono::steady_clock::now();
         sep = dis.disassemble(task.assembly.get());
+        double secs = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - t0).count();
+        cost_seconds.fetch_add(secs, std::memory_order_relaxed);
       }
+      completed_count.fetch_add(1, std::memory_order_relaxed);
 
       // Job done: return the budget token (potentially waking a parked
       // assembler or disassembler) before filing the result for the merger.
