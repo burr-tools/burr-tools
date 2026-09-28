@@ -127,6 +127,9 @@ configuration_c::configuration_c(void) {
   CNF_BOOL_D("reversescrollzoom", &i_reverseScrollZoom, "Reverse scroll zoom direction",
              "Reverse the direction of the preview zoom when the mouse wheel is used.",
              "false");
+  CNF_BOOL_D("showviewcube", &i_show_view_cube, "Show View Cube",
+             "Display the 3D orientation cube in the corner of the 3D preview. Click it to snap to a face, edge, or corner view.",
+             "true");
   {
     unsigned int hw = std::thread::hardware_concurrency();
     hw = hw ? std::min(hw, 256u) : 1u;

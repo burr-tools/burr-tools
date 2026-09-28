@@ -64,6 +64,8 @@ public:
    */
   unsigned int numThreads(void) const { return (unsigned int)i_num_threads; }
 
+  bool showViewCube(void) const { return i_show_view_cube; }
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -114,6 +116,7 @@ private:
   int i_render_style;
   bool i_reverseScrollZoom;
   int i_num_threads;
+  bool i_show_view_cube;
 
   /* computed at construction time from hardware_concurrency(), so unlike
    * every other default value here it can't be a string literal; it must
