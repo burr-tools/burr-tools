@@ -36,11 +36,19 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #define GL_SILENCE_DEPRECATION 1
 #include <FL/Fl.H>
+#include <FL/Fl_Choice.H>
 #include <FL/filename.H>
 #pragma GCC diagnostic pop
 
 #include "../lua/luaclass.h"
 
+
+unsigned int configuration_c::undoDepth(void) const {
+  static const unsigned int depths[] = { 25, 50, 100, 200 };
+  unsigned int idx = (unsigned int)i_undo_depth_idx;
+  if (idx >= 4) idx = 0;
+  return depths[idx];
+}
 
 static FILE *create_local_config_file(void) {
 
@@ -84,6 +92,7 @@ void configuration_c::parse() {
           *(bool *)t.cnf_var = L.getBool(t.cnf_name);
           break;
         case CT_INT:
+        case CT_CHOICE:
           *(int *)t.cnf_var = (int)L.getNumber(t.cnf_name);
           break;
         default: bt_assert(0);
@@ -94,8 +103,8 @@ void configuration_c::parse() {
   }
 }
 
-void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal, int maxVal) {
-  data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def, minVal, maxVal});
+void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal, int maxVal, const char ** choices) {
+  data.push_back({cnf_name, cnf_typ, cnf_var, maxlen, dialog, dtext, dhelp, nullptr, def, minVal, maxVal, choices});
 }
 
 #define CNF_BOOL(a,b, def) register_entry(a, CT_BOOL, b, 0, false, 0, 0, def)
@@ -106,6 +115,7 @@ void configuration_c::register_entry(const char *cnf_name, cnf_type cnf_typ, voi
 #define CNF_CHAR_D(a,b,c,text,help, def) register_entry(a, CT_STRING, b, c, true, text, help, def)
 #define CNF_INT_D(a,b,text,help, def) register_entry(a, CT_INT, b, 0, true, text, help, def)
 #define CNF_INT_D_RANGE(a,b,text,help, def, minVal, maxVal) register_entry(a, CT_INT, b, 0, true, text, help, def, minVal, maxVal)
+#define CNF_CHOICE_D(a,b,text,help,def,ch) register_entry(a, CT_CHOICE, b, 0, true, text, help, def, 0, 0, ch)
 
 configuration_c::configuration_c(void) {
 
@@ -137,6 +147,13 @@ configuration_c::configuration_c(void) {
     char buf[16];
     snprintf(buf, sizeof(buf), "%u", def);
     i_num_threads_default = buf;
+
+    static const char * undoChoices[] = { "25", "50", "100", "200", nullptr };
+    CNF_CHOICE_D("undodepth", &i_undo_depth_idx,
+                 "Undo History Depth",
+                 "Number of undo steps kept in memory. Higher values use more RAM for large puzzles.",
+                 "0",  /* default index 0 = 25 steps */
+                 undoChoices);
 
     CNF_INT_D_RANGE("numthreads", &i_num_threads, "Worker Threads",
                "Threads used for assembling and disassembling. Both stages share "
@@ -171,6 +188,7 @@ configuration_c::~configuration_c(void) {
       fprintf(f, "\"%s\"", (char *)(t.cnf_var));
       break;
     case CT_INT:
+    case CT_CHOICE:
       fprintf(f, "%i", *(int *)t.cnf_var);
       break;
     default: bt_assert(0);
@@ -220,6 +238,8 @@ void configuration_c::restoreDialogDefaults(void) {
       ((Fl_Check_Button*)t.widget)->value(enable ? 1 : 0);
     } else if (t.dialog && t.cnf_typ == CT_INT && t.widget) {
       ((Fl_Value_Slider*)t.widget)->value(atoi(t.defaultValue));
+    } else if (t.dialog && t.cnf_typ == CT_CHOICE && t.widget) {
+      ((Fl_Choice*)t.widget)->value(atoi(t.defaultValue));
     }
   }
 }
@@ -309,6 +329,40 @@ void configuration_c::dialog(void) {
           y++;
         }
         break;
+      case CT_CHOICE:
+        {
+          layouter_c * row = new layouter_c(0, y, 1, 1);
+          row->weight(1, 0);
+          LFl_Box * label = new LFl_Box(t.dialogText, 0, 0, 1, 1);
+          label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+          label->weight(1, 0);
+          LFl_Choice * w = new LFl_Choice(1, 0, 1, 1);
+          for (const char ** ch = t.choices; ch && *ch; ch++)
+            w->add(*ch);
+          w->value(*((int*)t.cnf_var));
+          w->setMinimumSize(120, 0);
+          row->end();
+          t.widget = w;
+          y++;
+
+          if (t.dialogHelp && t.dialogHelp[0]) {
+            (new LFl_Box(0, y, 1, 1))->setMinimumSize(0, TEXT_PAD_TOP);
+            y++;
+
+            layouter_c * helpRow = new layouter_c(0, y, 1, 1);
+            helpRow->weight(1, 0);
+            (new LFl_Box(0, 0))->setMinimumSize(TEXT_PAD, 0);
+            new SettingsWrapBox(t.dialogHelp, 1, 0, wrapW);
+            (new LFl_Box(2, 0))->setMinimumSize(TEXT_PAD, 0);
+            helpRow->end();
+            y++;
+          }
+
+          LFl_Box * spacer = new LFl_Box(0, y, 1, 1);
+          spacer->setMinimumSize(wrapW, 8);
+          y++;
+        }
+        break;
       default: bt_assert(0);
       }
     }
@@ -364,6 +418,9 @@ void configuration_c::dialog(void) {
         break;
       case CT_INT:
         *((int*)t.cnf_var) = (int)((Fl_Value_Slider*)t.widget)->value();
+        break;
+      case CT_CHOICE:
+        *((int*)t.cnf_var) = ((Fl_Choice*)t.widget)->value();
         break;
       default: bt_assert(0);
       }

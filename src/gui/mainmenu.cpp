@@ -45,6 +45,10 @@ namespace {
       {"Import Assms",   0, cb_AssembliesToShapes_stub,     0, 0, 0, 0, 14, 56},
       {"Quit",           0, cb_Quit_stub,        0, 0, 3, 0, 14, 56},
       { },
+    { "&Edit",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
+      {"Undo", FL_COMMAND+'z',           cb_Undo_stub, 0, 0, 0, 0, 14, 56},
+      {"Redo", FL_COMMAND+FL_SHIFT+'z', cb_Redo_stub, 0, FL_MENU_DIVIDER, 0, 0, 14, 56},
+      { },
     {"Toggle 3D", FL_F + 4, cb_Toggle3D_stub,    0, 0, 0, 0, 14, 56},
     { "&Export",         0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
       {"Images",             0, cb_ImageExport_stub, 0, 0, 0, 0, 14, 56},
@@ -65,10 +69,6 @@ namespace {
    * gather under Puzzle, and every item that opens a dialog gains an
    * ellipsis.
    *
-   * There is no Edit menu. The only candidate for one is Edit Comment --
-   * BurrTools has no Undo, Cut, Copy or Paste -- and a one-item Edit menu
-   * reads worse than none.
-   *
    * About, Settings and Quit are deliberately absent: they belong to the
    * application menu, built in installApplicationMenu() below.
    */
@@ -85,6 +85,10 @@ namespace {
         {"STL...",          0, cb_STLExport_stub,         0, 0, 0, 0, 14, 56},
         { },
       {"Close",            FL_COMMAND + 'w', cb_Quit_stub,      0, 0, 0, 0, 14, 56},
+      { },
+    { "&Edit",             0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
+      {"Undo", FL_COMMAND+'z',           cb_Undo_stub, 0, 0, 0, 0, 14, 56},
+      {"Redo", FL_COMMAND+FL_SHIFT+'z', cb_Redo_stub, 0, FL_MENU_DIVIDER, 0, 0, 14, 56},
       { },
     { "&Puzzle",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
       {"Edit Comment...",      0, cb_Comment_stub,            0, 0, 0, 0, 14, 56},

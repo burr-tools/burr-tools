@@ -163,6 +163,14 @@ void puzzle_c::removeColor(unsigned int col) {
   colors.erase(colors.begin() + (col - 1));
 }
 
+void puzzle_c::adoptShapes(std::vector<std::unique_ptr<voxel_c>> newShapes) {
+  shapes = std::move(newShapes);
+}
+
+void puzzle_c::adoptColors(std::vector<uint32_t> newColors) {
+  colors = std::move(newColors);
+}
+
 void puzzle_c::changeColor(unsigned int idx, unsigned char r, unsigned char g, unsigned char b) {
 
   bt_assert(idx < colors.size());

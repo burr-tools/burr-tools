@@ -344,6 +344,9 @@ public:
   void disallowPlacement(unsigned int pc, unsigned int res);
   /** check if placing is allowed */
   bool placementAllowed(unsigned int pc, unsigned int res) const;
+  /** direct read/write access to the constraint set (used by puzzleHistory_c snapshot/restore) */
+  const std::set<uint32_t> & getColorConstraints(void) const { return colorConstraints; }
+  void setColorConstraints(std::set<uint32_t> cc) { colorConstraints = std::move(cc); }
   //@}
 
   /** \name grouping information.

@@ -34,6 +34,7 @@ class ChangeSize;
 class ToolTab;
 class voxel_c;
 class puzzle_c;
+class puzzleHistory_c;
 class problem_c;
 class solveThread_c;
 class disasmToMoves_c;
@@ -117,7 +118,7 @@ class mainWindow_c : public LFl_Double_Window {
    */
   void pruneSolveProgress(void);
 
-  bool changed;
+  std::unique_ptr<puzzleHistory_c> puzzleHistory;
   int editSymmetries;
 
   /* Re-entrancy guard for openFromSystem(): true while a system-open request
@@ -129,6 +130,8 @@ class mainWindow_c : public LFl_Double_Window {
    * rebuilt when it actually changes */
   bool menuExportActive;
   bool menuSTLActive;
+  bool menuUndoActive;
+  bool menuRedoActive;
 
   bool expertMode;
 
@@ -257,6 +260,9 @@ class mainWindow_c : public LFl_Double_Window {
   bool threadStopped(void);
 
   void updateInterface(void);
+  void updateUndoRedoMenu(void);
+  // restores tab (0=Entities, 1=Puzzle, 2=Solver) and shape selection after undo/redo
+  void applyHistoryRestore(unsigned int tab, unsigned int selectedShape);
 
 public:
 
@@ -358,6 +364,9 @@ public:
 
   void cb_Status(void);
   void cb_3dClick(void);
+
+  void cb_Undo(void);
+  void cb_Redo(void);
 
   void cb_New(void);
   void cb_Load(void);

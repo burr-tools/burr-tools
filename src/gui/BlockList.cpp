@@ -794,16 +794,17 @@ int ColorConstraintsEdit::handle(int event) {
 
   unsigned int ypos = 0;
 
-  /* nothing there */
-  if ((w() <= 0) || (h() <= 0)) return 1;
-
   /* let the parent group scroll with the mouse wheel */
   if (event == FL_MOUSEWHEEL)
     return 0;
 
-  /* only handle push */
+  /* only handle push; returning 1 for other events (including FL_SHORTCUT)
+   * would swallow them before they reach mainWindow_c::handle(). */
   if (event != FL_PUSH)
-    return 1;
+    return 0;
+
+  /* nothing there */
+  if ((w() <= 0) || (h() <= 0)) return 0;
 
   /* no valid problem available */
   if (problem >= puzzle->getNumberOfProblems())
