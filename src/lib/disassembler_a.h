@@ -104,9 +104,12 @@ class disassembler_a_c : public disassembler_c {
     /**
      * construct the disassembler for this concrete problem.
      * The problem can not be changed, once you done that but
-     * you can analyse many assemblies for disassembability
+     * you can analyse many assemblies for disassembability.
+     *
+     * sharedCache, when given, is shared with the movement analysator
+     * (see there) instead of building a private cache per disassembler.
      */
-    disassembler_a_c(const problem_c & puz);
+    disassembler_a_c(const problem_c & puz, std::shared_ptr<movementCache_c> sharedCache = nullptr);
     ~disassembler_a_c(void);
 
     /**

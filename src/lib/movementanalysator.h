@@ -45,7 +45,7 @@ class movementAnalysator_c {
 
   private:
 
-    std::unique_ptr<movementCache_c> cache;
+    std::shared_ptr<movementCache_c> cache;
 
     /* matrix should normally have one subarray for each direction
      * (positive x negative x, positive y, ...), but because
@@ -133,9 +133,13 @@ class movementAnalysator_c {
     /**
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
-     * many positions
+     * many positions.
+     *
+     * sharedCache, when given, is used instead of a private cache: the
+     * movement cache is internally synchronized, so pool workers can share
+     * one instance (part A) instead of computing every value N times.
      */
-    movementAnalysator_c(const problem_c & puz);
+    movementAnalysator_c(const problem_c & puz, std::shared_ptr<movementCache_c> sharedCache = nullptr);
     ~movementAnalysator_c(void);
 
     /* you use either the 2 functions below, or completeFind

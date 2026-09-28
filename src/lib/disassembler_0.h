@@ -53,7 +53,8 @@ private:
 
 public:
 
-  disassembler_0_c(const problem_c & puz) : disassembler_a_c(puz) { }
+  disassembler_0_c(const problem_c & puz, std::shared_ptr<movementCache_c> sharedCache = nullptr)
+    : disassembler_a_c(puz, sharedCache) { }
   ~disassembler_0_c() { }
 
 private:

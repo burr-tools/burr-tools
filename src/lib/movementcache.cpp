@@ -117,6 +117,8 @@ void movementCache_c::rehashMoTable(size_t new_cap) {
 
 void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsigned char t2, unsigned int p1, unsigned int p2, unsigned int * movements)
 {
+  std::lock_guard<std::mutex> guard(cacheMutex);
+
   /* find out the shapes that the pieces have */
   unsigned int s1 = pieces[p1];
   unsigned int s2 = pieces[p2];

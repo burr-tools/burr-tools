@@ -23,9 +23,10 @@
 #include "disassembler_0.h"
 #include "assembly.h"
 #include "disassembly.h"
+#include "gridtype.h"
+#include "movementcache.h"
 #include "problem.h"
 #include "puzzle.h"
-#include "gridtype.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -75,6 +76,13 @@ disassemblerPool_c::disassemblerPool_c(
     inline_dis = std::make_unique<disassembler_0_c>(puzzle);
     return;
   }
+
+  /* One movement cache for all workers: internally synchronized, so every
+   * movement value is computed once instead of once per worker (see part A
+   * in design/2026-09-17-disassembler-optimizations.md). May be null for
+   * grids without disassembly support, exactly like the per-disassembler
+   * path (same assert behavior downstream). */
+  sharedCache = puz.getPuzzle().getGridType()->getMovementCache(puz);
 
   // Start worker threads
   workers.reserve(num_threads);
@@ -195,7 +203,7 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
 
 void disassemblerPool_c::worker_loop(std::stop_token st) {
   try {
-    disassembler_0_c dis(puzzle);
+    disassembler_0_c dis(puzzle, sharedCache);
 
     while (!st.stop_requested()) {
       Task task;

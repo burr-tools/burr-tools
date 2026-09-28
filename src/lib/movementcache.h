@@ -22,6 +22,7 @@
 #define __MOVEMENTCACHE_H__
 
 #include <array>
+#include <mutex>
 #include <vector>
 
 class voxel_c;
@@ -79,6 +80,12 @@ class movementCache_c {
   size_t moMask = 0;
 
   void rehashMoTable(size_t new_cap);
+
+  /** guards the whole getMoValue path (table + lazy shapes) so one cache
+   * instance can be shared across pool worker threads (part A).
+   * Coarse on purpose: uncontended locks are cheap next to voxel math,
+   * and every value is computed once instead of once per worker. */
+  mutable std::mutex cacheMutex;
 
   /**
    * Saves the shapes in all orientations.
