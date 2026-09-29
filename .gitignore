@@ -28,6 +28,11 @@ coverage-html/
 # Generated Doxygen API reference (`just docs`)
 gendoc/
 
+# Nested checkout of the website repo (burr-tools/burr-tools.github.io);
+# it has its own .git, so keep it out of this repo. Re-clone with:
+#   git clone https://github.com/burr-tools/burr-tools.github.io.git burr-tools.github.io
+burr-tools.github.io/
+
 # Python artifacts
 __pycache__/
 *.pyc
@@ -41,4 +46,10 @@ bench/**/*.csv
 bench_run.log
 callgrind*.out*
 perf.data*
+
+# Crash dumps from debugging sessions
+/core.*
+
+# Downloaded GitHub Pages artifact (large, regenerable via CI)
+/github-pages/
 
