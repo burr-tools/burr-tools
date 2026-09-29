@@ -587,8 +587,9 @@ void SimdHuangCover<BitsetType>::generateTasks(
      * reallocate the outer buffer and leave it dangling before the loop below
      * walks it. Depth stays in bounds regardless: every placed row consumes
      * at least one shape-column unit, so depth never exceeds searchDepthBound
-     * (sum of shape max_weights), and the vector is created with bound + 16
-     * entries (see initContext).
+     * (sum of shape max_weights), and every placed row also sets a unique
+     * voxel bit, so depth never exceeds num_columns either; the vector is
+     * created with min(bound, num_columns) + 16 entries (see initContext).
      */
     bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
@@ -967,8 +968,9 @@ void SimdHuangCover<BitsetType>::search(
    * DELIBERATELY no resize of ctx.scratch_active_rows here: curr_active is a
    * reference into that vector, and a resize would reallocate the outer buffer
    * and leave it dangling before the loop below walks it (depth stays in
-   * bounds by the searchDepthBound() argument: every placement consumes a
-   * shape-column unit).
+   * bounds by the searchDepthBound() argument -- every placement consumes a
+   * shape-column unit -- and independently by num_columns via unique voxel
+   * bits; see initContext).
    */
   bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
