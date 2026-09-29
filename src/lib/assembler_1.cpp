@@ -28,12 +28,26 @@
 #include "puzzle.h"
 #include "voxel.h"
 #include "assembly.h"
+#include "gridtype.h"
+
+#include "../tools/xml.h"
+
+#include <cstdlib>
+#include <cstring>
+#include <unordered_map>
+#include <vector>
+
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
 
 /* Definitions for huang_memory::tierRowBytes/fitsMemoryBudget (declared in
  * simd_huang_cover.h). They live here rather than in the header because
  * naming every tier's Row type from that header breaks GCC's
  * target-attribute handling for the AVX kernels. Thresholds mirror
- * createSimdSolver() and tierMaskBytes(): keep all three in sync. */
+ * createSimdSolver() and tierMaskBytes(): keep all three in sync
+ * (tierMaskBytes() itself has no production caller left -- it exists so
+ * the unit test pins the ladder -- but its thresholds must still match). */
 size_t huang_memory::tierRowBytes(unsigned int num_cols) {
   if (num_cols <= 256) return sizeof(SimdHuangCover256::Row);
   if (num_cols <= 512) return sizeof(SimdHuangCover512::Row);
@@ -47,20 +61,22 @@ size_t huang_memory::tierRowBytes(unsigned int num_cols) {
 
 bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes) {
   return num_rows * tierRowBytes(num_cols) + num_nodes * kPerNodeOverheadBytes
-    <= kSimdMemoryBudgetBytes;
+    <= budgetBytes();
 }
-#include "gridtype.h"
 
-#include "../tools/xml.h"
-
-#include <cstdlib>
-#include <cstring>
-#include <unordered_map>
-#include <vector>
-
-#ifdef _WIN32
-#define snprintf _snprintf
-#endif
+/* Effective SIMD memory budget, overridable for A/B runs near the
+ * threshold without rebuilding: BURRTOOLS_HUANG_MEM_MB=<MB> replaces the
+ * default, =0 disables the SIMD path via the budget entirely. Unset or
+ * unparsable falls back to the default. */
+uint64_t huang_memory::budgetBytes(void) {
+  if (const char * env = std::getenv("BURRTOOLS_HUANG_MEM_MB")) {
+    char * end = nullptr;
+    unsigned long long mb = std::strtoull(env, &end, 10);
+    if (end != env && *end == '\0')
+      return mb << 20;
+  }
+  return kSimdMemoryBudgetBytes;
+}
 
 #define ASSEMBLER_VERSION "2.1"
 
