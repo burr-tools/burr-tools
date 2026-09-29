@@ -78,7 +78,7 @@ uint64_t huang_memory::budgetBytes(void) {
   return kSimdMemoryBudgetBytes;
 }
 
-#define ASSEMBLER_VERSION "2.2"
+#define ASSEMBLER_VERSION "2.1"
 
 void printMatrix(
     const std::vector<unsigned int> & up,
@@ -1151,7 +1151,10 @@ std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
  * assemblies hash identically regardless of discovery order, so reports
  * from different runs, engines and thread counts dedup against each other.
  * Shared by the parallel callback below and serial solution(): keep the two
- * in sync -- a divergence silently breaks cross-run dedup. */
+ * in sync -- a divergence silently breaks cross-run dedup. Note the hash
+ * itself iterates pieces by index, so it never needed the sort() calls at
+ * the call sites; those stay for reporting order (both engines have always
+ * reported sorted placements). */
 static uint64_t assemblySignature(const assembly_c * assembly, unsigned int piecenumber) {
   uint64_t sig = 14695981039346656037ULL;
   for (unsigned int i = 0; i < piecenumber; i++) {
@@ -1600,6 +1603,9 @@ void assembler_1_c::iterative(void) {
   // signatures). Same clearing in simdSearch().
   parallelTasks.clear();
   pendingHuangPrefixes.clear();
+  // The serial stacks are a real resume point from here on; a flag left over
+  // from an earlier parallel stop would make save() mark them unresumable.
+  parallelInterrupted = false;
 
   // Snapshot of the run token: assemble()/debug_step() refreshed the source
   // before calling here, so this stays valid for the whole serial search.
@@ -3200,7 +3206,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * parallelTasks, and emittedSignatures suppresses repeats.
      * generateTasksAtDepth() resets the master back to the root on every
      * exit, so the base stacks carry no resume point; save() persists the
-     * remainder instead (format 2.2) and setPosition() resumes from it.
+     * remainder instead (appended below) and setPosition() resumes from it.
      * Flag serial dedup as well: a serial continue re-searches everything.
      */
     parallelTasks = pool.drain();
@@ -3751,13 +3757,26 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int pos = 0;
 
+  /* Accepted payloads: v0.7.1 ("2.0", no leading flag) and current ("2.1",
+   * flag plus stacks, with an appended parallel remainder when present).
+   * Anything else is refused rather than silently misparsed: a flagless
+   * rows vector read as a flag wipes the stored solutions, and an unknown
+   * layout would lose its remainder.
+   */
+  bool isCurrent = version != nullptr && strcmp(version, "2.1") == 0;
+  bool isLegacy = version != nullptr && strcmp(version, "2.0") == 0;
+  if (!isCurrent && !isLegacy)
+    return ERR_CAN_NOT_RESTORE_VERSION;
+
   /* leading flag written by save(): an interrupted parallel search recorded
    * neither how far its workers got nor which assemblies it already reported.
    * Refusal is decided below: version 2.2 may carry resumable task data.
    */
   unsigned int interrupted = 0;
-  pos += getInt(string+pos, &interrupted);
-  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (isCurrent) {
+    pos += getInt(string+pos, &interrupted);
+    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  }
 
   pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3767,10 +3786,15 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_b);
 
-  // Version 2.2 appends parallel remainder (issue #90): task type, tasks,
-  // reported signatures. Older payloads end here.
+  // A parallel remainder follows the stacks when present (appended by
+  // save()): task type, tasks, reported signatures. Older payloads end
+  // here, modulo whitespace -- presence of trailing data, not the version,
+  // tells the two apart.
   unsigned int restoredPtype = 0;
-  if (version != nullptr && strcmp(version, "2.2") == 0) {
+  while (pos < len && (string[pos] == ' ' || string[pos] == '\t' ||
+                       string[pos] == '\n' || string[pos] == '\r'))
+    pos++;
+  if (pos < len) {
     unsigned int ptype = 0;
     pos += getInt(string+pos, &ptype);
     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3914,7 +3938,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
 
   /* leading flag: 1 marks a search that stopped before finishing.
    * Reloading such a position resumes it only when task data follows
-   * (format 2.2, see below); older payloads and task-less stops are
+   * (appended below); older payloads and task-less stops are
    * refused with ERR_CAN_NOT_RESTORE_INTERRUPTED.
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
