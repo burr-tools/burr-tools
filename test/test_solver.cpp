@@ -799,7 +799,6 @@ TEST_CASE("Parallel assembler 1 pause and continue does not duplicate assemblies
 
   assm.assemble(&cb);              // continue on the same assembler
 
-
   /* every assembly exactly once across the two runs */
   CHECK(cb.fingerprints == serial);
 }
@@ -857,7 +856,6 @@ TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
   REQUIRE(seen == 1);
 
   assm.assemble(&cb);              // continue on the same assembler
-
 
   /* every assembly exactly once across the two runs */
   CHECK(cb.fingerprints == serial);

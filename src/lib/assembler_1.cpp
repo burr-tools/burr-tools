@@ -675,6 +675,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
 
   complete = comp;
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
 
   if (!canHandle(problem))
@@ -3584,6 +3585,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int len = strlen(string);
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
