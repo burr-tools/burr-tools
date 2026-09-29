@@ -686,8 +686,14 @@ void SimdHuangCover<BitsetType>::parallelSolve(
     generateTasks(target_tasks, tasks);
   }
 
-  total_tasks.store(tasks.size(), std::memory_order_relaxed);
-  completed_tasks.store(0, std::memory_order_relaxed);
+  // A resume keeps the paused run's counters (as the DLX path does): the
+  // seeds are exactly the tasks it left uncompleted, already counted in
+  // total_tasks (in-flight ones via the salvage bump, the pool remainder
+  // from the start), so resetting here would drop the bar back to 0.
+  if (resume_prefixes == nullptr || resume_prefixes->empty()) {
+    total_tasks.store(tasks.size(), std::memory_order_relaxed);
+    completed_tasks.store(0, std::memory_order_relaxed);
+  }
 
   if (tasks.empty() || stop.stop_requested()) {
     // Stopped before (or without) any work: salvage the built tasks'
@@ -732,10 +738,12 @@ void SimdHuangCover<BitsetType>::parallelSolve(
       SubtreeTask t;
       while (pool.pop_task(t, stop, st)) {
         try {
-          // Pristine snapshot for salvage: search() mutates t.ctx in place
-          // (mid-path state on interruption), but resume must restart the
-          // whole subtree -- siblings along the interrupted path would
-          // otherwise be lost. Mirrors the DLX requeue of untouched snapshots.
+          // Defensive snapshot for salvage: search() fully unwinds t.ctx
+          // before it returns, so current_solution already equals the
+          // popped prefix -- but resume must restart the whole subtree
+          // even if that ever changes, so keep the copy rather than
+          // relying on the unwinding. Mirrors the DLX requeue of
+          // untouched snapshots.
           std::vector<unsigned int> task_prefix;
           if (salvaged_prefixes != nullptr)
             task_prefix = t.ctx.current_solution;

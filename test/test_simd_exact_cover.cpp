@@ -1101,3 +1101,40 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   CHECK(std::find(rest.begin(), rest.end(), firstSol) == rest.end());
 }
 
+/* Stop before the first pop salvages the seeds verbatim (issue #111).
+ *
+ * Deterministic by construction: the stop source is already stopped when
+ * parallelSolve runs, so no worker ever pops. The early return must hand
+ * back exactly what the caller swapped out of pendingHuangPrefixes --
+ * freshly built tasks replay precisely their seed, so salvaged == seeds.
+ * Without the early-stop salvage this comes back empty and the next
+ * continue falls back to full regeneration.
+ */
+TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[simd][huang][resume]") {
+  auto solver = std::make_unique<SimdHuangCover256>(4, 2);
+  solver->setColumnBounds(1, 1, 1, false, true, false, false);
+  solver->setColumnBounds(2, 1, 1, false, true, false, false);
+  solver->setColumnBounds(3, 1, 1, true, false, false, false);
+  solver->setColumnBounds(4, 1, 1, true, false, false, false);
+  solver->addRow(1, 0, 1, 0, 0, {1, 3}, {1, 1});
+  solver->addRow(2, 0, 1, 1, 0, {1, 4}, {1, 1});
+  solver->addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
+  solver->addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
+
+  const std::vector<std::vector<unsigned int>> seeds = {{1}, {2}};
+  std::vector<std::vector<unsigned int>> salvaged;
+  std::stop_source stopSrc;
+  stopSrc.request_stop();          // stop before anything is popped
+  std::atomic<unsigned long> iterations{0};
+  std::atomic<size_t> total_tasks{0};
+  std::atomic<size_t> completed_tasks{0};
+  bool reported = false;
+  solver->parallelSolve(
+    1,
+    [&](const std::vector<unsigned int> &) { reported = true; return false; },
+    stopSrc, iterations, total_tasks, completed_tasks,
+    nullptr, &seeds, &salvaged);
+  CHECK(!reported);
+  CHECK(salvaged == seeds);
+}
+
