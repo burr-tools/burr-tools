@@ -928,8 +928,8 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
     state = str.str();
   }
 
-  // The payload must carry the new format version with task data.
-  CHECK(assemblerVersionOf(state) == "2.2");
+  // The payload must carry task data under the current version.
+  CHECK(assemblerVersionOf(state) == "2.1");
 
   // Phase 2: restore into a fresh assembler and continue.
   {
@@ -997,6 +997,82 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
           == assembler_c::ERR_NONE);
 
     restored.setNumThreads(1);
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == serial);
+  }
+}
+
+/* Save/load/continue on a symmetry-breaking puzzle (issue #118 review):
+ * DemoMirrorParadox enables avoidTransformedAssemblies, so worker threads
+ * call smallerRotationExists() concurrently -- the only bundled example
+ * covering that path for assembler_1. The premise guard (keepRotations
+ * must yield strictly more assemblies) keeps the case honest: if symmetry
+ * breaking ever goes inactive here, the test fails instead of silently
+ * covering nothing. Otherwise the same save/stop/continue multiset
+ * contract as the PiecesOfEight case above. */
+TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
+          "[assembler][parallel][resume][simd][save]") {
+  auto p = puzzle_c::load("examples/DemoMirrorParadox.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(1);
+  REQUIRE(problem != nullptr);
+
+  size_t unbroken = 0;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    unbroken = cb.fingerprints.size();
+    INFO("symmetry breaking must be active for this test to be meaningful");
+    REQUIRE(unbroken > 1);
+  }
+
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  // Exactly one assembly here: the stop-after-first below still interrupts
+  // (workers are mid-search), and the continue must not re-report it.
+  REQUIRE(serial.size() == 1);
+  CHECK(serial.size() < unbroken);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 1;
+    });
+    REQUIRE(seen == 1);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  {
+    assembler_1_c restored(*problem);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
     RecordingAssemblerCallback cb2;
     restored.assemble(&cb2);
 
@@ -1170,7 +1246,7 @@ TEST_CASE("DLX save, load and continue reproduces the full multiset",
     state = str.str();
   }
 
-  CHECK(assemblerVersionOf(state) == "2.2");
+  CHECK(assemblerVersionOf(state) == "2.1");
 
   {
     assembler_1_c restored(*problem);
@@ -1360,7 +1436,7 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
 
 /* Same contract as the assembler_0 case: a parallel Huang search that was
  * stopped part way persists its remainder (placed-node prefixes plus
- * reported signatures, format 2.2), so the reload resumes from it instead
+ * reported signatures), so the reload resumes from it instead
  * of refusing or silently starting over and re-reporting.
  */
 TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
@@ -2723,12 +2799,13 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
      * configured. Restoring a saved position is how a resume actually reaches
      * the assembler: the GUI writes it into the puzzle file on pause and
      * setPosition() rebuilds the partial DLX stack from it.
-     * "0 1 0 (0 0)(0 0)" is the interrupted flag clear, pos=1, 0 iterations
-     * and two empty (row column) pairs -- the smallest string that leaves pos
-     * non-zero without covering anything.
+     * "0 1 0 (0 0)(0 0) 0 0 0" is the interrupted flag clear, pos=1,
+     * 0 iterations and two empty (row column) pairs -- the smallest string
+     * that leaves pos non-zero without covering anything -- plus an empty
+     * 1.6 remainder (zero tasks, zero completed share, zero signatures).
      */
     assm.setNumThreads(4);
-    REQUIRE(assm.setPosition("0 1 0 (0 0)(0 0)", "1.5") == assembler_c::ERR_NONE);
+    REQUIRE(assm.setPosition("0 1 0 (0 0)(0 0) 0 0 0", "1.6") == assembler_c::ERR_NONE);
     CHECK(assm.getRunThreads() == 1);
   }
 
