@@ -130,9 +130,10 @@ spec-lint:
 
 # Translate the PlusCal protocol models and model-check them with TLC.
 # AssemblyPool (uncapped + forced-parking), DisasmPool (normal + tight),
-# Pipeline (minimal + wide contention). All three translate first, then one
-# lint pass covers them all, then the six TLC configs run. The wide Pipeline
-# model takes ~30s; everything else is seconds.
+# Pipeline (minimal + wide + wide with two disassemblers) contention.
+# All three translate first, then one lint pass covers them all, then the
+# seven TLC configs run. The ND=2 Pipeline model takes ~5 min; everything
+# else is seconds to ~2 min.
 spec-check: spec-tools
     java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
     java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old
@@ -144,6 +145,7 @@ spec-check: spec-tools
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPoolTight.cfg spec/DisasmPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/Pipeline.cfg spec/Pipeline
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/PipelineWide.cfg spec/Pipeline
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/PipelineWideND2.cfg spec/Pipeline
 
 # Configure the coverage build directory if not already set up
 setup-cov:
