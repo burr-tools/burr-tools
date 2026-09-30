@@ -176,7 +176,10 @@ merger callback body, GUI.
    is never exercised yet every invariant holds). After touching an
    await, check that the distinct-state count did not collapse AND that
    a targeted mutant still fails. Current rough counts: AssemblyPool
-   ~13k/13k, DisasmPool ~233k/89k, Pipeline ~3k/335k states.
+   a targeted mutant still fails. Current rough counts: AssemblyPool
+   ~13k/13k, DisasmPool ~233k/89k, Pipeline ~3k/335k/1.3M states (the
+   last is PipelineWideND2, the only config with two disassembly
+   workers -- the one that exercises D-tier holder identity).
 
 ## Tooling quirks found the hard way
 
