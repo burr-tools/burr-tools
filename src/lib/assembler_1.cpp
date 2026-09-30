@@ -3770,7 +3770,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   /* leading flag written by save(): an interrupted parallel search recorded
    * neither how far its workers got nor which assemblies it already reported.
-   * Refusal is decided below: version 2.2 may carry resumable task data.
+   * Refusal is decided below: a remainder may carry resumable task data.
    */
   unsigned int interrupted = 0;
   if (isCurrent) {
