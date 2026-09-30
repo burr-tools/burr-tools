@@ -81,13 +81,13 @@ properties. Read in this order:
 | `Pop` / `Fin` | `pop_task` success + `finishTask` (`releaseBudget` then `task_done`) |
 | `ShedTok` | Model-only shed of a reservation left dangling by a label-split interleave that C++ excludes (reserve is atomic with the nonempty check). Keeps the token-free-wait rule. |
 | `splitter` process | `push_tasks` dynamic splits, as environment nondeterminism (splits are optional: the owner searches the whole subtree) |
-| `stopper` process | GUI/orchestrator `requestStop()`; unfair, so TLC covers stop and never-stop |
+| `stopper` process | Stop path (`runStop` semantics: pushes are still accepted after a stop, which the retry path depends on). Fair with a skip branch: skipping covers never-stop, fairness guarantees a started salvage runs to completion |
 | `BudgetConservation` | **SPEC-BUDGET-1**: takes/returns pair up |
 | `ActiveBounded` | N-active-thread bound: every in-flight task holds a token |
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
 | `TaskConservation` | **SPEC-POOL-2**: no task lost/duplicated across splits (pool inventory only; unseeded tasks sit in `genList`) |
 | `GenShape` | Generation emits the 1..k prefix in order |
-| `NoPartialResume` | **SPEC-POOL-4** (PR #118, unmerged — master still keeps the partial list): stopped generation ⇒ no list, no seeding, nothing searched |
+| `NoPartialResume` | **SPEC-POOL-4**: stopped generation ⇒ no list, no seeding, nothing searched (C++ side lands with PR #118) |
 | `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` (ditto: lands with PR #118) |
 | `CleanExit` | **SPEC-POOL-3**: exits leak no tasks/tokens |
 | `AllTerminate` | Liveness: generate, drain-to-quiescence, or stop always ends the search |
@@ -100,7 +100,7 @@ properties. Read in this order:
 | `worker` + `WWait` await | `worker_loop()`: pop under `queue_mutex`; predicate deliberately omits `stop_requested` (requestStop re-wake is harmless) |
 | `WFile` await | `cv_reorder` wait. TLC proves it never blocks: `WindowBounded` guarantees a free slot whenever a job is in flight |
 | `merger` + `MWait` await | `merger_loop()`: next-seq filed, dropped-skip, or finished-and-drained |
-| `stopper` + `SalvLoop` | `requestStop()`: salvage queued assemblies, publish `dropped_` |
+| `stopper` + `SalvLoop`/`DropMove` | `requestStop()`: salvage queued assemblies, then publish `dropped_` in a second step (`pendingDrop` models the queue_mutex/result_mutex window between the two; the merger just waits it out) |
 | `aborter` | `abort()`: discard queue, reorder buffer, drops; workers/merger exit on the flag (also covers the worker-exception path's observable protocol) |
 | `finisher` | `finish()`: set `finished` once every offer resolved; workers join, merger drains |
 | `OrderedDelivery` | **SPEC-DIS-1**: monotonic `seqNo` merge |
@@ -120,7 +120,7 @@ properties. Read in this order:
 | `ARequeue` | Terminal submit salvages the task back (assembler retry / disassembler salvage paths) |
 | `dworker` + `DPark` | `worker_loop()` pickup plus the per-job budget gate |
 | `BudgetConservation` | **SPEC-PIPE-1**: takes/returns pair up globally |
-| `WorkingBounded` | **SPEC-PIPE-1** (bound half): holders ≤ total. Deliberately NOT open-tasks-plus-jobs: TLC refuted that reading — an assembler yielded in submit-wait while a disassembler works is designed overlap |
+| `WorkersHoldTokens` | **SPEC-PIPE-1** (bound half): every working thread holds a token. Deliberately NOT open-tasks-plus-jobs: TLC refuted that reading — an assembler yielded in submit-wait while a disassembler works is designed overlap |
 | `AssemblyConservation` / `DisasmConservation` / `SubmittedEqualsCompleted` | **SPEC-PIPE-2**: end-to-end no-loss, task → assembly → delivery |
 | `OrderedDelivery` | **SPEC-PIPE-3** |
 | `QueueBounded` / `ReorderBounded` / `WindowBounded` | **SPEC-PIPE-4** |
@@ -130,8 +130,8 @@ properties. Read in this order:
 
 Review findings that shape what the specs must cover:
 
-- **Stop during generation must discard partial state** (PR #118, `assembler_1.cpp:2727`): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (#118, `simd_huang_cover.cpp:677`; #116). `AssemblyPool.tla` currently seeds atomically, so this bug class is **unmodeled** — the planned extension is a generation phase plus `SPEC-POOL-4` (stopped generation ⇒ no partial resumable state).
-- **Salvage-before-return** (#118, #116): every terminal path must preserve requeueable state (seeds, queued assemblies). Covered for the disassembler pool by `SeqConservation`; the assembly-side `drain()` path is abstracted with the task body.
+- **Stop during generation must discard partial state** (PR #118, `assembler_1.cpp:2727`): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (#118, `simd_huang_cover.cpp:677`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is pending PR #118.
+- **Salvage-before-return** (#118, #116): every terminal path must preserve requeueable state (seeds, queued assemblies). Covered for the disassembler pool by `SeqConservation`; the assembly-side `drain()` is the wired stop path (not an abstraction), while the stop-time retry re-queue stays deliberately unmodeled — SPEC-POOL-2 is really about that path, so it is listed as a gap, not a claim.
 - **Tests must fail without the fix** (#116 `test_solver.cpp:854`, #114 verified-by-revert): the same standard applies here — every spec is mutation-checked (removing the submit window violates `WindowBounded`; dropping token releases violates `CleanExit`).
 - **NDEBUG-vanishing checks gate nothing** (#113): CI gates must throw via `bt_te()`, never `bt_assert`. Applies to the planned debug accounting asserts: they stay debug-only tripwires inside `#ifndef NDEBUG` tests, never release gates.
 
@@ -139,8 +139,8 @@ Review findings that shape what the specs must cover:
 
 C++ locks (atomic steps here; token-free/lock-free waits by construction),
 the C++ memory model (atomics are sequentially consistent),
-`AssemblyTaskPool::abort()`/`drain()` (currently unwired: assembly stop
-arrives via `runStop` + `notify`), the null-budget path (budget = N ≈
+`AssemblyTaskPool::abort()` and `requestStop()` (unused; assembly stop
+arrives via `runStop` + `notify`, whose `drain()` is wired), the null-budget path (budget = N ≈
 uncapped), task bodies (exact cover search, mid-task requeue), voxel
 caches, disassembly payloads, the merger callback body, GUI.
 
