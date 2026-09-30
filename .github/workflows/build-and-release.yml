@@ -159,12 +159,38 @@ jobs:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
 
-  # Model-checks the PlusCal protocol specs in spec/ with TLC. Fast by
-  # design (tiny state spaces, a few seconds): it guards the defect class
-  # TSan cannot see — lost wakeups, hangs, token leaks — at the protocol
-  # level, before those shapes reach the C++ implementation.
+  # The TLA+ check is deterministic in spec/** (pinned tools, hermetic
+  # models): unchanged inputs reproduce the previous result bit-for-bit,
+  # so runs outside spec/** cannot fail -- and the justfile is touched far
+  # more often than the specs. Gate the expensive job on the paths that
+  # can change its outcome.
+  spec-changes:
+    name: Detect spec changes
+    runs-on: ubuntu-latest
+    outputs:
+      spec: ${{ steps.filter.outputs.spec }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check changed paths
+      id: filter
+      uses: dorny/paths-filter@v3
+      with:
+        filters: |
+          spec:
+            - 'spec/**'
+
+  # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
+  # the defect class TSan cannot see — lost wakeups, hangs, token leaks —
+  # at the protocol level, before those shapes reach the C++ implementation.
   spec:
     name: TLA+ protocol specs
+    needs: spec-changes
+    # Tags and manual dispatches have no diff base for the filter, so they
+    # run unconditionally; PRs and pushes run only on spec/** changes.
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.spec-changes.outputs.spec == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
