@@ -181,9 +181,14 @@ TEST_CASE("tabForAction maps problem kind to TAB_PUZZLE", "[gui][history]") {
         == puzzleHistory_c::TAB_PUZZLE);
 }
 
-TEST_CASE("tabForAction maps solution kind to TAB_SOLVER", "[gui][history]") {
-  CHECK(puzzleHistory_c::tabForAction(puzzleHistory_c::AK_SOLUTION)
-        == puzzleHistory_c::TAB_SOLVER);
+TEST_CASE("markModified makes isModifiedFromSave return true", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  h.markSaved();
+  CHECK_FALSE(h.isModifiedFromSave());
+  h.markModified();
+  CHECK(h.isModifiedFromSave());
 }
 
 TEST_CASE("undo result carries correct tab from recorded action", "[gui][history]") {

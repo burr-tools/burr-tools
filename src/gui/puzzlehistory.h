@@ -47,7 +47,6 @@ public:
     AK_ENTITIES_CLICK_3D,     ///< voxel add/remove via 3D view on Entities tab
     AK_COLOR_PALETTE,         ///< add/remove/change a colour entry
     AK_PROBLEM_STRUCTURAL,    ///< problem add/delete/rename/piece-counts/result/constraints
-    AK_SOLUTION,              ///< delete solutions or disassemblies
   };
 
   /** Which tab an undo/redo should switch to. */
@@ -74,7 +73,7 @@ public:
   void reset(puzzle_c * puzzle);
 
   /** Stroke API — collapses an entire drag-paint gesture into one undo step. */
-  void beginStroke(void);
+  void beginStroke(actionKind_e kind = AK_ENTITIES_GRID_PAINT);
   void markStrokeDirty(void);
   /** Commit the stroke as a snapshot if anything changed; returns true if taken. */
   bool endStroke(puzzle_c * puzzle, unsigned int selectedShape);
@@ -102,6 +101,11 @@ public:
   void markSaved(void);
   /** True if the current state differs from the last markSaved() position. */
   bool isModifiedFromSave(void) const;
+
+  /** Mark the puzzle as modified without pushing a snapshot.
+   *  Use for changes that cannot be undone (solve completion, solution deletion,
+   *  grid-type conversion). */
+  void markModified(void);
 
   /** Pure mapping, no state — usable from tests. */
   static affectedTab_e tabForAction(actionKind_e kind);
@@ -141,12 +145,14 @@ private:
 
   std::deque<std::unique_ptr<snapshot_t>> snapshots;
   unsigned int cursor;
-  unsigned int savedCursor; ///< NO_SHAPE sentinel when save point was evicted
+  unsigned int savedCursor;
+  bool savedCursorValid; ///< false when the save point was evicted from the front of the stack
 
   unsigned int maxUndo_;
 
   bool inStroke;
   bool strokeDirty;
+  actionKind_e strokeKind; ///< kind recorded by beginStroke(), used by endStroke()
 
   actionKind_e lastKind;
   unsigned int lastShape;

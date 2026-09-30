@@ -1267,7 +1267,7 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
 
   unsigned int cnt;
 
-  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_SOLUTION);
+  puzzleHistory->markModified();
 
   switch (which) {
   case 0:
@@ -1329,7 +1329,7 @@ void mainWindow_c::cb_DeleteDisasm(void) {
 
   pr->getSavedSolution(sol)->removeDisassembly();
 
-  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_SOLUTION);
+  puzzleHistory->markModified();
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1347,7 +1347,7 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   for (unsigned int i = 0; i < pr->getNumberOfSavedSolutions(); i++)
     pr->getSavedSolution(i)->removeDisassembly();
 
-  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_SOLUTION);
+  puzzleHistory->markModified();
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1376,7 +1376,7 @@ void mainWindow_c::cb_AddDisasm(void) {
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
-  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_SOLUTION);
+  puzzleHistory->markModified();
 
   if (d)
     pr->getSavedSolution(sol)->setDisassembly(std::move(d));
@@ -1400,7 +1400,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_SOLUTION);
+  puzzleHistory->markModified();
 
   auto dis = std::make_unique<disassembler_0_c>(*pr);
 
@@ -1460,7 +1460,7 @@ void mainWindow_c::cb_3dClick(void) {
     if (Fl::event_ctrl()) {
 
       if (ev == FL_PUSH)
-        puzzleHistory->beginStroke();
+        puzzleHistory->beginStroke(puzzleHistory_c::AK_ENTITIES_CLICK_3D);
 
       if (ev == FL_PUSH || ev == FL_DRAG) {
         unsigned int shape, face;
@@ -1489,7 +1489,7 @@ void mainWindow_c::cb_3dClick(void) {
     } else if (Fl::event_shift() || Fl::event_alt()) {
 
       if (ev == FL_PUSH)
-        puzzleHistory->beginStroke();
+        puzzleHistory->beginStroke(puzzleHistory_c::AK_ENTITIES_CLICK_3D);
 
       if (ev == FL_PUSH || ev == FL_DRAG) {
         unsigned int shape, face;
@@ -1599,11 +1599,17 @@ void mainWindow_c::applyHistoryRestore(unsigned int tab, unsigned int selectedSh
   case puzzleHistory_c::TAB_ENTITIES:
   default:
     TaskSelectionTab->value(TabPieces);
-    if (selectedShape != puzzleHistory_c::NO_SHAPE &&
-        selectedShape < puzzle->getNumberOfShapes())
-      activateShape(selectedShape);
-    else
-      activateClear();
+    {
+      unsigned int n = puzzle->getNumberOfShapes();
+      unsigned int sel = (selectedShape != puzzleHistory_c::NO_SHAPE && selectedShape < n)
+                         ? selectedShape
+                         : (n > 0 ? n - 1 : puzzleHistory_c::NO_SHAPE);
+      if (sel != puzzleHistory_c::NO_SHAPE) {
+        PcSel->setSelection(sel);
+        activateShape(sel);
+      } else
+        activateClear();
+    }
     break;
   }
 
@@ -1799,6 +1805,7 @@ void mainWindow_c::cb_Convert(void) {
     {
       ReplacePuzzle(std::unique_ptr<puzzle_c>(p));
       puzzleHistory->reset(puzzle.get());
+      puzzleHistory->markModified(); // converted puzzle is unsaved even though snapshot stack was reset
       updateInterface();
       activateShape(0);
     }
@@ -3495,6 +3502,7 @@ void mainWindow_c::update(void) {
     if ((assmThread->currentAction() == solveThread_c::ACT_PAUSING) ||
         (assmThread->currentAction() == solveThread_c::ACT_FINISHED)) {
 
+      puzzleHistory->markModified(); // solutions are not snapshotted; mark dirty so save prompt appears
       assmThread.reset();
 
     } else if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {

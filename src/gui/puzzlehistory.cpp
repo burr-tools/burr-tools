@@ -21,9 +21,11 @@
 puzzleHistory_c::puzzleHistory_c(void) :
   cursor(0),
   savedCursor(0),
+  savedCursorValid(true),
   maxUndo_(MAX_UNDO),
   inStroke(false),
   strokeDirty(false),
+  strokeKind(AK_ENTITIES_GRID_PAINT),
   lastKind(AK_NONE),
   lastShape(NO_SHAPE),
   lastTimeMs(0)
@@ -44,8 +46,10 @@ void puzzleHistory_c::clearSnapshots(void) {
   snapshots.clear();
   cursor = 0;
   savedCursor = 0;
+  savedCursorValid = true;
   inStroke = false;
   strokeDirty = false;
+  strokeKind = AK_ENTITIES_GRID_PAINT;
   lastKind = AK_NONE;
   lastShape = NO_SHAPE;
   lastTimeMs = 0;
@@ -81,13 +85,12 @@ puzzleHistory_c::capture(const puzzle_c * puzzle,
 
   // COW shape sharing: only clone shapes that could have changed.
   // AK_NONE and AK_ENTITIES_STRUCTURAL may change any shape → clone all.
-  // AK_COLOR_PALETTE, AK_PROBLEM_STRUCTURAL, AK_SOLUTION → no shape changes → share all.
+  // AK_COLOR_PALETTE, AK_PROBLEM_STRUCTURAL → no shape changes → share all.
   // Paint/transform/click → only selectedShape changed → share the rest.
   const bool cloneAll  = (kind == AK_NONE || kind == AK_ENTITIES_STRUCTURAL);
   const bool cloneNone = !cloneAll &&
                          (kind == AK_COLOR_PALETTE ||
-                          kind == AK_PROBLEM_STRUCTURAL ||
-                          kind == AK_SOLUTION);
+                          kind == AK_PROBLEM_STRUCTURAL);
 
   for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
     const bool doClone = cloneAll || (!cloneNone && i == selectedShape);
@@ -199,9 +202,10 @@ void puzzleHistory_c::reset(puzzle_c * puzzle) {
   savedCursor = 0;
 }
 
-void puzzleHistory_c::beginStroke(void) {
+void puzzleHistory_c::beginStroke(actionKind_e kind) {
   inStroke = true;
   strokeDirty = false;
+  strokeKind = kind;
 }
 
 void puzzleHistory_c::markStrokeDirty(void) {
@@ -211,7 +215,7 @@ void puzzleHistory_c::markStrokeDirty(void) {
 bool puzzleHistory_c::endStroke(puzzle_c * puzzle, unsigned int selectedShape) {
   bool took = false;
   if (inStroke && strokeDirty) {
-    record(puzzle, AK_ENTITIES_GRID_PAINT, selectedShape);
+    record(puzzle, strokeKind, selectedShape);
     /* A completed stroke gesture is a discrete undo step; the next gesture
      * must not coalesce with it even if it starts immediately. */
     lastKind = AK_NONE;
@@ -233,7 +237,7 @@ bool puzzleHistory_c::canCoalesce(actionKind_e kind,
     return selectedShape == lastShape && dt >= 0 && dt <= GRID_PAINT_COALESCE_MS;
 
   if (kind == AK_ENTITIES_TRANSFORM)
-    return dt >= 0 && dt <= TRANSFORM_COALESCE_MS;
+    return selectedShape == lastShape && dt >= 0 && dt <= TRANSFORM_COALESCE_MS;
 
   return false;
 }
@@ -255,8 +259,10 @@ void puzzleHistory_c::pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
     while (snapshots.size() > maxUndo_ + 1) {
       snapshots.pop_front(); // O(1) with deque
       if (cursor > 0) cursor--;
-      if (savedCursor > 0) savedCursor--;
-      else savedCursor = NO_SHAPE; // save point evicted
+      if (savedCursorValid) {
+        if (savedCursor > 0) savedCursor--;
+        else savedCursorValid = false; // save point evicted from front
+      }
     }
   }
 
@@ -305,10 +311,15 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
 
 void puzzleHistory_c::markSaved(void) {
   savedCursor = cursor;
+  savedCursorValid = true;
 }
 
 bool puzzleHistory_c::isModifiedFromSave(void) const {
-  return cursor != savedCursor;
+  return !savedCursorValid || cursor != savedCursor;
+}
+
+void puzzleHistory_c::markModified(void) {
+  savedCursorValid = false;
 }
 
 puzzleHistory_c::affectedTab_e
@@ -322,8 +333,6 @@ puzzleHistory_c::tabForAction(actionKind_e kind) {
     return TAB_ENTITIES;
   case AK_PROBLEM_STRUCTURAL:
     return TAB_PUZZLE;
-  case AK_SOLUTION:
-    return TAB_SOLVER;
   default:
     return TAB_ENTITIES;
   }
