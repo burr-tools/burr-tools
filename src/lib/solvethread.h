@@ -46,18 +46,23 @@ class problem_c;
  * (never-started) assemblies while in-flight disassemblies run to
  * completion. The worker unwinds at task boundaries: assemble() returns,
  * disasm_pool->finish() drains filed results, and takeSalvaged() moves the
- * salvage into the problem's stashed assemblies. On the assembly side
- * nothing is moved: never-started tasks stay queued in the pool and
- * interrupted in-flight tasks are re-queued by their owner via push_tasks
- * (both assemblers do this right after joining their workers).
+ * salvage into the problem's stashed assemblies. On the assembly side the
+ * pool is drained after the workers join: never-started plus re-queued
+ * in-flight tasks land back in parallelTasks (both assemblers re-queue
+ * via push_tasks, which stays accepted while stopping), with
+ * emittedSignatures suppressing repeats and parallelInterrupted marking
+ * the position resumable.
  *
  * Continue (start() again): stashed assemblies are re-submitted FIRST, so
- * solution order stays stable; then assemble() continues over the queued
- * plus re-queued tasks. Re-searched overlap is suppressed by the
- * emittedSignatures dedup, so nothing is reported twice and nothing is
- * lost. Across sessions, stashed assemblies are serialized with the
- * problem while an interrupted parallel search is refused on load
- * (ERR_CAN_NOT_RESTORE_INTERRUPTED) and restarts cleanly.
+ * solution order stays stable; then assemble() continues over the drained
+ * remainder (generation is skipped while tasks remain) or regenerates
+ * fully when the stop landed during generation. Re-searched overlap is
+ * suppressed by the emittedSignatures dedup, so nothing is reported twice
+ * and nothing is lost. Across sessions, stashed assemblies are serialized
+ * with the problem; an interrupted parallel search reloads resumable when
+ * task data was persisted, and is refused on load
+ * (ERR_CAN_NOT_RESTORE_INTERRUPTED, restarting cleanly) only when the
+ * stop left no tasks behind.
  *
  * Load-bearing ordering rules:
  * - takeSalvaged() only after finish(); pool.drain() only after the
