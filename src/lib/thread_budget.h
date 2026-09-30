@@ -55,14 +55,14 @@ inline bool threadBudgetEnabled() {
  * - Tier 2 (disassembly) pulls found assemblies off a bounded queue with
  *   dedicated workers and a merger thread that re-emits results strictly
  *   in submit order. finish() drains and joins; abort() discards.
-  * - The shared ThreadBudget below caps working threads: an assembler
-  *   holds one token across a whole subtree task, a disassembler one per
-  *   job. Submit pacing is deliberately absent -- the bounded queue stays
-  *   a real buffer -- so pipeline overlap survives.
-  *   [SPEC-PIPE-1, model-checked in spec/Pipeline.tla: the bound is on
-  *   token holders (threads executing work), not on open tasks -- an
-  *   assembler yielded in its submit wait while a disassembler works is
-  *   designed overlap, and TLC refutes the stronger reading.]
+ * - The shared ThreadBudget below caps working threads: an assembler
+ *   holds one token across a whole subtree task, a disassembler one per
+ *   job. Submit pacing is deliberately absent -- the bounded queue stays
+ *   a real buffer -- so pipeline overlap survives.
+ *   [SPEC-PIPE-1, model-checked in spec/Pipeline.tla: the bound is on
+ *   token holders (threads executing work), not on open tasks -- an
+ *   assembler yielded in its submit wait while a disassembler works is
+ *   designed overlap, and TLC refutes the stronger reading.]
  *
  * Load-bearing deadlock rule: a token is held only across actual
  * searching/disassembling. Every wait (empty/full queues, reorder
@@ -71,14 +71,14 @@ inline bool threadBudgetEnabled() {
  * hand (never requeued) across pickup parks. Every such wait's progress
  * condition then depends only on token holders, which always progress,
  * or on terminal flags. Releasing wakes a waiter; shutdowns wake all.
- *
-  * Per-thread holdings ride a function-local thread_local pointer (see
-  * heldBudget below): at most one token per thread (true by construction
-  * -- one task at a time per thread in every worker loop here), so
-  * take/return pair up without threading flags through signatures.
  * [SPEC-BUDGET-1, model-checked in spec/AssemblyPool.tla]
-  * A pointer, not a boolean: if several budgets ever coexist, release()
-  * only returns a token to the budget that granted it.
+ *
+ * Per-thread holdings ride a function-local thread_local pointer (see
+ * heldBudget below): at most one token per thread (true by construction
+ * -- one task at a time per thread in every worker loop here), so
+ * take/return pair up without threading flags through signatures.
+ * A pointer, not a boolean: if several budgets ever coexist, release()
+ * only returns a token to the budget that granted it.
  *
   * History and measurements live in
   * design/2026-09-22-assembly-work-stealing.md; the contract lives here.

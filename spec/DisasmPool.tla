@@ -21,6 +21,10 @@
 (*     arbitrary-time abort() (same observable protocol).                 *)
 (*   - C++ locks/mutexes and the C++ memory model (as in AssemblyPool).   *)
 (*   - Payload content: placementCount()==1 shortcuts, movement analysis. *)
+(*   - abort() clearing salvaged_: the model keeps salvagedSeq across     *)
+(*     abort (SPEC-DIS-5 "never lost" is stronger than the code there),   *)
+(*     fine by design since abort runs only on the assert path and in the *)
+(*     destructor after takeSalvaged().                                   *)
 (*                                                                         *)
 (* INVARIANT IDs (shared with code comments, stable across refactors):    *)
 (*   SPEC-DIS-1 ...... merger delivers strictly in submit order           *)
@@ -58,6 +62,9 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
     nextMerge = 0,                       (* next_merge_seq                  *)
     filed = {},                          (* reorder_buffer keys (seqNos)    *)
     dropped = {},                        (* salvaged seqNos to skip         *)
+    pendingDrop = {},                    (* salvaged, not yet in dropped:   *)
+                                         (* the queue_mutex/result_mutex    *)
+                                         (* window of requestStop()         *)
     delivered = <<>>,                    (* on_result calls, in order       *)
     salvagedSeq = <<>>,                  (* numbered salvage, submit order  *)
     refused = 0,                         (* terminal-time refuses (no seq)  *)
@@ -184,8 +191,15 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
   \* holds queue_mutex across the whole drain; the per-step interleave with
   \* worker pops below is sound (a popped-then-delivered task equals the
   \* pop-just-before-stop linearisation, and a task is never both popped
-  \* and salvaged). Unfair: TLC also covers never-stopping.
-  process (stopper = -1)
+  \* and salvaged). The move into `dropped` is a SECOND step (DropMove):
+  \* C++ inserts into dropped_ under result_mutex only after releasing
+  \* queue_mutex, so between the two a salvaged seqNo sits in neither the
+  \* queue nor `dropped` -- exactly the window the merger must ride out
+  \* (it just waits). Fair, not unfair: the skip branch still covers
+  \* never-stopping, while fairness guarantees the move completes once a
+  \* stop started (otherwise the merger could wait on pendingDrop forever
+  \* and liveness would fail on a stalled stopper).
+  fair process (stopper = -1)
   {
   StopDo:
     either {
@@ -195,8 +209,15 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
         assert Head(queue) > lastSalvaged;  (* SPEC-DIS-6 *)
         salvagedSeq := Append(salvagedSeq, Head(queue));
         lastSalvaged := Head(queue);
-        dropped := dropped \cup {Head(queue)};
+        pendingDrop := pendingDrop \cup {Head(queue)};
         queue := Tail(queue);
+      };
+    DropMove:
+      while (pendingDrop /= {}) {
+        with (s \in pendingDrop) {
+          dropped := dropped \cup {s};
+          pendingDrop := pendingDrop \ {s};
+        };
       };
     } or {
       skip;
@@ -204,8 +225,8 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
   }
 
   \* Emergency teardown (C++ abort(): destructor, worker_exception path).
-  \* Discards everything in one atomic step; workers/merger exit on the
-  \* flag. Unfair: arbitrary-time abort, or never.
+  \* Discards everything in one atomic step, including salvage in transit;
+  \* workers/merger exit on the flag. Unfair: arbitrary-time abort, or never.
   process (aborter = -2)
   {
   AbortDo:
@@ -213,10 +234,12 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
       aborted := TRUE;
       discarded := discarded + Len(queue)
                  + Cardinality(filed) + Cardinality(dropped)
+                 + Cardinality(pendingDrop)
                  + Cardinality({w \in Workers : busy[w] /= NoJob});
       queue := <<>>;
       filed := {};
       dropped := {};
+      pendingDrop := {};
       busy := [w \in Workers |-> NoJob];
     } or {
       skip;
@@ -236,16 +259,16 @@ NoJob == -1  (* busy[w] = -1 means worker w holds no job; seqNos start at 0 *)
   }
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "53b839fb" /\ chksum(tla) = "7d674ba5")
-VARIABLES queue, nextSubmit, nextMerge, filed, dropped, delivered, 
-          salvagedSeq, refused, skipped, discarded, offered, lastDelivered, 
-          lastSalvaged, busy, finished, aborted, stopReq, sdone, wdone, mdone, 
-          pc, seq
+\* BEGIN TRANSLATION (chksum(pcal) = "9dc6ebf7" /\ chksum(tla) = "4f695efe")
+VARIABLES queue, nextSubmit, nextMerge, filed, dropped, pendingDrop, 
+          delivered, salvagedSeq, refused, skipped, discarded, offered, 
+          lastDelivered, lastSalvaged, busy, finished, aborted, stopReq, 
+          sdone, wdone, mdone, pc, seq
 
-vars == << queue, nextSubmit, nextMerge, filed, dropped, delivered, 
-           salvagedSeq, refused, skipped, discarded, offered, lastDelivered, 
-           lastSalvaged, busy, finished, aborted, stopReq, sdone, wdone, 
-           mdone, pc, seq >>
+vars == << queue, nextSubmit, nextMerge, filed, dropped, pendingDrop, 
+           delivered, salvagedSeq, refused, skipped, discarded, offered, 
+           lastDelivered, lastSalvaged, busy, finished, aborted, stopReq, 
+           sdone, wdone, mdone, pc, seq >>
 
 ProcSet == {M + 1} \cup (1..M) \cup {0} \cup {-1} \cup {-2} \cup {-3}
 
@@ -255,6 +278,7 @@ Init == (* Global variables *)
         /\ nextMerge = 0
         /\ filed = {}
         /\ dropped = {}
+        /\ pendingDrop = {}
         /\ delivered = <<>>
         /\ salvagedSeq = <<>>
         /\ refused = 0
@@ -290,9 +314,9 @@ SLoop == /\ pc[M + 1] = "SLoop"
                ELSE /\ pc' = [pc EXCEPT ![M + 1] = "SDone"]
                     /\ UNCHANGED << refused, offered >>
          /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                         delivered, salvagedSeq, skipped, discarded, 
-                         lastDelivered, lastSalvaged, busy, finished, aborted, 
-                         stopReq, sdone, wdone, mdone, seq >>
+                         pendingDrop, delivered, salvagedSeq, skipped, 
+                         discarded, lastDelivered, lastSalvaged, busy, 
+                         finished, aborted, stopReq, sdone, wdone, mdone, seq >>
 
 SSpace == /\ pc[M + 1] = "SSpace"
           /\    (Len(queue) < MaxQ /\ nextSubmit - nextMerge < MaxR)
@@ -306,18 +330,18 @@ SSpace == /\ pc[M + 1] = "SSpace"
                      /\ offered' = offered + 1
                      /\ UNCHANGED refused
           /\ pc' = [pc EXCEPT ![M + 1] = "SLoop"]
-          /\ UNCHANGED << nextMerge, filed, dropped, delivered, salvagedSeq, 
-                          skipped, discarded, lastDelivered, lastSalvaged, 
-                          busy, finished, aborted, stopReq, sdone, wdone, 
-                          mdone, seq >>
+          /\ UNCHANGED << nextMerge, filed, dropped, pendingDrop, delivered, 
+                          salvagedSeq, skipped, discarded, lastDelivered, 
+                          lastSalvaged, busy, finished, aborted, stopReq, 
+                          sdone, wdone, mdone, seq >>
 
 SDone == /\ pc[M + 1] = "SDone"
          /\ sdone' = TRUE
          /\ pc' = [pc EXCEPT ![M + 1] = "Done"]
          /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                         delivered, salvagedSeq, refused, skipped, discarded, 
-                         offered, lastDelivered, lastSalvaged, busy, finished, 
-                         aborted, stopReq, wdone, mdone, seq >>
+                         pendingDrop, delivered, salvagedSeq, refused, skipped, 
+                         discarded, offered, lastDelivered, lastSalvaged, busy, 
+                         finished, aborted, stopReq, wdone, mdone, seq >>
 
 submitter == SLoop \/ SSpace \/ SDone
 
@@ -326,10 +350,10 @@ WLoop(self) == /\ pc[self] = "WLoop"
                      THEN /\ pc' = [pc EXCEPT ![self] = "WWait"]
                      ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
                /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                               delivered, salvagedSeq, refused, skipped, 
-                               discarded, offered, lastDelivered, lastSalvaged, 
-                               busy, finished, aborted, stopReq, sdone, wdone, 
-                               mdone, seq >>
+                               pendingDrop, delivered, salvagedSeq, refused, 
+                               skipped, discarded, offered, lastDelivered, 
+                               lastSalvaged, busy, finished, aborted, stopReq, 
+                               sdone, wdone, mdone, seq >>
 
 WWait(self) == /\ pc[self] = "WWait"
                /\ Len(queue) > 0 \/ finished \/ aborted
@@ -350,9 +374,10 @@ WWait(self) == /\ pc[self] = "WWait"
                                      /\ pc' = [pc EXCEPT ![self] = "WFile"]
                                      /\ wdone' = wdone
                /\ UNCHANGED << nextSubmit, nextMerge, filed, dropped, 
-                               delivered, salvagedSeq, refused, skipped, 
-                               discarded, offered, lastDelivered, lastSalvaged, 
-                               finished, aborted, stopReq, sdone, mdone >>
+                               pendingDrop, delivered, salvagedSeq, refused, 
+                               skipped, discarded, offered, lastDelivered, 
+                               lastSalvaged, finished, aborted, stopReq, sdone, 
+                               mdone >>
 
 WFile(self) == /\ pc[self] = "WFile"
                /\ Cardinality(filed) < MaxR \/ aborted
@@ -365,9 +390,10 @@ WFile(self) == /\ pc[self] = "WFile"
                           /\ wdone' = wdone
                /\ pc' = [pc EXCEPT ![self] = "WLoop"]
                /\ UNCHANGED << queue, nextSubmit, nextMerge, dropped, 
-                               delivered, salvagedSeq, refused, skipped, 
-                               discarded, offered, lastDelivered, lastSalvaged, 
-                               finished, aborted, stopReq, sdone, mdone >>
+                               pendingDrop, delivered, salvagedSeq, refused, 
+                               skipped, discarded, offered, lastDelivered, 
+                               lastSalvaged, finished, aborted, stopReq, sdone, 
+                               mdone >>
 
 worker(self) == WLoop(self) \/ WWait(self) \/ WFile(self)
 
@@ -376,9 +402,9 @@ MLoop == /\ pc[0] = "MLoop"
                THEN /\ pc' = [pc EXCEPT ![0] = "MWait"]
                ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
          /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                         delivered, salvagedSeq, refused, skipped, discarded, 
-                         offered, lastDelivered, lastSalvaged, busy, finished, 
-                         aborted, stopReq, sdone, wdone, mdone, seq >>
+                         pendingDrop, delivered, salvagedSeq, refused, skipped, 
+                         discarded, offered, lastDelivered, lastSalvaged, busy, 
+                         finished, aborted, stopReq, sdone, wdone, mdone, seq >>
 
 MWait == /\ pc[0] = "MWait"
          /\    (nextMerge \in filed) \/ (nextMerge \in dropped) \/ aborted
@@ -395,23 +421,23 @@ MWait == /\ pc[0] = "MWait"
                                                mdone >>
                           ELSE /\ IF nextMerge \in filed
                                      THEN /\ Assert(nextMerge > lastDelivered, 
-                                                    "Failure of assertion at line 169, column 9.")
+                                                    "Failure of assertion at line 176, column 9.")
                                           /\ filed' = filed \ {nextMerge}
                                           /\ delivered' = Append(delivered, nextMerge)
                                           /\ lastDelivered' = nextMerge
                                           /\ nextMerge' = nextMerge + 1
                                           /\ mdone' = mdone
                                      ELSE /\ Assert(finished /\ nextMerge = nextSubmit, 
-                                                    "Failure of assertion at line 176, column 9.")
+                                                    "Failure of assertion at line 183, column 9.")
                                           /\ mdone' = TRUE
                                           /\ UNCHANGED << nextMerge, filed, 
                                                           delivered, 
                                                           lastDelivered >>
                                /\ UNCHANGED << dropped, skipped >>
          /\ pc' = [pc EXCEPT ![0] = "MLoop"]
-         /\ UNCHANGED << queue, nextSubmit, salvagedSeq, refused, discarded, 
-                         offered, lastSalvaged, busy, finished, aborted, 
-                         stopReq, sdone, wdone, seq >>
+         /\ UNCHANGED << queue, nextSubmit, pendingDrop, salvagedSeq, refused, 
+                         discarded, offered, lastSalvaged, busy, finished, 
+                         aborted, stopReq, sdone, wdone, seq >>
 
 merger == MLoop \/ MWait
 
@@ -422,40 +448,56 @@ StopDo == /\ pc[-1] = "StopDo"
                 /\ pc' = [pc EXCEPT ![-1] = "Done"]
                 /\ UNCHANGED stopReq
           /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                          delivered, salvagedSeq, refused, skipped, discarded, 
-                          offered, lastDelivered, lastSalvaged, busy, finished, 
-                          aborted, sdone, wdone, mdone, seq >>
+                          pendingDrop, delivered, salvagedSeq, refused, 
+                          skipped, discarded, offered, lastDelivered, 
+                          lastSalvaged, busy, finished, aborted, sdone, wdone, 
+                          mdone, seq >>
 
 SalvLoop == /\ pc[-1] = "SalvLoop"
             /\ IF Len(queue) > 0
                   THEN /\ Assert(Head(queue) > lastSalvaged, 
-                                 "Failure of assertion at line 195, column 9.")
+                                 "Failure of assertion at line 209, column 9.")
                        /\ salvagedSeq' = Append(salvagedSeq, Head(queue))
                        /\ lastSalvaged' = Head(queue)
-                       /\ dropped' = (dropped \cup {Head(queue)})
+                       /\ pendingDrop' = (pendingDrop \cup {Head(queue)})
                        /\ queue' = Tail(queue)
                        /\ pc' = [pc EXCEPT ![-1] = "SalvLoop"]
-                  ELSE /\ pc' = [pc EXCEPT ![-1] = "Done"]
-                       /\ UNCHANGED << queue, dropped, salvagedSeq, 
+                  ELSE /\ pc' = [pc EXCEPT ![-1] = "DropMove"]
+                       /\ UNCHANGED << queue, pendingDrop, salvagedSeq, 
                                        lastSalvaged >>
-            /\ UNCHANGED << nextSubmit, nextMerge, filed, delivered, refused, 
-                            skipped, discarded, offered, lastDelivered, busy, 
-                            finished, aborted, stopReq, sdone, wdone, mdone, 
-                            seq >>
+            /\ UNCHANGED << nextSubmit, nextMerge, filed, dropped, delivered, 
+                            refused, skipped, discarded, offered, 
+                            lastDelivered, busy, finished, aborted, stopReq, 
+                            sdone, wdone, mdone, seq >>
 
-stopper == StopDo \/ SalvLoop
+DropMove == /\ pc[-1] = "DropMove"
+            /\ IF pendingDrop /= {}
+                  THEN /\ \E s \in pendingDrop:
+                            /\ dropped' = (dropped \cup {s})
+                            /\ pendingDrop' = pendingDrop \ {s}
+                       /\ pc' = [pc EXCEPT ![-1] = "DropMove"]
+                  ELSE /\ pc' = [pc EXCEPT ![-1] = "Done"]
+                       /\ UNCHANGED << dropped, pendingDrop >>
+            /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, delivered, 
+                            salvagedSeq, refused, skipped, discarded, offered, 
+                            lastDelivered, lastSalvaged, busy, finished, 
+                            aborted, stopReq, sdone, wdone, mdone, seq >>
+
+stopper == StopDo \/ SalvLoop \/ DropMove
 
 AbortDo == /\ pc[-2] = "AbortDo"
            /\ \/ /\ aborted' = TRUE
                  /\ discarded' =   discarded + Len(queue)
                                  + Cardinality(filed) + Cardinality(dropped)
+                                 + Cardinality(pendingDrop)
                                  + Cardinality({w \in Workers : busy[w] /= NoJob})
                  /\ queue' = <<>>
                  /\ filed' = {}
                  /\ dropped' = {}
+                 /\ pendingDrop' = {}
                  /\ busy' = [w \in Workers |-> NoJob]
               \/ /\ TRUE
-                 /\ UNCHANGED <<queue, filed, dropped, discarded, busy, aborted>>
+                 /\ UNCHANGED <<queue, filed, dropped, pendingDrop, discarded, busy, aborted>>
            /\ pc' = [pc EXCEPT ![-2] = "Done"]
            /\ UNCHANGED << nextSubmit, nextMerge, delivered, salvagedSeq, 
                            refused, skipped, offered, lastDelivered, 
@@ -472,9 +514,10 @@ FinWait == /\ pc[-3] = "FinWait"
                       /\ UNCHANGED finished
            /\ pc' = [pc EXCEPT ![-3] = "Done"]
            /\ UNCHANGED << queue, nextSubmit, nextMerge, filed, dropped, 
-                           delivered, salvagedSeq, refused, skipped, discarded, 
-                           offered, lastDelivered, lastSalvaged, busy, aborted, 
-                           stopReq, sdone, wdone, mdone, seq >>
+                           pendingDrop, delivered, salvagedSeq, refused, 
+                           skipped, discarded, offered, lastDelivered, 
+                           lastSalvaged, busy, aborted, stopReq, sdone, wdone, 
+                           mdone, seq >>
 
 finisher == FinWait
 
@@ -490,6 +533,7 @@ Spec == /\ Init /\ [][Next]_vars
         /\ WF_vars(submitter)
         /\ \A self \in 1..M : WF_vars(worker(self))
         /\ WF_vars(merger)
+        /\ WF_vars(stopper)
         /\ WF_vars(finisher)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
@@ -534,7 +578,8 @@ WindowBounded == nextSubmit - nextMerge <= MaxR
 OfferConservation == offered = nextSubmit + refused
 SeqConservation ==
   nextSubmit = Len(delivered) + Len(queue) + InflightCount
-             + Cardinality(filed) + Cardinality(dropped) + skipped + discarded
+             + Cardinality(filed) + Cardinality(dropped)
+             + Cardinality(pendingDrop) + skipped + discarded
 
 (* SPEC-DIS-6: salvage keeps submit order (needed for deterministic
    re-submission on the next run). The per-salvage assert carries it. *)

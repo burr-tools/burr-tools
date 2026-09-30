@@ -239,16 +239,21 @@ NoJob == -1
             holdsD[self] := TRUE;
           };
         };
+        \* C++ releases the budget token before the reorder wait
+        \* (worker_loop(): release, then lock, then the cv_reorder wait),
+        \* so no wait in this model may hold a token -- the token-free-wait
+        \* rule the spec enforces by construction.
+      DRel:
+        if (holdsD[self]) {
+          available := available + 1;
+          holdsD[self] := FALSE;
+        };
         \* Abstract disassembly, then file (window slot guaranteed).
       DFile:
         await Cardinality(filed) < MaxR;
         filed := filed \cup {seq};
         busy[self] := NoJob;
         seq := NoJob;
-        if (holdsD[self]) {
-          available := available + 1;
-          holdsD[self] := FALSE;
-        };
       };
     };
   }
@@ -305,7 +310,7 @@ NoJob == -1
   }
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "d905299f" /\ chksum(tla) = "8c8af07a")
+\* BEGIN TRANSLATION (chksum(pcal) = "27b89837" /\ chksum(tla) = "eb50ad82")
 VARIABLES aq, activeA, completedA, adone, holdsA, hasTaskA, available, dq, 
           nextSubmit, nextMerge, filed, dropped, skipped, delivered, 
           salvagedSeq, busy, finished, stopReq, ddone, holdsD, mdone, 
@@ -564,11 +569,11 @@ DWait(self) == /\ pc[self] = "DWait"
                                 THEN /\ IF available > 0
                                            THEN /\ available' = available - 1
                                                 /\ holdsD' = [holdsD EXCEPT ![self] = TRUE]
-                                                /\ pc' = [pc EXCEPT ![self] = "DFile"]
+                                                /\ pc' = [pc EXCEPT ![self] = "DRel"]
                                            ELSE /\ pc' = [pc EXCEPT ![self] = "DPark"]
                                                 /\ UNCHANGED << available, 
                                                                 holdsD >>
-                                ELSE /\ pc' = [pc EXCEPT ![self] = "DFile"]
+                                ELSE /\ pc' = [pc EXCEPT ![self] = "DRel"]
                                      /\ UNCHANGED << available, holdsD >>
                           /\ ddone' = ddone
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
@@ -576,34 +581,43 @@ DWait(self) == /\ pc[self] = "DWait"
                                skipped, delivered, salvagedSeq, finished, 
                                stopReq, mdone, lastDelivered, atask >>
 
+DRel(self) == /\ pc[self] = "DRel"
+              /\ IF holdsD[self]
+                    THEN /\ available' = available + 1
+                         /\ holdsD' = [holdsD EXCEPT ![self] = FALSE]
+                    ELSE /\ TRUE
+                         /\ UNCHANGED << available, holdsD >>
+              /\ pc' = [pc EXCEPT ![self] = "DFile"]
+              /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
+                              dq, nextSubmit, nextMerge, filed, dropped, 
+                              skipped, delivered, salvagedSeq, busy, finished, 
+                              stopReq, ddone, mdone, lastDelivered, atask, seq >>
+
 DFile(self) == /\ pc[self] = "DFile"
                /\ Cardinality(filed) < MaxR
                /\ filed' = (filed \cup {seq[self]})
                /\ busy' = [busy EXCEPT ![self] = NoJob]
                /\ seq' = [seq EXCEPT ![self] = NoJob]
-               /\ IF holdsD[self]
-                     THEN /\ available' = available + 1
-                          /\ holdsD' = [holdsD EXCEPT ![self] = FALSE]
-                     ELSE /\ TRUE
-                          /\ UNCHANGED << available, holdsD >>
                /\ pc' = [pc EXCEPT ![self] = "DLoop"]
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, dq, nextSubmit, nextMerge, dropped, 
-                               skipped, delivered, salvagedSeq, finished, 
-                               stopReq, ddone, mdone, lastDelivered, atask >>
+                               hasTaskA, available, dq, nextSubmit, nextMerge, 
+                               dropped, skipped, delivered, salvagedSeq, 
+                               finished, stopReq, ddone, holdsD, mdone, 
+                               lastDelivered, atask >>
 
 DPark(self) == /\ pc[self] = "DPark"
                /\ available > 0
                /\ available' = available - 1
                /\ holdsD' = [holdsD EXCEPT ![self] = TRUE]
-               /\ pc' = [pc EXCEPT ![self] = "DFile"]
+               /\ pc' = [pc EXCEPT ![self] = "DRel"]
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
                                hasTaskA, dq, nextSubmit, nextMerge, filed, 
                                dropped, skipped, delivered, salvagedSeq, busy, 
                                finished, stopReq, ddone, mdone, lastDelivered, 
                                atask, seq >>
 
-dworker(self) == DLoop(self) \/ DWait(self) \/ DFile(self) \/ DPark(self)
+dworker(self) == DLoop(self) \/ DWait(self) \/ DRel(self) \/ DFile(self)
+                    \/ DPark(self)
 
 MLoop == /\ pc[0] = "MLoop"
          /\ IF ~mdone
@@ -625,14 +639,14 @@ MWait == /\ pc[0] = "MWait"
                     /\ UNCHANGED << filed, delivered, mdone, lastDelivered >>
                ELSE /\ IF nextMerge \in filed
                           THEN /\ Assert(nextMerge > lastDelivered, 
-                                         "Failure of assertion at line 268, column 9.")
+                                         "Failure of assertion at line 273, column 9.")
                                /\ filed' = filed \ {nextMerge}
                                /\ delivered' = Append(delivered, nextMerge)
                                /\ lastDelivered' = nextMerge
                                /\ nextMerge' = nextMerge + 1
                                /\ mdone' = mdone
                           ELSE /\ Assert(finished /\ nextMerge = nextSubmit, 
-                                         "Failure of assertion at line 274, column 9.")
+                                         "Failure of assertion at line 279, column 9.")
                                /\ mdone' = TRUE
                                /\ UNCHANGED << nextMerge, filed, delivered, 
                                                lastDelivered >>
@@ -731,8 +745,19 @@ TypeOK ==
    actually executing work. *)
 BudgetConservation ==
   available + Cardinality(HeldA) + Cardinality(HeldD) = BudgetTotal
-WorkingBounded ==
-  Cardinality(HeldA) + Cardinality(HeldD) <= BudgetTotal
+
+(* SPEC-PIPE-1, per-worker form: every thread that is actually working
+ * holds a token. Together with conservation this gives "working threads
+ * <= total". Conservation alone cannot see a missing acquire (the counter
+ * still balances), so this is the half that carries the bound.
+ * A tier: at ASubmit a popped task is still owned and the token -- required
+ * by APop and released only inside this step -- is still held.
+ * D tier: at DRel the job is owned and the token -- acquired in DWait or
+ * DPark -- is released only inside this step (release precedes the DFile
+ * reorder wait, mirroring worker_loop()). *)
+WorkersHoldTokens ==
+  /\ \A w \in AWorkers : (pc[w] = "ASubmit" /\ hasTaskA[w]) => holdsA[w]
+  /\ \A w \in DWorkers : pc[w] = "DRel" => holdsD[w]
 
 (* Tier 1 pairing + inventory (cf. SPEC-POOL-1/2, simplified: no splits).
    Every step conserves by construction (see ASubmit comment). *)

@@ -192,7 +192,11 @@ jobs:
         key: tla2tools-${{ hashFiles('justfile') }}
 
     - name: Translate and model-check protocol specs
-      run: just spec-check
+      run: |
+        just spec-check
+        # spec-check re-translates in place, so without this the committed
+        # translation could drift from the PlusCal while CI stays green.
+        git diff --exit-code -- spec/ || { echo "::error::committed PlusCal translation is stale; run just spec-check and commit spec/"; exit 1; }
 
   coverage:
     runs-on: ubuntu-latest

@@ -224,6 +224,10 @@ Workers == 1..N
   \* bound check. Keeping the counter in one process keeps guard and update
   \* in one atomic step.) Splits only exist once searching has started, so
   \* the splitter waits for seeding (on stopped generation it never acts).
+  \* A split is always owned by an active task (C++ calls push_tasks only
+  \* from inside a popped task), so the push additionally waits for an
+  \* active worker: without it a split could land after every worker
+  \* quiescence-terminated and sit in the queue unsearched (see NoStranded).
   process (splitter = N + 1)
   {
   SplitStart:
@@ -234,6 +238,7 @@ Workers == 1..N
   SplitLoop:
       while (pushesLeft > 0 /\ splitOpen) {
         either {
+          await active > 0;
           queue := Append(queue, nextId);
           nextId := nextId + 1;
           pushesLeft := pushesLeft - 1;
@@ -247,7 +252,7 @@ Workers == 1..N
   };
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "156bac06" /\ chksum(tla) = "74615cd4")
+\* BEGIN TRANSLATION (chksum(pcal) = "52ff3492" /\ chksum(tla) = "30c49553")
 VARIABLES queue, genList, genDone, genStopped, active, stopRequested, 
           available, holdsToken, hasTask, terminated, completed, nextId, 
           pushesLeft, splitOpen, pc, task
@@ -454,7 +459,8 @@ SplitStart == /\ pc[N + 1] = "SplitStart"
 
 SplitLoop == /\ pc[N + 1] = "SplitLoop"
              /\ IF pushesLeft > 0 /\ splitOpen
-                   THEN /\ \/ /\ queue' = Append(queue, nextId)
+                   THEN /\ \/ /\ active > 0
+                              /\ queue' = Append(queue, nextId)
                               /\ nextId' = nextId + 1
                               /\ pushesLeft' = pushesLeft - 1
                               /\ UNCHANGED splitOpen
@@ -518,6 +524,14 @@ Pairing == active = Cardinality(TaskHolders)
 
 (* SPEC-POOL-2: no task lost or duplicated, incl. across dynamic splits *)
 TaskConservation == completed + active + Len(queue) = PoolSpawned
+
+(* No split may land after every worker quiescence-terminated: splits are
+ * owned by active tasks (the push awaits active > 0, mirroring C++
+ * push_tasks called only from inside a popped task), so a queued task
+ * always has a live worker to pick it up. TaskConservation alone cannot
+ * see this -- it counts a stranded task as conserved. *)
+NoStranded == ((\A w \in Workers : terminated[w]) /\ ~stopRequested /\ ~genStopped)
+                => Len(queue) = 0
 
 (* Generation shape: tasks are 1..k in order; a complete list is 1..NumTasks *)
 GenShape == genList = [i \in 1..Len(genList) |-> i]
