@@ -255,7 +255,7 @@ Workers == 1..N
   };
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "52ff3492" /\ chksum(tla) = "30c49553")
+\* BEGIN TRANSLATION (chksum(pcal) = "52ff3492" /\ chksum(tla) = "c4cc74cd")
 VARIABLES queue, genList, genDone, genStopped, active, stopRequested, 
           available, holdsToken, hasTask, terminated, completed, nextId, 
           pushesLeft, splitOpen, pc, task
