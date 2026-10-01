@@ -85,6 +85,15 @@ public:
   // NOTE: runStop is a non-const ref because libc++ (Apple Clang) declares
   // stop_source::request_stop() non-const, unlike libstdc++. A const ref
   // fails to compile on macOS when the body fires the source on exceptions.
+  //
+  // resume_prefixes/salvaged_prefixes implement incremental in-session
+  // resume (issue #111), mirroring the DLX pool remainder: when non-null
+  // and non-empty, the pool is seeded from these placed-node prefixes
+  // instead of generateTasks(); when salvaged_prefixes is non-null,
+  // interrupted in-flight tasks and the pool remainder are appended to it
+  // as placed-node prefixes for the next run (completed subtrees are
+  // simply absent). Prefixes stay valid across runs because the matrix is
+  // rebuilt identically; emittedSignatures dedup covers re-searched overlap.
   virtual void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
@@ -92,7 +101,9 @@ public:
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
-    ThreadBudget *budget = nullptr
+    ThreadBudget *budget = nullptr,
+    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
+    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
   ) const = 0;
 
   virtual unsigned int getNumRows() const = 0;
@@ -180,7 +191,9 @@ public:
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
-    ThreadBudget *budget = nullptr
+    ThreadBudget *budget = nullptr,
+    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
+    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
@@ -248,6 +261,34 @@ private:
   };
 
     void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
+
+  /**
+   * Rebuild a pool task by replaying placed node ids from a fresh context:
+   * the same conflict checks and row filtering solveSubtree applies to its
+   * prefix, but without hidden-row support (resume prefixes are always
+   * replayed against the full matrix) and without the shape-pivot
+   * monotonic row filter (which depends on the pivot chosen at the time,
+   * not recorded here). The replayed set is therefore a superset of the
+   * original subtree; re-searched overlap dedups via emittedSignatures, so
+   * this costs search time, never correctness. Returns false when the
+   * prefix no longer resolves (defensive; cannot happen for prefixes
+   * salvaged from an identical matrix, which are skipped then).
+   */
+  bool taskFromPrefix(
+    const std::vector<unsigned int> &prefix_node_ids,
+    SubtreeTask &task
+  ) const;
+
+  /**
+   * Apply placed node ids to a prepared context (initial active set already
+   * installed by the caller, optionally minus hidden rows): conflict checks,
+   * placement and next-level filtering per node. Shared by solveSubtree()
+   * and taskFromPrefix(). Returns false on conflict.
+   */
+  bool replayPrefix(
+    const std::vector<unsigned int> &prefix_node_ids,
+    SearchContext &ctx
+  ) const;
 
   // Recursive hot path: the token is borrowed, not copied (see
   // SimdExactCover::search for why).
