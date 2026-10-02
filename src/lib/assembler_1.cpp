@@ -675,6 +675,7 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
 
   complete = comp;
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
 
   if (!canHandle(problem))
@@ -2822,6 +2823,13 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       workerProgress.clear();
     }
 
+    // Incremental in-session resume (issue #111): consume previously
+    // salvaged prefixes as seeds; collect fresh salvage for a possible next
+    // run. Separate vectors: seeds are read up front while salvage is
+    // appended during the run.
+    std::vector<std::vector<unsigned int>> huangSeeds;
+    huangSeeds.swap(pendingHuangPrefixes);
+    std::vector<std::vector<unsigned int>> huangSalvaged;
     solver->parallelSolve(
       workers,
       [this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
@@ -2891,7 +2899,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       iterations,
       totalTasks,
       completedTasks,
-      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr
+      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr,
+      huangSeeds.empty() ? nullptr : &huangSeeds,
+      &huangSalvaged
     );
 
     if (!runTok.stop_requested()) {
@@ -2903,10 +2913,15 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       next_row_stack.clear();
       task_stack.clear();
       parallelTasks.clear();
+      pendingHuangPrefixes.clear();
       emittedSignatures.clear();
       parallelInterrupted = false;
       searchComplete.store(true, std::memory_order_relaxed);
     } else {
+      // Keep the salvaged in-flight prefixes plus pool remainder; the next
+      // assemble() resumes from them instead of regenerating everything
+      // (overlap re-searched, dedup via the kept emittedSignatures).
+      pendingHuangPrefixes = std::move(huangSalvaged);
       parallelInterrupted = true;
     }
 
@@ -3570,6 +3585,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int len = strlen(string);
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
