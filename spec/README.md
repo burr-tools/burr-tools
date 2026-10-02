@@ -87,8 +87,8 @@ properties. Read in this order:
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
 | `TaskConservation` | **SPEC-POOL-2**: no task lost/duplicated across splits (pool inventory only; unseeded tasks sit in `genList`) |
 | `GenShape` | Generation emits the 1..k prefix in order |
-| `NoPartialResume` | **SPEC-POOL-4**: stopped generation ⇒ no list, no seeding, nothing searched (C++ side stacked on PR #118) |
-| `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` (ditto: stacked on PR #118) |
+| `NoPartialResume` | **SPEC-POOL-4**: stopped generation ⇒ no list, no seeding, nothing searched (C++ side: PRs #116-#118) |
+| `master` + `GenDrop`/`GenSeed` | `generateTasksAtDepth`: one subtask per step; stop discards the partial list and marks `parallelInterrupted` (ditto: PRs #116-#118) |
 | `CleanExit` | **SPEC-POOL-3**: exits leak no tasks/tokens |
 | `AllTerminate` | Liveness: generate, drain-to-quiescence, or stop always ends the search |
 
@@ -130,7 +130,7 @@ properties. Read in this order:
 
 Review findings that shape what the specs must cover:
 
-- **Stop during generation must discard partial state** (`assembler_1.cpp:3036`): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (`simd_huang_cover.cpp:687`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is stacked on PR #118.
+- **Stop during generation must discard partial state** (`assembler_1.cpp:3035): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (`simd_huang_cover.cpp:687`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is PRs #116-#118.
 - **Salvage-before-return** (#118, #116): every terminal path must preserve requeueable state (seeds, queued assemblies). Covered for the disassembler pool by `SeqConservation`; the assembly-side `drain()` is the wired stop path (not an abstraction), while the stop-time retry re-queue stays deliberately unmodeled — SPEC-POOL-2 is really about that path, so it is listed as a gap, not a claim.
 - **Tests must fail without the fix** (#116 `test_solver.cpp:854`, #114 verified-by-revert): the same standard applies here — every spec is mutation-checked (removing the submit window violates `WindowBounded`; dropping token releases violates `CleanExit`).
 - **NDEBUG-vanishing checks gate nothing** (#113): CI gates must throw via `bt_te()`, never `bt_assert`. Applies to the planned debug accounting asserts: they stay debug-only tripwires inside `#ifndef NDEBUG` tests, never release gates.
