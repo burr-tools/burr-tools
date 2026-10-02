@@ -30,6 +30,7 @@ class ThreadBudget;
 #include <atomic>
 #include <stop_token>
 #include <cstdint>
+#include <algorithm>
 #include <unordered_map>
 #include <bit>
 
@@ -255,6 +256,37 @@ private:
     }
   }
 
+  /**
+   * True search-depth bound (issue #92): every placed row consumes at least
+   * one shape-column unit (rows always carry their shape column at weight
+   * 1), so depth never exceeds the sum of shape max_weights. Scratch
+   * vectors are indexed by depth, not by column -- sizing them from
+   * num_columns wastes ~790 KB per context at the top tier. The +16 keeps
+   * the historical slack (and covers depth+1 indexing); resizing mid-search
+   * stays forbidden (curr_active references would dangle).
+   *
+   * The sizing below additionally caps at num_columns: piece maxima come
+   * from the file and can exceed what physically fits, and every placed
+   * row also sets at least one voxel bit that placed_voxels keeps unique,
+   * so depth <= num_columns holds independently. Without the cap a loose
+   * shape bound would size the scratch larger than before.
+   */
+  unsigned int searchDepthBound() const {
+    unsigned int bound = 0;
+    for (unsigned int c = 1; c <= num_shapes; c++)
+      bound += columns[c].max_weight;
+    return bound;
+  }
+
+  /** Fresh search context with scratch sized from the depth bound. */
+  void initContext(SearchContext &ctx) const {
+    ctx.scratch_active_rows.resize(std::min(searchDepthBound(), num_columns) + 16);
+    ctx.current_solution.reserve(num_columns);
+    ctx.col_weights.assign(num_columns + 1, 0);
+    ctx.col_counts.assign(num_columns + 1, 0);
+    ctx.flushed_iterations = 0;
+  }
+
   struct SubtreeTask {
     unsigned int depth = 0;
     SearchContext ctx;
@@ -363,5 +395,51 @@ using SimdHuangCover4096 = SimdHuangCover<SimdBitset4096>;
 using SimdHuangCover8192 = SimdHuangCover<SimdBitset8192>;
 using SimdHuangCover16384 = SimdHuangCover<SimdBitset16384>;
 using SimdHuangCover32768 = SimdHuangCover<SimdBitset32768>;
+
+/**
+ * Memory-budget helpers for the SIMD path (issue #92). Only
+ * tier-independent constants live here. tierRowBytes()/fitsMemoryBudget()
+ * are merely DECLARED here and defined in assembler_1.cpp: their bodies
+ * name every tier's Row type, and referencing other tiers from this header
+ * breaks GCC's target-attribute handling for the AVX kernels below
+ * (always_inline inlining failures) -- keep such references out of this TU.
+ */
+namespace huang_memory {
+
+/** Refuse-the-SIMD-path budget: SIMD buys speed, never capability, so
+ * erring toward DLX past this is always safe. Desktop-class floor,
+ * deliberately conservative.
+ *
+ * Scope note: the gate caps the matrix only (rows x tier bytes + nodes x
+ * per-node overhead). Per-task state is not counted: generateTasks() copies
+ * the whole SearchContext per SubtreeTask, including col_weights/col_counts
+ * (2 x (num_columns + 1) x 4 B) and the level-0 active rows. That state is
+ * bounded by tasks x columns, not by this budget. */
+inline constexpr uint64_t kSimdMemoryBudgetBytes = 256ULL << 20;
+
+/** voxel_mask bytes per row at the tier covering num_cols. Thresholds
+ * mirror the createSimdSolver() ladder exactly. */
+inline size_t tierMaskBytes(unsigned int num_cols) {
+  if (num_cols <= 256) return 32;
+  if (num_cols <= 512) return 64;
+  if (num_cols <= 1024) return 128;
+  if (num_cols <= 2048) return 256;
+  if (num_cols <= 4096) return 512;
+  if (num_cols <= 8192) return 1024;
+  if (num_cols <= 16384) return 2048;
+  return 4096;
+}
+
+/** Bytes per matrix node beyond the row itself: the column/weight payload
+ * in the row's heap vectors plus one unordered_map alias-table node. */
+inline constexpr size_t kPerNodeOverheadBytes = 2 * sizeof(unsigned int) + 40;
+
+size_t tierRowBytes(unsigned int num_cols);
+bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes);
+/** Effective budget in bytes: kSimdMemoryBudgetBytes unless
+ * BURRTOOLS_HUANG_MEM_MB overrides it (defined in assembler_1.cpp). */
+uint64_t budgetBytes();
+
+} // namespace huang_memory
 
 #endif // __SIMD_HUANG_COVER_H__
