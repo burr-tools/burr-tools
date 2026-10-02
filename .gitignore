@@ -42,3 +42,5 @@ bench_run.log
 callgrind*.out*
 perf.data*
 
+# clang cache
+.cache
