@@ -162,6 +162,18 @@ public:
    *  updating those indices
    */
   void exchangeShapes(unsigned int s1, unsigned int s2);
+  /**
+   * Replace the shapes vector wholesale. Problems are NOT updated — the
+   * caller is responsible for restoring a consistent problem snapshot
+   * immediately after (used by puzzleHistory_c restore).
+   */
+  void adoptShapes(std::vector<std::unique_ptr<voxel_c>> newShapes);
+  /**
+   * Replace the colour palette wholesale. Each entry is packed R|G<<8|B<<16.
+   * No shape or problem data is touched — caller must ensure consistency
+   * (used by puzzleHistory_c restore alongside adoptShapes).
+   */
+  void adoptColors(std::vector<uint32_t> newColors);
   //@}
 
 

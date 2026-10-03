@@ -77,6 +77,9 @@ public:
     i_window_pos_h = h;
   }
 
+  /** Maximum undo stack depth (25 / 50 / 100 / 200). */
+  unsigned int undoDepth(void) const;
+
   void dialog(void);
   void restoreDialogDefaults(void);
 
@@ -86,10 +89,11 @@ private:
     CT_BOOL,
     CT_STRING,
     CT_INT,
+    CT_CHOICE, ///< index into a null-terminated array of label strings; stored as CT_INT
   } cnf_type;
 
   void parse(void);
-  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal = 0, int maxVal = 0);
+  void register_entry(const char *cnf_name, cnf_type cnf_typ, void *cnf_var, long maxlen, bool dialog, const char * dtext, const char * dhelp, const char * def, int minVal = 0, int maxVal = 0, const char ** choices = nullptr);
 
   struct config_data {
     const char *cnf_name;  // name of entry in configuration file
@@ -103,6 +107,7 @@ private:
     const char * defaultValue; // the variable will have this value, when not initialized in script file
     int       minVal;    // CT_INT only: inclusive slider range in the dialogue
     int       maxVal;
+    const char ** choices; // CT_CHOICE only: null-terminated label array
   };
 
   std::vector<config_data> data;
@@ -123,6 +128,8 @@ private:
    * outlive the register_entry() call that stores its pointer
    */
   std::string i_num_threads_default;
+
+  int i_undo_depth_idx; // index into {25,50,100,200}
 
   int i_window_pos_x;
   int i_window_pos_y;

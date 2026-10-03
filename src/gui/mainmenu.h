@@ -65,6 +65,8 @@ namespace mainmenu {
  * it and is defined in mainmenu.cpp. Declared here because the tables above
  * reference them.
  */
+void cb_Undo_stub(Fl_Widget*, void*);
+void cb_Redo_stub(Fl_Widget*, void*);
 void cb_New_stub(Fl_Widget*, void*);
 void cb_Load_stub(Fl_Widget*, void*);
 void cb_Load_Ps3d_stub(Fl_Widget*, void*);

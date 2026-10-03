@@ -21,6 +21,7 @@
 #include "mainwindow.h"
 
 #include "mainmenu.h"
+#include "puzzlehistory.h"
 #include "platform.h"
 
 #include "filechooser.h"
@@ -144,7 +145,7 @@ void mainWindow_c::cb_AddColor(void) {
       puzzle->getProblem(p)->allowPlacement(col, col);
 
     colorSelector->setSelection(puzzle->colorNumber());
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE, PcSel->getSelection());
     View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
     updateInterface();
   }
@@ -166,7 +167,7 @@ void mainWindow_c::cb_RemoveColor(void) {
 
     colorSelector->setSelection(current);
 
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE, PcSel->getSelection());
     View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
     activateShape(PcSel->getSelection());
     updateInterface();
@@ -183,7 +184,7 @@ void mainWindow_c::cb_ChangeColor(void) {
     puzzle->getColor(colorSelector->getSelection()-1, &r, &g, &b);
     if (fl_color_chooser("Change colour", r, g, b)) {
       puzzle->changeColor(colorSelector->getSelection()-1, r, g, b);
-      changed = true;
+      puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE, PcSel->getSelection());
       View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
       updateInterface();
     }
@@ -203,9 +204,9 @@ void mainWindow_c::cb_NewShape(void) {
   // button would, instead of leaving whatever zoom was left over from before
   View3D->fitToContent();
   pieceEdit->setZ(0);
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, PcSel->getSelection());
   updateInterface();
   StatPieceInfo(PcSel->getSelection());
-  changed = true;
 }
 
 static void cb_DeleteShape_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_DeleteShape(); }
@@ -226,10 +227,9 @@ void mainWindow_c::cb_DeleteShape(void) {
     activateShape(current);
 
     PcSel->setSelection(current);
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL);
     updateInterface();
     StatPieceInfo(PcSel->getSelection());
-
-    changed = true;
 
   } else
 
@@ -245,7 +245,7 @@ void mainWindow_c::cb_CopyShape(void) {
   if (current < puzzle->getNumberOfShapes()) {
 
     PcSel->setSelection(puzzle->addShape(puzzle->getGridType()->getVoxel(puzzle->getShape(current))));
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, PcSel->getSelection());
 
     updateInterface();
     StatPieceInfo(PcSel->getSelection());
@@ -265,7 +265,7 @@ void mainWindow_c::cb_NameShape(void) {
 
     if (name) {
       puzzle->getShape(PcSel->getSelection())->setName(name);
-      changed = true;
+      puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, PcSel->getSelection());
       updateInterface();
     }
   }
@@ -279,7 +279,7 @@ void mainWindow_c::cb_WeightChange(int by) {
 
     voxel_c * v = puzzle->getShape(PcSel->getSelection());
     v->setWeight(v->getWeight() + by);
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, PcSel->getSelection());
     updateInterface();
   }
 }
@@ -358,7 +358,7 @@ void mainWindow_c::cb_TransformPiece(void) {
   StatPieceInfo(PcSel->getSelection());
   activateShape(PcSel->getSelection());
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, PcSel->getSelection());
 }
 
 static void cb_TransformPreview_stub(void* v, voxel_c* preview, unsigned int shapeNum,
@@ -501,6 +501,9 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
       StatPieceInfo(PcSel->getSelection());
     }
     break;
+  case gridEditor_c::RS_STROKEBEGIN:
+    puzzleHistory->beginStroke();
+    break;
   case gridEditor_c::RS_CHANGESQUARE:
     View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
     if (o->getMouse())
@@ -508,7 +511,11 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
     else
       StatPieceInfo(PcSel->getSelection());
     changeShape(PcSel->getSelection());
-    changed = true;
+    puzzleHistory->markStrokeDirty();
+    break;
+  case gridEditor_c::RS_STROKEEND:
+    if (puzzleHistory->endStroke(puzzle.get(), PcSel->getSelection()))
+      updateUndoRedoMenu();
     break;
   }
 
@@ -525,7 +532,7 @@ void mainWindow_c::cb_NewProblem(void) {
 
   problemSelector->setSelection(prob);
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   updateInterface();
   activateProblem(problemSelector->getSelection());
   StatProblemInfo(problemSelector->getSelection());
@@ -538,7 +545,7 @@ void mainWindow_c::cb_DeleteProblem(void) {
 
     puzzle->removeProblem(problemSelector->getSelection());
 
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
 
     while ((problemSelector->getSelection() >= puzzle->getNumberOfProblems()) &&
            (problemSelector->getSelection() > 0))
@@ -561,7 +568,7 @@ void mainWindow_c::cb_CopyProblem(void) {
     unsigned int prob = puzzle->addProblem(puzzle->getProblem(problemSelector->getSelection()));
     problemSelector->setSelection(prob);
 
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
     updateInterface();
     activateProblem(problemSelector->getSelection());
     StatProblemInfo(problemSelector->getSelection());
@@ -579,7 +586,7 @@ void mainWindow_c::cb_RenameProblem(void) {
     if (name) {
 
       puzzle->getProblem(problemSelector->getSelection())->setName(name);
-      changed = true;
+      puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
       updateInterface();
       activateProblem(problemSelector->getSelection());
     }
@@ -595,8 +602,10 @@ void mainWindow_c::cb_ProblemExchange(int with) {
 
   if ((current < puzzle->getNumberOfProblems()) && (other < puzzle->getNumberOfProblems())) {
     puzzle->exchangeProblems(current, other);
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
     problemSelector->setSelection(other);
+    updateInterface();
+    activateProblem(problemSelector->getSelection());
   }
 }
 
@@ -609,8 +618,10 @@ void mainWindow_c::cb_ShapeExchange(int with) {
 
   if ((current < puzzle->getNumberOfShapes()) && (other < puzzle->getNumberOfShapes())) {
     puzzle->exchangeShapes(current, other);
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, other);
     PcSel->setSelection(other);
+    updateInterface();
+    activateShape(other);
   }
 }
 
@@ -634,7 +645,7 @@ void mainWindow_c::cb_ProbShapeExchange(int with) {
 
   if ((current < pr->getNumberOfParts()) && (other < pr->getNumberOfParts())) {
     pr->exchangeParts(current, other);
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
     updateInterface();
     activateProblem(problemSelector->getSelection());
   }
@@ -669,11 +680,10 @@ void mainWindow_c::cb_ShapeToResult(void) {
 
   pr->setResultId(shapeAssignmentSelector->getSelection());
   problemResult->setPuzzle(puzzle->getProblem(prob));
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   activateProblem(prob);
   StatProblemInfo(prob);
   updateInterface();
-
-  changed = true;
 }
 
 static void cb_ShapeSel_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_SelectProblemShape(); }
@@ -706,7 +716,6 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  changed = true;
   PiecesCountList->redraw();
 
   problem_c * pr = puzzle->getProblem(prob);
@@ -715,6 +724,7 @@ void mainWindow_c::cb_AddShapeToProblem(void) {
   pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
   pr->setShapeMinimum(shape, pr->getShapeMinimum(shape) + 1);
 
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   activateProblem(problemSelector->getSelection());
   updateInterface();
   StatProblemInfo(problemSelector->getSelection());
@@ -730,7 +740,6 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
 
   unsigned int prob = problemSelector->getSelection();
 
-  changed = true;
   PiecesCountList->redraw();
 
   problem_c * pr = puzzle->getProblem(prob);
@@ -745,6 +754,7 @@ void mainWindow_c::cb_AddAllShapesToProblem(void) {
     pr->setShapeMinimum(j, pr->getShapeMinimum(j) + 1);
   }
 
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   activateProblem(problemSelector->getSelection());
   PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
   updateInterface();
@@ -771,7 +781,7 @@ void mainWindow_c::cb_RemoveShapeFromProblem(void) {
   if (pr->getShapeMinimum(shape) > 0) pr->setShapeMinimum(shape, pr->getShapeMinimum(shape)-1);
   if (pr->getShapeMaximum(shape) > 0) pr->setShapeMaximum(shape, pr->getShapeMaximum(shape)-1);
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   PiecesCountList->redraw();
   PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
@@ -800,7 +810,7 @@ void mainWindow_c::cb_SetShapeMinimumToZero(void) {
 
   pr->setShapeMinimum(shape, 0);
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   PiecesCountList->redraw();
   PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
@@ -825,7 +835,7 @@ void mainWindow_c::cb_RemoveAllShapesFromProblem(void) {
   for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++)
     pr->setShapeMaximum(i, 0);
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   PiecesCountList->redraw();
   PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
@@ -865,7 +875,7 @@ void mainWindow_c::cb_SetAllRange(void) {
     pr->setShapeMinimum(shapeId, newMin);
   }
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   PiecesCountList->redraw();
   PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
 
@@ -899,7 +909,7 @@ void mainWindow_c::cb_ShapeGroup(void) {
      * through the list and remove entries of zero count */
     PiecesCountList->redraw();
     PcVis->setPuzzle(puzzle->getProblem(solutionProblem->getSelection()));
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
     activateProblem(problemSelector->getSelection());
     StatProblemInfo(problemSelector->getSelection());
     updateInterface();
@@ -1002,7 +1012,7 @@ void mainWindow_c::cb_AllowColor(void) {
   else
     pr->allowPlacement(colconstrList->getSelection()+1,
                        colorAssignmentSelector->getSelection()+1);
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   changeProblem(problemSelector->getSelection());
   updateInterface();
 }
@@ -1025,7 +1035,7 @@ void mainWindow_c::cb_DisallowColor(void) {
     pr->disallowPlacement(colconstrList->getSelection()+1,
                           colorAssignmentSelector->getSelection()+1);
 
-  changed = true;
+  puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   changeProblem(problemSelector->getSelection());
   updateInterface();
 }
@@ -1061,7 +1071,6 @@ void mainWindow_c::cb_BtnStart(bool prep_only) {
   cb_BtnCont(prep_only);
 
   updateInterface();
-  changed = true;
 }
 
 static void cb_BtnCont_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnCont(false); }
@@ -1119,7 +1128,6 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   } else {
 
     updateInterface();
-    changed = true;
   }
 }
 
@@ -1259,7 +1267,7 @@ void mainWindow_c::cb_DeleteSolutions(unsigned int which) {
 
   unsigned int cnt;
 
-  changed = true;
+  puzzleHistory->markModified();
 
   switch (which) {
   case 0:
@@ -1321,7 +1329,7 @@ void mainWindow_c::cb_DeleteDisasm(void) {
 
   pr->getSavedSolution(sol)->removeDisassembly();
 
-  changed = true;
+  puzzleHistory->markModified();
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1339,7 +1347,7 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   for (unsigned int i = 0; i < pr->getNumberOfSavedSolutions(); i++)
     pr->getSavedSolution(i)->removeDisassembly();
 
-  changed = true;
+  puzzleHistory->markModified();
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1368,7 +1376,7 @@ void mainWindow_c::cb_AddDisasm(void) {
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
-  changed = true;
+  puzzleHistory->markModified();
 
   if (d)
     pr->getSavedSolution(sol)->setDisassembly(std::move(d));
@@ -1392,7 +1400,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   problem_c * pr = puzzle->getProblem(prob);
 
-  changed = true;
+  puzzleHistory->markModified();
 
   auto dis = std::make_unique<disassembler_0_c>(*pr);
 
@@ -1440,61 +1448,89 @@ void mainWindow_c::cb_Status(void) {
 static void cb_3dClick_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_3dClick(); }
 void mainWindow_c::cb_3dClick(void) {
 
-
+  /* voxelframe fires do_callback() on FL_PUSH, FL_DRAG, and FL_RELEASE.
+   * Modifier-key edits (Ctrl=erase, Shift=fill, Alt=variable) use the same
+   * stroke batching as the 2D editor: begin on PUSH, mark dirty on each
+   * change, commit one snapshot on RELEASE.  Without this, every FL_DRAG
+   * event would push a separate history entry. */
   if (TaskSelectionTab->value() == TabPieces) {
 
+    const int ev = Fl::event();
+
     if (Fl::event_ctrl()) {
-      unsigned int shape, face;
-      unsigned long voxel;
 
-      voxel_c * sh = puzzle->getShape(PcSel->getSelection());
+      if (ev == FL_PUSH)
+        puzzleHistory->beginStroke(puzzleHistory_c::AK_ENTITIES_CLICK_3D);
 
-      if (View3D->getView()->pickShape(Fl::event_x(),
-            View3D->getView()->h()-Fl::event_y(),
-            &shape, &voxel, &face))
-        sh->setState(voxel, voxel_c::VX_EMPTY);
+      if (ev == FL_PUSH || ev == FL_DRAG) {
+        unsigned int shape, face;
+        unsigned long voxel;
 
-      View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
-      StatPieceInfo(PcSel->getSelection());
-      changeShape(PcSel->getSelection());
-      redraw();
-      changed = true;
+        voxel_c * sh = puzzle->getShape(PcSel->getSelection());
+
+        if (View3D->getView()->pickShape(Fl::event_x(),
+              View3D->getView()->h()-Fl::event_y(),
+              &shape, &voxel, &face)) {
+          sh->setState(voxel, voxel_c::VX_EMPTY);
+          puzzleHistory->markStrokeDirty();
+        }
+
+        View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
+        StatPieceInfo(PcSel->getSelection());
+        changeShape(PcSel->getSelection());
+        redraw();
+      }
+
+      if (ev == FL_RELEASE) {
+        if (puzzleHistory->endStroke(puzzle.get(), PcSel->getSelection()))
+          updateUndoRedoMenu();
+      }
 
     } else if (Fl::event_shift() || Fl::event_alt()) {
 
-      unsigned int shape, face;
-      unsigned long voxel;
+      if (ev == FL_PUSH)
+        puzzleHistory->beginStroke(puzzleHistory_c::AK_ENTITIES_CLICK_3D);
 
-      voxel_c * sh = puzzle->getShape(PcSel->getSelection());
+      if (ev == FL_PUSH || ev == FL_DRAG) {
+        unsigned int shape, face;
+        unsigned long voxel;
 
-      if (View3D->getView()->pickShape(Fl::event_x(),
-            View3D->getView()->h()-Fl::event_y(),
-            &shape, &voxel, &face)) {
+        voxel_c * sh = puzzle->getShape(PcSel->getSelection());
 
-        unsigned int x, y, z;
-        if (sh->indexToXYZ(voxel, &x, &y, &z)) {
+        if (View3D->getView()->pickShape(Fl::event_x(),
+              View3D->getView()->h()-Fl::event_y(),
+              &shape, &voxel, &face)) {
 
-          int nx, ny, nz;
+          unsigned int x, y, z;
+          if (sh->indexToXYZ(voxel, &x, &y, &z)) {
 
-          if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
+            int nx, ny, nz;
 
-            sh->resizeInclude(nx, ny, nz);
+            if (sh->getNeighbor(face, 0, x, y, z, &nx, &ny, &nz)) {
 
-            if (Fl::event_alt())
-              sh->setState(nx, ny, nz, voxel_c::VX_VARIABLE);
-            else
-              sh->setState(nx, ny, nz, voxel_c::VX_FILLED);
+              sh->resizeInclude(nx, ny, nz);
 
-            sh->setColor(nx, ny, nz, colorSelector->getSelection());
+              if (Fl::event_alt())
+                sh->setState(nx, ny, nz, voxel_c::VX_VARIABLE);
+              else
+                sh->setState(nx, ny, nz, voxel_c::VX_FILLED);
 
-            View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
-            StatPieceInfo(PcSel->getSelection());
-            changeShape(PcSel->getSelection());
-            activateShape(PcSel->getSelection());
-            redraw();
-            changed = true;
+              sh->setColor(nx, ny, nz, colorSelector->getSelection());
+              puzzleHistory->markStrokeDirty();
+
+              View3D->getView()->showSingleShape(puzzle.get(), PcSel->getSelection());
+              StatPieceInfo(PcSel->getSelection());
+              changeShape(PcSel->getSelection());
+              activateShape(PcSel->getSelection());
+              redraw();
+            }
           }
         }
+      }
+
+      if (ev == FL_RELEASE) {
+        if (puzzleHistory->endStroke(puzzle.get(), PcSel->getSelection()))
+          updateUndoRedoMenu();
       }
     }
   } else if (TaskSelectionTab->value() == TabProblems) {
@@ -1524,9 +1560,93 @@ void mainWindow_c::cb_3dClick(void) {
   }
 }
 
+void cb_Undo_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_Undo(); }
+void mainWindow_c::cb_Undo(void) {
+  if (!puzzleHistory->canUndo() || assmThread) return;
+  auto res = puzzleHistory->undo(puzzle.get());
+  applyHistoryRestore((unsigned int)res.tab, res.selectedShape);
+}
+
+void cb_Redo_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_Redo(); }
+void mainWindow_c::cb_Redo(void) {
+  if (!puzzleHistory->canRedo() || assmThread) return;
+  auto res = puzzleHistory->redo(puzzle.get());
+  applyHistoryRestore((unsigned int)res.tab, res.selectedShape);
+}
+
+void mainWindow_c::applyHistoryRestore(unsigned int tab, unsigned int selectedShape) {
+  switch ((puzzleHistory_c::affectedTab_e)tab) {
+  case puzzleHistory_c::TAB_PUZZLE:
+    TaskSelectionTab->value(TabProblems);
+    if (puzzle->getNumberOfProblems() &&
+        problemSelector->getSelection() >= puzzle->getNumberOfProblems())
+      problemSelector->setSelection(puzzle->getNumberOfProblems() - 1);
+    /* Show the problem in the 3D view; don't call activateClear() below or it
+     * would blank what activateProblem() just set up. */
+    if (problemSelector->getSelection() < puzzle->getNumberOfProblems())
+      activateProblem(problemSelector->getSelection());
+    else
+      activateClear();
+    break;
+  case puzzleHistory_c::TAB_SOLVER:
+    TaskSelectionTab->value(TabSolve);
+    if (selectedShape != puzzleHistory_c::NO_SHAPE &&
+        selectedShape < puzzle->getNumberOfShapes())
+      activateShape(selectedShape);
+    else
+      activateClear();
+    break;
+  case puzzleHistory_c::TAB_ENTITIES:
+  default:
+    TaskSelectionTab->value(TabPieces);
+    {
+      unsigned int n = puzzle->getNumberOfShapes();
+      unsigned int sel = (selectedShape != puzzleHistory_c::NO_SHAPE && selectedShape < n)
+                         ? selectedShape
+                         : (n > 0 ? n - 1 : puzzleHistory_c::NO_SHAPE);
+      if (sel != puzzleHistory_c::NO_SHAPE) {
+        PcSel->setSelection(sel);
+        activateShape(sel);
+      } else
+        activateClear();
+    }
+    break;
+  }
+
+  updateInterface();
+  redraw();
+}
+
+// Forward declarations — defined below alongside the other live-menu helpers.
+static int liveMenuIndex(const Fl_Menu_ * m, Fl_Callback * cb);
+static void setLiveMenuActive(Fl_Menu_ * m, int index, bool active);
+
+void mainWindow_c::updateUndoRedoMenu(void) {
+  const bool canU = puzzleHistory->canUndo() && !assmThread;
+  const bool canR = puzzleHistory->canRedo() && !assmThread;
+
+  if (canU == menuUndoActive && canR == menuRedoActive) return;
+
+  /* Use the same live-array path as the Export/STL items: setLiveMenuActive
+   * edits the array, then MainMenu->update() pushes it to the macOS native
+   * bar. activate()/deactivate() on a const-casted Fl_Menu_Item never calls
+   * update(), so the native bar stays stale. */
+  const int uIdx = liveMenuIndex(MainMenu, cb_Undo_stub);
+  const int rIdx = liveMenuIndex(MainMenu, cb_Redo_stub);
+
+  if (uIdx >= 0) setLiveMenuActive(MainMenu, uIdx, canU);
+  if (rIdx >= 0) setLiveMenuActive(MainMenu, rIdx, canR);
+
+  if (uIdx >= 0 && rIdx >= 0) {
+    MainMenu->update();
+    menuUndoActive = canU;
+    menuRedoActive = canR;
+  }
+}
+
 bool mainWindow_c::confirmDiscard(const char * action) {
 
-  if (!changed)
+  if (!puzzleHistory->isModifiedFromSave())
     return true;
 
   char msg[256];
@@ -1550,12 +1670,12 @@ bool mainWindow_c::confirmDiscard(const char * action) {
 
     case 1:             // Save (middle button, Fl_Return_Button / Return key)
       cb_Save();
-      /* cb_Save() clears 'changed' only on a successful write, so it still
-       * being set means the user cancelled the Save As dialog, the write
+      /* cb_Save() calls markSaved() only on a successful write, so it still
+       * being modified means the user cancelled the Save As dialog, the write
        * failed, or the solver thread is running. Abort rather than
        * discarding the work.
        */
-      return !changed;
+      return !puzzleHistory->isModifiedFromSave();
 
     case 2:             // Don't Save (left button, explicit click only)
       return true;
@@ -1586,7 +1706,7 @@ void mainWindow_c::cb_New(void) {
       copy_label(platform::windowTitle(0).c_str());
     }
 
-    changed = false;
+    puzzleHistory->reset(puzzle.get());
 
     StatusLine->setText("");
     updateInterface();
@@ -1633,13 +1753,12 @@ void mainWindow_c::cb_Load_Ps3d(void) {
       copy_label(platform::windowTitle(fname.c_str()).c_str());
 
       ReplacePuzzle(std::move(newPuzzle));
+      puzzleHistory->reset(puzzle.get());
       updateInterface();
 
       TaskSelectionTab->value(TabPieces);
       activateShape(PcSel->getSelection());
       StatPieceInfo(PcSel->getSelection());
-
-      changed = false;
     }
   }
 }
@@ -1663,7 +1782,7 @@ void mainWindow_c::cb_Save(void) {
       if (!ostr)
         fl_alert("puzzle NOT saved!!");
       else
-        changed = false;
+        puzzleHistory->markSaved();
     }
   }
 }
@@ -1685,9 +1804,10 @@ void mainWindow_c::cb_Convert(void) {
     if (p)
     {
       ReplacePuzzle(std::unique_ptr<puzzle_c>(p));
+      puzzleHistory->reset(puzzle.get());
+      puzzleHistory->markModified(); // converted puzzle is unsaved even though snapshot stack was reset
       updateInterface();
       activateShape(0);
-      changed = true;
     }
   }
 }
@@ -1787,7 +1907,7 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
       }
     }
 
-    changed = true;
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL);
     PiecesCountList->redraw();
 
     updateInterface();
@@ -1829,7 +1949,7 @@ void mainWindow_c::cb_SaveAs(void) {
         if (!ostr)
           fl_alert("puzzle NOT saved!!!");
         else
-          changed = false;
+          puzzleHistory->markSaved();
 
         fname = f2;
 
@@ -1852,6 +1972,7 @@ void mainWindow_c::hide(void) {
 void cb_Config_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_Config(); }
 void mainWindow_c::cb_Config(void) {
   config.dialog();
+  puzzleHistory->setMaxUndo(config.undoDepth());
   activateConfigOptions();
 }
 
@@ -1867,7 +1988,7 @@ void mainWindow_c::cb_Coment(void) {
 
   if (win.saveChanges()) {
     puzzle->setComment(win.getText());
-    changed = true;
+    // comment is not puzzle structure; not recorded in undo history
   }
 }
 
@@ -1925,7 +2046,7 @@ void mainWindow_c::cb_StatusWindow(void) {
     again = w.getAgain();
 
     if (again)
-      changed = true;
+      puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL);
 
   } while (again);
 
@@ -2113,7 +2234,7 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
   StatPieceInfo(PcSel->getSelection());
   View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
 
-  changed = false;
+  puzzleHistory->reset(puzzle.get());
 
   // check for a started assemblies, and warn user about it
   bool containsStarted = false;
@@ -3352,6 +3473,8 @@ void mainWindow_c::updateInterface(void) {
   }
 
   TaskSelectionTab->redraw();
+
+  updateUndoRedoMenu();
 }
 
 void mainWindow_c::update(void) {
@@ -3379,6 +3502,7 @@ void mainWindow_c::update(void) {
     if ((assmThread->currentAction() == solveThread_c::ACT_PAUSING) ||
         (assmThread->currentAction() == solveThread_c::ACT_FINISHED)) {
 
+      puzzleHistory->markModified(); // solutions are not snapshotted; mark dirty so save prompt appears
       assmThread.reset();
 
     } else if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {
@@ -3433,11 +3557,10 @@ void mainWindow_c::update(void) {
       updateInterface();
   }
 
-  /* 'changed' is assigned in about fifty places, so rather than hooking
-   * every write, publish it on the regular update tick. A dot that appears
-   * up to a second late is imperceptible.
+  /* isModifiedFromSave() reflects undo/redo state; publish on the regular
+   * update tick. A dot that appears up to a second late is imperceptible.
    */
-  platform::setDocumentEdited(this, changed);
+  platform::setDocumentEdited(this, puzzleHistory->isModifiedFromSave());
 }
 
 void mainWindow_c::Toggle3DView(void)
@@ -3506,6 +3629,11 @@ int mainWindow_c::handle(int event) {
 
   switch(event) {
   case FL_SHORTCUT:
+    if (Fl::event_state(FL_COMMAND)) {
+      if (Fl::event_key() == 'z' && !Fl::event_state(FL_SHIFT)) { cb_Undo(); return 1; }
+      if (Fl::event_key() == 'z' &&  Fl::event_state(FL_SHIFT)) { cb_Redo(); return 1; }
+      if (Fl::event_key() == 'y') { cb_Redo(); return 1; }
+    }
     if (Fl::event_length()) {
       switch (Fl::event_text()[0]) {
       case '+':
@@ -4289,7 +4417,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
     followAssembly(-1),
     followSortBy(-1),
     renderedAssembly(-1),
-    changed(false),
+    puzzleHistory(std::make_unique<puzzleHistory_c>()),
     editSymmetries(0),
     handlingSystemOpen(false),
     /* Both start true, matching the menu tables' real initial state: none
@@ -4301,7 +4429,12 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
      */
     menuExportActive(true),
     menuSTLActive(true),
+    menuUndoActive(true),
+    menuRedoActive(true),
     expertMode(true) {
+
+  puzzleHistory->setMaxUndo(config.undoDepth());
+  puzzleHistory->reset(puzzle.get());
 
   copy_label(platform::windowTitle(0).c_str());
   user_data((void*)(this));

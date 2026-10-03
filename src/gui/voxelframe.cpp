@@ -2158,6 +2158,7 @@ int voxelFrame_c::handle(int event) {
 
     rotater->clack(Fl::event_x()*pixels_per_unit(), Fl::event_y()*pixels_per_unit());
     redraw();
+    do_callback();
 
     return 1;
   }
