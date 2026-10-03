@@ -190,9 +190,9 @@ public:
   /**
    * Mark a column optional (assembler_0 variable voxels): it may be covered
    * at most once like any other column (disjointness still applies), but it
-   * is never selected as a pivot, an empty option list never dead-ends the
-   * search, and the goal does not require it. Uncovered optionals at any
-   * point count against the hole budget (see setHoleBudget).
+   * is never selected as a pivot and the goal does not require it. An
+   * optional column with no covering row left consumes hole budget instead
+   * of dead-ending the search (see setHoleBudget).
    */
   virtual void setOptionalColumn(unsigned int col) = 0;
   /**

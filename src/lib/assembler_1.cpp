@@ -41,6 +41,43 @@
 #define snprintf _snprintf
 #endif
 
+/* Definitions for huang_memory::tierRowBytes/fitsMemoryBudget (declared in
+ * simd_huang_cover.h). They live here rather than in the header because
+ * naming every tier's Row type from that header breaks GCC's
+ * target-attribute handling for the AVX kernels. Thresholds mirror
+ * createSimdSolver() and tierMaskBytes(): keep all three in sync
+ * (tierMaskBytes() itself has no production caller left -- it exists so
+ * the unit test pins the ladder -- but its thresholds must still match). */
+size_t huang_memory::tierRowBytes(unsigned int num_cols) {
+  if (num_cols <= 256) return sizeof(SimdHuangCover256::Row);
+  if (num_cols <= 512) return sizeof(SimdHuangCover512::Row);
+  if (num_cols <= 1024) return sizeof(SimdHuangCover1024::Row);
+  if (num_cols <= 2048) return sizeof(SimdHuangCover2048::Row);
+  if (num_cols <= 4096) return sizeof(SimdHuangCover4096::Row);
+  if (num_cols <= 8192) return sizeof(SimdHuangCover8192::Row);
+  if (num_cols <= 16384) return sizeof(SimdHuangCover16384::Row);
+  return sizeof(SimdHuangCover32768::Row);
+}
+
+bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes) {
+  return num_rows * tierRowBytes(num_cols) + num_nodes * kPerNodeOverheadBytes
+    <= budgetBytes();
+}
+
+/* Effective SIMD memory budget, overridable for A/B runs near the
+ * threshold without rebuilding: BURRTOOLS_HUANG_MEM_MB=<MB> replaces the
+ * default, =0 disables the SIMD path via the budget entirely. Unset or
+ * unparsable falls back to the default. */
+uint64_t huang_memory::budgetBytes(void) {
+  if (const char * env = std::getenv("BURRTOOLS_HUANG_MEM_MB")) {
+    char * end = nullptr;
+    unsigned long long mb = std::strtoull(env, &end, 10);
+    if (end != env && *end == '\0')
+      return mb << 20;
+  }
+  return kSimdMemoryBudgetBytes;
+}
+
 #define ASSEMBLER_VERSION "2.1"
 
 void printMatrix(
@@ -675,7 +712,9 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
 
   complete = comp;
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
+  resumeDedup = false;
 
   if (!canHandle(problem))
     return ERR_PUZZLE_UNHANDABLE;
@@ -1108,6 +1147,29 @@ std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
   return assembly;
 }
 
+/* Canonical assembly signature over sorted placements (FNV-1a): identical
+ * assemblies hash identically regardless of discovery order, so reports
+ * from different runs, engines and thread counts dedup against each other.
+ * Shared by the parallel callback below and serial solution(): keep the two
+ * in sync -- a divergence silently breaks cross-run dedup. Note the hash
+ * itself iterates pieces by index, so it never needed the sort() calls at
+ * the call sites; those stay for reporting order (both engines have always
+ * reported sorted placements). */
+static uint64_t assemblySignature(const assembly_c * assembly, unsigned int piecenumber) {
+  uint64_t sig = 14695981039346656037ULL;
+  for (unsigned int i = 0; i < piecenumber; i++) {
+    if (assembly->isPlaced(i)) {
+      sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
+      sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
+    } else {
+      sig ^= 0xFF; sig *= 1099511628211ULL;
+    }
+  }
+  return sig;
+}
+
 /* this function handles the assemblies found by the assembler engine
  */
 void assembler_1_c::solution(void) {
@@ -1118,10 +1180,18 @@ void assembler_1_c::solution(void) {
 
     if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
       return;
-    else {
-      if (!getCallback()->assembly(std::move(assembly)))
-        stop();
+
+    assembly->sort(problem);
+
+    if (resumeDedup) {
+      uint64_t sig = assemblySignature(assembly.get(), piecenumber);
+      std::lock_guard<std::mutex> lock(callbackMutex);
+      if (!emittedSignatures.insert(sig).second)
+        return;
     }
+
+    if (!getCallback()->assembly(std::move(assembly)))
+      stop();
 
 #if 0
     // as the below debug code has been way too useful an way too many
@@ -1526,6 +1596,16 @@ void assembler_1_c::rec(unsigned int next_row) {
 void assembler_1_c::iterative(void) {
 
   unsigned int row, col;
+
+  // A serial run supersedes any saved parallel remainder: it resumes from
+  // the stacks, so stale tasks/prefixes must not linger into a later save()
+  // (their subtrees are re-covered here; overlap stays correct via the kept
+  // signatures). Same clearing in simdSearch().
+  parallelTasks.clear();
+  pendingHuangPrefixes.clear();
+  // The serial stacks are a real resume point from here on; a flag left over
+  // from an earlier parallel stop would make save() mark them unresumable.
+  parallelInterrupted = false;
 
   // Snapshot of the run token: assemble()/debug_step() refreshed the source
   // before calling here, so this stays valid for the whole serial search.
@@ -2173,14 +2253,12 @@ class assemblerWorker_1 {
                                           parent.avoidTransformedMirror.get(), parent.complete))
         return;
 
-      uint64_t sig = 14695981039346656037ULL;
-      for (unsigned int i = 0; i < rows.size(); i++) {
-        sig ^= piece[i]; sig *= 1099511628211ULL;
-        sig ^= tran[i]; sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(x[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(y[i]); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(z[i]); sig *= 1099511628211ULL;
-      }
+      // Canonical signature shared with the SIMD-parallel callback and
+      // serial solution(): sorted placements hash identically regardless of
+      // discovery order, so re-reports across runs, resumes and engine
+      // switches dedup. Keep all three call sites on this helper -- a
+      // divergence silently breaks cross-run dedup.
+      uint64_t sig = assemblySignature(assembly.get(), parent.piecenumber);
 
       {
         std::lock_guard<std::mutex> lock(parent.callbackMutex);
@@ -2809,6 +2887,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     prewarmSharedShapeCaches(problem);
 
   if (canUseSimd()) {
+    // A SIMD run supersedes saved DLX remainder: it searches from its own
+    // seeds (restored prefixes on resume, freshly generated otherwise) and
+    // overlap dedups via kept signatures, so the DLX snapshots are dropped.
+    parallelTasks.clear();
     auto solver = createSimdSolver();
 
     /* This back end has no in-flight hook, so it publishes no slots -- and
@@ -2822,6 +2904,13 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       workerProgress.clear();
     }
 
+    // Incremental in-session resume (issue #111): consume previously
+    // salvaged prefixes as seeds; collect fresh salvage for a possible next
+    // run. Separate vectors: seeds are read up front while salvage is
+    // appended during the run.
+    std::vector<std::vector<unsigned int>> huangSeeds;
+    huangSeeds.swap(pendingHuangPrefixes);
+    std::vector<std::vector<unsigned int>> huangSalvaged;
     solver->parallelSolve(
       workers,
       [this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
@@ -2858,17 +2947,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
                                               avoidTransformedMirror.get(), complete))
             return true;
 
-          uint64_t sig = 14695981039346656037ULL;
-          for (unsigned int i = 0; i < piecenumber; i++) {
-            if (assembly->isPlaced(i)) {
-              sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
-              sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
-            } else {
-              sig ^= 0xFF; sig *= 1099511628211ULL;
-            }
-          }
+          uint64_t sig = assemblySignature(assembly.get(), piecenumber);
 
           {
             std::lock_guard<std::mutex> lock(callbackMutex);
@@ -2891,7 +2970,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       iterations,
       totalTasks,
       completedTasks,
-      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr
+      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr,
+      huangSeeds.empty() ? nullptr : &huangSeeds,
+      &huangSalvaged
     );
 
     if (!runTok.stop_requested()) {
@@ -2903,16 +2984,28 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       next_row_stack.clear();
       task_stack.clear();
       parallelTasks.clear();
+      pendingHuangPrefixes.clear();
       emittedSignatures.clear();
+      resumeDedup = false;
       parallelInterrupted = false;
       searchComplete.store(true, std::memory_order_relaxed);
     } else {
+      // Keep the salvaged in-flight prefixes plus pool remainder; the next
+      // assemble() resumes from them instead of regenerating everything
+      // (overlap re-searched, dedup via the kept emittedSignatures). Flag
+      // serial dedup too: a serial continue re-searches everything.
+      pendingHuangPrefixes = std::move(huangSalvaged);
+      resumeDedup = true;
       parallelInterrupted = true;
     }
 
     running.store(false, std::memory_order_relaxed);
     return;
   }
+
+  // A DLX run supersedes saved Huang remainder (symmetric to the SIMD
+  // branch clearing DLX tasks above).
+  pendingHuangPrefixes.clear();
 
   if (parallelTasks.empty()) {
     unsigned int targetTasks = std::max(16u, workers * 4);
@@ -2939,13 +3032,22 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     totalTasks.store(parallelTasks.size(), std::memory_order_release);
   }
 
-  if (parallelTasks.empty() || runTok.stop_requested()) {
-    if (!runTok.stop_requested()) {
-      /* completed before total, both release, for the reason given above */
-      completedTasks.store(1, std::memory_order_release);
-      totalTasks.store(1, std::memory_order_release);
-      searchComplete.store(true, std::memory_order_relaxed);
-    }
+  if (runTok.stop_requested()) {
+    // Stopped before searching (possibly mid-generation with only a partial
+    // task list): discard it and mark interrupted. A partial list would
+    // silently drop subtrees on continue/save; regenerating fully with
+    // dedup stays correct. save() refuses the position (no tasks).
+    parallelTasks.clear();
+    parallelInterrupted = true;
+    running.store(false, std::memory_order_relaxed);
+    return;
+  }
+
+  if (parallelTasks.empty()) {
+    /* completed before total, both release, for the reason given above */
+    completedTasks.store(1, std::memory_order_release);
+    totalTasks.store(1, std::memory_order_release);
+    searchComplete.store(true, std::memory_order_relaxed);
     running.store(false, std::memory_order_relaxed);
     return;
   }
@@ -3095,18 +3197,20 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     task_stack.clear();
     parallelTasks.clear();
     emittedSignatures.clear();
+    resumeDedup = false;
     parallelInterrupted = false;
     searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. Continuing in this session is fine -- the pool
      * remainder plus re-queued in-flight tasks are saved back into
-     * parallelTasks, and emittedSignatures suppresses repeats. But
-     * generateTasksAtDepth() resets the master back to the root on every exit,
-     * so what save() would write is the root state, i.e. "nothing searched
-     * yet" next to an already populated solution list. Mark it so the reload
-     * refuses it instead of silently reporting everything a second time.
+     * parallelTasks, and emittedSignatures suppresses repeats.
+     * generateTasksAtDepth() resets the master back to the root on every
+     * exit, so the base stacks carry no resume point; save() persists the
+     * remainder instead (appended below) and setPosition() resumes from it.
+     * Flag serial dedup as well: a serial continue re-searches everything.
      */
     parallelTasks = pool.drain();
+    resumeDedup = true;
     parallelInterrupted = true;
   }
 
@@ -3123,6 +3227,26 @@ bool assembler_1_c::canUseSimd(void) const {
 
   if (headerNodes - 1 > 32768)
     return false;
+
+  // Memory footprint guard (issue #92): voxel_mask is tier-sized, so a
+  // high-tier puzzle with many placement rows would allocate hundreds of MB
+  // where DLX copes in tens. Refuse the SIMD path past the budget; the
+  // fallback stays correct, just slower. Counts rows and matrix nodes in
+  // one pass over the shape columns (node count feeds the alias-table and
+  // vector-payload part of the estimate).
+  {
+    uint64_t estRows = 0;
+    uint64_t estNodes = 0;
+    const unsigned int nShapes = problem.getNumberOfParts();
+    for (unsigned int s = 1; s <= nShapes; s++)
+      for (unsigned int r = down[s]; r != s; r = down[r]) {
+        estRows++;
+        for (unsigned int c = right[r]; c != r; c = right[c])
+          estNodes++;
+      }
+    if (!huang_memory::fitsMemoryBudget(headerNodes - 1, estRows, estNodes))
+      return false;
+  }
 
 
   // NOTE: range puzzles (matrix has one more column than shapes + filled +
@@ -3233,6 +3357,10 @@ void assembler_1_c::simdSearch(void) {
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
 
+  // See iterative(): a serial run supersedes saved parallel remainder.
+  parallelTasks.clear();
+  pendingHuangPrefixes.clear();
+
   auto solver = createSimdSolver();
   std::atomic<uint64_t> simd_iter{0};
 
@@ -3259,6 +3387,8 @@ void assembler_1_c::simdSearch(void) {
     next_row_stack.clear();
     task_stack.clear();
     searchComplete.store(true, std::memory_order_relaxed);
+    emittedSignatures.clear();
+    resumeDedup = false;
   }
 
   running.store(false, std::memory_order_relaxed);
@@ -3353,6 +3483,14 @@ void assembler_1_c::assemble(assembler_cb * callback) {
             simdSearch();
           } else {
             iterative();
+            // A completed serial run retires restored dedup state (mirrors
+            // the completion paths above); a stopped run keeps it for save().
+            // Completion is exactly empty stacks: iterative() only breaks
+            // with restorable states 1/2/5 on top otherwise.
+            if (task_stack.empty() && !runTok.stop_requested()) {
+              emittedSignatures.clear();
+              resumeDedup = false;
+            }
           }
         }
       }
@@ -3544,6 +3682,18 @@ static unsigned int getInt(const char * s, unsigned int * i) {
     return 500000;
 }
 
+static unsigned int getUInt64(const char * s, uint64_t * i) {
+
+  char * s2;
+
+  *i = std::strtoull (s, &s2, 10);
+
+  if (s2)
+    return s2-s;
+  else
+    return 500000;
+}
+
 static int stringToVector(const char * string, std::vector<unsigned int> & v) {
 
   unsigned int pos = 0;
@@ -3566,24 +3716,66 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
   return pos;
 }
 
-assembler_c::errState assembler_1_c::setPosition(const char * string, const char * /* version*/) {
+/* 64-bit variant for emittedSignatures (uint64_t FNV hashes). Sorted by the
+ * caller for deterministic output. */
+static void vectorToStream64(const std::vector<uint64_t> & v, std::ostream & str) {
+
+  str << v.size() << " ";
+
+  for (unsigned int i = 0; i < v.size(); i++)
+    str << v[i] << " ";
+}
+
+static int stringToVector64(const char * string, std::vector<uint64_t> & v) {
+
+  unsigned int pos = 0;
+
+  unsigned int count;
+
+  pos += getInt(string+pos, &count);
+
+  v.clear();
+
+  for (unsigned int i = 0; i < count; i++) {
+    uint64_t val;
+    pos += getUInt64(string+pos, &val);
+    v.push_back(val);
+  }
+
+  return pos;
+}
+
+assembler_c::errState assembler_1_c::setPosition(const char * string, const char * version) {
 
   unsigned int len = strlen(string);
   parallelTasks.clear();
+  pendingHuangPrefixes.clear();
   emittedSignatures.clear();
+  resumeDedup = false;
   resetTaskProgress();
   simdCompleted.store(false, std::memory_order_relaxed);
 
   unsigned int pos = 0;
 
-  /* leading flag written by save(): an interrupted parallel search recorded
-   * neither how far its workers got nor which assemblies it already reported
+  /* Accepted payloads: v0.7.1 ("2.0", no leading flag) and current ("2.1",
+   * flag plus stacks, with an appended parallel remainder when present).
+   * Anything else is refused rather than silently misparsed: a flagless
+   * rows vector read as a flag wipes the stored solutions, and an unknown
+   * layout would lose its remainder.
    */
-  {
-    unsigned int interrupted = 0;
+  bool isCurrent = version != nullptr && strcmp(version, "2.1") == 0;
+  bool isLegacy = version != nullptr && strcmp(version, "2.0") == 0;
+  if (!isCurrent && !isLegacy)
+    return ERR_CAN_NOT_RESTORE_VERSION;
+
+  /* leading flag written by save(): an interrupted parallel search recorded
+   * neither how far its workers got nor which assemblies it already reported.
+   * Refusal is decided below: a remainder may carry resumable task data.
+   */
+  unsigned int interrupted = 0;
+  if (isCurrent) {
     pos += getInt(string+pos, &interrupted);
     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
   }
 
   pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3593,6 +3785,75 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   pos += stringToVector(string+pos, hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_b);
+
+  // A parallel remainder follows the stacks when present (appended by
+  // save()): task type, tasks, reported signatures. Older payloads end
+  // here, modulo whitespace -- presence of trailing data, not the version,
+  // tells the two apart.
+  unsigned int restoredPtype = 0;
+  while (pos < len && (string[pos] == ' ' || string[pos] == '\t' ||
+                       string[pos] == '\n' || string[pos] == '\r'))
+    pos++;
+  if (pos < len) {
+    unsigned int ptype = 0;
+    pos += getInt(string+pos, &ptype);
+    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (ptype > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+    // Parse into locals first: a syntax failure must not leave partial
+    // tasks behind (the caller may retry or report).
+    std::vector<SubtreeTask_1> newTasks;
+    std::vector<std::vector<unsigned int>> newPrefixes;
+    if (ptype == 1) {
+      unsigned int count = 0;
+      pos += getInt(string+pos, &count);
+      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int i = 0; i < count; i++) {
+        SubtreeTask_1 t;
+        pos += stringToVector(string+pos, t.task_stack);  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.column_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.rows);        if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        pos += stringToVector(string+pos, t.hidden_rows); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        newTasks.push_back(std::move(t));
+      }
+    } else if (ptype == 2) {
+      unsigned int count = 0;
+      pos += getInt(string+pos, &count);
+      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int i = 0; i < count; i++) {
+        std::vector<unsigned int> prefix;
+        pos += stringToVector(string+pos, prefix);
+        if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        if (!prefix.empty())
+          newPrefixes.push_back(std::move(prefix));
+      }
+    }
+
+    std::vector<uint64_t> sigs;
+    pos += stringToVector64(string+pos, sigs);
+
+    if (interrupted && ptype == 0)
+      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+
+    // Commit the remainder: a parallel continue resumes from these while
+    // the base stacks above (root-normalized on save) restore as no-op.
+    // Progress restarts from the remainder. A serial continue consults the
+    // signatures below (see resumeDedup), so it dedups instead of doubling.
+    parallelTasks = std::move(newTasks);
+    pendingHuangPrefixes = std::move(newPrefixes);
+    restoredPtype = ptype;
+    for (uint64_t s : sigs)
+      emittedSignatures.insert(s);
+    if (ptype != 0) {
+      totalTasks.store(parallelTasks.size() + pendingHuangPrefixes.size(),
+                       std::memory_order_relaxed);
+      completedTasks.store(0, std::memory_order_relaxed);
+      parallelInterrupted = false;
+    }
+  } else {
+    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
 
   // not we need to restore the matrix to the right state
 
@@ -3637,6 +3898,26 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
     }
   }
 
+  if (restoredPtype != 0) {
+    /* Remainder restored: prime fresh-root stacks so assemble() runs at
+     * all (it gates on non-empty next_row_stack) and the parallel dispatch
+     * sees its canonical entry shape. The matrix is already at base after
+     * createMatrix, so {0} is exactly consistent; a serial continue from
+     * here re-searches from scratch, deduped below when signatures exist.
+     */
+    task_stack.clear();
+    next_row_stack.clear();
+    task_stack.push_back(0);
+    next_row_stack.push_back(0);
+  }
+
+  // Dedup gate for serial continues (issue #118 review): set from the
+  // signature set, not the task type. Any restored run that already reported
+  // assemblies -- including second-save chains whose serial stop wrote no
+  // new tasks -- suppresses re-reports; fresh runs stay ungated (empty set),
+  // so duplicate suppression can never mask search bugs there.
+  resumeDedup = !emittedSignatures.empty();
+
   return ERR_NONE;
 }
 
@@ -3655,18 +3936,69 @@ void assembler_1_c::save(xmlWriter_c & xml) const
 
   std::ostream & str = xml.addContent();
 
-  /* leading flag: 1 marks a parallel search that was interrupted and whose
-   * position can therefore not be resumed (see parallelInterrupted)
+  /* leading flag: 1 marks a search that stopped before finishing.
+   * Reloading such a position resumes it only when task data follows
+   * (appended below); older payloads and task-less stops are
+   * refused with ERR_CAN_NOT_RESTORE_INTERRUPTED.
    */
   str << (parallelInterrupted ? 1 : 0) << " ";
 
-  vectorToStream(rows, str);
-  vectorToStream(task_stack, str);
-  vectorToStream(next_row_stack, str);
-  vectorToStream(column_stack, str);
-  vectorToStream(hidden_rows, str);
-  vectorToStream(finished_a, str);
-  vectorToStream(finished_b, str);
+  /* Parallel remainder for cross-session resume (issue #90): which engine's
+   * tasks, if any. 0 = none (serial stops resume from the stacks above);
+   * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes. At
+   * most one kind is present: entering any run clears the other engine's
+   * remainder (a new run supersedes it; overlap stays correct via the
+   * signatures below). Signatures are always written when non-empty so a
+   * parallel continue after ANY saved run can dedup re-searched overlap.
+   */
+  unsigned int ptype = !parallelTasks.empty() ? 1
+                     : !pendingHuangPrefixes.empty() ? 2 : 0;
+
+  if (ptype == 0) {
+    vectorToStream(rows, str);
+    vectorToStream(task_stack, str);
+    vectorToStream(next_row_stack, str);
+    vectorToStream(column_stack, str);
+    vectorToStream(hidden_rows, str);
+    vectorToStream(finished_a, str);
+    vectorToStream(finished_b, str);
+  } else {
+    /* With tasks present the base stacks are meaningless (parallel runs
+     * never touch the master stacks; task generation leaves its own
+     * mid-generation state behind). Normalize to EMPTY, not root-{0}: the
+     * restore loop has no case 0 (only 1/2/5 occur below a stopped top, so
+     * {0} fails syntax while empty restores as untouched base). A serial
+     * continue from the primed {0} stacks re-searches from scratch;
+     * re-reports dedup via resumeDedup. Parallel continue uses the tasks.
+     */
+    static const std::vector<unsigned int> kEmpty;
+    vectorToStream(kEmpty, str);    // rows
+    vectorToStream(kEmpty, str);    // task_stack
+    vectorToStream(kEmpty, str);    // next_row_stack
+    vectorToStream(kEmpty, str);    // column_stack
+    vectorToStream(kEmpty, str);    // hidden_rows
+    vectorToStream(kEmpty, str);    // finished_a
+    vectorToStream(kEmpty, str);    // finished_b
+  }
+  str << ptype << " ";
+  if (ptype == 1) {
+    str << parallelTasks.size() << " ";
+    for (const auto &t : parallelTasks) {
+      vectorToStream(t.task_stack, str);
+      vectorToStream(t.next_row_stack, str);
+      vectorToStream(t.column_stack, str);
+      vectorToStream(t.rows, str);
+      vectorToStream(t.hidden_rows, str);
+    }
+  } else if (ptype == 2) {
+    str << pendingHuangPrefixes.size() << " ";
+    for (const auto &p : pendingHuangPrefixes)
+      vectorToStream(p, str);
+  }
+
+  std::vector<uint64_t> sigs(emittedSignatures.begin(), emittedSignatures.end());
+  std::sort(sigs.begin(), sigs.end());
+  vectorToStream64(sigs, str);
 
   xml.endTag("assembler");
 }
