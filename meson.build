@@ -405,7 +405,7 @@ vendored_lua_lib = static_library('vendored_lua', lua_src,
           override_options: ['werror=false'],
 	  )
 
-executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 'src/gui/updatechecker.cpp', version_h],
+executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 'src/gui/updatechecker.cpp', 'src/gui/updatewindow.cpp', version_h],
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
           dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep, json_dep, httpget_dep],
