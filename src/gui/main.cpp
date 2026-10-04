@@ -117,6 +117,7 @@ int main(int argc, char ** argv) {
   try {
 
     ui->show(argc, argv);
+    ui->startUpdateCheck(false);
 
     res = my_Fl::run(ui);
   }

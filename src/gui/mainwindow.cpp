@@ -106,6 +106,8 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
+#include "updatechecker.h"
+
 #include <climits>
 #include <fstream>
 #include <string>
@@ -2079,6 +2081,15 @@ void mainWindow_c::cb_Toggle3D(void) {
 }
 
 void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
+void cb_CheckForUpdates_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_CheckForUpdates(); }
+void mainWindow_c::cb_CheckForUpdates(void) {
+  startUpdateCheck(true);
+}
+
+void mainWindow_c::startUpdateCheck(bool manual) {
+  updateChecker->start(manual ? updatecheck::Mode::Manual : updatecheck::Mode::Auto);
+}
+
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
@@ -4447,6 +4458,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
 #endif
   MainMenu->copy(mainmenu::table(), this);
+  updateChecker = new updateChecker_c(this);
   MainMenu->update();
   mainmenu::installApplicationMenu(this);
 
@@ -4504,6 +4516,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
 }
 
 mainWindow_c::~mainWindow_c() {
+  delete updateChecker;
 
   config.windowPos(x(), y(), w(), h());
 }

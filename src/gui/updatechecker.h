@@ -23,10 +23,12 @@
 
 #include "../tools/updatecheck.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 
 struct HttpResult;
+class Fl_Window;
 
 namespace updatechecker {
 
@@ -51,5 +53,41 @@ namespace updatechecker {
    */
   int runCli(void);
 }
+
+/* Runs update checks for the GUI. The request runs on a detached worker
+ * thread; the main thread polls for its result with Fl::add_timeout, so no
+ * FLTK call ever happens off the main thread and Fl::lock() is not needed.
+ *
+ * The worker shares only a reference-counted result block with this object,
+ * so quitting mid-request is safe: the worker finishes (bounded by the
+ * request timeout) into memory it co-owns, or dies with the process.
+ */
+class updateChecker_c {
+
+  public:
+
+    explicit updateChecker_c(Fl_Window * parent);
+    ~updateChecker_c();
+
+    /* Starts a check unless the rules in updatecheck::gate() say not to.
+     * While a check is running, another start() never adds a request; a
+     * Manual start upgrades the running check so its result is reported.
+     */
+    void start(updatecheck::Mode mode);
+
+  private:
+
+    struct Shared;
+
+    Fl_Window * parent;
+    std::shared_ptr<Shared> inFlight;
+    updatecheck::Mode inFlightMode;
+
+    static void pollCb(void * v);
+    void poll(void);
+    void finish(const Shared & result, updatecheck::Mode mode);
+    void offer(const updatecheck::Release & rel, const updatecheck::Version & installed,
+               updatecheck::Mode mode);
+};
 
 #endif

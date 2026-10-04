@@ -71,7 +71,7 @@ updateWindow_c::updateWindow_c(const std::string & heading, const std::string & 
   /* Escape and the close box both arrive as the window callback. */
   callback(cb_later, this);
   resizable(display);
-  size_range(400, 250);
+  size_range(470, 250);
   set_modal();
 }
 

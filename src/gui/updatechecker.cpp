@@ -22,6 +22,17 @@
 #include "httpget.h"
 
 #include "version.h"
+#include "configuration.h"
+#include "updatewindow.h"
+
+#include <FL/Fl.H>
+#include <FL/Fl_Window.H>
+#include <FL/fl_ask.H>
+#include <FL/filename.H>
+
+#include <atomic>
+#include <ctime>
+#include <thread>
 
 #include <cstdio>
 #include <cstdlib>
@@ -95,5 +106,165 @@ namespace updatechecker {
       case Outcome::SkippedByUser:   printf("result: skipped\n"); break;
     }
     return 0;
+  }
+}
+
+struct updateChecker_c::Shared {
+  std::atomic<bool> done{false};
+  HttpResult http;
+  std::variant<Release, std::string> parsed{std::string("not fetched")};
+};
+
+static Settings currentSettings(void) {
+  Settings s;
+  s.autoCheckEnabled = config.checkForUpdates();
+  s.lastCheck = std::int64_t(config.updateLastCheckMinutes()) * 60;
+  s.skipped = unpackVersion(config.updateSkippedVersion());
+  return s;
+}
+
+updateChecker_c::updateChecker_c(Fl_Window * p) : parent(p), inFlightMode(Mode::Auto) {}
+
+updateChecker_c::~updateChecker_c() {
+  Fl::remove_timeout(pollCb, this);
+}
+
+void updateChecker_c::start(Mode mode) {
+
+  if (inFlight) {
+    if (mode == Mode::Manual) {
+      inFlightMode = Mode::Manual;
+      parent->cursor(FL_CURSOR_WAIT);
+    }
+    return;
+  }
+
+  std::optional<Version> installed = updatechecker::installedVersion();
+
+  switch (gate(mode, installed, currentSettings(), std::int64_t(time(nullptr)))) {
+
+    case Gate::Skip:
+      return;
+
+    case Gate::UnknownVersion: {
+      std::string v = updatechecker::installedVersionString();
+      if (fl_choice("This build's version (%s) can't be compared with published releases.\n"
+                    "Open the releases page to look for yourself?",
+                    "Cancel", "Open Releases Page", nullptr, v.c_str()) == 1) {
+        char msg[512];
+        if (!fl_open_uri(RELEASES_PAGE, msg, sizeof(msg)))
+          fl_alert("Couldn't open the browser: %s", msg);
+      }
+      return;
+    }
+
+    case Gate::Fetch:
+      break;
+  }
+
+  auto shared = std::make_shared<Shared>();
+  inFlight = shared;
+  inFlightMode = mode;
+  if (mode == Mode::Manual)
+    parent->cursor(FL_CURSOR_WAIT);
+
+  std::string ua = updatechecker::userAgent();
+  std::thread([shared, ua] {
+    try {
+      shared->http = httpGet(LATEST_RELEASE_API, ua, TIMEOUT_SECONDS);
+      if (shared->http.kind == HttpResult::Kind::Ok)
+        shared->parsed = parseLatestRelease(shared->http.body);
+    } catch (const std::exception & e) {
+      shared->http.kind = HttpResult::Kind::Transport;
+      shared->http.error = e.what();
+    } catch (...) {
+      shared->http.kind = HttpResult::Kind::Transport;
+      shared->http.error = "unexpected error";
+    }
+    shared->done.store(true, std::memory_order_release);
+  }).detach();
+
+  Fl::add_timeout(0.25, pollCb, this);
+}
+
+void updateChecker_c::pollCb(void * v) {
+  static_cast<updateChecker_c *>(v)->poll();
+}
+
+void updateChecker_c::poll(void) {
+  if (!inFlight->done.load(std::memory_order_acquire)) {
+    Fl::repeat_timeout(0.25, pollCb, this);
+    return;
+  }
+
+  /* Release the in-flight slot before showing any dialog: the dialogs run
+   * a nested event loop, during which a new check may be started.
+   */
+  std::shared_ptr<Shared> result;
+  result.swap(inFlight);
+  Mode mode = inFlightMode;
+  if (mode == Mode::Manual)
+    parent->cursor(FL_CURSOR_DEFAULT);
+
+  finish(*result, mode);
+}
+
+void updateChecker_c::finish(const Shared & result, Mode mode) {
+
+  const bool manual = mode == Mode::Manual;
+
+  if (result.http.kind != HttpResult::Kind::Ok) {
+    if (manual)
+      fl_alert("%s", updatechecker::describeFailure(result.http).c_str());
+    return;
+  }
+
+  if (auto err = std::get_if<std::string>(&result.parsed)) {
+    if (manual)
+      fl_alert("Unexpected response from GitHub:\n%s", err->c_str());
+    return;
+  }
+
+  config.updateLastCheckMinutes(int(time(nullptr) / 60));
+  config.save();
+
+  const Release & rel = std::get<Release>(result.parsed);
+  std::optional<Version> installed = updatechecker::installedVersion();
+  if (!installed) return;   // gate() already refused unknown versions
+
+  switch (evaluate(mode, *installed, rel, currentSettings())) {
+    case Outcome::UpToDate:
+      if (manual)
+        fl_message("You're running the latest version of BurrTools (%s).",
+                   toString(*installed).c_str());
+      break;
+    case Outcome::SkippedByUser:
+      break;
+    case Outcome::UpdateAvailable:
+      offer(rel, *installed, mode);
+      break;
+  }
+}
+
+void updateChecker_c::offer(const Release & rel, const Version & installed, Mode mode) {
+
+  std::string title = rel.name.empty() ? "BurrTools " + toString(rel.version) : rel.name;
+  std::string heading = title + " is available. You have " + toString(installed) + ".";
+
+  updateWindow_c win(heading, rel.body, mode == Mode::Auto);
+
+  switch (win.run()) {
+    case updateWindow_c::Choice::OpenPage: {
+      char msg[512];
+      if (!fl_open_uri(rel.htmlUrl.c_str(), msg, sizeof(msg)))
+        fl_alert("Couldn't open the browser: %s", msg);
+      break;
+    }
+    case updateWindow_c::Choice::Skip:
+      config.updateSkippedVersion(packVersion(rel.version));
+      config.save();
+      break;
+    case updateWindow_c::Choice::Later:
+      break;
   }
 }
