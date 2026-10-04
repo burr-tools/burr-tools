@@ -2,9 +2,9 @@
 
 BurrTools 0.8 is the largest release in over a decade. The editor gains undo
 and redo, the 3D view is rebuilt for easier navigation, STL export produces
-print-ready chamfered meshes, and the solver now uses every CPU core and the
-vector units of modern processors. Many puzzles solve 3x to 38x faster than
-in 0.7.1.
+print-ready chamfered meshes, and the solver can now use all CPU cores
+and the vector units of modern processors. Many puzzles solve 3x to 38x
+faster than in 0.7.1.
 
 Editing:
 - Undo and redo for the whole puzzle: voxel painting, shape transforms,
@@ -113,11 +113,52 @@ Bug Fixes:
 Performance:
   Measured on a 4-core/8-thread laptop with the release binary, 0.7.1 vs
   0.8, total solve time including disassembly. Solutions are identical:
-  every example puzzle is checked against 0.7.1's results in CI.
+  every example puzzle is checked against 0.7.1's results before changes
+  are merged.
 
     Simplicity      19.8x     Lomino:3     14.0x     Tippy         5.6x
     SolidSix        38.3x     BottomLine    7.8x     kangaroo      3.2x
     TTTCharm         7.5x     Lomino:1      6.4x     Excelsior     2.3x
+
+  The speedups vary widely because each puzzle spends its time in a
+  different phase of solving, and each optimisation speeds up only its own
+  phase:
+
+  - Puzzles where the search can be pruned much harder gain the most. On
+    Simplicity the new code visits about 19 thousand search nodes where
+    0.7.1 visited 5.1 million; threads then multiply that. SolidSix gains
+    38x because, as a puzzle with piece-count ranges, it now runs on the
+    new SIMD solver (600 thousand nodes instead of 4.3 million) and on all
+    cores.
+  - Puzzles whose search does the same work as before (kangaroo, Lomino:3)
+    gain about what the extra cores give: 3x to 4x on a 4-core machine.
+  - Puzzles dominated by disassembly gain least. On Excelsior nearly all
+    the time goes into disassembling the single real solution, a job that
+    still runs on one core; its 2.3x comes from the faster disassembler.
+  - Very small puzzles, under about 0.2 seconds, are dominated by loading
+    the file and starting threads, so they barely change.
+
+  What multithreading gives you: 0.7.1 solved on a single core. 0.8 splits
+  the search into independent pieces that run in parallel, and disassembles
+  the assemblies it finds while the search continues. On puzzles with real
+  search work this scales 3.3x to 4.0x on 4 physical cores. Hyperthreading
+  adds only 0-10% on this workload. Long solves finish in a fraction of the
+  time, and because the thread count is a setting, you can keep some cores
+  free for other work during a long solve.
+
+  Why the classic solvers are still there: 0.7.1's two search engines,
+  Knuth's Dancing Links (DLX) and Wei-Hwa Huang's algorithm for puzzles
+  with duplicate pieces and ranges, are still in the code alongside the new
+  SIMD solver. The SIMD solver makes solving faster but cannot handle
+  every puzzle. BurrTools falls back to the classic engines when a puzzle
+  is too large for the SIMD solver (more than 2048 matrix columns, roughly
+  voxels plus pieces, for the DLX engine, or 32768 for Huang's), when the
+  SIMD matrix would need more than 256 MB, for variable voxels combined
+  with piece ranges, for the step-by-step debug mode, and when continuing a
+  classic search saved earlier. The classic engines also
+  serve as the reference implementation: tests solve the same puzzles with
+  both and require identical results, and BURRTOOLS_NO_SIMD=1 switches back
+  to them if a SIMD result is ever in doubt.
 
 - Parallel assembly: both solver engines (Knuth's DLX and Wei-Hwa Huang's
   algorithm for ranges and duplicate pieces) split the search tree into
@@ -162,6 +203,20 @@ Compatibility Notes:
 - macOS release builds are Apple Silicon only.
 
 Developer & Build:
+  Why the new testing matters: 0.7.1 had no automated tests. 0.8 ships
+  538 test cases. With so much of the solver rewritten for speed, the tests
+  check that a faster solver still finds exactly the same answers. Every
+  example puzzle is checked against the assembly counts, solution counts
+  and disassembly move levels of the 0.7.1 release. The SIMD and classic
+  engines must agree on the same puzzles. Serial and parallel runs must
+  find the same set of assemblies, not just the same number. A
+  ThreadSanitizer run catches data races between solver threads. Writing
+  the tests also surfaced bugs that had shipped in 0.7.1, now fixed: an
+  infinite loop in piece grouping, puzzle comments lost on reload, exported
+  STL headers carrying most of the user's directory path, and the
+  command-line solvers crashing on a mistyped file name. Coverage is
+  reported on every pull request.
+
 - C++20, with -Wall -Wextra -Werror clean on GCC, Clang and MinGW (Arne
   Köhn, Tom Burns, raoulb)
 - Catch2 test suite: unit tests across voxels, symmetries, XML, mesh/STL,
