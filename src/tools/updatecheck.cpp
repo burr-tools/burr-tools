@@ -181,4 +181,31 @@ namespace updatecheck {
     }
     return r;
   }
+
+  Gate gate(Mode mode, const std::optional<Version> & installed,
+            const Settings & settings, std::int64_t now) {
+    if (mode == Mode::Manual)
+      return installed ? Gate::Fetch : Gate::UnknownVersion;
+
+    if (!settings.autoCheckEnabled || !installed || installed->isDev)
+      return Gate::Skip;
+
+    std::int64_t elapsed = now - settings.lastCheck;
+    if (settings.lastCheck > 0 && elapsed >= 0 && elapsed < CHECK_INTERVAL_SECONDS)
+      return Gate::Skip;
+
+    return Gate::Fetch;
+  }
+
+  Outcome evaluate(Mode mode, const Version & installed, const Release & release,
+                   const Settings & settings) {
+    if (compareVersions(release.version, installed) <= 0)
+      return Outcome::UpToDate;
+
+    if (mode == Mode::Auto && settings.skipped &&
+        compareVersions(*settings.skipped, release.version) == 0)
+      return Outcome::SkippedByUser;
+
+    return Outcome::UpdateAvailable;
+  }
 }

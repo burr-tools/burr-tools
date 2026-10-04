@@ -164,3 +164,64 @@ TEST_CASE("parseLatestRelease rejects malformed or unwanted releases", "[update]
   CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
       "\"https://github.com/burr-tools/burr-tools/a\\u0001b\""))));
 }
+
+static Settings S(bool enabled, std::int64_t last, std::optional<Version> skipped = std::nullopt) {
+  Settings s;
+  s.autoCheckEnabled = enabled;
+  s.lastCheck = last;
+  s.skipped = skipped;
+  return s;
+}
+
+static Release R(unsigned a, unsigned b, unsigned c) {
+  Release r;
+  r.version = V(a, b, c);
+  r.tag = "v" + toString(r.version);
+  r.htmlUrl = std::string(RELEASES_URL_PREFIX) + "releases/tag/" + r.tag;
+  return r;
+}
+
+TEST_CASE("gate: manual always fetches unless the version is unknown", "[update]") {
+  const std::int64_t now = 1'800'000'000;
+  CHECK(gate(Mode::Manual, V(0, 7, 1), S(false, now), now) == Gate::Fetch);
+  CHECK(gate(Mode::Manual, V(0, 7, 1, true), S(true, now), now) == Gate::Fetch);
+  CHECK(gate(Mode::Manual, std::nullopt, S(true, 0), now) == Gate::UnknownVersion);
+}
+
+TEST_CASE("gate: auto honours opt-out, dev builds and unknown versions", "[update]") {
+  const std::int64_t now = 1'800'000'000;
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, 0), now) == Gate::Fetch);
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(false, 0), now) == Gate::Skip);
+  CHECK(gate(Mode::Auto, V(0, 7, 1, true), S(true, 0), now) == Gate::Skip);
+  CHECK(gate(Mode::Auto, std::nullopt, S(true, 0), now) == Gate::Skip);
+}
+
+TEST_CASE("gate: auto is rate limited to once per 24 hours", "[update]") {
+  const std::int64_t now = 1'800'000'000;
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, now), now) == Gate::Skip);
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, now - 86399), now) == Gate::Skip);
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, now - 86400), now) == Gate::Fetch);
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, now - 10 * 86400), now) == Gate::Fetch);
+  // clock moved backwards past the stored time: due, not stuck forever
+  CHECK(gate(Mode::Auto, V(0, 7, 1), S(true, now + 3600), now) == Gate::Fetch);
+}
+
+TEST_CASE("evaluate: newer, equal and older releases", "[update]") {
+  const Settings s = S(true, 0);
+  for (Mode m : {Mode::Auto, Mode::Manual}) {
+    CHECK(evaluate(m, V(0, 7, 1), R(0, 7, 2), s) == Outcome::UpdateAvailable);
+    CHECK(evaluate(m, V(0, 7, 1), R(0, 7, 1), s) == Outcome::UpToDate);
+    CHECK(evaluate(m, V(0, 7, 1), R(0, 7, 0), s) == Outcome::UpToDate);
+    // dev builds compare as their base tag
+    CHECK(evaluate(m, V(0, 7, 1, true), R(0, 7, 1), s) == Outcome::UpToDate);
+    CHECK(evaluate(m, V(0, 7, 1, true), R(0, 7, 2), s) == Outcome::UpdateAvailable);
+  }
+}
+
+TEST_CASE("evaluate: a skipped version silences only auto, and only that version", "[update]") {
+  const Settings skip072 = S(true, 0, V(0, 7, 2));
+  CHECK(evaluate(Mode::Auto,   V(0, 7, 1), R(0, 7, 2), skip072) == Outcome::SkippedByUser);
+  CHECK(evaluate(Mode::Manual, V(0, 7, 1), R(0, 7, 2), skip072) == Outcome::UpdateAvailable);
+  CHECK(evaluate(Mode::Auto,   V(0, 7, 1), R(0, 7, 3), skip072) == Outcome::UpdateAvailable);
+  CHECK(evaluate(Mode::Auto,   V(0, 7, 2), R(0, 7, 2), skip072) == Outcome::UpToDate);
+}

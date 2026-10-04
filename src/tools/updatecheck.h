@@ -21,6 +21,7 @@
 #ifndef __UPDATECHECK_H__
 #define __UPDATECHECK_H__
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -90,6 +91,38 @@ namespace updatecheck {
    * characters.
    */
   std::variant<Release, std::string> parseLatestRelease(std::string_view json);
+
+  enum class Mode { Auto, Manual };
+
+  inline constexpr std::int64_t CHECK_INTERVAL_SECONDS = 86400;
+
+  struct Settings {
+    bool autoCheckEnabled = true;
+    std::int64_t lastCheck = 0;        ///< epoch seconds of the last successful fetch; 0 = never
+    std::optional<Version> skipped;    ///< version the user chose to skip
+  };
+
+  enum class Gate {
+    Fetch,           ///< ask GitHub
+    Skip,            ///< do nothing, silently
+    UnknownVersion,  ///< manual check of a build whose version cannot be compared
+  };
+
+  /* Decided before any request is made. Auto checks run only for release
+   * builds with the setting on, at most once per CHECK_INTERVAL_SECONDS;
+   * a stored time in the future (the clock moved back) counts as due.
+   * Manual checks always fetch if there is a version to compare.
+   */
+  Gate gate(Mode mode, const std::optional<Version> & installed,
+            const Settings & settings, std::int64_t now);
+
+  enum class Outcome { UpdateAvailable, UpToDate, SkippedByUser };
+
+  /* Decided after a successful fetch. A skipped version silences auto
+   * checks for exactly that version; a manual check still offers it.
+   */
+  Outcome evaluate(Mode mode, const Version & installed, const Release & release,
+                   const Settings & settings);
 }
 
 #endif
