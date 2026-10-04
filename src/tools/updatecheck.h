@@ -47,7 +47,7 @@ namespace updatecheck {
 
   /* Accepts "X.Y.Z" with an optional leading "v", optionally followed by
    * git describe's "-N-gHASH" and/or "-dirty" (either makes it a dev
-   * version). Anything else -- "temp-64-bit", "0.7.0-unknown", a bare
+   * version). Anything else -- "temp-64-bit", "0.8.0-unknown", a bare
    * hash -- has no comparable version and yields nullopt.
    */
   std::optional<Version> parseVersion(std::string_view s);

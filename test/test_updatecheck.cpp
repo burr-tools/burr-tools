@@ -48,7 +48,7 @@ TEST_CASE("parseVersion rejects everything else", "[update]") {
   CHECK_FALSE(parseVersion(""));
   CHECK_FALSE(parseVersion("v"));
   CHECK_FALSE(parseVersion("temp-64-bit"));
-  CHECK_FALSE(parseVersion("0.7.0-unknown"));
+  CHECK_FALSE(parseVersion("0.8.0-unknown"));
   CHECK_FALSE(parseVersion("95009ba5a"));
   CHECK_FALSE(parseVersion("1a2b3c"));
   CHECK_FALSE(parseVersion("v1.2"));
