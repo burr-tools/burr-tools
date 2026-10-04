@@ -20,6 +20,8 @@
  */
 #include "updatecheck.h"
 
+#include <nlohmann/json.hpp>
+
 namespace updatecheck {
 
   namespace {
@@ -113,5 +115,70 @@ namespace updatecheck {
     v.vMinor = unsigned(packed / 1000 % 1000);
     v.vPatch = unsigned(packed % 1000);
     return v;
+  }
+
+  namespace {
+
+    bool flagSet(const nlohmann::json & j, const char * key) {
+      auto it = j.find(key);
+      return it != j.end() && it->is_boolean() && it->get<bool>();
+    }
+
+    const std::string * stringField(const nlohmann::json & j, const char * key) {
+      auto it = j.find(key);
+      if (it == j.end() || !it->is_string()) return nullptr;
+      return it->get_ptr<const std::string *>();
+    }
+
+    bool safeUrl(const std::string & url) {
+      if (url.rfind(RELEASES_URL_PREFIX, 0) != 0) return false;
+      for (unsigned char c : url)
+        if (c <= ' ' || c == 0x7f || c == '"' || c == '\'' || c == '<' ||
+            c == '>' || c == '\\' || c == '`')
+          return false;
+      return true;
+    }
+
+    std::string foldCrlf(const std::string & s) {
+      std::string out;
+      out.reserve(s.size());
+      for (size_t i = 0; i < s.size(); i++)
+        if (!(s[i] == '\r' && i + 1 < s.size() && s[i + 1] == '\n'))
+          out += s[i];
+      return out;
+    }
+  }
+
+  std::variant<Release, std::string> parseLatestRelease(std::string_view json) {
+    nlohmann::json j = nlohmann::json::parse(json.begin(), json.end(), nullptr, false);
+    if (j.is_discarded() || !j.is_object())
+      return std::string("the response is not a JSON object");
+
+    if (flagSet(j, "draft") || flagSet(j, "prerelease"))
+      return std::string("the latest release is a draft or pre-release");
+
+    const std::string * tag = stringField(j, "tag_name");
+    if (!tag) return std::string("the response has no tag_name");
+
+    std::optional<Version> v = parseVersion(*tag);
+    if (!v || v->isDev)
+      return std::string("the release tag \"" + *tag + "\" is not a version number");
+
+    const std::string * url = stringField(j, "html_url");
+    if (!url || !safeUrl(*url))
+      return std::string("the release page address is missing or not on GitHub");
+
+    Release r;
+    r.tag = *tag;
+    r.version = *v;
+    r.htmlUrl = *url;
+    if (const std::string * name = stringField(j, "name")) r.name = *name;
+
+    auto body = j.find("body");
+    if (body != j.end() && !body->is_null()) {
+      if (!body->is_string()) return std::string("the release notes are not text");
+      r.body = foldCrlf(body->get<std::string>());
+    }
+    return r;
   }
 }

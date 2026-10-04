@@ -88,3 +88,79 @@ TEST_CASE("packVersion round-trips and 0 means none", "[update]") {
   CHECK_FALSE(unpackVersion(-5));
   CHECK_FALSE(unpackVersion(1000000000));
 }
+
+#include <fstream>
+#include <sstream>
+#include <variant>
+
+static std::string readFile(const char * path) {
+  std::ifstream f(path, std::ios::binary);
+  REQUIRE(f.good());
+  std::stringstream ss;
+  ss << f.rdbuf();
+  return ss.str();
+}
+
+static std::string minimal(const std::string & extra = "",
+                           const std::string & tag = "\"v0.7.2\"",
+                           const std::string & url =
+                             "\"https://github.com/burr-tools/burr-tools/releases/tag/v0.7.2\"") {
+  return "{\"tag_name\":" + tag + ",\"html_url\":" + url +
+         ",\"name\":\"BurrTools 0.7.2\",\"draft\":false,\"prerelease\":false" +
+         extra + "}";
+}
+
+static const Release & ok(const std::variant<Release, std::string> & r) {
+  if (auto e = std::get_if<std::string>(&r)) FAIL("unexpected error: " << *e);
+  return std::get<Release>(r);
+}
+
+static bool failed(const std::variant<Release, std::string> & r) {
+  return std::holds_alternative<std::string>(r) && !std::get<std::string>(r).empty();
+}
+
+TEST_CASE("parseLatestRelease reads the recorded v0.7.1 response", "[update]") {
+  auto r = parseLatestRelease(readFile("test/data/github_latest_release_v0.7.1.json"));
+  const Release & rel = ok(r);
+  CHECK(rel.tag == "v0.7.1");
+  CHECK(is(rel.version, V(0, 7, 1)) );
+  CHECK(rel.name == "BurrTools 0.7.1");
+  CHECK(rel.htmlUrl == "https://github.com/burr-tools/burr-tools/releases/tag/v0.7.1");
+  CHECK(rel.body.find("Bug Fixes") != std::string::npos);
+  CHECK(rel.body.find('\r') == std::string::npos);
+}
+
+TEST_CASE("parseLatestRelease handles optional and odd fields", "[update]") {
+  CHECK(ok(parseLatestRelease(minimal())).body.empty());
+  CHECK(ok(parseLatestRelease(minimal(",\"body\":null"))).body.empty());
+  CHECK(ok(parseLatestRelease(minimal(",\"body\":\"a\\r\\nb\\r\\n\""))).body == "a\nb\n");
+  CHECK(ok(parseLatestRelease(
+      "{\"tag_name\":\"v0.7.2\",\"html_url\":"
+      "\"https://github.com/burr-tools/burr-tools/releases/tag/v0.7.2\"}")).name.empty());
+}
+
+TEST_CASE("parseLatestRelease rejects malformed or unwanted releases", "[update]") {
+  CHECK(failed(parseLatestRelease("")));
+  CHECK(failed(parseLatestRelease("not json")));
+  CHECK(failed(parseLatestRelease("[]")));
+  CHECK(failed(parseLatestRelease("{\"message\":\"Not Found\"}")));
+  CHECK(failed(parseLatestRelease(minimal(",\"body\":42"))));
+  CHECK(failed(parseLatestRelease(minimal(",\"draft\":true"))));
+  CHECK(failed(parseLatestRelease(minimal(",\"prerelease\":true"))));
+  CHECK(failed(parseLatestRelease(minimal("", "42"))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"temp-64-bit\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2-3-gabc\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"", "null"))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"https://evil.example/burr-tools/burr-tools/\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"http://github.com/burr-tools/burr-tools/releases/tag/v0.7.2\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"https://github.com/burr-tools/burr-tools-evil/x\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"https://github.com/burr-tools/burr-tools/a b\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"https://github.com/burr-tools/burr-tools/a\\\"b\""))));
+  CHECK(failed(parseLatestRelease(minimal("", "\"v0.7.2\"",
+      "\"https://github.com/burr-tools/burr-tools/a\\u0001b\""))));
+}

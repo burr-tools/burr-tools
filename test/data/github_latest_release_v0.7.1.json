@@ -1,0 +1,43 @@
+{
+  "url": "https://api.github.com/repos/burr-tools/burr-tools/releases/261364357",
+  "html_url": "https://github.com/burr-tools/burr-tools/releases/tag/v0.7.1",
+  "tag_name": "v0.7.1",
+  "name": "BurrTools 0.7.1",
+  "draft": false,
+  "prerelease": false,
+  "created_at": "2025-11-11T09:09:34Z",
+  "published_at": "2025-11-11T09:13:11Z",
+  "body": "\nBug Fixes:\n- Fix macOS binary stripping in GitHub Actions build (Arne Köhn)\n  The macOS build workflow was using aggressive symbol stripping that broke\n  the binary. Now uses 'strip -x' to preserve global symbols while still\n  reducing binary size.\n\n\n## Downloads\n\nSee the Assets section below for platform-specific downloads.\n",
+  "assets": [
+    {
+      "name": "BurrTools-v0.7.1-app.zip",
+      "size": 1160715,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/BurrTools-v0.7.1-app.zip"
+    },
+    {
+      "name": "burrtools-v0.7.1-linux-x86_64.tar.gz",
+      "size": 2036266,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/burrtools-v0.7.1-linux-x86_64.tar.gz"
+    },
+    {
+      "name": "burrtools-v0.7.1-windows-x86_64.zip",
+      "size": 3094350,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/burrtools-v0.7.1-windows-x86_64.zip"
+    },
+    {
+      "name": "BurrTools-v0.7.1.dmg",
+      "size": 1610458,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/BurrTools-v0.7.1.dmg"
+    },
+    {
+      "name": "burrTxt",
+      "size": 861448,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/burrTxt"
+    },
+    {
+      "name": "burrTxt2",
+      "size": 862328,
+      "browser_download_url": "https://github.com/burr-tools/burr-tools/releases/download/v0.7.1/burrTxt2"
+    }
+  ]
+}

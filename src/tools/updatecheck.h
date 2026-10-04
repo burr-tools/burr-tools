@@ -24,6 +24,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 /* The decision logic of the update check: version strings, the GitHub
  * release response, and whether to check and what to tell the user. Pure
@@ -63,6 +64,32 @@ namespace updatecheck {
    */
   int packVersion(const Version & v);
   std::optional<Version> unpackVersion(int packed);
+
+  inline constexpr const char * LATEST_RELEASE_API =
+      "https://api.github.com/repos/burr-tools/burr-tools/releases/latest";
+
+  /* Every URL the update check opens in a browser starts with this. */
+  inline constexpr const char * RELEASES_URL_PREFIX =
+      "https://github.com/burr-tools/burr-tools/";
+
+  inline constexpr const char * RELEASES_PAGE =
+      "https://github.com/burr-tools/burr-tools/releases";
+
+  struct Release {
+    std::string tag;       ///< "v0.7.2"
+    Version version;       ///< parsed from tag; never isDev
+    std::string name;      ///< "BurrTools 0.7.2"; may be empty
+    std::string htmlUrl;   ///< validated against RELEASES_URL_PREFIX
+    std::string body;      ///< release notes, LF line endings; may be empty
+  };
+
+  /* Parses a GitHub "get the latest release" response. On failure the
+   * string alternative holds a short, user-presentable reason. html_url
+   * is checked here because it is handed to the OS to open: it must start
+   * with RELEASES_URL_PREFIX and contain no whitespace, quotes or control
+   * characters.
+   */
+  std::variant<Release, std::string> parseLatestRelease(std::string_view json);
 }
 
 #endif

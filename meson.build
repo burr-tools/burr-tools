@@ -209,6 +209,10 @@ else
   cocoa_dep = dependency('', required: false)
 endif
 
+# Header-only; marked as a system include so its internals never trip
+# -Werror in the release jobs.
+json_dep = dependency('nlohmann_json', include_type: 'system')
+
 if host_machine.system() == 'windows'
   wm = import('windows')
 endif
@@ -390,7 +394,7 @@ test_burrtools = executable('test_burrtools',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp'],
   include_directories: inc,
   link_with: libburr_core,
-  dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
+  dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],
 )
 
 # The suite is split so the everyday loop stays quick. Everything except the
