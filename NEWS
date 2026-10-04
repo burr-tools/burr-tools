@@ -12,9 +12,9 @@ Editing:
   stroke or a burst of rotations is one undo step, and undo returns you to
   the tab where the change was made (Girish Sharma)
 - "Set All" range setter in the problem editor sets the min/max count of
-  every part at once (cmorenoserrano)
+  every part at once (Carlos Moreno Serrano)
 - "Select Identical" and "Select holes" buttons in the Shape Information
-  dialog (cmorenoserrano)
+  dialog (Carlos Moreno Serrano)
 - The 2D grid editor shows the X, Y, Z coordinates of the voxel under the
   cursor in the status bar, and allows larger cells on high-DPI and Retina
   displays (Arne Köhn)
@@ -33,8 +33,8 @@ Editing:
   classic look), "edges" (flat faces with lines only at real piece edges)
   and "stl" (the chamfered mesh the STL export writes). The choice is
   remembered between sessions (Bram Cohen)
-- Fix a crash in the 3D view when two voxels touch only along an edge,
-  e.g. after deleting a voxel (Derek Bosch)
+- Fix a crash building 3D-view meshes with recent libc++ (macOS), which
+  could trigger on any shape, e.g. after deleting a voxel (Derek Bosch)
 - The STL export preview is no longer clipped (Bram Cohen)
 
 STL Export:
@@ -44,7 +44,7 @@ STL Export:
   use Minkowski operations via the Manifold library (Bram Cohen)
 - Export all pieces of a solution in one go with "Export Solution to STL"
   in the Solver tab: one file per distinct piece, named after the shape
-  (sprocket314, cmorenoserrano)
+  (Carlos Moreno Serrano)
 - Separate X, Y and Z unit sizes for non-cubic pieces (Bram Cohen)
 - Coplanar faces are merged into larger triangles, making files much
   smaller while keeping them watertight (Bram Cohen)
@@ -81,8 +81,9 @@ macOS:
 All Platforms:
 - Native open and save dialogs on macOS, Windows and Linux (Bram Cohen,
   Arne Köhn)
-- Modernised widget scheme; the Settings dialog (renamed from "Config")
-  describes each option and can restore defaults (Arne Köhn, Tom Burns)
+- Modernised widget scheme (Tom Burns)
+- The Settings dialog (renamed from "Config") describes each option and
+  can restore defaults (Arne Köhn, Tom Burns)
 - Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
   with an option to reverse the scroll-zoom direction (Arne Köhn)
 
@@ -96,7 +97,7 @@ Bug Fixes:
   code paths, producing wrong assembly geometry. Present since 0.7.1
   (Arne Köhn)
 - Malformed or damaged puzzle files are rejected with an error instead of
-  corrupting memory (Bram Cohen)
+  corrupting memory or loading silently wrong data (Bram Cohen, Tom Burns)
 - Puzzle comments made only of special characters such as "<&" are no
   longer lost when the file is reloaded (Tom Burns)
 - Data races and a use-after-free between the solver and the GUI, found
