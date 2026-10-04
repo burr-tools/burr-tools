@@ -2108,7 +2108,10 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, libZ, libpng, gzstream, gl2ps\n"
+             "- Fltk, libZ, libpng, gzstream, gl2ps, Lua\n"
+             "- Manifold (https://github.com/elalish/manifold)\n"
+             "- nlohmann/json (https://github.com/nlohmann/json)\n"
+             "- libcurl on Linux (https://curl.se)\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
              "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n",
              BURRTOOLS_VERSION);
