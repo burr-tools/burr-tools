@@ -41,6 +41,7 @@
 
 #include "../tools/xml.h"
 #include "../tools/gzstream.h"
+#include "updatechecker.h"
 
 /* fl_open_callback() takes a plain function pointer with no user data, so
  * the window it should forward to is reached through this file-scope
@@ -84,6 +85,11 @@ int main(int argc, char ** argv) {
     printf("self-check OK\n");
     return 0;
   }
+
+  // Exercises the HTTPS backend and the update logic without a window, so
+  // the per-platform network code can be checked from a terminal.
+  if (argc == 2 && strcmp(argv[1], "--check-for-updates") == 0)
+    return updatechecker::runCli();
 
   bt_assert_init();
 

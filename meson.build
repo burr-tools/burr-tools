@@ -213,6 +213,25 @@ endif
 # -Werror in the release jobs.
 json_dep = dependency('nlohmann_json', include_type: 'system')
 
+# The update check's HTTPS backend; see src/gui/httpget.h.
+if host_machine.system() == 'darwin'
+  add_languages('objcpp', native: false)
+  add_project_arguments('-std=c++20', language: 'objcpp')
+  httpget_src = ['src/gui/httpget_mac.mm']
+  httpget_dep = dependency('appleframeworks', modules: ['Foundation'])
+elif host_machine.system() == 'windows'
+  httpget_src = ['src/gui/httpget_win.cpp']
+  httpget_dep = cxx.find_library('winhttp')
+else
+  httpget_dep = dependency('libcurl', required: false)
+  if httpget_dep.found()
+    httpget_src = ['src/gui/httpget_curl.cpp']
+  else
+    warning('libcurl not found: the update check will report itself unsupported')
+    httpget_src = ['src/gui/httpget_none.cpp']
+  endif
+endif
+
 if host_machine.system() == 'windows'
   wm = import('windows')
 endif
@@ -386,10 +405,10 @@ vendored_lua_lib = static_library('vendored_lua', lua_src,
           override_options: ['werror=false'],
 	  )
 
-executable('burrtools', gui_src,
+executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 'src/gui/updatechecker.cpp', version_h],
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
-          dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep, json_dep, httpget_dep],
           win_subsystem: 'windows',
 	  )
 
