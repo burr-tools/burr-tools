@@ -24,7 +24,7 @@ Editing:
 - View Cube navigation widget: click a face, edge or corner to snap the
   view to it with a smooth animated rotation, with hover highlights and a
   Home button that resets pan and zoom. It can be configured or turned off
-  in Settings (Girish Sharma, building on work by colind)
+  in Settings (Girish Sharma, building on work by Colin Deisenroth)
 - Panning, rotation snapping, improved render distance, and calmer arcball
   sensitivity (Girish Sharma)
 - Live preview of a transformation when hovering over the rotate, flip and
