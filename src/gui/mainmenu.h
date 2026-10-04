@@ -56,7 +56,9 @@ namespace mainmenu {
    */
   void assertTablesConsistent(void);
 
-  /* Populate the macOS application menu (About, Check for Updates, Settings). No-op elsewhere. */
+  /* Populate the macOS application menu (About, Check for Updates, Settings).
+   * No-op elsewhere.
+   */
   void installApplicationMenu(mainWindow_c * win);
 }
 

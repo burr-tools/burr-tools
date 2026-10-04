@@ -22,6 +22,7 @@
 #include "version.h"
 
 #include "mainmenu.h"
+#include "updatechecker.h"
 #include "puzzlehistory.h"
 #include "platform.h"
 
@@ -106,7 +107,6 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
-#include "updatechecker.h"
 
 #include <climits>
 #include <fstream>
@@ -4519,4 +4519,10 @@ mainWindow_c::~mainWindow_c() {
   delete updateChecker;
 
   config.windowPos(x(), y(), w(), h());
+
+  /* Settings and the window position reach disk before static and atexit
+   * teardown, where a detached update worker still inside its request could
+   * race the TLS library's cleanup.
+   */
+  config.save();
 }

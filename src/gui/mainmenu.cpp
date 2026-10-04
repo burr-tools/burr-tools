@@ -70,8 +70,8 @@ namespace {
    * gather under Puzzle, and every item that opens a dialog gains an
    * ellipsis.
    *
-   * About, Check for Updates, Settings and Quit are deliberately absent: they belong to the
-   * application menu, built in installApplicationMenu() below.
+   * About, Check for Updates, Settings and Quit are deliberately absent: they
+   * belong to the application menu, built in installApplicationMenu() below.
    */
   Fl_Menu_Item menu_Mac[] = {
     { "&File",             0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
@@ -150,8 +150,8 @@ void mainmenu::assertTablesConsistent(void) {
    * table with itself and is a tautology. The check can only ever fire on a
    * macOS build; that is where the second table exists.
    *
-   * The macOS table intentionally omits About, Check for Updates, Settings and Quit, which
-   * live in the application menu, so those are excluded from the
+   * The macOS table intentionally omits About, Check for Updates, Settings and
+   * Quit, which live in the application menu, so those are excluded from the
    * comparison.
    */
   static Fl_Callback * const appMenuOnly[] = {
@@ -211,9 +211,9 @@ void mainmenu::installApplicationMenu(mainWindow_c * win) {
    */
   Fl_Sys_Menu_Bar::about(cb_About_stub, win);
 
-  /* Check for Updates and Settings belong in the application menu on macOS. The array must
-   * outlive the call, hence the static; user_data cannot be set in the
-   * initialiser because the window does not exist until runtime.
+  /* Check for Updates and Settings belong in the application menu on macOS.
+   * The array must outlive the call, hence the static; user_data cannot be set
+   * in the initialiser because the window does not exist until runtime.
    */
   static Fl_Menu_Item appItems[] = {
     { "Check for Updates...", 0, cb_CheckForUpdates_stub, 0, FL_MENU_DIVIDER, 0, 0, 14, 56 },

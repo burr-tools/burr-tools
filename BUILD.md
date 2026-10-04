@@ -32,8 +32,11 @@ Install the required dependencies:
 sudo apt-get update
 sudo apt-get install -y meson ninja-build build-essential \
     libboost-all-dev libgl-dev libglu1-mesa-dev freeglut3-dev \
-    libfltk1.3-dev libpng-dev zlib1g-dev
+    libfltk1.3-dev libpng-dev zlib1g-dev libcurl4-openssl-dev
 ```
+
+libcurl is optional at build time (without it the update check reports itself
+unsupported), but a binary built with it needs `libcurl.so.4` at runtime.
 
 ### Windows Cross-Compilation (from Linux)
 

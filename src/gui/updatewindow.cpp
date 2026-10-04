@@ -23,6 +23,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
+#include <FL/Fl_Group.H>
 #include <FL/Fl_Return_Button.H>
 #include <FL/Fl_Text_Buffer.H>
 #include <FL/Fl_Text_Display.H>
@@ -51,20 +52,32 @@ updateWindow_c::updateWindow_c(const std::string & heading, const std::string & 
   display->buffer(buffer);
   display->wrap_mode(Fl_Text_Display::WRAP_AT_BOUNDS, 0);
 
-  int x = SZ_WIN_X - SZ_GAP;
+  /* The button row spans the window width; its invisible spacer is the
+   * group's resizable, so the buttons keep their widths and only the gap
+   * between Skip and Later changes with the window.
+   */
+  Fl_Group * row = new Fl_Group(0, buttonsY, SZ_WIN_X, SZ_BUTTON_Y);
 
-  x -= 150;
-  Fl_Return_Button * open = new Fl_Return_Button(x, buttonsY, 150, SZ_BUTTON_Y, "Open Release Page");
-  open->callback(cb_open, this);
-
-  x -= SZ_GAP + 130;
-  Fl_Button * later = new Fl_Button(x, buttonsY, 130, SZ_BUTTON_Y, "Remind Me Later");
-  later->callback(cb_later, this);
+  int openX = SZ_WIN_X - SZ_GAP - 150;
+  int laterX = openX - SZ_GAP - 130;
+  int spacerX = SZ_GAP;
 
   if (offerSkip) {
     Fl_Button * skip = new Fl_Button(SZ_GAP, buttonsY, 130, SZ_BUTTON_Y, "Skip This Version");
     skip->callback(cb_skip, this);
+    spacerX = SZ_GAP + 130;
   }
+
+  Fl_Box * spacer = new Fl_Box(spacerX, buttonsY, laterX - spacerX, SZ_BUTTON_Y);
+
+  Fl_Button * later = new Fl_Button(laterX, buttonsY, 130, SZ_BUTTON_Y, "Remind Me Later");
+  later->callback(cb_later, this);
+
+  Fl_Return_Button * open = new Fl_Return_Button(openX, buttonsY, 150, SZ_BUTTON_Y, "Open Release Page");
+  open->callback(cb_open, this);
+
+  row->resizable(spacer);
+  row->end();
 
   end();
 

@@ -49,7 +49,9 @@ namespace updatechecker {
 
   /* `burrtools --check-for-updates`: fetch, evaluate as a manual check,
    * print the outcome, and return the process exit code (0 when the check
-   * completed, 1 when it could not). No window is created.
+   * completed, 1 when it could not). No window is created. On Windows the
+   * GUI-subsystem binary has no console, so the output is visible only when
+   * redirected (e.g. `burrtools.exe --check-for-updates > out.txt`).
    */
   int runCli(void);
 }
@@ -59,8 +61,8 @@ namespace updatechecker {
  * FLTK call ever happens off the main thread and Fl::lock() is not needed.
  *
  * The worker shares only a reference-counted result block with this object,
- * so quitting mid-request is safe: the worker finishes (bounded by the
- * request timeout) into memory it co-owns, or dies with the process.
+ * so destroying the checker mid-request is safe. At process exit a worker
+ * still inside the request is abandoned (bounded by the request timeout).
  */
 class updateChecker_c {
 
