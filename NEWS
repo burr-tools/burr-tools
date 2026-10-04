@@ -1,4 +1,4 @@
-------------- Version 0.8.0 (unreleased -- DRAFT)
+------------- Version 0.8.0 Oct 2026
 
 BurrTools 0.8 is the largest release in over a decade. The editor gains undo
 and redo, the 3D view is rebuilt for easier navigation, STL export produces
@@ -90,7 +90,13 @@ All Platforms:
 - The Settings dialog (renamed from "Config") describes each option and
   can restore defaults (Colin Deisenroth, Arne Köhn, Tom Burns)
 - Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
-  with an option to reverse the scroll-zoom direction (Colin Deisenroth, Arne Köhn)
+with an option to reverse the scroll-zoom direction (Colin Deisenroth,
+  Arne Köhn)
+- Check for Updates: at startup (at most once a day, and never for
+  development builds) and from the menu, BurrTools asks GitHub whether a
+  newer release exists and shows its release notes, with a button that
+  opens the download page. A version can be skipped, and the startup check
+  can be turned off in Settings (Tom Burns)
 
 Scripting:
 - Python bindings (pybind11) for building shapes and problems, solving,
@@ -246,6 +252,8 @@ Compatibility Notes:
   hole faces) has been removed in favour of the chamfer mesher. Coplanar
   face merging is always on.
 - macOS release builds are Apple Silicon only.
+- Linux binaries built with libcurl (as the release builds are) need
+  libcurl.so.4 at runtime, for the update check.
 
 Developer & Build:
    0.7.1 had no automated tests. 0.8 ships 538 test cases. With so
