@@ -65,29 +65,38 @@ No I/O, no FLTK. Fully unit-tested.
 namespace updatecheck {
 
 struct Version {
-  unsigned major, minor, patch;
+  unsigned vMajor, vMinor, vPatch;   // not major/minor: glibc macros
   bool isDev;            // commits past the tag, or dirty
 };
 
 // "v0.7.1", "0.7.1", "v0.7.1-42-gabc123", "v0.7.1-dirty",
 // "v0.7.1-42-gabc123-dirty" parse. "temp-64-bit", "0.7.0-unknown",
-// a bare hash, "" do not. Components above 100000 are rejected.
+// a bare hash, "" do not. Components above 999 are rejected, which is
+// what lets packVersion fit a version into the config's 32-bit int.
 std::optional<Version> parseVersion(std::string_view s);
 
 // Orders by (major, minor, patch) numerically; isDev is ignored.
 int compareVersions(const Version &a, const Version &b);
+
+// "0.7.1" -- no "v", no dev suffix.
+std::string toString(const Version &v);
+
+// major*1000000 + minor*1000 + patch; 0 means "none".
+int packVersion(const Version &v);
+std::optional<Version> unpackVersion(int packed);
 
 struct Release {
   std::string tag;       // "v0.7.2"
   Version version;
   std::string name;      // "BurrTools 0.7.2"; may be empty
   std::string htmlUrl;   // https://github.com/burr-tools/burr-tools/releases/tag/v0.7.2
-  std::string body;      // release notes; empty if null
+  std::string body;      // release notes; empty if null; CRLF folded to LF
 };
 
 // Parses a GitHub "get latest release" response. Fails on malformed JSON,
 // missing/non-string tag_name or html_url, unparseable tag, draft or
-// prerelease set, or an html_url not under RELEASES_URL_PREFIX.
+// prerelease set, a dev-suffixed tag, or an html_url that is not under
+// RELEASES_URL_PREFIX or contains whitespace, quotes, or control characters.
 std::variant<Release, std::string /*error*/> parseLatestRelease(std::string_view json);
 
 inline constexpr const char *LATEST_RELEASE_API =
@@ -101,8 +110,8 @@ enum class Mode { Auto, Manual };
 
 struct Settings {
   bool autoCheckEnabled;
-  std::int64_t lastCheck;      // epoch seconds; 0 = never
-  std::string skippedTag;      // "" = none
+  std::int64_t lastCheck;               // epoch seconds; 0 = never
+  std::optional<Version> skipped;       // none = nothing skipped
 };
 
 // Before the network: should a fetch happen at all?
@@ -130,7 +139,8 @@ Rules encoded in `evaluate`:
 
 - If the release is not newer than the installed version (base tag for dev
   builds), the result is `UpToDate`.
-- In auto mode, if `release.tag == skippedTag`, the result is `SkippedByUser`.
+- In auto mode, if the release version equals `skipped`, the result is
+  `SkippedByUser`.
 - Otherwise the result is `UpdateAvailable`.
 
 The single `decide()` sketched during brainstorming is split into `gate` and
@@ -181,12 +191,14 @@ The owner is `mainWindow_c`, which holds one `updateChecker_c`.
     manual so its result is reported). Otherwise it creates a
     `std::shared_ptr<Shared>` holding a `std::atomic<bool> done` and the
     result, starts a detached `std::thread` that fills it via `httpGet` and
-    `parseLatestRelease`, and schedules the poll. In manual mode it shows
-    "Checking for updates…" in the status line.
+    `parseLatestRelease`, and schedules the poll. In manual mode it sets the
+    main window's cursor to `FL_CURSOR_WAIT` until the result arrives. The
+    status line can't carry a progress message because
+    `mainWindow_c::update()` rewrites it every second.
 - **Poll** (`Fl::add_timeout(0.25)`): when `done` is set, it handles the result
   on the main thread:
-  - A successful fetch and parse sets `updateLastCheck = now` and saves the
-    config, then runs `evaluate`:
+  - A successful fetch and parse sets `updateLastCheck = now / 60` and saves
+    the config, then runs `evaluate`:
     - `UpdateAvailable` opens `updateWindow_c`.
     - `UpToDate` shows "You're running the latest version (X.Y.Z)." in manual
       mode only.
@@ -205,6 +217,11 @@ The owner is `mainWindow_c`, which holds one `updateChecker_c`.
   when set, replaces the installed version string (e.g. `0.7.0`) so the dialog
   can be exercised against the live API. It is read only here and documented in
   the header.
+- **Command-line probe:** `burrtools --check-for-updates` runs the same fetch,
+  parse and manual-mode evaluation synchronously, without creating a window,
+  prints the outcome, and exits (0 on success, 1 on failure). It follows the
+  existing `--self-check` precedent in `main.cpp` and makes it possible to
+  verify the Windows and Linux backends without a GUI session.
 
 ### 3.4 `src/gui/updatewindow.{h,cpp}` — dialog
 
@@ -218,8 +235,11 @@ A modal `Fl_Double_Window` built with the existing `Layouter` widgets:
   - **Open Release Page** (default/Return): calls `fl_open_uri(htmlUrl)` and
     closes the dialog.
   - **Remind Me Later** (Escape): closes the dialog.
-  - **Skip This Version**: sets `updateSkippedVersion = tag`, saves the
-    config, and closes the dialog. Only present in auto mode.
+  - **Skip This Version**: closes the dialog. Only present in auto mode.
+
+The dialog only reports which button was pressed. The checker acts on it:
+it opens the URI, or sets `updateSkippedVersion = packVersion(version)` and
+saves the config.
 - Resizable, with a sensible minimum size.
 
 `htmlUrl` has already been validated against `RELEASES_URL_PREFIX` by the
@@ -243,10 +263,17 @@ All three are registered in `configuration_c` with `register_entry`:
 | Key | Type | Default | In Settings dialog |
 | :--- | :--- | :--- | :--- |
 | `checkForUpdates` | bool | `true` | yes — "Check for updates at startup" |
-| `updateLastCheck` | string (epoch seconds) | `"0"` | no |
-| `updateSkippedVersion` | string | `""` | no |
+| `updateLastCheck` | int (minutes since the epoch) | `0` | no |
+| `updateSkippedVersion` | int (`packVersion`, 0 = none) | `0` | no |
 
-`updateLastCheck` is a string because the config's `int` type is 32-bit.
+Both hidden entries are ints because `configuration_c::parse()` can only read
+back bools and numbers. `luaClass_c` has no string getter and `src/lua/` must
+not be modified. Minutes since the epoch fit a 32-bit int for about 4,000
+years.
+
+The configuration is otherwise only written by `~configuration_c()`. A public
+`save()` is extracted from the destructor so these values persist as soon as
+they change, and are not lost if the app later crashes.
 
 ### 3.7 Menus and startup
 
@@ -318,7 +345,8 @@ New:
 - `subprojects/nlohmann_json.wrap` (adding a wrap file, not editing a vendored
   subproject)
 - `test/test_updatecheck.cpp`
-- `test/data/github_latest_release_v0.7.1.json`
+- `test/data/github_latest_release_v0.7.1.json` (trimmed to the fields of
+  interest with `jq`)
 
 Changed:
 
