@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "mainwindow.h"
+#include "version.h"
 
 #include "mainmenu.h"
 #include "puzzlehistory.h"
@@ -2081,6 +2082,7 @@ void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); 
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
+             "Version %s\n"
              "BurrTools (c) 2003-2025 by Andreas Röver\n"
 	     "with patches from Arne Köhn, Bryan Turner, Derek Bosch, Michael Brown\n"
              "The latest version is available at github.com/burr-tools/burr-tools\n"
@@ -2094,8 +2096,8 @@ void mainWindow_c::cb_About(void) {
              "The program uses\n"
              "- Fltk, libZ, libpng, gzstream, gl2ps\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
-             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
-            );
+             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n",
+             BURRTOOLS_VERSION);
 }
 
 void mainWindow_c::StatPieceInfo(unsigned int pc) {

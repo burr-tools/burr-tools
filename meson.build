@@ -344,6 +344,13 @@ manifold_dep = manifold_proj.dependency('manifold')
 
 inc = include_directories('src')
 
+# The version git describe produced at configure time, for the About box and
+# the update check. Like the project version itself, it refreshes on
+# reconfigure, not on every commit.
+version_conf = configuration_data()
+version_conf.set_quoted('BURRTOOLS_VERSION', meson.project_version())
+version_h = configure_file(output: 'version.h', configuration: version_conf)
+
 libburr_core = static_library('burr_core',
   tools_src + halfedge_src + libburr_src,
   include_directories: inc,
