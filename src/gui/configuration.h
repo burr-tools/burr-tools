@@ -66,6 +66,20 @@ public:
 
   bool showViewCube(void) const { return i_show_view_cube; }
 
+  /* Update check. The last-check time is in minutes since the epoch and the
+   * skipped version is updatecheck::packVersion() form (0 = none): the
+   * configuration file can only carry bools and numbers back in, and both
+   * values fit an int that way.
+   */
+  bool checkForUpdates(void) const { return i_check_for_updates; }
+  int updateLastCheckMinutes(void) const { return i_update_last_check; }
+  void updateLastCheckMinutes(int val) { i_update_last_check = val; }
+  int updateSkippedVersion(void) const { return i_update_skipped_version; }
+  void updateSkippedVersion(int val) { i_update_skipped_version = val; }
+
+  /* Write the configuration file now. The destructor also writes it. */
+  void save(void);
+
   int windowPosX(void) { return i_window_pos_x; }
   int windowPosY(void) { return i_window_pos_y; }
   int windowPosW(void) { return i_window_pos_w; }
@@ -122,6 +136,9 @@ private:
   bool i_reverseScrollZoom;
   int i_num_threads;
   bool i_show_view_cube;
+  bool i_check_for_updates;
+  int i_update_last_check;
+  int i_update_skipped_version;
 
   /* computed at construction time from hardware_concurrency(), so unlike
    * every other default value here it can't be a string literal; it must
