@@ -112,7 +112,7 @@ namespace btui {
 
   /* The menus of the menu bar, in order. */
   struct MenuBarEntry {
-    std::string_view key;          ///< "file", "edit", ... -> objectName shell.menu.<key>
+    std::string_view key;          ///< "file", "edit", ... -> objectName "shell.menu." + key
     std::string_view label;        ///< with its access key, "&File"
     Menu menu = Menu::None;
   };

@@ -957,7 +957,7 @@ Nothing is removed: menus, buttons, lists, keyboard shortcuts (C22) and tooltips
 * Budgets: `migration/02-test-plan.md` §6 apply unchanged.
 
 ## 8. Build, deploy, testing
-* **Meson:** `qt6 = import('qt6')`; `qt6.qml_module('BurrTools.Ui', qml_sources: …, moc_headers: …)`; `compile_resources` for icons/glyphs/cursors. **C++20 note:** keep classes with `Q_OBJECT`/`QML_ELEMENT` in conventional headers (no C++20 module `import`s there); everything else may use concepts, ranges, `std::span`, `std::format`.
+* **Meson:** ``qt6 = import('qt6')``; ``qt6.qml_module('BurrTools.Ui', qml_sources: …, moc_headers: …)``; `compile_resources` for icons/glyphs/cursors. **C++20 note:** keep classes with `Q_OBJECT`/`QML_ELEMENT` in conventional headers (no C++20 module `import`s there); everything else may use concepts, ranges, `std::span`, `std::format`.
 * **Windows:** either build natively on Windows CI with an MSVC or MinGW Qt kit, or cross-compile with a MinGW Qt build (self-built or distro `mingw64-qt6` packages); deploy with `windeployqt` (Quick, Controls, Shapes, Svg, Dialogs, platform plugin).
 * **Tests:** C++ controller/model tests with **Qt Test** (no GUI); QML behaviour tests with **Qt Quick Test** (`TestCase`, `SignalSpy`, `mouseClick`, `keyClick`), run with `-platform offscreen` in CI; visual regression via `grabToImage()` compared with references (tolerant diff) for the screenshots in `reference/screenshots/`; stable lookups by `objectName` (spec ids). Optional external automation through the accessibility tree (UI Automation on Windows).
 * **Accessibility:** set `Accessible.name` from the tooltip/label text; this also makes external UI automation reliable.

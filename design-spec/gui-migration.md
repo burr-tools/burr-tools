@@ -38,8 +38,7 @@ Against:
 
 ## Full Analysis
 
-<html><body>
-<!--StartFragment--><html><head></head><body><p>I'd pick <strong>Qt 6 with Qt Quick (QML)</strong>, with your C++ controllers behind it and the 3D view drawn natively through Qt's GPU layer. RmlUi is the better engine for small size, minimal rendering overhead and porting the HTML mock almost as-is. Qt wins on testability, native platform features, contributor pool, AI tooling and the 5-year outlook. For a volunteer-run open-source project those factors outweigh RmlUi's performance lead, which BurrTools' workload mostly won't notice.</p>
+<p>I'd pick <strong>Qt 6 with Qt Quick (QML)</strong>, with your C++ controllers behind it and the 3D view drawn natively through Qt's GPU layer. RmlUi is the better engine for small size, minimal rendering overhead and porting the HTML mock almost as-is. Qt wins on testability, native platform features, contributor pool, AI tooling and the 5-year outlook. For a volunteer-run open-source project those factors outweigh RmlUi's performance lead, which BurrTools' workload mostly won't notice.</p>
 <p>The rest of this explains why, and what each choice costs. The performance figures are my estimates, not measurements; a short spike should confirm them.</p>
 <h2>Starting point</h2>
 <p>The codebase constrains both options. It builds with Meson on C++11 and depends on Boost, OpenGL with GLU and freeglut, FLTK 1.3, libpng and zlib; Windows binaries are cross-compiled from Linux with MinGW. The repository is GPL-3.0, its latest release is 0.7.1 (November 2025), and it has about 36 stars and 14 forks.</p>
@@ -152,6 +151,4 @@ OS accessibility tree (also used by UI automation) | None | Yes
 <p>Choose <strong>RmlUi</strong> only if the smallest footprint and lowest rendering overhead are hard requirements. In that case accept owning the platform layer, the test harness and a pinned, vendored copy of the library.</p>
 <p>Before committing, I'd run a <strong>two-week spike in both</strong>: the Solver right card plus the 3D view with the view cube. Measure cold start, memory, frame time while dragging, package size, and how hard a screenshot test is to write in CI. That would replace my estimates with numbers.</p>
 <p>Either way, build the controllers first against the spec's UI contract; that work carries over to whichever framework wins.</p>
-<p>If you choose Qt, the spec's behaviour documents stay valid. I'd replace <code>foundations/rmlui-implementation-guide.md</code> with a Qt Quick guide and map the contract's ids and classes to QML object names and states.</p></body></html><!--EndFragment-->
-</body>
-</html>
+<p>If you choose Qt, the spec's behaviour documents stay valid. I'd replace <code>foundations/rmlui-implementation-guide.md</code> with a Qt Quick guide and map the contract's ids and classes to QML object names and states.</p>
