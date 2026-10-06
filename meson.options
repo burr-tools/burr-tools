@@ -1,1 +1,3 @@
 option('python', type: 'feature', value: 'auto', description: 'Build Python wrapper module')
+option('qt_gui', type: 'feature', value: 'auto', description: 'Build burrtools-qt, the redesigned Qt 6 Quick GUI (needs Qt >= 6.8)')
+option('qt_static', type: 'boolean', value: false, description: 'Link burrtools-qt with a static Qt (found through its qmake, e.g. MSYS2 qt6-static) into one standalone program; the Qt tests are not built')

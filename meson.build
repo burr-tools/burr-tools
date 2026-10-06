@@ -302,11 +302,17 @@ if not fltk_dep.found()
 endif
 
 
-link_args=[]
+# The Windows binaries are linked fully static so they run without shipping
+# any DLLs. These used to be project-wide link arguments; they are now passed
+# to each legacy target explicitly, because the Qt GUI (src/qtgui) links
+# against Qt's shared libraries, and a static C++ runtime in its executable
+# would sit next to the one those DLLs already load -- two copies of libstdc++
+# in one process. Every target that had them before still gets exactly the
+# same arguments.
+legacy_link_args = []
 
 if host_machine.system() == 'windows'
-  # add_project_arguments('-Wl,-lws2_32', language: ['cpp'])
-  link_args += [
+  legacy_link_args += [
     '-static'
     ,'-static-libgcc'
     ,'-static-libstdc++'
@@ -314,9 +320,6 @@ if host_machine.system() == 'windows'
     ,'-lcomctl32'
   ]
 endif
-
-add_project_link_arguments(link_args,
-			   language: ['c', 'cpp', 'objc'])
 
 # Manifold (https://github.com/elalish/manifold): the boolean / Minkowski
 # engine behind the chamfered STL export of the non-cube grids. Built from
@@ -349,11 +352,13 @@ libburr_core = static_library('burr_core',
 executable('burrTxt', ['src/burrTxt.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 burrtxt2_exe = executable('burrTxt2', ['src/burrTxt2.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 # get_supported_arguments so these stay a no-op on compilers without the flag
@@ -379,16 +384,72 @@ executable('burrtools', gui_src,
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
           dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          link_args: legacy_link_args,
           win_subsystem: 'windows',
 	  )
+
+# The GUI-independent parts of the user interface: camera and view-cube maths,
+# mesh building and picking for the 3D view, the layout model, the command
+# table, the document session and the settings store. Nothing in here may
+# include a toolkit header -- that is what lets test_burrtools cover it
+# without Qt or FLTK, and what keeps a later toolkit change cheap.
+#
+# The document session uses puzzleHistory_c, which lives in src/gui and was
+# GUI-free before this library existed. It is not compiled in here because
+# test_burrtools already compiles it itself; burr_guicommon carries it (and
+# its neighbour solveprogresscache) for the Qt GUI instead.
+libburr_uicore = static_library('burr_uicore', [
+    'src/uicore/assemblyscene.cpp',
+    'src/uicore/camera.cpp',
+    'src/uicore/commands.cpp',
+    'src/uicore/documentsession.cpp',
+    'src/uicore/imagepages.cpp',
+    'src/uicore/layoutmodel.cpp',
+    'src/uicore/palette.cpp',
+    'src/uicore/puzzletools.cpp',
+    'src/uicore/scenemesh.cpp',
+    'src/uicore/settingsstore.cpp',
+    'src/uicore/vecmath.cpp',
+    'src/uicore/vectorexport.cpp',
+    'src/uicore/viewcube.cpp',
+    'src/uicore/windowplacement.cpp',
+  ],
+  include_directories: inc,
+  link_with: libburr_core,
+  dependencies: [thread_dep, zlib_dep],
+)
+
+libburr_guicommon = static_library('burr_guicommon', [
+    'src/gui/puzzlehistory.cpp',
+    'src/gui/solveprogresscache.cpp',
+  ],
+  include_directories: inc,
+  link_with: libburr_core,
+)
+
+uicore_test_src = [
+  'test/test_ui_assemblyscene.cpp',
+  'test/test_ui_camera.cpp',
+  'test/test_ui_commands.cpp',
+  'test/test_ui_documentsession.cpp',
+  'test/test_ui_layoutmodel.cpp',
+  'test/test_ui_palette.cpp',
+  'test/test_ui_puzzletools.cpp',
+  'test/test_ui_scenemesh.cpp',
+  'test/test_ui_settingsstore.cpp',
+  'test/test_ui_vectorexport.cpp',
+  'test/test_ui_viewcube.cpp',
+  'test/test_ui_windowplacement.cpp',
+]
 
 catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
 
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
-    'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp'],
+    'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp'] + uicore_test_src,
   include_directories: inc,
-  link_with: libburr_core,
+  link_with: [libburr_core, libburr_uicore],
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
 )
 
@@ -447,6 +508,7 @@ if not python_opt.disabled()
         python_src,
         include_directories: inc,
         link_with: libburr_core,
+        link_args: legacy_link_args,
         dependencies: [pybind11_dep, thread_dep, zlib_dep],
       )
 
@@ -481,4 +543,46 @@ if not meson.is_cross_build()
     timeout: 300,
     workdir: meson.project_source_root(),
   )
+endif
+
+# burrtools-qt: the redesigned GUI (design-spec/, the Qt 6 Quick profile).
+# It is a second, independent binary next to the FLTK burrtools; nothing in
+# the legacy GUI depends on it. 'auto' builds it whenever a new enough Qt is
+# installed and silently skips it otherwise, so a checkout without Qt still
+# builds and tests everything else exactly as before.
+#
+# Qt >= 6.8: QQuickRhiItem (the 3D view's host) arrived in 6.7, and 6.8 is the
+# LTS the implementation guide names as the floor. private_headers is needed
+# for QRhi, which Qt ships in its semi-private include directory.
+#
+# qt.qml_module() needs meson >= 1.7. The project as a whole does not demand
+# that -- CI installs an older meson for the legacy jobs -- so an older meson
+# simply skips this GUI (or refuses, when it was asked for explicitly).
+qt_gui_opt = get_option('qt_gui')
+if meson.version().version_compare('<1.7')
+  if qt_gui_opt.enabled()
+    error('qt_gui needs meson >= 1.7, this is ' + meson.version())
+  endif
+  qt_gui_opt = qt_gui_opt.disable_auto_if(true)
+endif
+
+# qt_static: a static Qt, found through its qmake (point meson at it with a
+# native file: [binaries] qmake = '.../qt6-static/bin/qmake6'), linked into
+# one standalone burrtools-qt (src/qtgui/meson.build adds the plugins a
+# static program must name). The Qt tests stay with the shared build.
+qt_static = get_option('qt_static')
+qt6_dep = dependency('qt6',
+  modules: ['Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg'],
+  private_headers: true,
+  version: '>=6.8',
+  required: qt_gui_opt,
+  method: qt_static ? 'qmake' : 'auto',
+  static: qt_static,
+)
+
+if qt6_dep.found()
+  subdir('src/qtgui')
+  if not qt_static
+    subdir('test/qtgui')
+  endif
 endif

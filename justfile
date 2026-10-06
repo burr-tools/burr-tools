@@ -73,6 +73,7 @@ check-cppcheck: setup
              --suppress="*:*src/lua*" \
              --suppress="*:*/usr/include/*" \
              --suppress="preprocessorErrorDirective:*python*" \
+             --suppress="preprocessorErrorDirective:*qt6*" \
              --enable=warning,performance,portability \
              --inline-suppr \
              --error-exitcode=1 \
@@ -175,6 +176,43 @@ test-release:
 # Headless GUI invariant check (menu table consistency)
 check-gui: build
     ./build/burrtools --self-check
+
+# --- burrtools-qt, the redesigned GUI (src/qtgui) ---------------------------
+# Built by `just build` whenever Qt >= 6.8 and meson >= 1.7 are installed
+# (-Dqt_gui=auto); these recipes insist on it and fail clearly when it is not.
+
+# Configure the build directory with the Qt GUI required, then build
+build-qt: setup
+    meson configure build -Dqt_gui=enabled
+    ninja -C build
+
+# Run burrtools-qt, optionally with a puzzle file: just run-qt examples/PelikanBurr.xmpuzzle
+run-qt *args: build-qt
+    ./build/src/qtgui/burrtools-qt {{args}}
+
+# Open the component gallery: every primitive in every state (light/dark toggle)
+run-gallery: build-qt
+    ./build/src/qtgui/burrtools-qt --gallery
+
+# Run only the Qt GUI tests (controllers, QML shell, gallery at each dp ratio)
+# plus its self-check
+test-qt: build-qt
+    ./build/src/qtgui/burrtools-qt --self-check
+    meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+
+# Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
+update-snapshots rows="": build-qt
+    BURRTOOLS_UPDATE_SNAPSHOTS=1 BURRTOOLS_SNAPSHOTS_ONLY="{{rows}}" meson test -C build --print-errorlogs qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+
+# Self-contained burrtools-qt preview in artifacts/qt: zip (Windows), .app (macOS), AppImage (Linux); as CI
+deploy-qt:
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true -Dqt_gui=enabled; else meson configure build-rel -Dqt_gui=enabled; fi
+    ninja -C build-rel src/qtgui/burrtools-qt
+    bash scripts/package-qt.sh build-rel artifacts/qt
+
+# Standalone burrtools-qt.exe with static Qt in artifacts/qt-static (MSYS2 qt6-static; as qt-standalone.yml)
+build-qt-static:
+    bash scripts/build-qt-static.sh build-static artifacts/qt-static
 
 # Generate the Doxygen API reference into gendoc/html
 #
