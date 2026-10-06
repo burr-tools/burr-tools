@@ -21,6 +21,15 @@ this note — prefer the `.dmg` unless you know you want only the app.
 Linux and Windows archives; the macOS builds publish them as separate
 downloads.
 
+### Preview: the redesigned GUI
+
+A redesigned interface, `burrtools-qt` (Qt 6 Quick), is being built next to
+the classic one; see [`src/qtgui/README.md`](src/qtgui/README.md) for what
+it is and what is done. It is not released yet: preview builds for each
+platform are attached to every CI run (Actions ▸ a run ▸ Artifacts ▸
+`burrtools-qt-<os>`), and [`BUILD.md`](BUILD.md#qt-gui-burrtools-qt) shows how
+to build it.
+
 ### macOS: "BurrTools.app is damaged and can't be opened"
 
 This is expected on a first launch, and the app is not damaged. BurrTools is

@@ -55,9 +55,11 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 
 - **`src/lib/`**: Core domain logic. Contains voxel grids (`voxel*.cpp`), polycube symmetries (`symmetries_*.cpp`), puzzle definitions (`puzzle.cpp`, `problem.cpp`), assembly/disassembly algorithms, and solver engines (`assembler_*.cpp`, `disassembler_*.cpp`, `solvethread.cpp`).
 - **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
+- **`src/qtgui/`**: `burrtools-qt`, the redesigned Qt 6 Quick GUI (a preview next to the FLTK one): C++ controllers, the QML module `BurrTools.Ui` (`qml/`), the QRhi 3D renderer (`scenerenderer.cpp`, `shaders/`). Read [`src/qtgui/README.md`](src/qtgui/README.md) first; the spec is `design-spec/BurrTools-SPEC-FULL-FINAL-v6.md` (every spec document in one file, each part marked `<!-- FILE: path -->`).
+- **`src/uicore/`**: Toolkit-free UI logic shared by the Qt GUI and its tests (command table, camera, view cube, scene meshes, layout, settings store). No Qt or FLTK here.
 - **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
 - **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite
+- **`test/`**: Catch2 v3 automated regression test suite (`test_ui_*.cpp` cover `src/uicore`); **`test/qtgui/`** holds the Qt Test and Qt Quick Test suites and the gallery's reference images (`snapshots/<os>/`, rewritten with `just update-snapshots`).
 - **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
 - **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
 - **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
@@ -173,6 +175,8 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 | :--- | :--- | :--- |
 | `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
 | `tsan-parallel` | Data races in the parallel assembler and disassembler. | No other job runs a sanitizer. |
+| `qt-linux`, `qt-windows`, `qt-macos` | Breakage in `burrtools-qt`: controllers, QML, renders (WARP on Windows, lavapipe Vulkan on Linux — required, not skipped), gallery reference images (Windows). Each uploads a preview build. | The legacy jobs build without Qt. |
+| `qt-standalone.yml` (on demand, release tags) | A static `burrtools-qt.exe` that still loads an MSYS2 library, or fails its self-check. Attaches the standalone program to the release. | Too slow for every push (550 MB static Qt download). |
 
 ### Rules for SIMD and intrinsics
 

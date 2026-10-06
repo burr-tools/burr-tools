@@ -204,3 +204,67 @@ just build-asan    # AddressSanitizer & UndefinedBehaviorSanitizer
 just build-tsan    # ThreadSanitizer (useful for diagnosing solver data races)
 ```
 
+## Qt GUI (burrtools-qt)
+
+`burrtools-qt` is the redesigned GUI, a preview next to the FLTK
+`burrtools`; what it is and how it is built inside is described in
+[`src/qtgui/README.md`](src/qtgui/README.md). It is built when Qt is found
+(the `qt_gui` meson option is `auto`; `-Dqt_gui=enabled` makes a missing Qt
+an error).
+
+**Needs:** Qt ≥ 6.8 with the Declarative (Qt Quick), ShaderTools, Svg and
+Tools modules, and meson ≥ 1.7.
+
+| Platform | Getting Qt |
+| :--- | :--- |
+| Windows | MSYS2 UCRT64: `pacman -S mingw-w64-ucrt-x86_64-qt6-{base,declarative,shadertools,svg,tools} zip` |
+| macOS | `brew install qt` |
+| Linux | the Qt online installer or `aqtinstall` (distributions often ship an older Qt), with `qtshadertools`; the render tests also use `mesa-vulkan-drivers` |
+
+```bash
+just build-qt        # configure with -Dqt_gui=enabled and build
+just run-qt [file]   # run it, optionally on a puzzle file
+just run-gallery     # the component gallery: every primitive in every state
+just test-qt         # the self-check and the Qt tests (controllers, renders, QML)
+just update-snapshots [rows] # rewrite the gallery reference images that changed (all rows, or e.g. button,switch)
+just deploy-qt       # a self-contained build in artifacts/qt (zip / .app / AppImage)
+just build-qt-static # Windows: one standalone burrtools-qt.exe (static Qt) in artifacts/qt-static
+```
+
+**Standalone Windows program.** `just build-qt-static` (an MSYS2 UCRT64
+shell with `mingw-w64-ucrt-x86_64-qt6-static` installed, a 2.8 GB package)
+links Qt and the C/C++ runtimes into one `burrtools-qt.exe` of about 50 MB
+(20 MB zipped) that needs nothing beside it on Windows 10 and later. It
+configures a separate `build-static` directory with `-Dqt_static=true`;
+`scripts/qt_static_link.py` works out the static link line and the plugin
+imports. CI builds it only on demand and for releases (the *Qt standalone
+build* workflow), not on every push.
+
+`burrtools-qt` also takes `--gallery`, `--screenshot=<file.png>` (draw the
+window once, save it, quit), `--command=<key>` (run a command, e.g.
+`export.stl`, once the window is up) and `--self-check`.
+
+Environment variables:
+
+| Variable | Effect |
+| :--- | :--- |
+| `BURRTOOLS_QT_SETTINGS` | use this settings file instead of `.burrtools-qt.rc`; the pipeline caches go beside it and Qt's own disk cache is switched off — for scripted runs that must not touch the user's files |
+| `BURRTOOLS_RHI` | the 3D view's graphics API: `d3d11`, `d3d12`, `vulkan`, `opengl` or `metal` |
+| `BURRTOOLS_OFFSCREEN_RHI` | the same for the image export and the render tests |
+| `BURRTOOLS_TEST_QPA` | the platform plugin for `test_qtgui` (default `offscreen`; Linux CI uses `xcb` on Xvfb for Vulkan) |
+| `BURRTOOLS_REQUIRE_GPU_TESTS` | render tests fail instead of skipping when no graphics backend can be made |
+| `BURRTOOLS_REQUIRE_SNAPSHOTS` | a missing gallery reference image fails instead of skipping |
+| `BURRTOOLS_UPDATE_SNAPSHOTS=1` | gallery checks write their grabs as the new references, only where missing or no longer matching |
+| `BURRTOOLS_SNAPSHOTS_ONLY` | comma-separated gallery rows (`button,switch`) to check or update; unset: all |
+
+The tests run headless. Render tests draw through Direct3D's WARP software
+rasteriser on Windows and need no GPU; on Linux they need Vulkan, which
+Mesa's lavapipe provides (`VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`
+and `BURRTOOLS_TEST_QPA=xcb` under `xvfb-run`, as CI does).
+
+CI builds and tests the Qt GUI on Linux, Windows and macOS and uploads a
+preview build of each as the workflow artifact `burrtools-qt-<os>`. The
+*Qt standalone build* workflow (`.github/workflows/qt-standalone.yml`) makes
+the standalone Windows program: run it by hand from the Actions tab
+(optionally naming a release tag to attach to), and it runs by itself for
+every `v*.*.*` tag, attaching the program to the release.
