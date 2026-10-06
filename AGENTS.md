@@ -27,6 +27,11 @@ Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
 Apple Clang emits coverage data that plain `gcov` cannot parse.
 
+**Coverage is reported per area.** The library (`src/lib`, `src/tools`, `src/halfedge`)
+is the figure compared across PRs; `src/uicore` (Catch2 `[ui]` cases) and `src/qtgui`
+(the Qt suites, C++ only — gcov does not see QML) are reported beside it. When Qt ≥ 6.8
+is found, the coverage build includes the Qt GUI and runs its suites too.
+
 **First `just coverage` run is slow.** It configures a fresh `build-cov` directory and
 compiles all subprojects under instrumentation from scratch — expect several minutes,
 not the sub-second/few-second times above. Subsequent runs are incremental and much

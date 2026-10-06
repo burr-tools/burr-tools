@@ -679,7 +679,7 @@ namespace {
         default: return false;
       }
       window = std::make_unique<QQuickWindow>(&control);
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
       if (QVulkanInstance * vk = renderer.vulkanInstance())
         window->setVulkanInstance(vk);
 #endif
@@ -844,7 +844,7 @@ namespace {
   struct CachedWindow {
     std::unique_ptr<QQuickRenderControl> control = std::make_unique<QQuickRenderControl>();
     std::unique_ptr<QQuickWindow> window;
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
     QVulkanInstance vulkan;
 #endif
     std::unique_ptr<QRhiTexture> tex;
@@ -869,7 +869,7 @@ namespace {
       }
       QQuickWindow::setGraphicsApi(api);
       window = std::make_unique<QQuickWindow>(control.get());
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
       if (api == QSGRendererInterface::Vulkan) {
         vulkan.setExtensions(QRhiVulkanInitParams::preferredInstanceExtensions());
         if (!vulkan.create())

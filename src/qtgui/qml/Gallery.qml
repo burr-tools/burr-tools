@@ -379,7 +379,10 @@ ApplicationWindow {
                 }
                 GalleryRow {
                     name: "keyBadge"; label: "PR-15 Key badge"
-                    Cell { kind: "keys"; Row { spacing: 6; KeyBadge { text: "Ctrl" } KeyBadge { text: "Shift" } KeyBadge { text: "F2" } KeyBadge { text: "⌘" } } }
+                    // ⌘ only where shortcuts show it: elsewhere the monospace font
+                    // (Consolas) has no such glyph, and whichever font stands in
+                    // differs between machines -- the reference images with it
+                    Cell { kind: "keys"; Row { spacing: 6; KeyBadge { text: "Ctrl" } KeyBadge { text: "Shift" } KeyBadge { text: "F2" } KeyBadge { text: Qt.platform.os === "osx" ? "⌘" : "Esc" } } }
                     Cell {
                         kind: "shortcut"
                         ShortcutKeys { keys: [ [ { text: "Ctrl", mouse: false }, { text: "Z", mouse: false } ], [ { text: "Middle-drag", mouse: true } ] ] }

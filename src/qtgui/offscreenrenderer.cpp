@@ -24,7 +24,7 @@
 #include <QOffscreenSurface>
 #include <QPainter>
 #include <rhi/qrhi.h>
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
 #include <QVulkanInstance>
 #endif
 
@@ -33,7 +33,7 @@
 struct OffscreenRenderer::Impl {
   // what the QRhi is made from, declared first so they outlive it
   std::unique_ptr<QOffscreenSurface> surface;   // OpenGL
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
   std::unique_ptr<QVulkanInstance> vulkan;      // Vulkan
 #endif
   std::unique_ptr<QRhi> rhi;
@@ -136,7 +136,7 @@ OffscreenRenderer::OffscreenRenderer(Backend b) : d(std::make_unique<Impl>()) {
     d->rhi.reset(QRhi::create(QRhi::Metal, &p, kFlags));
   }
 #endif
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
   /* Vulkan needs an instance from the platform plugin, which the headless
    * "offscreen" one does not provide: on Linux CI this runs under Xvfb, with
    * Mesa's software lavapipe as the device */
@@ -170,7 +170,7 @@ QRhi * OffscreenRenderer::rhi(void) const {
 }
 
 QVulkanInstance * OffscreenRenderer::vulkanInstance(void) const {
-#if QT_CONFIG(vulkan)
+#if BTQT_VULKAN
   return d->rhi ? d->vulkan.get() : nullptr;
 #else
   return nullptr;

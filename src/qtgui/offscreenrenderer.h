@@ -25,8 +25,18 @@
 
 #include <QImage>
 #include <QSize>
+#include <QtGui/qtguiglobal.h>
 
 #include <memory>
+
+/* Whether Qt's Vulkan classes can be used here -- Qt's own condition for
+ * declaring them: built with Vulkan, and vulkan.h found where this is
+ * compiled. Homebrew's Qt for macOS has the first without the second. */
+#if QT_CONFIG(vulkan) && __has_include(<vulkan/vulkan.h>)
+#define BTQT_VULKAN 1
+#else
+#define BTQT_VULKAN 0
+#endif
 
 class QRhi;
 class QVulkanInstance;

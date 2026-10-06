@@ -176,17 +176,49 @@ jobs:
     - name: Update package list
       run: sudo apt-get update
 
+    # The Qt GUI's packages as in qt-linux, so the coverage build has
+    # burrtools-qt and its suites too; meson >= 1.7 from pip, which that GUI
+    # needs (Ubuntu's is older).
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev gcovr
+      run: |
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev gcovr \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    # Mesa's software Vulkan driver (lavapipe), found rather than named: its
+    # manifest's file name has changed between Mesa releases. The summary
+    # shows in the log which Vulkan device the render tests will get.
+    - name: Find lavapipe
+      run: |
+        ls /usr/share/vulkan/icd.d/
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+        VK_DRIVER_FILES="$icd" vulkaninfo --summary
 
     - name: Install just
       uses: extractions/setup-just@v2
 
     # `shell: bash` sets pipefail, so a gcovr failure is not masked by tee's
-    # exit status.
+    # exit status. The Qt suites' render tests run as in qt-linux: Vulkan on
+    # Mesa's lavapipe, test_qtgui as "xcb" on Xvfb.
     - name: Report coverage and generate HTML report
       shell: bash
-      run: just coverage-html | tee coverage-summary.txt
+      env:
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+        VK_LOADER_DEBUG: error
+      run: xvfb-run -a just coverage-html | tee coverage-summary.txt
 
     # Uploaded before the report body is built, so the body can link to it:
     # the artifact-url output does not exist until the upload has run.
@@ -206,12 +238,14 @@ jobs:
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(lines|functions|branches):' coverage-summary.txt
+          grep -E '^(\[|lines:|functions:|branches:)' coverage-summary.txt
           echo '```'
           echo
           echo "Measured on ubuntu-latest with gcc. Coverage numbers are"
           echo "toolchain-specific, so this Linux figure is the canonical one for"
-          echo "comparing across pull requests."
+          echo "comparing across pull requests -- the library's, the first block;"
+          echo "the redesigned GUI's layers (src/uicore, and src/qtgui's C++ but"
+          echo "not its QML) are reported beside it."
           echo
           # artifact-url is empty if the upload was skipped or failed; fall
           # back to the run, which lists whatever artifacts do exist.
@@ -478,7 +512,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ninja-build build-essential cmake libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev \
-          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
           xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 imagemagick
         pip install --user "meson>=1.7"
@@ -495,6 +529,16 @@ jobs:
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
         ninja -C build-qt
 
+    # Mesa's software Vulkan driver (lavapipe), found rather than named: its
+    # manifest's file name has changed between Mesa releases. The summary
+    # shows in the log which Vulkan device the render tests will get.
+    - name: Find lavapipe
+      run: |
+        ls /usr/share/vulkan/icd.d/
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+        VK_DRIVER_FILES="$icd" vulkaninfo --summary
+
     - name: Self-check
       run: ./build-qt/src/qtgui/burrtools-qt --self-check
 
@@ -508,7 +552,7 @@ jobs:
         BURRTOOLS_TEST_QPA: xcb
         BURRTOOLS_OFFSCREEN_RHI: vulkan
         BURRTOOLS_REQUIRE_GPU_TESTS: '1'
-        VK_DRIVER_FILES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+        VK_LOADER_DEBUG: error
       run: xvfb-run -a meson test -C build-qt --suite fast --print-errorlogs
 
     # The gallery's grabs: there are no Linux reference images yet, so the
