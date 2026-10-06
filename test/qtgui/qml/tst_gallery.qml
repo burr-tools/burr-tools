@@ -68,12 +68,15 @@ TestCase {
     }
 
     // scroll the body so the item is in view (grabs see only the window)
+    // always to the same scroll position for a row, whatever ran before it: at
+    // a fractional ratio (1.5) text lands on another sub-pixel phase when the
+    // row sits elsewhere, so a filtered run (BURRTOOLS_SNAPSHOTS_ONLY) has to
+    // place each row exactly as a full run does
     function reveal(item) {
         const flick = findChild(win.contentItem, "gallery.body")
         const body = flick.contentItem
         const top = item.mapToItem(body, 0, 0).y
-        if (top < flick.contentY + 8 || top + item.height > flick.contentY + flick.height - 8)
-            flick.contentY = Math.max(0, Math.min(top - 16, flick.contentHeight - flick.height))
+        flick.contentY = Math.max(0, Math.min(top - 16, flick.contentHeight - flick.height))
     }
 
     // the pointer off every control, the keyboard focus on none

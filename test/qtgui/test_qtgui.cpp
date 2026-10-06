@@ -30,6 +30,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -96,6 +97,27 @@ private slots:
     QTemporaryDir dir;
     App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
     QCOMPARE(QGuiApplication::font().families(), stack);
+  }
+
+  void theMonoFontIsTheTokensStack() {
+    // font.mono: ui-monospace, Menlo, Consolas, monospace -- the first one
+    // installed, not whatever the system names its fixed font, so the key
+    // badges look (and snapshot) the same on every Windows edition
+    const QString mono = Theme::instance()->monoFamily();
+    const QString fixed = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+#if defined(Q_OS_MACOS)
+    QCOMPARE(mono, fixed);
+#else
+    if (QFontDatabase::hasFamily(QStringLiteral("Menlo")))
+      QCOMPARE(mono, QStringLiteral("Menlo"));
+    else if (QFontDatabase::hasFamily(QStringLiteral("Consolas")))
+      QCOMPARE(mono, QStringLiteral("Consolas"));
+    else
+      QCOMPARE(mono, fixed);
+#endif
+#ifdef Q_OS_WIN
+    QCOMPARE(mono, QStringLiteral("Consolas"));   // on every Windows edition
+#endif
   }
 
   void requestsTheForcedSchemeFromThePlatform() {

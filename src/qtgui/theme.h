@@ -162,6 +162,7 @@ public:
   qreal fontMicro(void) const { return num("font.micro"); }
   qreal fontCaption(void) const { return num("font.glyphCaption"); }
   qreal fontKeyBadge(void) const { return num("font.keyBadge"); }
+  /* The monospace family of design-tokens' font.mono stack (key badges). */
   QString monoFamily(void) const;
   /* The body font stack of design-tokens §2 as Qt family names, in order:
    * the system UI font for CSS's -apple-system on macOS only, and no
@@ -221,6 +222,7 @@ private:
   QHash<QString, QColor> m_light, m_darkColors;
   QHash<QString, qreal> m_numbers;   ///< flattened numeric tokens, "density.standard.topBar" etc.
   QString m_fontStack;               ///< font.family, as the token file writes it (CSS)
+  QString m_monoStack;               ///< font.mono, likewise
 };
 
 #endif

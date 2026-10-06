@@ -21,10 +21,12 @@
 #include "vectorexport.h"
 
 #include <algorithm>
-#include <charconv>
 #include <cmath>
 #include <cstdio>
+#include <iomanip>
+#include <locale>
 #include <map>
+#include <sstream>
 
 namespace btui {
 
@@ -120,16 +122,19 @@ namespace btui {
 
     // --- number output, independent of the C locale ------------------------
 
+    // A stream in the classic locale rather than std::to_chars: macOS's libc++
+    // has floating-point to_chars only from macOS 13.3 on.
     void num(std::string & s, float v) {
       if (std::fabs(v) < 0.0005f)
         v = 0;
-      char buf[32];
-      auto r = std::to_chars(buf, buf + sizeof buf, double(v), std::chars_format::fixed, 3);
+      std::ostringstream o;
+      o.imbue(std::locale::classic());
+      o << std::fixed << std::setprecision(3) << double(v);
+      std::string t = o.str();
       // trim trailing zeros: 12.500 -> 12.5, 3.000 -> 3
-      char * end = r.ptr;
-      while (end > buf && end[-1] == '0') end--;
-      if (end > buf && end[-1] == '.') end--;
-      s.append(buf, end);
+      while (!t.empty() && t.back() == '0') t.pop_back();
+      if (!t.empty() && t.back() == '.') t.pop_back();
+      s += t;
     }
 
     std::string hex(float r, float g, float b) {

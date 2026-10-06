@@ -73,7 +73,11 @@ QImage Snapshots::grab(QQuickItem * item) {
     return all;
   const qreal dpr = item->window()->effectiveDevicePixelRatio();
   const QRectF scene = item->mapRectToScene(QRectF(0, 0, item->width(), item->height()));
-  const QRect px = QRectF(scene.x() * dpr, scene.y() * dpr, scene.width() * dpr, scene.height() * dpr).toAlignedRect();
+  /* The size from the item's size alone, not from where it sits: at a
+   * fractional ratio (1.5) an aligned rect would gain a pixel or not with the
+   * scroll position, which differs between a full run and a filtered one. */
+  const QRect px(QPoint(qRound(scene.x() * dpr), qRound(scene.y() * dpr)),
+                 QSize(qRound(scene.width() * dpr), qRound(scene.height() * dpr)));
   return all.copy(px.intersected(all.rect()));
 }
 

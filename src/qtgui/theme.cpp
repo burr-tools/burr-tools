@@ -118,6 +118,7 @@ void Theme::load(void) {
   };
   walk(QString(), root);
   m_fontStack = root.value(QStringLiteral("font")).toObject().value(QStringLiteral("family")).toString();
+  m_monoStack = root.value(QStringLiteral("font")).toObject().value(QStringLiteral("mono")).toString();
 
   auto readColors = [&](const QJsonObject & o, QHash<QString, QColor> & out) {
     for (auto it = o.begin(); it != o.end(); ++it)
@@ -181,7 +182,25 @@ int Theme::motion(const QString & key) const {
 }
 
 QString Theme::monoFamily(void) const {
-  return QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+  /* The first installed family of the token's stack, as a browser picks it:
+   * ui-monospace is the system UI monospace on macOS only (browsers skip it
+   * elsewhere), monospace the system fixed font. Windows thus always gets
+   * Consolas -- on every edition, so the key badges look, and snapshot, the
+   * same everywhere -- rather than whatever the system names its fixed font. */
+  const QString fixed = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+  for (QString f : m_monoStack.split(QLatin1Char(','))) {
+    f = f.trimmed().remove(QLatin1Char('\'')).remove(QLatin1Char('"'));
+    if (f == QLatin1String("ui-monospace")) {
+#ifdef Q_OS_MACOS
+      return fixed;
+#endif
+    } else if (f == QLatin1String("monospace")) {
+      return fixed;
+    } else if (!f.isEmpty() && QFontDatabase::hasFamily(f)) {
+      return f;
+    }
+  }
+  return fixed;
 }
 
 QStringList Theme::fontFamilies(void) const {

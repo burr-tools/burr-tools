@@ -92,7 +92,11 @@ struct OffscreenRenderer::Impl {
                QImage::Format_RGBA8888_Premultiplied);
     img = img.copy();
     if (rhi->isYUpInFramebuffer())
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
       img = img.flipped(Qt::Vertical);
+#else
+      img = img.mirrored(false, true);  // flipped() arrived in 6.9; 6.8 is the floor
+#endif
     return img;
   }
 };
