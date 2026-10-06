@@ -311,9 +311,34 @@ ApplicationWindow {
         onRejected: App.document.resolveDiscard(DocumentController.Cancel)
     }
 
+    // Messages wait in a queue and open one at a time, once the window is laid
+    // out. A file named on the command line is loaded while the window is
+    // still being created: a dialog opened then is centred on a window of no
+    // size, at the screen's corner and mostly off it. And one file can raise
+    // two (an unfinished search, then its comment), which legacy showed in turn.
+    property var pendingMessages: []
+    function showMessage(title, text) {
+        pendingMessages.push({ title: title, text: text })
+        showNextMessage()
+    }
+    function showNextMessage() {
+        if (messageDialog.visible || pendingMessages.length === 0 || win.Overlay.overlay.width <= 0)
+            return
+        const m = pendingMessages.shift()
+        messageDialog.title = m.title
+        messageDialog.text = m.text
+        messageDialog.open()
+    }
+    Connections {
+        target: win.Overlay.overlay
+        function onWidthChanged() { win.showNextMessage() }
+    }
+
     MessageDialog {
         id: messageDialog
+        objectName: "shell.message"
         buttons: MessageDialog.Ok
+        onVisibleChanged: if (!messageDialog.visible) Qt.callLater(win.showNextMessage)
     }
 
     MessageDialog {
@@ -332,7 +357,7 @@ ApplicationWindow {
         function onImportFileRequested() { importDialog.open() }
         function onSaveAsRequested() { saveDialog.open() }
         function onQuitApproved() { win.saveGeometry(); win.quitApproved = true; Qt.quit() }
-        function onMessageRequested(title, text) { messageDialog.title = title; messageDialog.text = text; messageDialog.open() }
+        function onMessageRequested(title, text) { win.showMessage(title, text) }
     }
 
     Connections {

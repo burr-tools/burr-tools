@@ -484,4 +484,22 @@ TestCase {
         compare(App.viewport.viewportSize.width, surface.width)
         compare(App.viewport.viewportSize.height, surface.height)
     }
+
+    function test_messagesOpenOneAtATime() {
+        // one file can raise two messages (an unfinished search, then its
+        // comment): they open in turn, the second not over the first
+        const dialog = findChild(win, "shell.message")
+        verify(dialog !== null)
+        App.document.messageRequested("First", "one")
+        App.document.messageRequested("Second", "two")
+        tryCompare(dialog, "visible", true)
+        compare(dialog.title, "First")
+        compare(win.pendingMessages.length, 1)
+        dialog.close()
+        tryCompare(dialog, "title", "Second")
+        tryCompare(dialog, "visible", true)
+        compare(win.pendingMessages.length, 0)
+        dialog.close()
+        tryCompare(dialog, "visible", false)
+    }
 }
