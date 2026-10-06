@@ -36,6 +36,18 @@ void puzzleHistory_c::setMaxUndo(unsigned int depth) {
   if (depth < 1) depth = 1;
   if (depth > MAX_UNDO) depth = MAX_UNDO;
   maxUndo_ = depth;
+  // a smaller limit applies to the steps already kept, not only to new ones
+  while (cursor > maxUndo_)
+    evictOldest();
+}
+
+void puzzleHistory_c::evictOldest(void) {
+  snapshots.pop_front(); // O(1) with deque
+  if (cursor > 0) cursor--;
+  if (savedCursorValid) {
+    if (savedCursor > 0) savedCursor--;
+    else savedCursorValid = false; // save point evicted from front
+  }
 }
 
 puzzleHistory_c::~puzzleHistory_c(void) {
@@ -256,14 +268,8 @@ void puzzleHistory_c::pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
     snapshots.push_back(capture(puzzle, selectedShape, kind, prevSnap));
     cursor = (unsigned int)(snapshots.size() - 1);
 
-    while (snapshots.size() > maxUndo_ + 1) {
-      snapshots.pop_front(); // O(1) with deque
-      if (cursor > 0) cursor--;
-      if (savedCursorValid) {
-        if (savedCursor > 0) savedCursor--;
-        else savedCursorValid = false; // save point evicted from front
-      }
-    }
+    while (snapshots.size() > maxUndo_ + 1)
+      evictOldest();
   }
 
   lastKind = kind;

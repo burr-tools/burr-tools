@@ -328,6 +328,67 @@ TEST_CASE("savedCursor sentinel: isModifiedFromSave true when save point evicted
   CHECK(h.isModifiedFromSave());
 }
 
+TEST_CASE("a lower undo limit drops the oldest steps at once", "[gui][history]") {
+  // Settings ▸ Undo history depth (C12 AC-08): choosing a smaller value trims
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  h.setMaxUndo(100);
+  for (unsigned int i = 0; i < 60; i++)
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+
+  h.setMaxUndo(25);
+  unsigned int undos = 0;
+  while (h.canUndo()) {
+    h.undo(puzzle.get());
+    undos++;
+  }
+  CHECK(undos == 25);
+  // the redo side is untouched by the trim
+  for (unsigned int i = 0; i < 25; i++) {
+    REQUIRE(h.canRedo());
+    h.redo(puzzle.get());
+  }
+  CHECK_FALSE(h.canRedo());
+}
+
+TEST_CASE("trimming keeps the save point, or drops it with the steps", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  h.setMaxUndo(100);
+  for (unsigned int i = 0; i < 10; i++)
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  h.markSaved();
+  for (unsigned int i = 0; i < 10; i++)
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+
+  h.setMaxUndo(15);              // the save point (10 steps back) survives
+  for (unsigned int i = 0; i < 10; i++)
+    h.undo(puzzle.get());
+  CHECK_FALSE(h.isModifiedFromSave());
+  for (unsigned int i = 0; i < 10; i++)
+    h.redo(puzzle.get());
+
+  h.setMaxUndo(5);               // now it is gone with the steps before it
+  CHECK(h.isModifiedFromSave());
+}
+
+TEST_CASE("the largest offered undo depth, 500, is not capped lower", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  h.setMaxUndo(500);
+  for (unsigned int i = 0; i < 300; i++)
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  unsigned int undos = 0;
+  while (h.canUndo()) {
+    h.undo(puzzle.get());
+    undos++;
+  }
+  CHECK(undos == 300);
+}
+
 // ---------------------------------------------------------------------------
 // Extended snapshot: colour palette
 // ---------------------------------------------------------------------------

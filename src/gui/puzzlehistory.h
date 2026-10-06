@@ -62,7 +62,7 @@ public:
   };
 
   static const unsigned int NO_SHAPE = (unsigned int)-1;
-  static const unsigned int MAX_UNDO = 200; ///< absolute upper bound; runtime limit set via setMaxUndo()
+  static const unsigned int MAX_UNDO = 500; ///< absolute upper bound (the redesigned Settings offer 500); runtime limit set via setMaxUndo()
   static const int GRID_PAINT_COALESCE_MS = 500;
   static const int TRANSFORM_COALESCE_MS  = 150;
 
@@ -94,7 +94,8 @@ public:
   /** Re-apply the next snapshot. Returns shape selection + tab. */
   undoResult_t redo(puzzle_c * puzzle);
 
-  /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). */
+  /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
+   *  limit drops the oldest undo steps at once. */
   void setMaxUndo(unsigned int depth);
 
   /** Call after a successful save. */
@@ -118,16 +119,16 @@ private:
   };
 
   struct partSnap_t {
-    unsigned int shapeId;
-    unsigned int min;
-    unsigned int max;
+    unsigned int shapeId = 0;
+    unsigned int min = 0;
+    unsigned int max = 0;
     std::vector<groupSnap_t> groups;
   };
 
   struct problemSnap_t {
     std::string name;
-    bool resultValid;
-    unsigned int resultId;
+    bool resultValid = false;
+    unsigned int resultId = 0;
     std::set<uint32_t> colorConstraints;
     std::vector<partSnap_t> parts;
   };
@@ -149,6 +150,8 @@ private:
   bool savedCursorValid; ///< false when the save point was evicted from the front of the stack
 
   unsigned int maxUndo_;
+
+  void evictOldest(void);   ///< drop the first snapshot, keeping the cursor and save point in step
 
   bool inStroke;
   bool strokeDirty;
