@@ -146,7 +146,7 @@ _coverage-summary html="":
     gcovr {{ gcovr_base }} {{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }} \
         --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
     area() {
-        echo "[$1]"
+        echo "== $1"     # the CI report picks these lines out of the build's output
         shift
         # the summary is what is wanted; the full text report goes to a file
         # (gcovr refuses /dev/null as an output)

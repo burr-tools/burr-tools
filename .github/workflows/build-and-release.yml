@@ -246,7 +246,7 @@ jobs:
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(\[|lines:|functions:|branches:)' coverage-summary.txt
+          grep -E '^(== |lines:|functions:|branches:)' coverage-summary.txt
           echo '```'
           echo
           echo "Measured on ubuntu-latest with gcc. Coverage numbers are"
