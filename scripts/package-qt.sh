@@ -142,8 +142,10 @@ PLIST
       curl -fsSL -o "$TOOLS/$(basename "$t")" "https://github.com/$t"
       chmod +x "$TOOLS/$(basename "$t")"
     done
-    # linuxdeploy takes the usual icon sizes only, not the 1024 px source
-    convert mac/icon-source.png -resize 256x256 "$TOOLS/burrtools-qt.png"
+    # linuxdeploy takes square icons of the usual sizes only; the source is
+    # neither (1066 x 1093), so fit it into 256 and pad it out square
+    convert mac/icon-source.png -resize 256x256 -background none -gravity center -extent 256x256 \
+      "$TOOLS/burrtools-qt.png"
     cat > "$TOOLS/burrtools-qt.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
@@ -164,6 +166,15 @@ DESKTOP
       --icon-file "$TOOLS/burrtools-qt.png" \
       --plugin qt --output appimage
     rm -rf "$TOOLS" "$APPDIR"
+    # the AppImage must start on its own: show the main window once on a
+    # virtual screen with the Qt it was built against out of sight (Qt
+    # Quick's software renderer, which needs no GPU on the runner); a missing
+    # library, plugin or QML module fails here
+    env -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QML_IMPORT_PATH -u LD_LIBRARY_PATH \
+      QT_QUICK_BACKEND=software BURRTOOLS_QT_SETTINGS="$OUT/smoke.rc" \
+      xvfb-run -a "$LDAI_OUTPUT" "--screenshot=$OUT/smoke.png"
+    test -s "$OUT/smoke.png"
+    rm -f "$OUT"/smoke.*     # the shot, its settings file and pipeline caches
     ;;
 
   *)
