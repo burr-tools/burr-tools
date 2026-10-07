@@ -70,11 +70,11 @@ namespace {
   static_assert(sizeof(CompositeUniforms) == 16);
 
   struct LineVertex {
-    float p0[3];
-    float p1[3];
-    float corner[2];
+    float p0[3] {};
+    float p1[3] {};
+    float corner[2] {};
     btui::Rgba8 color;
-    float style[4];
+    float style[4] {};
   };
   static_assert(sizeof(LineVertex) == 52);
 

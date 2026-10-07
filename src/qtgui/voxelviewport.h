@@ -43,7 +43,7 @@ public:
 
   explicit VoxelViewport(QQuickItem * parent = nullptr);
 
-  SceneController * controller(void) const { return m_controller; }
+  SceneController * controller(void) const { return m_controller.data(); }
   void setController(SceneController * c);
 
   /* the multisampling to draw with, of what the graphics device offers:

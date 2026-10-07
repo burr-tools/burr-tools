@@ -80,7 +80,7 @@ namespace {
   }
 }
 
-SettingsController::SettingsController(QString file, QString legacyFile, QObject * parent) :
+SettingsController::SettingsController(const QString & file, const QString & legacyFile, QObject * parent) :
   QObject(parent),
   m_store(toPath(file.isEmpty() ? defaultFile() : file))
 {

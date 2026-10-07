@@ -46,7 +46,7 @@ public:
   explicit StatusController(QObject * parent = nullptr);
 
   QString text(void) const { return m_flashing ? m_flash : m_live; }
-  QString cursorText(void) const { return m_cursor; }
+  const QString & cursorText(void) const { return m_cursor; }
   bool flashing(void) const { return m_flashing; }
 
   void setLiveText(const QString & markup);

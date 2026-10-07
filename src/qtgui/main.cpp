@@ -37,6 +37,7 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QTimer>
+#include <QTranslator>
 
 #include <cstdio>
 #include <cstring>
@@ -76,6 +77,22 @@ namespace {
       return QGuiApplication::event(e);
     }
   };
+
+#ifdef Q_OS_MACOS
+  /* File > Settings… moves into the application menu (Qt matches its text),
+   * where Qt names it "Preferences...". macOS since 13, and the legacy app,
+   * say Settings…; the name is Qt's translatable string, renamed here.
+   */
+  class MacMenuNames : public QTranslator {
+  public:
+    QString translate(const char * context, const char * source, const char *, int) const override {
+      if (qstrcmp(context, "MAC_APPLICATION_MENU") == 0 && qstrcmp(source, "Preferences...") == 0)
+        return QStringLiteral("Settings…");
+      return QString();
+    }
+    bool isEmpty(void) const override { return false; }
+  };
+#endif
 
   /* BURRTOOLS_RHI=d3d11|d3d12|vulkan|opengl|metal picks the 3D graphics API,
    * for A/B comparisons from one build (the repository's env-toggle
@@ -132,6 +149,10 @@ int main(int argc, char ** argv) {
   QGuiApplication::setApplicationName(QStringLiteral("BurrTools"));
   QGuiApplication::setOrganizationName(QStringLiteral("BurrTools"));
   QGuiApplication::setApplicationDisplayName(QStringLiteral("BurrTools"));
+#ifdef Q_OS_MACOS
+  MacMenuNames macMenuNames;
+  QCoreApplication::installTranslator(&macMenuNames);
+#endif
 
   // the Basic style is the one the spec re-skins completely
   QQuickStyle::setStyle(QStringLiteral("Basic"));

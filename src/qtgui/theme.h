@@ -119,7 +119,7 @@ public:
   static Theme * instance(void);
   static Theme * create(QQmlEngine *, QJSEngine *);
 
-  QString mode(void) const { return m_mode; }
+  const QString & mode(void) const { return m_mode; }
   void setMode(const QString & m);
   QString density(void) const { return m_minimal ? QStringLiteral("minimal") : QStringLiteral("standard"); }
   void setDensity(const QString & d);

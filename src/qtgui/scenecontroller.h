@@ -80,7 +80,7 @@ public:
 
   // --- the view cube ------------------------------------------------------
 
-  btui::ViewCube::Hit cubeHover(void) const { return m_cubeHover; }
+  const btui::ViewCube::Hit & cubeHover(void) const { return m_cubeHover; }
   void setCubeHover(const btui::ViewCube::Hit & h);
   void cubeClick(const btui::ViewCube::Hit & h);
   void cubeDoubleClick(const btui::ViewCube::Hit & h);

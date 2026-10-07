@@ -64,14 +64,22 @@ test-regression: build
 # Also absent is `--suppress="*:*test*"`: as a substring glob it matches any path
 # merely containing "test", not the test directory; `-i test` above already
 # excludes that directory, so don't add it back.
+#
+# Where Qt is found the build has the Qt GUI: --library=qt teaches cppcheck
+# Qt's macros (Q_PROPERTY, QT_CONFIG, ...), `-i build` skips what moc and
+# qmlcachegen generate, and the framework glob covers macOS Qt's headers
+# (Homebrew's and the official), which /usr/include does not.
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
              -i src/lua \
              -i test \
+             -i build \
+             --library=qt \
              --suppress="*:*subprojects*" \
              --suppress="*:*src/lua*" \
              --suppress="*:*/usr/include/*" \
+             --suppress="*:*/Qt*.framework/*" \
              --suppress="preprocessorErrorDirective:*python*" \
              --suppress="preprocessorErrorDirective:*qt6*" \
              --enable=warning,performance,portability \

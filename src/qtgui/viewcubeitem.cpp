@@ -185,7 +185,7 @@ void ViewCubeItem::paintCube(QPainter * p, Quat q, bool persp, const ViewCube::H
   if (ViewCube::faceAligned(q)) {
     const QPointF c(ViewCube::kCentreX, ViewCube::kCentreY);
     const float o = ViewCube::kArrowOffset;
-    const struct { ViewCube::Arrow a; QPointF dir; } arrows[] = {
+    const struct { ViewCube::Arrow a {}; QPointF dir; } arrows[] = {
       { ViewCube::Arrow::Up, { 0, -1 } }, { ViewCube::Arrow::Down, { 0, 1 } },
       { ViewCube::Arrow::Left, { -1, 0 } }, { ViewCube::Arrow::Right, { 1, 0 } },
     };

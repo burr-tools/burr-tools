@@ -54,3 +54,4 @@ design-spec/*
 !design-spec/gui-migration.md
 .vscode/
 .claude/settings.local.json
+.cache

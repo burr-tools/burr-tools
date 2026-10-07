@@ -48,7 +48,7 @@ public:
 
   explicit ViewCubeItem(QQuickItem * parent = nullptr);
 
-  SceneController * controller(void) const { return m_controller; }
+  SceneController * controller(void) const { return m_controller.data(); }
   void setController(SceneController * c);
 
   void paint(QPainter * p) override;

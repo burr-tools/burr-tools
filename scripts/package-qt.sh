@@ -71,6 +71,8 @@ case "$(uname -s)" in
     mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
     cp "$BUILD/src/qtgui/burrtools-qt" "$APP/Contents/MacOS/"
     cp mac/BurrTools.icns "$APP/Contents/Resources/"
+    # the macOS the program was linked for: above 14.0 when its Qt needs it
+    MINOS="$(vtool -show-build "$BUILD/src/qtgui/burrtools-qt" | sed -n 's/^ *minos //p' | head -n 1)"
     cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -91,7 +93,7 @@ case "$(uname -s)" in
 	<key>CFBundleIconFile</key>
 	<string>BurrTools</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>${MINOS}</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSRequiresAquaSystemAppearance</key>

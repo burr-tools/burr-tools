@@ -69,7 +69,7 @@ public:
    * it from when it does not exist yet. Both default to the locations the
    * two GUIs really use; tests pass their own.
    */
-  explicit SettingsController(QString file = QString(), QString legacyFile = QString(), QObject * parent = nullptr);
+  explicit SettingsController(const QString & file = QString(), const QString & legacyFile = QString(), QObject * parent = nullptr);
 
   static QString defaultFile(void);
   /* the settings file in use (BURRTOOLS_QT_SETTINGS or the default);

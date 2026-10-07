@@ -596,6 +596,23 @@ if qt6_dep.found() and host_machine.system() == 'darwin' and not qt_static
   endif
 endif
 
+# Homebrew's Qt bottles target the macOS they were built on, not ours: linking
+# one built for a newer macOS than macos_deployment_target makes ld warn (Xcode
+# 26's ld does), and --werror fail. The Qt executables then target the newest
+# macOS any of Qt's frameworks needs; the legacy binaries keep the option's.
+# The official Qt (built for macOS 13) never raises it.
+qt_link_args = []
+if qt_build_rpath != ''
+  qt_macos_min = run_command('sh', '-c',
+    'd=$1; shift; for m; do otool -l "$d/Qt$m.framework/Qt$m"; done 2>/dev/null | sed -n "s/^ *minos //p" | sort -t. -k1,1n -k2,2n | tail -n 1',
+    'sh', qt_build_rpath, 'Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg',
+    check: false).stdout().strip()
+  if qt_macos_min != '' and qt_macos_min.version_compare('>' + macos_deployment_target)
+    message('Qt is built for macOS @0@, so the Qt executables target it (macos_deployment_target is @1@)'.format(qt_macos_min, macos_deployment_target))
+    qt_link_args = ['-mmacosx-version-min=' + qt_macos_min]
+  endif
+endif
+
 if qt6_dep.found()
   subdir('src/qtgui')
   if not qt_static
