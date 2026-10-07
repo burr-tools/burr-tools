@@ -62,6 +62,10 @@ public:
    * (ViewCube::kPadLeft / kPadBottom). Public for the tests. */
   btui::ViewCube::Hit hitAt(QPointF p) const;
 
+  /* an item point in the cube's own 156 x 170 widget coordinates, the space
+   * hitAt() tests and SceneController::cubeDragBegin() expects */
+  QPointF toCube(QPointF p) const;
+
 signals:
 
   void controllerChanged(void);

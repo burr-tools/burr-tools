@@ -73,6 +73,7 @@ case "$(uname -s)" in
     cp mac/BurrTools.icns "$APP/Contents/Resources/"
     # the macOS the program was linked for: above 14.0 when its Qt needs it
     MINOS="$(vtool -show-build "$BUILD/src/qtgui/burrtools-qt" | sed -n 's/^ *minos //p' | head -n 1)"
+    MINOS="${MINOS:-14.0}"
     cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

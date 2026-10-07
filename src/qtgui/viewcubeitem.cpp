@@ -262,13 +262,17 @@ void ViewCubeItem::paint(QPainter * p) {
   paintCube(p, m_controller->camera().orientation(), persp, m_controller->cubeHover(), dark);
 }
 
+QPointF ViewCubeItem::toCube(QPointF pos) const {
+  return { pos.x() * ViewCube::kItemWidth / width() - ViewCube::kPadLeft,
+           pos.y() * ViewCube::kItemHeight / height() };
+}
+
 ViewCube::Hit ViewCubeItem::hitAt(QPointF pos) const {
   if (!m_controller)
     return {};
   const bool persp = m_controller->camera().projection() == btui::Camera::Projection::Perspective;
-  return ViewCube::hitTest(m_controller->camera().orientation(), persp,
-                           float(pos.x() * ViewCube::kItemWidth / width()) - ViewCube::kPadLeft,
-                           float(pos.y() * ViewCube::kItemHeight / height()));
+  const QPointF c = toCube(pos);
+  return ViewCube::hitTest(m_controller->camera().orientation(), persp, float(c.x()), float(c.y()));
 }
 
 void ViewCubeItem::updateCursor(const ViewCube::Hit & h) {
@@ -311,10 +315,13 @@ void ViewCubeItem::mouseMoveEvent(QMouseEvent * e) {
       std::hypot(d.x(), d.y()) > SceneController::kClickSlopDp) {
     // dragging the cube orbits the view (legacy), from the press point
     m_dragging = true;
-    m_controller->cubeDragBegin(float(m_press.x()), float(m_press.y()));
+    const QPointF c = toCube(m_press);
+    m_controller->cubeDragBegin(float(c.x()), float(c.y()));
   }
-  if (m_dragging)
-    m_controller->cubeDragMove(float(e->position().x()), float(e->position().y()));
+  if (m_dragging) {
+    const QPointF c = toCube(e->position());
+    m_controller->cubeDragMove(float(c.x()), float(c.y()));
+  }
 }
 
 void ViewCubeItem::mouseReleaseEvent(QMouseEvent * e) {

@@ -72,8 +72,9 @@ namespace btui {
       /* Load a BurrTools file. On failure the current document is untouched. */
       LoadResult load(const std::filesystem::path & file);
 
-      /* Import a PuzzleSolver3D file; it becomes the document, under that
-       * file's name, exactly as legacy did.
+      /* Import a PuzzleSolver3D file; it becomes the document, unsaved and
+       * without a file name, so the first Save asks where. (Legacy kept the
+       * .puz name, and its Save wrote xmpuzzle over the imported file.)
        */
       LoadResult importPuzzleSolver3D(const std::filesystem::path & file);
 

@@ -72,6 +72,11 @@ if [ "$HAVE_DOC_ICON" = "1" ]; then
 "
 fi
 
+# the macOS the binary was linked for (-Dmacos_deployment_target), not a copy
+# of the default that a build with another target would contradict
+MINOS="$(vtool -show-build "${BUILD_DIR}/${EXECUTABLE}" | sed -n 's/^ *minos //p' | head -n 1)"
+MINOS="${MINOS:-14.0}"
+
 # Create Info.plist
 cat > "${BUNDLE}/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -99,7 +104,7 @@ ${APP_ICON_KEYS}	<key>CFBundleVersion</key>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
-	<string>14.0</string>
+	<string>${MINOS}</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>BurrTools - Open Source Puzzle Software</string>
 	<key>CFBundleDocumentTypes</key>

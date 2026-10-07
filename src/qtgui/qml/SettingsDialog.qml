@@ -27,7 +27,7 @@ BtDialog {
     readonly property var pages: [
         { id: "general", name: qsTr("General"), rows: [
             { key: "density", prop: "density", type: "seg", title: qsTr("Interface density"),
-              desc: qsTr("Standard is the default. Minimal shows icons without captions, moves helper text into tooltips, hides the viewport toolbar until you point at the top of the 3D view and narrows the side cards. Every function stays available in both."),
+              desc: qsTr("Standard is the default. Minimal shows icons without captions, moves helper text into tooltips and narrows the side cards. Every function stays available in both."),
               opts: [{ value: "standard", label: qsTr("Standard") }, { value: "minimal", label: qsTr("Minimal") }] },
             { key: "theme", prop: "theme", type: "seg", title: qsTr("Theme"),
               desc: qsTr("Light (the default), Dark, or System. System follows the operating system’s light/dark choice when the OS provides one, otherwise Light."),

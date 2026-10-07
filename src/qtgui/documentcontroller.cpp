@@ -34,6 +34,15 @@ namespace {
   QString fromPath(const std::filesystem::path & p) {
     return QString::fromStdU16String(p.u16string());
   }
+
+  // a writer that throws is a failed save, never an exception out of a slot
+  bool saveCatching(btui::DocumentSession & session) {
+    try {
+      return session.save();
+    } catch (const std::exception &) {
+      return false;
+    }
+  }
 }
 
 DocumentController::DocumentController(QObject * parent) : QObject(parent) {}
@@ -170,7 +179,7 @@ void DocumentController::resolveDiscard(int choice) {
       if (m_session.fileName().empty()) {
         m_continueAfterSaveAs = true;
         emit saveAsRequested();
-      } else if (m_session.save()) {
+      } else if (saveCatching(m_session)) {
         emit stateChanged();
         proceed();
       } else {
@@ -257,13 +266,7 @@ void DocumentController::save(void) {
     emit saveAsRequested();
     return;
   }
-  bool ok = false;
-  try {
-    ok = m_session.save();
-  } catch (const std::exception &) {
-    ok = false;
-  }
-  if (!ok)
+  if (!saveCatching(m_session))
     emit messageRequested(tr("Save"), tr("The puzzle was NOT saved."));
   emit stateChanged();
 }

@@ -30,7 +30,9 @@ Apple Clang emits coverage data that plain `gcov` cannot parse.
 **Coverage is reported per area.** The library (`src/lib`, `src/tools`, `src/halfedge`)
 is the figure compared across PRs; `src/uicore` (Catch2 `[ui]` cases) and `src/qtgui`
 (the Qt suites, C++ only — gcov does not see QML) are reported beside it. When Qt ≥ 6.8
-is found, the coverage build includes the Qt GUI and runs its suites too.
+is found, the coverage build includes the Qt GUI and runs its suites too. The library
+figure comes from the non-`[ui]` cases alone, captured before the GUI suites run, so it
+does not depend on whether Qt was found.
 
 **First `just coverage` run is slow.** It configures a fresh `build-cov` directory and
 compiles all subprojects under instrumentation from scratch — expect several minutes,

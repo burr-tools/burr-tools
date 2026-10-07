@@ -122,7 +122,9 @@ gcovr_base := "--root . " + \
 
 # What is measured, reported as one figure per area. The library is the
 # canonical figure compared across pull requests; the redesigned GUI's two
-# layers stand beside it, so adding them never shifts the library's number.
+# layers stand beside it. The GUI suites run library code too, so the
+# library's figure is taken from the library's own tests alone, before they
+# run (_coverage-tests) -- adding them never shifts the library's number.
 # src/qtgui counts its C++ only: QML is not compiled code gcov sees.
 gcovr_lib := "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/'"
 gcovr_uicore := "--filter 'src/uicore/'"
@@ -136,13 +138,20 @@ _coverage-tests: setup-cov
     #!/usr/bin/env bash
     set -euo pipefail
     ninja -C build-cov
-    ./build-cov/test_burrtools
+    # counters add up across runs: start from zero, so the library's figure
+    # below holds the library's tests only, not an earlier run's GUI suites
+    find build-cov -name '*.gcda' -delete
+    ./build-cov/test_burrtools '~[ui]'
+    gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
+    ./build-cov/test_burrtools '[ui]'
     if [ -d build-cov/test/qtgui ]; then
         meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
     fi
 
 # One gcov pass into a JSON tracefile (and an HTML report of every area when
-# html names its index file), then a summary per area read back from it
+# html names its index file), then a summary per area read back from it --
+# the library's from the tracefile _coverage-tests took after its own tests.
+# (The HTML report shows every suite's hits, the library's files included.)
 _coverage-summary html="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -155,15 +164,16 @@ _coverage-summary html="":
         --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
     area() {
         echo "== $1"     # the CI report picks these lines out of the build's output
-        shift
+        local tracefile="$2"
+        shift 2
         # the summary is what is wanted; the full text report goes to a file
         # (gcovr refuses /dev/null as an output)
-        gcovr --root . --add-tracefile build-cov/coverage.json "$@" --print-summary --output build-cov/coverage-area.txt
+        gcovr --root . --add-tracefile "$tracefile" "$@" --print-summary --output build-cov/coverage-area.txt
     }
-    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" {{ gcovr_lib }}
-    area "UI core: src/uicore" {{ gcovr_uicore }}
+    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
+    area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
     if [ -d build-cov/test/qtgui ]; then
-        area "Qt GUI: src/qtgui, C++ only" {{ gcovr_qtgui }}
+        area "Qt GUI: src/qtgui, C++ only" build-cov/coverage.json {{ gcovr_qtgui }}
     fi
 
 # Report test coverage per area (library, UI core, Qt GUI)

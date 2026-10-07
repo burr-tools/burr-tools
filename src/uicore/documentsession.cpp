@@ -108,8 +108,11 @@ namespace btui {
       return r;
     }
 
+    // not under the .puz name: save() would write xmpuzzle over the source
+    // file without asking; like convert(), the result counts as unsaved
     adopt(std::move(np));
-    fname = file;
+    fname.clear();
+    hist->markModified();
     r.ok = true;
     return r;
   }

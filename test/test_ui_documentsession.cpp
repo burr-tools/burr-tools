@@ -10,6 +10,7 @@
 #include "../src/lib/voxel.h"
 
 #include <filesystem>
+#include <fstream>
 #include <random>
 #include <string>
 
@@ -146,4 +147,20 @@ TEST_CASE("importing a missing PuzzleSolver3D file fails cleanly", "[ui][documen
   CHECK_FALSE(r.ok);
   CHECK_FALSE(r.error.empty());
   CHECK(d.fileName().empty());
+}
+
+TEST_CASE("an imported PuzzleSolver3D file is unsaved and has no file name", "[ui][document]") {
+  TempDir t;
+  const auto src = t.path / "cube.puz";
+  {
+    std::ofstream out(src);
+    out << "PIECE 1,1,1\nX\nRESULT 1,1,1\nX\n";
+  }
+  DocumentSession d;
+  auto r = d.importPuzzleSolver3D(src);
+  REQUIRE(r.ok);
+  CHECK(d.isModified());
+  // Save must ask where: it may not write xmpuzzle over the source file
+  CHECK(d.fileName().empty());
+  CHECK_FALSE(d.save());
 }
