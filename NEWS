@@ -83,7 +83,7 @@ All Platforms:
   Arne Köhn)
 - Modernised widget scheme (Tom Burns)
 - The Settings dialog (renamed from "Config") describes each option and
-  can restore defaults (Arne Köhn, Tom Burns)
+  can restore defaults (Colin Deisenroth, Arne Köhn, Tom Burns)
 - Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
   with an option to reverse the scroll-zoom direction (Colin Deisenroth, Arne Köhn)
 
