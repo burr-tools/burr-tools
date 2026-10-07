@@ -36,7 +36,10 @@ endif
 # with those their objects get built for the host's macOS version and linked into
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
-macos_deployment_target = '11.0'
+#
+# An option, because a build against Homebrew's Qt (the Qt GUI's CI job) cannot
+# go below the macOS that Qt's bottles were built for; the legacy builds keep 11.0.
+macos_deployment_target = get_option('macos_deployment_target')
 
 if host_machine.system() == 'darwin'
   add_global_arguments('-mmacosx-version-min=' + macos_deployment_target, language: ['c', 'cpp', 'objcpp'])
