@@ -85,7 +85,7 @@ All Platforms:
 - The Settings dialog (renamed from "Config") describes each option and
   can restore defaults (Arne Köhn, Tom Burns)
 - Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
-  with an option to reverse the scroll-zoom direction (Arne Köhn)
+  with an option to reverse the scroll-zoom direction (Colin Deisenroth, Arne Köhn)
 
 Scripting:
 - Python bindings (pybind11) for building shapes and problems, solving,
