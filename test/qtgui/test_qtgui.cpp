@@ -10,6 +10,7 @@
 #include "app.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
+#include "guarded.h"
 #include "iconprovider.h"
 #include "keyboardcues.h"
 #include "layoutcontroller.h"
@@ -380,6 +381,30 @@ class TestDocument : public QObject {
   }
 
 private slots:
+
+  /* guarded(): an internal error under an entry point QML calls is reported
+   * (rescue-save, then App::internalError) and the call returns a default,
+   * instead of unwinding through the QML engine. bt_te() throws in release
+   * builds too. */
+  void anInternalErrorUnderAQmlEntryPointIsReportedNotThrown() {
+    Fixture f;
+    f.make();
+    const QString cwd = QDir::currentPath();
+    QVERIFY(QDir::setCurrent(f.dir.path()));   // where the rescue save goes
+    QSignalSpy reported(f.app.get(), &App::internalError);
+    int r = 7;
+    bool threw = false;
+    try {
+      r = guarded([]() -> int { bt_te("test"); });
+      guarded([] { bt_te("test"); });
+    } catch (...) {
+      threw = true;
+    }
+    QDir::setCurrent(cwd);
+    QVERIFY(!threw);
+    QCOMPARE(r, 0);
+    QCOMPARE(reported.count(), 2);
+  }
 
   void newWithoutChangesGoesStraightToTheTypeChoice() {
     Fixture f;

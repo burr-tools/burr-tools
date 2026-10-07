@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "app.h"
+#include "guarded.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
 #include "layoutcontroller.h"
@@ -175,4 +176,9 @@ void App::handleInternalError(const std::exception & e) {
   msg += saved.isEmpty() ? QStringLiteral("The puzzle could not be saved.")
                          : QStringLiteral("The current puzzle was saved to '%1'.").arg(saved);
   emit internalError(msg);
+}
+
+void reportInternalError(const std::exception & e) {
+  if (App * app = App::instance())
+    app->handleInternalError(e);
 }

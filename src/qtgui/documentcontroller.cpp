@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "documentcontroller.h"
+#include "guarded.h"
 
 #include "../lib/puzzle.h"
 
@@ -167,43 +168,47 @@ void DocumentController::requestOpenPath(const QString & path) {
 }
 
 void DocumentController::resolveDiscard(int choice) {
-  if (m_pending == Pending::None)
-    return;
+  guarded([&] {
+    if (m_pending == Pending::None)
+      return;
 
-  switch (choice) {
-    case Discard:
-      proceed();
-      break;
-
-    case Save:
-      if (m_session.fileName().empty()) {
-        m_continueAfterSaveAs = true;
-        emit saveAsRequested();
-      } else if (saveCatching(m_session)) {
-        emit stateChanged();
+    switch (choice) {
+      case Discard:
         proceed();
-      } else {
-        // the work must not be thrown away after a failed save
-        setPending(Pending::None);
-        emit messageRequested(tr("Save"), tr("The puzzle could not be saved."));
-      }
-      break;
+        break;
 
-    default:
-      setPending(Pending::None);
-      break;
-  }
+      case Save:
+        if (m_session.fileName().empty()) {
+          m_continueAfterSaveAs = true;
+          emit saveAsRequested();
+        } else if (saveCatching(m_session)) {
+          emit stateChanged();
+          proceed();
+        } else {
+          // the work must not be thrown away after a failed save
+          setPending(Pending::None);
+          emit messageRequested(tr("Save"), tr("The puzzle could not be saved."));
+        }
+        break;
+
+      default:
+        setPending(Pending::None);
+        break;
+    }
+  });
 }
 
 void DocumentController::newDocument(int type) {
-  if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
-    type = gridType_c::GT_BRICKS;
-  m_session.newDocument(gridType_c::gridType(type));
-  if (m_pending == Pending::New)
-    setPending(Pending::None);
-  emit documentReplaced();
-  emit fileChanged();
-  emit stateChanged();
+  guarded([&] {
+    if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
+      type = gridType_c::GT_BRICKS;
+    m_session.newDocument(gridType_c::gridType(type));
+    if (m_pending == Pending::New)
+      setPending(Pending::None);
+    emit documentReplaced();
+    emit fileChanged();
+    emit stateChanged();
+  });
 }
 
 void DocumentController::finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path) {
@@ -236,29 +241,33 @@ bool DocumentController::loadPath(const QString & path) {
 }
 
 void DocumentController::openFile(const QUrl & file) {
-  if (m_pending == Pending::Open)
-    setPending(Pending::None);
-  loadPath(file.isLocalFile() ? file.toLocalFile() : file.toString());
+  guarded([&] {
+    if (m_pending == Pending::Open)
+      setPending(Pending::None);
+    loadPath(file.isLocalFile() ? file.toLocalFile() : file.toString());
+  });
 }
 
 void DocumentController::importFile(const QUrl & file) {
-  if (m_pending == Pending::Import)
-    setPending(Pending::None);
-  const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
-  btui::DocumentSession::LoadResult r;
-  try {
-    r = m_session.importPuzzleSolver3D(toPath(path));
-  } catch (const std::exception & e) {
-    r.ok = false;
-    r.error = e.what();
-  }
-  if (!r.ok) {
-    emit messageRequested(tr("Import"), QString::fromStdString(r.error));
-    return;
-  }
-  emit documentReplaced();
-  emit fileChanged();
-  emit stateChanged();
+  guarded([&] {
+    if (m_pending == Pending::Import)
+      setPending(Pending::None);
+    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    btui::DocumentSession::LoadResult r;
+    try {
+      r = m_session.importPuzzleSolver3D(toPath(path));
+    } catch (const std::exception & e) {
+      r.ok = false;
+      r.error = e.what();
+    }
+    if (!r.ok) {
+      emit messageRequested(tr("Import"), QString::fromStdString(r.error));
+      return;
+    }
+    emit documentReplaced();
+    emit fileChanged();
+    emit stateChanged();
+  });
 }
 
 void DocumentController::save(void) {
@@ -297,7 +306,7 @@ void DocumentController::saveAsFile(const QUrl & file) {
 
   if (m_continueAfterSaveAs) {
     m_continueAfterSaveAs = false;
-    proceed();
+    guarded([&] { proceed(); });   // may open the pending file
   }
 }
 
@@ -307,24 +316,30 @@ void DocumentController::cancelFlow(void) {
 }
 
 void DocumentController::undo(void) {
-  if (!m_session.canUndo())
-    return;
-  auto r = m_session.undo();
-  emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
-  emit stateChanged();
+  guarded([&] {
+    if (!m_session.canUndo())
+      return;
+    auto r = m_session.undo();
+    emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
+    emit stateChanged();
+  });
 }
 
 void DocumentController::redo(void) {
-  if (!m_session.canRedo())
-    return;
-  auto r = m_session.redo();
-  emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
-  emit stateChanged();
+  guarded([&] {
+    if (!m_session.canRedo())
+      return;
+    auto r = m_session.redo();
+    emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
+    emit stateChanged();
+  });
 }
 
 void DocumentController::setComment(const QString & text) {
-  m_session.setComment(text.toStdString());
-  emit stateChanged();
+  guarded([&] {
+    m_session.setComment(text.toStdString());
+    emit stateChanged();
+  });
 }
 
 void DocumentController::notifyEdited(void) {
@@ -332,13 +347,15 @@ void DocumentController::notifyEdited(void) {
 }
 
 bool DocumentController::convertTo(int type) {
-  if (type < 0 || type >= gridType_c::GT_NUM_GRIDS || !m_session.convert(gridType_c::gridType(type))) {
-    emit messageRequested(tr("Convert"), tr("The puzzle could not be converted."));
-    return false;
-  }
-  emit documentReplaced();
-  emit stateChanged();
-  return true;
+  return guarded([&] {
+    if (type < 0 || type >= gridType_c::GT_NUM_GRIDS || !m_session.convert(gridType_c::gridType(type))) {
+      emit messageRequested(tr("Convert"), tr("The puzzle could not be converted."));
+      return false;
+    }
+    emit documentReplaced();
+    emit stateChanged();
+    return true;
+  });
 }
 
 void DocumentController::recordStructuralEdit(int selectedShape) {

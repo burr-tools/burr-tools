@@ -21,6 +21,7 @@
 #include "viewportcontroller.h"
 
 #include "documentcontroller.h"
+#include "guarded.h"
 #include "layoutcontroller.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
@@ -207,10 +208,14 @@ void ViewportController::rebuildScene(void) {
       p.getColor(i, &r, &g, &b);
       opt.palette.push_back({ r / 255.0f, g / 255.0f, b / 255.0f });
     }
-    auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
-    const btui::Vec3 c = (mesh->boundsMin + mesh->boundsMax) * 0.5f;
-    m_camera.setScene(c, std::max(0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f));
-    m_mesh = std::move(mesh);
+    // reached from every selection, layer and history change QML makes
+    m_mesh.reset();
+    guarded([&] {
+      auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
+      const btui::Vec3 c = (mesh->boundsMin + mesh->boundsMax) * 0.5f;
+      m_camera.setScene(c, std::max(0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f));
+      m_mesh = std::move(mesh);
+    });
   } else {
     m_mesh.reset();
   }
@@ -285,8 +290,12 @@ bool ViewportController::exportVector(const QUrl & file, int format) const {
   in.dimLayer = f.dimLayer;
   in.dimAlpha = f.dimAlpha;
 
-  const std::string out = btui::writeVector(btui::projectScene(in), btui::VectorFormat(format),
-                                            QFileInfo(path).completeBaseName().toStdString());
+  const std::string out = guarded([&] {
+    return btui::writeVector(btui::projectScene(in), btui::VectorFormat(format),
+                             QFileInfo(path).completeBaseName().toStdString());
+  });
+  if (out.empty())
+    return false;
   QFile o(path);
   if (!o.open(QIODevice::WriteOnly | QIODevice::Truncate))
     return false;

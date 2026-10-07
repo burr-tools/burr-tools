@@ -22,6 +22,7 @@
 
 #include "app.h"
 #include "documentcontroller.h"
+#include "guarded.h"
 #include "offscreenrenderer.h"
 #include "pipelinecache.h"
 #include "settingscontroller.h"
@@ -187,9 +188,12 @@ void ImageExportController::rebuildPreview(void) {
 
   m_mesh.reset();
   if (j) {
-    btui::SceneContent c = sceneFor(*j);
-    m_camera.setScene(c.centre, c.radius);
-    m_mesh = std::make_shared<btui::ShapeMesh>(std::move(c.mesh));
+    // reached from every option QML sets
+    guarded([&] {
+      btui::SceneContent c = sceneFor(*j);
+      m_camera.setScene(c.centre, c.radius);
+      m_mesh = std::make_shared<btui::ShapeMesh>(std::move(c.mesh));
+    });
   }
   m_meshRevision++;
   emit contentChanged();

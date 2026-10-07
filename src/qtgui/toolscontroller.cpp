@@ -21,6 +21,7 @@
 #include "toolscontroller.h"
 #include "app.h"
 #include "documentcontroller.h"
+#include "guarded.h"
 #include "shapesmodel.h"
 
 #include "../uicore/palette.h"
@@ -142,7 +143,9 @@ void ShapeStatusModel::start(void) {
   const puzzle_c & p = m_doc->session().puzzle();
   m_total = p.getNumberOfShapes();
   const bool bricks = p.getGridType()->getType() == gridType_c::GT_BRICKS;
-  m_calc = std::make_unique<btui::ShapeStatusCalculator>(p);
+  m_calc.reset();
+  // only this reaches the library; the model's reset stays balanced
+  guarded([&] { m_calc = std::make_unique<btui::ShapeStatusCalculator>(p); });
   endResetModel();
   if (bricks != m_bricks) {
     m_bricks = bricks;
@@ -241,10 +244,12 @@ int ShapeStatusModel::removeSelected(void) {
   if (doomed.empty())
     return 0;
   stop();
-  btui::removeShapes(m_doc->session().puzzle(), doomed);
-  m_doc->recordStructuralEdit();
-  start();
-  return int(doomed.size());
+  return guarded([&] {
+    btui::removeShapes(m_doc->session().puzzle(), doomed);
+    m_doc->recordStructuralEdit();
+    start();
+    return int(doomed.size());
+  });
 }
 
 // --- ToolsController ---------------------------------------------------------

@@ -120,9 +120,10 @@ public:
   QString rescueSave(void);
 
   /* An internal error (a bt_assert) reached the GUI. Exceptions must not
-   * unwind through Qt or the QML engine, so every entry point from QML
-   * catches them and lands here: rescue-save, then tell the user, after
-   * which QML quits (legacy main() does the same in its catch block).
+   * unwind through Qt or the QML engine, so every entry point from QML that
+   * reaches the library catches them (guarded.h) and lands here:
+   * rescue-save, then tell the user, after which QML quits (legacy main()
+   * does the same in its catch block).
    */
   void handleInternalError(const std::exception & e);
 
