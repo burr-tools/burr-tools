@@ -34,6 +34,7 @@ if qt6_test_dep.found()
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
     cpp_args: qt_test_args,
+    build_rpath: qt_build_rpath,
     dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
   )
 
@@ -49,6 +50,7 @@ if qt6_test_dep.found()
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
     cpp_args: qt_test_args,
+    build_rpath: qt_build_rpath,
     dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
   )
 

@@ -583,6 +583,19 @@ qt6_dep = dependency('qt6',
   static: qt_static,
 )
 
+# The official Qt frameworks for macOS name themselves @rpath/..., so the Qt
+# executables carry Qt's library directory as a build rpath: they then run
+# from the build tree, and macdeployqt finds the frameworks to bundle.
+# (Homebrew's Qt uses absolute paths and needs none; elsewhere meson or the
+# environment already covers it.)
+qt_build_rpath = ''
+if qt6_dep.found() and host_machine.system() == 'darwin' and not qt_static
+  qt_qmake = find_program('qmake6', 'qmake', required: false)
+  if qt_qmake.found()
+    qt_build_rpath = run_command(qt_qmake, '-query', 'QT_INSTALL_LIBS', check: false).stdout().strip()
+  endif
+endif
+
 if qt6_dep.found()
   subdir('src/qtgui')
   if not qt_static

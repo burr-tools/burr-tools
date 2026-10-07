@@ -128,6 +128,7 @@ burrtools_qt_exe = executable('burrtools-qt', 'main.cpp', qtgui_static_sources,
   include_directories: inc,
   link_whole: libburr_qtgui,
   link_args: qtgui_static_link_args,
+  build_rpath: qt_build_rpath,
   dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
   win_subsystem: 'windows',
 )
