@@ -66,7 +66,8 @@ TestCase {
         }
         verify(items(bar.menuAt(0)).indexOf("shell.menuitem.settings") >= 0)
         verify(items(bar.menuAt(1)).indexOf("shell.menuitem.editcomment") >= 0)
-        verify(items(bar.menuAt(2)).indexOf("shell.menuitem.status") >= 0)
+        // Status is in View, but on macOS in File with Cmd+I, where Mac apps keep Get Info
+        verify(items(bar.menuAt(Qt.platform.os === "osx" ? 0 : 2)).indexOf("shell.menuitem.status") >= 0)
         verify(items(bar.menuAt(4)).indexOf("shell.menuitem.about") >= 0)
 
         // no gear and no file name in the window: the title bar names the file

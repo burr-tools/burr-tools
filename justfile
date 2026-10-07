@@ -148,7 +148,9 @@ _coverage-summary html="":
     area() {
         echo "[$1]"
         shift
-        gcovr --root . --add-tracefile build-cov/coverage.json "$@" --print-summary --output "{{ if os_family() == "windows" { "NUL" } else { "/dev/null" } }}"
+        # the summary is what is wanted; the full text report goes to a file
+        # (gcovr refuses /dev/null as an output)
+        gcovr --root . --add-tracefile build-cov/coverage.json "$@" --print-summary --output build-cov/coverage-area.txt
     }
     area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" {{ gcovr_lib }}
     area "UI core: src/uicore" {{ gcovr_uicore }}
