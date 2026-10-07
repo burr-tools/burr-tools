@@ -90,6 +90,8 @@ case "$(uname -s)" in
 	<string>${VERSION}</string>
 	<key>CFBundleIconFile</key>
 	<string>BurrTools</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSRequiresAquaSystemAppearance</key>

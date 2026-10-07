@@ -99,7 +99,7 @@ ${APP_ICON_KEYS}	<key>CFBundleVersion</key>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>
-	<string>11.0</string>
+	<string>14.0</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>BurrTools - Open Source Puzzle Software</string>
 	<key>CFBundleDocumentTypes</key>

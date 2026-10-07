@@ -15,6 +15,7 @@ brew install meson ninja cmake
 - **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
 - **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
 - **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
+- **Minimum macOS**: the binaries run on macOS 14 Sonoma and later (`-Dmacos_deployment_target=14.0`, the default).
 
 #### Optional Static Analysis Tools (macOS)
 
@@ -218,7 +219,7 @@ Tools modules, and meson ≥ 1.7.
 | Platform | Getting Qt |
 | :--- | :--- |
 | Windows | MSYS2 UCRT64: `pacman -S mingw-w64-ucrt-x86_64-qt6-{base,declarative,shadertools,svg,tools} zip` |
-| macOS | `brew install qt` |
+| macOS | the Qt online installer or `aqtinstall` (as CI does), whose Qt runs on macOS 13 and later; `brew install qt` works too, but Homebrew builds it for your own macOS, so set `-Dmacos_deployment_target` to that version (the linker warns otherwise) |
 | Linux | the Qt online installer or `aqtinstall` (distributions often ship an older Qt), with `qtshadertools`; the render tests also use `mesa-vulkan-drivers` |
 
 ```bash

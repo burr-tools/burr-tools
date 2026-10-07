@@ -691,14 +691,21 @@ jobs:
         submodules: recursive
 
     - name: Install dependencies
-      run: brew install meson ninja qt
+      run: brew install meson ninja
+
+    # The official Qt binaries, built for macOS 13 and later, so the program
+    # and the preview app run on the project's minimum (macOS 14). Homebrew's
+    # Qt would target the runner's own macOS instead.
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.11.*'
+        modules: 'qtshadertools'
+        cache: true
 
     - name: Build
       run: |
-        # Homebrew's Qt is built for this runner's macOS, so the program can
-        # target nothing older (the linker would warn, and --werror fail)
-        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled \
-          -Dmacos_deployment_target=$(sw_vers -productVersion | cut -d. -f1).0
+        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
         ninja -C build-qt
 
     - name: Self-check

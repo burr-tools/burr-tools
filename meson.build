@@ -27,9 +27,9 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target for compatibility with older macOS versions.
-# Minimum macOS version 11.0 (Big Sur) for broader compatibility while still
-# supporting modern features.
+# Set macOS deployment target: the oldest macOS the binaries run on, 14.0
+# (Sonoma) by default -- above official Qt 6.11's floor (macOS 13), so the
+# legacy GUI and burrtools-qt share it.
 #
 # These are global rather than project arguments deliberately: meson subprojects
 # (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
@@ -37,8 +37,8 @@ endif
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
 #
-# An option, because a build against Homebrew's Qt (the Qt GUI's CI job) cannot
-# go below the macOS that Qt's bottles were built for; the legacy builds keep 11.0.
+# An option so a build can raise it: one against Homebrew's Qt, whose bottles
+# target the macOS they were built on, cannot go below that.
 macos_deployment_target = get_option('macos_deployment_target')
 
 if host_machine.system() == 'darwin'
