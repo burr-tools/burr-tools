@@ -964,6 +964,10 @@ void TestPipelineCache::theOffscreenRendererKeepsItsCache() {
       QSKIP("this graphics backend keeps no pipeline cache");
     QVERIFY(!first.renderer.pipelineCacheSeeded());             // no file yet
     QVERIFY(first.draw(frame));
+    // a device may claim the feature and still hand back nothing (Metal on
+    // macOS CI's virtual GPU): then there is no cache to keep, nor a file
+    if (first.renderer.rhi()->pipelineCacheData().isEmpty())
+      QSKIP("this device hands back no pipeline cache data");
   }
   QVERIFY2(QFileInfo(file).size() > 0, "no cache written");
 
@@ -1018,6 +1022,8 @@ void TestPipelineCache::theWindowWritesItsCacheAndTheNextStartLoadsIt() {
     view->setSize(QSizeF(96, 72));
     w.frame();
     w.frame();
+    if (w.control->rhi()->pipelineCacheData().isEmpty())     // as above
+      QSKIP("this device hands back no pipeline cache data");
   }
   QVERIFY2(QFileInfo(file).size() > 0, "the window wrote no cache");
 

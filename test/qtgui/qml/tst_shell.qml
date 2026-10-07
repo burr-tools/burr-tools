@@ -17,10 +17,11 @@ TestCase {
 
     function init() {
         // any QML warning (a binding error, an undefined name) fails the case --
-        // except the one the headless platform always gives: it renders with
-        // the software backend, where the 3D view's QQuickRhiItem cannot draw
-        // (rendering is tested separately, with an offscreen QRhi)
-        failOnWarning(/^(?!No QRhi found for window).*/)
+        // except two the headless platform gives: it renders with the software
+        // backend, where the 3D view's QQuickRhiItem cannot draw (rendering is
+        // tested separately, with an offscreen QRhi), and on Linux it cannot
+        // grab the keyboard for a menu that opens as a window of its own
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false

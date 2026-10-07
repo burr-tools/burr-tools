@@ -13,7 +13,7 @@ TestCase {
     property var win
 
     function init() {
-        failOnWarning(/^(?!No QRhi found for window).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false
