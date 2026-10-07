@@ -100,6 +100,34 @@ case "$(uname -s)" in
 </plist>
 PLIST
     macdeployqt "$APP" -qmldir=src/qtgui/qml
+    # what the QML imports pull in but the program never loads: Qt Quick
+    # Controls styles other than Basic (main() sets Basic), and the plugin
+    # types the Windows build skips too (SQL drivers, networking, TLS)
+    for style in FluentWinUI3 Fusion Imagine Material Universal iOS macOS; do
+      rm -rf "$APP/Contents/Resources/qml/QtQuick/Controls/$style"
+    done
+    rm -rf "$APP/Contents/Resources/qml/QtQuick/NativeStyle"
+    for fw in FluentWinUI3StyleImpl Fusion FusionStyleImpl Imagine ImagineStyleImpl Material MaterialStyleImpl \
+              Universal UniversalStyleImpl IOSStyleImpl MacOSStyleImpl; do
+      rm -rf "$APP/Contents/Frameworks/QtQuickControls2$fw.framework"
+    done
+    rm -rf "$APP/Contents/PlugIns/"{sqldrivers,networkinformation,tls,qmltooling,generic}
+    # the build rpath to the Qt it was built against (meson.build) has no
+    # place on another Mac, and would hide a framework missing from the bundle
+    BIN="$APP/Contents/MacOS/burrtools-qt"
+    otool -l "$BIN" | awk '/LC_RPATH/ { getline; getline; print $2 }' | { grep -v '^@' || true; } |
+      while read -r rp; do install_name_tool -delete_rpath "$rp" "$BIN"; done
+    # rewriting install names voids the linker's ad-hoc signature, without
+    # which Apple Silicon refuses to run a binary: sign the whole bundle again
+    codesign --force --deep --sign - "$APP"
+    # the bundle must start on its own: show the main window once (the cocoa
+    # plugin is the only platform bundled) with the Qt it was built against
+    # out of sight; a missing framework, QML module or a bad signature fails here
+    env -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QML_IMPORT_PATH -u DYLD_LIBRARY_PATH -u DYLD_FRAMEWORK_PATH \
+      BURRTOOLS_QT_SETTINGS="$OUT/smoke.rc" \
+      "$BIN" "--screenshot=$OUT/smoke.png"
+    test -s "$OUT/smoke.png"
+    rm -f "$OUT"/smoke.*     # the shot, its settings file and pipeline caches
     (cd "$OUT" && ditto -c -k --keepParent burrtools-qt.app "burrtools-qt-${VERSION}-macos-${ARCH}.zip")
     rm -rf "$APP"
     ;;
