@@ -3,8 +3,9 @@
 BurrTools 0.8 is the largest release in over a decade. The editor gains undo
 and redo, the 3D view is rebuilt for easier navigation, STL export produces
 print-ready chamfered meshes, and the solver can now use all CPU cores
-and the vector units of modern processors. Many puzzles solve 3x to 38x
-faster than in 0.7.1.
+and the vector units of modern processors. puzzles solve up to 76x (sic!)
+faster than in 0.7.1 on an eight core machine. The source code has been
+generally cleaned up.
 
 Editing:
 - Undo and redo for the whole puzzle: voxel painting, shape transforms,
@@ -17,7 +18,7 @@ Editing:
   dialog (Carlos Moreno Serrano)
 - The 2D grid editor shows the X, Y, Z coordinates of the voxel under the
   cursor in the status bar, and allows larger cells on high-DPI and Retina
-  displays (Arne Köhn)
+  displays (Colin Deisenroth, Arne Köhn)
 - Copying a shape keeps its name (Tom Burns)
 
 3D View:
@@ -55,9 +56,13 @@ STL Export:
   their header on macOS and Windows (Tom Burns)
 
 Solving:
+- New assemblers use SIMD instructions to significantly speed up assembly.
+- The disassembler was optimized in some paths to make use of SIMD instructions.
+- The state handling of the assembler and disassembler was optimized for
+  cache-locality and to prevent excess copying
 - Solving uses multiple CPU cores. The number of worker threads is a slider
   in Settings (default: 60% of available cores); the command-line solvers
-  take -t N (Arne Köhn, Girish Sharma)
+  take -t N (Arne Köhn)
 - Paused or stopped parallel searches can be saved to the file and
   continued later, without repeating solutions already found (Arne Köhn)
 - The progress bar advances smoothly and in proportion to time, covers
@@ -101,7 +106,7 @@ Bug Fixes:
 - Puzzle comments made only of special characters such as "<&" are no
   longer lost when the file is reloaded (Tom Burns)
 - Data races and a use-after-free between the solver and the GUI, found
-  with ThreadSanitizer (Bram Cohen, Arne Köhn)
+  with ThreadSanitizer (Bram Cohen)
 - Fix an infinite loop or wrong results in the disassembler on puzzles
   using piece groups (Tom Burns)
 - burrTxt2: no longer hangs on an already solved puzzle or aborts on grids
@@ -203,19 +208,19 @@ Compatibility Notes:
 - macOS release builds are Apple Silicon only.
 
 Developer & Build:
-  Why the new testing matters: 0.7.1 had no automated tests. 0.8 ships
-  538 test cases. With so much of the solver rewritten for speed, the tests
-  check that a faster solver still finds exactly the same answers. Every
-  example puzzle is checked against the assembly counts, solution counts
-  and disassembly move levels of the 0.7.1 release. The SIMD and classic
-  engines must agree on the same puzzles. Serial and parallel runs must
-  find the same set of assemblies, not just the same number. A
-  ThreadSanitizer run catches data races between solver threads. Writing
-  the tests also surfaced bugs that had shipped in 0.7.1, now fixed: an
-  infinite loop in piece grouping, puzzle comments lost on reload, exported
-  STL headers carrying most of the user's directory path, and the
-  command-line solvers crashing on a mistyped file name. Coverage is
-  reported on every pull request.
+   0.7.1 had no automated tests. 0.8 ships 538 test cases. With so
+   much of the solver rewritten for speed, the tests check that a
+   faster solver still finds exactly the same answers. Every example
+   puzzle is checked against the assembly counts, solution counts and
+   disassembly move levels of the 0.7.1 release. The SIMD and classic
+   engines must agree on the same puzzles. Serial and parallel runs
+   must find the same set of assemblies, not just the same number. A
+   ThreadSanitizer run catches data races between solver
+   threads. Writing the tests also surfaced bugs that had shipped in
+   0.7.1, now fixed: an infinite loop in piece grouping, puzzle
+   comments lost on reload, exported STL headers carrying most of the
+   user's directory path, and the command-line solvers crashing on a
+   mistyped file name. Coverage is reported on every pull request.
 
 - C++20, with -Wall -Wextra -Werror clean on GCC, Clang and MinGW (Arne
   Köhn, Tom Burns, raoulb)
