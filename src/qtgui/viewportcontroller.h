@@ -124,7 +124,9 @@ signals:
 
 private:
 
-  void rebuildScene(void);
+  void refreshShape(void);
+  void scheduleMesh(void);
+  void buildMesh(void);
   void clampLayer(void);
   bool boolSetting(const char * key, bool def) const;
   void setBoolSetting(const char * key, bool v);
@@ -138,6 +140,8 @@ private:
   std::shared_ptr<const btui::ShapeMesh> m_mesh;
   quint64 m_meshRevision = 0;
   QString m_meshStyle;             ///< the voxel style m_mesh was built in
+  bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
+  bool m_meshQueued = false;       ///< a buildMesh() is posted
 
   int m_plane = 0;
   int m_layer = 0;

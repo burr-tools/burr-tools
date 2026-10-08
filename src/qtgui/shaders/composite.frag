@@ -8,7 +8,8 @@
 layout(location = 0) out vec4 fragColor;
 
 layout(std140, binding = 0) uniform Buf {
-    vec4 target;     // xy: size in pixels, z: 1 when the scene is in linear light
+    vec4 target;     // xy: the scene texture's size in pixels (the view uses its corner at the
+                     // origin of gl_FragCoord), z: 1 when the scene is in linear light
 } ubuf;
 
 layout(binding = 1) uniform sampler2D scene;

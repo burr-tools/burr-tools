@@ -48,6 +48,10 @@ void SceneController::applyCameraSettings(void) {
                            ? btui::Camera::Projection::Orthographic : btui::Camera::Projection::Perspective);
 }
 
+int SceneController::wantedSamples(void) const {
+  return m_settings->antialiasingSamples();
+}
+
 SceneFrame SceneController::baseFrame(float devicePixelRatio) const {
   SceneFrame f;
   const Theme * t = Theme::instance();

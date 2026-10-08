@@ -106,9 +106,19 @@ export and the render tests through `OffscreenRenderer`.
   Vulkan or OpenGL elsewhere. The shaders (`shaders/`) are compiled for all
   of them at build time by `qsb` and embedded.
 - **Gamma-correct.** The scene is drawn into a linear-light RGBA16F target,
-  multisampled (8× where the GPU has it) and resolved there, so edges and
-  translucent voxels blend evenly; a last pass encodes it to sRGB. Faces are
-  still shaded in sRGB, so their colours are exactly the mock's and legacy's.
+  multisampled and resolved there, so edges and translucent voxels blend
+  evenly; a last pass encodes it to sRGB. Faces are still shaded in sRGB, so
+  their colours are exactly the mock's and legacy's.
+- **Anti-aliasing** (Settings ▸ 3D view ▸ Anti-aliasing): 4× by default, as
+  far as the GPU goes; 8× smooths little more for about twice the graphics
+  memory (several hundred MB for a large view on a high-DPI screen). The
+  targets grow in 64 px steps and are kept while the view fits, so resizing
+  the window does not make them anew for every pixel.
+- **One mesh per change.** An edit reaches the view through several signals
+  (the document's, the shapes list's count and selection); the shape is
+  looked up at once, its mesh built once after the burst. The shapes list
+  keeps its rows through edits (insert, remove, update in place) and counts
+  each shape's voxels once per change.
 - **Voxel styles** (Settings ▸ 3D view ▸ Voxel style).
   *Flat*, the default, is the redesign's: plain faces, each voxel face
   outlined in the fragment shader (no extra geometry, no depth fighting),
@@ -132,6 +142,10 @@ what legacy has (tooltips, lighting, rotation method, …) into
 `.burrtools-qt.rc`; from then on that file is its own. `BURRTOOLS_QT_SETTINGS`
 names another file — the tests and scripted runs use a scratch one, and the
 pipeline caches follow it, so they never touch the user's.
+
+Changes apply at once and reach the file half a second after the last of a
+burst, or when the program quits. The file is written beside itself and
+renamed over the old one, so a crash part way leaves the old settings.
 
 ## Testing
 

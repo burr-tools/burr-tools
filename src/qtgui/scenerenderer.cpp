@@ -58,6 +58,20 @@ namespace {
 
   constexpr float kLinearOverlayScale = 0.4f;
 
+  /* The scene targets grow in steps of this many pixels and are kept while
+   * the view still fits in them, so resizing the window does not make the
+   * (multisampled, half-float) targets anew for every pixel of the drag. */
+  constexpr int kTargetStep = 64;
+
+  QSize roundedUp(QSize s) {
+    auto up = [](int v) { return std::max(kTargetStep, (v + kTargetStep - 1) / kTargetStep * kTargetStep); };
+    return QSize(up(s.width()), up(s.height()));
+  }
+
+  qint64 area(QSize s) {
+    return qint64(s.width()) * s.height();
+  }
+
   struct LineUniforms {
     float mvp[16];
     float viewport[4];
@@ -122,7 +136,7 @@ struct SceneRenderer::Impl {
    * and resolved into sceneTex, which the composite pass reads. */
   bool linear = false;
   int samples = 1;                               // what the target got
-  QSize sceneSize;
+  QSize sceneSize;                               // the targets' size, at least the view's
   std::unique_ptr<QRhiTexture> sceneTex;
   std::unique_ptr<QRhiRenderBuffer> sceneMsaa;
   std::unique_ptr<QRhiRenderBuffer> sceneDepth;
@@ -189,6 +203,10 @@ int SceneRenderer::sampleCount(void) const {
 
 bool SceneRenderer::linearLight(void) const {
   return d->linear;
+}
+
+QSize SceneRenderer::targetSize(void) const {
+  return d->sceneSize;
 }
 
 void SceneRenderer::Impl::releaseScene(void) {
@@ -273,11 +291,14 @@ bool SceneRenderer::Impl::makeSceneTarget(QSize size, QRhiTexture::Format format
   return sceneRt->create();
 }
 
-/* The scene target for this frame's size. Its format and sample count are
- * settled at the first frame: RGBA16F (linear light) if the device renders
- * to it, the wanted multisampling or the most below it that works. */
-bool SceneRenderer::Impl::ensureSceneTarget(QSize size) {
-  if (sceneRt && size == sceneSize)
+/* Scene targets this frame's size fits in. Their format and sample count
+ * are settled at the first frame: RGBA16F (linear light) if the device
+ * renders to it, the wanted multisampling or the most below it that works.
+ * They are kept while the view fits and still uses half of them or more. */
+bool SceneRenderer::Impl::ensureSceneTarget(QSize view) {
+  const QSize size = roundedUp(view);
+  if (sceneRt && view.width() <= sceneSize.width() && view.height() <= sceneSize.height() &&
+      area(sceneSize) <= 2 * area(size))
     return true;
   if (sceneRt) {
     // same format and count, a new size: the pipelines stay
@@ -524,8 +545,8 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   u->updateDynamicBuffer(d->lineUbo.get(), 0, sizeof(lu), &lu);
 
   CompositeUniforms cu{};
-  cu.target[0] = float(px.width());
-  cu.target[1] = float(px.height());
+  cu.target[0] = float(d->sceneSize.width());     // the scene texture, which the view may not fill
+  cu.target[1] = float(d->sceneSize.height());
   cu.target[2] = lin;
   u->updateDynamicBuffer(d->compositeUbo.get(), 0, sizeof(cu), &cu);
 
@@ -567,7 +588,12 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   clear = QColor::fromRgbF(clear.redF() * clear.alphaF(), clear.greenF() * clear.alphaF(),
                            clear.blueF() * clear.alphaF(), clear.alphaF());
   cb->beginPass(d->sceneRt.get(), clear, { 1.0f, 0 }, u);
-  const QRhiViewport vp(0, 0, float(px.width()), float(px.height()));
+  /* The view's corner of the (possibly larger) scene texture: the rows the
+   * composite pass reads back at the same fragment coordinates -- the
+   * bottom ones where framebuffers are y-up (OpenGL), the top ones elsewhere
+   * (a viewport's origin is its bottom left). */
+  const float sceneY = rhi->isYUpInFramebuffer() ? 0.0f : float(d->sceneSize.height() - px.height());
+  const QRhiViewport vp(0, sceneY, float(px.width()), float(px.height()));
 
   if (d->meshVbuf && d->opaqueCount) {
     cb->setGraphicsPipeline(d->opaque.get());
@@ -639,7 +665,7 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   // --- into the caller's target, encoded to sRGB ---
   cb->beginPass(rt, Qt::transparent, { 1.0f, 0 });
   cb->setGraphicsPipeline(d->composite.get());
-  cb->setViewport(vp);
+  cb->setViewport(QRhiViewport(0, 0, float(px.width()), float(px.height())));
   cb->setShaderResources(d->compositeSrb.get());
   const QRhiCommandBuffer::VertexInput tvi(d->triangle.get(), 0);
   cb->setVertexInput(0, 1, &tvi);

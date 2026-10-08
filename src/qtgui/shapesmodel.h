@@ -22,6 +22,8 @@
 #define BTQT_SHAPESMODEL_H
 
 #include <QAbstractListModel>
+
+#include <vector>
 #include <QColor>
 #include <QtQml/qqmlregistration.h>
 
@@ -70,9 +72,12 @@ public:
   static QColor chipColor(int i);
 
   /* Re-read the shapes after the puzzle changed; keeps the selection when
-   * it still exists, else clamps it (the spec's "nearest remaining").
+   * it still exists, else clamps it (the spec's "nearest remaining"). The
+   * rows stay: a change in number inserts or removes rows at the end, every
+   * other row is updated in place, so a view keeps its delegates. A new
+   * document (`reset`) replaces them all.
    */
-  void refresh(void);
+  void refresh(bool reset = false);
 
 signals:
 
@@ -81,8 +86,17 @@ signals:
 
 private:
 
+  /* a shape's voxel counts, read once per change of the puzzle */
+  struct Counts {
+    int fixed = -1;            ///< -1: not counted since the last change
+    int variable = -1;
+  };
+  const Counts & countsOf(int row) const;
+
   DocumentController * m_doc;
   int m_selected = -1;
+  int m_rows = 0;                          ///< the rows the views have been told about
+  mutable std::vector<Counts> m_counts;    ///< per row, filled as the views ask
 };
 
 #endif

@@ -25,6 +25,7 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
@@ -52,6 +53,8 @@ class SettingsController : public QObject {
   /* "flat" (the redesign's outlined faces) or "legacy" (bevelled voxels in
    * a light / dark checker); a new setting, no legacy counterpart */
   Q_PROPERTY(QString voxelStyle READ voxelStyle WRITE setVoxelStyle NOTIFY changed)
+  // the 3D view's multisampling: "off", "2x", "4x" (default) or "8x"
+  Q_PROPERTY(QString antialiasing READ antialiasing WRITE setAntialiasing NOTIFY changed)
   Q_PROPERTY(bool fadePieces READ fadePieces WRITE setFadePieces NOTIFY changed)
   /* legacy "Use openGL display lists": kept and carried over, but the new
    * renderer has no display lists, so nothing reads it */
@@ -70,6 +73,12 @@ public:
    * two GUIs really use; tests pass their own.
    */
   explicit SettingsController(const QString & file = QString(), const QString & legacyFile = QString(), QObject * parent = nullptr);
+  ~SettingsController() override;
+
+  /* Write a pending change now. Changes reach the file half a second after
+   * the last of a burst (a slider dragged, a row of switches), and at the
+   * latest when the program quits or this object goes. */
+  void flush(void);
 
   static QString defaultFile(void);
   /* the settings file in use (BURRTOOLS_QT_SETTINGS or the default);
@@ -91,6 +100,10 @@ public:
   void setRotationMethod(const QString & v);
   QString voxelStyle(void) const;
   void setVoxelStyle(const QString & v);
+  QString antialiasing(void) const;
+  void setAntialiasing(const QString & v);
+  /* the samples per pixel antialiasing asks for: 1, 2, 4 or 8 */
+  int antialiasingSamples(void) const;
   bool lighting(void) const;
   void setLighting(bool v);
   bool fadePieces(void) const;
@@ -142,6 +155,7 @@ private:
   void applyToTheme(void);
 
   btui::SettingsStore m_store;
+  QTimer m_saveTimer;              ///< runs while a change waits to be written
 };
 
 #endif

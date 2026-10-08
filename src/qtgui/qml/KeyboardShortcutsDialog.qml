@@ -66,6 +66,9 @@ BtDialog {
             Layout.fillHeight: true
             clip: true
             contentWidth: availableWidth
+            // nothing to scroll sideways; an idle horizontal bar would still take the
+            // clicks in a 10 px strip along the bottom
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
             Column {
                 width: parent.width

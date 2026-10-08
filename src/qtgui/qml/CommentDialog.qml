@@ -24,6 +24,9 @@ BtDialog {
         ScrollView {
             width: parent.width
             height: parent.height - 30
+            // the text wraps: an idle horizontal bar would still take the
+            // clicks in a 10 px strip along the bottom
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
             TextArea {
                 id: editor
                 objectName: "shell.comment.text"

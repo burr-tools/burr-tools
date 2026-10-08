@@ -35,6 +35,7 @@
 
 #include <QFile>
 #include <QFileInfo>
+#include <QThread>
 
 #include <algorithm>
 
@@ -67,20 +68,25 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   // Settings ▸ Voxel style changes the geometry itself
   connect(m_settings, &SettingsController::changed, this, [this] {
     if (m_settings->voxelStyle() != m_meshStyle)
-      rebuildScene();
+      scheduleMesh();
   });
   connect(m_layout, &LayoutController::changed, this, [this] {
     emit optionsChanged();
     emit frameChanged();
   });
 
-  connect(m_shapes, &ShapesModel::selectedChanged, this, &ViewportController::rebuildScene);
-  connect(m_shapes, &ShapesModel::countChanged, this, &ViewportController::rebuildScene);
-  connect(m_doc, &DocumentController::documentReplaced, this, &ViewportController::rebuildScene);
-  connect(m_doc, &DocumentController::historyApplied, this, &ViewportController::rebuildScene);
-  connect(m_doc, &DocumentController::puzzleEdited, this, &ViewportController::rebuildScene);
+  /* One change to the puzzle reaches here several times over (an edit: the
+   * document's signal, the shapes list's count and maybe its selection). The
+   * shape itself is looked up at once, which is cheap and keeps the
+   * properties QML reads current; its mesh is built once, after the burst. */
+  connect(m_shapes, &ShapesModel::selectedChanged, this, &ViewportController::refreshShape);
+  connect(m_shapes, &ShapesModel::countChanged, this, &ViewportController::refreshShape);
+  connect(m_doc, &DocumentController::documentReplaced, this, &ViewportController::refreshShape);
+  connect(m_doc, &DocumentController::historyApplied, this, &ViewportController::refreshShape);
+  connect(m_doc, &DocumentController::puzzleEdited, this, &ViewportController::refreshShape);
 
-  rebuildScene();
+  refreshShape();
+  buildMesh();
 }
 
 bool ViewportController::boolSetting(const char * key, bool def) const {
@@ -136,7 +142,7 @@ void ViewportController::setColourView(const QString & v) {
   if (c == colourView())
     return;
   m_settings->setStringValue(QString::fromLatin1(kColourView), c);
-  rebuildScene();
+  scheduleMesh();
   emit optionsChanged();
 }
 
@@ -188,15 +194,39 @@ QColor ViewportController::shapeColor(void) const {
   return m_shapeIndex >= 0 ? ShapesModel::chipColor(m_shapeIndex) : QColor();
 }
 
-/* Build the selected shape's mesh. The camera keeps its orientation and
- * zoom, as legacy showSingleShape() keeps them, and re-frames on the new
- * shape's bounds -- zoom is relative to the fitted view.
- */
-void ViewportController::rebuildScene(void) {
+/* The selected shape, looked up again after any change to the puzzle or the
+ * selection; its mesh follows once the current burst of changes is over. */
+void ViewportController::refreshShape(void) {
   const puzzle_c & p = m_doc->session().puzzle();
   const int sel = m_shapes->selected();
   m_shape = (sel >= 0 && unsigned(sel) < p.getNumberOfShapes()) ? p.getShape(unsigned(sel)) : nullptr;
   m_shapeIndex = m_shape ? sel : -1;
+  clampLayer();
+  emit sceneChanged();
+  emit layerChanged();
+  scheduleMesh();
+}
+
+void ViewportController::scheduleMesh(void) {
+  m_meshDirty = true;
+  if (m_meshQueued)
+    return;
+  m_meshQueued = true;
+  QMetaObject::invokeMethod(this, [this] {
+    m_meshQueued = false;
+    buildMesh();
+  }, Qt::QueuedConnection);
+}
+
+/* Build the selected shape's mesh, if it is out of date. The camera keeps
+ * its orientation and zoom, as legacy showSingleShape() keeps them, and
+ * re-frames on the new shape's bounds -- zoom is relative to the fitted view.
+ */
+void ViewportController::buildMesh(void) {
+  if (!m_meshDirty)
+    return;
+  m_meshDirty = false;
+  const puzzle_c & p = m_doc->session().puzzle();
 
   if (m_shape) {
     btui::MeshOptions opt;
@@ -208,7 +238,7 @@ void ViewportController::rebuildScene(void) {
       p.getColor(i, &r, &g, &b);
       opt.palette.push_back({ r / 255.0f, g / 255.0f, b / 255.0f });
     }
-    // reached from every selection, layer and history change QML makes
+    // once per burst of selection, history and edit changes (scheduleMesh)
     m_mesh.reset();
     guarded([&] {
       auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
@@ -221,14 +251,17 @@ void ViewportController::rebuildScene(void) {
   }
   m_meshStyle = m_settings->voxelStyle();
   m_meshRevision++;
-  clampLayer();
 
-  emit sceneChanged();
-  emit layerChanged();
+  emit sceneChanged();      // emptyShape follows the mesh
   emit frameChanged();
 }
 
 SceneFrame ViewportController::frame(float devicePixelRatio) const {
+  /* a mesh still queued is built now when asked for on this object's own
+   * thread (an export, a test); the render thread draws the last one, and
+   * the queued build's frameChanged brings the next frame */
+  if (m_meshDirty && QThread::currentThread() == thread())
+    const_cast<ViewportController *>(this)->buildMesh();
   SceneFrame f = baseFrame(devicePixelRatio);
   const Theme * t = Theme::instance();
   // the flat style's variable voxels: the inner ones show through

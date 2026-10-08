@@ -49,6 +49,36 @@ TEST_CASE("values round-trip through the file with their types", "[ui][settings]
   CHECK(t.values().size() == 4);
 }
 
+TEST_CASE("saving replaces the file whole, through a temporary beside it", "[ui][settings]") {
+  // written beside the file and renamed over it: a crash part way never
+  // leaves half a settings file, and nothing is left behind
+  TempFile f;
+  std::filesystem::path tmp = f.path;
+  tmp += ".tmp";
+  SettingsStore s(f.path);
+  s.set("ui.theme", std::string("dark"));
+  s.set("view.lighting", true);
+  REQUIRE(s.save());
+  s.remove("view.lighting");
+  s.set("ui.theme", std::string("light"));
+  REQUIRE(s.save());                               // over an existing file
+  CHECK_FALSE(std::filesystem::exists(tmp));
+
+  SettingsStore t(f.path);
+  REQUIRE(t.load());
+  CHECK(t.getString("ui.theme") == "light");
+  CHECK_FALSE(t.contains("view.lighting"));
+  CHECK(t.values().size() == 1);
+
+  // a place it cannot write: it says so, and the old file stays
+  SettingsStore u(f.path.parent_path() / "no such folder" / "s.rc");
+  u.set("ui.theme", std::string("dark"));
+  CHECK_FALSE(u.save());
+  SettingsStore v(f.path);
+  REQUIRE(v.load());
+  CHECK(v.getString("ui.theme") == "light");
+}
+
 TEST_CASE("the legacy .burrtools.rc format parses", "[ui][settings]") {
   TempFile f;
   // what configuration_c's destructor writes

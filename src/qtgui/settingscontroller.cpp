@@ -21,6 +21,7 @@
 #include "settingscontroller.h"
 #include "theme.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QStandardPaths>
 
@@ -41,6 +42,7 @@ namespace {
   const char * const kReverse     = "view.reverseScroll";
   const char * const kRotation    = "view.rotationMethod";
   const char * const kVoxelStyle  = "view.voxelStyle";
+  const char * const kAntialiasing = "view.antialiasing";
   const char * const kLighting    = "view.lighting";
   const char * const kFade        = "view.fadePieces";
   const char * const kThreads     = "solver.threads";
@@ -84,11 +86,28 @@ SettingsController::SettingsController(const QString & file, const QString & leg
   QObject(parent),
   m_store(toPath(file.isEmpty() ? defaultFile() : file))
 {
+  m_saveTimer.setSingleShot(true);
+  m_saveTimer.setInterval(500);
+  connect(&m_saveTimer, &QTimer::timeout, this, [this] { m_store.save(); });
+  if (QCoreApplication * app = QCoreApplication::instance())
+    connect(app, &QCoreApplication::aboutToQuit, this, &SettingsController::flush);
+
   if (!m_store.load()) {
     seedFromLegacy(legacyFile.isEmpty() ? defaultLegacyFile() : legacyFile);
-    write();
+    m_store.save();          // the first start's file, at once
   }
   applyToTheme();
+}
+
+SettingsController::~SettingsController() {
+  flush();
+}
+
+void SettingsController::flush(void) {
+  if (!m_saveTimer.isActive())
+    return;
+  m_saveTimer.stop();
+  m_store.save();
 }
 
 QString SettingsController::file(void) const {
@@ -142,8 +161,10 @@ void SettingsController::seedFromLegacy(const QString & legacyFile) {
         m_store.set(kUndoDepth, (long long)undoDepths[size_t(*n)]);
 }
 
+/* Every setter calls this: the file is written once the changes stop,
+ * not for each one on the GUI thread (flush). */
 void SettingsController::write(void) {
-  m_store.save();
+  m_saveTimer.start();
 }
 
 void SettingsController::applyToTheme(void) {
@@ -229,6 +250,29 @@ void SettingsController::setVoxelStyle(const QString & v) {
   emit changed();
 }
 
+/* 4x by default: 8x smooths little more and, for the 3D view's half-float
+ * target, costs about twice the graphics memory (some 400 MB for a large
+ * view on a high-DPI screen) */
+QString SettingsController::antialiasing(void) const {
+  return QString::fromStdString(m_store.getString(kAntialiasing, "4x"));
+}
+
+void SettingsController::setAntialiasing(const QString & v) {
+  const bool known = v == QLatin1String("off") || v == QLatin1String("2x") || v == QLatin1String("4x") ||
+                     v == QLatin1String("8x");
+  const QString a = known ? v : QStringLiteral("4x");
+  if (a == antialiasing())
+    return;
+  m_store.set(kAntialiasing, a.toStdString());
+  write();
+  emit changed();
+}
+
+int SettingsController::antialiasingSamples(void) const {
+  const QString a = antialiasing();
+  return a == QLatin1String("off") ? 1 : a == QLatin1String("2x") ? 2 : a == QLatin1String("8x") ? 8 : 4;
+}
+
 int SettingsController::snapUndoDepth(int v) {
   int best = undoDepths[0];
   for (int d : undoDepths)
@@ -297,7 +341,7 @@ void SettingsController::resetSection(const QString & page) {
     for (const char * k : { kTheme, kDensity, kTooltips, kUndoDepth })
       m_store.remove(k);
   } else if (page == QLatin1String("view3d")) {
-    for (const char * k : { kViewCube, kReverse, kRotation, kVoxelStyle, kLighting, kFade })
+    for (const char * k : { kViewCube, kReverse, kRotation, kVoxelStyle, kAntialiasing, kLighting, kFade })
       m_store.remove(k);
   } else if (page == QLatin1String("performance")) {
     m_store.remove(kThreads);

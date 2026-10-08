@@ -59,7 +59,13 @@ struct OffscreenRenderer::Impl {
   bool makeTarget(QSize size) {
     if (size == tileSize && rt)
       return true;
-    releaseTarget();
+    // a new size keeps the render pass layout (below), and with it the scene
+    // renderer's targets and pipelines: an export draws every picture at its
+    // own size
+    rt.reset();
+    depth.reset();
+    tex.reset();
+    tileSize = QSize();
     tex.reset(rhi->newTexture(QRhiTexture::RGBA8, size, 1, QRhiTexture::RenderTarget | QRhiTexture::UsedAsTransferSource));
     if (!tex->create())
       return false;
@@ -69,7 +75,9 @@ struct OffscreenRenderer::Impl {
     QRhiTextureRenderTargetDescription desc{ QRhiColorAttachment(tex.get()) };
     desc.setDepthStencilBuffer(depth.get());
     rt.reset(rhi->newTextureRenderTarget(desc));
-    rp.reset(rt->newCompatibleRenderPassDescriptor());
+    // every target here is RGBA8 with depth: one layout serves them all
+    if (!rp)
+      rp.reset(rt->newCompatibleRenderPassDescriptor());
     rt->setRenderPassDescriptor(rp.get());
     if (!rt->create())
       return false;
@@ -163,6 +171,10 @@ OffscreenRenderer::OffscreenRenderer(Backend b) : d(std::make_unique<Impl>()) {
 
 bool OffscreenRenderer::linearLight(void) const {
   return d->renderer.linearLight();
+}
+
+QSize OffscreenRenderer::sceneTargetSize(void) const {
+  return d->renderer.targetSize();
 }
 
 QRhi * OffscreenRenderer::rhi(void) const {

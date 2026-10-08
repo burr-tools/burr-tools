@@ -49,6 +49,10 @@ BtDialog {
             { key: "voxelStyle", prop: "voxelStyle", type: "seg", title: qsTr("Voxel style"),
               desc: qsTr("Flat shows plain faces with a thin outline round every voxel face. Classic is the original look: bevelled voxels in alternating light and dark shades."),
               opts: [{ value: "flat", label: qsTr("Flat") }, { value: "legacy", label: qsTr("Classic") }] },
+            { key: "antialiasing", prop: "antialiasing", type: "seg", title: qsTr("Anti-aliasing"),
+              desc: qsTr("Smooth the edges in the 3D preview. Higher settings look smoother but use more graphics memory; 8× can take several hundred megabytes on large high-resolution screens."),
+              opts: [{ value: "off", label: qsTr("Off") }, { value: "2x", label: qsTr("2×") },
+                     { value: "4x", label: qsTr("4×") }, { value: "8x", label: qsTr("8×") }] },
             { key: "lighting", prop: "lighting", type: "switch", title: qsTr("Lighting"),
               desc: qsTr("Light the 3D preview so pieces look solid and shaded. Turn off for a flatter, unlit appearance.") },
             { key: "fadePieces", prop: "fadePieces", type: "switch", title: qsTr("Fade out removed pieces"),
@@ -285,6 +289,9 @@ BtDialog {
                 Layout.fillHeight: true
                 clip: true
                 contentWidth: availableWidth
+                // nothing to scroll sideways; an idle horizontal bar would still take the
+                // clicks in a 10 px strip along the bottom
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                 Column {
                     x: 26

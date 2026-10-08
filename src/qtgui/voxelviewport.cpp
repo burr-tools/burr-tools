@@ -85,19 +85,27 @@ QQuickRhiItemRenderer * VoxelViewport::createRenderer(void) {
   return new Renderer;
 }
 
-int VoxelViewport::bestSampleCount(const QList<int> & supported) {
+int VoxelViewport::bestSampleCount(const QList<int> & supported, int wanted) {
   for (int n : { 8, 4, 2 })
-    if (supported.contains(n))
+    if (n <= wanted && supported.contains(n))
       return n;
   return 1;
 }
 
-void VoxelViewport::adoptBestSampleCount(void) {
+/* Read on the render thread in synchronize(), while the GUI thread waits;
+ * a change of the setting reaches here through the controller's
+ * frameChanged, which every settings change emits. */
+int VoxelViewport::msaaSamples(void) const {
+  const int wanted = m_controller ? m_controller->wantedSamples() : 4;
+  return m_supported.isEmpty() ? wanted : bestSampleCount(m_supported, wanted);
+}
+
+void VoxelViewport::adoptSampleCounts(void) {
   if (QQuickWindow * w = window())
     if (QRhi * r = w->rhi()) {
-      const int n = bestSampleCount(r->supportedSampleCounts());
-      if (n != m_samples) {
-        m_samples = n;
+      const QList<int> s = r->supportedSampleCounts();
+      if (s != m_supported) {
+        m_supported = s;
         update();
       }
     }
@@ -116,8 +124,8 @@ void VoxelViewport::watchWindow(QQuickWindow * w) {
     return;
   // emitted on the render thread: answered on this one
   m_windowConnection = connect(w, &QQuickWindow::sceneGraphInitialized, this,
-                               &VoxelViewport::adoptBestSampleCount, Qt::QueuedConnection);
-  adoptBestSampleCount();       // already initialised
+                               &VoxelViewport::adoptSampleCounts, Qt::QueuedConnection);
+  adoptSampleCounts();          // already initialised
 }
 
 void VoxelViewport::geometryChange(const QRectF & newGeometry, const QRectF & oldGeometry) {

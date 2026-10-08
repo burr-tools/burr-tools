@@ -63,6 +63,9 @@ public:
   btui::Camera & camera(void) { return m_camera; }
   const btui::Camera & camera(void) const { return m_camera; }
 
+  /* the multisampling Settings ▸ 3D view ▸ Anti-aliasing asks for (1, 2, 4 or 8) */
+  int wantedSamples(void) const;
+
   Q_INVOKABLE void home(void);
   Q_INVOKABLE void fit(void);
 

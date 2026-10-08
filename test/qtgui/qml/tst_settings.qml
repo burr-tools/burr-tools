@@ -48,12 +48,29 @@ TestCase {
         return o
     }
 
+    // a row below the fold: scroll its page just far enough, as a user would --
+    // which leaves it at the page's bottom edge, where an idle horizontal
+    // scroll bar once took the clicks
+    function reveal(item) {
+        let f = item.parent
+        while (f && !(f instanceof Flickable))
+            f = f.parent
+        if (!f)
+            return
+        const y = item.mapToItem(f.contentItem, 0, 0).y
+        if (y + item.height > f.contentY + f.height)
+            f.contentY = Math.min(y + item.height - f.height, f.contentHeight - f.height)
+        if (y < f.contentY)
+            f.contentY = y
+        waitForRendering(item)
+    }
+
     function test_everyLegacySettingIsOnItsPage() {
         // AC-C12-01: each once, on the spec's page
         const d = openSettings()
         const pages = {
             general: ["density", "theme", "undoDepth", "tooltips"],
-            view3d: ["viewCube", "reverseScroll", "rotationMethod", "voxelStyle", "lighting", "fadePieces"],
+            view3d: ["viewCube", "reverseScroll", "rotationMethod", "voxelStyle", "antialiasing", "lighting", "fadePieces"],
             performance: ["workerThreads", "displayLists"]
         }
         for (const page in pages) {
@@ -71,6 +88,7 @@ TestCase {
         waitForRendering(d.contentItem)
         const fade = inside(d, "settings." + "fadePieces")
         verify(App.settings.fadePieces)
+        reveal(fade)
         mouseClick(fade)
         verify(!App.settings.fadePieces)
 
@@ -101,6 +119,18 @@ TestCase {
         compare(App.settings.voxelStyle, "legacy")
         mouseClick(inside(d, "settings.voxelStyle.flat"))
         compare(App.settings.voxelStyle, "flat")
+    }
+
+    function test_antialiasingIsASegmentedChoice() {
+        // 4x by default; off, 2x and 8x on the same row
+        const d = openSettings()
+        mouseClick(inside(d, "settings.nav.view3d"))
+        waitForRendering(d.contentItem)
+        compare(App.settings.antialiasing, "4x")
+        for (const v of ["8x", "off", "2x", "4x"]) {
+            mouseClick(inside(d, "settings.antialiasing." + v))
+            compare(App.settings.antialiasing, v)
+        }
     }
 
     function test_resetSectionTouchesOnlyItsPage() {

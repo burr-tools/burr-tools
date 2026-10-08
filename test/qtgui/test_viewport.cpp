@@ -327,7 +327,9 @@ void TestViewportController::theVoxelStyleSettingRebuildsTheMesh() {
 
   QSignalSpy rebuilt(v, &ViewportController::sceneChanged);
   f.app->settings()->setVoxelStyle(QStringLiteral("legacy"));
-  QCOMPARE(rebuilt.count(), 1);
+  QTRY_COMPARE(rebuilt.count(), 1);            // once the change is through
+  QCoreApplication::processEvents();
+  QCOMPARE(rebuilt.count(), 1);                // and only once
   const SceneFrame classic = v->frame(1);
   QVERIFY(classic.meshRevision != flat.meshRevision);
   QVERIFY(!outlined(classic));
@@ -383,6 +385,44 @@ void TestRender::rendersTheShapeOnTheCanvas() {
   const QColor mid = img.pixelColor(160, 120);
   QVERIFY(!near(mid, canvas, 20));
   QVERIFY(mid.blue() > mid.red() + 60);
+}
+
+void TestRender::theTargetsOutgrowTheViewInSteps() {
+  // the scene's (multisampled, half-float) targets are made in 64 px steps
+  // and kept while the view fits, so a window resize does not make them anew
+  // for every pixel; a view drawn in the corner of bigger targets looks the
+  // same as one drawn in targets of its own size
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  Theme::instance()->setMode(QStringLiteral("light"));
+  const SceneFrame frame = f.app->viewport()->frame(1);
+
+  QVERIFY(!t.render(frame).isNull());
+  QCOMPARE(t.renderer.sceneTargetSize(), QSize(320, 256));
+  t.size = QSize(330, 250);                       // grows: a step wider
+  QVERIFY(!t.render(frame).isNull());
+  QCOMPARE(t.renderer.sceneTargetSize(), QSize(384, 256));
+  t.size = QSize(320, 256);                       // fits, and uses enough of it: kept
+  const QImage inCorner = t.render(frame);
+  QCOMPARE(t.renderer.sceneTargetSize(), QSize(384, 256));
+
+  OffscreenTarget own;                            // a whole number of steps: targets its own size
+  QVERIFY(own.create(QSize(320, 256)));
+  const QImage alone = own.render(frame);
+  QCOMPARE(own.renderer.sceneTargetSize(), QSize(320, 256));
+  QCOMPARE(inCorner.size(), alone.size());
+  int differing = 0;
+  for (int y = 0; y < alone.height(); y++)
+    for (int x = 0; x < alone.width(); x++)
+      if (!near(inCorner.pixelColor(x, y), alone.pixelColor(x, y), 3))
+        differing++;
+  QCOMPARE(differing, 0);
+
+  t.size = QSize(100, 100);                       // far smaller: given back
+  QVERIFY(!t.render(frame).isNull());
+  QCOMPARE(t.renderer.sceneTargetSize(), QSize(128, 128));
 }
 
 void TestRender::lightingChangesTheShading() {
@@ -791,12 +831,16 @@ void TestViewportItem::redrawsAtTheFinalSizeAfterTheCardGrows() {
 }
 
 void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {
-  // smooth voxel edges: 8x where the device can, else 4x, 2x, or none
+  // smooth voxel edges: as many samples as Settings ▸ Anti-aliasing asks
+  // for (4x by default), as far as the device goes, else fewer or none
   QCOMPARE(VoxelViewport::bestSampleCount({ 1, 2, 4, 8, 16 }), 8);
   QCOMPARE(VoxelViewport::bestSampleCount({ 1, 4 }), 4);
   QCOMPARE(VoxelViewport::bestSampleCount({ 1, 2 }), 2);
   QCOMPARE(VoxelViewport::bestSampleCount({ 1 }), 1);
   QCOMPARE(VoxelViewport::bestSampleCount({}), 1);
+  QCOMPARE(VoxelViewport::bestSampleCount({ 1, 2, 4, 8 }, 4), 4);
+  QCOMPARE(VoxelViewport::bestSampleCount({ 1, 2, 8 }, 4), 2);
+  QCOMPARE(VoxelViewport::bestSampleCount({ 1, 2, 4, 8 }, 1), 1);
 
   AppFixture f;
   QuickTarget t;
@@ -804,11 +848,19 @@ void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {
   auto * view = new VoxelViewport(t.window->contentItem());
   view->setController(f.app->viewport());
   view->setSize(QSizeF(200, 150));
-  const int best = VoxelViewport::bestSampleCount(t.renderer.rhi()->supportedSampleCounts());
-  QTRY_COMPARE(view->msaaSamples(), best);
+  const QList<int> supported = t.renderer.rhi()->supportedSampleCounts();
+  QTRY_COMPARE(view->msaaSamples(), VoxelViewport::bestSampleCount(supported, 4));
   QCOMPARE(view->sampleCount(), 1);          // the item's texture: the scene multisamples itself
   QVERIFY(!t.frame().isNull());
   QCOMPARE(view->effectiveColorBufferSize(), QSize(200, 150));
+
+  // the setting changes it, and the next frame draws with it
+  f.app->settings()->setAntialiasing(QStringLiteral("8x"));
+  QCOMPARE(view->msaaSamples(), VoxelViewport::bestSampleCount(supported, 8));
+  QVERIFY(!t.frame().isNull());
+  f.app->settings()->setAntialiasing(QStringLiteral("off"));
+  QCOMPARE(view->msaaSamples(), 1);
+  QVERIFY(!t.frame().isNull());
 }
 
 // ---------------------------------------------------------------------------

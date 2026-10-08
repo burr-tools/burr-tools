@@ -112,6 +112,11 @@ public:
   int sampleCount(void) const;
   bool linearLight(void) const;
 
+  /* The scene targets' size: the view's rounded up to whole steps, and kept
+   * while the view fits in it and uses half of it or more, so a window
+   * resize does not make them anew for every pixel. */
+  QSize targetSize(void) const;
+
   /* Drop every GPU resource (the QRhi is going away). */
   void release(void);
 

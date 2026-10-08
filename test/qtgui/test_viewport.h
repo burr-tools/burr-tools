@@ -42,6 +42,7 @@ private slots:
   void theFlatStyleOutlinesEveryVoxelFace();
   void translucencyBlendsInLinearLight();
   void innerVariableVoxelsShowThroughTheOuterOnes();
+  void theTargetsOutgrowTheViewInSteps();
 };
 
 /* The real 3D view item (VoxelViewport, a QQuickRhiItem) drawn by Qt Quick

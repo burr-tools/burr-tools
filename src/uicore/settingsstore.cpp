@@ -120,22 +120,39 @@ namespace btui {
     return true;
   }
 
+  /* Written beside the file and renamed over it, so a crash or a full disk
+   * part way leaves the settings as they were, never half a file. */
   bool SettingsStore::save(void) const {
-    std::ofstream out(path, std::ios::trunc);
-    if (!out)
-      return false;
-
-    for (const auto & [k, v] : vals) {
-      out << k << " = ";
-      if (auto b = std::get_if<bool>(&v))
-        out << (*b ? "true" : "false");
-      else if (auto n = std::get_if<long long>(&v))
-        out << *n;
-      else
-        out << quote(std::get<std::string>(v));
-      out << "\n";
+    std::filesystem::path tmp = path;
+    tmp += ".tmp";
+    std::error_code ec;
+    {
+      std::ofstream out(tmp, std::ios::trunc);
+      if (!out)
+        return false;
+      for (const auto & [k, v] : vals) {
+        out << k << " = ";
+        if (auto b = std::get_if<bool>(&v))
+          out << (*b ? "true" : "false");
+        else if (auto n = std::get_if<long long>(&v))
+          out << *n;
+        else
+          out << quote(std::get<std::string>(v));
+        out << "\n";
+      }
+      out.flush();
+      if (!out) {
+        out.close();
+        std::filesystem::remove(tmp, ec);
+        return false;
+      }
     }
-    return static_cast<bool>(out);
+    std::filesystem::rename(tmp, path, ec);       // replaces the old file
+    if (ec) {
+      std::filesystem::remove(tmp, ec);
+      return false;
+    }
+    return true;
   }
 
   bool SettingsStore::contains(std::string_view key) const {

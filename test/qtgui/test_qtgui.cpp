@@ -228,6 +228,27 @@ private slots:
     QVERIFY(QFile::exists(f.file("settings.rc")));
   }
 
+  void antialiasingIsFourTimesByDefault() {
+    // 4x: 8x smooths little more for about twice the graphics memory
+    Fixture f;
+    f.make();
+    SettingsController * s = f.app->settings();
+    QCOMPARE(s->antialiasing(), QStringLiteral("4x"));
+    QCOMPARE(s->antialiasingSamples(), 4);
+    const std::pair<const char *, int> choices[] = { { "off", 1 }, { "2x", 2 }, { "8x", 8 }, { "4x", 4 } };
+    for (const auto & [name, samples] : choices) {
+      s->setAntialiasing(QString::fromLatin1(name));
+      QCOMPARE(s->antialiasing(), QString::fromLatin1(name));
+      QCOMPARE(s->antialiasingSamples(), samples);
+      QCOMPARE(f.app->viewport()->wantedSamples(), samples);
+    }
+    s->setAntialiasing(QStringLiteral("16x"));            // not offered: the default
+    QCOMPARE(s->antialiasing(), QStringLiteral("4x"));
+    s->setAntialiasing(QStringLiteral("8x"));
+    s->resetSection(QStringLiteral("view3d"));            // its page's reset brings it back
+    QCOMPARE(s->antialiasing(), QStringLiteral("4x"));
+  }
+
   void startsInTheLightTheme() {
     // Light, as legacy looks, whatever the system's scheme (the spec's
     // default is System); restoring the defaults comes back to it
@@ -262,10 +283,18 @@ private slots:
     QCOMPARE(f.app->settings()->lighting(), true);
   }
 
-  void changesPersistImmediately() {
+  void changesPersistOnceTheyStop() {
+    // they apply at once, and reach the file half a second after the last
+    // of a burst -- one write, not one per change -- or when the program goes
     Fixture f;
     f.make();
+    auto onDisk = [&] {
+      QFile file(f.file("settings.rc"));
+      return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+    };
     f.app->settings()->setTheme(QStringLiteral("dark"));
+    QVERIFY(!onDisk().contains("dark"));
+    QTRY_VERIFY(onDisk().contains("dark"));
     f.app->settings()->setReverseScroll(true);
     f.app.reset();
     f.make();
@@ -972,6 +1001,46 @@ private slots:
     QCOMPARE(m->selected(), n - 1);
     m->select(-5);
     QCOMPARE(m->selected(), -1);
+  }
+
+  void anEditKeepsTheRowsAndBuildsTheSceneOnce() {
+    // an edit used to reset the whole list (every delegate made again) and
+    // build the 3D view's mesh two or three times over; now the rows stay,
+    // new ones come at the end, and the mesh is built once per change
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/SolidSixPieceBurrs.xmpuzzle")));
+    QCoreApplication::processEvents();
+    ShapesModel * m = f.app->shapes();
+    ViewportController * v = f.app->viewport();
+    const int shapes = m->count();
+    const quint64 rev = v->frame(1).meshRevision;
+    QSignalSpy reset(m, &QAbstractItemModel::modelReset);
+    QSignalSpy inserted(m, &QAbstractItemModel::rowsInserted);
+    QSignalSpy removed(m, &QAbstractItemModel::rowsRemoved);
+    QSignalSpy counted(m, &ShapesModel::countChanged);
+
+    const int added = f.app->tools()->importAssemblies({ { "destination", "new" } });
+    QVERIFY(added > 0);
+    QCoreApplication::processEvents();
+    QCOMPARE(reset.count(), 0);
+    QCOMPARE(inserted.count(), 1);
+    QCOMPARE(inserted.first().at(1).toInt(), shapes);
+    QCOMPARE(inserted.first().at(2).toInt(), shapes + added - 1);
+    QCOMPARE(counted.count(), 1);
+    QCOMPARE(v->frame(1).meshRevision, rev + 1);
+
+    f.app->document()->undo();
+    QCoreApplication::processEvents();
+    QCOMPARE(reset.count(), 0);
+    QCOMPARE(removed.count(), 1);
+    QCOMPARE(m->count(), shapes);
+    QCOMPARE(v->frame(1).meshRevision, rev + 2);
+
+    // the voxel counts, kept per row, still follow the puzzle
+    const voxel_c * s = f.app->document()->session().puzzle().getShape(0);
+    QCOMPARE(m->data(m->index(0), ShapesModel::FixedRole).toInt(), int(s->countState(voxel_c::VX_FILLED)));
+    QCOMPARE(m->data(m->index(0), ShapesModel::VariableRole).toInt(), int(s->countState(voxel_c::VX_VARIABLE)));
   }
 
   void statusTextIsTheLegacySentence() {

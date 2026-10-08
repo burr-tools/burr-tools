@@ -84,6 +84,8 @@ public:
   /* after a render: whether the scene was blended in linear light
    * (SceneRenderer::linearLight) */
   bool linearLight(void) const;
+  /* after a render: the scene targets' size (SceneRenderer::targetSize) */
+  QSize sceneTargetSize(void) const;
 
   /* Keep the device's pipeline cache in `file` (PipelineCache): seeded from
    * it now, when it holds a cache this device accepts, and written back

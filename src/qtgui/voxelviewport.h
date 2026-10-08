@@ -47,11 +47,13 @@ public:
   void setController(SceneController * c);
 
   /* the multisampling to draw with, of what the graphics device offers:
-   * 8x where it can, else 4x or 2x -- smooth voxel edges (C06) */
-  static int bestSampleCount(const QList<int> & supported);
+   * the most of 8x, 4x and 2x it can that is no more than `wanted` (Settings
+   * ▸ 3D view ▸ Anti-aliasing), else none -- smooth voxel edges (C06) */
+  static int bestSampleCount(const QList<int> & supported, int wanted = 8);
 
-  /* the multisampling the scene is drawn with: 4 until the device is known */
-  int msaaSamples(void) const { return m_samples; }
+  /* the multisampling the scene is drawn with: the setting's (4x by
+   * default), as far as the device goes once it is known */
+  int msaaSamples(void) const;
 
 signals:
 
@@ -70,15 +72,15 @@ protected:
 
 private:
 
-  /* the window's device decides the sample count; its QRhi exists once
+  /* the window's device limits the sample count; its QRhi exists once
    * the scene graph is initialised */
-  void adoptBestSampleCount(void);
+  void adoptSampleCounts(void);
   void watchWindow(QQuickWindow * w);
 
   QPointer<SceneController> m_controller;
   QMetaObject::Connection m_frameConnection;
   QMetaObject::Connection m_windowConnection;
-  int m_samples = 4;
+  QList<int> m_supported;          ///< the device's sample counts; empty until known
 };
 
 #endif
