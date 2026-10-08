@@ -31,6 +31,9 @@
 
 #include "../lib/bt_assert.h"
 
+#ifdef QT_QML_DEBUG
+#include <QtQml/qqmldebug.h>      // its enabler lets qmlprofiler attach (-Dqml_debug=true)
+#endif
 #include <QFileOpenEvent>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -187,6 +190,8 @@ int main(int argc, char ** argv) {
       screenshot = args.at(i).mid(13);
     else if (args.at(i).startsWith(QLatin1String("--command=")))
       command = args.at(i).mid(10);
+    else if (args.at(i).startsWith(QLatin1String("-qmljsdebugger")))
+      continue;           // qmlprofiler's, for Qt (a -Dqml_debug=true build), not a puzzle
     else if (!loaded && args.at(i) != QLatin1String("--gallery"))
       loaded = app.document()->loadPath(args.at(i));
   }

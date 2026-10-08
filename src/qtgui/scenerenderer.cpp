@@ -20,6 +20,8 @@
  */
 #include "scenerenderer.h"
 
+#include "../uicore/depthsort.h"
+
 #include <rhi/qrhi.h>
 
 #include <algorithm>
@@ -160,13 +162,18 @@ struct SceneRenderer::Impl {
   quint32 opaqueCount = 0, translucentCount = 0;
 
   /* every translucent layer, farthest first: the triangles' centres, and
-   * their indices sorted by view depth for the view they were sorted for */
+   * their indices sorted by view depth for the view they were sorted for.
+   * The sorter and the index list keep their storage, so an orbit -- a sort
+   * per frame -- allocates nothing. */
   std::vector<btui::Vec3> translucentCentres;
+  btui::DepthSorter sorter;
+  std::vector<quint32> layeredIdx;
   GrowBuffer layeredIndex;
   btui::Mat4 sortedView;
   bool sorted = false;
 
   GrowBuffer overlayVbuf, lineVbuf;
+  std::vector<LineVertex> lineVertices;          // rebuilt every frame, its storage kept
 
   void createShared(void);
   bool ensureSceneTarget(QSize size);
@@ -207,6 +214,19 @@ bool SceneRenderer::linearLight(void) const {
 
 QSize SceneRenderer::targetSize(void) const {
   return d->sceneSize;
+}
+
+qint64 SceneRenderer::targetBytes(QSize size, bool linear, int samples) {
+  const qint64 px = qint64(size.width()) * size.height();
+  const qint64 colour = linear ? 8 : 4;      // RGBA16F or RGBA8
+  const qint64 depth = 4;                    // 24-bit depth, 8-bit stencil
+  // the multisampled colour (only when multisampling), the texture it
+  // resolves into (which the composite pass reads), the depth buffer
+  return px * ((samples > 1 ? colour * samples : 0) + colour + depth * samples);
+}
+
+qint64 SceneRenderer::targetBytes(void) const {
+  return d->sceneTex ? targetBytes(d->sceneSize, d->linear, d->samples) : 0;
 }
 
 void SceneRenderer::Impl::releaseScene(void) {
@@ -474,28 +494,13 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   }
 
   // --- every translucent layer: the triangles farthest first, re-sorted
-  // when the view turns (voxel faces never cross, so this is exact) ---
+  // when the view turns -- panning and zooming keep the order ---
   const bool layers = f.translucentLayers && !f.xray && d->translucentCount;
-  if (layers && (!d->sorted || std::memcmp(f.view.m.data(), d->sortedView.m.data(), sizeof(float) * 16) != 0)) {
-    const size_t n = d->translucentCentres.size();
-    std::vector<std::pair<float, quint32>> order(n);
-    for (size_t i = 0; i < n; i++) {
-      const btui::Vec3 & c = d->translucentCentres[i];
-      // the view looks down -z: the most negative z is the farthest
-      order[i] = { f.view(2, 0) * c.x + f.view(2, 1) * c.y + f.view(2, 2) * c.z + f.view(2, 3), quint32(i) };
-    }
-    std::sort(order.begin(), order.end(), [](const auto & a, const auto & b) { return a.first < b.first; });
-    std::vector<quint32> idx;
-    idx.reserve(n * 3);
-    for (const auto & o : order) {
-      const quint32 base = d->opaqueCount + o.second * 3;
-      idx.push_back(base);
-      idx.push_back(base + 1);
-      idx.push_back(base + 2);
-    }
-    const quint32 bytes = quint32(idx.size() * sizeof(quint32));
+  if (layers && (!d->sorted || !btui::sameRotation(f.view, d->sortedView))) {
+    d->sorter.sort(d->translucentCentres, f.view, d->opaqueCount, d->layeredIdx);
+    const quint32 bytes = quint32(d->layeredIdx.size() * sizeof(quint32));
     d->layeredIndex.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::IndexBuffer);
-    u->updateDynamicBuffer(d->layeredIndex.buf.get(), 0, bytes, idx.data());
+    u->updateDynamicBuffer(d->layeredIndex.buf.get(), 0, bytes, d->layeredIdx.data());
     d->sortedView = f.view;
     d->sorted = true;
   }
@@ -557,7 +562,8 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     u->updateDynamicBuffer(d->overlayVbuf.buf.get(), 0, overlayCount * kMeshStride, f.overlayFaces.data());
   }
 
-  std::vector<LineVertex> lv;
+  std::vector<LineVertex> & lv = d->lineVertices;
+  lv.clear();
   lv.reserve(f.lines.size() * 6);
   for (const btui::LineSeg & s : f.lines) {
     const float corners[6][2] = { { 0, -1 }, { 1, -1 }, { 1, 1 }, { 0, -1 }, { 1, 1 }, { 0, 1 } };

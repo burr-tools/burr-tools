@@ -230,6 +230,11 @@ just test-qt         # the self-check and the Qt tests (controllers, renders, QM
 just update-snapshots [rows] # rewrite the gallery reference images that changed (all rows, or e.g. button,switch)
 just deploy-qt       # a self-contained build in artifacts/qt (zip / .app / AppImage)
 just build-qt-static # Windows: one standalone burrtools-qt.exe (static Qt) in artifacts/qt-static
+just qml-aot [--update] # QML bindings left to the JS engine, against test/qtgui/qml_aot_baseline.json
+just bench-ui        # micro-benchmarks of src/uicore's hot paths (release build)
+just startup-time    # cold and warm start-up times (artifacts/profile)
+just profile-qml     # a qmlprofiler trace (a -Dqml_debug=true build of its own, build-prof)
+just heap-qt         # a heaptrack profile (Linux)
 ```
 
 **Standalone Windows program.** `just build-qt-static` (an MSYS2 UCRT64
@@ -257,6 +262,12 @@ Environment variables:
 | `BURRTOOLS_REQUIRE_SNAPSHOTS` | a missing gallery reference image fails instead of skipping |
 | `BURRTOOLS_UPDATE_SNAPSHOTS=1` | gallery checks write their grabs as the new references, only where missing or no longer matching |
 | `BURRTOOLS_SNAPSHOTS_ONLY` | comma-separated gallery rows (`button,switch`) to check or update; unset: all |
+| `BURRTOOLS_PROFILE_PUZZLE` | the puzzle `scripts/profile-qt.sh` opens (default `examples/PelikanBurr.xmpuzzle`) |
+
+Performance checks and profiles (what each measures, which fail CI and which
+only report): `design/2026-10-08-qtgui-performance-backlog.md`, "Measuring".
+`-Dqml_debug=true` lets qmlprofiler and the QML debugger attach; it is for
+profiling builds, never a release.
 
 The tests run headless. Render tests draw through Direct3D's WARP software
 rasteriser on Windows and need no GPU; on Linux they need Vulkan, which

@@ -43,6 +43,8 @@ private slots:
   void translucencyBlendsInLinearLight();
   void innerVariableVoxelsShowThroughTheOuterOnes();
   void theTargetsOutgrowTheViewInSteps();
+  void theTargetsMemoryStaysInBudget();
+  void framesDoNotAllocatePerTriangle();
 };
 
 /* The real 3D view item (VoxelViewport, a QQuickRhiItem) drawn by Qt Quick

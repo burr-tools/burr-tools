@@ -132,8 +132,13 @@ if host_machine.system() == 'darwin'
   qtgui_plist_args = ['-Wl,-sectcreate,__TEXT,__info_plist,' + meson.current_source_dir() / 'Info.plist']
 endif
 
+# -Dqml_debug=true: qmlprofiler and the QML debugger may attach
+# (just profile-qml, the Qt profile workflow); never in a release
+qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
+
 burrtools_qt_exe = executable('burrtools-qt', 'main.cpp', qtgui_static_sources,
   include_directories: inc,
+  cpp_args: qtgui_main_args,
   link_whole: libburr_qtgui,
   link_args: qtgui_static_link_args + qt_link_args + qtgui_plist_args,
   link_depends: qtgui_plist,

@@ -155,6 +155,7 @@ renamed over the old one, so a crash part way leaves the old settings.
 | Qt Test `test_qtgui` (16 classes, ~140 functions) | the controllers, theme, settings, icons; real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
 | Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~80 functions) | the shell, menus, settings, dialogs, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
 | Gallery snapshots | each gallery row and the glyph / icon sheets against reference images, light and dark, at device-pixel ratios 1, 1.5 and 2 | `test/qtgui/snapshots/<os>/`; tolerant diff |
+| Performance | work counts per edit, the scene targets' graphics memory, allocations per frame (none per triangle), QML bindings left to the JS engine (`qtgui_qml_aot`, against a baseline); benchmarks and profiles as reports | Qt suites and `just qml-aot`; `just bench-ui`, `startup-time`, `profile-qml`, `heap-qt`; see `design/2026-10-08-qtgui-performance-backlog.md` |
 
 Render tests use Direct3D's WARP rasteriser on Windows and Mesa's lavapipe
 (software Vulkan) on Linux CI, so they need no GPU. Where no backend can be

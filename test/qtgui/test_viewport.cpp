@@ -33,6 +33,7 @@
 
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/voxel.h"
+#include "../alloccount.h"
 
 #include <QCoreApplication>
 #include <QFileInfo>
@@ -423,6 +424,93 @@ void TestRender::theTargetsOutgrowTheViewInSteps() {
   t.size = QSize(100, 100);                       // far smaller: given back
   QVERIFY(!t.render(frame).isNull());
   QCOMPARE(t.renderer.sceneTargetSize(), QSize(128, 128));
+}
+
+void TestRender::theTargetsMemoryStaysInBudget() {
+  // the scene targets' graphics memory follows from their size, format and
+  // samples: a large view on a high-DPI screen (1350 x 1250 dp at 150 %,
+  // 2025 x 1875 px, targets of 2048 x 1920) stays under 256 MB at the
+  // default 4x; 8x nearly doubles it (why 4x is the default)
+  const QSize big(2048, 1920);
+  const qint64 px = qint64(big.width()) * big.height();
+  const qint64 mb = 1024 * 1024;
+  const qint64 at4 = SceneRenderer::targetBytes(big, true, 4);
+  const qint64 at8 = SceneRenderer::targetBytes(big, true, 8);
+  QCOMPARE(at4, px * (8 * 4 + 8 + 4 * 4));        // RGBA16F x4, resolved RGBA16F, depth x4
+  QCOMPARE(SceneRenderer::targetBytes(big, true, 1), px * (8 + 4));
+  QCOMPARE(SceneRenderer::targetBytes(big, false, 4), px * (4 * 4 + 4 + 4 * 4));
+  QVERIFY2(at4 < 256 * mb, qPrintable(QStringLiteral("%1 MB").arg(at4 / mb)));
+  QVERIFY(at8 * 10 > at4 * 17);
+
+  // and a renderer counts what it made
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  QVERIFY(!t.render(f.app->viewport()->frame(1)).isNull());
+  QCOMPARE(t.renderer.sceneTargetBytes(),
+           SceneRenderer::targetBytes(t.renderer.sceneTargetSize(), t.renderer.linearLight(), 1));
+}
+
+void TestRender::framesDoNotAllocatePerTriangle() {
+  // orbiting a translucent shape sorts its triangles again every frame; the
+  // sort and the line list keep their storage, so what a frame allocates (in
+  // our code -- Qt keeps its own) is small and does not grow with the mesh.
+  // Sorting into new lists, a 12^3 shape of variable voxels (~20k
+  // triangles) took some 400 KB a frame.
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(96, 72)));
+  AppFixture f;
+  puzzle_c & p = f.app->document()->session().puzzle();
+  auto variableCube = [&](unsigned edge) {
+    p.addShape(edge, edge, edge);
+    voxel_c * v = p.getShape(p.getNumberOfShapes() - 1);
+    for (unsigned z = 0; z < edge; z++)
+      for (unsigned y = 0; y < edge; y++)
+        for (unsigned x = 0; x < edge; x++)
+          v->setState(x, y, z, voxel_c::VX_VARIABLE);
+    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, btui::MeshOptions{}));
+  };
+  auto perFrame = [&](const std::shared_ptr<const btui::ShapeMesh> & mesh, quint64 revision) {
+    btui::Camera cam;
+    cam.setViewport(96, 72);
+    cam.setScene((mesh->boundsMin + mesh->boundsMax) * 0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f);
+    SceneFrame fr;
+    fr.mesh = mesh;
+    fr.meshRevision = revision;
+    fr.translucentLayers = true;
+    fr.lighting = false;
+    btui::addBoxEdges(fr.lines, btui::Box{ mesh->boundsMin, mesh->boundsMax }, btui::Rgba8{ 0, 0, 0, 255 }, 1.0f);
+    auto turn = [&](int step) {
+      const float a = float(step) * 0.05f;
+      cam.setOrientation(btui::Camera::lookFrom({ std::sin(a), 0.4f, std::cos(a) }, 0));
+      fr.view = cam.viewMatrix();
+      fr.projection = cam.projectionMatrix();
+      return !t.render(fr).isNull();
+    };
+    for (int i = 0; i < 3; i++)                   // the first sort sizes the lists
+      if (!turn(i))
+        return std::size_t(~0u);
+    const btui::test::AllocCount count;
+    const int frames = 10;
+    for (int i = 3; i < 3 + frames; i++)
+      if (!turn(i))
+        return std::size_t(~0u);
+    return count.bytes() / frames;
+  };
+  {
+    // the counter does see this program's allocations
+    const btui::test::AllocCount probe;
+    std::vector<int> v(1000);
+    QVERIFY(probe.bytes() >= v.size() * sizeof(int));
+  }
+  const auto small = variableCube(2), big = variableCube(12);
+  QVERIFY(big->translucent.size() / 3 > 20000);
+  const std::size_t smallBytes = perFrame(small, 1), bigBytes = perFrame(big, 2);
+  const QString got = QStringLiteral("per frame: %1 B for 2^3, %2 B for 12^3").arg(smallBytes).arg(bigBytes);
+  qInfo().noquote() << got;
+  QVERIFY2(bigBytes < 8192, qPrintable(got));
+  QVERIFY2(bigBytes <= smallBytes + 1024, qPrintable(got));
 }
 
 void TestRender::lightingChangesTheShading() {

@@ -55,6 +55,16 @@ jobs:
         name: burrtools-testlog-linux
         path: build/meson-logs/testlog.txt
     
+    # The redesigned GUI's hot paths in src/uicore (test/bench_ui.cpp),
+    # measured on this release build. A report, not a gate: shared runners
+    # vary too much to fail on time.
+    - name: Micro-benchmarks (report)
+      continue-on-error: true
+      shell: bash
+      run: |
+        ./build/test_burrtools "[bench]" --benchmark-samples 20 --benchmark-no-analysis | tee bench.txt
+        { echo "## Micro-benchmarks (src/uicore, release)"; echo '```'; cat bench.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
     - name: Run static analysis
       run: just check
     
@@ -158,6 +168,71 @@ jobs:
       env:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
+
+  # AddressSanitizer and UndefinedBehaviorSanitizer over the unit tests and
+  # the Qt GUI's suites (renders included, on lavapipe as in qt-linux). Qt
+  # and the Mesa driver are not instrumented and keep memory to the end, so
+  # leaks are checked in test_burrtools only.
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    - name: Find lavapipe
+      run: |
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+
+    - name: Build with ASan and UBSan
+      run: |
+        meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
+          -Dqt_gui=enabled -Dpython=disabled
+        ninja -C build-asan
+
+    - name: Unit tests, leaks included
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+      run: ./build-asan/test_burrtools --reporter compact
+
+    - name: Qt GUI suites
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sanitizers-testlog
+        path: build-asan/meson-logs/testlog.txt
+        if-no-files-found: ignore
 
   coverage:
     runs-on: ubuntu-latest

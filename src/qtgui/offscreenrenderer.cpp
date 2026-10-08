@@ -177,6 +177,10 @@ QSize OffscreenRenderer::sceneTargetSize(void) const {
   return d->renderer.targetSize();
 }
 
+qint64 OffscreenRenderer::sceneTargetBytes(void) const {
+  return d->renderer.targetBytes();
+}
+
 QRhi * OffscreenRenderer::rhi(void) const {
   return d->rhi.get();
 }

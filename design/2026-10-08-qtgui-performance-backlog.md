@@ -1,7 +1,9 @@
 # burrtools-qt — Performance and Maintainability Backlog
 
 **Date:** 2026-10-08
-**Status:** Backlog. P1 is done (commit `956841cc`); P2 and P3 are open.
+**Status:** Backlog. P1 is done (commit `956841cc`), and so is the cheap
+half of P2.1 (the sort keeps its storage and runs only when the view turns);
+the checks under "Measuring" exist. The rest of P2 and P3 is open.
 **Scope:** `src/qtgui`, `src/uicore`, the QML module `BurrTools.Ui`.
 
 ## Where this comes from
@@ -38,6 +40,12 @@ atomic and debounced saves.
 ## P2 — next
 
 ### P2.1 Re-sort translucent triangles only when the view turns
+
+*Partly done:* `btui::DepthSorter` ([depthsort.h](../src/uicore/depthsort.h))
+keeps its storage and the renderer sorts only when the view's rotation
+changes (`btui::sameRotation`); a frame allocates nothing per triangle
+(`TestRender::framesDoNotAllocatePerTriangle`). Open: a cheaper sort for
+small turns (below).
 
 - **Where:** `SceneRenderer::render`, [scenerenderer.cpp](../src/qtgui/scenerenderer.cpp) — the
   `layers && (!sorted || memcmp(view…))` block.
@@ -100,7 +108,18 @@ atomic and debounced saves.
 - **Approach:** concrete types (`list<…>`, `QtObject` types, value types);
   run `qmllint --compiler` (or read `qmlcachegen`'s warnings) to list the
   bindings still interpreted, and bring the count down.
-- **Verify:** that count, tracked in CI (see Measuring).
+- **Found while adding that count:** the build's qmlcachegen cannot import
+  the module's own types. meson's `qt.qml_module` writes `BurrTools_Ui_qmldir`
+  and `BurrTools_Ui.qmltypes` flat in the build directory, not in an
+  importable `BurrTools/Ui/` tree, and passes qmlcachegen no `-I`; it warns
+  "Failed to import BurrTools.Ui" and compiles without knowing `App`, `Theme`
+  or the controllers. Given such a tree, `SettingsDialog.qml` alone goes from
+  48 unqualified lookups to 11 and from 175 uncompiled bindings to 147.
+  Fix: an import tree in the build directory (qmldir, qmltypes, the QML files
+  or links), generated before the cache step, and
+  `qmlcachegen_extra_arguments: ['-I', <its root>]`, with the cache step
+  depending on the type registrar's output.
+- **Verify:** `qtgui_qml_aot` (see Measuring): the baseline goes down.
 
 ### P2.6 Image export off the GUI thread
 
@@ -166,21 +185,22 @@ and warm alike — about 1.3 s that is not the shader compiler. Worth a trace
 
 ## Measuring
 
-What can run in CI, headless (no display, no external services):
+All headless (offscreen, or Xvfb with lavapipe on Linux), no external
+service. Gates fail CI; reports never do.
 
-| Kind | Tool | Headless? | Gate or report |
+| Check | Where | Runs | Gate or report |
 | :--- | :--- | :--- | :--- |
-| Work counts | Qt Test / Catch2 assertions (rebuilds per edit, model resets, target sizes, bytes uploaded) | yes | **gate** — deterministic, already used in P1 |
-| Micro-benchmarks | Catch2 `BENCHMARK` (`buildShapeMesh`, the translucent sort, vector export, camera) | yes | report — shared runners are too noisy to gate on time; compare runs of one job, or gate only on gross regressions (2×) |
-| Allocation counts | a test binary with a counting `operator new` (e.g. "no allocation per frame in the sort") | yes | gate, once P2.1 makes it zero |
-| Interpreted QML bindings | `qmllint --compiler` / `qmlcachegen` warnings | yes (static) | gate on the count not rising |
-| QML profile | `qmlprofiler` around `burrtools-qt --screenshot` with `QT_QPA_PLATFORM=offscreen` | yes | report — upload the `.qtd` trace as an artifact |
-| Start-up time | `--screenshot` runs, cold (fresh settings) and warm | yes (offscreen) | report; noisy |
-| GPU memory | known from target sizes × formats × samples (asserted); `QRhi::statistics()` on Vulkan/D3D12 | yes (lavapipe, WARP) | gate on the computed bytes |
-| Heap profile | heaptrack (Linux) | yes | report, on demand |
-| Sanitizers | ASan/UBSan builds of `test_burrtools` and the Qt suites (offscreen) | yes | gate |
-| GPU timing | RenderDoc, Xcode GPU tools, PIX | **no** — needs a real GPU and a person | local only |
+| Work counts | `anEditKeepsTheRowsAndBuildsTheSceneOnce`, `theTargetsOutgrowTheViewInSteps`, `theVoxelStyleSettingRebuildsTheMesh` (Qt Test) | every Qt job | **gate** |
+| Graphics memory of the scene targets | `TestRender::theTargetsMemoryStaysInBudget`: bytes from size × format × samples (`SceneRenderer::targetBytes`); a 2048×1920 view at 4× under 256 MB, 8× near double | every Qt job | **gate** |
+| Allocations per frame | `TestRender::framesDoNotAllocatePerTriangle` (orbiting a 12³ variable cube, ~20k translucent triangles: 0 B a frame from our code; the old sort took 414 720 B) and `[depthsort][alloc]` (Catch2), through a counting `operator new` ([test/alloccount.h](../test/alloccount.h)) | every Qt job; `just test` | **gate** |
+| Bindings left to the JS engine | `qtgui_qml_aot` meson test: `qmlcachegen --verbose` per QML file as the build runs it, against [test/qtgui/qml_aot_baseline.json](../test/qtgui/qml_aot_baseline.json) (Qt 6.11: 1936); `just qml-aot [--update]` | every Qt job (compared where the Qt matches the baseline's, reported elsewhere) | **gate** (may only go down) |
+| Sanitizers | `sanitizers` job: ASan + UBSan build; `test_burrtools` with leak checks, the Qt suites without (Qt and Mesa are not instrumented) | every push | **gate** |
+| Micro-benchmarks | [test/bench_ui.cpp](../test/bench_ui.cpp), hidden `[bench]`: mesh building (8³, 20³, 20³ shell with a variable core, 50³), the depth sort (80k), vector export; `just bench-ui` | `build-linux` (run summary), Qt profile workflow | report |
+| Start-up time | `scripts/profile-qt.sh … startup`, cold and warm; `just startup-time` | Qt profile workflow | report |
+| QML profile | `scripts/profile-qt.sh … qml` (qmlprofiler; a `-Dqml_debug=true` build); `just profile-qml` | Qt profile workflow (artifact `qt-profile`) | report |
+| Heap profile | `scripts/profile-qt.sh … heap` (heaptrack, Linux); `just heap-qt` | Qt profile workflow | report |
+| GPU timing | RenderDoc, PIX, Xcode | **no** — needs a real GPU and a person | local only |
 
-None of these needs a display server beyond what the Qt jobs already use
-(offscreen, or Xvfb with lavapipe on Linux), and none needs an external
-service.
+Not done: `QRhi::statistics()` (the allocator's view of graphics memory) is
+only filled on Vulkan and D3D12; the computed bytes cover what the renderer
+owns on every backend.

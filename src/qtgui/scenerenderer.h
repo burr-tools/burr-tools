@@ -117,6 +117,12 @@ public:
    * resize does not make them anew for every pixel. */
   QSize targetSize(void) const;
 
+  /* The graphics memory the scene targets take: at `size`, in linear light
+   * (RGBA16F) or not (RGBA8), with `samples` per pixel; and the renderer's
+   * own, after a frame. The item's texture and the window's are Qt's. */
+  static qint64 targetBytes(QSize size, bool linear, int samples);
+  qint64 targetBytes(void) const;
+
   /* Drop every GPU resource (the QRhi is going away). */
   void release(void);
 

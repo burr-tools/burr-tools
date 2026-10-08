@@ -190,6 +190,28 @@ coverage-html: _coverage-tests (_coverage-summary "coverage-html/index.html")
 bench *args: build-release
     ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 
+# QML bindings qmlcachegen leaves to the JS engine, per file, against the baseline (--update writes it)
+qml-aot *args: build-qt
+    python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --baseline test/qtgui/qml_aot_baseline.json {{args}}
+
+# burrtools-qt cold and warm start-up times (scripts/profile-qt.sh) into artifacts/profile
+startup-time: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile startup
+
+# A qmlprofiler trace of burrtools-qt in artifacts/profile/qml.qtd (a -Dqml_debug=true build of its own)
+profile-qml:
+    @if [ ! -d "build-prof" ]; then meson setup build-prof --buildtype=debugoptimized -Dqt_gui=enabled -Dqml_debug=true; fi
+    ninja -C build-prof src/qtgui/burrtools-qt
+    bash scripts/profile-qt.sh build-prof artifacts/profile qml
+
+# A heaptrack profile of burrtools-qt in artifacts/profile (Linux, heaptrack installed)
+heap-qt: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile heap
+
+# Micro-benchmarks of the Qt GUI's hot paths in src/uicore (release build); extra args go to Catch2
+bench-ui *args: build-release
+    ./build-rel/test_burrtools "[bench]" {{args}}
+
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
     @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi

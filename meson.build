@@ -405,6 +405,7 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/assemblyscene.cpp',
     'src/uicore/camera.cpp',
     'src/uicore/commands.cpp',
+    'src/uicore/depthsort.cpp',
     'src/uicore/documentsession.cpp',
     'src/uicore/imagepages.cpp',
     'src/uicore/layoutmodel.cpp',
@@ -434,6 +435,7 @@ uicore_test_src = [
   'test/test_ui_assemblyscene.cpp',
   'test/test_ui_camera.cpp',
   'test/test_ui_commands.cpp',
+  'test/test_ui_depthsort.cpp',
   'test/test_ui_documentsession.cpp',
   'test/test_ui_layoutmodel.cpp',
   'test/test_ui_palette.cpp',
@@ -443,6 +445,8 @@ uicore_test_src = [
   'test/test_ui_vectorexport.cpp',
   'test/test_ui_viewcube.cpp',
   'test/test_ui_windowplacement.cpp',
+  'test/alloccount.cpp',
+  'test/bench_ui.cpp',
 ]
 
 catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])

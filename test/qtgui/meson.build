@@ -29,7 +29,7 @@ if qt6_test_dep.found()
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
 
   test_qtgui = executable('test_qtgui',
-    ['test_qtgui.cpp', 'test_viewport.cpp',
+    ['test_qtgui.cpp', 'test_viewport.cpp', '../alloccount.cpp',
      qt6.compile_moc(sources: 'test_qtgui.cpp', headers: 'test_viewport.h', dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
@@ -78,6 +78,17 @@ if qt6_test_dep.found()
       timeout: 180,
       workdir: meson.project_source_root())
   endforeach
+
+  # how many bindings qmlcachegen leaves to the JavaScript engine, against a
+  # baseline that may only go down (scripts/qml_aot_report.py; `just qml-aot`)
+  test('qtgui_qml_aot', python3,
+    args: [meson.project_source_root() / 'scripts' / 'qml_aot_report.py',
+           '--qrc', meson.project_build_root() / 'src' / 'qtgui' / 'qml' / 'BurrTools_Ui_qml.qrc',
+           '--sources', meson.project_source_root() / 'src' / 'qtgui' / 'qml',
+           '--baseline', meson.current_source_dir() / 'qml_aot_baseline.json'],
+    depends: burrtools_qt_exe,
+    suite: 'fast',
+    timeout: 120)
 
 else
   message('Qt Test / Qt Quick Test not found: the Qt GUI tests are skipped')

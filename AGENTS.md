@@ -181,8 +181,10 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 | Job | Catches | Why the other jobs miss it |
 | :--- | :--- | :--- |
 | `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
-| `tsan-parallel` | Data races in the parallel assembler and disassembler. | No other job runs a sanitizer. |
+| `tsan-parallel` | Data races in the parallel assembler and disassembler. | The only ThreadSanitizer run (ASan and UBSan: `sanitizers`). |
 | `qt-linux`, `qt-windows`, `qt-macos` | Breakage in `burrtools-qt`: controllers, QML, renders (WARP on Windows, lavapipe Vulkan on Linux — required, not skipped), gallery reference images (Windows). Each uploads a preview build. | The legacy jobs build without Qt. |
+| `sanitizers` | Memory errors and undefined behaviour (ASan + UBSan) in `test_burrtools` (leaks too) and the Qt suites (renders on lavapipe). | Leaks are not checked in the Qt suites: Qt and Mesa are not instrumented. |
+| `qt-profile.yml` (on demand) | Nothing: reports only — start-up times, a QML trace, a heap profile, the `src/uicore` micro-benchmarks (artifact `qt-profile`). | Not a check: shared runners are too noisy to fail on time. |
 | `qt-standalone.yml` (on demand, release tags) | A static `burrtools-qt.exe` that still loads an MSYS2 library, or fails its self-check. Attaches the standalone program to the release. | Too slow for every push (550 MB static Qt download). |
 
 ### Rules for SIMD and intrinsics
