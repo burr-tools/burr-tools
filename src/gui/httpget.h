@@ -27,7 +27,10 @@
 /* One blocking HTTPS GET, used by the update check from a worker thread.
  * Exactly one implementation is compiled in, chosen by meson.build per
  * platform: NSURLSession on macOS, WinHTTP on Windows, libcurl elsewhere
- * (or a stub reporting Unsupported when libcurl is not available).
+ * (or a stub reporting Unsupported when libcurl headers were not found at
+ * build time). libcurl is loaded at runtime, so where it is missing the
+ * libcurl backend also reports Unsupported instead of the app failing to
+ * start.
  *
  * Sends the given User-Agent (GitHub's API rejects requests without one)
  * and "Accept: application/vnd.github+json", follows redirects, and gives
@@ -38,8 +41,10 @@ struct HttpResult {
     Ok,           ///< HTTP 200; body holds the response
     Transport,    ///< DNS, TLS, timeout, offline...; error says which
     Status,       ///< a response other than 200; status holds it
-    TooLarge,     ///< body exceeded HTTP_MAX_BODY
-    Unsupported,  ///< this build has no HTTPS backend
+    TooLarge,     ///< body exceeded HTTP_MAX_BODY (libcurl and WinHTTP stop
+                  ///< reading at the limit; NSURLSession checks once the
+                  ///< body is buffered, bounded by its resource timeout)
+    Unsupported,  ///< no HTTPS backend in this build, or libcurl missing
   };
   Kind kind = Kind::Transport;
   long status = 0;

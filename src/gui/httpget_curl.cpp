@@ -22,9 +22,65 @@
 
 #include <curl/curl.h>
 
+#include <dlfcn.h>
+
 #include <mutex>
 
+/* libcurl is loaded with dlopen rather than linked, so a system without it
+ * (or with only another soname) still starts BurrTools; the update check
+ * then reports itself Unsupported. Only <curl/curl.h>'s types and constants
+ * are used at build time. Both the OpenSSL and the GnuTLS flavours export
+ * the same ABI, so either is accepted.
+ */
 namespace {
+
+  struct Curl {
+    CURLcode (*global_init)(long);
+    CURL * (*easy_init)(void);
+    CURLcode (*easy_setopt)(CURL *, CURLoption, ...);
+    CURLcode (*easy_perform)(CURL *);
+    CURLcode (*easy_getinfo)(CURL *, CURLINFO, ...);
+    void (*easy_cleanup)(CURL *);
+    const char * (*easy_strerror)(CURLcode);
+    curl_slist * (*slist_append)(curl_slist *, const char *);
+    void (*slist_free_all)(curl_slist *);
+  };
+
+  template <class F>
+  bool resolve(void * lib, const char * name, F & fn) {
+    fn = reinterpret_cast<F>(dlsym(lib, name));
+    return fn != nullptr;
+  }
+
+  /* Loaded once and never unloaded; nullptr when libcurl is unavailable. */
+  const Curl * loadCurl(void) {
+    static Curl api;
+    static const Curl * loaded = nullptr;
+    static std::once_flag once;
+    std::call_once(once, [] {
+      void * lib = nullptr;
+      for (const char * soname : { "libcurl.so.4", "libcurl-gnutls.so.4", "libcurl.so" })
+        if ((lib = dlopen(soname, RTLD_NOW | RTLD_LOCAL)) != nullptr)
+          break;
+      if (!lib)
+        return;
+      if (!resolve(lib, "curl_global_init", api.global_init) ||
+          !resolve(lib, "curl_easy_init", api.easy_init) ||
+          !resolve(lib, "curl_easy_setopt", api.easy_setopt) ||
+          !resolve(lib, "curl_easy_perform", api.easy_perform) ||
+          !resolve(lib, "curl_easy_getinfo", api.easy_getinfo) ||
+          !resolve(lib, "curl_easy_cleanup", api.easy_cleanup) ||
+          !resolve(lib, "curl_easy_strerror", api.easy_strerror) ||
+          !resolve(lib, "curl_slist_append", api.slist_append) ||
+          !resolve(lib, "curl_slist_free_all", api.slist_free_all))
+        return;
+      /* curl_global_init is not thread safe; this is its only caller. */
+      if (api.global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
+        return;
+      loaded = &api;
+    });
+    return loaded;
+  }
 
   struct Sink {
     std::string body;
@@ -45,42 +101,46 @@ namespace {
 
 HttpResult httpGet(const std::string & url, const std::string & userAgent, int timeoutSec) {
 
-  /* curl_global_init is not thread safe; this is its only caller. */
-  static std::once_flag once;
-  std::call_once(once, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
-
   HttpResult r;
-  CURL * c = curl_easy_init();
+
+  const Curl * curl = loadCurl();
+  if (!curl) {
+    r.kind = HttpResult::Kind::Unsupported;
+    r.error = "libcurl (libcurl.so.4) is not installed";
+    return r;
+  }
+
+  CURL * c = curl->easy_init();
   if (!c) {
     r.error = "could not initialise libcurl";
     return r;
   }
 
   Sink sink;
-  curl_slist * headers = curl_slist_append(nullptr, "Accept: application/vnd.github+json");
+  curl_slist * headers = curl->slist_append(nullptr, "Accept: application/vnd.github+json");
 
-  curl_easy_setopt(c, CURLOPT_URL, url.c_str());
-  curl_easy_setopt(c, CURLOPT_USERAGENT, userAgent.c_str());
-  curl_easy_setopt(c, CURLOPT_HTTPHEADER, headers);
-  curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, onData);
-  curl_easy_setopt(c, CURLOPT_WRITEDATA, &sink);
-  curl_easy_setopt(c, CURLOPT_TIMEOUT, long(timeoutSec));
-  curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-  curl_easy_setopt(c, CURLOPT_MAXREDIRS, 5L);
-  curl_easy_setopt(c, CURLOPT_NOSIGNAL, 1L);   // worker thread: no SIGALRM timeouts
+  curl->easy_setopt(c, CURLOPT_URL, url.c_str());
+  curl->easy_setopt(c, CURLOPT_USERAGENT, userAgent.c_str());
+  curl->easy_setopt(c, CURLOPT_HTTPHEADER, headers);
+  curl->easy_setopt(c, CURLOPT_WRITEFUNCTION, onData);
+  curl->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
+  curl->easy_setopt(c, CURLOPT_TIMEOUT, long(timeoutSec));
+  curl->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+  curl->easy_setopt(c, CURLOPT_MAXREDIRS, 5L);
+  curl->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);   // worker thread: no SIGALRM timeouts
 
-  CURLcode rc = curl_easy_perform(c);
-  curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
+  CURLcode rc = curl->easy_perform(c);
+  curl->easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
 
-  curl_slist_free_all(headers);
-  curl_easy_cleanup(c);
+  curl->slist_free_all(headers);
+  curl->easy_cleanup(c);
 
   if (sink.tooLarge) {
     r.kind = HttpResult::Kind::TooLarge;
     r.error = "response too large";
   } else if (rc != CURLE_OK) {
     r.kind = HttpResult::Kind::Transport;
-    r.error = curl_easy_strerror(rc);
+    r.error = curl->easy_strerror(rc);
   } else if (r.status != 200) {
     r.kind = HttpResult::Kind::Status;
     r.error = "HTTP " + std::to_string(r.status);

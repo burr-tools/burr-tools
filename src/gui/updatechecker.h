@@ -44,6 +44,12 @@ namespace updatechecker {
   std::string installedVersionString(void);
   std::optional<updatecheck::Version> installedVersion(void);
 
+  /* True while a detached worker may still be inside httpGet. main() then
+   * leaves with std::_Exit, so static and atexit teardown (the TLS
+   * library's cleanup among it) cannot run under the worker's feet.
+   */
+  bool workerRunning(void);
+
   /* One-line, user-facing reason for a failed fetch. */
   std::string describeFailure(const HttpResult & r);
 
@@ -62,7 +68,7 @@ namespace updatechecker {
  *
  * The worker shares only a reference-counted result block with this object,
  * so destroying the checker mid-request is safe. At process exit a worker
- * still inside the request is abandoned (bounded by the request timeout).
+ * still inside the request is abandoned: see updatechecker::workerRunning().
  */
 class updateChecker_c {
 

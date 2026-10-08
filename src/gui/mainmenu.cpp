@@ -31,8 +31,8 @@
 
 namespace {
 
-  /* The historical in-window menu. Unchanged from the table that lived in
-   * mainwindow.cpp, so Linux and Windows see exactly what they always have.
+  /* The historical in-window menu, as the table that lived in
+   * mainwindow.cpp had it, plus Check for Updates next to About.
    */
   Fl_Menu_Item menu_Portable[] = {
     { "&File",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },

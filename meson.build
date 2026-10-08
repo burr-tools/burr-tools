@@ -223,10 +223,14 @@ elif host_machine.system() == 'windows'
   httpget_src = ['src/gui/httpget_win.cpp']
   httpget_dep = cxx.find_library('winhttp')
 else
-  httpget_dep = dependency('libcurl', required: false)
-  if httpget_dep.found()
+  # Headers only: httpget_curl.cpp dlopens libcurl at runtime, so the GUI
+  # starts (with the update check unsupported) where libcurl is missing.
+  curl_dep = dependency('libcurl', required: false)
+  if curl_dep.found()
     httpget_src = ['src/gui/httpget_curl.cpp']
+    httpget_dep = [curl_dep.partial_dependency(compile_args: true, includes: true), dependency('dl')]
   else
+    httpget_dep = []
     warning('libcurl not found: the update check will report itself unsupported')
     httpget_src = ['src/gui/httpget_none.cpp']
   endif

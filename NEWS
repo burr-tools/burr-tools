@@ -252,8 +252,8 @@ Compatibility Notes:
   hole faces) has been removed in favour of the chamfer mesher. Coplanar
   face merging is always on.
 - macOS release builds are Apple Silicon only.
-- Linux binaries built with libcurl (as the release builds are) need
-  libcurl.so.4 at runtime, for the update check.
+- On Linux the update check loads libcurl (libcurl.so.4) at runtime;
+  without it BurrTools still runs and reports the check as unavailable.
 
 Developer & Build:
    0.7.1 had no automated tests. 0.8 ships 538 test cases. With so

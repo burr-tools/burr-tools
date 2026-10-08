@@ -32,6 +32,8 @@
 #include <FL/Fl.H>
 #pragma GCC diagnostic pop
 
+#include <cstdio>
+#include <cstdlib>
 #include <time.h>
 #include <string.h>
 
@@ -53,6 +55,19 @@ static mainWindow_c * g_ui = 0;
 static void handleSystemOpen(const char * filename) {
   if (g_ui)
     g_ui->openFromSystem(filename);
+}
+
+/* Returns from main(), unless an update worker is still inside its request:
+ * then static and atexit teardown (OpenSSL/libcurl cleanup among it) would
+ * race the worker, so the process ends without running it. Everything that
+ * must persist has been written by then (~mainWindow_c saves the config).
+ */
+static int leave(int code) {
+  if (updatechecker::workerRunning()) {
+    fflush(nullptr);
+    std::_Exit(code);
+  }
+  return code;
 }
 
 class my_Fl : public Fl {
@@ -143,7 +158,7 @@ int main(int argc, char ** argv) {
       ui->getPuzzle()->save(xml);
     }
 
-    return -1;
+    return leave(-1);
   }
 
   catch (...) {
@@ -152,5 +167,5 @@ int main(int argc, char ** argv) {
 
   g_ui = 0;
   delete ui;
-  return res;
+  return leave(res);
 }

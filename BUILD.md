@@ -35,8 +35,10 @@ sudo apt-get install -y meson ninja-build build-essential \
     libfltk1.3-dev libpng-dev zlib1g-dev libcurl4-openssl-dev
 ```
 
-libcurl is optional at build time (without it the update check reports itself
-unsupported), but a binary built with it needs `libcurl.so.4` at runtime.
+libcurl's headers are optional at build time (without them the update check
+reports itself unsupported). The library itself is not linked: it is loaded at
+runtime (`libcurl.so.4`, or Debian's `libcurl-gnutls.so.4`), and where neither
+is installed BurrTools still runs, with only the update check unavailable.
 
 ### Windows Cross-Compilation (from Linux)
 

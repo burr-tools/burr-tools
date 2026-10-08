@@ -42,6 +42,9 @@ using namespace updatecheck;
 
 static constexpr int TIMEOUT_SECONDS = 10;
 
+/* Workers that have not yet returned from httpGet; see workerRunning(). */
+static std::atomic<int> liveWorkers{0};
+
 namespace updatechecker {
 
   std::string userAgent(void) {
@@ -57,6 +60,10 @@ namespace updatechecker {
     return parseVersion(installedVersionString());
   }
 
+  bool workerRunning(void) {
+    return liveWorkers.load(std::memory_order_acquire) > 0;
+  }
+
   std::string describeFailure(const HttpResult & r) {
     switch (r.kind) {
       case HttpResult::Kind::Transport:
@@ -69,7 +76,7 @@ namespace updatechecker {
       case HttpResult::Kind::TooLarge:
         return "Unexpected response from GitHub.";
       case HttpResult::Kind::Unsupported:
-        return "Update checking isn't supported in this build.";
+        return "Update checking isn't available: " + r.error + ".";
       case HttpResult::Kind::Ok:
         break;
     }
@@ -169,6 +176,7 @@ void updateChecker_c::start(Mode mode) {
     parent->cursor(FL_CURSOR_WAIT);
 
   std::string ua = updatechecker::userAgent();
+  liveWorkers.fetch_add(1, std::memory_order_relaxed);
   std::thread([shared, ua] {
     try {
       shared->http = httpGet(LATEST_RELEASE_API, ua, TIMEOUT_SECONDS);
@@ -182,6 +190,7 @@ void updateChecker_c::start(Mode mode) {
       shared->http.error = "unexpected error";
     }
     shared->done.store(true, std::memory_order_release);
+    liveWorkers.fetch_sub(1, std::memory_order_release);
   }).detach();
 
   Fl::add_timeout(0.25, pollCb, this);

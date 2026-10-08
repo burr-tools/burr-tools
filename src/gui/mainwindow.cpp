@@ -4526,9 +4526,9 @@ mainWindow_c::~mainWindow_c() {
 
   config.windowPos(x(), y(), w(), h());
 
-  /* Settings and the window position reach disk before static and atexit
-   * teardown, where a detached update worker still inside its request could
-   * race the TLS library's cleanup.
+  /* Settings and the window position must reach disk here: when an update
+   * worker is still in flight, main() exits with std::_Exit and skips static
+   * teardown, so nothing saved later would survive.
    */
   config.save();
 }
