@@ -60,6 +60,7 @@ TEST_CASE("only the view's rotation changes the order", "[ui][depthsort]") {
 TEST_CASE("sorting again for another view allocates nothing", "[ui][depthsort][alloc]") {
   // the 3D view sorts every frame of an orbit; once the sorter has sorted a
   // list, its storage and the index list's are reused
+  REQUIRE(btui::test::probeAllocation(4000) == 4000);   // the counter sees this program's allocations
   const std::vector<Vec3> centres = row(20000);
   DepthSorter s;
   std::vector<std::uint32_t> idx;

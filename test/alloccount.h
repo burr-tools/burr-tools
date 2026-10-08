@@ -27,6 +27,11 @@ namespace btui::test {
   private:
     std::size_t m_bytes0, m_calls0;
   };
+
+  /* What a count sees of one allocation of n bytes, which the optimiser
+   * cannot leave out: n when the counting operator new is the program's (a
+   * check that a zero count means something), else 0. */
+  std::size_t probeAllocation(std::size_t n);
 }
 
 #endif

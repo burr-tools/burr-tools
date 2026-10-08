@@ -498,12 +498,8 @@ void TestRender::framesDoNotAllocatePerTriangle() {
         return std::size_t(~0u);
     return count.bytes() / frames;
   };
-  {
-    // the counter does see this program's allocations
-    const btui::test::AllocCount probe;
-    std::vector<int> v(1000);
-    QVERIFY(probe.bytes() >= v.size() * sizeof(int));
-  }
+  // the counter does see this program's allocations
+  QCOMPARE(btui::test::probeAllocation(4000), std::size_t(4000));
   const auto small = variableCube(2), big = variableCube(12);
   QVERIFY(big->translucent.size() / 3 > 20000);
   const std::size_t smallBytes = perFrame(small, 1), bigBytes = perFrame(big, 2);
