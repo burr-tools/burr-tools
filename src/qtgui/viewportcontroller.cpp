@@ -265,7 +265,11 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
   SceneFrame f = baseFrame(devicePixelRatio);
   const Theme * t = Theme::instance();
   // the flat style's variable voxels: the inner ones show through
-  f.translucentLayers = m_meshStyle != QLatin1String("legacy");
+  // Classic is legacy's look: one translucent layer, opaque faces from
+  // both sides (its bevelled mesh's seams)
+  const bool classic = m_meshStyle == QLatin1String("legacy");
+  f.translucentLayers = !classic;
+  f.cullBackFaces = !classic;
 
   // the Entities scene; Puzzle and Solver bring their own in later phases
   if (m_layout->workspace() != LayoutController::Entities || !m_shape || !t)
@@ -322,6 +326,7 @@ bool ViewportController::exportVector(const QUrl & file, int format) const {
   in.dimAxis = f.dimAxis;
   in.dimLayer = f.dimLayer;
   in.dimAlpha = f.dimAlpha;
+  in.cullBackFaces = f.cullBackFaces;
 
   const std::string out = guarded([&] {
     return btui::writeVector(btui::projectScene(in), btui::VectorFormat(format),

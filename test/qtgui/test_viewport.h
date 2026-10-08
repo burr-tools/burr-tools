@@ -45,6 +45,7 @@ private slots:
   void theTargetsOutgrowTheViewInSteps();
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();
+  void classicSeamsShowTheFarSide();
 };
 
 /* The real 3D view item (VoxelViewport, a QQuickRhiItem) drawn by Qt Quick

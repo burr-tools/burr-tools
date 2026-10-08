@@ -127,6 +127,36 @@ TEST_CASE("variable voxels and dimmed layers keep their transparency", "[ui][vec
   CHECK(alphas.count(28) == 1);
 }
 
+TEST_CASE("the Classic style keeps the faces seen from behind", "[ui][vectorexport]") {
+  // as the 3D view draws it: the bevelled mesh's open seams between voxels
+  // show the far side, which is seen from behind (SceneFrame::cullBackFaces)
+  gridType_c gt{ gridType_c::GT_BRICKS };
+  auto v = bttest::makeVoxel(gt, 2, 2, 2);
+  v->setAll(voxel_c::VX_FILLED);
+  MeshOptions o;
+  o.style = VoxelStyle::Legacy;
+  o.piece = { 0, 0, 1 };
+  const ShapeMesh mesh = buildShapeMesh(*v, o);
+  Camera cam;
+  cam.setViewport(320, 240);
+  cam.setScene((mesh.boundsMin + mesh.boundsMax) * 0.5f, length(mesh.boundsMax - mesh.boundsMin) * 0.5f);
+  cam.home();
+  cam.tick(10000);
+  VectorInput in;
+  in.mesh = &mesh;
+  in.view = cam.viewMatrix();
+  in.projection = cam.projectionMatrix();
+  in.width = 320;
+  in.height = 240;
+  const size_t front = projectScene(in).prims.size();
+  in.cullBackFaces = false;
+  const VectorPage both = projectScene(in);
+  CHECK(both.prims.size() > front);
+  // still back to front
+  for (size_t i = 1; i < both.prims.size(); i++)
+    CHECK(both.prims[i - 1].depth >= both.prims[i].depth);
+}
+
 TEST_CASE("an empty view gives an empty page", "[ui][vectorexport]") {
   VectorInput in;
   in.width = 100;

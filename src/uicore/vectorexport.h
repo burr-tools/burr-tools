@@ -33,8 +33,9 @@
  *
  * Legacy used gl2ps, which captures OpenGL's fixed-function output; the new
  * renderer has none, so the view is captured here instead: every triangle
- * and line is projected with the view's camera, back faces are dropped,
- * the rest shaded as the renderer shades them and sorted back to front
+ * and line is projected with the view's camera, back faces are dropped
+ * (opaque ones kept for the Classic style, as the view draws it), the rest
+ * shaded as the renderer shades them and sorted back to front
  * (painter's algorithm -- the meshes are closed and finely cut, so a depth
  * sort suffices where gl2ps used a BSP tree). As with gl2ps, there is no
  * background, the page is the view's size in points, and TeX output is
@@ -59,6 +60,10 @@ namespace btui {
     bool lighting = true;
     int dimAxis = -1;
     float dimLayer = 0, dimAlpha = 0.28f;
+    /* opaque faces seen from behind are dropped; false keeps them, as the
+     * 3D view draws the Classic style (SceneFrame::cullBackFaces): its
+     * bevelled mesh's seams show the far side */
+    bool cullBackFaces = true;
   };
 
   struct VectorPrimitive {

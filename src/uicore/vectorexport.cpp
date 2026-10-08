@@ -350,7 +350,7 @@ namespace btui {
 
     const Projector pr{ in, in.projection * in.view };
     if (in.mesh) {
-      pr.triangles(in.mesh->opaque, true, in.lighting, true, page);
+      pr.triangles(in.mesh->opaque, in.cullBackFaces, in.lighting, true, page);
       pr.triangles(in.mesh->translucent, true, in.lighting, true, page);
     }
     if (in.overlayFaces)

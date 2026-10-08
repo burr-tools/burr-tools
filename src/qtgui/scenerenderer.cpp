@@ -151,7 +151,8 @@ struct SceneRenderer::Impl {
   std::unique_ptr<QRhiBuffer> triangle;          // the composite pass's one big triangle
   bool triangleUploaded = false;
 
-  std::unique_ptr<QRhiGraphicsPipeline> opaque, depthOnly, translucent, layered, xray, overlay, lines, linesFirst, composite;
+  std::unique_ptr<QRhiGraphicsPipeline> opaque, opaqueBothSides, depthOnly, translucent, layered, xray, overlay, lines,
+                                        linesFirst, composite;
   QRhiRenderPassDescriptor * compositeRp = nullptr;   // what `composite` was made for
 
   // the mesh, uploaded once per mesh object and revision: revisions alone
@@ -231,6 +232,7 @@ qint64 SceneRenderer::targetBytes(void) const {
 
 void SceneRenderer::Impl::releaseScene(void) {
   opaque.reset();
+  opaqueBothSides.reset();
   depthOnly.reset();
   translucent.reset();
   layered.reset();
@@ -419,6 +421,7 @@ void SceneRenderer::Impl::createScenePipelines(void) {
 
   using GP = QRhiGraphicsPipeline;
   opaque = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::Back, true, GP::Less, nullptr);
+  opaqueBothSides = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, true, GP::Less, nullptr);
   depthOnly = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::Back, true, GP::Less, &noColor);
   translucent = make(meshVs, meshFs, meshLayout, translucentSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
   // every layer, back to front, in front of the opaque voxels
@@ -602,7 +605,7 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   const QRhiViewport vp(0, sceneY, float(px.width()), float(px.height()));
 
   if (d->meshVbuf && d->opaqueCount) {
-    cb->setGraphicsPipeline(d->opaque.get());
+    cb->setGraphicsPipeline(f.cullBackFaces ? d->opaque.get() : d->opaqueBothSides.get());
     cb->setViewport(vp);
     cb->setShaderResources();
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), 0);

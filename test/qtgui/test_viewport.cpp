@@ -509,6 +509,51 @@ void TestRender::framesDoNotAllocatePerTriangle() {
   QVERIFY2(bigBytes <= smallBytes + 1024, qPrintable(got));
 }
 
+void TestRender::classicSeamsShowTheFarSide() {
+  // The Classic style draws legacy's bevelled mesh, whose seams between
+  // voxels are open (the faces between voxels are not drawn). Legacy draws
+  // opaque pieces from both sides, so the far side's faces, seen from
+  // behind, fill the grooves; culled, the seams showed the background (and
+  // the grid's dashed bounds through them).
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(600, 450)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  f.app->shapes()->select(1);                       // S2, the cage
+  f.app->settings()->setVoxelStyle(QStringLiteral("legacy"));
+  ViewportController * v = f.app->viewport();
+  v->setViewportSize(600, 450);
+  btui::Camera & cam = v->camera();
+  cam.setOrientation(btui::Camera::lookFrom({ 0.45f, 0.55f, 0.7f }, 0));
+  for (int i = 0; i < 6; i++)
+    cam.wheel(-100);                                // close in, the seams a pixel or more wide
+  cam.tick(100000);
+
+  SceneFrame classic = v->frame(1);
+  QVERIFY(!classic.cullBackFaces);
+  classic.lines.clear();
+  classic.clear = QColor(0, 0, 0, 0);
+  auto empty = [](const QImage & img) {
+    int n = 0;
+    for (int y = 0; y < img.height(); y++)
+      for (int x = 0; x < img.width(); x++)
+        if (img.pixelColor(x, y).alpha() == 0)
+          n++;
+    return n;
+  };
+  const int bothSides = empty(t.render(classic));
+  SceneFrame culled = classic;
+  culled.cullBackFaces = true;
+  const int frontOnly = empty(t.render(culled));
+  const QString got = QStringLiteral("background pixels: %1 drawn from both sides, %2 culled").arg(bothSides).arg(frontOnly);
+  qInfo().noquote() << got;
+  QVERIFY2(frontOnly - bothSides > 200, qPrintable(got));
+
+  // the Flat style's mesh is closed: it keeps culling
+  f.app->settings()->setVoxelStyle(QStringLiteral("flat"));
+  QVERIFY(v->frame(1).cullBackFaces);
+}
+
 void TestRender::lightingChangesTheShading() {
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(320, 240)));

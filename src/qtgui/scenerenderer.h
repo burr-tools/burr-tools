@@ -65,6 +65,12 @@ struct SceneFrame {
    * voxels inside show through the outer ones (the flat style's variable
    * voxels); otherwise only the nearest one, as legacy does */
   bool translucentLayers = false;
+  /* opaque faces seen from behind are left out; false draws them too, as
+   * legacy draws opaque pieces: the Classic style's bevelled mesh has open
+   * seams between voxels (the faces between them are not drawn), and
+   * through them the faces of the far side, seen from behind, fill the
+   * grooves -- left out, the seams show the background */
+  bool cullBackFaces = true;
 };
 
 /* The 3D view's renderer on Qt's graphics abstraction (QRhi): Direct3D

@@ -397,6 +397,7 @@ QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
   f.meshRevision = ++revision;
   f.lighting = m_settings->lighting();
   f.translucentLayers = voxelStyle() == btui::VoxelStyle::Flat;     // as the 3D view
+  f.cullBackFaces = voxelStyle() == btui::VoxelStyle::Flat;
 
   QImage img = m_renderer->render(f, QSize(w, h));
   if (img.isNull())
