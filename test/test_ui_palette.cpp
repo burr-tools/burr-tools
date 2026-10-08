@@ -56,3 +56,19 @@ TEST_CASE("text contrast follows the legacy weighting", "[ui][palette]") {
   CHECK_FALSE(prefersWhiteText(3));  // cyan
   CHECK(prefersWhiteText(2));        // red: 3*255 < 1275
 }
+
+TEST_CASE("an index a view hands over while its rows go (-1) gives a colour too", "[ui][palette]") {
+  // a QML delegate being torn down can ask for row -1: the table must not
+  // be read outside its bounds (the sanitizers job caught it), and the
+  // answer is still a colour, from the formula
+  for (int shape : { -1, -2, -100 }) {
+    const Rgb c = pieceColor(shape);
+    for (float ch : { c.r, c.g, c.b }) {
+      CHECK(ch >= 0.0f);
+      CHECK(ch <= 1.0f);
+    }
+    CHECK_NOTHROW(prefersWhiteText(shape));
+    const Rgb j = pieceColor(shape, 1);
+    CHECK(std::isfinite(j.r));
+  }
+}

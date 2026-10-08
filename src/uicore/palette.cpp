@@ -72,9 +72,13 @@ namespace btui {
        0.4f, -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f
     };
 
-    float baseR(int x) { return x < COLS ? tr[x] : float((1 + std::sin(0.7 * x)) / 2); }
-    float baseG(int x) { return x < COLS ? tg[x] : float((1 + std::sin(1.3 * x + 1.5)) / 2); }
-    float baseB(int x) { return x < COLS ? tb[x] : float((1 + std::sin(3.5 * x + 2.3)) / 2); }
+    /* the table for the first COLS shapes, a formula beyond -- and for any
+     * index a view may hand over while its rows go (-1): never outside the
+     * table */
+    bool inTable(int x) { return x >= 0 && x < COLS; }
+    float baseR(int x) { return inTable(x) ? tr[x] : float((1 + std::sin(0.7 * x)) / 2); }
+    float baseG(int x) { return inTable(x) ? tg[x] : float((1 + std::sin(1.3 * x + 1.5)) / 2); }
+    float baseB(int x) { return inTable(x) ? tb[x] : float((1 + std::sin(3.5 * x + 2.3)) / 2); }
 
     /* the copy-th jitter entry that keeps every channel inside [0, 1]; when
      * the table runs out there is no jitter any more (legacy getJitter)
