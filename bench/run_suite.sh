@@ -51,7 +51,9 @@ PUZZLE_DEFINITIONS=(
   "puzzles/BTFiles/Jack Krijnen/Excelsior.xmpuzzle|Jack Krijnen Excelsior: 6 unique pieces (assembler_0 DLX). 7 assemblies (~1.8s) + level 14 disassembly."
 
   # --- Puzzles with Duplicate Shapes / Ranges (assembler_1_c Huang Algorithm) ---
-  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:3|George Bell 11x11 Lomino Square (prob 3): Pure assembly with piece ranges (assembler_1). Heavier search (~1-5 min)."
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:3|George Bell 11x11 Lomino Square (prob 3): Piece ranges (assembler_1). 5 assemblies, 5 solutions (~1.1s)."
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:4|George Bell 12x12 Lomino Square (prob 4): Piece ranges 9..14 (assembler_1). 28 assemblies, 28 solutions (~4.0s)."
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:5|George Bell 13x13 Lomino Square (prob 5): Piece ranges 0..16 (assembler_1). 7 assemblies, 7 solutions (~21s)."
   "examples/SolidSixPieceBurrs.xmpuzzle|Solid Six Piece Burrs: 6 pieces with duplicate stick shapes (assembler_1). 588 assemblies (~7.5s), 179 solutions, level 1 disassembly."
   "puzzles/BTFiles/Jack Krijnen/Simplicity.xmpuzzle|Jack Krijnen Simplicity: Interlocking burr with duplicate pieces (assembler_1). 188 assemblies (~3.2s), level 10 disassembly."
   "puzzles/BTFiles/Jack Krijnen/BottomLine.xmpuzzle|Jack Krijnen BottomLine: Duplicate pieces (assembler_1). 76 assemblies (~1.1s), level 11 disassembly."
@@ -61,6 +63,14 @@ PUZZLE_DEFINITIONS=(
   # --- Micro-Puzzles (Overhead & Latency Lower Bound) ---
   "examples/PelikanBurr.xmpuzzle|Pelikan Burr: Classic 6-piece burr, unique pieces. Micro-search (~5ms assembly, level 4 disassembly). ~0.15s total."
   "examples/DraculasDentalDesaster.xmpuzzle|Dracula's Dental Desaster: 6 unique pieces. 84 assemblies (~8ms assembly, level 8 disassembly). ~0.14s total."
+
+  # --- Hard Tail: High Assembly Counts and Disassembly-Dominated Searches ---
+  "puzzles/BTFiles/Jack Krijnen/TheCube.xmpuzzle|Jack Krijnen The Cube: 13 pieces, 741 columns (tier 1024). 9,728 assemblies, 2 solutions (~4.0s)."
+  "puzzles/BTFiles/Jack Krijnen/CondorsPeeper.xmpuzzle:1|Jack Krijnen Condor's Peeper Colour II: 18 pieces, 370 columns. 29,467 assemblies (~2.2s)."
+  "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle|Jack Krijnen Jiminy Jack: 18 pieces, 367 columns. 180,516 assemblies (~8.9s), 585 MB peak RSS."
+  "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle|Jack Krijnen Tipperary: Heaviest assembler in the corpus. 519,827 assemblies (~20s), 325 MB peak RSS."
+  "puzzles/BTFiles/Jack Krijnen/The36plus.xmpuzzle|Jack Krijnen The36+: 36 pieces, 827 columns. Disassembly-dominated: 0.01s assembly, ~128s disassembly (~128s total)."
+  "puzzles/BTFiles/Jack Krijnen/Burrly Sane for Professionals.xmpuzzle|Jack Krijnen Burrly Sane for Professionals: assembler 0 above 300 assemblies. 895 assemblies (~0.4s)."
 )
 
 # Parse command-line flags

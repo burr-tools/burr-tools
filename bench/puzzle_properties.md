@@ -82,11 +82,11 @@ Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns f
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 0 | Assembler 0 | 91 | **256** | 10 | 9x9x1 | 81# | 9x9 square: 10 unique pieces (pure exact cover) |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 1 | Assembler 0 | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 square: 11 unique pieces (pure exact cover) |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 2 | Assembler 0 | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 Alt: 11 unique pieces (pure exact cover) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 3 | Assembler 1 | 135 | **256** | 9..13 | 11x11x1 | 121# | 11x11 square: piece ranges 9..13 pieces (Huang) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 4 | Assembler 1 | 159 | **256** | 9..14 | 12x12x1 | 144# | 12x12 square: piece ranges 9..14 pieces (Huang) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 5 | Assembler 1 | 186 | **256** | 0..16 | 13x13x1 | 169# | 13x13 square: piece ranges 0..16 pieces (Huang) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 6 | Assembler 1 | 214 | **256** | 0..17 | 14x14x14 | 196# | 14x14 square: piece ranges 0..17 pieces (Huang) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 7 | Assembler 1 | 245 | **256** | 0..19 | 15x15x1 | 225# | 15x15 square: piece ranges 0..19 pieces (Huang) |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 3 | Assembler 1 | 135 | **256** | 9..13 | 11x11x1 | 121# | 11x11 square: piece ranges 9..13 pieces (Huang). 5 asm / 5 sol, ~1.1s |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 4 | Assembler 1 | 159 | **256** | 9..14 | 12x12x1 | 144# | 12x12 square: piece ranges 9..14 pieces (Huang). 28 asm / 28 sol, ~4.0s |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 5 | Assembler 1 | 186 | **256** | 0..16 | 13x13x1 | 169# | 13x13 square: piece ranges 0..16 pieces (Huang). 7 asm / 7 sol, ~21s |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 6 | Assembler 1 | 214 | **256** | 0..17 | 14x14x1 | 196# | 14x14 square: piece ranges 0..17 pieces (Huang). 5 asm / 5 sol, ~78s. *Not in the default corpus* |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 7 | Assembler 1 | 245 | **256** | 0..19 | 15x15x1 | 225# | 15x15 square: piece ranges 0..19 pieces (Huang). 2 asm / 2 sol, ~293s. *Not in the default corpus* |
 | **James Fortune/kangaroo.xmpuzzle** | 0 | Assembler 0 | 205 | **DLX fallback** | 13 | 8x8x8 | 192# + 160+ | 6 pieces, 9,831 assemblies, level 10 disasm |
 | **James Fortune/unlucky block.xmpuzzle** | 0 | Assembler 0 | 300 | **DLX fallback** | 4 | 8x8x8 | 296# + 216+ | 7 pieces, interlocking assembly & disasm |
 | **Jack Krijnen/Excelsior.xmpuzzle** | 0 | Assembler 0 | 210 | **DLX fallback** | 18 | 8x8x8 | 192# + 160+ | 6 pieces, 7 assemblies, level 14 disasm (disasm dominated) |
@@ -95,6 +95,12 @@ Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns f
 | **Jack Krijnen/Simplicity.xmpuzzle** | 0 | Assembler 1 | 356 | **512** | 18 | 8x8x8 | 192# + 160+ | 18 pieces (3 shapes), 188 assemblies, level 10 (Assembler 1 > 256 cols!) |
 | **Jack Krijnen/BottomLine.xmpuzzle** | 0 | Assembler 1 | 355 | **512** | 18 | 8x8x8 | 192# + 160+ | 18 pieces (3 shapes), 76 assemblies, level 11 (Assembler 1 > 256 cols!) |
 | **Jack Krijnen/Tippy.xmpuzzle** | 0 | Assembler 1 | 295 | **512** | 13 | 8x8x8 | 176# + 112+ | 13 pieces, 460 assemblies, 111 solutions (Assembler 1 > 256 cols!) |
+| **Jack Krijnen/TheCube.xmpuzzle** | 0 | Assembler 1 | 741 | **1024** | 13 | 9x9x9 | 386# + 343+ | 9,728 assemblies, 2 solutions, tier 1024. ~4.0s, 186 MB |
+| **Jack Krijnen/CondorsPeeper.xmpuzzle** | 1 | Assembler 1 | 370 | **512** | 18 | 8x8x8 | 192# + 160+ | Colour II: 29,467 assemblies, 1 solution. ~2.2s, 156 MB |
+| **Jack Krijnen/JiminyJack.xmpuzzle** | 0 | Assembler 1 | 367 | **512** | 18 | 8x8x8 | 192# + 160+ | 180,516 assemblies, 1 solution. ~8.9s, 585 MB |
+| **Jack Krijnen/Tipperary.xmpuzzle** | 0 | Assembler 1 | 367 | **512** | 18 | 8x8x8 | 192# + 160+ | Heaviest assembler in the corpus: 519,827 assemblies. ~20s, 325 MB |
+| **Jack Krijnen/The36plus.xmpuzzle** | 0 | Assembler 1 | 827 | **1024** | 36 | 10x10x10 | 360# + 432+ | Disassembly-dominated: 0.01s assembly, ~128s disassembly (52 asm / 1 sol). 394 MB |
+| **Jack Krijnen/Burrly Sane for Professionals.xmpuzzle** | 0 | Assembler 0 | >300 | **DLX fallback** | 18 | 8x8x8 | 192# + 160+ | 895 assemblies, 1 solution; assembler 0 above 300 assemblies. ~0.4s, 62 MB |
 | **PelikanBurr.xmpuzzle** | 0 | Assembler 0 | 303 | **DLX fallback** | 7 | 8x8x8 | 296# + 216+ | 6 unique pieces, micro-search (~5ms assembly, level 4 disasm) |
 | **DraculasDentalDesaster.xmpuzzle** | 0 | Assembler 0 | 729 | **DLX fallback** | 9 | 14x14x14 | 720# + 936+ | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disasm) |
 | **Girish Sharma/cylindrical 18 - small.xmpuzzle** | 0 | Assembler 1 | 1167 | **2048** | 0..946 | 13x13x13 | 1026# + 72+ | 13x13x13 grid, 68 shapes, 1026# voxels, deep search (Assembler 1 tier 2048!) |

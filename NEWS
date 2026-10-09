@@ -1,3 +1,283 @@
+------------- Version 0.8.0 (unreleased -- DRAFT)
+
+BurrTools 0.8 is the largest release in over a decade. The editor gains undo
+and redo, the 3D view is rebuilt for easier navigation, STL export produces
+print-ready chamfered meshes, and the solver can now use all CPU cores
+and the vector units of modern processors. Puzzles that took tens of
+minutes in 0.7.1 now finish in seconds, up to 270x faster on an eight core
+machine. The source code has been generally cleaned up.
+
+Editing:
+- Undo and redo for the whole puzzle: voxel painting, shape transforms,
+  adding/removing/renaming shapes, colours and problem setup. A paint
+  stroke or a burst of rotations is one undo step, and undo returns you to
+  the tab where the change was made (Girish Sharma)
+- "Set All" range setter in the problem editor sets the min/max count of
+  every part at once (Carlos Moreno Serrano)
+- "Select Identical" and "Select holes" buttons in the Shape Information
+  dialog (Carlos Moreno Serrano)
+- The 2D grid editor shows the X, Y, Z coordinates of the voxel under the
+  cursor in the status bar, and allows larger cells on high-DPI and Retina
+  displays (Colin Deisenroth, Arne Köhn)
+- Copying a shape keeps its name (Tom Burns)
+
+3D View:
+- View Cube navigation widget: click a face, edge or corner to snap the
+  view to it with a smooth animated rotation, with hover highlights and a
+  Home button that resets pan and zoom. It can be configured or turned off
+  in Settings (Girish Sharma, building on work by Colin Deisenroth)
+- Panning, rotation snapping, improved render distance, and calmer arcball
+  sensitivity (Girish Sharma)
+- Live preview of a transformation when hovering over the rotate, flip and
+  shift tools, shown together with the original shape (Girish Sharma)
+- Three selectable render styles from the status line: "voxel" (the
+  classic look), "edges" (flat faces with lines only at real piece edges)
+  and "stl" (the chamfered mesh the STL export writes). The choice is
+  remembered between sessions (Bram Cohen)
+- Fix a crash building 3D-view meshes with recent libc++ (macOS), which
+  could trigger on any shape, e.g. after deleting a voxel (Derek Bosch)
+- The STL export preview is no longer clipped (Bram Cohen)
+
+STL Export:
+- New chamfer mesher: exported pieces get bevelled outer edges and an
+  optional "Interior chamfers" setting for concave edges. The cube grid
+  uses an exact lookup-table mesher; the prism, rhombic and tetra-octa grids
+  use Minkowski operations via the Manifold library (Bram Cohen)
+- Export all pieces of a solution in one go with "Export Solution to STL"
+  in the Solver tab: one file per distinct piece, named after the shape
+  (Carlos Moreno Serrano)
+- Separate X, Y and Z unit sizes for non-cubic pieces (Bram Cohen)
+- Coplanar faces are merged into larger triangles, making files much
+  smaller while keeping them watertight (Bram Cohen)
+- STL and image export default to the folder the puzzle was loaded from,
+  and a failed write is reported instead of silently producing no files
+  (Tom Burns)
+- Exported STL files no longer embed most of the user's directory path in
+  their header on macOS and Windows (Tom Burns)
+
+Solving:
+- New assemblers use SIMD instructions to significantly speed up assembly.
+- The disassembler was optimized in some paths to make use of SIMD instructions.
+- The state handling of the assembler and disassembler was optimized for
+  cache-locality and to prevent excess copying
+- Solving uses multiple CPU cores. The number of worker threads is a slider
+  in Settings (default: 60% of available cores); the command-line solvers
+  take -t N (Arne Köhn)
+- Paused or stopped parallel searches can be saved to the file and
+  continued later, without repeating solutions already found (Arne Köhn)
+- The progress bar advances smoothly and in proportion to time, covers
+  both assembly and disassembly, and holds steady when a solve is paused
+  (Tom Burns)
+- The solution list can be re-sorted while the solver is running, and
+  follows the solution being solved (Bram Cohen)
+
+macOS:
+- Native look and feel: the menu lives in the system menu bar with
+  Command-key shortcuts, About/Settings/Quit in the application menu, and
+  document-style window titles (Tom Burns)
+- Open puzzles by double-clicking them in Finder or dropping them on the
+  Dock icon; new application and .xmpuzzle document icons (Tom Burns)
+- Closing with unsaved changes offers Save / Don't Save / Cancel instead
+  of only discarding (Tom Burns)
+- Install instructions in README.md, including the fix for the
+  "BurrTools.app is damaged and can't be opened" Gatekeeper error. Release
+  files are labelled with their architecture (Tom Burns)
+
+All Platforms:
+- Native open and save dialogs on macOS, Windows and Linux (Bram Cohen,
+  Arne Köhn)
+- Modernised widget scheme (Tom Burns)
+- The Settings dialog (renamed from "Config") describes each option and
+  can restore defaults (Colin Deisenroth, Arne Köhn, Tom Burns)
+- Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
+  with an option to reverse the scroll-zoom direction (Colin Deisenroth, Arne Köhn)
+
+Scripting:
+- Python bindings (pybind11) for building shapes and problems, solving,
+  and streaming solutions with on-the-fly disassembly. Available when
+  building from source; see BUILD.md (Arne Köhn)
+
+Bug Fixes:
+- Release builds assembled pieces without applying their rotation in some
+  code paths, producing wrong assembly geometry. Present since 0.7.1
+  (Arne Köhn)
+- Malformed or damaged puzzle files are rejected with an error instead of
+  corrupting memory or loading silently wrong data (Bram Cohen, Tom Burns)
+- Puzzle comments made only of special characters such as "<&" are no
+  longer lost when the file is reloaded (Tom Burns)
+- Data races and a use-after-free between the solver and the GUI, found
+  with ThreadSanitizer (Bram Cohen)
+- Fix an infinite loop or wrong results in the disassembler on puzzles
+  using piece groups (Tom Burns)
+- burrTxt2: no longer hangs on an already solved puzzle or aborts on grids
+  without a disassembler, and exits non-zero on failure. Mistyped file
+  names are reported in both command-line solvers (Tom Burns)
+- A leak of mirror information and undefined behaviour in the disassembler
+  hash (Bram Cohen)
+
+Performance:
+  Total solve time including disassembly, release binary, 0.7.1 vs 0.8.
+  Solutions are identical: every example puzzle is checked against 0.7.1's
+  results before changes are merged.
+
+  The standard benchmark corpus, on a 4-core/8-thread laptop:
+
+    Simplicity      19.8x     Lomino:3     14.0x     Tippy         5.6x
+    SolidSix        38.3x     BottomLine    7.8x     kangaroo      3.2x
+    TTTCharm         7.5x     Lomino:1      6.4x     Excelsior     2.3x
+
+  A second set of long-running puzzles, on an 8-core/16-thread Ryzen
+  5800X. These are the cases where 0.7.1 spent a minute or more, and where
+  the change is felt most:
+
+    JiminyJack     2287.0s ->    8.5s    270.7x
+    Tipperary      2600.4s ->   19.3s    134.6x
+    Lomino:4        212.6s ->    4.0s     52.9x
+    Condor's Peeper  61.7s ->    2.0s     30.3x
+    The36+          312.7s ->  123.4s      2.5x
+
+  The speedups vary widely because each puzzle spends its time in a
+  different phase of solving, and each optimisation speeds up only its own
+  phase:
+
+  - Puzzles where the search can be pruned much harder gain the most. On
+    Simplicity the new code visits about 19 thousand search nodes where
+    0.7.1 visited 5.1 million; threads then multiply that. SolidSix gains
+    38x because, as a puzzle with piece-count ranges, it now runs on the
+    new SIMD solver (600 thousand nodes instead of 4.3 million) and on all
+    cores. The largest gains in the second table, JiminyJack and Tipperary,
+    are the same effect at a larger scale: both are 18-piece puzzles that
+    use duplicate pieces, which is what routes a puzzle to the assembler
+    the SIMD core was written for, and both finish inside 20 seconds where
+    0.7.1 needed 38 and 43 minutes respectively.
+  - Puzzles whose search does the same work as before (kangaroo, Lomino:3)
+    gain about what the extra cores give: 3x to 4x on a 4-core machine.
+  - Puzzles dominated by disassembly gain least. On Excelsior nearly all
+    the time goes into disassembling the single real solution, a job that
+    still runs on one core; its 2.3x comes from the faster disassembler.
+    The36+ is the clearest case: 312.7s becomes 123.4s, only 2.5x, because
+    its assembly takes under a hundredth of a second and essentially all
+    of the remaining time is one disassembly on one core. It uses about
+    100% of a core both before and after, so no amount of threading would
+    help it.
+  - Very small puzzles, under about 0.2 seconds, are dominated by loading
+    the file and starting threads, so they barely change.
+
+  Memory: the SIMD solver trades memory for speed on the largest puzzles.
+  Peak resident memory rises from 33 MB to 571 MB on JiminyJack and from
+  28 MB to 317 MB on Tipperary, because the bit-parallel representation
+  keeps bitsets for the whole matrix resident to test row collisions with
+  vector instructions. The 256 MB budget that decides whether the SIMD path
+  is taken covers the assembly matrix only, so peak RSS can exceed it:
+  JiminyJack sits well above 256 MB while still using the SIMD solver.
+  Budget accordingly if you solve the biggest 18-piece puzzles on a
+  memory-constrained machine. Lomino:4 barely moves, 13 MB to 18 MB, and
+  The36+, whose cost is almost entirely disassembly, grows 10% (352 MB to
+  386 MB).
+
+  What multithreading gives you: 0.7.1 solved on a single core. 0.8 splits
+  the search into independent pieces that run in parallel, and disassembles
+  the assemblies it finds while the search continues. On puzzles with real
+  search work this scales 3.3x to 4.0x on 4 physical cores. On the 8-core
+  machine the search-heavy puzzles in the second table put 6 to 14 threads
+  to work (Lomino:4 1431% CPU, Condor's Peeper 1237%, JiminyJack 916%,
+  Tipperary 664%), so the wider machine is genuinely used rather than
+  idling at four cores' worth of throughput. Assembly and disassembly
+  share one thread budget rather than reserving cores each: a searcher
+  holds a token for the subtree it is on, a disassembler one per assembly
+  it is analysing, so an idle disassembly pool costs nothing and its
+  threads assemble instead. Hyperthreading adds only 0-10% on this
+  workload. Long solves finish in a
+  fraction of the time, and because the thread count is a setting, you can
+  keep some cores free for other work during a long solve.
+
+  Why the classic solvers are still there: 0.7.1's two search engines,
+  Knuth's Dancing Links (DLX) and Wei-Hwa Huang's algorithm for puzzles
+  with duplicate pieces and ranges, are still in the code alongside the new
+  SIMD solver. The SIMD solver makes solving faster but cannot handle
+  every puzzle. BurrTools falls back to the classic engines when a puzzle
+  is too large for the SIMD solver (more than 2048 matrix columns, roughly
+  voxels plus pieces, for the DLX engine, or 32768 for Huang's), when the
+  SIMD matrix would need more than 256 MB, for variable voxels combined
+  with piece ranges, for the step-by-step debug mode, and when continuing a
+  classic search saved earlier. The classic engines also
+  serve as the reference implementation: tests solve the same puzzles with
+  both and require identical results, and BURRTOOLS_NO_SIMD=1 switches back
+  to them if a SIMD result is ever in doubt.
+
+- Parallel assembly: both solver engines (Knuth's DLX and Wei-Hwa Huang's
+  algorithm for ranges and duplicate pieces) split the search tree into
+  subtrees that worker threads search independently, scaling 3.3-4.0x on
+  4 cores (Arne Köhn)
+- Parallel disassembly: found assemblies are analysed concurrently on a
+  thread pool and merged back in their original order, so results and
+  solution thinning stay deterministic. A shared token budget keeps
+  assembly plus disassembly threads within the configured count (Arne Köhn)
+- SIMD bit-parallel exact cover: a new search core represents the matrix as
+  bitsets and tests row collisions with AVX2, AVX-512 or ARM NEON
+  instructions, with zero-cost backtracking. It covers puzzles of up to
+  32768 voxels and now also handles holes, variable voxels and piece
+  ranges. Up to 14.6x faster single-threaded on SolidSix. Falls back to the
+  classic DLX solver for very large matrices or when it would exceed a
+  256 MB memory budget (Arne Köhn)
+- Faster disassembly: movement checks use bitmask worklists, and the
+  reachability closure is a single-pass, vectorised Floyd-Warshall; 1.4x
+  to 1.6x on disassembly-heavy puzzles. The disassembler reuses its parent
+  matrix incrementally instead of recomputing it each step (Arne Köhn)
+- Faster preparation: placement enumeration only tries anchored positions,
+  and duplicate-column merging is linear instead of quadratic. A large
+  rhombic packing puzzle that never finished preparing now takes about 5
+  seconds (Bram Cohen)
+- Smaller wins: binary search for piece lookup on solution-rich puzzles,
+  standard hash containers in the movement cache and disassembler, and
+  release builds now ship without debug assertions, which cost 15-30%
+  (Arne Köhn)
+- Each optimisation can be switched off at runtime for comparison
+  (BURRTOOLS_NO_SIMD, BURRTOOLS_NO_AVX2, BURRTOOLS_NO_NEON,
+  BURRTOOLS_NO_DISASM_POOL, BURRTOOLS_THREADS=N and others; see AGENTS.md)
+
+Compatibility Notes:
+- With parallel solving, solutions are found in a non-deterministic order.
+  The set of solutions is unchanged, but with "drop solutions" thinning
+  enabled, the subset kept can differ between runs.
+- A paused search saved by 0.8 cannot be continued by 0.7.1. Completed
+  solutions load in either version.
+- The STL tube feature (groove switches, tube size, wall thickness, marked
+  hole faces) has been removed in favour of the chamfer mesher. Coplanar
+  face merging is always on.
+- macOS release builds are Apple Silicon only.
+
+Developer & Build:
+   0.7.1 had no automated tests. 0.8 ships 538 test cases. With so
+   much of the solver rewritten for speed, the tests check that a
+   faster solver still finds exactly the same answers. Every example
+   puzzle is checked against the assembly counts, solution counts and
+   disassembly move levels of the 0.7.1 release. The SIMD and classic
+   engines must agree on the same puzzles. Serial and parallel runs
+   must find the same set of assemblies, not just the same number. A
+   ThreadSanitizer run catches data races between solver
+   threads. Writing the tests also surfaced bugs that had shipped in
+   0.7.1, now fixed: an infinite loop in piece grouping, puzzle
+   comments lost on reload, exported STL headers carrying most of the
+   user's directory path, and the command-line solvers crashing on a
+   mistyped file name. Coverage is reported on every pull request.
+
+- C++20, with -Wall -Wextra -Werror clean on GCC, Clang and MinGW (Arne
+  Köhn, Tom Burns, raoulb)
+- Catch2 test suite: unit tests across voxels, symmetries, XML, mesh/STL,
+  disassembly and the puzzle model; regression tests against 0.7.1 output
+  for all examples; coverage reporting on every pull request (Tom Burns,
+  Arne Köhn)
+- CI adds Windows test runs, an x86-64 Clang build, and a ThreadSanitizer
+  job for the parallel solvers (Tom Burns)
+- `just` recipes for build, test, static analysis (cppcheck, clang-tidy),
+  sanitizers, coverage and benchmarking (Arne Köhn)
+- API reference generated with Doxygen and published to
+  https://burr-tools.github.io/burr-tools/ (Tom Burns)
+- Benchmark harness in bench/ for interleaved A/B runs and point-in-time
+  snapshots (Arne Köhn)
+
+-------------
 ------------- Version 0.7.1 Nov 2025
 
 Bug Fixes:
