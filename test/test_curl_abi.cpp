@@ -22,7 +22,15 @@
 
 #include "../src/gui/curl_abi.h"
 
-#include <dlfcn.h>
+/* dlopen is POSIX-only. On Windows the update check uses WinHTTP, so the
+ * runtime half of this file -- loading a live libcurl to cross-check the
+ * constants -- cannot build there; the header comparison above still can,
+ * whenever the build has the header.
+ */
+#ifndef _WIN32
+#  include <dlfcn.h>
+#  define BT_HAVE_DLOPEN 1
+#endif
 
 /* curl_abi.h declares libcurl's constants instead of including <curl/curl.h>,
  * so that httpget_curl.cpp compiles on machines with no libcurl headers. That
@@ -65,7 +73,7 @@ TEST_CASE("curl_abi constants match the installed libcurl header", "[update][cur
   STATIC_REQUIRE(curl_abi::CURLOPT_FOLLOWLOCATION == CURLOPT_FOLLOWLOCATION);
   STATIC_REQUIRE(curl_abi::CURLOPT_MAXREDIRS == CURLOPT_MAXREDIRS);
   STATIC_REQUIRE(curl_abi::CURLOPT_NOSIGNAL == CURLOPT_NOSIGNAL);
-  STATIC_REQUIRE(curl_abi::CURLINFO_RESPONSE_CODE == CURLINFO_RESPONSE_CODE);
+  STATIC_REQUIRE(curl_abi::RESPONSE_CODE == CURLINFO_RESPONSE_CODE);
 
   /* The dlsym'd prototypes are declared against our own types; if either
    * were the wrong width or signedness the library would misread them.
@@ -76,6 +84,8 @@ TEST_CASE("curl_abi constants match the installed libcurl header", "[update][cur
 }
 
 #endif
+
+#ifdef BT_HAVE_DLOPEN
 
 namespace {
 
@@ -131,7 +141,9 @@ TEST_CASE("the declared curl options are accepted by the installed libcurl", "[u
   curl_abi::CURL * c = api.easy_init();
   REQUIRE(c != nullptr);
 
-  // A wrong constant, or one of the wrong type, is rejected here.
+  // Coarse check only: libcurl rejects options it does not know, so a wildly
+  // wrong constant fails here -- but a valid-but-wrong one is accepted, and
+  // that case is the header comparison's job (see the note at the top).
   REQUIRE(api.easy_setopt(c, curl_abi::CURLOPT_URL, "https://example.invalid/") == curl_abi::CURLE_OK);
   REQUIRE(api.easy_setopt(c, curl_abi::CURLOPT_WRITEFUNCTION, nullptr) == curl_abi::CURLE_OK);
   REQUIRE(api.easy_setopt(c, curl_abi::CURLOPT_WRITEDATA, nullptr) == curl_abi::CURLE_OK);
@@ -147,7 +159,7 @@ TEST_CASE("the declared curl options are accepted by the installed libcurl", "[u
   api.slist_free_all(headers);
 
   long status = 0;
-  REQUIRE(api.easy_getinfo(c, curl_abi::CURLINFO_RESPONSE_CODE, &status) == curl_abi::CURLE_OK);
+  REQUIRE(api.easy_getinfo(c, curl_abi::RESPONSE_CODE, &status) == curl_abi::CURLE_OK);
 
   api.easy_cleanup(c);
 }
@@ -162,3 +174,5 @@ TEST_CASE("the update check reports itself unsupported, not broken, without libc
   if (api.complete()) SKIP("libcurl is installed, so the unsupported path is unreachable here");
   CHECK(api.easy_init == nullptr);
 }
+
+#endif

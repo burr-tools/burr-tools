@@ -137,7 +137,7 @@ HttpResult httpGet(const std::string & url, const std::string & userAgent, int t
   curl->easy_setopt(c, curl_abi::CURLOPT_NOSIGNAL, 1L);  // worker thread: no SIGALRM timeouts
 
   CURLcode rc = curl->easy_perform(c);
-  curl->easy_getinfo(c, curl_abi::CURLINFO_RESPONSE_CODE, &r.status);
+  curl->easy_getinfo(c, curl_abi::RESPONSE_CODE, &r.status);
 
   curl->slist_free_all(headers);
   curl->easy_cleanup(c);

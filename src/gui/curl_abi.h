@@ -36,9 +36,9 @@
  * runtime dependency.
  *
  * libcurl's own values, all stable and append-only across curl 7 and 8:
- *   CURLOPT_* are CURLOPTTYPE_* + number; CURLOPTTYPE_LONG = 326,
- *   STRINGPOINT = 325, FUNCTIONPOINT = 316, OBJECTPOINT = 282.
- *   Read out of curl-8.11.1's include/curl/curl.h.
+ *   CURLOPT_* are CURLOPTTYPE_* + number; LONG = 0, OBJECTPOINT and
+ *   STRINGPOINT = 10000, FUNCTIONPOINT = 20000 (read out of curl-8.11.1's
+ *   include/curl/curl.h).
  *
  * Drift cannot be spotted by inspection, so test/test_curl_abi.cpp watches
  * it two ways, with different strengths. Where the build has the real
@@ -78,8 +78,11 @@ namespace curl_abi {
   inline constexpr CURLoption CURLOPT_NOSIGNAL = 99;
   inline constexpr CURLoption CURLOPT_WRITEFUNCTION = 20011;
 
-  /* CURLINFO_LONG (0x200000) + 2. Read back through a long *. */
-  inline constexpr CURLINFO CURLINFO_RESPONSE_CODE = 2097154;
+  /* CURLINFO_RESPONSE_CODE in libcurl: CURLINFO_LONG (0x200000) + 2.
+   * Read back through a long *. Spelled without the CURLINFO_ prefix for the
+   * same reason as CURL_GLOBAL_DEFAULT_FLAGS above: on pre-8.x headers this
+   * name is an object-like macro, which would expand textually after '::'. */
+  inline constexpr CURLINFO RESPONSE_CODE = 2097154;
 }
 
 #endif
