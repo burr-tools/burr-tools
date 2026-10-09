@@ -59,19 +59,19 @@ class App : public QObject {
   QML_ELEMENT
   QML_SINGLETON
 
-  Q_PROPERTY(SettingsController * settings READ settings CONSTANT)
-  Q_PROPERTY(DocumentController * document READ document CONSTANT)
-  Q_PROPERTY(LayoutController * layout READ layout CONSTANT)
-  Q_PROPERTY(StatusController * status READ status CONSTANT)
-  Q_PROPERTY(ShapesModel * shapes READ shapes CONSTANT)
-  Q_PROPERTY(CommandController * commands READ commands CONSTANT)
-  Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT)
-  Q_PROPERTY(ToolsController * tools READ tools CONSTANT)
-  Q_PROPERTY(StlExportController * stl READ stl CONSTANT)
-  Q_PROPERTY(ImageExportController * images READ images CONSTANT)
-  Q_PROPERTY(KeyboardCues * keyboardCues READ keyboardCues CONSTANT)
-  Q_PROPERTY(PopupWindowStyle * popupStyle READ popupStyle CONSTANT)
-  Q_PROPERTY(QString version READ version CONSTANT)
+  Q_PROPERTY(SettingsController * settings READ settings CONSTANT FINAL)
+  Q_PROPERTY(DocumentController * document READ document CONSTANT FINAL)
+  Q_PROPERTY(LayoutController * layout READ layout CONSTANT FINAL)
+  Q_PROPERTY(StatusController * status READ status CONSTANT FINAL)
+  Q_PROPERTY(ShapesModel * shapes READ shapes CONSTANT FINAL)
+  Q_PROPERTY(CommandController * commands READ commands CONSTANT FINAL)
+  Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
+  Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
+  Q_PROPERTY(StlExportController * stl READ stl CONSTANT FINAL)
+  Q_PROPERTY(ImageExportController * images READ images CONSTANT FINAL)
+  Q_PROPERTY(KeyboardCues * keyboardCues READ keyboardCues CONSTANT FINAL)
+  Q_PROPERTY(PopupWindowStyle * popupStyle READ popupStyle CONSTANT FINAL)
+  Q_PROPERTY(QString version READ version CONSTANT FINAL)
 
 public:
 

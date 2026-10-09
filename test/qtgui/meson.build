@@ -34,7 +34,8 @@ if qt6_test_dep.found()
      qt6.compile_moc(sources: 'test_qtgui.cpp', headers: 'test_viewport.h', dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
-    cpp_args: qt_test_args,
+    # the shaders' Direct3D form (src/qtgui/meson.build, -Ddxbc)
+    cpp_args: qt_test_args + (qtgui_dxbc ? ['-DBURRTOOLS_DXBC=1'] : []),
     link_args: qt_link_args,
     build_rpath: qt_build_rpath,
     dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
@@ -94,8 +95,9 @@ if qt6_test_dep.found()
     args: [meson.project_source_root() / 'scripts' / 'qml_aot_report.py',
            '--qrc', meson.project_build_root() / 'src' / 'qtgui' / 'qml' / 'BurrTools_Ui_qml.qrc',
            '--sources', meson.project_source_root() / 'src' / 'qtgui' / 'qml',
+           '--import', qtgui_qml_import_root,
            '--baseline', meson.current_source_dir() / 'qml_aot_baseline.json'],
-    depends: burrtools_qt_exe,
+    depends: [burrtools_qt_exe, qtgui_qml_import],
     suite: 'fast',
     timeout: 120)
 

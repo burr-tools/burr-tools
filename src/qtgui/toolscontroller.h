@@ -47,11 +47,11 @@ class ShapeStatusModel : public QAbstractListModel {
   QML_ELEMENT
   QML_UNCREATABLE("owned by ToolsController")
 
-  Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
-  Q_PROPERTY(double progress READ progress NOTIFY progressChanged)
+  Q_PROPERTY(bool busy READ busy NOTIFY busyChanged FINAL)
+  Q_PROPERTY(double progress READ progress NOTIFY progressChanged FINAL)
   /* the Tools columns (Notch, Mill) exist for brick puzzles only */
-  Q_PROPERTY(bool bricks READ bricks NOTIFY bricksChanged)
-  Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged)
+  Q_PROPERTY(bool bricks READ bricks NOTIFY bricksChanged FINAL)
+  Q_PROPERTY(int selectedCount READ selectedCount NOTIFY selectionChanged FINAL)
 
 public:
 
@@ -142,7 +142,7 @@ class ToolsController : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(ShapeStatusModel * shapeStatus READ shapeStatus CONSTANT)
+  Q_PROPERTY(ShapeStatusModel * shapeStatus READ shapeStatus CONSTANT FINAL)
 
 public:
 

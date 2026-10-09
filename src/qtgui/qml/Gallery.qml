@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -118,26 +120,27 @@ ApplicationWindow {
         Repeater {
             model: sheet.names
             delegate: Column {
+                id: cell
                 required property string modelData
                 width: 76
                 spacing: 2
                 Glyph {
                     visible: sheet.glyphs
                     anchors.horizontalCenter: parent.horizontalCenter
-                    name: sheet.glyphs ? modelData : ""
+                    name: sheet.glyphs ? cell.modelData : ""
                     size: 32
                 }
                 Icon {
                     visible: !sheet.glyphs
                     anchors.horizontalCenter: parent.horizontalCenter
-                    name: sheet.glyphs ? "" : modelData
+                    name: sheet.glyphs ? "" : cell.modelData
                     size: 20
                     color: Theme.text
                 }
                 Text {
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter
-                    text: modelData
+                    text: cell.modelData
                     color: Theme.muted
                     font.pixelSize: 10
                     elide: Text.ElideMiddle
@@ -349,7 +352,7 @@ ApplicationWindow {
                     // body but be pushed back into the window, over other
                     // rows. Shown only while the whole row is in view.
                     // takes the scroll position so the binding follows it
-                    function fits(contentY, viewHeight) {
+                    function fits(contentY: real, viewHeight: real): bool {
                         const top = tipRow.mapToItem(flick, 0, 0).y
                         return top >= 0 && top + tipRow.height <= viewHeight
                     }

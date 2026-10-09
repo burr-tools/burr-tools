@@ -37,17 +37,17 @@ class LayoutController : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(int workspace READ workspace WRITE setWorkspace NOTIFY changed)
-  Q_PROPERTY(int focus READ focus NOTIFY changed)
-  Q_PROPERTY(bool leftCollapsed READ leftCollapsed WRITE setLeftCollapsed NOTIFY changed)
-  Q_PROPERTY(bool rightCollapsed READ rightCollapsed WRITE setRightCollapsed NOTIFY changed)
-  Q_PROPERTY(bool leftShownAsRail READ leftShownAsRail NOTIFY changed)
-  Q_PROPERTY(bool rightShownAsRail READ rightShownAsRail NOTIFY changed)
-  Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY changed)
-  Q_PROPERTY(qreal windowWidth READ windowWidth WRITE setWindowWidth NOTIFY changed)
-  Q_PROPERTY(qreal leftWidth READ leftWidth NOTIFY changed)
-  Q_PROPERTY(qreal centreWidth READ centreWidth NOTIFY changed)
-  Q_PROPERTY(qreal rightWidth READ rightWidth NOTIFY changed)
+  Q_PROPERTY(int workspace READ workspace WRITE setWorkspace NOTIFY changed FINAL)
+  Q_PROPERTY(int focus READ focus NOTIFY changed FINAL)
+  Q_PROPERTY(bool leftCollapsed READ leftCollapsed WRITE setLeftCollapsed NOTIFY changed FINAL)
+  Q_PROPERTY(bool rightCollapsed READ rightCollapsed WRITE setRightCollapsed NOTIFY changed FINAL)
+  Q_PROPERTY(bool leftShownAsRail READ leftShownAsRail NOTIFY changed FINAL)
+  Q_PROPERTY(bool rightShownAsRail READ rightShownAsRail NOTIFY changed FINAL)
+  Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY changed FINAL)
+  Q_PROPERTY(double windowWidth READ windowWidth WRITE setWindowWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double leftWidth READ leftWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double centreWidth READ centreWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double rightWidth READ rightWidth NOTIFY changed FINAL)
 
 public:
 

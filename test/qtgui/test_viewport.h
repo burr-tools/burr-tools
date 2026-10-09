@@ -19,6 +19,7 @@ private slots:
   void theCubeDrivesTheCamera();
   void layerStepsClampAndFollowThePlane();
   void theVoxelStyleSettingRebuildsTheMesh();
+  void aFrameReadsNoSettings();
 };
 
 class TestViewCubePaint : public QObject {
@@ -61,6 +62,7 @@ private slots:
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();
   void classicSeamsShowTheFarSide();
+  void theShadersCarryEveryGraphicsApi();
 };
 
 /* The real 3D view item (VoxelViewport, a QQuickRhiItem) drawn by Qt Quick

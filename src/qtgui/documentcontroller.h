@@ -43,17 +43,17 @@ class DocumentController : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(QString fileName READ fileName NOTIFY fileChanged)
-  Q_PROPERTY(QString filePath READ filePath NOTIFY fileChanged)
-  Q_PROPERTY(QString windowTitle READ windowTitle NOTIFY stateChanged)
-  Q_PROPERTY(QUrl folder READ folder NOTIFY fileChanged)
-  Q_PROPERTY(bool modified READ modified NOTIFY stateChanged)
-  Q_PROPERTY(bool canUndo READ canUndo NOTIFY stateChanged)
-  Q_PROPERTY(bool canRedo READ canRedo NOTIFY stateChanged)
-  Q_PROPERTY(int gridType READ gridType NOTIFY documentReplaced)
-  Q_PROPERTY(QString gridTypeName READ gridTypeName NOTIFY documentReplaced)
-  Q_PROPERTY(QString comment READ comment NOTIFY stateChanged)
-  Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged)
+  Q_PROPERTY(QString fileName READ fileName NOTIFY fileChanged FINAL)
+  Q_PROPERTY(QString filePath READ filePath NOTIFY fileChanged FINAL)
+  Q_PROPERTY(QString windowTitle READ windowTitle NOTIFY stateChanged FINAL)
+  Q_PROPERTY(QUrl folder READ folder NOTIFY fileChanged FINAL)
+  Q_PROPERTY(bool modified READ modified NOTIFY stateChanged FINAL)
+  Q_PROPERTY(bool canUndo READ canUndo NOTIFY stateChanged FINAL)
+  Q_PROPERTY(bool canRedo READ canRedo NOTIFY stateChanged FINAL)
+  Q_PROPERTY(int gridType READ gridType NOTIFY documentReplaced FINAL)
+  Q_PROPERTY(QString gridTypeName READ gridTypeName NOTIFY documentReplaced FINAL)
+  Q_PROPERTY(QString comment READ comment NOTIFY stateChanged FINAL)
+  Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged FINAL)
 
 public:
 

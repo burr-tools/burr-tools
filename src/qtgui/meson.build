@@ -2,6 +2,7 @@
 # enabled; this file is only read when Qt was found.
 
 qt6 = import('qt6')
+fs = import('fs')
 
 # The C++ types QML sees. They are moc'ed and registered as part of the QML
 # module built in qml/meson.build.
@@ -28,12 +29,7 @@ qtgui_moc_headers = files(
 # a static Qt built without zstd cannot read resources rcc compressed with it
 qt_rcc_args = qt_static ? ['--no-zstd'] : []
 
-subdir('qml')
-
-# The 3D view's shaders: compiled by Qt's qsb for every graphics API QRhi
-# may use (SPIR-V for Vulkan, GLSL, HLSL for Direct3D, MSL for Metal), then
-# embedded as byte arrays -- meson will not hand rcc a .qrc that lists files
-# made at build time.
+# Qt's build tools (qsb, qmlcachegen) are in its host bin or libexec folder
 qt_bins = []
 qmake = find_program('qmake6', 'qmake', required: false)
 if qmake.found()
@@ -47,12 +43,51 @@ endif
 qsb = find_program('qsb', 'qsb6', dirs: qt_bins)
 python3 = find_program('python3', 'python')
 
+subdir('qml')
+
+# The 3D view's shaders: compiled by Qt's qsb for every graphics API QRhi
+# may use (SPIR-V for Vulkan, GLSL, HLSL for Direct3D, MSL for Metal), then
+# embedded as byte arrays -- meson will not hand rcc a .qrc that lists files
+# made at build time.
+#
+# For Direct3D, qsb stores HLSL source, which Direct3D compiles when the
+# pipelines are made: ~50 ms of CPU on a start without a pipeline cache
+# (the first, or after an update), whatever the GPU. With the Windows SDK's
+# fxc (-Ddxbc, auto: when it is found) qsb stores compiled DXBC instead.
+# qsb runs fxc by name, so its folder goes on the PATH of that step.
+qsb_args = ['--glsl', '100es,120,150', '--hlsl', '50', '--msl', '12']
+qsb_env = environment()
+qtgui_dxbc = false
+if host_machine.system() == 'windows' and not get_option('dxbc').disabled()
+  fxc = find_program('fxc', required: false)
+  fxc_dir = ''
+  if fxc.found()
+    fxc_dir = fs.parent(fxc.full_path())
+  else
+    # the newest Windows 10/11 SDK's x64 fxc, where the SDK installs it
+    r = run_command(python3, '-c', '''import glob, os
+kits = os.path.join(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)"), "Windows Kits", "10", "bin")
+found = sorted(glob.glob(os.path.join(kits, "10.*", "x64", "fxc.exe")))
+print(os.path.dirname(found[-1]) if found else "")''', check: false)
+    fxc_dir = r.returncode() == 0 ? r.stdout().strip() : ''
+  endif
+  if fxc_dir != ''
+    qtgui_dxbc = true
+    qsb_args += ['-c']
+    qsb_env.prepend('PATH', fxc_dir)
+  elif get_option('dxbc').enabled()
+    error('-Ddxbc=enabled: fxc not found (install the Windows SDK, or put fxc on the PATH)')
+  endif
+endif
+summary({'Direct3D shaders': qtgui_dxbc ? 'compiled (DXBC)' : 'HLSL source'}, section: 'burrtools-qt')
+
 qtgui_shaders = []
 foreach s : ['mesh.vert', 'mesh.frag', 'line.vert', 'line.frag', 'composite.vert', 'composite.frag']
   qtgui_shaders += custom_target(s + '.qsb',
     input: 'shaders' / s,
     output: s + '.qsb',
-    command: [qsb, '--glsl', '100es,120,150', '--hlsl', '50', '--msl', '12', '-o', '@OUTPUT@', '@INPUT@'])
+    env: qsb_env,
+    command: [qsb, qsb_args, '-o', '@OUTPUT@', '@INPUT@'])
 endforeach
 qtgui_shader_src = custom_target('shaders_embed',
   input: qtgui_shaders,
@@ -99,6 +134,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'voxelviewport.cpp',
     qtgui_shader_src,
     qtgui_qmlmod,
+    qtgui_qmlcache,
     qtgui_resources,
   ],
   include_directories: [inc, include_directories('.')],

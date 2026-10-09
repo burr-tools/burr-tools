@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -16,7 +18,7 @@ FocusScope {
     // one choice of several: a group of radio buttons to assistive tools
     Accessible.role: Accessible.Grouping
 
-    function indexOfValue() {
+    function indexOfValue(): int {
         for (let i = 0; i < options.length; i++)
             if (options[i].value === value) return i
         return -1
@@ -38,6 +40,7 @@ FocusScope {
         Repeater {
             model: root.options
             delegate: AbstractButton {
+                id: segment
                 required property var modelData
                 objectName: root.objectName + "." + modelData.value
                 text: modelData.label
@@ -51,12 +54,12 @@ FocusScope {
                 onClicked: root.activated(modelData.value)
                 background: Rectangle {
                     radius: Theme.radiusChip
-                    color: root.value === modelData.value ? Theme.panel : "transparent"
+                    color: root.value === segment.modelData.value ? Theme.panel : "transparent"
                 }
                 contentItem: Text {
                     id: segLabel
-                    text: modelData.label
-                    color: root.value === modelData.value ? Theme.text : Theme.muted
+                    text: segment.modelData.label
+                    color: root.value === segment.modelData.value ? Theme.text : Theme.muted
                     font.pixelSize: Theme.fontSecondary
                     font.weight: Font.DemiBold
                     horizontalAlignment: Text.AlignHCenter

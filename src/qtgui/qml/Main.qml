@@ -261,7 +261,7 @@ ApplicationWindow {
                 onClicked: noticeDialog.close()
             }
         }
-        function show(title, text) { noticeDialog.title = title; noticeDialog.body = text; open() }
+        function show(title: string, text: string) { noticeDialog.title = title; noticeDialog.body = text; open() }
     }
 
     FileDialog {
@@ -318,7 +318,7 @@ ApplicationWindow {
     // size, at the screen's corner and mostly off it. And one file can raise
     // two (an unfinished search, then its comment), which legacy showed in turn.
     property var pendingMessages: []
-    function showMessage(title, text) {
+    function showMessage(title: string, text: string) {
         pendingMessages.push({ title: title, text: text })
         showNextMessage()
     }
@@ -352,13 +352,13 @@ ApplicationWindow {
 
     Connections {
         target: App.document
-        function onConfirmDiscardRequested(action) { discardDialog.action = action; discardDialog.open() }
+        function onConfirmDiscardRequested(action: string) { discardDialog.action = action; discardDialog.open() }
         function onNewFileTypeRequested() { newDialog.open() }
         function onOpenFileRequested() { openDialog.open() }
         function onImportFileRequested() { importDialog.open() }
         function onSaveAsRequested() { saveDialog.open() }
         function onQuitApproved() { win.saveGeometry(); win.quitApproved = true; Qt.quit() }
-        function onMessageRequested(title, text) { win.showMessage(title, text) }
+        function onMessageRequested(title: string, text: string) { win.showMessage(title, text) }
     }
 
     Connections {
@@ -385,6 +385,6 @@ ApplicationWindow {
 
     Connections {
         target: App
-        function onInternalError(message) { internalErrorDialog.text = message; internalErrorDialog.open() }
+        function onInternalError(message: string) { internalErrorDialog.text = message; internalErrorDialog.open() }
     }
 }

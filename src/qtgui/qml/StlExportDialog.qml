@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
@@ -20,7 +22,7 @@ BtDialog {
     height: Math.min(700, (parent ? parent.height : 800) - 32)
     closePolicy: Popup.CloseOnEscape
 
-    readonly property var stl: App.stl
+    readonly property StlExportController stl: App.stl
 
     onAboutToShow: stl.begin()
     onClosed: stl.end()
@@ -123,8 +125,10 @@ BtDialog {
                     delegate: Item {
                         id: param
                         required property int index
-                        // re-read whenever a value changes; the field itself stays
-                        readonly property var info: { root.stl.revision; return root.stl.parameter(index) }
+                        // re-read whenever a value changes; the field itself stays. The
+                        // revision is used in the result: a bare `revision;` statement is
+                        // dropped by the compiled binding, and with it the dependency
+                        readonly property var info: root.stl.revision >= 0 ? root.stl.parameter(index) : ({})
                         readonly property bool isSwitch: info.type === "switch"
                         Layout.fillWidth: true
                         implicitHeight: 30
@@ -277,8 +281,8 @@ BtDialog {
 
     Connections {
         target: root.stl
-        function onExported(fileName) { App.status.flash(qsTr("Exported %1").arg(fileName)) }
-        function onFailed(message) { failure.text = message; failure.open() }
+        function onExported(fileName: string) { App.status.flash(qsTr("Exported %1").arg(fileName)) }
+        function onFailed(message: string) { failure.text = message; failure.open() }
     }
 
     MessageDialog {

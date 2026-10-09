@@ -267,7 +267,11 @@ Environment variables:
 Performance checks and profiles (what each measures, which fail CI and which
 only report): `design/2026-10-08-qtgui-performance-backlog.md`, "Measuring".
 `-Dqml_debug=true` lets qmlprofiler and the QML debugger attach; it is for
-profiling builds, never a release.
+profiling builds, never a release. `-Ddxbc` (auto) ships the Direct3D
+shaders compiled, sparing the HLSL compile (~50 ms) of a start without a
+pipeline cache; it needs the Windows SDK's `fxc`, which an MSYS2 install
+alone does not have -- without it the build ships HLSL source, as before
+(`meson setup` says which).
 
 The tests run headless. Render tests draw through Direct3D's WARP software
 rasteriser on Windows and need no GPU; on Linux they need Vulkan, which

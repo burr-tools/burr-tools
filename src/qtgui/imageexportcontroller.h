@@ -56,33 +56,33 @@ class ImageExportController : public SceneController {
   QML_UNCREATABLE("owned by App")
 
   /* "shape" | "problem" | "assembly" | "solution" | "disassembly" */
-  Q_PROPERTY(QString mode READ mode WRITE setMode NOTIFY contentChanged)
-  Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY contentChanged)
-  Q_PROPERTY(int problem READ problem WRITE setProblem NOTIFY contentChanged)
-  Q_PROPERTY(bool canShape READ canShape NOTIFY contentChanged)
-  Q_PROPERTY(bool canProblem READ canProblem NOTIFY contentChanged)
-  Q_PROPERTY(bool canAssembly READ canAssembly NOTIFY contentChanged)
-  Q_PROPERTY(bool canSolution READ canSolution NOTIFY contentChanged)
+  Q_PROPERTY(QString mode READ mode WRITE setMode NOTIFY contentChanged FINAL)
+  Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY contentChanged FINAL)
+  Q_PROPERTY(int problem READ problem WRITE setProblem NOTIFY contentChanged FINAL)
+  Q_PROPERTY(bool canShape READ canShape NOTIFY contentChanged FINAL)
+  Q_PROPERTY(bool canProblem READ canProblem NOTIFY contentChanged FINAL)
+  Q_PROPERTY(bool canAssembly READ canAssembly NOTIFY contentChanged FINAL)
+  Q_PROPERTY(bool canSolution READ canSolution NOTIFY contentChanged FINAL)
 
-  Q_PROPERTY(bool transparent READ transparent WRITE setTransparent NOTIFY optionsChanged)
-  Q_PROPERTY(int supersampling READ supersampling WRITE setSupersampling NOTIFY optionsChanged)
+  Q_PROPERTY(bool transparent READ transparent WRITE setTransparent NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(int supersampling READ supersampling WRITE setSupersampling NOTIFY optionsChanged FINAL)
   /* the colour constraint colours instead of the piece colours */
-  Q_PROPERTY(bool constraintColours READ constraintColours WRITE setConstraintColours NOTIFY optionsChanged)
-  Q_PROPERTY(bool dimStatic READ dimStatic WRITE setDimStatic NOTIFY optionsChanged)
+  Q_PROPERTY(bool constraintColours READ constraintColours WRITE setConstraintColours NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool dimStatic READ dimStatic WRITE setDimStatic NOTIFY optionsChanged FINAL)
 
   /* "a4p" | "a4l" | "letterp" | "letterl" | "manual" */
-  Q_PROPERTY(QString paper READ paper WRITE setPaper NOTIFY sizeChanged)
-  Q_PROPERTY(int sizeXmm READ sizeXmm WRITE setSizeXmm NOTIFY sizeChanged)
-  Q_PROPERTY(int sizeYmm READ sizeYmm WRITE setSizeYmm NOTIFY sizeChanged)
-  Q_PROPERTY(int dpi READ dpi WRITE setDpi NOTIFY sizeChanged)
-  Q_PROPERTY(int pixelX READ pixelX WRITE setPixelX NOTIFY sizeChanged)
-  Q_PROPERTY(int pixelY READ pixelY WRITE setPixelY NOTIFY sizeChanged)
-  Q_PROPERTY(int pages READ pages WRITE setPages NOTIFY sizeChanged)
+  Q_PROPERTY(QString paper READ paper WRITE setPaper NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int sizeXmm READ sizeXmm WRITE setSizeXmm NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int sizeYmm READ sizeYmm WRITE setSizeYmm NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int dpi READ dpi WRITE setDpi NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int pixelX READ pixelX WRITE setPixelX NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int pixelY READ pixelY WRITE setPixelY NOTIFY sizeChanged FINAL)
+  Q_PROPERTY(int pages READ pages WRITE setPages NOTIFY sizeChanged FINAL)
 
-  Q_PROPERTY(bool busy READ busy NOTIFY progressChanged)
-  Q_PROPERTY(QString progressText READ progressText NOTIFY progressChanged)
-  Q_PROPERTY(QUrl folder READ folder NOTIFY contentChanged)
-  Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY contentChanged)
+  Q_PROPERTY(bool busy READ busy NOTIFY progressChanged FINAL)
+  Q_PROPERTY(QString progressText READ progressText NOTIFY progressChanged FINAL)
+  Q_PROPERTY(QUrl folder READ folder NOTIFY contentChanged FINAL)
+  Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY contentChanged FINAL)
 
 public:
 
@@ -169,8 +169,6 @@ private:
   enum class Phase { Idle, Measure, Draw };
 
   btui::ColorMode colorMode(void) const;
-  /* the pictures look like the 3D view: Settings ▸ Voxel style */
-  btui::VoxelStyle voxelStyle(void) const;
   btui::SceneContent sceneFor(const Job & j) const;
   void fixMode(void);
   void rebuildPreview(void);

@@ -31,25 +31,24 @@ SceneController::SceneController(SettingsController * settings, QObject * parent
   m_timer.setInterval(16);
   connect(&m_timer, &QTimer::timeout, this, &SceneController::onTimer);
 
-  applyCameraSettings();
+  readSettings();
   connect(m_settings, &SettingsController::changed, this, [this] {
-    applyCameraSettings();
+    readSettings();
     emit frameChanged();
   });
   if (Theme * t = Theme::instance())
     connect(t, &Theme::changed, this, &SceneController::frameChanged);
 }
 
-void SceneController::applyCameraSettings(void) {
+void SceneController::readSettings(void) {
   m_camera.setRotationMethod(m_settings->rotationMethod() == QLatin1String("arcball")
                                ? btui::Camera::RotationMethod::Arcball : btui::Camera::RotationMethod::Drag);
   m_camera.setProjection(m_settings->stringValue(QStringLiteral("view.projection"), QStringLiteral("perspective"))
                              == QLatin1String("orthographic")
                            ? btui::Camera::Projection::Orthographic : btui::Camera::Projection::Perspective);
-}
-
-int SceneController::wantedSamples(void) const {
-  return m_settings->antialiasingSamples();
+  m_lighting = m_settings->lighting();
+  m_voxelStyle = m_settings->voxelStyle() == QLatin1String("legacy") ? btui::VoxelStyle::Legacy : btui::VoxelStyle::Flat;
+  m_samples = m_settings->antialiasingSamples();
 }
 
 SceneFrame SceneController::baseFrame(float devicePixelRatio) const {
@@ -59,7 +58,7 @@ SceneFrame SceneController::baseFrame(float devicePixelRatio) const {
   f.view = m_camera.viewMatrix();
   f.projection = m_camera.projectionMatrix();
   f.devicePixelRatio = devicePixelRatio;
-  f.lighting = m_settings->lighting();
+  f.lighting = m_lighting;
   f.meshRevision = ~quint64(0) - 1;
   return f;
 }

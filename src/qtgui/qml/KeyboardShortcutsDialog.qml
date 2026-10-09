@@ -25,11 +25,11 @@ BtDialog {
     }
     onOpened: search.forceActiveFocus()
 
-    function keyText(keys) {
+    function keyText(keys: var): string {
         return keys.map(a => a.map(p => p.text).join("+")).join(" / ")
     }
 
-    function matches(group, row) {
+    function matches(group: var, row: var): bool {
         const q = root.query.trim().toLowerCase()
         if (q.length === 0)
             return true

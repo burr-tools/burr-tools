@@ -147,25 +147,22 @@ void ImageExportController::setProblem(int p) {
   rebuildPreview();
 }
 
-btui::VoxelStyle ImageExportController::voxelStyle(void) const {
-  return m_settings->voxelStyle() == QLatin1String("legacy") ? btui::VoxelStyle::Legacy : btui::VoxelStyle::Flat;
-}
-
 btui::ColorMode ImageExportController::colorMode(void) const {
   return m_constraint ? btui::ColorMode::Voxel : btui::ColorMode::Piece;
 }
 
 btui::SceneContent ImageExportController::sceneFor(const Job & j) const {
   const puzzle_c & p = m_doc->session().puzzle();
+  // the pictures look like the 3D view: Settings ▸ Voxel style
   if (!j.assembly)
-    return btui::buildShapeScene(p, j.shape, colorMode(), voxelStyle());
+    return btui::buildShapeScene(p, j.shape, colorMode(), m_voxelStyle);
   const problem_c & pr = *p.getProblem(j.problem);
   if (j.step < 0)
-    return btui::buildAssemblyScene(pr, j.solution, colorMode(), nullptr, false, voxelStyle());
+    return btui::buildAssemblyScene(pr, j.solution, colorMode(), nullptr, false, m_voxelStyle);
   const separation_c * t = pr.getSavedSolution(j.solution)->getDisassembly();
   disasmToMoves_c dtm(t, 20, pr.getNumberOfPieces());
   dtm.setStep(float(j.step), false, true);
-  return btui::buildAssemblyScene(pr, j.solution, colorMode(), &dtm, j.dim, voxelStyle());
+  return btui::buildAssemblyScene(pr, j.solution, colorMode(), &dtm, j.dim, m_voxelStyle);
 }
 
 /* the preview shows what legacy's does: the shape, the problem's result,
@@ -395,9 +392,9 @@ QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
   f.projection = cam.projectionMatrix();
   f.mesh = std::make_shared<btui::ShapeMesh>(c.mesh);
   f.meshRevision = ++revision;
-  f.lighting = m_settings->lighting();
-  f.translucentLayers = voxelStyle() == btui::VoxelStyle::Flat;     // as the 3D view
-  f.cullBackFaces = voxelStyle() == btui::VoxelStyle::Flat;
+  f.lighting = m_lighting;
+  f.translucentLayers = m_voxelStyle == btui::VoxelStyle::Flat;     // as the 3D view
+  f.cullBackFaces = m_voxelStyle == btui::VoxelStyle::Flat;
 
   QImage img = m_renderer->render(f, QSize(w, h));
   if (img.isNull())

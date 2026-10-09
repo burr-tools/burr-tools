@@ -24,13 +24,13 @@ TextField {
     selectByMouse: true
     inputMethodHints: Qt.ImhFormattedNumbersOnly
     validator: integer ? intValidator : doubleValidator
-    readonly property var doubleValidator: DoubleValidator {
+    readonly property DoubleValidator doubleValidator: DoubleValidator {
         bottom: root.allowNegative ? -1e9 : 0
         top: 1e9
         notation: DoubleValidator.StandardNotation
         locale: "C"
     }
-    readonly property var intValidator: IntValidator { bottom: root.allowNegative ? -1000000000 : 0; top: 1000000000 }
+    readonly property IntValidator intValidator: IntValidator { bottom: root.allowNegative ? -1000000000 : 0; top: 1000000000 }
 
     onEditingFinished: {
         const v = parseFloat(text)

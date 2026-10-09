@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
@@ -24,7 +26,7 @@ BtDialog {
     onAboutToShow: search.text = ""
     onOpened: search.forceActiveFocus()
 
-    readonly property var pages: [
+    readonly property list<var> pages: [
         { id: "general", name: qsTr("General"), rows: [
             { key: "density", prop: "density", type: "seg", title: qsTr("Interface density"),
               desc: qsTr("Standard is the default. Minimal shows icons without captions, moves helper text into tooltips and narrows the side cards. Every function stays available in both."),
@@ -66,7 +68,7 @@ BtDialog {
         ] }
     ]
 
-    function rowMatches(row) {
+    function rowMatches(row: var): bool {
         const q = root.query.trim().toLowerCase()
         return row.title.toLowerCase().indexOf(q) >= 0 || row.desc.toLowerCase().indexOf(q) >= 0
     }

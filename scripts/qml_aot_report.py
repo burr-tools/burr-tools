@@ -14,7 +14,8 @@ types), fewer asks for the baseline to be lowered (--update). The counts
 depend on the Qt version, so the baseline records the Qt it was taken with;
 another Qt only reports.
 
-usage: qml_aot_report.py --qrc QRC --sources DIR --baseline JSON [--qmlcachegen EXE] [--update]
+usage: qml_aot_report.py --qrc QRC --sources DIR [--import DIR] --baseline JSON
+                         [--qmlcachegen EXE] [--update]
 """
 import argparse
 import json
@@ -56,9 +57,11 @@ def qt_minor(qmlcachegen):
     return f'{m.group(1)}.{m.group(2)}' if m else 'unknown'
 
 
-def count(qmlcachegen, qrc, qml, out):
-    r = subprocess.run([qmlcachegen, '--verbose', '-o', out, '--resource', qrc, qml],
-                       capture_output=True, text=True)
+def count(qmlcachegen, qrc, imports, qml, out):
+    cmd = [qmlcachegen, '--verbose', '-o', out, '--resource', qrc]
+    for i in imports:
+        cmd += ['-I', i]
+    r = subprocess.run(cmd + [qml], capture_output=True, text=True)
     return sum(1 for line in (r.stdout + r.stderr).splitlines() if COMPILER.search(line))
 
 
@@ -66,6 +69,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--qrc', required=True, help="the module's generated _qml.qrc")
     ap.add_argument('--sources', required=True, help='the directory of the QML files')
+    ap.add_argument('--import', dest='imports', action='append', default=[],
+                    help='an import path, as the build passes qmlcachegen (repeatable)')
     ap.add_argument('--baseline', required=True, help='the JSON file of counts to compare with')
     ap.add_argument('--qmlcachegen')
     ap.add_argument('--update', action='store_true', help='write the counts as the new baseline')
@@ -81,7 +86,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         out = os.path.join(tmp, 'out.cpp')
         for f in files:
-            counts[f] = count(qmlcachegen, a.qrc, os.path.join(a.sources, f), out)
+            counts[f] = count(qmlcachegen, a.qrc, a.imports, os.path.join(a.sources, f), out)
     total = sum(counts.values())
     qt = qt_minor(qmlcachegen)
 

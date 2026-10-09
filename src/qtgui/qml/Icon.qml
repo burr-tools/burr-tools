@@ -10,7 +10,7 @@ Image {
     property real size: 20
 
     // the provider takes the colour as bare hex: a '#' would start a URL fragment
-    function hex(c) { return c.toString().replace("#", "").slice(-6) }
+    function hex(c: color): string { return c.toString().replace("#", "").slice(-6) }
 
     width: size
     height: size

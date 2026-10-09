@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
@@ -21,7 +23,7 @@ BtDialog {
     height: Math.min(640, (parent ? parent.height : 800) - 32)
     closePolicy: Popup.CloseOnEscape
 
-    readonly property var model: App.tools.shapeStatus
+    readonly property ShapeStatusModel model: App.tools.shapeStatus
 
     onAboutToShow: model.start()
     onClosed: model.clear()

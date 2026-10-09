@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
@@ -21,7 +23,7 @@ BtDialog {
     height: Math.min(660, (parent ? parent.height : 800) - 32)
     closePolicy: root.ex.busy ? Popup.NoAutoClose : Popup.CloseOnEscape
 
-    readonly property var ex: App.images
+    readonly property ImageExportController ex: App.images
 
     onAboutToShow: {
         problemList.problems = App.tools.problems()
@@ -342,11 +344,11 @@ BtDialog {
 
     Connections {
         target: root.ex
-        function onFinished(pages, firstFile) {
+        function onFinished(pages: int, firstFile: string) {
             App.status.flash(pages === 1 ? qsTr("Exported %1").arg(firstFile)
                                          : qsTr("Exported %1 pages from %2").arg(pages).arg(firstFile))
         }
-        function onFailed(message) { failure.text = message; failure.open() }
+        function onFailed(message: string) { failure.text = message; failure.open() }
     }
 
     MessageDialog {

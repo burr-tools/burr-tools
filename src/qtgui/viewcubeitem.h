@@ -42,7 +42,7 @@ class ViewCubeItem : public QQuickPaintedItem {
   Q_OBJECT
   QML_ELEMENT
 
-  Q_PROPERTY(SceneController * controller READ controller WRITE setController NOTIFY controllerChanged)
+  Q_PROPERTY(SceneController * controller READ controller WRITE setController NOTIFY controllerChanged FINAL)
 
 public:
 

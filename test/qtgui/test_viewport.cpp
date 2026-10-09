@@ -48,6 +48,7 @@
 #include <QQuickRenderTarget>
 #include <QQuickWindow>
 #include <rhi/qrhi.h>
+#include <rhi/qshader.h>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -249,6 +250,43 @@ void TestViewportController::theCubeDrivesTheCamera() {
   for (int i = 0; i < 30; i++)
     v->tick(16);
   QVERIFY(btui::angleBetween(v->camera().orientation(), btui::Camera::homeOrientation()) < 1e-3f);
+}
+
+/* P2.4: a frame is built while the render thread waits (synchronize()), so
+ * it reads the display options, lighting, voxel style and anti-aliasing
+ * from members, not from the settings by string key: with nothing to draw
+ * but the mesh it allocates nothing. Each string-keyed read allocated a
+ * std::string -- seen on Linux and macOS; MinGW's shared libstdc++ makes
+ * its strings inside the DLL, past the counting operator new. */
+void TestViewportController::aFrameReadsNoSettings() {
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  v->setDisplayDimOtherLayers(false);
+  QVERIFY(v->frame(1).mesh);                       // built, and the frame has it
+  QCOMPARE(btui::test::probeAllocation(64), std::size_t(64));
+  std::size_t bytes = 0;
+  {
+    const btui::test::AllocCount count;
+    for (int i = 0; i < 10; i++) {
+      const SceneFrame fr = v->frame(1);
+      QVERIFY(fr.lines.empty());
+    }
+    QCOMPARE(v->wantedSamples(), 4);
+    bytes = count.bytes();
+  }
+  QCOMPARE(bytes, std::size_t(0));
+
+  // and the members follow the settings
+  f.app->settings()->setLighting(false);
+  QVERIFY(!v->frame(1).lighting);
+  f.app->settings()->setAntialiasing(QStringLiteral("8x"));
+  QCOMPARE(v->wantedSamples(), 8);
+  v->setDisplayAxes(true);
+  QVERIFY(!v->frame(1).lines.empty());
 }
 
 void TestViewportController::layerStepsClampAndFollowThePlane() {
@@ -1478,4 +1516,37 @@ void TestPipelineCache::theWindowWritesItsCacheAndTheNextStartLoadsIt() {
     QVERIFY(w.control->rhi()->pipelineCacheData().isEmpty());
   }
   QVERIFY2(MessageLog::lines().isEmpty(), qPrintable(MessageLog::lines().join(QLatin1Char('\n'))));
+}
+
+
+// defined in the generated shaders_embed.cpp (shaders/embed_shaders.py)
+QShader burrtoolsShader(const char * name);
+
+/* Every shader in every form QRhi may ask for. Direct3D's is compiled DXBC
+ * when the build found fxc (-Ddxbc, P2.7), so no start-up compiles it, and
+ * HLSL source otherwise. */
+void TestRender::theShadersCarryEveryGraphicsApi() {
+  for (const char * name : { "mesh.vert.qsb", "mesh.frag.qsb", "line.vert.qsb", "line.frag.qsb",
+                             "composite.vert.qsb", "composite.frag.qsb" }) {
+    const QShader s = burrtoolsShader(name);
+    QVERIFY2(s.isValid(), name);
+    const QList<QShaderKey> keys = s.availableShaders();
+    auto has = [&](QShader::Source src, QShaderVersion v) {
+      for (const QShaderKey & k : keys)
+        if (k.source() == src && k.sourceVersion() == v)
+          return true;
+      return false;
+    };
+    QVERIFY2(has(QShader::SpirvShader, QShaderVersion(100)), name);
+    QVERIFY2(has(QShader::GlslShader, QShaderVersion(100, QShaderVersion::GlslEs)), name);
+    QVERIFY2(has(QShader::GlslShader, QShaderVersion(120)), name);
+    QVERIFY2(has(QShader::GlslShader, QShaderVersion(150)), name);
+    QVERIFY2(has(QShader::MslShader, QShaderVersion(12)), name);
+#ifdef BURRTOOLS_DXBC
+    QVERIFY2(has(QShader::DxbcShader, QShaderVersion(50)), name);
+    QVERIFY2(!has(QShader::HlslShader, QShaderVersion(50)), name);
+#else
+    QVERIFY2(has(QShader::HlslShader, QShaderVersion(50)), name);
+#endif
+  }
 }

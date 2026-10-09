@@ -192,7 +192,7 @@ bench *args: build-release
 
 # QML bindings qmlcachegen leaves to the JS engine, per file, against the baseline (--update writes it)
 qml-aot *args: build-qt
-    python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --baseline test/qtgui/qml_aot_baseline.json {{args}}
+    python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --import build/src/qtgui/qml/import --baseline test/qtgui/qml_aot_baseline.json {{args}}
 
 # burrtools-qt cold and warm start-up times (scripts/profile-qt.sh) into artifacts/profile
 startup-time: build-qt

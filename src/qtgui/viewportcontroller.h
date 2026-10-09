@@ -52,23 +52,23 @@ class ViewportController : public SceneController {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(QString navMode READ navMode WRITE setNavMode NOTIFY optionsChanged)
-  Q_PROPERTY(bool displayAxes READ displayAxes WRITE setDisplayAxes NOTIFY optionsChanged)
-  Q_PROPERTY(bool displayBounds READ displayBounds WRITE setDisplayBounds NOTIFY optionsChanged)
-  Q_PROPERTY(bool displayLayerSlab READ displayLayerSlab WRITE setDisplayLayerSlab NOTIFY optionsChanged)
-  Q_PROPERTY(bool displayDimOtherLayers READ displayDimOtherLayers WRITE setDisplayDimOtherLayers NOTIFY optionsChanged)
-  Q_PROPERTY(QString projection READ projection WRITE setProjection NOTIFY optionsChanged)
-  Q_PROPERTY(QString colourView READ colourView WRITE setColourView NOTIFY optionsChanged)
-  Q_PROPERTY(int plane READ plane WRITE setPlane NOTIFY layerChanged)
-  Q_PROPERTY(int layer READ layer WRITE setLayer NOTIFY layerChanged)
-  Q_PROPERTY(int layerCount READ layerCount NOTIFY layerChanged)
-  Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY optionsChanged)
-  Q_PROPERTY(bool showViewCube READ showViewCube NOTIFY optionsChanged)
-  Q_PROPERTY(bool hasShape READ hasShape NOTIFY sceneChanged)
-  Q_PROPERTY(bool emptyShape READ emptyShape NOTIFY sceneChanged)
-  Q_PROPERTY(QString shapeId READ shapeId NOTIFY sceneChanged)
-  Q_PROPERTY(QString shapeLabel READ shapeLabel NOTIFY sceneChanged)
-  Q_PROPERTY(QColor shapeColor READ shapeColor NOTIFY sceneChanged)
+  Q_PROPERTY(QString navMode READ navMode WRITE setNavMode NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool displayAxes READ displayAxes WRITE setDisplayAxes NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool displayBounds READ displayBounds WRITE setDisplayBounds NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool displayLayerSlab READ displayLayerSlab WRITE setDisplayLayerSlab NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool displayDimOtherLayers READ displayDimOtherLayers WRITE setDisplayDimOtherLayers NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(QString projection READ projection WRITE setProjection NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(QString colourView READ colourView WRITE setColourView NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(int plane READ plane WRITE setPlane NOTIFY layerChanged FINAL)
+  Q_PROPERTY(int layer READ layer WRITE setLayer NOTIFY layerChanged FINAL)
+  Q_PROPERTY(int layerCount READ layerCount NOTIFY layerChanged FINAL)
+  Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool showViewCube READ showViewCube NOTIFY optionsChanged FINAL)
+  Q_PROPERTY(bool hasShape READ hasShape NOTIFY sceneChanged FINAL)
+  Q_PROPERTY(bool emptyShape READ emptyShape NOTIFY sceneChanged FINAL)
+  Q_PROPERTY(QString shapeId READ shapeId NOTIFY sceneChanged FINAL)
+  Q_PROPERTY(QString shapeLabel READ shapeLabel NOTIFY sceneChanged FINAL)
+  Q_PROPERTY(QColor shapeColor READ shapeColor NOTIFY sceneChanged FINAL)
 
 public:
 
@@ -77,13 +77,13 @@ public:
 
   QString navMode(void) const { return m_pan ? QStringLiteral("pan") : QStringLiteral("orbit"); }
   void setNavMode(const QString & m);
-  bool displayAxes(void) const;
+  bool displayAxes(void) const { return m_display.axes; }
   void setDisplayAxes(bool v);
-  bool displayBounds(void) const;
+  bool displayBounds(void) const { return m_display.bounds; }
   void setDisplayBounds(bool v);
-  bool displayLayerSlab(void) const;
+  bool displayLayerSlab(void) const { return m_display.slab; }
   void setDisplayLayerSlab(bool v);
-  bool displayDimOtherLayers(void) const;
+  bool displayDimOtherLayers(void) const { return m_display.dim; }
   void setDisplayDimOtherLayers(bool v);
   QString projection(void) const;
   void setProjection(const QString & p);
@@ -128,8 +128,8 @@ private:
   void scheduleMesh(void);
   void buildMesh(void);
   void clampLayer(void);
-  bool boolSetting(const char * key, bool def) const;
-  void setBoolSetting(const char * key, bool v);
+  void readDisplay(void);
+  void setDisplay(const char * key, bool & option, bool v);
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
@@ -139,12 +139,17 @@ private:
   int m_shapeIndex = -1;
   std::shared_ptr<const btui::ShapeMesh> m_mesh;
   quint64 m_meshRevision = 0;
-  QString m_meshStyle;             ///< the voxel style m_mesh was built in
+  btui::VoxelStyle m_meshStyle = btui::VoxelStyle::Flat;   ///< the voxel style m_mesh was built in
   bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
   bool m_meshQueued = false;       ///< a buildMesh() is posted
 
   int m_plane = 0;
   int m_layer = 0;
+
+  /* the persisted Display options, kept here for frame() (readDisplay) */
+  struct Display {
+    bool axes = true, bounds = true, slab = true, dim = false;
+  } m_display;
 };
 
 #endif

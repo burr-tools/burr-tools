@@ -42,8 +42,8 @@ class ShapesModel : public QAbstractListModel {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(int selected READ selected WRITE select NOTIFY selectedChanged)
-  Q_PROPERTY(int count READ count NOTIFY countChanged)
+  Q_PROPERTY(int selected READ selected WRITE select NOTIFY selectedChanged FINAL)
+  Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
 
 public:
 

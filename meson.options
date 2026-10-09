@@ -3,3 +3,4 @@ option('qt_gui', type: 'feature', value: 'auto', description: 'Build burrtools-q
 option('macos_deployment_target', type: 'string', value: '14.0', description: 'Oldest macOS the binaries run on; a build against Homebrew\'s Qt needs the macOS its bottles were built for')
 option('qml_debug', type: 'boolean', value: false, description: 'Let qmlprofiler and the QML debugger attach to burrtools-qt (QT_QML_DEBUG); for profiling builds, never a release')
 option('qt_static', type: 'boolean', value: false, description: 'Link burrtools-qt with a static Qt (found through its qmake, e.g. MSYS2 qt6-static) into one standalone program; the Qt tests are not built')
+option('dxbc', type: 'feature', value: 'auto', description: 'Ship burrtools-qt\'s Direct3D shaders compiled (DXBC, by the Windows SDK\'s fxc) instead of as HLSL source Direct3D compiles at start-up; Windows only')

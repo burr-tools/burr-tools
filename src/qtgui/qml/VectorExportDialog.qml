@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Dialogs
@@ -17,7 +19,7 @@ BtDialog {
     property int format: 4       // btui::VectorFormat::SVG, legacy's default
 
     // in legacy's order, which is btui::VectorFormat's
-    readonly property var formats: [
+    readonly property list<var> formats: [
         { id: 0, label: qsTr("Postscript") },
         { id: 1, label: qsTr("Encapsulated Postscript") },
         { id: 2, label: qsTr("TeX") },
@@ -26,7 +28,7 @@ BtDialog {
         { id: 5, label: qsTr("PGF") }
     ]
 
-    function suggestedFile() {
+    function suggestedFile(): string {
         const doc = App.document
         const folder = doc.filePath.length > 0 ? doc.folder : App.stl.folder
         const base = doc.fileName.length > 0 ? doc.fileName.replace(/\.xmpuzzle$/, "") : "out"

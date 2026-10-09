@@ -704,9 +704,12 @@ jobs:
           mingw-w64-ucrt-x86_64-qt6-tools
           zip
 
+    # -Ddxbc=enabled: the Direct3D shaders compiled by the runner's Windows
+    # SDK fxc, so no start-up compiles HLSL; the build fails rather than
+    # quietly shipping source if fxc is not found
     - name: Build
       run: |
-        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
+        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled -Ddxbc=enabled
         ninja -C build-qt
 
     - name: Self-check

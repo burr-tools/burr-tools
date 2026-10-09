@@ -39,7 +39,7 @@ class PopupWindowStyle : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(bool roundsCorners READ roundsCorners CONSTANT)
+  Q_PROPERTY(bool roundsCorners READ roundsCorners CONSTANT FINAL)
 
 public:
 

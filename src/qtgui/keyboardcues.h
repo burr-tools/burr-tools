@@ -37,7 +37,7 @@ class KeyboardCues : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(bool showAccessKeys READ showAccessKeys NOTIFY changed)
+  Q_PROPERTY(bool showAccessKeys READ showAccessKeys NOTIFY changed FINAL)
 
 public:
 

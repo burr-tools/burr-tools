@@ -50,21 +50,21 @@ class StlExportController : public SceneController {
 
   /* how many parameters the exporter has; changes only when the dialog
    * opens or closes, so the fields stay put while values change */
-  Q_PROPERTY(int parameterCount READ parameterCount NOTIFY parametersChanged)
+  Q_PROPERTY(int parameterCount READ parameterCount NOTIFY parametersChanged FINAL)
   /* bumps whenever a parameter value changes */
-  Q_PROPERTY(int revision READ revision NOTIFY valuesChanged)
-  Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged)
-  Q_PROPERTY(bool binary READ binary WRITE setBinary NOTIFY optionsChanged)
+  Q_PROPERTY(int revision READ revision NOTIFY valuesChanged FINAL)
+  Q_PROPERTY(int shape READ shape WRITE setShape NOTIFY shapeChanged FINAL)
+  Q_PROPERTY(bool binary READ binary WRITE setBinary NOTIFY optionsChanged FINAL)
   /* the see-through view of the preview (legacy "insides" mode) */
-  Q_PROPERTY(bool insides READ insides WRITE setInsides NOTIFY optionsChanged)
+  Q_PROPERTY(bool insides READ insides WRITE setInsides NOTIFY optionsChanged FINAL)
   /* "Volume: 12.3 cubic-units", empty without a mesh */
-  Q_PROPERTY(QString volumeText READ volumeText NOTIFY meshChanged)
+  Q_PROPERTY(QString volumeText READ volumeText NOTIFY meshChanged FINAL)
   /* why there is no preview, empty when there is one */
-  Q_PROPERTY(QString error READ error NOTIFY meshChanged)
-  Q_PROPERTY(bool hasMesh READ hasMesh NOTIFY meshChanged)
+  Q_PROPERTY(QString error READ error NOTIFY meshChanged FINAL)
+  Q_PROPERTY(bool hasMesh READ hasMesh NOTIFY meshChanged FINAL)
   /* where the save dialog starts and what it suggests */
-  Q_PROPERTY(QUrl folder READ folder NOTIFY shapeChanged)
-  Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY shapeChanged)
+  Q_PROPERTY(QUrl folder READ folder NOTIFY shapeChanged FINAL)
+  Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY shapeChanged FINAL)
 
 public:
 

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
@@ -14,7 +16,7 @@ BtDialog {
 
     property int selectedType: 0
 
-    readonly property var types: [
+    readonly property list<var> types: [
         { id: 0, key: "brick",   desc: qsTr("Cubes. The classic burr and polycube grid.") },
         { id: 1, key: "prism",   desc: qsTr("Triangular prisms stacked along Z.") },
         { id: 2, key: "spheres", desc: qsTr("Closely packed spheres; each touches twelve neighbours.") },

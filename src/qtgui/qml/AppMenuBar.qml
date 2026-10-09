@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -25,7 +27,7 @@ MenuBar {
 
     // "&File" keeps its Alt+F mnemonic in the item's text; the label shows the
     // underline only while the keyboard drives the menus (KeyboardCues)
-    function accessKeyText(label, show) {
+    function accessKeyText(label: string, show: bool): string {
         const i = label.search(/&[^&]/)
         const plain = label.replace(/&(.)/g, "$1")
         if (!show || i < 0)

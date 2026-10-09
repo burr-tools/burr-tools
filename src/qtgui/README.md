@@ -74,6 +74,14 @@ Qt Quick Controls' Basic style to the design tokens. `Gallery.qml` shows
 each primitive in each state (`burrtools-qt --gallery`). Items carry the
 spec's element ids as `objectName`s, which is how the tests find them.
 
+qmlcachegen compiles the QML to C++ ahead of time where it knows the types.
+It sees the module's own C++ types through an import tree the build lays
+out (`scripts/qml_import_tree.py`), so: give new C++ properties `FINAL` and
+declare reals `double` (not `qreal`), type QML properties and function
+parameters, and use `pragma ComponentBehavior: Bound` where delegates refer
+to the file's ids. `just qml-aot` counts what is left to the JavaScript
+engine; `qtgui_qml_aot` fails when the count grows.
+
 ### The command table
 
 `uicore/commands.cpp` holds every command once: its key, label, menu,
@@ -104,7 +112,8 @@ export and the render tests through `OffscreenRenderer`.
 
 - **Graphics API.** Qt's QRhi: Direct3D 11 on Windows, Metal on macOS,
   Vulkan or OpenGL elsewhere. The shaders (`shaders/`) are compiled for all
-  of them at build time by `qsb` and embedded.
+  of them at build time by `qsb` and embedded -- for Direct3D as DXBC when
+  the build finds the Windows SDK's `fxc` (`-Ddxbc`), else as HLSL source.
 - **Gamma-correct.** The scene is drawn into a linear-light RGBA16F target,
   multisampled and resolved there, so edges and translucent voxels blend
   evenly; a last pass encodes it to sRGB. Faces are still shaded in sRGB, so

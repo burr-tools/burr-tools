@@ -43,28 +43,28 @@ class SettingsController : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("owned by App")
 
-  Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed)
-  Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed)
-  Q_PROPERTY(bool tooltips READ tooltips WRITE setTooltips NOTIFY changed)
-  Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed)
-  Q_PROPERTY(bool reverseScroll READ reverseScroll WRITE setReverseScroll NOTIFY changed)
-  Q_PROPERTY(QString rotationMethod READ rotationMethod WRITE setRotationMethod NOTIFY changed)
-  Q_PROPERTY(bool lighting READ lighting WRITE setLighting NOTIFY changed)
+  Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed FINAL)
+  Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed FINAL)
+  Q_PROPERTY(bool tooltips READ tooltips WRITE setTooltips NOTIFY changed FINAL)
+  Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed FINAL)
+  Q_PROPERTY(bool reverseScroll READ reverseScroll WRITE setReverseScroll NOTIFY changed FINAL)
+  Q_PROPERTY(QString rotationMethod READ rotationMethod WRITE setRotationMethod NOTIFY changed FINAL)
+  Q_PROPERTY(bool lighting READ lighting WRITE setLighting NOTIFY changed FINAL)
   /* "flat" (the redesign's outlined faces) or "legacy" (bevelled voxels in
    * a light / dark checker); a new setting, no legacy counterpart */
-  Q_PROPERTY(QString voxelStyle READ voxelStyle WRITE setVoxelStyle NOTIFY changed)
+  Q_PROPERTY(QString voxelStyle READ voxelStyle WRITE setVoxelStyle NOTIFY changed FINAL)
   // the 3D view's multisampling: "off", "2x", "4x" (default) or "8x"
-  Q_PROPERTY(QString antialiasing READ antialiasing WRITE setAntialiasing NOTIFY changed)
-  Q_PROPERTY(bool fadePieces READ fadePieces WRITE setFadePieces NOTIFY changed)
+  Q_PROPERTY(QString antialiasing READ antialiasing WRITE setAntialiasing NOTIFY changed FINAL)
+  Q_PROPERTY(bool fadePieces READ fadePieces WRITE setFadePieces NOTIFY changed FINAL)
   /* legacy "Use openGL display lists": kept and carried over, but the new
    * renderer has no display lists, so nothing reads it */
-  Q_PROPERTY(bool displayLists READ displayLists WRITE setDisplayLists NOTIFY changed)
+  Q_PROPERTY(bool displayLists READ displayLists WRITE setDisplayLists NOTIFY changed FINAL)
   /* View > Show menu bar; off puts the menus behind the rail's menu button.
    * Window state, not a C12 setting: no reset touches it */
-  Q_PROPERTY(bool showMenuBar READ showMenuBar WRITE setShowMenuBar NOTIFY changed)
-  Q_PROPERTY(int undoDepth READ undoDepth WRITE setUndoDepth NOTIFY changed)
-  Q_PROPERTY(int workerThreads READ workerThreads WRITE setWorkerThreads NOTIFY changed)
-  Q_PROPERTY(int maxWorkerThreads READ maxWorkerThreads CONSTANT)
+  Q_PROPERTY(bool showMenuBar READ showMenuBar WRITE setShowMenuBar NOTIFY changed FINAL)
+  Q_PROPERTY(int undoDepth READ undoDepth WRITE setUndoDepth NOTIFY changed FINAL)
+  Q_PROPERTY(int workerThreads READ workerThreads WRITE setWorkerThreads NOTIFY changed FINAL)
+  Q_PROPERTY(int maxWorkerThreads READ maxWorkerThreads CONSTANT FINAL)
 
 public:
 

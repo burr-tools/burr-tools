@@ -49,9 +49,9 @@ class SceneController : public QObject {
   QML_ELEMENT
   QML_UNCREATABLE("a base class")
 
-  Q_PROPERTY(bool animating READ animating NOTIFY frameChanged)
+  Q_PROPERTY(bool animating READ animating NOTIFY frameChanged FINAL)
   /* the size the camera projects for, in dp: the view item's, once it told */
-  Q_PROPERTY(QSizeF viewportSize READ viewportSize NOTIFY frameChanged)
+  Q_PROPERTY(QSizeF viewportSize READ viewportSize NOTIFY frameChanged FINAL)
 
 public:
 
@@ -64,7 +64,7 @@ public:
   const btui::Camera & camera(void) const { return m_camera; }
 
   /* the multisampling Settings ▸ 3D view ▸ Anti-aliasing asks for (1, 2, 4 or 8) */
-  int wantedSamples(void) const;
+  int wantedSamples(void) const { return m_samples; }
 
   Q_INVOKABLE void home(void);
   Q_INVOKABLE void fit(void);
@@ -113,8 +113,11 @@ protected:
   /* the frame's camera and canvas, for subclasses to add to */
   SceneFrame baseFrame(float devicePixelRatio) const;
 
-  /* re-read rotation method and projection from the settings */
-  void applyCameraSettings(void);
+  /* Re-read from the settings what the view draws with: rotation method,
+   * projection, lighting, voxel style and anti-aliasing. Read once here and
+   * on every change, not per frame: a frame is built while the render
+   * thread waits for it (QQuickRhiItemRenderer::synchronize). */
+  void readSettings(void);
 
   void startTicking(void);
 
@@ -122,6 +125,10 @@ protected:
   btui::Camera m_camera;
   /* left drag pans instead of orbiting (the toolbar's Pan mode) */
   bool m_pan = false;
+  // readSettings()
+  bool m_lighting = true;
+  btui::VoxelStyle m_voxelStyle = btui::VoxelStyle::Flat;
+  int m_samples = 4;
 
 private:
 

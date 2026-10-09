@@ -63,12 +63,15 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
                                        LayoutController * layout, QObject * parent) :
   SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout)
 {
-  // the camera follows the settings in SceneController
-  connect(m_settings, &SettingsController::changed, this, &ViewportController::optionsChanged);
-  // Settings ▸ Voxel style changes the geometry itself
+  /* the camera, lighting and voxel style follow the settings in
+   * SceneController, connected first; Settings ▸ Voxel style changes the
+   * geometry itself */
+  readDisplay();
   connect(m_settings, &SettingsController::changed, this, [this] {
-    if (m_settings->voxelStyle() != m_meshStyle)
+    readDisplay();
+    if (m_voxelStyle != m_meshStyle)
       scheduleMesh();
+    emit optionsChanged();
   });
   connect(m_layout, &LayoutController::changed, this, [this] {
     emit optionsChanged();
@@ -89,13 +92,17 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   buildMesh();
 }
 
-bool ViewportController::boolSetting(const char * key, bool def) const {
-  return m_settings->boolValue(QString::fromLatin1(key), def);
+void ViewportController::readDisplay(void) {
+  m_display.axes = m_settings->boolValue(QString::fromLatin1(kAxes), true);
+  m_display.bounds = m_settings->boolValue(QString::fromLatin1(kBounds), true);
+  m_display.slab = m_settings->boolValue(QString::fromLatin1(kSlab), true);
+  m_display.dim = m_settings->boolValue(QString::fromLatin1(kDim), false);
 }
 
-void ViewportController::setBoolSetting(const char * key, bool v) {
-  if (boolSetting(key, !v) == v && m_settings->store().contains(key))
+void ViewportController::setDisplay(const char * key, bool & option, bool v) {
+  if (option == v && m_settings->store().contains(key))
     return;
+  option = v;
   m_settings->setBoolValue(QString::fromLatin1(key), v);
   emit optionsChanged();
   emit frameChanged();
@@ -109,14 +116,10 @@ void ViewportController::setNavMode(const QString & m) {
   emit optionsChanged();
 }
 
-bool ViewportController::displayAxes(void) const { return boolSetting(kAxes, true); }
-void ViewportController::setDisplayAxes(bool v) { setBoolSetting(kAxes, v); }
-bool ViewportController::displayBounds(void) const { return boolSetting(kBounds, true); }
-void ViewportController::setDisplayBounds(bool v) { setBoolSetting(kBounds, v); }
-bool ViewportController::displayLayerSlab(void) const { return boolSetting(kSlab, true); }
-void ViewportController::setDisplayLayerSlab(bool v) { setBoolSetting(kSlab, v); }
-bool ViewportController::displayDimOtherLayers(void) const { return boolSetting(kDim, false); }
-void ViewportController::setDisplayDimOtherLayers(bool v) { setBoolSetting(kDim, v); }
+void ViewportController::setDisplayAxes(bool v) { setDisplay(kAxes, m_display.axes, v); }
+void ViewportController::setDisplayBounds(bool v) { setDisplay(kBounds, m_display.bounds, v); }
+void ViewportController::setDisplayLayerSlab(bool v) { setDisplay(kSlab, m_display.slab, v); }
+void ViewportController::setDisplayDimOtherLayers(bool v) { setDisplay(kDim, m_display.dim, v); }
 
 QString ViewportController::projection(void) const {
   return m_settings->stringValue(QString::fromLatin1(kProjection), QStringLiteral("perspective"));
@@ -230,7 +233,7 @@ void ViewportController::buildMesh(void) {
 
   if (m_shape) {
     btui::MeshOptions opt;
-    opt.style = m_settings->voxelStyle() == QLatin1String("legacy") ? btui::VoxelStyle::Legacy : btui::VoxelStyle::Flat;
+    opt.style = m_voxelStyle;
     opt.piece = btui::pieceColor(m_shapeIndex);
     opt.colors = colourView() == QLatin1String("voxel") ? btui::ColorMode::Voxel : btui::ColorMode::Piece;
     for (unsigned i = 0; i < p.colorNumber(); i++) {
@@ -249,7 +252,7 @@ void ViewportController::buildMesh(void) {
   } else {
     m_mesh.reset();
   }
-  m_meshStyle = m_settings->voxelStyle();
+  m_meshStyle = m_voxelStyle;
   m_meshRevision++;
 
   emit sceneChanged();      // emptyShape follows the mesh
@@ -267,7 +270,7 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
   // the flat style's variable voxels: the inner ones show through
   // Classic is legacy's look: one translucent layer, opaque faces from
   // both sides (its bevelled mesh's seams)
-  const bool classic = m_meshStyle == QLatin1String("legacy");
+  const bool classic = m_meshStyle == btui::VoxelStyle::Legacy;
   f.translucentLayers = !classic;
   f.cullBackFaces = !classic;
 
@@ -278,19 +281,19 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
   f.mesh = m_mesh;
   f.meshRevision = m_meshRevision;
 
-  if (displayAxes())
+  if (m_display.axes)
     btui::addAxes(f.lines, *m_shape, rgba(t->axisX()), rgba(t->axisY()), rgba(t->axisZ()), 2.5f);
-  if (displayBounds())
+  if (m_display.bounds)
     btui::addBoxEdges(f.lines, btui::gridBounds(*m_shape), rgba(t->line2()), 1.0f, 4.0f, 4.0f);
 
   // the slab and dimming only while the voxel editor shows the layer (C06)
   if (editorVisible() && layerCount() > 0) {
-    if (displayLayerSlab()) {
+    if (m_display.slab) {
       const btui::Box slab = btui::layerSlab(*m_shape, planeOf(m_plane), m_layer);
       btui::addBoxFaces(f.overlayFaces, slab, rgba(t->accent(), 0.11f));
       btui::addBoxEdges(f.lines, slab, rgba(t->accent()), 1.8f);
     }
-    if (displayDimOtherLayers()) {
+    if (m_display.dim) {
       f.dimAxis = btui::layerAxis(planeOf(m_plane));
       f.dimLayer = float(m_layer);
     }

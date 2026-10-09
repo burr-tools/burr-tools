@@ -47,16 +47,16 @@ class CommandController : public QObject {
 
   /* bumps whenever an enabled state may have changed; menu bindings read it
    * so they re-evaluate */
-  Q_PROPERTY(int revision READ revision NOTIFY revisionChanged)
+  Q_PROPERTY(int revision READ revision NOTIFY revisionChanged FINAL)
   /* a modal dialog is open: menu commands wait (Main.qml sets it) */
-  Q_PROPERTY(bool blocked READ blocked WRITE setBlocked NOTIFY revisionChanged)
+  Q_PROPERTY(bool blocked READ blocked WRITE setBlocked NOTIFY revisionChanged FINAL)
   /* The menu items handle their own first shortcut: macOS, where the menu
    * bar is the system's and its items are key equivalents. Elsewhere the
    * menus only display keys and Main.qml binds them all. */
-  Q_PROPERTY(bool menuItemsOwnShortcuts READ menuItemsOwnShortcuts CONSTANT)
+  Q_PROPERTY(bool menuItemsOwnShortcuts READ menuItemsOwnShortcuts CONSTANT FINAL)
   /* View > Show menu bar exists: not on macOS, whose menu bar is the
    * system's and stays */
-  Q_PROPERTY(bool menuBarHideable READ menuBarHideable CONSTANT)
+  Q_PROPERTY(bool menuBarHideable READ menuBarHideable CONSTANT FINAL)
 
 public:
 

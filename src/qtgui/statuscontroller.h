@@ -37,9 +37,9 @@ class StatusController : public QObject {
 
   /* what the bar shows: the flash while one is active, else the live text;
    * the text is styled markup (bold ids and counts) */
-  Q_PROPERTY(QString text READ text NOTIFY changed)
-  Q_PROPERTY(QString cursorText READ cursorText NOTIFY changed)
-  Q_PROPERTY(bool flashing READ flashing NOTIFY changed)
+  Q_PROPERTY(QString text READ text NOTIFY changed FINAL)
+  Q_PROPERTY(QString cursorText READ cursorText NOTIFY changed FINAL)
+  Q_PROPERTY(bool flashing READ flashing NOTIFY changed FINAL)
 
 public:
 

@@ -3,7 +3,9 @@
 **Date:** 2026-10-08
 **Status:** Backlog. P1 is done (commit `956841cc`), and so is the cheap
 half of P2.1 (the sort keeps its storage and runs only when the view turns);
-the checks under "Measuring" exist. The rest of P2 and P3 is open.
+P2.4, P2.5 and P2.7 are done (2026-10-09); the checks under "Measuring"
+exist. The rest of P2 (P2.1's cheaper sort, P2.2, P2.3, P2.6) and P3 is
+open.
 **Scope:** `src/qtgui`, `src/uicore`, the QML module `BurrTools.Ui`.
 
 ## Where this comes from
@@ -89,7 +91,19 @@ small turns (below).
   while animating, reading the elapsed time); at the least `Qt::PreciseTimer`.
 - **Verify:** the camera's existing animation tests (they call `tick(dt)`).
 
-### P2.4 No string-keyed settings reads per frame
+### P2.4 No string-keyed settings reads per frame — done
+
+*Done:* `SceneController::readSettings` keeps lighting, the voxel style (an
+enum) and the anti-aliasing samples in members, refreshed on
+`SettingsController::changed`; `ViewportController` keeps the four Display
+options (`m_display`), refreshed with them and set by its own setters.
+`frame()` and `wantedSamples()` read only members. Gate:
+`TestViewportController::aFrameReadsNoSettings` (no allocation while
+building a frame with nothing but the mesh to draw; each string-keyed read
+allocated a `std::string` -- counted on Linux and macOS, where the test's
+`operator new` also serves the standard library's strings; MinGW's shared
+libstdc++ allocates them inside its DLL, past the count).
+
 
 - **Where:** `ViewportController::frame`, `boolSetting`,
   [viewportcontroller.cpp](../src/qtgui/viewportcontroller.cpp).
@@ -100,7 +114,37 @@ small turns (below).
   `SettingsController::changed`; an enum for the voxel style.
 - **Verify:** existing viewport tests (display options).
 
-### P2.5 Type the QML
+### P2.5 Type the QML — done
+
+*Done:* bindings left to the JavaScript engine (Qt 6.11) **1936 → 398**:
+
+| Step | Total |
+| :--- | ---: |
+| before | 1936 |
+| qmlcachegen sees the module's C++ types (the import tree, below) | 1527 |
+| every `Q_PROPERTY` in `src/qtgui` `FINAL` (168; "can be shadowed") | 745 |
+| `qreal` properties declared `double` (the qmltypes' "qreal" is no type to qmlcachegen), and `pragma ComponentBehavior: Bound` in the 13 files whose delegates use the file's ids | 466 |
+| typed function parameters and returns; `ImageExportController`, `StlExportController`, `ShapeStatusModel` and the validators typed; constant arrays `list<var>` | 398 |
+
+The import tree: `qml_module(cachegen: false)`, then
+`scripts/qml_import_tree.py` lays out `import/BurrTools/Ui/` (the module's
+qmldir with its components pointed at the sources, and the registrar's
+.qmltypes), and our own `qmlcachegen -I import` targets compile each file
+and the cache loader ([src/qtgui/qml/meson.build](../src/qtgui/qml/meson.build)).
+The tree changes with the C++ types only, so a QML edit recompiles that
+file alone (~8 s), as before. `qtgui_qml_aot` and `just qml-aot` pass the
+same `--import`.
+
+One behaviour change compiling exposed: a binding that read a property
+only for its dependency (`{ root.stl.revision; return … }`) lost the
+dependency once compiled -- the bare read is dropped. It now uses the value
+(`revision >= 0 ? … : …`), as `CommandMenu.qml` already did.
+
+What is left is mostly by design: field reads on JavaScript objects and
+maps (`modelData` of the menus, Settings rows and shortcut tables, built in
+C++ as `QVariantMap`s), `App.settings[row.prop]` in the Settings rows, and
+calls into JavaScript built-ins.
+
 
 - **Where:** 44 `property var` in `src/qtgui/qml` (9 in `SettingsDialog.qml`).
 - **Problem:** untyped properties keep `qmlcachegen` from compiling the
@@ -131,7 +175,30 @@ small turns (below).
   as its pictures are drawn; release pictures once placed.
 - **Verify:** `TestImageExport` (pages, cancel, unwritable place).
 
-### P2.7 Precompiled Direct3D shaders (start-up)
+### P2.7 Precompiled Direct3D shaders (start-up) — done
+
+*Measured first* (`QRhi::statistics().totalPipelineCreationTime` of our
+pipelines, no pipeline cache, PelikanBurr drawn flat then Classic, three
+runs):
+
+| Backend | Pipeline creation |
+| :--- | :--- |
+| D3D11, WARP | 47–51 ms |
+| D3D11, RTX 3080 Ti | 39–55 ms |
+| Vulkan, RTX 3080 Ti | 11 ms first run, ~1 ms once the driver cached them |
+| OpenGL, RTX 3080 Ti | 24 ms first run, ~0 ms once the driver cached them |
+
+On Direct3D the GPU makes no difference: it is the HLSL compiler on the CPU,
+about 50 ms of every start without a pipeline cache (the first, or after an
+update). *Done:* `-Ddxbc` (a feature, auto) -- on Windows the build looks
+for the Windows SDK's `fxc` (on the PATH, else the newest SDK under
+`Windows Kits/10/bin`) and runs `qsb -c`, storing DXBC instead of HLSL;
+without it, HLSL source as before (`meson setup` prints which). The Windows
+Qt CI job builds with `-Ddxbc=enabled`, so its build has DXBC and its D3D11
+(WARP) render tests draw with it. Gate:
+`TestRender::theShadersCarryEveryGraphicsApi` (DXBC exactly when the build
+says so). Qt Quick's own shaders stay as the Qt build packaged them.
+
 
 - **Where:** the `qsb` call, [src/qtgui/meson.build](../src/qtgui/meson.build).
 - **Problem:** shaders are packaged for Direct3D as HLSL source
@@ -193,7 +260,7 @@ service. Gates fail CI; reports never do.
 | Work counts | `anEditKeepsTheRowsAndBuildsTheSceneOnce`, `theTargetsOutgrowTheViewInSteps`, `theVoxelStyleSettingRebuildsTheMesh` (Qt Test) | every Qt job | **gate** |
 | Graphics memory of the scene targets | `TestRender::theTargetsMemoryStaysInBudget`: bytes from size × format × samples (`SceneRenderer::targetBytes`); a 2048×1920 view at 4× under 256 MB, 8× near double | every Qt job | **gate** |
 | Allocations per frame | `TestRender::framesDoNotAllocatePerTriangle` (orbiting a 12³ variable cube, ~20k translucent triangles: 0 B a frame from our code; the old sort took 414 720 B) and `[depthsort][alloc]` (Catch2), through a counting `operator new` ([test/alloccount.h](../test/alloccount.h)) | every Qt job; `just test` | **gate** |
-| Bindings left to the JS engine | `qtgui_qml_aot` meson test: `qmlcachegen --verbose` per QML file as the build runs it, against [test/qtgui/qml_aot_baseline.json](../test/qtgui/qml_aot_baseline.json) (Qt 6.11: 1936); `just qml-aot [--update]` | every Qt job (compared where the Qt matches the baseline's, reported elsewhere) | **gate** (may only go down) |
+| Bindings left to the JS engine | `qtgui_qml_aot` meson test: `qmlcachegen --verbose -I <the import tree>` per QML file as the build runs it, against [test/qtgui/qml_aot_baseline.json](../test/qtgui/qml_aot_baseline.json) (Qt 6.11: 398, was 1936 before P2.5); `just qml-aot [--update]` | every Qt job (compared where the Qt matches the baseline's, reported elsewhere) | **gate** (may only go down) |
 | Sanitizers | `sanitizers` job: ASan + UBSan build; `test_burrtools` with leak checks, the Qt suites without (Qt and Mesa are not instrumented) | every push | **gate** |
 | Micro-benchmarks | [test/bench_ui.cpp](../test/bench_ui.cpp), hidden `[bench]`: mesh building (8³, 20³, 20³ shell with a variable core, 50³), the depth sort (80k), vector export; `just bench-ui` | `build-linux` (run summary), Qt profile workflow | report |
 | Start-up time | `scripts/profile-qt.sh … startup`, cold and warm; `just startup-time` | Qt profile workflow | report |
