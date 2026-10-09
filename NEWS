@@ -9,11 +9,11 @@ machine. The source code has been generally cleaned up.
 
 Editing:
 - Undo and redo for editing pieces and puzzle: voxel editing, shape transforms,
-  color changes, voxel painting, puzzle editing, adding/removing/renaming shapes,
-  colours and problem setup. A continous deletion/addition of voxels by a single
+  colour changes, voxel painting, puzzle editing, adding/removing/renaming shapes,
+  colours and problem setup. A continuous deletion/addition of voxels by a single
   mouse click stroke or a burst of rotations is one undo step, and undo returns
   you to the tab where the change was made. Configure the history size (defaults
-  to 25) in settings window. (Girish Sharma)
+  to 25) in the Settings window. (Girish Sharma)
 - "Set All" range setter in the problem editor sets the min/max count of
   every part at once (Carlos Moreno Serrano)
 - "Select Identical" and "Select holes" buttons in the Shape Information
@@ -287,7 +287,6 @@ Developer & Build:
 - Benchmark harness in bench/ for interleaved A/B runs and point-in-time
   snapshots (Arne Köhn)
 
--------------
 ------------- Version 0.7.1 Nov 2025
 
 Bug Fixes:
