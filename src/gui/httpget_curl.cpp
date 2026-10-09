@@ -82,7 +82,7 @@ namespace {
           !resolve(lib, "curl_slist_free_all", api.slist_free_all))
         return;
       /* curl_global_init is not thread safe; this is its only caller. */
-      if (api.global_init(curl_abi::CURL_GLOBAL_DEFAULT) != curl_abi::CURLE_OK)
+      if (api.global_init(curl_abi::CURL_GLOBAL_DEFAULT_FLAGS) != curl_abi::CURLE_OK)
         return;
       loaded = &api;
     });

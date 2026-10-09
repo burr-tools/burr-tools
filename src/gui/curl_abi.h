@@ -64,7 +64,9 @@ namespace curl_abi {
 
   inline constexpr CURLcode CURLE_OK = 0;
 
-  inline constexpr long CURL_GLOBAL_DEFAULT = 3;
+  /* libcurl's CURL_GLOBAL_DEFAULT is a macro, not an enumerator, so the
+   * header would expand that name inside this namespace; hence the suffix. */
+  inline constexpr long CURL_GLOBAL_DEFAULT_FLAGS = 3;
 
   inline constexpr CURLoption CURLOPT_WRITEDATA = 10001;
   inline constexpr CURLoption CURLOPT_URL = 10002;

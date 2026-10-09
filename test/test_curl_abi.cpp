@@ -54,7 +54,7 @@
 TEST_CASE("curl_abi constants match the installed libcurl header", "[update][curl]") {
 
   STATIC_REQUIRE(curl_abi::CURLE_OK == CURLE_OK);
-  STATIC_REQUIRE(curl_abi::CURL_GLOBAL_DEFAULT == CURL_GLOBAL_DEFAULT);
+  STATIC_REQUIRE(curl_abi::CURL_GLOBAL_DEFAULT_FLAGS == CURL_GLOBAL_DEFAULT);
 
   STATIC_REQUIRE(curl_abi::CURLOPT_URL == CURLOPT_URL);
   STATIC_REQUIRE(curl_abi::CURLOPT_WRITEDATA == CURLOPT_WRITEDATA);
@@ -116,7 +116,7 @@ namespace {
     api.slist_append   = (curl_abi::curl_slist * (*)(curl_abi::curl_slist *, const char *))dlsym(lib, "curl_slist_append");
     api.slist_free_all = (void (*)(curl_abi::curl_slist *))dlsym(lib, "curl_slist_free_all");
 
-    if (api.complete()) api.global_init(curl_abi::CURL_GLOBAL_DEFAULT);
+    if (api.complete()) api.global_init(curl_abi::CURL_GLOBAL_DEFAULT_FLAGS);
     return api;
   }
 }
