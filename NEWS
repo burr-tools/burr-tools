@@ -8,10 +8,12 @@ minutes in 0.7.1 now finish in seconds, up to 270x faster on an eight core
 machine. The source code has been generally cleaned up.
 
 Editing:
-- Undo and redo for the whole puzzle: voxel painting, shape transforms,
-  adding/removing/renaming shapes, colours and problem setup. A paint
-  stroke or a burst of rotations is one undo step, and undo returns you to
-  the tab where the change was made (Girish Sharma)
+- Undo and redo for editing pieces and puzzle: voxel editing, shape transforms,
+  color changes, voxel painting, puzzle editing, adding/removing/renaming shapes,
+  colours and problem setup. A continous deletion/addition of voxels by a single
+  mouse click stroke or a burst of rotations is one undo step, and undo returns
+  you to the tab where the change was made. Configure the history size (defaults
+  to 25) in settings window. (Girish Sharma)
 - "Set All" range setter in the problem editor sets the min/max count of
   every part at once (Carlos Moreno Serrano)
 - "Select Identical" and "Select holes" buttons in the Shape Information
