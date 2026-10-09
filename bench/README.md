@@ -25,7 +25,7 @@ Accurately measuring puzzle solver performance requires strict experimental cont
 
 ## 2. Curated Benchmark Corpus
 
-The benchmark suite defines 14 representative puzzles spanning distinct problem characteristics:
+The benchmark suite defines 21 representative puzzles spanning distinct problem characteristics:
 
 | Puzzle / Path | Problem | Solver Backend | Pieces / Characteristics | Approx. Baseline Time |
 | :--- | :--- | :--- | :--- | :--- |
@@ -35,7 +35,9 @@ The benchmark suite defines 14 representative puzzles spanning distinct problem 
 | **James Fortune / kangaroo.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 6 unique pieces, 9,831 assemblies + level 10 disassembly | ~1.7s (scaled: ~1.2s) |
 | **James Fortune / unlucky block.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 7 unique pieces, interlocking assembly & disassembly | ~1-3s |
 | **Jack Krijnen / Excelsior.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 6 unique pieces, 7 assemblies + level 14 disassembly | ~1.8s |
-| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 3 (11x11) | `assembler_1_c` (Huang) | Pieces with ranges/choices, pure assembly | ~1–5 min |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 3 (11x11) | `assembler_1_c` (Huang) | Pieces with ranges/choices, 5 assemblies / 5 solutions | ~1.1s |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 4 (12x12) | `assembler_1_c` (Huang) | Piece ranges 9..14, 28 assemblies / 28 solutions | ~4.0s |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 5 (13x13) | `assembler_1_c` (Huang) | Piece ranges 0..16, 7 assemblies / 7 solutions | ~21s |
 | **Tyler Hudson / Third_Times_the_Charm.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Pieces with shapes/ranges, 71 assemblies | ~16s |
 | **examples/SolidSixPieceBurrs.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 6 pieces with duplicate stick shapes, 588 assemblies, 179 solutions | ~7.5s |
 | **Jack Krijnen / Simplicity.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Duplicate pieces, 188 assemblies + level 10 disassembly | ~3.2s |
@@ -43,6 +45,12 @@ The benchmark suite defines 14 representative puzzles spanning distinct problem 
 | **Jack Krijnen / Tippy.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Duplicate pieces, 460 assemblies, 111 solutions | ~0.6s |
 | **examples/PelikanBurr.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 6 unique pieces, micro-search (~5ms assembly, level 4 disassembly) | ~0.15s |
 | **examples/DraculasDentalDesaster.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disassembly) | ~0.14s |
+| **Jack Krijnen / TheCube.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 13 pieces, 741 cols (tier 1024), 9,728 assemblies / 2 solutions | ~4.0s |
+| **Jack Krijnen / CondorsPeeper.xmpuzzle** | Prob 1 | `assembler_1_c` (Huang) | 18 pieces, 370 cols, 29,467 assemblies / 1 solution | ~2.2s |
+| **Jack Krijnen / JiminyJack.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 18 pieces, 367 cols, 180,516 assemblies / 1 solution | ~8.9s |
+| **Jack Krijnen / Tipperary.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 18 pieces, 519,827 assemblies — the heaviest assembler in the corpus | ~20s |
+| **Jack Krijnen / The36plus.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 36 pieces, 827 cols. Disassembly-dominated: 0.01s assembly, ~128s disassembly | ~128s |
+| **Jack Krijnen / Burrly Sane for Professionals.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 895 assemblies / 1 solution; assembler 0 above 300 assemblies | ~0.4s |
 
 > [!NOTE]
 > Puzzles located in `puzzles/BTFiles/` come from the Brett Kuehner BTFiles archive. If a puzzle file is not found on disk, the benchmark runner automatically notes it and skips it gracefully. The `examples/*.xmpuzzle` subset is always available in the repository.
@@ -108,6 +116,11 @@ You can pass specific puzzle files or problem indices:
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:0" \
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:1" \
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:2"
+
+# Lomino problems 6 (14x14, ~78s) and 7 (15x15, ~293s) disassemble fully but
+# are kept out of the default corpus -- same assembler_1 Huang path as 3-5, at
+# ~19 min of extra snapshot time. Pass them by name to exercise it:
+./bench/run_snapshot.sh "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:7"
 
 # Benchmark with a 1-minute timeout
 ./bench/run_suite.sh --timeout 60 examples/SolidSixPieceBurrs.xmpuzzle

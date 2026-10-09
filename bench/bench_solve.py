@@ -34,6 +34,18 @@ CORPUS = [
     "puzzles/BTFiles/Jack Krijnen/Simplicity.xmpuzzle",
     "puzzles/BTFiles/Jack Krijnen/Excelsior.xmpuzzle",
     "puzzles/BTFiles/Tom Messina/CD_Pack.xmpuzzle",
+    # assembler_1 (Huang) scaling: piece ranges over growing flat squares.
+    "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:3",
+    "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:4",
+    "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:5",
+    # Hard tail: high assembly counts, tier-1024 matrices, and the
+    # disassembly-dominated search (The36plus: 0.01s asm, ~128s disasm).
+    "puzzles/BTFiles/Jack Krijnen/TheCube.xmpuzzle",
+    "puzzles/BTFiles/Jack Krijnen/CondorsPeeper.xmpuzzle:1",
+    "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle",
+    "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle",
+    "puzzles/BTFiles/Jack Krijnen/The36plus.xmpuzzle",
+    "puzzles/BTFiles/Jack Krijnen/Burrly Sane for Professionals.xmpuzzle",
 ]
 
 

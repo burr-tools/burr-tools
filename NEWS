@@ -3,9 +3,9 @@
 BurrTools 0.8 is the largest release in over a decade. The editor gains undo
 and redo, the 3D view is rebuilt for easier navigation, STL export produces
 print-ready chamfered meshes, and the solver can now use all CPU cores
-and the vector units of modern processors. puzzles solve up to 76x (sic!)
-faster than in 0.7.1 on an eight core machine. The source code has been
-generally cleaned up.
+and the vector units of modern processors. Puzzles that took tens of
+minutes in 0.7.1 now finish in seconds, up to 270x faster on an eight core
+machine. The source code has been generally cleaned up.
 
 Editing:
 - Undo and redo for the whole puzzle: voxel painting, shape transforms,
@@ -116,14 +116,25 @@ Bug Fixes:
   hash (Bram Cohen)
 
 Performance:
-  Measured on a 4-core/8-thread laptop with the release binary, 0.7.1 vs
-  0.8, total solve time including disassembly. Solutions are identical:
-  every example puzzle is checked against 0.7.1's results before changes
-  are merged.
+  Total solve time including disassembly, release binary, 0.7.1 vs 0.8.
+  Solutions are identical: every example puzzle is checked against 0.7.1's
+  results before changes are merged.
+
+  The standard benchmark corpus, on a 4-core/8-thread laptop:
 
     Simplicity      19.8x     Lomino:3     14.0x     Tippy         5.6x
     SolidSix        38.3x     BottomLine    7.8x     kangaroo      3.2x
     TTTCharm         7.5x     Lomino:1      6.4x     Excelsior     2.3x
+
+  A second set of long-running puzzles, on an 8-core/16-thread Ryzen
+  5800X. These are the cases where 0.7.1 spent a minute or more, and where
+  the change is felt most:
+
+    JiminyJack     2287.0s ->    8.5s    270.7x
+    Tipperary      2600.4s ->   19.3s    134.6x
+    Lomino:4        212.6s ->    4.0s     52.9x
+    Condor's Peeper  61.7s ->    2.0s     30.3x
+    The36+          312.7s ->  123.4s      2.5x
 
   The speedups vary widely because each puzzle spends its time in a
   different phase of solving, and each optimisation speeds up only its own
@@ -134,22 +145,51 @@ Performance:
     0.7.1 visited 5.1 million; threads then multiply that. SolidSix gains
     38x because, as a puzzle with piece-count ranges, it now runs on the
     new SIMD solver (600 thousand nodes instead of 4.3 million) and on all
-    cores.
+    cores. The largest gains in the second table, JiminyJack and Tipperary,
+    are the same effect at a larger scale: both are 18-piece puzzles that
+    use duplicate pieces, which is what routes a puzzle to the assembler
+    the SIMD core was written for, and both finish inside 20 seconds where
+    0.7.1 needed 38 and 43 minutes respectively.
   - Puzzles whose search does the same work as before (kangaroo, Lomino:3)
     gain about what the extra cores give: 3x to 4x on a 4-core machine.
   - Puzzles dominated by disassembly gain least. On Excelsior nearly all
     the time goes into disassembling the single real solution, a job that
     still runs on one core; its 2.3x comes from the faster disassembler.
+    The36+ is the clearest case: 312.7s becomes 123.4s, only 2.5x, because
+    its assembly takes under a hundredth of a second and essentially all
+    of the remaining time is one disassembly on one core. It uses about
+    100% of a core both before and after, so no amount of threading would
+    help it.
   - Very small puzzles, under about 0.2 seconds, are dominated by loading
     the file and starting threads, so they barely change.
+
+  Memory: the SIMD solver trades memory for speed on the largest puzzles.
+  Peak resident memory rises from 33 MB to 571 MB on JiminyJack and from
+  28 MB to 317 MB on Tipperary, because the bit-parallel representation
+  keeps bitsets for the whole matrix resident to test row collisions with
+  vector instructions. The 256 MB budget that decides whether the SIMD path
+  is taken covers the assembly matrix only, so peak RSS can exceed it:
+  JiminyJack sits well above 256 MB while still using the SIMD solver.
+  Budget accordingly if you solve the biggest 18-piece puzzles on a
+  memory-constrained machine. Lomino:4 barely moves, 13 MB to 18 MB, and
+  The36+, whose cost is almost entirely disassembly, grows 10% (352 MB to
+  386 MB).
 
   What multithreading gives you: 0.7.1 solved on a single core. 0.8 splits
   the search into independent pieces that run in parallel, and disassembles
   the assemblies it finds while the search continues. On puzzles with real
-  search work this scales 3.3x to 4.0x on 4 physical cores. Hyperthreading
-  adds only 0-10% on this workload. Long solves finish in a fraction of the
-  time, and because the thread count is a setting, you can keep some cores
-  free for other work during a long solve.
+  search work this scales 3.3x to 4.0x on 4 physical cores. On the 8-core
+  machine the search-heavy puzzles in the second table put 6 to 14 threads
+  to work (Lomino:4 1431% CPU, Condor's Peeper 1237%, JiminyJack 916%,
+  Tipperary 664%), so the wider machine is genuinely used rather than
+  idling at four cores' worth of throughput. Assembly and disassembly
+  share one thread budget rather than reserving cores each: a searcher
+  holds a token for the subtree it is on, a disassembler one per assembly
+  it is analysing, so an idle disassembly pool costs nothing and its
+  threads assemble instead. Hyperthreading adds only 0-10% on this
+  workload. Long solves finish in a
+  fraction of the time, and because the thread count is a setting, you can
+  keep some cores free for other work during a long solve.
 
   Why the classic solvers are still there: 0.7.1's two search engines,
   Knuth's Dancing Links (DLX) and Wei-Hwa Huang's algorithm for puzzles
