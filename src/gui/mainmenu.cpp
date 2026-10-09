@@ -31,9 +31,6 @@
 
 namespace {
 
-  /* The historical in-window menu. Unchanged from the table that lived in
-   * mainwindow.cpp, so Linux and Windows see exactly what they always have.
-   */
   Fl_Menu_Item menu_Portable[] = {
     { "&File",           0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
       {"New",            0, cb_New_stub,         0, 0, 0, 0, 14, 56},
@@ -58,6 +55,7 @@ namespace {
     {"Status",           0, cb_StatusWindow_stub,  0, 0, 0, 0, 14, 56},
     {"Edit Comment",     0, cb_Comment_stub,     0, 0, 0, 0, 14, 56},
     {"Settings",         0, cb_Config_stub,      0, 0, 0, 0, 14, 56},
+    {"Check for Updates", 0, cb_CheckForUpdates_stub, 0, 0, 0, 0, 14, 56},
     {"About",            0, cb_About_stub,       0, 0, 3, 0, 14, 56},
     { }
   };
@@ -69,8 +67,8 @@ namespace {
    * gather under Puzzle, and every item that opens a dialog gains an
    * ellipsis.
    *
-   * About, Settings and Quit are deliberately absent: they belong to the
-   * application menu, built in installApplicationMenu() below.
+   * About, Check for Updates, Settings and Quit are deliberately absent: they
+   * belong to the application menu, built in installApplicationMenu() below.
    */
   Fl_Menu_Item menu_Mac[] = {
     { "&File",             0, 0, 0, FL_SUBMENU, 0, 0, 0, 0 },
@@ -149,12 +147,12 @@ void mainmenu::assertTablesConsistent(void) {
    * table with itself and is a tautology. The check can only ever fire on a
    * macOS build; that is where the second table exists.
    *
-   * The macOS table intentionally omits About, Settings and Quit, which
-   * live in the application menu, so those are excluded from the
+   * The macOS table intentionally omits About, Check for Updates, Settings and
+   * Quit, which live in the application menu, so those are excluded from the
    * comparison.
    */
   static Fl_Callback * const appMenuOnly[] = {
-    cb_About_stub, cb_Config_stub
+    cb_About_stub, cb_Config_stub, cb_CheckForUpdates_stub
   };
 
   const size_t portableSize = sizeof(menu_Portable) / sizeof(menu_Portable[0]);
@@ -210,15 +208,17 @@ void mainmenu::installApplicationMenu(mainWindow_c * win) {
    */
   Fl_Sys_Menu_Bar::about(cb_About_stub, win);
 
-  /* Settings belongs in the application menu on macOS. The array must
-   * outlive the call, hence the static; user_data cannot be set in the
-   * initialiser because the window does not exist until runtime.
+  /* Check for Updates and Settings belong in the application menu on macOS.
+   * The array must outlive the call, hence the static; user_data cannot be set
+   * in the initialiser because the window does not exist until runtime.
    */
   static Fl_Menu_Item appItems[] = {
+    { "Check for Updates...", 0, cb_CheckForUpdates_stub, 0, FL_MENU_DIVIDER, 0, 0, 14, 56 },
     { "Settings...", FL_COMMAND + ',', cb_Config_stub, 0, 0, 0, 0, 14, 56 },
     { }
   };
   appItems[0].user_data(win);
+  appItems[1].user_data(win);
 
   Fl_Mac_App_Menu::custom_application_menu_items(appItems);
 

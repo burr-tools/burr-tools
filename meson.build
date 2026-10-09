@@ -1,6 +1,6 @@
 project('burrtools', 'cpp', 'c',
 	version: run_command('sh', '-c', 
-	                     'git describe --tags --always --dirty 2>/dev/null || echo 0.7.0-unknown',
+	                     'git describe --tags --always --dirty 2>/dev/null || echo 0.8.0-unknown',
 	                     check: false).stdout().strip(),
 	
 	default_options : [
@@ -209,6 +209,30 @@ else
   cocoa_dep = dependency('', required: false)
 endif
 
+# Header-only; marked as a system include so its internals never trip
+# -Werror in the release jobs.
+json_dep = dependency('nlohmann_json', include_type: 'system')
+
+# The update check's HTTPS backend; see src/gui/httpget.h.
+if host_machine.system() == 'darwin'
+  add_languages('objcpp', native: false)
+  add_project_arguments('-std=c++20', language: 'objcpp')
+  httpget_src = ['src/gui/httpget_mac.mm']
+  httpget_dep = dependency('appleframeworks', modules: ['Foundation'])
+elif host_machine.system() == 'windows'
+  httpget_src = ['src/gui/httpget_win.cpp']
+  httpget_dep = cxx.find_library('winhttp')
+else
+  # Needs no libcurl headers and links no libcurl: the constants come from
+  # curl_abi.h and the library is dlopened at runtime. Deliberately not
+  # conditional on libcurl being installed -- making the backend depend on
+  # the build host's headers would mean developers without them silently
+  # compile a different (stub) backend and never build this file at all.
+  # Where libcurl is missing at runtime, httpGet() reports Unsupported.
+  httpget_src = ['src/gui/httpget_curl.cpp']
+  httpget_dep = dependency('dl')
+endif
+
 if host_machine.system() == 'windows'
   wm = import('windows')
 endif
@@ -340,6 +364,13 @@ manifold_dep = manifold_proj.dependency('manifold')
 
 inc = include_directories('src')
 
+# The version git describe produced at configure time, for the About box and
+# the update check. Like the project version itself, it refreshes on
+# reconfigure, not on every commit.
+version_conf = configuration_data()
+version_conf.set_quoted('BURRTOOLS_VERSION', meson.project_version())
+version_h = configure_file(output: 'version.h', configuration: version_conf)
+
 libburr_core = static_library('burr_core',
   tools_src + halfedge_src + libburr_src,
   include_directories: inc,
@@ -375,10 +406,10 @@ vendored_lua_lib = static_library('vendored_lua', lua_src,
           override_options: ['werror=false'],
 	  )
 
-executable('burrtools', gui_src,
+executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 'src/gui/updatechecker.cpp', 'src/gui/updatewindow.cpp', version_h],
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
-          dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep],
+          dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep, json_dep, httpget_dep],
           win_subsystem: 'windows',
 	  )
 
@@ -386,10 +417,12 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
-    'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp'],
+    'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp',
+    'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
+    'test/test_curl_abi.cpp'],
   include_directories: inc,
   link_with: libburr_core,
-  dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
+  dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],
 )
 
 # The suite is split so the everyday loop stays quick. Everything except the

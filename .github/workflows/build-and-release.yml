@@ -26,7 +26,7 @@ jobs:
       run: sudo apt-get update
     
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev cppcheck
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev cppcheck
     
     - name: Install just
       uses: extractions/setup-just@v2
@@ -106,7 +106,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+      run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
     - name: Setup build directory
       env:
@@ -146,7 +146,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
     - name: Install just
       uses: extractions/setup-just@v2
@@ -177,7 +177,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev gcovr
+      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr
 
     - name: Install just
       uses: extractions/setup-just@v2
