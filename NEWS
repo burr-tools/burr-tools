@@ -90,7 +90,7 @@ All Platforms:
 - The Settings dialog (renamed from "Config") describes each option and
   can restore defaults (Colin Deisenroth, Arne Köhn, Tom Burns)
 - Mouse-wheel scrolling in the piece, problem and colour-constraint lists,
-with an option to reverse the scroll-zoom direction (Colin Deisenroth,
+  with an option to reverse the scroll-zoom direction (Colin Deisenroth,
   Arne Köhn)
 - Check for Updates: at startup (at most once a day, and never for
   development builds) and from the menu, BurrTools asks GitHub whether a
@@ -193,9 +193,9 @@ Performance:
   holds a token for the subtree it is on, a disassembler one per assembly
   it is analysing, so an idle disassembly pool costs nothing and its
   threads assemble instead. Hyperthreading adds only 0-10% on this
-  workload. Long solves finish in a
-  fraction of the time, and because the thread count is a setting, you can
-  keep some cores free for other work during a long solve.
+  workload. Long solves finish in a fraction of the time, and because the
+  thread count is a setting, you can keep some cores free for other work
+  during a long solve.
 
   Why the classic solvers are still there: 0.7.1's two search engines,
   Knuth's Dancing Links (DLX) and Wei-Hwa Huang's algorithm for puzzles
