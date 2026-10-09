@@ -294,6 +294,37 @@ TEST_CASE("undo back to saved position clears modified flag", "[gui][history]") 
   CHECK_FALSE(h.isModifiedFromSave());
 }
 
+TEST_CASE("a new edit after undoing past the save point stays modified", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  h.markSaved();
+  h.undo(puzzle.get());
+  // drops the redo tail holding the save point, and lands on its index
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+
+  CHECK(h.isModifiedFromSave());
+  h.undo(puzzle.get());
+  CHECK(h.isModifiedFromSave());
+}
+
+TEST_CASE("a paint right after saving does not coalesce into the saved step", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  h.markSaved();
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+
+  CHECK(h.isModifiedFromSave());
+  h.undo(puzzle.get());
+  CHECK_FALSE(h.isModifiedFromSave());
+}
+
 TEST_CASE("MAX_UNDO cap: oldest snapshot evicted, history stays bounded", "[gui][history]") {
   auto puzzle = makePuzzleWithShapes(1);
   puzzleHistory_c h;
