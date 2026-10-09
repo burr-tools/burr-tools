@@ -145,7 +145,7 @@ _coverage-tests: setup-cov
     gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
     ./build-cov/test_burrtools '[ui]'
     if [ -d build-cov/test/qtgui ]; then
-        meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+        meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
     fi
 
 # One gcov pass into a JSON tracefile (and an HTML report of every area when
@@ -276,7 +276,7 @@ run-gallery: build-qt
 # plus its self-check
 test-qt: build-qt
     ./build/src/qtgui/burrtools-qt --self-check
-    meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+    meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
 # Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
 update-snapshots rows="": build-qt

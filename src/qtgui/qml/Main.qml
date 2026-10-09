@@ -295,6 +295,7 @@ ApplicationWindow {
 
     MessageDialog {
         id: discardDialog
+        objectName: "shell.discard.dialog"
         title: "BurrTools"
         text: qsTr("The puzzle has unsaved changes.")
         property string action

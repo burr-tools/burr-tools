@@ -40,6 +40,8 @@
 #include <QImage>
 #include <QPainter>
 #include <QFile>
+#include <QHoverEvent>
+#include <QMouseEvent>
 #include <QQuickGraphicsConfiguration>
 #include <QQuickGraphicsDevice>
 #include <QQuickRenderControl>
@@ -49,6 +51,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QWheelEvent>
 
 #include <cmath>
 #include <memory>
@@ -367,6 +370,258 @@ void TestViewCubePaint::theItemHasRoomForTheAxisLabelsAndHitsThroughIt() {
           item.hitAt(QPointF(c.x, c.y)).kind != btui::ViewCube::Kind::Region);
   // the padding itself holds nothing to press
   QCOMPARE(int(item.hitAt(QPointF(4, 4)).kind), int(btui::ViewCube::Kind::None));
+}
+
+namespace {
+
+  /* the items' event handlers, callable as the window would call them */
+  struct InputCube : ViewCubeItem {
+    using ViewCubeItem::hoverMoveEvent;
+    using ViewCubeItem::hoverLeaveEvent;
+    using ViewCubeItem::mousePressEvent;
+    using ViewCubeItem::mouseMoveEvent;
+    using ViewCubeItem::mouseReleaseEvent;
+    using ViewCubeItem::mouseDoubleClickEvent;
+  };
+
+  struct InputView : VoxelViewport {
+    using VoxelViewport::mousePressEvent;
+    using VoxelViewport::mouseMoveEvent;
+    using VoxelViewport::mouseReleaseEvent;
+    using VoxelViewport::wheelEvent;
+  };
+
+  /* a cube on the fixture's 3D view, at its design size */
+  struct CubeFixture : AppFixture {
+    InputCube cube;
+    CubeFixture() {
+      cube.setSize(QSizeF(cube.implicitWidth(), cube.implicitHeight()));
+      cube.setController(app->viewport());
+    }
+    btui::Camera & camera(void) { return app->viewport()->camera(); }
+    /* the centre of the cube face pointing along `dir`, in item coordinates */
+    QPointF faceCentre(btui::CubeDir dir) {
+      const bool persp = camera().projection() == btui::Camera::Projection::Perspective;
+      const btui::Vec3 c = btui::ViewCube::project(camera().orientation(), persp, dir.vec());
+      return QPointF(c.x + btui::ViewCube::kPadLeft, c.y);
+    }
+  };
+
+  QMouseEvent mouse(QEvent::Type t, QPointF p, Qt::MouseButton b = Qt::LeftButton,
+                    Qt::KeyboardModifiers mods = Qt::NoModifier) {
+    const Qt::MouseButtons held = t == QEvent::MouseButtonRelease ? Qt::NoButton : Qt::MouseButtons(b);
+    return QMouseEvent(t, p, p, t == QEvent::MouseMove ? Qt::NoButton : b, held, mods);
+  }
+
+  QHoverEvent hover(QEvent::Type t, QPointF p) {
+    return QHoverEvent(t, p, p, p);
+  }
+
+  bool sameQuat(btui::Quat a, btui::Quat b) {
+    // q and -q are the same rotation
+    const float d = std::abs(a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z);
+    return d > 0.9999f;
+  }
+}
+
+void TestViewInput::hoveringTheCubeHighlightsAndLeavingClears() {
+  CubeFixture f;
+  const QPointF top = f.faceCentre({ 0, 0, 1 });
+  QSignalSpy frames(f.app->viewport(), &SceneController::frameChanged);
+
+  auto e = hover(QEvent::HoverMove, top);
+  f.cube.hoverMoveEvent(&e);
+  QCOMPARE(int(f.app->viewport()->cubeHover().kind), int(btui::ViewCube::Kind::Region));
+  QVERIFY(f.app->viewport()->cubeHover().dir == (btui::CubeDir{ 0, 0, 1 }));
+  QCOMPARE(f.cube.cursor().shape(), Qt::PointingHandCursor);
+  QCOMPARE(frames.count(), 1);
+  f.cube.hoverMoveEvent(&e);                       // the same region: no repaint
+  QCOMPARE(frames.count(), 1);
+
+  auto off = hover(QEvent::HoverMove, QPointF(4, 4));
+  f.cube.hoverMoveEvent(&off);
+  QCOMPARE(int(f.app->viewport()->cubeHover().kind), int(btui::ViewCube::Kind::None));
+  QCOMPARE(f.cube.cursor().shape(), Qt::ArrowCursor);
+
+  f.cube.hoverMoveEvent(&e);
+  auto leave = hover(QEvent::HoverLeave, QPointF(-1, -1));
+  f.cube.hoverLeaveEvent(&leave);
+  QCOMPARE(int(f.app->viewport()->cubeHover().kind), int(btui::ViewCube::Kind::None));
+  QCOMPARE(f.cube.cursor().shape(), Qt::ArrowCursor);
+}
+
+void TestViewInput::clickingAFaceTurnsTheViewThere() {
+  CubeFixture f;
+  const btui::Quat before = f.camera().orientation();
+  const QPointF top = f.faceCentre({ 0, 0, 1 });
+  auto press = mouse(QEvent::MouseButtonPress, top);
+  f.cube.mousePressEvent(&press);
+  QVERIFY(press.isAccepted());
+  auto release = mouse(QEvent::MouseButtonRelease, top);
+  f.cube.mouseReleaseEvent(&release);
+  QVERIFY(f.camera().animating());
+  QTRY_VERIFY_WITH_TIMEOUT(!f.camera().animating(), 5000);     // on the view's own timer
+  QVERIFY(!sameQuat(before, f.camera().orientation()));
+  // now looking straight at that face: its centre is the cube's centre
+  const QPointF centre = f.faceCentre({ 0, 0, 1 });
+  QVERIFY(std::abs(centre.x() - (btui::ViewCube::kCentreX + btui::ViewCube::kPadLeft)) < 1);
+  QVERIFY(std::abs(centre.y() - btui::ViewCube::kCentreY) < 1);
+}
+
+void TestViewInput::aPressBesideTheCubeIsLeftToTheView() {
+  CubeFixture f;
+  auto press = mouse(QEvent::MouseButtonPress, QPointF(4, 4));
+  f.cube.mousePressEvent(&press);
+  QVERIFY(!press.isAccepted());
+  auto dbl = mouse(QEvent::MouseButtonDblClick, QPointF(4, 4));
+  f.cube.mouseDoubleClickEvent(&dbl);
+  QVERIFY(!dbl.isAccepted());
+  QVERIFY(!f.camera().animating());
+
+  // without a 3D view to drive, the cube hits nothing and ignores input
+  InputCube lone;
+  lone.setSize(QSizeF(lone.implicitWidth(), lone.implicitHeight()));
+  QCOMPARE(int(lone.hitAt(f.faceCentre({ 0, 0, 1 })).kind), int(btui::ViewCube::Kind::None));
+  auto move = mouse(QEvent::MouseMove, QPointF(50, 50));
+  lone.mouseMoveEvent(&move);
+  auto release = mouse(QEvent::MouseButtonRelease, QPointF(50, 50));
+  lone.mouseReleaseEvent(&release);
+}
+
+void TestViewInput::draggingTheCubeOrbitsAndSnaps() {
+  CubeFixture f;
+  const btui::Quat before = f.camera().orientation();
+  const QPointF from = f.faceCentre({ 0, 0, 1 });
+  auto press = mouse(QEvent::MouseButtonPress, from);
+  f.cube.mousePressEvent(&press);
+  // within the click slop nothing turns yet
+  auto nudge = mouse(QEvent::MouseMove, from + QPointF(2, 1));
+  f.cube.mouseMoveEvent(&nudge);
+  QVERIFY(sameQuat(before, f.camera().orientation()));
+  for (int i = 1; i <= 6; i++) {
+    auto move = mouse(QEvent::MouseMove, from + QPointF(6 * i, 2 * i));
+    f.cube.mouseMoveEvent(&move);
+  }
+  QVERIFY(!sameQuat(before, f.camera().orientation()));
+  auto release = mouse(QEvent::MouseButtonRelease, from + QPointF(36, 12));
+  f.cube.mouseReleaseEvent(&release);
+  // a drag is not a click on the face it ended on; a nearby view may snap
+  QTRY_VERIFY_WITH_TIMEOUT(!f.camera().animating(), 5000);
+  QVERIFY(!sameQuat(before, f.camera().orientation()));
+}
+
+void TestViewInput::doubleClickingAFaceStraightensIt() {
+  CubeFixture f;
+  const QPointF top = f.faceCentre({ 0, 0, 1 });
+  // the platform's sequence: press, release, double-click, release
+  auto press = mouse(QEvent::MouseButtonPress, top);
+  f.cube.mousePressEvent(&press);
+  auto release = mouse(QEvent::MouseButtonRelease, top);
+  f.cube.mouseReleaseEvent(&release);
+  auto dbl = mouse(QEvent::MouseButtonDblClick, top);
+  f.cube.mouseDoubleClickEvent(&dbl);
+  QVERIFY(dbl.isAccepted());
+  QVERIFY(f.camera().animating());
+  auto release2 = mouse(QEvent::MouseButtonRelease, top);
+  f.cube.mouseReleaseEvent(&release2);
+  QTRY_VERIFY_WITH_TIMEOUT(!f.camera().animating(), 5000);
+  const btui::Quat upright = f.camera().orientation();
+  QVERIFY(sameQuat(upright, btui::ViewCube::uprightTarget({ 0, 0, 1 }, upright)));
+
+  // only a face centre straightens: an edge does nothing
+  btui::ViewCube::Hit edge;
+  edge.kind = btui::ViewCube::Kind::Region;
+  edge.dir = { 1, 0, 1 };
+  f.app->viewport()->cubeDoubleClick(edge);
+  QVERIFY(!f.camera().animating());
+}
+
+void TestViewInput::theViewOrbitsPansAndZooms() {
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  InputView view;
+  view.setController(f.app->viewport());
+  view.setSize(QSizeF(400, 300));
+  btui::Camera & cam = f.app->viewport()->camera();
+  QCOMPARE(cam.viewportWidth(), 400.0f);
+
+  auto drag = [&](Qt::MouseButton b, Qt::KeyboardModifiers mods) {
+    auto press = mouse(QEvent::MouseButtonPress, QPointF(200, 150), b, mods);
+    view.mousePressEvent(&press);
+    for (int i = 1; i <= 5; i++) {
+      auto move = mouse(QEvent::MouseMove, QPointF(200 + 10 * i, 150 + 4 * i), b, mods);
+      view.mouseMoveEvent(&move);
+    }
+    auto release = mouse(QEvent::MouseButtonRelease, QPointF(250, 170), b, mods);
+    view.mouseReleaseEvent(&release);
+  };
+
+  const btui::Quat before = cam.orientation();
+  drag(Qt::LeftButton, Qt::NoModifier);                         // orbit
+  QVERIFY(!sameQuat(before, cam.orientation()));
+  QCOMPARE(cam.panX(), 0.0f);
+
+  const btui::Quat orbited = cam.orientation();
+  drag(Qt::LeftButton, Qt::ShiftModifier);                      // Shift pans
+  QVERIFY(sameQuat(orbited, cam.orientation()));
+  QVERIFY(cam.panX() != 0.0f);
+  const float panned = cam.panX();
+  drag(Qt::MiddleButton, Qt::NoModifier);                       // so does the middle button
+  QVERIFY(cam.panX() != panned);
+  QVERIFY(sameQuat(orbited, cam.orientation()));
+  const float x = cam.panX();
+  drag(Qt::RightButton, Qt::NoModifier);                        // reserved: nothing
+  QCOMPARE(cam.panX(), x);
+  QVERIFY(sameQuat(orbited, cam.orientation()));
+
+  const float zoom = cam.zoomTarget();
+  QWheelEvent wheel(QPointF(200, 150), QPointF(200, 150), QPoint(), QPoint(0, 120),
+                    Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+  view.wheelEvent(&wheel);
+  QVERIFY(cam.zoomTarget() > zoom);                             // away from the user: in
+  QTRY_VERIFY_WITH_TIMEOUT(std::abs(cam.zoom() - cam.zoomTarget()) < 1e-3f, 5000);
+}
+
+void TestViewInput::aPressWithinTheSlopIsAClick() {
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  InputView view;
+  view.setController(f.app->viewport());
+  view.setSize(QSizeF(400, 300));
+  QSignalSpy clicked(f.app->viewport(), &SceneController::clicked);
+  const btui::Quat before = f.app->viewport()->camera().orientation();
+  auto press = mouse(QEvent::MouseButtonPress, QPointF(100, 100), Qt::LeftButton, Qt::ControlModifier);
+  view.mousePressEvent(&press);
+  auto move = mouse(QEvent::MouseMove, QPointF(103, 102));
+  view.mouseMoveEvent(&move);
+  auto release = mouse(QEvent::MouseButtonRelease, QPointF(103, 102));
+  view.mouseReleaseEvent(&release);
+  QCOMPARE(clicked.count(), 1);
+  QCOMPARE(clicked.at(0).at(2).value<Qt::KeyboardModifiers>(), Qt::KeyboardModifiers(Qt::ControlModifier));
+  QVERIFY(sameQuat(before, f.app->viewport()->camera().orientation()));
+}
+
+void TestViewInput::homeAndFitRunToTheirEnd() {
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  ViewportController * v = f.app->viewport();
+  btui::Camera & cam = v->camera();
+  const btui::Quat home = cam.orientation();
+  cam.panBy(40, 10);
+  cam.beginRotate(100, 100);
+  cam.rotateTo(180, 140);
+  cam.endRotate();
+  QVERIFY(!sameQuat(home, cam.orientation()));
+
+  v->fit();                                        // zoom and pan back, orientation kept
+  const btui::Quat turned = cam.orientation();
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 5000);
+  QCOMPARE(cam.panX(), 0.0f);
+  QVERIFY(sameQuat(turned, cam.orientation()));
+
+  v->home();
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 5000);
+  QVERIFY(sameQuat(home, cam.orientation()));
 }
 
 void TestRender::rendersTheShapeOnTheCanvas() {

@@ -224,7 +224,7 @@ jobs:
         BURRTOOLS_TEST_QPA: xcb
         BURRTOOLS_OFFSCREEN_RHI: vulkan
         BURRTOOLS_REQUIRE_GPU_TESTS: '1'
-      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
     - name: Upload the test log
       if: failure()
@@ -724,7 +724,7 @@ jobs:
       env:
         BURRTOOLS_REQUIRE_GPU_TESTS: '1'
         BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
-      run: meson test -C build-qt --print-errorlogs fast qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+      run: meson test -C build-qt --print-errorlogs fast qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
     # grabs that did not match their reference, with the reference and a diff
     - name: Upload the test log

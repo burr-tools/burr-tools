@@ -4,6 +4,7 @@
 #   test_qtgui_qml  Qt Quick Test: the QML shell, by the spec's object ids,
 #                   and the component gallery against its reference images
 #                   (snapshots/<os>/), once per device-pixel ratio
+#   qtgui_smoke     the burrtools-qt program itself, run headless
 #
 # Both run headless (QT_QPA_PLATFORM=offscreen) from the project root, so
 # example files resolve, and are part of the fast suite: `just test` covers
@@ -78,6 +79,14 @@ if qt6_test_dep.found()
       timeout: 180,
       workdir: meson.project_source_root())
   endforeach
+
+  # the application itself, started the ways CI and the documentation do
+  # (scripts/qtgui_smoke.py)
+  test('qtgui_smoke', python3,
+    args: [meson.project_source_root() / 'scripts' / 'qtgui_smoke.py', burrtools_qt_exe],
+    suite: 'fast',
+    timeout: 180,
+    workdir: meson.project_source_root())
 
   # how many bindings qmlcachegen leaves to the JavaScript engine, against a
   # baseline that may only go down (scripts/qml_aot_report.py; `just qml-aot`)

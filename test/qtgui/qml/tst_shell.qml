@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Window
 import QtTest
 import BurrTools.Ui
@@ -503,5 +504,119 @@ TestCase {
         compare(win.pendingMessages.length, 0)
         dialog.close()
         tryCompare(dialog, "visible", false)
+    }
+
+    // --- the document's dialogs (C14 and the Edit / Help items) -----------
+
+    function dialog(name) {
+        const d = findChild(win, name)
+        verify(d !== null, "no dialog " + name)
+        return d
+    }
+
+    function test_newFileDialogMakesTheChosenType() {
+        App.document.newDocument(0)                // unmodified: no question first
+        const d = dialog("shell.newfile.dialog")
+        App.commands.trigger("file.new")
+        tryCompare(d, "opened", true)
+        mouseClick(findChild(d.contentItem, "shell.newfile.type.spheres"))
+        compare(d.selectedType, 2)
+        mouseClick(findChild(d.footer, "shell.newfile.ok"))
+        tryCompare(d, "visible", false)
+        compare(App.document.gridTypeName, "Spheres")
+        verify(!App.document.flowPending)
+
+        // Cancel keeps the document, and the choice starts at Brick again
+        App.commands.trigger("file.new")
+        tryCompare(d, "opened", true)
+        compare(d.selectedType, 0)
+        mouseClick(findChild(d.contentItem, "shell.newfile.type.prism"))
+        mouseClick(findChild(d.footer, "shell.newfile.cancel"))
+        tryCompare(d, "visible", false)
+        compare(App.document.gridTypeName, "Spheres")
+        verify(!App.document.flowPending)
+        App.document.newDocument(0)
+    }
+
+    function test_commentDialogWritesOnlyOnOk() {
+        App.document.newDocument(0)
+        const d = dialog("shell.comment.dialog")
+        App.commands.trigger("editcomment")
+        tryCompare(d, "opened", true)
+        const text = findChild(d.contentItem, "shell.comment.text")
+        compare(text.text, "")
+        mouseClick(text)
+        keyClick(Qt.Key_H)
+        keyClick(Qt.Key_I)
+        compare(text.text, "hi")
+        mouseClick(findChild(d.footer, "shell.comment.ok"))
+        tryCompare(d, "visible", false)
+        compare(App.document.comment, "hi")
+        verify(App.document.modified)
+
+        // Cancel and Esc throw the edit away; the dialog opens on the saved text
+        App.commands.trigger("editcomment")
+        tryCompare(d, "opened", true)
+        compare(text.text, "hi")
+        text.text = "changed"
+        mouseClick(findChild(d.footer, "shell.comment.cancel"))
+        tryCompare(d, "visible", false)
+        compare(App.document.comment, "hi")
+        App.commands.trigger("editcomment")
+        tryCompare(d, "opened", true)
+        compare(text.text, "hi")
+        text.text = "changed again"
+        keyClick(Qt.Key_Escape)
+        tryCompare(d, "visible", false)
+        compare(App.document.comment, "hi")
+        App.document.newDocument(0)
+    }
+
+    function test_aboutNamesTheVersion() {
+        const d = dialog("shell.about.dialog")
+        App.commands.trigger("about")
+        tryCompare(d, "opened", true)
+        const text = d.contentItem
+        compare(text.objectName, "shell.about.text")
+        verify(App.version.length > 0)
+        verify(text.text.indexOf("BurrTools " + App.version) >= 0, text.text)
+        mouseClick(findChild(d.footer, "shell.about.close"))
+        tryCompare(d, "visible", false)
+    }
+
+    function test_theUnsavedChangesQuestionPassesItsAnswerOn() {
+        App.document.newDocument(0)
+        App.document.setComment("unsaved")
+        const d = dialog("shell.discard.dialog")
+
+        // Cancel: the document stays
+        App.commands.trigger("file.new")
+        tryCompare(d, "visible", true)
+        compare(d.action, "create a new puzzle")
+        verify(d.informativeText.indexOf("create a new puzzle") >= 0)
+        d.buttonClicked(MessageDialog.Cancel, MessageDialog.RejectRole)
+        d.close()
+        tryCompare(d, "visible", false)
+        verify(!App.document.flowPending)
+        verify(App.document.modified)
+
+        // closing it any other way is Cancel too
+        App.commands.trigger("file.new")
+        tryCompare(d, "visible", true)
+        d.reject()
+        tryCompare(d, "visible", false)
+        verify(!App.document.flowPending)
+
+        // Discard goes on to the voxel type
+        const types = dialog("shell.newfile.dialog")
+        App.commands.trigger("file.new")
+        tryCompare(d, "visible", true)
+        d.buttonClicked(MessageDialog.Discard, MessageDialog.DestructiveRole)
+        d.close()
+        tryCompare(types, "opened", true)
+        mouseClick(findChild(types.footer, "shell.newfile.ok"))
+        tryCompare(types, "visible", false)
+        verify(!App.document.modified)
+        compare(App.document.comment, "")
     }
 }

@@ -29,6 +29,21 @@ private slots:
   void theItemHasRoomForTheAxisLabelsAndHitsThroughIt();
 };
 
+/* Mouse and wheel input through the view cube and 3D view items, down to
+ * the camera, with animations run on their real timer. */
+class TestViewInput : public QObject {
+  Q_OBJECT
+private slots:
+  void hoveringTheCubeHighlightsAndLeavingClears();
+  void clickingAFaceTurnsTheViewThere();
+  void aPressBesideTheCubeIsLeftToTheView();
+  void draggingTheCubeOrbitsAndSnaps();
+  void doubleClickingAFaceStraightensIt();
+  void theViewOrbitsPansAndZooms();
+  void aPressWithinTheSlopIsAClick();
+  void homeAndFitRunToTheirEnd();
+};
+
 class TestRender : public QObject {
   Q_OBJECT
 private slots:

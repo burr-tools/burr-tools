@@ -28,15 +28,18 @@
 #include "../../src/lib/voxel.h"
 #include "../../src/lib/bt_assert.h"
 
+#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QKeyEvent>
+#include <QMetaMethod>
 #include <QMouseEvent>
 #include <QQuickWindow>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QSet>
 #include <QSignalSpy>
@@ -65,6 +68,57 @@ namespace {
     void make() {
       app = std::make_unique<App>(file("settings.rc"), file("legacy.rc"));
     }
+  };
+
+  /* a copy of an example in a folder of its own, opened: removing the
+   * folder makes the next save fail */
+  QString openCopy(Fixture & f, DocumentController * d) {
+    const QString folder = f.file("doc");
+    if (!QDir().mkpath(folder))
+      return QString();
+    const QString path = folder + QStringLiteral("/p.xmpuzzle");
+    if (!QFile::copy(QStringLiteral("examples/PelikanBurr.xmpuzzle"), path)
+        || !QFile::setPermissions(path, QFile::ReadOwner | QFile::WriteOwner) || !d->loadPath(path))
+      return QString();
+    return folder;
+  }
+
+  bool writeFile(const QString & path, const QByteArray & text) {
+    QFile out(path);
+    return out.open(QIODevice::WriteOnly) && out.write(text) == text.size();
+  }
+
+  /* Every signal an object has, counted: did anything at all happen? */
+  class AnySignal {
+  public:
+    explicit AnySignal(QObject * o) {
+      const QMetaObject * m = o->metaObject();
+      for (int i = 0; i < m->methodCount(); i++)
+        if (m->method(i).methodType() == QMetaMethod::Signal && m->method(i).access() == QMetaMethod::Public
+            && m->method(i).name() != "destroyed" && m->method(i).name() != "objectNameChanged")
+          spies.push_back(std::make_unique<QSignalSpy>(o, m->method(i)));
+    }
+    int count(void) const {
+      int n = 0;
+      for (const auto & s : spies)
+        n += int(s->count());
+      return n;
+    }
+    void clear(void) {
+      for (auto & s : spies)
+        s->clear();
+    }
+  private:
+    std::vector<std::unique_ptr<QSignalSpy>> spies;
+  };
+
+  /* QDesktopServices hands https links here instead of to a browser */
+  class UrlCatcher : public QObject {
+    Q_OBJECT
+  public:
+    QList<QUrl> urls;
+  public slots:
+    void open(const QUrl & u) { urls << u; }
   };
 }
 
@@ -599,6 +653,252 @@ private slots:
     QCOMPARE(DocumentController::gridTypeDisplayName(2), QStringLiteral("Spheres"));
     QCOMPARE(DocumentController::gridTypeDisplayName(3), QStringLiteral("Rhombic Tetrahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(4), QStringLiteral("Tetrahedra-Octahedra"));
+    QCOMPARE(DocumentController::gridTypeDisplayName(99), QString());
+  }
+
+  // --- the file flows against a real folder -------------------------------
+
+  void saveWritesToTheFilesPath() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString folder = openCopy(f, d);
+    QVERIFY(!folder.isEmpty());
+    const QString path = folder + QStringLiteral("/p.xmpuzzle");
+    QVERIFY(QFile::remove(path));
+    makeModified(d);
+    QSignalSpy saveAs(d, &DocumentController::saveAsRequested);
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    d->save();
+    QCOMPARE(saveAs.count(), 0);
+    QCOMPARE(msg.count(), 0);
+    QVERIFY(QFile::exists(path));
+    QVERIFY(!d->modified());
+  }
+
+  void saveWithoutANameAsksWhere() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy saveAs(d, &DocumentController::saveAsRequested);
+    d->save();
+    QCOMPARE(saveAs.count(), 1);
+    d->requestSaveAs();
+    QCOMPARE(saveAs.count(), 2);
+  }
+
+  void aSaveThatFailsSaysSoAndKeepsTheChanges() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString folder = openCopy(f, d);
+    QVERIFY(!folder.isEmpty());
+    makeModified(d);
+    QVERIFY(QDir(folder).removeRecursively());
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    d->save();
+    QCOMPARE(msg.count(), 1);
+    QCOMPARE(msg.at(0).at(1).toString(), QStringLiteral("The puzzle was NOT saved."));
+    QVERIFY(d->modified());
+  }
+
+  void savingFromTheQuestionSavesThenContinues() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString folder = openCopy(f, d);
+    QVERIFY(!folder.isEmpty());
+    const QString path = folder + QStringLiteral("/p.xmpuzzle");
+    QVERIFY(QFile::remove(path));
+    makeModified(d);
+    QSignalSpy open(d, &DocumentController::openFileRequested);
+    d->requestOpen();
+    d->resolveDiscard(DocumentController::Save);
+    QVERIFY(QFile::exists(path));
+    QVERIFY(!d->modified());
+    QCOMPARE(open.count(), 1);
+    d->cancelFlow();
+    QVERIFY(!d->flowPending());
+  }
+
+  void aFailedSaveFromTheQuestionEndsTheFlow() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString folder = openCopy(f, d);
+    QVERIFY(!folder.isEmpty());
+    makeModified(d);
+    QVERIFY(QDir(folder).removeRecursively());
+    QSignalSpy quit(d, &DocumentController::quitApproved);
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    d->requestQuit();
+    d->resolveDiscard(DocumentController::Save);
+    QCOMPARE(quit.count(), 0);
+    QCOMPARE(msg.count(), 1);
+    QCOMPARE(msg.at(0).at(1).toString(), QStringLiteral("The puzzle could not be saved."));
+    QVERIFY(!d->flowPending());
+    QVERIFY(d->modified());
+  }
+
+  void aFailedSaveAsFromTheQuestionEndsTheFlow() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    makeModified(d);
+    QSignalSpy type(d, &DocumentController::newFileTypeRequested);
+    d->requestNew();
+    d->resolveDiscard(DocumentController::Save);
+    QVERIFY(d->flowPending());
+    d->saveAsFile(QUrl::fromLocalFile(f.file("no/such/dir/x")));
+    QVERIFY(!d->flowPending());
+    QCOMPARE(type.count(), 0);
+  }
+
+  void anAnswerWithNoQuestionIsIgnored() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy state(d, &DocumentController::stateChanged);
+    d->resolveDiscard(DocumentController::Discard);
+    d->cancelFlow();
+    QCOMPARE(state.count(), 0);
+  }
+
+  void aSecondRequestWaitsForTheFirst() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    makeModified(d);
+    QSignalSpy confirm(d, &DocumentController::confirmDiscardRequested);
+    d->requestOpen();
+    d->requestQuit();
+    d->requestOpenPath(QStringLiteral("examples/PelikanBurr.xmpuzzle"));
+    QCOMPARE(confirm.count(), 1);
+    QCOMPARE(confirm.at(0).at(0).toString(), QStringLiteral("open another puzzle"));
+  }
+
+  void aPathFromTheSystemOpensAtOnceWithoutChanges() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy confirm(d, &DocumentController::confirmDiscardRequested);
+    d->requestOpenPath(QStringLiteral("examples/PelikanBurr.xmpuzzle"));
+    QCOMPARE(confirm.count(), 0);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->flowPending());
+  }
+
+  void aPathFromTheSystemAsksAboutChangesFirst() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    makeModified(d);
+    QSignalSpy confirm(d, &DocumentController::confirmDiscardRequested);
+    d->requestOpenPath(QStringLiteral("examples/PelikanBurr.xmpuzzle"));
+    QCOMPARE(confirm.count(), 1);
+    QCOMPARE(confirm.at(0).at(0).toString(), QStringLiteral("open that puzzle"));
+    QVERIFY(d->fileName().isEmpty());
+    d->resolveDiscard(DocumentController::Discard);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->flowPending());
+  }
+
+  void aPuzzleSolver3DFileIsImported() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString src = f.file("cube.puz");
+    QVERIFY(writeFile(src, "PIECE 1,1,1\nX\nRESULT 1,1,1\nX\n"));
+    QSignalSpy pick(d, &DocumentController::importFileRequested);
+    d->requestImport();
+    QCOMPARE(pick.count(), 1);
+    QVERIFY(d->flowPending());
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    d->importFile(QUrl::fromLocalFile(src));
+    QCOMPARE(replaced.count(), 1);
+    QVERIFY(!d->flowPending());
+    QVERIFY(d->modified());
+    QVERIFY(d->fileName().isEmpty());
+    QVERIFY(d->session().puzzle().getNumberOfShapes() > 0);
+  }
+
+  void anImportThatFailsSaysWhy() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    d->importFile(QUrl::fromLocalFile(f.file("no-such.puz")));
+    QCOMPARE(msg.count(), 1);
+    QCOMPARE(msg.at(0).at(0).toString(), QStringLiteral("Import"));
+    QVERIFY(!msg.at(0).at(1).toString().isEmpty());
+    QCOMPARE(replaced.count(), 0);
+  }
+
+  void aDamagedPuzzleFileIsReported() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString path = f.file("bad.xmpuzzle");
+    QVERIFY(writeFile(path, "<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><shapes>"));
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QVERIFY(!d->loadPath(path));
+    QCOMPARE(msg.count(), 1);
+    QVERIFY(msg.at(0).at(1).toString().startsWith(QLatin1String("load error")));
+    QVERIFY(d->fileName().isEmpty());
+  }
+
+  /* a search saved half done; and a comment marked to show on opening */
+  void anUnfinishedSearchAndAPopupCommentAreTold() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString path = f.file("started.xmpuzzle");
+    QVERIFY(writeFile(path,
+      "<?xml version=\"1.0\"?>\n"
+      "<puzzle version=\"2\">\n"
+      "  <gridType type=\"0\"/>\n"
+      "  <colors/>\n"
+      "  <shapes><voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel></shapes>\n"
+      "  <problems>\n"
+      "    <problem state=\"1\" assemblies=\"0\" solutions=\"0\" time=\"0\">\n"
+      "      <shapes><shape id=\"0\" count=\"1\"/></shapes>\n"
+      "      <result id=\"0\"/>\n"
+      "      <bitmap/>\n"
+      "    </problem>\n"
+      "  </problems>\n"
+      "  <comment popup=\"\">Read me first</comment>\n"
+      "</puzzle>\n"));
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QVERIFY(d->loadPath(path));
+    QCOMPARE(msg.count(), 2);
+    QCOMPARE(msg.at(0).at(1).toString(),
+             QStringLiteral("This puzzle file contains started but not finished search for solutions."));
+    QCOMPARE(msg.at(1).at(0).toString(), QStringLiteral("Comment"));
+    QCOMPARE(msg.at(1).at(1).toString(), QStringLiteral("Read me first"));
+  }
+
+  void anUnknownGridTypeMakesBricks() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    d->newDocument(gridType_c::GT_SPHERES);
+    d->newDocument(99);
+    QCOMPARE(d->gridTypeName(), QStringLiteral("Brick"));
+    d->newDocument(-1);
+    QCOMPARE(d->gridTypeName(), QStringLiteral("Brick"));
+  }
+
+  void undoAndRedoWithNothingToDoDoNothing() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy applied(d, &DocumentController::historyApplied);
+    QSignalSpy state(d, &DocumentController::stateChanged);
+    d->undo();
+    d->redo();
+    QCOMPARE(applied.count(), 0);
+    QCOMPARE(state.count(), 0);
   }
 };
 
@@ -872,6 +1172,82 @@ private slots:
     QCOMPARE(f.app->layout()->focus(), int(LayoutController::Focus3d));
     c->trigger(QStringLiteral("layout.toggleRight"));
     QCOMPARE(f.app->layout()->focus(), int(LayoutController::FocusNone));
+  }
+
+  /* Each command of the table, run from where it is enabled, does something
+   * a window or controller would see -- a signal of the command,
+   * document, layout, view or settings controller, or a link opened. */
+  void everyCommandOfTheTableDoesSomething() {
+    Fixture f;
+    f.make();
+    App * a = f.app.get();
+    DocumentController * d = a->document();
+    CommandController * c = a->commands();
+    LayoutController * layout = a->layout();
+    QVERIFY(!openCopy(f, d).isEmpty());
+    // something to undo and redo
+    d->session().puzzle().addShape(2, 2, 2);
+    d->session().record(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+    d->notifyEdited();
+
+    UrlCatcher links;
+    QDesktopServices::setUrlHandler(QStringLiteral("https"), &links, "open");
+    auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
+
+    std::vector<std::unique_ptr<AnySignal>> spies;
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->settings() })
+      spies.push_back(std::make_unique<AnySignal>(o));
+    auto happened = [&] {
+      int n = int(links.urls.size());
+      for (const auto & s : spies)
+        n += s->count();
+      return n;
+    };
+
+    int run = 0;
+    for (const auto & info : btui::commandTable()) {
+      const QString key = QString::fromUtf8(info.key.data(), qsizetype(info.key.size()));
+      // from where it can change something
+      d->cancelFlow();
+      layout->setWorkspace(key == QLatin1String("workspace.entities") ? LayoutController::Puzzle
+                                                                      : LayoutController::Entities);
+      if (key == QLatin1String("view.orbit"))
+        a->viewport()->setNavMode(QStringLiteral("pan"));
+      if (key == QLatin1String("editor.layerDown"))
+        a->viewport()->setLayer(1);
+      for (auto & s : spies)
+        s->clear();
+      links.urls.clear();
+
+      QVERIFY2(c->isEnabled(key), qPrintable(key));
+      c->trigger(key);
+      QVERIFY2(happened() > 0, qPrintable(key + QStringLiteral(" did nothing")));
+      run++;
+    }
+    QCOMPARE(run, int(btui::commandTable().size()));
+
+    // the help link is the user guide's
+    c->trigger(QStringLiteral("help.guide"));
+    QCOMPARE(links.urls.size(), 1);
+    QCOMPARE(links.urls.first().host(), QStringLiteral("burrtools.sourceforge.net"));
+  }
+
+  void aDisabledOrUnknownCommandDoesNothing() {
+    Fixture f;
+    f.make();
+    App * a = f.app.get();
+    CommandController * c = a->commands();
+    QVERIFY(a->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    a->layout()->setWorkspace(LayoutController::Solver);
+    const int layer = a->viewport()->layer();
+    QVERIFY(!c->isEnabled(QStringLiteral("editor.layerUp")));
+    c->trigger(QStringLiteral("editor.layerUp"));
+    c->trigger(QStringLiteral("editor.layerDown"));
+    QCOMPARE(a->viewport()->layer(), layer);
+    QVERIFY(!c->isEnabled(QStringLiteral("no.such.command")));
+    AnySignal any(c);
+    c->trigger(QStringLiteral("no.such.command"));
+    QCOMPARE(any.count(), 0);
   }
 
   void dialogCommandsAskQml() {
@@ -1554,6 +1930,129 @@ private slots:
     QCOMPARE(e->pixelX(), 394);
     e->setPixelX(50);                                 // pixels can be typed directly
     QCOMPARE(e->pixelX(), 50);
+
+    e->setPaper(QStringLiteral("letterl"));
+    QCOMPARE(e->sizeXmm(), 279);
+    QCOMPARE(e->sizeYmm(), 216);
+    e->setPaper(QStringLiteral("bogus"));             // not a paper: ignored
+    QCOMPARE(e->paper(), QStringLiteral("letterl"));
+    e->setSizeYmm(-4);                                // an empty field: pixels stay
+    QCOMPARE(e->sizeYmm(), 0);
+    QCOMPARE(e->pixelY(), 850);
+    e->setPixelY(0);
+    QCOMPARE(e->pixelY(), 1);
+    e->setPages(0);
+    QCOMPARE(e->pages(), 1);
+  }
+
+  void theProblemIsOneThatExists() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->session().puzzle().addProblem();               // a second, empty one
+    ImageExportController * e = f.app->images();
+    e->begin();
+    QSignalSpy content(e, &ImageExportController::contentChanged);
+    e->setProblem(99);
+    QCOMPARE(e->problem(), int(d->session().puzzle().getNumberOfProblems()) - 1);
+    QVERIFY(!e->canSolution());                       // the new one has none
+    QCOMPARE(e->mode(), QStringLiteral("problem"));   // so the mode falls back
+    e->setProblem(-3);
+    QCOMPARE(e->problem(), 0);
+    QVERIFY(content.count() > 0);
+  }
+
+  void constraintColoursRedrawThePreview() {
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ImageExportController * e = f.app->images();
+    e->begin();
+    QSignalSpy options(e, &ImageExportController::optionsChanged);
+    QSignalSpy frames(e, &SceneController::frameChanged);
+    e->setConstraintColours(true);
+    QVERIFY(e->constraintColours());
+    QCOMPARE(options.count(), 1);
+    QVERIFY(frames.count() > 0);
+    e->setConstraintColours(true);                    // unchanged: nothing
+    QCOMPARE(options.count(), 1);
+  }
+
+  void picturesGoNextToThePuzzle() {
+    Fixture f;
+    f.make();
+    ImageExportController * e = f.app->images();
+    // legacy: the home folder and test.png for a puzzle never saved
+    QCOMPARE(e->folder(), QUrl::fromLocalFile(QDir::homePath()));
+    QCOMPARE(e->suggestedName(), QStringLiteral("test.png"));
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QCOMPARE(e->folder(), f.app->document()->folder());
+    QCOMPARE(e->suggestedName(), QStringLiteral("PelikanBurr.png"));
+  }
+
+  void aMissingGraphicsBackendIsReported() {
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ImageExportController * e = f.app->images();
+    e->begin();
+    const QByteArray was = qgetenv("BURRTOOLS_OFFSCREEN_RHI");
+    qputenv("BURRTOOLS_OFFSCREEN_RHI", "bogus");
+    auto restore = qScopeGuard([&] {
+      if (was.isEmpty())
+        qunsetenv("BURRTOOLS_OFFSCREEN_RHI");
+      else
+        qputenv("BURRTOOLS_OFFSCREEN_RHI", was);
+    });
+    QSignalSpy failed(e, &ImageExportController::failed);
+    e->start(QUrl::fromLocalFile(f.file("x.png")));
+    QCOMPARE(failed.count(), 1);
+    QCOMPARE(failed.at(0).at(0).toString(), QStringLiteral("There is no graphics backend to draw the images with."));
+    QVERIFY(!e->busy());
+    QVERIFY(e->writtenFiles().isEmpty());
+  }
+
+  void nothingToDrawWritesNothing() {
+    Fixture f;
+    f.make();
+    ImageExportController * e = f.app->images();
+    e->begin();                                       // an empty puzzle: no shape to draw
+    QSignalSpy done(e, &ImageExportController::finished);
+    QSignalSpy failed(e, &ImageExportController::failed);
+    e->start(QUrl::fromLocalFile(f.file("x.png")));
+    e->start(QUrl());                                 // no file: nothing
+    QVERIFY(!e->busy());
+    QCOMPARE(failed.count(), 0);
+    QVERIFY(e->writtenFiles().isEmpty());
+  }
+
+  /* "assembly" is one picture, the first solution assembled;
+   * "disassembly" one picture per move of the last solution's disassembly */
+  void theAssemblyAndEveryStepOfTheDisassembly() {
+    GPU_OR_SKIP(haveGraphics());
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ImageExportController * e = f.app->images();
+    e->begin();
+    e->setSupersampling(1);
+    e->setPixelX(300);
+    e->setPixelY(100);
+
+    e->setMode(QStringLiteral("assembly"));
+    QCOMPARE(e->mode(), QStringLiteral("assembly"));
+    e->start(QUrl::fromLocalFile(f.file("a.png")));
+    e->finish();
+    QCOMPARE(e->writtenFiles(), QStringList{ f.file("a000.png") });
+
+    e->setMode(QStringLiteral("disassembly"));
+    e->setPages(50);
+    QSignalSpy done(e, &ImageExportController::finished);
+    e->start(QUrl::fromLocalFile(f.file("d.png")));
+    e->finish();
+    QCOMPARE(done.count(), 1);
+    QVERIFY(e->writtenFiles().size() > 1);
   }
 
   void aShapeBecomesOnePage() {
@@ -1664,6 +2163,7 @@ private slots:
       }
     // only the odd pixel on a tile seam may differ
     QVERIFY2(differ < a.width() * a.height() / 200, qPrintable(QString::number(differ)));
+    QVERIFY(whole.render(fr, QSize()).isNull());      // nothing to draw
   }
 };
 
@@ -1730,6 +2230,7 @@ int main(int argc, char ** argv) {
   run(TestImageExport());
   run(TestViewportController());
   run(TestViewCubePaint());
+  run(TestViewInput());
   run(TestRender());
   run(TestViewportItem());
   run(TestPipelineCache());
