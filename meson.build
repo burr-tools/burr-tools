@@ -223,17 +223,14 @@ elif host_machine.system() == 'windows'
   httpget_src = ['src/gui/httpget_win.cpp']
   httpget_dep = cxx.find_library('winhttp')
 else
-  # Headers only: httpget_curl.cpp dlopens libcurl at runtime, so the GUI
-  # starts (with the update check unsupported) where libcurl is missing.
-  curl_dep = dependency('libcurl', required: false)
-  if curl_dep.found()
-    httpget_src = ['src/gui/httpget_curl.cpp']
-    httpget_dep = [curl_dep.partial_dependency(compile_args: true, includes: true), dependency('dl')]
-  else
-    httpget_dep = []
-    warning('libcurl not found: the update check will report itself unsupported')
-    httpget_src = ['src/gui/httpget_none.cpp']
-  endif
+  # Needs no libcurl headers and links no libcurl: the constants come from
+  # curl_abi.h and the library is dlopened at runtime. Deliberately not
+  # conditional on libcurl being installed -- making the backend depend on
+  # the build host's headers would mean developers without them silently
+  # compile a different (stub) backend and never build this file at all.
+  # Where libcurl is missing at runtime, httpGet() reports Unsupported.
+  httpget_src = ['src/gui/httpget_curl.cpp']
+  httpget_dep = dependency('dl')
 endif
 
 if host_machine.system() == 'windows'
@@ -421,7 +418,8 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
     'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp',
-    'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp'],
+    'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
+    'test/test_curl_abi.cpp'],
   include_directories: inc,
   link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],

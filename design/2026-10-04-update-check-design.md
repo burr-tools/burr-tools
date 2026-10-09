@@ -171,11 +171,22 @@ thread only.
 | :--- | :--- | :--- |
 | macOS | `httpget_mac.mm` | Foundation (already linked via Cocoa); add `objcpp` to the project languages |
 | Windows | `httpget_win.cpp` | `winhttp` (system library, available to mingw) |
-| Linux / other | `httpget_curl.cpp` | `dependency('libcurl', required: false)` |
-| libcurl not found | `httpget_none.cpp` | none; returns `Unsupported` |
+| Linux / other | `httpget_curl.cpp` | `dl` only; libcurl is `dlopen`ed at runtime |
+
+The curl backend needs no libcurl headers and links no libcurl: the few
+ABI-stable constants it uses live in `src/gui/curl_abi.h`, so it compiles on
+every machine and the shipped binary carries no libcurl dependency. A
+separate `httpget_none.cpp` was **dropped** during implementation: making the
+backend conditional on the build host having libcurl headers meant every
+developer without them silently compiled a stub instead and never type-checked
+`httpget_curl.cpp` at all. A missing libcurl at *runtime* is handled where it
+belongs, in `loadCurl()`, which returns `Unsupported`.
 
 Linux CI jobs add `libcurl4-openssl-dev` to their `apt-get install` lines so
-the curl backend is always compiled there.
+`test_curl_abi.cpp` can assert the declared constants against the real header.
+That is the only check strong enough to catch a constant that is valid but
+wrong; the headerless runtime check catches only values libcurl rejects
+outright.
 
 ### 3.3 `src/gui/updatechecker.{h,cpp}` — orchestration
 

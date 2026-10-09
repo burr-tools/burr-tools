@@ -26,11 +26,11 @@
 
 /* One blocking HTTPS GET, used by the update check from a worker thread.
  * Exactly one implementation is compiled in, chosen by meson.build per
- * platform: NSURLSession on macOS, WinHTTP on Windows, libcurl elsewhere
- * (or a stub reporting Unsupported when libcurl headers were not found at
- * build time). libcurl is loaded at runtime, so where it is missing the
- * libcurl backend also reports Unsupported instead of the app failing to
- * start.
+ * platform: NSURLSession on macOS, WinHTTP on Windows, libcurl elsewhere.
+ * libcurl is loaded at runtime rather than linked, and needs no headers to
+ * build (see curl_abi.h), so it never becomes a link-time dependency: where
+ * it is missing at runtime this backend reports Unsupported instead of the
+ * app failing to start.
  *
  * Sends the given User-Agent (GitHub's API rejects requests without one)
  * and "Accept: application/vnd.github+json", follows redirects, and gives

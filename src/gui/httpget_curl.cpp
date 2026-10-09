@@ -19,8 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "httpget.h"
-
-#include <curl/curl.h>
+#include "curl_abi.h"
 
 #include <dlfcn.h>
 
@@ -28,11 +27,17 @@
 
 /* libcurl is loaded with dlopen rather than linked, so a system without it
  * (or with only another soname) still starts BurrTools; the update check
- * then reports itself Unsupported. Only <curl/curl.h>'s types and constants
- * are used at build time. Both the OpenSSL and the GnuTLS flavours export
- * the same ABI, so either is accepted.
+ * then reports itself Unsupported. Nothing here references a curl symbol at
+ * link time, so the binary carries no libcurl dependency -- see curl_abi.h
+ * for the constants and why they are declared rather than included.
  */
 namespace {
+
+  using curl_abi::CURL;
+  using curl_abi::CURLcode;
+  using curl_abi::CURLINFO;
+  using curl_abi::CURLoption;
+  using curl_abi::curl_slist;
 
   struct Curl {
     CURLcode (*global_init)(long);
@@ -59,6 +64,8 @@ namespace {
     static std::once_flag once;
     std::call_once(once, [] {
       void * lib = nullptr;
+      // Both the OpenSSL and the GnuTLS flavours export the same ABI, so
+      // either soname is accepted.
       for (const char * soname : { "libcurl.so.4", "libcurl-gnutls.so.4", "libcurl.so" })
         if ((lib = dlopen(soname, RTLD_NOW | RTLD_LOCAL)) != nullptr)
           break;
@@ -75,7 +82,7 @@ namespace {
           !resolve(lib, "curl_slist_free_all", api.slist_free_all))
         return;
       /* curl_global_init is not thread safe; this is its only caller. */
-      if (api.global_init(CURL_GLOBAL_DEFAULT) != CURLE_OK)
+      if (api.global_init(curl_abi::CURL_GLOBAL_DEFAULT) != curl_abi::CURLE_OK)
         return;
       loaded = &api;
     });
@@ -119,18 +126,18 @@ HttpResult httpGet(const std::string & url, const std::string & userAgent, int t
   Sink sink;
   curl_slist * headers = curl->slist_append(nullptr, "Accept: application/vnd.github+json");
 
-  curl->easy_setopt(c, CURLOPT_URL, url.c_str());
-  curl->easy_setopt(c, CURLOPT_USERAGENT, userAgent.c_str());
-  curl->easy_setopt(c, CURLOPT_HTTPHEADER, headers);
-  curl->easy_setopt(c, CURLOPT_WRITEFUNCTION, onData);
-  curl->easy_setopt(c, CURLOPT_WRITEDATA, &sink);
-  curl->easy_setopt(c, CURLOPT_TIMEOUT, long(timeoutSec));
-  curl->easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
-  curl->easy_setopt(c, CURLOPT_MAXREDIRS, 5L);
-  curl->easy_setopt(c, CURLOPT_NOSIGNAL, 1L);   // worker thread: no SIGALRM timeouts
+  curl->easy_setopt(c, curl_abi::CURLOPT_URL, url.c_str());
+  curl->easy_setopt(c, curl_abi::CURLOPT_USERAGENT, userAgent.c_str());
+  curl->easy_setopt(c, curl_abi::CURLOPT_HTTPHEADER, headers);
+  curl->easy_setopt(c, curl_abi::CURLOPT_WRITEFUNCTION, onData);
+  curl->easy_setopt(c, curl_abi::CURLOPT_WRITEDATA, &sink);
+  curl->easy_setopt(c, curl_abi::CURLOPT_TIMEOUT, long(timeoutSec));
+  curl->easy_setopt(c, curl_abi::CURLOPT_FOLLOWLOCATION, 1L);
+  curl->easy_setopt(c, curl_abi::CURLOPT_MAXREDIRS, 5L);
+  curl->easy_setopt(c, curl_abi::CURLOPT_NOSIGNAL, 1L);  // worker thread: no SIGALRM timeouts
 
   CURLcode rc = curl->easy_perform(c);
-  curl->easy_getinfo(c, CURLINFO_RESPONSE_CODE, &r.status);
+  curl->easy_getinfo(c, curl_abi::CURLINFO_RESPONSE_CODE, &r.status);
 
   curl->slist_free_all(headers);
   curl->easy_cleanup(c);
@@ -138,7 +145,7 @@ HttpResult httpGet(const std::string & url, const std::string & userAgent, int t
   if (sink.tooLarge) {
     r.kind = HttpResult::Kind::TooLarge;
     r.error = "response too large";
-  } else if (rc != CURLE_OK) {
+  } else if (rc != curl_abi::CURLE_OK) {
     r.kind = HttpResult::Kind::Transport;
     r.error = curl->easy_strerror(rc);
   } else if (r.status != 200) {
