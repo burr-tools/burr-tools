@@ -14,7 +14,7 @@ brew install meson ninja cmake
 
 - **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
 - **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
-- **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
+- **Libraries**: Dependencies (FLTK 1.4, Manifold, Catch2, pybind11, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
 
 #### Optional Static Analysis Tools (macOS)
 
@@ -26,13 +26,15 @@ brew install cppcheck llvm just
 
 ### Linux
 
-Install the required dependencies:
+Install the required dependencies. FLTK 1.4, Manifold, Catch2 and
+pybind11 are built automatically from the wraps in `subprojects/` (a
+system FLTK is used if one happens to be installed, otherwise it is
+built from source, which is why `cmake` is required).
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y meson ninja-build build-essential \
-    libboost-all-dev libgl-dev libglu1-mesa-dev freeglut3-dev \
-    libfltk1.3-dev libpng-dev zlib1g-dev
+sudo apt-get install -y meson ninja-build cmake build-essential \
+    libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev
 ```
 
 The update check needs no libcurl headers and links no libcurl: the few
