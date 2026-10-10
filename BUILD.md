@@ -220,7 +220,18 @@ Tools modules, and meson ≥ 1.7.
 | :--- | :--- |
 | Windows | MSYS2 UCRT64: `pacman -S mingw-w64-ucrt-x86_64-qt6-{base,declarative,shadertools,svg,tools} zip` |
 | macOS | the Qt online installer or `aqtinstall` (as CI does), whose Qt runs on macOS 13 and later; `brew install qt` works too, but Homebrew builds it for your own macOS, so set `-Dmacos_deployment_target` to that version (the linker warns otherwise) |
-| Linux | the Qt online installer or `aqtinstall` (distributions often ship an older Qt), with `qtshadertools`; the render tests also use `mesa-vulkan-drivers` |
+| Linux | Distributions shipping Qt ≥ 6.8 (e.g. Ubuntu 25.10+, Debian `forky`/`sid`; check with `apt-cache policy qt6-base-dev`) via apt, else the Qt online installer or `aqtinstall` (e.g. Ubuntu 22.04 ships 6.2, 24.04 ships 6.4), always with `qtshadertools`; the render tests also use `mesa-vulkan-drivers` |
+
+```bash
+# Distro Qt ≥ 6.8 only (Debian/Ubuntu):
+sudo apt-get install -y qmake6 qt6-base-dev qt6-base-private-dev \
+    qt6-declarative-dev qt6-declarative-dev-tools \
+    qt6-svg-dev qt6-shadertools-dev \
+    qt6-tools-dev qt6-tools-dev-tools \
+    mesa-vulkan-drivers libvulkan-dev
+# Older distributions: Qt online installer or `pip install aqtinstall`,
+# module `qtshadertools` (as CI does with jurplel/install-qt-action).
+```
 
 ```bash
 just build-qt        # configure with -Dqt_gui=enabled and build
