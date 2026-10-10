@@ -201,7 +201,7 @@ startup-time: build-qt
 # A qmlprofiler trace of burrtools-qt in artifacts/profile/qml.qtd (a -Dqml_debug=true build of its own)
 profile-qml:
     @if [ ! -d "build-prof" ]; then meson setup build-prof --buildtype=debugoptimized -Dqt_gui=enabled -Dqml_debug=true; fi
-    ninja -C build-prof src/qtgui/burrtools-qt
+    meson compile -C build-prof burrtools-qt
     bash scripts/profile-qt.sh build-prof artifacts/profile qml
 
 # A heaptrack profile of burrtools-qt in artifacts/profile (Linux, heaptrack installed)
@@ -266,16 +266,16 @@ build-qt: setup
 
 # Run burrtools-qt, optionally with a puzzle file: just run-qt examples/PelikanBurr.xmpuzzle
 run-qt *args: build-qt
-    ./build/src/qtgui/burrtools-qt {{args}}
+    ./build/burrtools-qt {{args}}
 
 # Open the component gallery: every primitive in every state (light/dark toggle)
 run-gallery: build-qt
-    ./build/src/qtgui/burrtools-qt --gallery
+    ./build/burrtools-qt --gallery
 
 # Run only the Qt GUI tests (controllers, QML shell, gallery at each dp ratio)
 # plus its self-check
 test-qt: build-qt
-    ./build/src/qtgui/burrtools-qt --self-check
+    ./build/burrtools-qt --self-check
     meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
 # Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
@@ -285,7 +285,7 @@ update-snapshots rows="": build-qt
 # Self-contained burrtools-qt preview in artifacts/qt: zip (Windows), .app (macOS), AppImage (Linux); as CI
 deploy-qt:
     @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true -Dqt_gui=enabled; else meson configure build-rel -Dqt_gui=enabled; fi
-    ninja -C build-rel src/qtgui/burrtools-qt
+    meson compile -C build-rel burrtools-qt
     bash scripts/package-qt.sh build-rel artifacts/qt
 
 # Standalone burrtools-qt.exe with static Qt in artifacts/qt-static (MSYS2 qt6-static; as qt-standalone.yml)

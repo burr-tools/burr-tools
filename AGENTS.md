@@ -99,6 +99,10 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
    - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
    - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
+7. **Qt GUI: QML panels and dialogs, environment variables:**
+   - Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
+   - Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.
+   - A new `BURRTOOLS_*` environment variable goes into [`src/tools/envvars.h`](src/tools/envvars.h), which the programs' `--help` prints; `test_envvars.cpp` fails on one the code reads but the table does not list.
 
 ---
 

@@ -3,6 +3,21 @@ import BurrTools.Ui
 
 // C15 workspace rail: Entities, Puzzle, Solver -- and, while View ▸ Show
 // menu bar is off, a menu button above them that opens every menu.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌────────┐
+//   │ ① ☰    │ ─▶ ② every menu   (while the menu bar is hidden)
+//   │  Menu  │
+//   │ ────── │
+//   │ ③ ⬡    │
+//   │Entities│
+//   │ ④ ✣    │
+//   │ Puzzle │
+//   │ ⑤ ▷    │
+//   │ Solver │
+//   │        │
+//   └────────┘
 Rectangle {
     id: root
     objectName: "app-rail"
@@ -19,7 +34,7 @@ Rectangle {
         anchors { top: parent.top; topMargin: 10; horizontalCenter: parent.horizontalCenter }
         spacing: 6
 
-        RailButton {
+        RailButton { // ①
             id: menuButton
             objectName: "rail-menu"
             visible: App.commands.menuBarHideable && !App.settings.showMenuBar
@@ -29,7 +44,7 @@ Rectangle {
             selected: allMenus.visible
             onClicked: allMenus.visible ? allMenus.close() : allMenus.popup(menuButton, menuButton.width + 6, 0)
 
-            AppMenu {
+            AppMenu { // ②
                 id: allMenus
                 objectName: "rail-menu.popup"
                 Instantiator {
@@ -53,7 +68,7 @@ Rectangle {
             color: Theme.line
         }
 
-        RailButton {
+        RailButton { // ③
             objectName: "rail-entities"
             text: qsTr("Entities")
             iconName: "rail-entities"
@@ -61,7 +76,7 @@ Rectangle {
             selected: App.layout.workspace === LayoutController.Entities
             onClicked: App.layout.workspace = LayoutController.Entities
         }
-        RailButton {
+        RailButton { // ④
             objectName: "rail-puzzle"
             text: qsTr("Puzzle")
             iconName: "rail-puzzle"
@@ -69,7 +84,7 @@ Rectangle {
             selected: App.layout.workspace === LayoutController.Puzzle
             onClicked: App.layout.workspace = LayoutController.Puzzle
         }
-        RailButton {
+        RailButton { // ⑤
             objectName: "rail-solver"
             text: qsTr("Solver")
             iconName: "rail-solver"

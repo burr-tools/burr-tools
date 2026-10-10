@@ -9,6 +9,21 @@ import BurrTools.Ui
 // really work, written the way this platform writes them. The groups of the
 // later phases (drawing tools, shapes list, Puzzle, Solver) join when those
 // features do.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Keyboard shortcuts ───────────────────────────────────┐
+//   │ ① Grouped by where they act. ...   ② [ Search      ] │
+//   │ ┌───────────────────────────────────────────────────┐ │
+//   │ │ ③ FILE                                            │ │   a group
+//   │ │ ④ New puzzle                           [Ctrl][N]  │ │   a row
+//   │ │   Open…                                [Ctrl][O]  │ │
+//   │ │   VIEW ...                                        │ │
+//   │ │ ⑤ No shortcuts match “…”   (when none)            │ │
+//   │ └───────────────────────────────────────────────────┘ │
+//   ├───────────────────────────────────────────────────────┤
+//   │ ⑥                                          [Close]    │
+//   └───────────────────────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "help.shortcuts.dialog"
@@ -45,14 +60,14 @@ BtDialog {
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
-            Text {
+            Text { // ①
                 Layout.fillWidth: true
                 text: qsTr("Grouped by where they act. Keys act when focus is not in a text field; menu shortcuts (File, Edit, …) are shown in the menus.")
                 color: Theme.muted
                 font.pixelSize: Theme.fontSecondary
                 wrapMode: Text.WordWrap
             }
-            SearchField {
+            SearchField { // ②
                 id: search
                 objectName: "help.shortcuts.search"
                 implicitWidth: 220
@@ -74,7 +89,7 @@ BtDialog {
                 width: parent.width
                 spacing: 16
 
-                Repeater {
+                Repeater { // ③
                     model: root.groups
                     delegate: Column {
                         id: grp
@@ -103,7 +118,7 @@ BtDialog {
                         }
                         Repeater {
                             model: grp.shown
-                            delegate: Item {
+                            delegate: Item { // ④
                                 id: shortcutRow
                                 required property var modelData
                                 width: grp.width
@@ -131,7 +146,7 @@ BtDialog {
                     }
                 }
 
-                Text {
+                Text { // ⑤
                     objectName: "help.shortcuts.empty"
                     visible: root.groups.every(g => g.rows.filter(r => root.matches(g, r)).length === 0)
                     text: qsTr("No shortcuts match “%1”").arg(root.query)
@@ -142,7 +157,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ⑥
         implicitHeight: 56
         BtButton {
             objectName: "help.shortcuts.close"

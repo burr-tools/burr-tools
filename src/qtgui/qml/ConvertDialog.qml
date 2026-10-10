@@ -9,6 +9,17 @@ import BurrTools.Ui
 // grid" with one radio per grid this puzzle converts to, the first chosen;
 // or the "no grids" notice with a single OK. Continue converts; the result
 // replaces the puzzle and starts a fresh undo history (OQ-34: content kept).
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Convert puzzle ───────────────────────┐
+//   │ ① Please select the target grid for   │
+//   │   this Brick puzzle.                  │
+//   │ ② (•) Prism                           │   a RadioCard per target
+//   │   ( ) ...                             │
+//   ├───────────────────────────────────────┤
+//   │ ③                [Cancel] [Convert]   │
+//   └───────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "tools.convert.dialog"
@@ -26,7 +37,7 @@ BtDialog {
 
     contentItem: ColumnLayout {
         spacing: 8
-        Text {
+        Text { // ①
             Layout.fillWidth: true
             text: root.targets.length > 0
                   ? qsTr("Please select the target grid for this %1 puzzle.").arg(App.document.gridTypeName)
@@ -35,7 +46,7 @@ BtDialog {
             font.pixelSize: root.targets.length > 0 ? Theme.fontSecondary : Theme.fontBody
             wrapMode: Text.WordWrap
         }
-        Repeater {
+        Repeater { // ②
             model: root.targets
             delegate: RadioCard {
                 required property var modelData
@@ -49,7 +60,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ③
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }

@@ -267,9 +267,11 @@ build* workflow), not on every push.
 
 `burrtools-qt` also takes `--gallery`, `--screenshot=<file.png>` (draw the
 window once, save it, quit), `--command=<key>` (run a command, e.g.
-`export.stl`, once the window is up) and `--self-check`.
+`export.stl`, once the window is up), `--self-check` and `--help`.
 
-Environment variables:
+Environment variables (`burrtools-qt --help`, `burrTxt --help` and
+`burrTxt2 --help` print the ones each program reads, with the solver's; the
+full list is `src/tools/envvars.h`, which a test keeps complete):
 
 | Variable | Effect |
 | :--- | :--- |
@@ -283,6 +285,7 @@ Environment variables:
 | `BURRTOOLS_SNAPSHOTS_ONLY` | comma-separated gallery rows (`button,switch`) to check or update; unset: all |
 | `BURRTOOLS_EARLY_DEVICE=0` | burrtools-qt leaves the main window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own (`src/qtgui/earlydevice.h`); for A/B start-up comparisons |
 | `BURRTOOLS_STARTUP_TRACE` | `1`: burrtools-qt prints on stderr how long start-up took to each step -- the process start (Windows), Main.qml, the first frame on screen, the first with the workspace (and the opened puzzle) in it, and app ready -- the GUI thread idle after that; `quit` also quits there |
+| `BURRTOOLS_QML_OUTLINES=1` | burrtools-qt outlines every named item; the one under the mouse is highlighted and labelled with its `objectName` and QML file:line, and its parents are printed on stderr — for finding the code behind what is on screen (`src/qtgui/README.md`, "Reading the QML") |
 | `BURRTOOLS_PROFILE_PUZZLE` | the puzzle `scripts/profile-qt.sh` opens (default `examples/PelikanBurr.xmpuzzle`) |
 
 Performance checks and profiles (what each measures, which fail CI and which

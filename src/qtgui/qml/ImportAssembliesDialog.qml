@@ -8,6 +8,27 @@ import BurrTools.Ui
 // Destination (just add shapes / new problem / existing problem); the count
 // Range given to the new shapes in that problem; the Filter, with the two
 // tool filters for brick puzzles only; Shape min/max in voxels.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Import assemblies as shapes ─────────────────────────────────┐
+//   │ ② Source                    │ ⑦ Filter                       │
+//   │ ③ ┌──────────────────────┐  │   [ ] Drop disconnected shapes │
+//   │   │ problems with        │  │   [ ] Drop mirror symmetry     │
+//   │   │ solutions            │  │   [ ] Drop any symmetry        │
+//   │   └──────────────────────┘  │   [ ] Drop non-millable  brick │
+//   │ ④ Destination               │   [ ] Drop non-notchable  only │
+//   │   (•) Just add shapes       │   [ ] Remove identical shapes  │
+//   │   ( ) To a new problem      │ ⑧ Shape min [  ] max [  ]      │
+//   │   ( ) To existing problem   │   Shape sizes count the fixed  │
+//   │ ⑤ ┌──────────────────────┐  │   voxels.                      │
+//   │   │ problems             │  │                                │
+//   │   └──────────────────────┘  │                                │
+//   │ ⑥ Range  Min [  ] Max [  ]  │                                │
+//   ├─────────────────────────────┴────────────────────────────────┤
+//   │ ⑨                                       [Cancel] [Import]    │
+//   └──────────────────────────────────────────────────────────────┘
+//   ① instead of it all: "You need a problem with solutions ..."
 BtDialog {
     id: root
     objectName: "tools.import.dialog"
@@ -74,7 +95,7 @@ BtDialog {
     contentItem: Item {
         implicitHeight: root.hasProblems ? form.implicitHeight : none.implicitHeight
 
-        Text {
+        Text { // ①
             id: none
             visible: !root.hasProblems
             width: parent.width
@@ -90,21 +111,21 @@ BtDialog {
             width: parent.width
             spacing: 24
 
-            ColumnLayout {
+            ColumnLayout { // ②
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.alignment: Qt.AlignTop
                 spacing: 6
 
                 SectionTitle { text: qsTr("Source"); Layout.topMargin: 0 }
-                ProblemList {
+                ProblemList { // ③
                     id: source
                     objectName: "tools.import.source"
                     Layout.fillWidth: true
                     problems: root.problems
                 }
 
-                SectionTitle { text: qsTr("Destination") }
+                SectionTitle { text: qsTr("Destination") } // ④
                 BtCheckBox {
                     objectName: "tools.import.dest.shapes"
                     radio: true
@@ -126,7 +147,7 @@ BtDialog {
                     selected: root.destination === "existing"
                     onClicked: root.destination = "existing"
                 }
-                ProblemList {
+                ProblemList { // ⑤
                     id: target
                     objectName: "tools.import.target"
                     Layout.fillWidth: true
@@ -136,7 +157,7 @@ BtDialog {
                     enabled: root.destination === "existing"
                 }
 
-                SectionTitle { text: qsTr("Range") }
+                SectionTitle { text: qsTr("Range") } // ⑥
                 RowLayout {
                     spacing: 8
                     enabled: root.destination !== "shapes"
@@ -148,7 +169,7 @@ BtDialog {
                 }
             }
 
-            ColumnLayout {
+            ColumnLayout { // ⑦
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1
                 Layout.alignment: Qt.AlignTop
@@ -161,7 +182,7 @@ BtDialog {
                 BtCheckBox { id: dropNonMillable; objectName: "tools.import.dropNonMillable"; visible: root.bricks; text: qsTr("Drop non millable shapes") }
                 BtCheckBox { id: dropNonNotchable; objectName: "tools.import.dropNonNotchable"; visible: root.bricks; text: qsTr("Drop non notchable shapes") }
                 BtCheckBox { id: dropIdentical; objectName: "tools.import.dropIdentical"; text: qsTr("Remove identical shapes") }
-                RowLayout {
+                RowLayout { // ⑧
                     spacing: 8
                     Text { text: qsTr("Shape min"); color: Theme.text; font.pixelSize: Theme.fontBody }
                     NumberField { id: shapeMin; objectName: "tools.import.shapeMin" }
@@ -173,7 +194,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ⑨
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }

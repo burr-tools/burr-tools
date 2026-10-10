@@ -623,7 +623,7 @@ jobs:
         VK_DRIVER_FILES="$icd" vulkaninfo --summary
 
     - name: Self-check
-      run: ./build-qt/src/qtgui/burrtools-qt --self-check
+      run: ./build-qt/burrtools-qt --self-check
 
     # The render tests draw through Vulkan on Mesa's software lavapipe, the
     # only driver offered (VK_DRIVER_FILES), and must not skip. Vulkan needs
@@ -713,7 +713,7 @@ jobs:
         ninja -C build-qt
 
     - name: Self-check
-      run: ./build-qt/src/qtgui/burrtools-qt.exe --self-check
+      run: ./build-qt/burrtools-qt.exe --self-check
 
     # The tests by name rather than the whole fast suite: burrtxt2_cli_smoke
     # has only ever run on Linux and macOS (the cross-compiled Windows job
@@ -787,7 +787,7 @@ jobs:
         ninja -C build-qt
 
     - name: Self-check
-      run: ./build-qt/src/qtgui/burrtools-qt --self-check
+      run: ./build-qt/burrtools-qt --self-check
 
     # The render tests try Metal and skip where the runner offers none (not
     # yet known for these VMs; the test log says which backend was used).

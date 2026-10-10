@@ -24,6 +24,7 @@
 #include "app.h"
 #include "earlydevice.h"
 #include "pipelinecache.h"
+#include "qmloutlines.h"
 #include "settingscontroller.h"
 #include "documentcontroller.h"
 #include "iconprovider.h"
@@ -31,6 +32,7 @@
 #include "theme.h"
 
 #include "../lib/bt_assert.h"
+#include "../tools/envvars.h"
 
 #ifdef QT_QML_DEBUG
 #include <QtQml/qqmldebug.h>      // its enabler lets qmlprofiler attach (-Dqml_debug=true)
@@ -49,6 +51,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <functional>
 #include <memory>
 
@@ -170,6 +173,36 @@ namespace {
   };
 #endif
 
+  /* What burrtools-qt takes; and the environment variables that concern it
+   * (tools/envvars.h, which a test keeps complete). */
+  void printHelp(void) {
+#ifdef Q_OS_WIN
+    /* A GUI-subsystem program has no console of its own: write to the one
+     * it was started from, unless the output already goes to a file or a
+     * pipe (scripts, MSYS2's shells). */
+    if (GetFileType(GetStdHandle(STD_OUTPUT_HANDLE)) == FILE_TYPE_UNKNOWN && AttachConsole(ATTACH_PARENT_PROCESS)) {
+      FILE * f = nullptr;
+      freopen_s(&f, "CONOUT$", "w", stdout);
+      std::cout.clear();
+    }
+#endif
+    std::cout <<
+      "burrtools-qt [options] [puzzle file ...]\n"
+      "\n"
+      "  puzzle file          opened once the window is up; the first that loads wins\n"
+      "  --gallery            the component gallery (every control in every state)\n"
+      "                       instead of the main window\n"
+      "  --screenshot=<png>   save the window 1.5 s after the puzzle opened, then quit\n"
+      "  --command=<key>      run a command once the window is up -- a key of the\n"
+      "                       command table, e.g. export.stl\n"
+      "  --self-check         check the program's invariants, print the result, quit\n"
+      "  -h, --help           this help\n";
+    btenv::print(std::cout, { btenv::Scope::QtGui, btenv::Scope::Solver });
+    std::cout << "\nQt's own variables (QT_QPA_PLATFORM, QT_SCALE_FACTOR, QSG_*, ...) work as Qt\n"
+                 "documents them.\n";
+    std::cout.flush();
+  }
+
   /* Exceptions must not unwind through Qt's event dispatch. An internal error
    * raised in C++ code Qt calls (a timer, an event filter) is caught here and
    * handed to the same rescue path the QML entry points use.
@@ -251,6 +284,11 @@ int main(int argc, char ** argv) {
   // outlives the window
   EarlyGraphicsDevice earlyDevice;
   bt_assert_init();
+
+  if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+    printHelp();
+    return 0;
+  }
 
   // a headless invariant check for CI, before any window or QML exists
   if (argc == 2 && strcmp(argv[1], "--self-check") == 0) {
@@ -337,6 +375,7 @@ int main(int argc, char ** argv) {
 
   auto * mainWindow = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
   earlyDevice.adopt(mainWindow);
+  QmlOutlines::installIfAsked(mainWindow);
   trace.mark("graphics device handed to the window");
   // ready: the puzzle opened, if any, has its mesh in the 3D view
   trace.watch(mainWindow, [&app, doc] {

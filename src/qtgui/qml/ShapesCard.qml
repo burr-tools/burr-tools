@@ -5,6 +5,19 @@ import BurrTools.Ui
 // C01 Shapes card, first cut: the list with positional ids (S1 ... SN) and
 // selection, which drives the 3D view. Editing (new, rename, reorder, ...)
 // arrives with phase P2.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌──────────────────────────────┐
+//   │ Shapes ①(8)              [◧] │   title and collapse: Card
+//   ├──────────────────────────────┤
+//   │ ② ┌───────────────────────┐  │
+//   │   │③[S1] ④Result      ⑤W2 │  │   one row per shape
+//   │   └───────────────────────┘  │
+//   │     [S2]  Cage               │
+//   │     ...                      │
+//   │ ⑥ No shapes (when empty)     │
+//   └──────────────────────────────┘
 Card {
     id: root
     objectName: "entities.shapes"
@@ -14,7 +27,7 @@ Card {
     onCollapseClicked: App.layout.leftCollapsed = true
 
     headerExtras: [
-        Rectangle {
+        Rectangle { // ①
             objectName: "entities.shapes.count"
             height: 20
             width: Math.max(24, countText.implicitWidth + 12)
@@ -31,7 +44,7 @@ Card {
         }
     ]
 
-    ListView {
+    ListView { // ②
         id: list
         objectName: "entities.shapes.list"
         anchors { fill: parent; margins: 6 }
@@ -72,7 +85,7 @@ Card {
             Row {
                 anchors { left: parent.left; leftMargin: 8; verticalCenter: parent.verticalCenter }
                 spacing: 8
-                Rectangle {
+                Rectangle { // ③
                     objectName: "entities.shapes.row." + row.index + ".chip"
                     width: Math.max(34, chipText.implicitWidth + 12)
                     height: 26
@@ -87,7 +100,7 @@ Card {
                         font.weight: Font.Bold
                     }
                 }
-                Text {
+                Text { // ④
                     objectName: "entities.shapes.row." + row.index + ".label"
                     anchors.verticalCenter: parent.verticalCenter
                     width: row.width - 120
@@ -97,7 +110,7 @@ Card {
                     elide: Text.ElideRight
                 }
             }
-            Rectangle {
+            Rectangle { // ⑤
                 objectName: "entities.shapes.row." + row.index + ".weightBadge"
                 visible: row.weight !== 1
                 anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
@@ -117,7 +130,7 @@ Card {
             }
         }
 
-        Text {
+        Text { // ⑥
             visible: list.count === 0
             anchors.centerIn: parent
             text: qsTr("No shapes")

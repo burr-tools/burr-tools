@@ -21,7 +21,9 @@ ApplicationWindow {
     objectName: "gallery.window"
     title: qsTr("Component gallery - BurrTools")
     width: 1120
-    height: 1500
+    // no taller than the screen, or the title bar starts above its top edge
+    // and the window cannot be moved, resized or closed; the rows scroll
+    height: Math.min(1500, Screen.desktopAvailableHeight * 0.92)
     visible: true
     color: Theme.bg
 

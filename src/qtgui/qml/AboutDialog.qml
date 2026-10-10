@@ -3,13 +3,24 @@ import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // About: the legacy text (mainWindow_c::cb_About), with Qt in the credits.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ About BurrTools ──────────────────────────┐
+//   │ ① This is the GUI for BurrTools 0.8       │
+//   │   BurrTools (c) 2003-2025 by ...          │
+//   │   ...                                     │
+//   │   - Qt 6, libZ, gzstream, Manifold        │
+//   ├───────────────────────────────────────────┤
+//   │ ②                                [Close]  │
+//   └───────────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "shell.about.dialog"
     title: qsTr("About BurrTools")
     width: 520
 
-    contentItem: Text {
+    contentItem: Text { // ①
         objectName: "shell.about.text"
         wrapMode: Text.WordWrap
         color: Theme.text
@@ -30,7 +41,7 @@ BtDialog {
 
     readonly property string qtVersion: "6"
 
-    footer: Item {
+    footer: Item { // ②
         implicitHeight: 60
         BtButton {
             objectName: "shell.about.close"

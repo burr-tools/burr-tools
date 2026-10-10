@@ -26,7 +26,7 @@ shift 2
 WHAT=("$@")
 [ ${#WHAT[@]} -eq 0 ] && WHAT=(startup qml heap)
 
-EXE="$BUILD/src/qtgui/burrtools-qt"
+EXE="$BUILD/burrtools-qt"
 [ -x "$EXE.exe" ] && EXE="$EXE.exe"
 [ -x "$EXE" ] || { echo "profile-qt.sh: no $EXE (build the Qt GUI first)" >&2; exit 1; }
 PUZZLE="${BURRTOOLS_PROFILE_PUZZLE:-examples/PelikanBurr.xmpuzzle}"

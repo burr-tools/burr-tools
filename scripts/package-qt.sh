@@ -27,7 +27,7 @@ case "$(uname -s)" in
     DIR="$OUT/$NAME"
     rm -rf "$DIR"
     mkdir -p "$DIR"
-    cp "$BUILD/src/qtgui/burrtools-qt.exe" "$DIR/"
+    cp "$BUILD/burrtools-qt.exe" "$DIR/"
     # Qt and what the QML imports need -- not the plugins the program never
     # loads: QML debugging, touch input, network information, TLS, and the
     # image formats besides SVG (PNG is built into Qt). Direct3D's shader
@@ -69,10 +69,10 @@ case "$(uname -s)" in
     APP="$OUT/burrtools-qt.app"
     rm -rf "$APP"
     mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-    cp "$BUILD/src/qtgui/burrtools-qt" "$APP/Contents/MacOS/"
+    cp "$BUILD/burrtools-qt" "$APP/Contents/MacOS/"
     cp mac/BurrTools.icns "$APP/Contents/Resources/"
     # the macOS the program was linked for: above 14.0 when its Qt needs it
-    MINOS="$(vtool -show-build "$BUILD/src/qtgui/burrtools-qt" | sed -n 's/^ *minos //p' | head -n 1)"
+    MINOS="$(vtool -show-build "$BUILD/burrtools-qt" | sed -n 's/^ *minos //p' | head -n 1)"
     MINOS="${MINOS:-14.0}"
     cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -164,7 +164,7 @@ DESKTOP
     export QMAKE="${QMAKE:-$(command -v qmake6 || command -v qmake)}"
     export LDAI_OUTPUT="$OUT/burrtools-qt-${VERSION}-linux-${ARCH}.AppImage"
     linuxdeploy-x86_64.AppImage --appdir "$APPDIR" \
-      --executable "$BUILD/src/qtgui/burrtools-qt" \
+      --executable "$BUILD/burrtools-qt" \
       --desktop-file "$TOOLS/burrtools-qt.desktop" \
       --icon-file "$TOOLS/burrtools-qt.png" \
       --plugin qt --output appimage

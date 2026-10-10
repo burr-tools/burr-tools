@@ -10,6 +10,21 @@ import BurrTools.Ui
 // caption buttons, moving and resizing -- with the menu bar, workspace rail,
 // the three cards of the active workspace, status bar, and the dialogs the
 // controllers ask for.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌───────────────────────────────────────────────────────────┐
+//   │ ① File  Edit  View  Export  Help                          │
+//   ├────┬─────────────┬─────────────────────────┬──────────────┤
+//   │ ②  │ ③           │ ④                       │ ⑤            │
+//   │Ent │ Shapes      │ 3D view                 │ Voxel editor │
+//   │Puz │ (Problems,  │ (ViewportCard)          │ (Selected    │
+//   │Sol │  Solver)    │                         │  piece, ...) │
+//   │    ├─────────────┴─────────────────────────┴──────────────┤
+//   │    │ ⑥ status                                             │
+//   └────┴──────────────────────────────────────────────────────┘
+//   ⑦ until the first frame: this outline, no text
+//   ⑧ the dialogs, each made when first opened
 ApplicationWindow {
     id: win
     objectName: "shell.window"
@@ -44,7 +59,7 @@ ApplicationWindow {
     // macOS: the system menu bar. Windows and Linux: drawn in the theme, and
     // hidden behind the rail's menu button while View ▸ Show menu bar is off.
     // Made with the workspace, after the first frame (startContent).
-    Component {
+    Component { // ①
         id: menuBarComponent
         AppMenuBar {
             visible: !App.commands.menuBarHideable || App.settings.showMenuBar
@@ -170,7 +185,7 @@ ApplicationWindow {
         border.width: Theme.minimal ? 0 : 1
     }
 
-    Item {
+    Item { // ⑦
         id: outline
         objectName: "shell.outline"
         anchors.fill: parent
@@ -243,7 +258,7 @@ ApplicationWindow {
         active: win.contentStarted
         sourceComponent: Component {
             Item {
-                WorkspaceRail {
+                WorkspaceRail { // ②
                     id: rail
                     anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                 }
@@ -259,7 +274,7 @@ ApplicationWindow {
 
                         readonly property int ws: App.layout.workspace
 
-                        Item {
+                        Item { // ③
                             id: leftSlot
                             objectName: "workspace.left"
                             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
@@ -300,13 +315,13 @@ ApplicationWindow {
                             }
                         }
 
-                        ViewportCard {
+                        ViewportCard { // ④
                             id: centre
                             anchors { left: leftSlot.right; leftMargin: Theme.cardGap; right: rightSlot.left; rightMargin: Theme.cardGap
                                       top: parent.top; bottom: parent.bottom }
                         }
 
-                        Item {
+                        Item { // ⑤
                             id: rightSlot
                             objectName: "workspace.right"
                             anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
@@ -348,7 +363,7 @@ ApplicationWindow {
                         }
                     }
 
-                    StatusBar {
+                    StatusBar { // ⑥
                         id: statusBar
                         objectName: "status"
                         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
@@ -358,7 +373,7 @@ ApplicationWindow {
         }
     }
 
-    // --- dialogs ------------------------------------------------------------
+    // --- ⑧ dialogs ---------------------------------------------------------
 
     // each made when it is first opened (showDialog), not with the window --
     // by file name, so not even its type is loaded before then

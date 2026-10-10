@@ -10,6 +10,23 @@ import BurrTools.Ui
 // Performance, searchable across pages, each change applied and saved at
 // once. Search also lists matching keyboard shortcuts (C22), whose own
 // window is Help ▸ Keyboard shortcuts.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌───────────────────────────────────────────────────────────────┐
+//   │ ① Settings   [ Search settings        ]                  [×]  │
+//   ├──────────────┬────────────────────────────────────────────────┤
+//   │ ②            │ ③ General                    [Reset section]   │
+//   │ ▌General     │ ④ Interface density   [Standard|Minimal]       │
+//   │  3D view     │    Standard is the default. Minimal shows ...  │
+//   │  Performance │   Theme               [Light|Dark|System]      │
+//   │              │   ...                                          │
+//   │              │   3D view ...                                  │
+//   │              │ ⑤ Keyboard shortcuts   (when searching)        │
+//   │              │ ⑥ No settings match “…”                        │
+//   ├──────────────┴────────────────────────────────────────────────┤
+//   │ ⑦ Changes apply immediately    [Restore all defaults] [Done]  │
+//   └───────────────────────────────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "settings.dialog"
@@ -196,7 +213,7 @@ BtDialog {
 
     // --- frame ------------------------------------------------------------------
 
-    header: Item {
+    header: Item { // ①
         implicitHeight: 56
         RowLayout {
             anchors { fill: parent; leftMargin: 20; rightMargin: 12 }
@@ -245,7 +262,7 @@ BtDialog {
                 Layout.preferredWidth: 200
                 Layout.fillHeight: true
                 color: Theme.panel2
-                Column {
+                Column { // ②
                     anchors { fill: parent; margins: 10 }
                     spacing: 4
                     Repeater {
@@ -285,7 +302,7 @@ BtDialog {
             }
 
             // the page, or the search results
-            ScrollView {
+            ScrollView { // ③
                 id: pageArea
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -321,7 +338,7 @@ BtDialog {
                             }
                             Repeater {
                                 model: pageColumn.shown
-                                delegate: SettingRow {
+                                delegate: SettingRow { // ④
                                     required property var modelData
                                     row: modelData
                                 }
@@ -330,7 +347,7 @@ BtDialog {
                     }
 
                     // matching shortcuts (AC-C22-02)
-                    Column {
+                    Column { // ⑤
                         width: parent.width
                         visible: root.shortcutMatches.length > 0
                         spacing: 0
@@ -356,7 +373,7 @@ BtDialog {
                         }
                     }
 
-                    Text {
+                    Text { // ⑥
                         objectName: "settings.noResults"
                         visible: root.searching && root.shortcutMatches.length === 0
                                  && root.pages.every(p => p.rows.filter(r => root.rowMatches(r)).length === 0)
@@ -368,7 +385,7 @@ BtDialog {
             }
         }
 
-        Item {
+        Item { // ⑦
             Layout.fillWidth: true
             implicitHeight: 56
             Rectangle {

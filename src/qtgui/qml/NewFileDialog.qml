@@ -8,6 +8,19 @@ import BurrTools.Ui
 // File ▸ New: the one-time voxel type choice (C14). The five official types
 // in the legacy "Select space grid" order, Brick preselected. The type is
 // fixed for the life of the file.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ New puzzle — select the voxel type ───┐
+//   │ ① ┌───────────────────────────────┐   │
+//   │   │ (•) Brick                     │   │   a RadioCard per type
+//   │   │     Cubes. The classic burr...│   │
+//   │   └───────────────────────────────┘   │
+//   │     ( ) Prism                         │
+//   │     ( ) Spheres ...                   │
+//   ├───────────────────────────────────────┤
+//   │ ②                  [Cancel] [Create]  │
+//   └───────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "shell.newfile.dialog"
@@ -30,7 +43,7 @@ BtDialog {
 
     contentItem: ColumnLayout {
         spacing: 8
-        Repeater {
+        Repeater { // ①
             model: root.types
             delegate: RadioCard {
                 required property var modelData
@@ -45,7 +58,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ②
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }

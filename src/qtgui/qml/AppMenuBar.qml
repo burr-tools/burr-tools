@@ -11,11 +11,21 @@ import BurrTools.Ui
 // Elsewhere it is drawn in the theme, its menus in windows of their own
 // (AppMenu), and View ▸ Show menu bar can put it away behind the rail's menu
 // button (WorkspaceRail).
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌①─────────────────────────────────────────────┐
+//   │ ②File  Edit  View  Export  Help              │
+//   └──┬───────────────────────────────────────────┘
+//      ③ ┌───────────────┐
+//        │ New…   Ctrl+N │   a CommandMenu per title
+//        │ Open…  Ctrl+O │
+//        └───────────────┘
 MenuBar {
     id: root
     objectName: "shell.menubar"
 
-    background: Rectangle {
+    background: Rectangle { // ①
         implicitHeight: 30
         color: Theme.panel
         Rectangle {
@@ -35,7 +45,7 @@ MenuBar {
         return plain.substring(0, i) + "<u>" + plain.charAt(i) + "</u>" + plain.substring(i + 1)
     }
 
-    delegate: MenuBarItem {
+    delegate: MenuBarItem { // ②
         id: barItem
         implicitHeight: 30
         leftPadding: 10
@@ -62,7 +72,7 @@ MenuBar {
     // same: the bar decides that once a menu joins it. A menu native on its own
     // would get its native handle when created, before CommandMenu adds the
     // items, and Qt (6.11) leaves items added later without their titles.
-    Component.onCompleted: {
+    Component.onCompleted: { // ③
         for (const m of App.commands.menuBar())
             root.addMenu(menuComponent.createObject(root, { menuKey: m.key, title: m.label, popupType: Popup.Window }))
     }

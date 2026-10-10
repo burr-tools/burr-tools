@@ -41,14 +41,14 @@ if [ ! -f "$BUILD/build.ninja" ]; then
   meson setup "$BUILD" --buildtype=release -Db_ndebug=true -Dpython=disabled \
     -Dqt_gui=enabled -Dqt_static=true --native-file "$(cygpath -m "$NATIVE")"
 fi
-ninja -C "$BUILD" src/qtgui/burrtools-qt.exe
+ninja -C "$BUILD" burrtools-qt.exe
 
 VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
 NAME="burrtools-qt-${VERSION}-windows-$(uname -m)-standalone"
 mkdir -p "$OUT"
 rm -rf "${OUT:?}/$NAME" "$OUT/$NAME.zip"
 mkdir -p "$OUT/$NAME"
-cp "$BUILD/src/qtgui/burrtools-qt.exe" "$OUT/$NAME/"
+cp "$BUILD/burrtools-qt.exe" "$OUT/$NAME/"
 # the symbol table is more than half the file
 strip -s "$OUT/$NAME/burrtools-qt.exe"
 

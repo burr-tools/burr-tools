@@ -5,6 +5,24 @@ import BurrTools.Ui
 // C06 Display menu: Show, Projection, Voxel colour. It stays open while
 // options are toggled; every option persists. The layer slab and dimming
 // rows need the voxel editor on screen and are disabled without it.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌─────────────────────────────┐
+//   │ ① SHOW                      │   Entities only
+//   │   ✓ Axes                    │
+//   │   ✓ Grid boundary           │
+//   │     Active layer slab       │   these two need the
+//   │     Dim other layers        │   Voxel editor shown
+//   ├─────────────────────────────┤
+//   │ ② PROJECTION                │
+//   │   ✓ Perspective             │
+//   │     Orthographic            │
+//   ├─────────────────────────────┤
+//   │ ③ VOXEL COLOUR              │
+//   │   ✓ Piece colour            │
+//   │     Voxel colour            │
+//   └─────────────────────────────┘
 Popup {
     id: root
     objectName: "entities.viewport.display.menu"
@@ -42,7 +60,7 @@ Popup {
         spacing: 0
         width: 240
 
-        Section { visible: root.showItems; text: qsTr("SHOW") }
+        Section { visible: root.showItems; text: qsTr("SHOW") } // ①
         CheckRow {
             objectName: "entities.viewport.display.axes"
             visible: root.showItems
@@ -81,7 +99,7 @@ Popup {
         }
         Divider { visible: root.showItems }
 
-        Section { text: qsTr("PROJECTION") }
+        Section { text: qsTr("PROJECTION") } // ②
         CheckRow {
             objectName: "entities.viewport.display.persp"
             width: parent.width
@@ -98,7 +116,7 @@ Popup {
         }
         Divider {}
 
-        Section { text: qsTr("VOXEL COLOUR") }
+        Section { text: qsTr("VOXEL COLOUR") } // ③
         CheckRow {
             objectName: "entities.viewport.display.colourPiece"
             width: parent.width

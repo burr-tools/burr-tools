@@ -4,6 +4,18 @@ import BurrTools.Ui
 
 // Edit comment (legacy multiLineWindow_c "Change the comment for the current
 // puzzle"), restyled. OK writes the comment; Cancel or Esc discards edits.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Edit comment ─────────────────────────────┐
+//   │ ① Change the comment for the current ...  │
+//   │ ② ┌───────────────────────────────────┐   │
+//   │   │ the comment, wrapped              │   │
+//   │   │                                   │   │
+//   │   └───────────────────────────────────┘   │
+//   ├───────────────────────────────────────────┤
+//   │ ③                        [Cancel]  [OK]   │
+//   └───────────────────────────────────────────┘
 BtDialog {
     id: root
     objectName: "shell.comment.dialog"
@@ -16,12 +28,12 @@ BtDialog {
 
     contentItem: Column {
         spacing: 8
-        Text {
+        Text { // ①
             text: qsTr("Change the comment for the current puzzle")
             color: Theme.muted
             font.pixelSize: Theme.fontSecondary
         }
-        ScrollView {
+        ScrollView { // ②
             width: parent.width
             height: parent.height - 30
             // the text wraps: an idle horizontal bar would still take the
@@ -43,7 +55,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ③
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }

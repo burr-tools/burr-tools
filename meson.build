@@ -486,7 +486,7 @@ test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
     'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
-    'test/test_curl_abi.cpp'] + uicore_test_src,
+    'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
   include_directories: inc,
   link_with: [libburr_core, libburr_uicore],
   link_args: legacy_link_args,
@@ -652,6 +652,34 @@ endif
 
 if qt6_dep.found()
   subdir('src/qtgui')
+
+  # The program itself, defined here so that it lands in the build folder's
+  # top level, beside burrtools and burrTxt; its parts come from
+  # src/qtgui/meson.build.
+
+  # macOS names an unbundled program after its file; Info.plist names it BurrTools
+  qtgui_plist_args = []
+  qtgui_plist = []
+  if host_machine.system() == 'darwin'
+    qtgui_plist = files('src/qtgui/Info.plist')
+    qtgui_plist_args = ['-Wl,-sectcreate,__TEXT,__info_plist,' + meson.project_source_root() / 'src/qtgui/Info.plist']
+  endif
+
+  # -Dqml_debug=true: qmlprofiler and the QML debugger may attach
+  # (just profile-qml, the Qt profile workflow); never in a release
+  qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
+
+  burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources,
+    include_directories: inc,
+    cpp_args: qtgui_main_args,
+    link_whole: libburr_qtgui,
+    link_args: qtgui_static_link_args + qt_link_args + qtgui_plist_args,
+    link_depends: qtgui_plist,
+    build_rpath: qt_build_rpath,
+    dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
+    win_subsystem: 'windows',
+  )
+
   if not qt_static
     subdir('test/qtgui')
   endif

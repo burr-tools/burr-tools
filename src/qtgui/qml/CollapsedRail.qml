@@ -3,6 +3,19 @@ import BurrTools.Ui
 
 // The rail a collapsed side card becomes (C11): expand button at the top,
 // optional extra items, and the card title written vertically.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌────┐
+//   │①[◧]│   expand
+//   │ ②  │   extras, if any
+//   │ ③S │   the title, turned
+//   │  h │
+//   │  a │
+//   │  p │
+//   │  e │
+//   │  s │
+//   └────┘
 Rectangle {
     id: root
     property string title
@@ -20,19 +33,19 @@ Rectangle {
     Column {
         anchors { top: parent.top; topMargin: 8; horizontalCenter: parent.horizontalCenter }
         spacing: 8
-        IconButton {
+        IconButton { // ①
             objectName: root.expandObjectName
             anchors.horizontalCenter: parent.horizontalCenter
             iconName: root.expandIcon
             tip: qsTr("Expand sidebar")
             onClicked: root.expandClicked()
         }
-        Column {
+        Column { // ②
             id: extraColumn
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 8
         }
-        Item {
+        Item { // ③
             anchors.horizontalCenter: parent.horizontalCenter
             width: titleText.implicitHeight
             height: titleText.implicitWidth

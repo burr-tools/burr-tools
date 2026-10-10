@@ -123,6 +123,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'offscreenrenderer.cpp',
     'pipelinecache.cpp',
     'popupwindowstyle.cpp',
+    'qmloutlines.cpp',
     'scenecontroller.cpp',
     'scenerenderer.cpp',
     'selfcheck.cpp',
@@ -162,26 +163,3 @@ if qt_static
   qtgui_static_sources += configure_file(output: 'qt_static_imports.cpp',
     command: [python3, qt_static_script, qt_static_args, '--cpp', '@OUTPUT@'])
 endif
-
-# macOS names an unbundled program after its file; Info.plist names it BurrTools
-qtgui_plist_args = []
-qtgui_plist = []
-if host_machine.system() == 'darwin'
-  qtgui_plist = files('Info.plist')
-  qtgui_plist_args = ['-Wl,-sectcreate,__TEXT,__info_plist,' + meson.current_source_dir() / 'Info.plist']
-endif
-
-# -Dqml_debug=true: qmlprofiler and the QML debugger may attach
-# (just profile-qml, the Qt profile workflow); never in a release
-qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
-
-burrtools_qt_exe = executable('burrtools-qt', 'main.cpp', qtgui_static_sources,
-  include_directories: inc,
-  cpp_args: qtgui_main_args,
-  link_whole: libburr_qtgui,
-  link_args: qtgui_static_link_args + qt_link_args + qtgui_plist_args,
-  link_depends: qtgui_plist,
-  build_rpath: qt_build_rpath,
-  dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
-  win_subsystem: 'windows',
-)

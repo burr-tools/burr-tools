@@ -16,6 +16,7 @@
 #include "keyboardcues.h"
 #include "layoutcontroller.h"
 #include "offscreenrenderer.h"
+#include "qmloutlines.h"
 #include "test_gpu.h"
 #include "selfcheck.h"
 #include "settingscontroller.h"
@@ -38,11 +39,14 @@
 #include <QKeyEvent>
 #include <QMetaMethod>
 #include <QMouseEvent>
+#include <QQmlComponent>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <QRawFont>
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QScreen>
+#include <QHash>
 #include <QSet>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -217,6 +221,55 @@ private slots:
     }
     QVERIFY2(missing.isEmpty(), qPrintable(missing.join(QStringLiteral(", "))));
 #endif
+  }
+
+  /* Every panel and dialog opens with a wireframe of itself: a "// Wireframe"
+   * comment block whose circled numbers (① ...) each mark, exactly once, the
+   * code below that draws that part -- so the drawing and the code can be
+   * read side by side (src/qtgui/README.md, "Reading the QML"). */
+  void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
+    const QDir dir(QStringLiteral("src/qtgui/qml"));
+    QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "ShapesCard.qml",
+                          "ViewportCard.qml", "VoxelEditorCard.qml", "StatusBar.qml",
+                          "AppMenuBar.qml", "DisplayMenu.qml" };
+    for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
+      if (f != QLatin1String("BtDialog.qml"))     // the frame the dialogs share
+        files << f;
+    QVERIFY(files.size() > 15);
+    const auto isMarker = [](QChar c) { return c.unicode() >= 0x2460 && c.unicode() <= 0x2473; };
+    const auto number = [](QChar c) { return QStringLiteral("marker %1").arg(c.unicode() - 0x2460 + 1); };
+    QStringList problems;
+    for (const QString & name : files) {
+      QFile f(dir.filePath(name));
+      QVERIFY2(f.open(QIODevice::ReadOnly), qPrintable(name));
+      const QStringList lines = QString::fromUtf8(f.readAll()).split(u'\n');
+      qsizetype i = 0;
+      while (i < lines.size() && !lines.at(i).startsWith(QLatin1String("// Wireframe")))
+        i++;
+      if (i == lines.size()) {
+        problems << name + QStringLiteral(": no \"// Wireframe\" header");
+        continue;
+      }
+      QSet<QChar> drawn;
+      for (; i < lines.size() && lines.at(i).startsWith(QLatin1String("//")); i++)
+        for (QChar c : lines.at(i))
+          if (isMarker(c))
+            drawn << c;
+      QHash<QChar, int> marked;
+      for (; i < lines.size(); i++)
+        for (QChar c : lines.at(i))
+          if (isMarker(c))
+            marked[c]++;
+      if (drawn.isEmpty())
+        problems << name + QStringLiteral(": the wireframe numbers nothing");
+      for (QChar c : drawn)
+        if (marked.value(c) != 1)
+          problems << name + QStringLiteral(": %1 marks the code %2 times, not once").arg(number(c)).arg(marked.value(c));
+      for (auto it = marked.cbegin(); it != marked.cend(); ++it)
+        if (!drawn.contains(it.key()))
+          problems << name + QStringLiteral(": %1 marks code but is not in the wireframe").arg(number(it.key()));
+    }
+    QVERIFY2(problems.isEmpty(), qPrintable(problems.join(u'\n')));
   }
 
   void theMonoFontIsTheTokensStack() {
@@ -994,6 +1047,31 @@ private slots:
     if (QGuiApplication::platformName() != QLatin1String("windows"))
       QVERIFY(!adopted);
     QVERIFY(!early.adopt(nullptr));
+  }
+
+  /* BURRTOOLS_QML_OUTLINES: the named items it outlines and where each
+   * was declared */
+  void theOutlinesNameEachItemAndWhereItWasDeclared() {
+    QQmlEngine engine;
+    QQmlComponent c(&engine);
+    c.setData("import QtQuick\n"
+              "Item {\n"
+              "  objectName: \"outer\"\n"
+              "  Item { objectName: \"inner\" }\n"
+              "  Item { visible: false; Item { objectName: \"hidden\" } }\n"
+              "  Item { Item { objectName: \"deep\" } }\n"
+              "}\n", QUrl(QStringLiteral("qrc:/probe/Probe.qml")));
+    std::unique_ptr<QObject> o(c.create());
+    auto * root = qobject_cast<QQuickItem *>(o.get());
+    QVERIFY2(root, qPrintable(c.errorString()));
+    QStringList names;
+    for (QQuickItem * i : QmlOutlines::namedItems(root))
+      names << i->objectName();
+    QCOMPARE(names, QStringList({ "outer", "inner", "deep" }));
+    QCOMPARE(QmlOutlines::declaredAt(root), QStringLiteral("Probe.qml:2"));
+    QCOMPARE(QmlOutlines::declaredAt(QmlOutlines::namedItems(root).at(2)), QStringLiteral("Probe.qml:6"));
+    QObject plain;
+    QVERIFY(QmlOutlines::declaredAt(&plain).isEmpty());
   }
 
   void undoAndRedoWithNothingToDoDoNothing() {

@@ -10,6 +10,19 @@ import BurrTools.Ui
 // Export"), restyled with its content kept (OQ-34): the six file types in
 // legacy's grid, SVG chosen. It writes the 3D view as it is now. The file
 // is chosen in the OS save dialog (legacy had a name field and a chooser).
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Export vector image ──────────────────────────────┐
+//   │ ① Writes the 3D view as it is now. File type:     │
+//   │ ② [ ] Postscript  [ ] Encapsulated Postscript     │
+//   │   [ ] TeX         [ ] PDF                         │
+//   │   [x] SVG         [ ] PGF                         │
+//   │ ③ TeX output holds the picture frame only; ...    │
+//   ├───────────────────────────────────────────────────┤
+//   │ ④                           [Cancel] [Export…]    │
+//   └───────────────────────────────────────────────────┘
+//   ⑤ the OS save dialog    ⑥ "could not be written"
 BtDialog {
     id: root
     objectName: "export.vector.dialog"
@@ -37,14 +50,14 @@ BtDialog {
 
     contentItem: ColumnLayout {
         spacing: 10
-        Text {
+        Text { // ①
             Layout.fillWidth: true
             text: qsTr("Writes the 3D view as it is now. File type:")
             color: Theme.muted
             font.pixelSize: Theme.fontSecondary
             wrapMode: Text.WordWrap
         }
-        GridLayout {
+        GridLayout { // ②
             columns: 2
             columnSpacing: 24
             rowSpacing: 4
@@ -60,7 +73,7 @@ BtDialog {
                 }
             }
         }
-        Text {
+        Text { // ③
             Layout.fillWidth: true
             visible: root.format === 2
             text: qsTr("TeX output holds the picture frame only; it includes the graphic of the same name, exported separately as EPS or PDF.")
@@ -70,7 +83,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ④
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
@@ -91,7 +104,7 @@ BtDialog {
         }
     }
 
-    FileDialog {
+    FileDialog { // ⑤
         id: saveDialog
         title: qsTr("File to save image to")
         fileMode: FileDialog.SaveFile
@@ -107,7 +120,7 @@ BtDialog {
         }
     }
 
-    MessageDialog {
+    MessageDialog { // ⑥
         id: failure
         title: qsTr("Export vector image")
         text: qsTr("The file could not be written.")

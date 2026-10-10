@@ -82,6 +82,62 @@ parameters, and use `pragma ComponentBehavior: Bound` where delegates refer
 to the file's ids. `just qml-aot` counts what is left to the JavaScript
 engine; `qtgui_qml_aot` fails when the count grows.
 
+### Reading the QML
+
+Two aids tie what is on screen to the code that draws it.
+
+**Wireframes.** Every panel (`Main`, `WorkspaceRail`, `CollapsedRail`, the
+cards, `StatusBar`, `AppMenuBar`, `DisplayMenu`) and every dialog
+(`*Dialog.qml` but the shared frame `BtDialog`) opens with a drawing of
+itself, under its description comment:
+
+```qml
+// C10 status bar: status text (or a flash message) and the cursor readout.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌──────────────────────────────────────────────────┐
+//   │ ① Shape S1 has 512 voxels (296 fixed, ...) ② x y z │
+//   └──────────────────────────────────────────────────┘
+Rectangle {
+    ...
+    Text { // ①
+        objectName: "status.text"
+```
+
+Each circled number in the drawing (① to ⑳) marks, once, the line that opens
+the code for that part, as a trailing `// ①`. Search the file for the number
+to jump from the drawing to the code. The drawing shows the layout and the
+parts, not exact sizes; plain characters (`[x]`, `(•)`, `[ ]`, `▸`) suit it
+better than emoji.
+
+A **new panel or dialog file** gets such a header from the start: add the
+file to the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`
+(`test/qtgui/test_qtgui.cpp`) if it is a panel; a `*Dialog.qml` is found by
+its name. When a change adds, moves or removes a part, update the drawing
+and its numbers with it. The test fails when a listed file has no header,
+or when a number in the drawing does not mark exactly one place in the code
+(or a marker in the code is not in the drawing). Primitives (`BtButton`,
+`Segmented`, ...) need none; the gallery (`--gallery`) shows them.
+
+**Outlines at run time.** `BURRTOOLS_QML_OUTLINES=1 burrtools-qt` outlines
+every item the QML gave an `objectName`. The item under the mouse pointer is
+highlighted and labelled with that name and the file and line that declare
+it (`ShapesCard.qml:103`), and its chain of named parents is printed on
+stderr as the pointer moves onto it:
+
+```
+> entities.shapes.row.2.label  ShapesCard.qml:103
+  entities.shapes.row.2  ShapesCard.qml:63
+  entities.shapes.list  ShapesCard.qml:47
+  entities.shapes  Main.qml:284
+  workspace.left  Main.qml:277
+```
+
+The overlay takes no input, so the window works as usual underneath
+(`qmloutlines.cpp`). `burrtools-qt --help` lists this and every other
+environment variable.
+
 ### The command table
 
 `uicore/commands.cpp` holds every command once: its key, label, menu,

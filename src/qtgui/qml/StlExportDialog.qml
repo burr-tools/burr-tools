@@ -14,6 +14,25 @@ import BurrTools.Ui
 // The file is chosen in the OS save dialog when exporting (legacy had a
 // name and a path field plus a chooser); the dialog stays open after an
 // export so more shapes can follow, as legacy's did.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Export STL ────────────────────────────────────────────────────┐
+//   │ Shape                   │ ④ preview          ⑤[Normal|Insides] │
+//   │ ① ┌───────────────────┐ │                                ⑥[⟲] │
+//   │   │ [S1] Result       │ │            ┌─────┐                   │
+//   │   │ [S2] Cage  ...    │ │            │ 3D  │                   │
+//   │   └───────────────────┘ │            └─────┘                   │
+//   │ Parameters              │       ⑧ the exporter's error, if any │
+//   │ ② Bevel     [ 0.5 ]     │                                      │
+//   │   Offset    [ 0.0 ]     │                                      │
+//   │   [x] ...               │                                      │
+//   │ File                    │                                      │
+//   │ ③ [x] Binary STL        │ ⑦ Volume: 12.3 cm³                   │
+//   ├─────────────────────────┴──────────────────────────────────────┤
+//   │ ⑨                                     [Close] [Export STL…]    │
+//   └────────────────────────────────────────────────────────────────┘
+//   ⑩ the OS save dialog
 BtDialog {
     id: root
     objectName: "export.stl.dialog"
@@ -46,7 +65,7 @@ BtDialog {
             spacing: 6
 
             SectionTitle { text: qsTr("Shape"); Layout.topMargin: 0 }
-            Rectangle {
+            Rectangle { // ①
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 90
@@ -120,7 +139,7 @@ BtDialog {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Repeater {
+                Repeater { // ②
                     model: root.stl.parameterCount
                     delegate: Item {
                         id: param
@@ -184,7 +203,7 @@ BtDialog {
             }
 
             SectionTitle { text: qsTr("File") }
-            BtCheckBox {
+            BtCheckBox { // ③
                 objectName: "export.stl.binary"
                 text: qsTr("Binary STL")
                 selected: root.stl.binary
@@ -193,7 +212,7 @@ BtDialog {
         }
 
         // the preview
-        Rectangle {
+        Rectangle { // ④
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: 300
@@ -209,7 +228,7 @@ BtDialog {
                 controller: root.stl
             }
 
-            Segmented {
+            Segmented { // ⑤
                 objectName: "export.stl.mode"
                 anchors { top: parent.top; right: parent.right; margins: 10 }
                 options: [
@@ -220,7 +239,7 @@ BtDialog {
                 onActivated: (v) => root.stl.insides = v
             }
 
-            IconButton {
+            IconButton { // ⑥
                 objectName: "export.stl.home"
                 anchors { top: parent.top; left: parent.left; margins: 8 }
                 iconName: "fit"
@@ -228,7 +247,7 @@ BtDialog {
                 onClicked: root.stl.home()
             }
 
-            Text {
+            Text { // ⑦
                 objectName: "export.stl.volume"
                 anchors { left: parent.left; bottom: parent.bottom; margins: 10 }
                 text: root.stl.volumeText
@@ -236,7 +255,7 @@ BtDialog {
                 font.pixelSize: Theme.fontSecondary
             }
 
-            Text {
+            Text { // ⑧
                 objectName: "export.stl.error"
                 visible: root.stl.error.length > 0
                 anchors.centerIn: parent
@@ -250,7 +269,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ⑨
         implicitHeight: 60
         Row {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
@@ -270,7 +289,7 @@ BtDialog {
         }
     }
 
-    FileDialog {
+    FileDialog { // ⑩
         id: saveDialog
         title: qsTr("Choose STL file to write")
         fileMode: FileDialog.SaveFile

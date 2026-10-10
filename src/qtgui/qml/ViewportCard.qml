@@ -9,6 +9,20 @@ import BurrTools.Ui
 // (C13). Editing in 3D (the Edit button, cursors, ghosts) arrives with the
 // editing phase; the Edit button is shown, disabled, so the toolbar already
 // has its final layout.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌───────────────────────────────────────────────────────┐
+//   │ ②[S1] Result  ③┌Orbit│Pan│Edit│Display│Focus┐   ④┌──┐ │
+//   │                └───────────┬─⑤──────────────┘    └──┘ │
+//   │                    ┌───────┴──────┐              cube │
+//   │                    │ Display menu │                   │
+//   │                    └──────────────┘                   │
+//   │        ① the 3D canvas, the whole card                │
+//   │        ⑦ No shape — open a puzzle ... (when empty)    │
+//   │                                                       │
+//   │ ⑥ Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
+//   └───────────────────────────────────────────────────────┘
 Rectangle {
     id: root
     objectName: "entities.viewport"
@@ -22,7 +36,7 @@ Rectangle {
     readonly property bool focus2d: App.layout.focus === LayoutController.Focus2d
     readonly property bool compact: focus2d || Theme.minimal
 
-    VoxelViewport {
+    VoxelViewport { // ①
         id: canvas
         objectName: "entities.viewport.surface"
         anchors.fill: parent
@@ -30,7 +44,7 @@ Rectangle {
     }
 
     // --- view tag (top left) ---
-    Row {
+    Row { // ②
         objectName: "entities.viewport.tag"
         visible: root.entities && !root.focus2d && App.viewport.hasShape
         anchors { left: parent.left; top: parent.top; margins: 14 }
@@ -58,7 +72,7 @@ Rectangle {
     }
 
     // --- floating toolbar (top centre) ---
-    Rectangle {
+    Rectangle { // ③
         id: toolbar
         objectName: "entities.viewport.toolbar"
         anchors { top: parent.top; topMargin: 8; horizontalCenter: parent.horizontalCenter }
@@ -120,7 +134,7 @@ Rectangle {
                 on: displayMenu.visible
                 onClicked: displayMenu.visible ? displayMenu.close() : displayMenu.open()
 
-                DisplayMenu {
+                DisplayMenu { // ⑤
                     id: displayMenu
                     y: displayButton.height + 8
                     x: displayButton.width / 2 - width / 2
@@ -140,7 +154,7 @@ Rectangle {
     }
 
     // --- view cube (top right, C13 placement) ---
-    ViewCubeItem {
+    ViewCubeItem { // ④
         id: cube
         objectName: "entities.viewport.cube"
         controller: App.viewport
@@ -156,7 +170,7 @@ Rectangle {
     }
 
     // --- hint (bottom left) ---
-    Row {
+    Row { // ⑥
         objectName: "entities.viewport.hint"
         visible: !root.focus2d && !Theme.minimal
         anchors { left: parent.left; bottom: parent.bottom; margins: 14 }
@@ -174,7 +188,7 @@ Rectangle {
     }
 
     // --- empty states ---
-    Text {
+    Text { // ⑦
         objectName: "entities.viewport.empty"
         anchors.centerIn: parent
         visible: text.length > 0

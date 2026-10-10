@@ -15,6 +15,26 @@ import BurrTools.Ui
 // <name>001.png, ... next to the file chosen in the OS save dialog.
 //
 // Legacy's unlabelled "Number of images" field was never read and is gone.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Export images ─────────────────────────────────────────────────────────────┐
+//   │ Export             │ Image                             │ ⑧ ⑨[⟲]            │
+//   │ ① (•) Shape        │ ④ Background    [White|Transp.]   │                   │
+//   │   ( ) Problem      │   Supersampling [Off|2×2|3×3...]  │      ┌─────┐      │
+//   │   ( ) Assembly     │   Colours       [Pieces|Constr.]  │      │ 3D  │      │
+//   │   ( ) Solution ... │ ⑤ [ ] Dim static pieces           │      └─────┘      │
+//   │ Shape              │ Page                              │                   │
+//   │ ② ┌──────────────┐ │ ⑥ (•) A4 portrait ( ) A4 landsc.  │                   │
+//   │   │ [S1] Result  │ │   ( ) Letter ...  ( ) Manual      │                   │
+//   │   └──────────────┘ │ ⑦ Size mm [   ] × [   ]  DPI [  ] │                   │
+//   │ Problem            │   Pixels  [   ] × [   ]           │   The pictures    │
+//   │ ③ ┌──────────────┐ │   Files   [  ]                    │   take this view's│
+//   │   └──────────────┘ │                                   │   orientation.    │
+//   ├────────────────────┴───────────────────────────────────┴───────────────────┤
+//   │ ⑩                                          [Close] [Export images…]        │
+//   └────────────────────────────────────────────────────────────────────────────┘
+//   ⑪ the OS save dialog
 BtDialog {
     id: root
     objectName: "export.image.dialog"
@@ -56,7 +76,7 @@ BtDialog {
             spacing: 4
 
             SectionTitle { text: qsTr("Export"); Layout.topMargin: 0 }
-            Repeater {
+            Repeater { // ①
                 model: [
                     { mode: "shape", label: qsTr("Shape"), on: root.ex.canShape },
                     { mode: "problem", label: qsTr("Problem"), on: root.ex.canProblem },
@@ -85,7 +105,7 @@ BtDialog {
                 border.color: Theme.line2
                 enabled: root.ex.mode === "shape"
                 opacity: enabled ? 1 : 0.5
-                ListView {
+                ListView { // ②
                     objectName: "export.image.shapes"
                     anchors { fill: parent; margins: 4 }
                     clip: true
@@ -143,7 +163,7 @@ BtDialog {
             }
 
             SectionTitle { text: qsTr("Problem") }
-            ProblemList {
+            ProblemList { // ③
                 id: problemList
                 objectName: "export.image.problems"
                 Layout.fillWidth: true
@@ -163,7 +183,7 @@ BtDialog {
             spacing: 6
 
             SectionTitle { text: qsTr("Image"); Layout.topMargin: 0 }
-            GridLayout {
+            GridLayout { // ④
                 columns: 2
                 columnSpacing: 10
                 rowSpacing: 6
@@ -192,7 +212,7 @@ BtDialog {
                     onActivated: (v) => root.ex.constraintColours = v
                 }
             }
-            BtCheckBox {
+            BtCheckBox { // ⑤
                 objectName: "export.image.dim"
                 text: qsTr("Dim static pieces")
                 selected: root.ex.dimStatic
@@ -204,7 +224,7 @@ BtDialog {
                 columns: 2
                 columnSpacing: 16
                 rowSpacing: 2
-                Repeater {
+                Repeater { // ⑥
                     model: [
                         { id: "a4p", label: qsTr("A4 portrait") }, { id: "a4l", label: qsTr("A4 landscape") },
                         { id: "letterp", label: qsTr("Letter portrait") }, { id: "letterl", label: qsTr("Letter landscape") },
@@ -220,7 +240,7 @@ BtDialog {
                     }
                 }
             }
-            GridLayout {
+            GridLayout { // ⑦
                 columns: 4
                 columnSpacing: 8
                 rowSpacing: 6
@@ -273,7 +293,7 @@ BtDialog {
         }
 
         // --- the preview; its orientation is the pictures' ---
-        Rectangle {
+        Rectangle { // ⑧
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: 260
@@ -286,7 +306,7 @@ BtDialog {
                 anchors { fill: parent; margins: 1 }
                 controller: root.ex
             }
-            IconButton {
+            IconButton { // ⑨
                 anchors { top: parent.top; left: parent.left; margins: 8 }
                 iconName: "fit"
                 tip: qsTr("Reset the view")
@@ -302,7 +322,7 @@ BtDialog {
         }
     }
 
-    footer: Item {
+    footer: Item { // ⑩
         implicitHeight: 60
         Text {
             objectName: "export.image.progress"
@@ -333,7 +353,7 @@ BtDialog {
         }
     }
 
-    FileDialog {
+    FileDialog { // ⑪
         id: saveDialog
         title: qsTr("Name for the image files")
         fileMode: FileDialog.SaveFile

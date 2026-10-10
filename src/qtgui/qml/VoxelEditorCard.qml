@@ -5,6 +5,17 @@ import BurrTools.Ui
 // C07 Voxel editor card, first cut: header with the read-only voxel type chip
 // (C14), Focus 2D and collapse. The tools, grid and colour footer arrive with
 // phases P3 and P4.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌───────────────────────────────────────────┐
+//   │ Voxel editor  ①(▪ Brick)  ②[⤢]        [◨] │   title, collapse: Card
+//   ├───────────────────────────────────────────┤
+//   │                                           │
+//   │      ③ The voxel editor (tools, ...)      │
+//   │         arrives in a later phase.         │
+//   │                                           │
+//   └───────────────────────────────────────────┘
 Card {
     id: root
     objectName: "entities.editor"
@@ -14,7 +25,7 @@ Card {
     onCollapseClicked: App.layout.rightCollapsed = true
 
     headerExtras: [
-        Rectangle {
+        Rectangle { // ①
             objectName: "entities.editor.voxelType"
             height: 22
             width: typeRow.implicitWidth + 16
@@ -63,7 +74,7 @@ Card {
             }
         },
         Item { width: 1; height: 1 },
-        IconButton {
+        IconButton { // ②
             objectName: "entities.editor.focus2d"
             iconName: App.layout.focus === LayoutController.Focus2d ? "unfocus" : "focus"
             on: App.layout.focus === LayoutController.Focus2d
@@ -72,7 +83,7 @@ Card {
         }
     ]
 
-    Text {
+    Text { // ③
         anchors.centerIn: parent
         width: parent.width - 40
         horizontalAlignment: Text.AlignHCenter

@@ -15,6 +15,21 @@ import BurrTools.Ui
 //
 // The table fills in as it is computed; Cancel stops that and keeps the rows
 // so far, and the Select / Remove buttons then act on those rows only.
+//
+// Wireframe (each number marks its code below):
+//
+//   ┌ Shape information ─────────────────────────────────────────────────────┐
+//   │ ①     Shape │   Units    │ Identical  │Connectivity│ Holes │Tools│     │
+//   │             │Nor Var Tot │Mir Shp Cmp │Fac Edg Cor │2D  3D │N  M │ Sym │
+//   │ ② [ ] [S1]  │296 216 512 │            │ X   X   X  │       │X  X │ ... │
+//   │   [ ] [S2]  │ ...        │    [S1]    │            │   X   │     │     │
+//   │ ③ This puzzle has no shapes.   (when none)                             │
+//   │ ④ Calculating status information…  [━━━━━━      ]  [Cancel]            │
+//   ├────────────────────────────────────────────────────────────────────────┤
+//   │ ⑤ [Select holes] [Select identical shapes] [... complete] [... mirror] │
+//   │ ⑥                                          [Remove selected] [Close]   │
+//   └────────────────────────────────────────────────────────────────────────┘
+//   Tools: bricks only
 BtDialog {
     id: root
     objectName: "tools.status.dialog"
@@ -98,7 +113,7 @@ BtDialog {
             }
             readonly property int tableWidth: root.selectW + root.shapeW + columnCount * root.colW
 
-            header: Rectangle {
+            header: Rectangle { // ①
                 z: 2
                 width: table.tableWidth
                 height: 46
@@ -152,7 +167,7 @@ BtDialog {
                 }
             }
 
-            delegate: Rectangle {
+            delegate: Rectangle { // ②
                 id: row
                 required property int index
                 required property string idText
@@ -229,7 +244,7 @@ BtDialog {
                 }
             }
 
-            Text {
+            Text { // ③
                 anchors.centerIn: parent
                 visible: table.count === 0 && !root.model.busy
                 text: qsTr("This puzzle has no shapes.")
@@ -239,7 +254,7 @@ BtDialog {
         }
 
         // legacy's separate "Calculating Status information" progress window
-        RowLayout {
+        RowLayout { // ④
             visible: root.model.busy
             Layout.fillWidth: true
             spacing: 10
@@ -272,7 +287,7 @@ BtDialog {
 
     footer: Item {
         implicitHeight: Math.max(selectButtons.implicitHeight, closeButtons.height) + 28
-        Flow {
+        Flow { // ⑤
             id: selectButtons
             anchors { left: parent.left; leftMargin: 20; right: closeButtons.left; rightMargin: 24; verticalCenter: parent.verticalCenter }
             spacing: 8
@@ -282,7 +297,7 @@ BtDialog {
             BtButton { objectName: "tools.status.selectComplete"; text: qsTr("Select identical complete"); onClicked: root.model.selectIdentical("complete") }
             BtButton { objectName: "tools.status.selectMirror"; text: qsTr("Select identical mirror"); onClicked: root.model.selectIdentical("mirror") }
         }
-        Row {
+        Row { // ⑥
             id: closeButtons
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             spacing: 8
