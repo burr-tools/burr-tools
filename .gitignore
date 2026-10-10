@@ -42,3 +42,17 @@ bench_run.log
 callgrind*.out*
 perf.data*
 
+# new ui
+artifacts/*
+# design-spec: only the written spec is kept. BurrTools-SPEC-FULL-FINAL-v6.md
+# holds every document of the spec bundle in one file (each part marked
+# <!-- FILE: path -->); the bundle's separate copies, the HTML mock and the
+# assets stay out -- the glyphs, icons and design tokens the GUI uses are in
+# src/qtgui/resources.
+design-spec/*
+!design-spec/BurrTools-SPEC-FULL-FINAL-v6.md
+!design-spec/gui-migration.md
+.vscode/
+.claude/settings.local.json
+.claude/skills
+.cache

@@ -27,16 +27,19 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target for compatibility with older macOS versions.
-# Minimum macOS version 11.0 (Big Sur) for broader compatibility while still
-# supporting modern features.
+# Set macOS deployment target: the oldest macOS the binaries run on, 14.0
+# (Sonoma) by default -- above official Qt 6.11's floor (macOS 13), so the
+# legacy GUI and burrtools-qt share it.
 #
 # These are global rather than project arguments deliberately: meson subprojects
 # (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
 # with those their objects get built for the host's macOS version and linked into
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
-macos_deployment_target = '11.0'
+#
+# An option so a build can raise it: one against Homebrew's Qt, whose bottles
+# target the macOS they were built on, cannot go below that.
+macos_deployment_target = get_option('macos_deployment_target')
 
 if host_machine.system() == 'darwin'
   add_global_arguments('-mmacosx-version-min=' + macos_deployment_target, language: ['c', 'cpp', 'objcpp'])
@@ -326,11 +329,17 @@ if not fltk_dep.found()
 endif
 
 
-link_args=[]
+# The Windows binaries are linked fully static so they run without shipping
+# any DLLs. These used to be project-wide link arguments; they are now passed
+# to each legacy target explicitly, because the Qt GUI (src/qtgui) links
+# against Qt's shared libraries, and a static C++ runtime in its executable
+# would sit next to the one those DLLs already load -- two copies of libstdc++
+# in one process. Every target that had them before still gets exactly the
+# same arguments.
+legacy_link_args = []
 
 if host_machine.system() == 'windows'
-  # add_project_arguments('-Wl,-lws2_32', language: ['cpp'])
-  link_args += [
+  legacy_link_args += [
     '-static'
     ,'-static-libgcc'
     ,'-static-libstdc++'
@@ -338,9 +347,6 @@ if host_machine.system() == 'windows'
     ,'-lcomctl32'
   ]
 endif
-
-add_project_link_arguments(link_args,
-			   language: ['c', 'cpp', 'objc'])
 
 # Manifold (https://github.com/elalish/manifold): the boolean / Minkowski
 # engine behind the chamfered STL export of the non-cube grids. Built from
@@ -380,11 +386,13 @@ libburr_core = static_library('burr_core',
 executable('burrTxt', ['src/burrTxt.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 burrtxt2_exe = executable('burrTxt2', ['src/burrTxt2.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 # get_supported_arguments so these stay a no-op on compilers without the flag
@@ -410,8 +418,67 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
           dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep, json_dep, httpget_dep],
+          link_args: legacy_link_args,
           win_subsystem: 'windows',
 	  )
+
+# The GUI-independent parts of the user interface: camera and view-cube maths,
+# mesh building and picking for the 3D view, the layout model, the command
+# table, the document session and the settings store. Nothing in here may
+# include a toolkit header -- that is what lets test_burrtools cover it
+# without Qt or FLTK, and what keeps a later toolkit change cheap.
+#
+# The document session uses puzzleHistory_c, which lives in src/gui and was
+# GUI-free before this library existed. It is not compiled in here because
+# test_burrtools already compiles it itself; burr_guicommon carries it (and
+# its neighbour solveprogresscache) for the Qt GUI instead.
+libburr_uicore = static_library('burr_uicore', [
+    'src/uicore/assemblyscene.cpp',
+    'src/uicore/camera.cpp',
+    'src/uicore/commands.cpp',
+    'src/uicore/depthsort.cpp',
+    'src/uicore/documentsession.cpp',
+    'src/uicore/imagepages.cpp',
+    'src/uicore/layoutmodel.cpp',
+    'src/uicore/palette.cpp',
+    'src/uicore/puzzletools.cpp',
+    'src/uicore/scenemesh.cpp',
+    'src/uicore/settingsstore.cpp',
+    'src/uicore/vecmath.cpp',
+    'src/uicore/vectorexport.cpp',
+    'src/uicore/viewcube.cpp',
+    'src/uicore/windowplacement.cpp',
+  ],
+  include_directories: inc,
+  link_with: libburr_core,
+  dependencies: [thread_dep, zlib_dep],
+)
+
+libburr_guicommon = static_library('burr_guicommon', [
+    'src/gui/puzzlehistory.cpp',
+    'src/gui/solveprogresscache.cpp',
+  ],
+  include_directories: inc,
+  link_with: libburr_core,
+)
+
+uicore_test_src = [
+  'test/test_ui_assemblyscene.cpp',
+  'test/test_ui_camera.cpp',
+  'test/test_ui_commands.cpp',
+  'test/test_ui_depthsort.cpp',
+  'test/test_ui_documentsession.cpp',
+  'test/test_ui_layoutmodel.cpp',
+  'test/test_ui_palette.cpp',
+  'test/test_ui_puzzletools.cpp',
+  'test/test_ui_scenemesh.cpp',
+  'test/test_ui_settingsstore.cpp',
+  'test/test_ui_vectorexport.cpp',
+  'test/test_ui_viewcube.cpp',
+  'test/test_ui_windowplacement.cpp',
+  'test/alloccount.cpp',
+  'test/bench_ui.cpp',
+]
 
 catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
 
@@ -419,9 +486,10 @@ test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
     'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
-    'test/test_curl_abi.cpp'],
+    'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
   include_directories: inc,
-  link_with: libburr_core,
+  link_with: [libburr_core, libburr_uicore],
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],
 )
 
@@ -480,6 +548,7 @@ if not python_opt.disabled()
         python_src,
         include_directories: inc,
         link_with: libburr_core,
+        link_args: legacy_link_args,
         dependencies: [pybind11_dep, thread_dep, zlib_dep],
       )
 
@@ -514,4 +583,104 @@ if not meson.is_cross_build()
     timeout: 300,
     workdir: meson.project_source_root(),
   )
+endif
+
+# burrtools-qt: the redesigned GUI (design-spec/, the Qt 6 Quick profile).
+# It is a second, independent binary next to the FLTK burrtools; nothing in
+# the legacy GUI depends on it. 'auto' builds it whenever a new enough Qt is
+# installed and silently skips it otherwise, so a checkout without Qt still
+# builds and tests everything else exactly as before.
+#
+# Qt >= 6.8: QQuickRhiItem (the 3D view's host) arrived in 6.7, and 6.8 is the
+# LTS the implementation guide names as the floor. private_headers is needed
+# for QRhi, which Qt ships in its semi-private include directory.
+#
+# qt.qml_module() needs meson >= 1.7. The project as a whole does not demand
+# that -- CI installs an older meson for the legacy jobs -- so an older meson
+# simply skips this GUI (or refuses, when it was asked for explicitly).
+qt_gui_opt = get_option('qt_gui')
+if meson.version().version_compare('<1.7')
+  if qt_gui_opt.enabled()
+    error('qt_gui needs meson >= 1.7, this is ' + meson.version())
+  endif
+  qt_gui_opt = qt_gui_opt.disable_auto_if(true)
+endif
+
+# qt_static: a static Qt, found through its qmake (point meson at it with a
+# native file: [binaries] qmake = '.../qt6-static/bin/qmake6'), linked into
+# one standalone burrtools-qt (src/qtgui/meson.build adds the plugins a
+# static program must name). The Qt tests stay with the shared build.
+qt_static = get_option('qt_static')
+qt6_dep = dependency('qt6',
+  modules: ['Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg'],
+  private_headers: true,
+  version: '>=6.8',
+  required: qt_gui_opt,
+  method: qt_static ? 'qmake' : 'auto',
+  static: qt_static,
+)
+
+# The official Qt frameworks for macOS name themselves @rpath/..., so the Qt
+# executables carry Qt's library directory as a build rpath: they then run
+# from the build tree, and macdeployqt finds the frameworks to bundle.
+# (Homebrew's Qt uses absolute paths and needs none; elsewhere meson or the
+# environment already covers it.)
+qt_build_rpath = ''
+if qt6_dep.found() and host_machine.system() == 'darwin' and not qt_static
+  qt_qmake = find_program('qmake6', 'qmake', required: false)
+  if qt_qmake.found()
+    qt_build_rpath = run_command(qt_qmake, '-query', 'QT_INSTALL_LIBS', check: false).stdout().strip()
+  endif
+endif
+
+# Homebrew's Qt bottles target the macOS they were built on, not ours: linking
+# one built for a newer macOS than macos_deployment_target makes ld warn (Xcode
+# 26's ld does), and --werror fail. The Qt executables then target the newest
+# macOS any of Qt's frameworks needs; the legacy binaries keep the option's.
+# The official Qt (built for macOS 13) never raises it.
+qt_link_args = []
+if qt_build_rpath != ''
+  qt_macos_min = run_command('sh', '-c',
+    'd=$1; shift; for m; do otool -l "$d/Qt$m.framework/Qt$m"; done 2>/dev/null | sed -n "s/^ *minos //p" | sort -t. -k1,1n -k2,2n | tail -n 1',
+    'sh', qt_build_rpath, 'Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg',
+    check: false).stdout().strip()
+  if qt_macos_min != '' and qt_macos_min.version_compare('>' + macos_deployment_target)
+    message('Qt is built for macOS @0@, so the Qt executables target it (macos_deployment_target is @1@)'.format(qt_macos_min, macos_deployment_target))
+    qt_link_args = ['-mmacosx-version-min=' + qt_macos_min]
+  endif
+endif
+
+if qt6_dep.found()
+  subdir('src/qtgui')
+
+  # The program itself, defined here so that it lands in the build folder's
+  # top level, beside burrtools and burrTxt; its parts come from
+  # src/qtgui/meson.build.
+
+  # macOS names an unbundled program after its file; Info.plist names it BurrTools
+  qtgui_plist_args = []
+  qtgui_plist = []
+  if host_machine.system() == 'darwin'
+    qtgui_plist = files('src/qtgui/Info.plist')
+    qtgui_plist_args = ['-Wl,-sectcreate,__TEXT,__info_plist,' + meson.project_source_root() / 'src/qtgui/Info.plist']
+  endif
+
+  # -Dqml_debug=true: qmlprofiler and the QML debugger may attach
+  # (just profile-qml, the Qt profile workflow); never in a release
+  qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
+
+  burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources,
+    include_directories: inc,
+    cpp_args: qtgui_main_args,
+    link_whole: libburr_qtgui,
+    link_args: qtgui_static_link_args + qt_link_args + qtgui_plist_args,
+    link_depends: qtgui_plist,
+    build_rpath: qt_build_rpath,
+    dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
+    win_subsystem: 'windows',
+  )
+
+  if not qt_static
+    subdir('test/qtgui')
+  endif
 endif

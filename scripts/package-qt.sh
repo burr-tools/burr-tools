@@ -1,0 +1,189 @@
+#!/usr/bin/env bash
+# Package burrtools-qt -- the redesigned Qt 6 Quick GUI (src/qtgui) -- as a
+# self-contained preview build for the platform this runs on, so people can
+# try it without building it:
+#
+#   Windows (MSYS2 UCRT64)  a folder with every DLL it needs, zipped
+#   macOS                   burrtools-qt.app made by macdeployqt, zipped
+#   Linux                   an AppImage made by linuxdeploy and its Qt plugin
+#
+# usage: scripts/package-qt.sh [build dir] [output dir]
+#        (defaults: build-rel, artifacts/qt; run from the project root)
+#
+# CI runs it after the Qt tests (build-and-release.yml) and uploads the
+# result as a workflow artifact; it is not part of a release.
+set -euo pipefail
+
+BUILD="${1:-build-rel}"
+OUT="${2:-artifacts/qt}"
+VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
+ARCH="$(uname -m)"
+mkdir -p "$OUT"
+
+case "$(uname -s)" in
+
+  MINGW* | MSYS* | CYGWIN*)
+    NAME="burrtools-qt-${VERSION}-windows-${ARCH}"
+    DIR="$OUT/$NAME"
+    rm -rf "$DIR"
+    mkdir -p "$DIR"
+    cp "$BUILD/burrtools-qt.exe" "$DIR/"
+    # Qt and what the QML imports need -- not the plugins the program never
+    # loads: QML debugging, touch input, network information, TLS, and the
+    # image formats besides SVG (PNG is built into Qt). Direct3D's shader
+    # compiler comes with Windows 10 and later.
+    windeployqt6 --qmldir src/qtgui/qml --no-translations --no-opengl-sw \
+      --no-system-d3d-compiler --no-system-dxc-compiler \
+      --skip-plugin-types qmltooling,generic,networkinformation,tls \
+      --exclude-plugins qgif,qico,qjpeg \
+      "$DIR/burrtools-qt.exe"
+    # Qt Quick Controls styles other than Basic, which main() sets and the
+    # program never leaves
+    for style in FluentWinUI3 Fusion Imagine Material Universal Windows; do
+      rm -rf "$DIR/qml/QtQuick/Controls/$style"
+    done
+    rm -rf "$DIR/qml/QtQuick/NativeStyle"
+    rm -f "$DIR"/Qt6QuickControls2{FluentWinUI3StyleImpl,Fusion,FusionStyleImpl,Imagine,ImagineStyleImpl,Material,MaterialStyleImpl,Universal,UniversalStyleImpl,WindowsStyleImpl}.dll
+    # the symbol table is more than half the file (macdeployqt and
+    # linuxdeploy strip by themselves)
+    strip -s "$DIR/burrtools-qt.exe"
+    # MSYS2's Qt looks for its QML modules under share/qt6/qml; windeployqt
+    # puts them, and the plugins, beside the program
+    printf '[Paths]\nPrefix = .\nPlugins = .\nQmlImports = qml\n' > "$DIR/qt.conf"
+    # windeployqt brings Qt and its plugins, not the MSYS2 libraries Qt itself
+    # links against (ICU, zstd, HarfBuzz, the GCC runtime ...): copy whatever
+    # ldd finds under the MSYS2 prefix, again until nothing new turns up.
+    while :; do
+      missing="$(find "$DIR" \( -iname '*.exe' -o -iname '*.dll' \) -print0 |
+        xargs -0 ldd 2>/dev/null | awk '$3 ~ /^\/(ucrt64|mingw64|clang64)\// { print $3 }' | sort -u |
+        while read -r lib; do [ -e "$DIR/$(basename "$lib")" ] || echo "$lib"; done)"
+      [ -z "$missing" ] && break
+      echo "$missing" | xargs cp -t "$DIR/"
+    done
+    cp -r examples "$DIR/"
+    (cd "$OUT" && rm -f "$NAME.zip" && zip -qr "$NAME.zip" "$NAME")
+    rm -rf "$DIR"
+    ;;
+
+  Darwin)
+    APP="$OUT/burrtools-qt.app"
+    rm -rf "$APP"
+    mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+    cp "$BUILD/burrtools-qt" "$APP/Contents/MacOS/"
+    cp mac/BurrTools.icns "$APP/Contents/Resources/"
+    # the macOS the program was linked for: above 14.0 when its Qt needs it
+    MINOS="$(vtool -show-build "$BUILD/burrtools-qt" | sed -n 's/^ *minos //p' | head -n 1)"
+    MINOS="${MINOS:-14.0}"
+    cat > "$APP/Contents/Info.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>burrtools-qt</string>
+	<key>CFBundleIdentifier</key>
+	<string>net.sourceforge.burrtools.qt</string>
+	<key>CFBundleName</key>
+	<string>BurrTools</string>
+	<key>CFBundleDisplayName</key>
+	<string>BurrTools (Qt preview)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>${VERSION}</string>
+	<key>CFBundleIconFile</key>
+	<string>BurrTools</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>${MINOS}</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSRequiresAquaSystemAppearance</key>
+	<false/>
+</dict>
+</plist>
+PLIST
+    macdeployqt "$APP" -qmldir=src/qtgui/qml
+    # what the QML imports pull in but the program never loads: Qt Quick
+    # Controls styles other than Basic (main() sets Basic), and the plugin
+    # types the Windows build skips too (SQL drivers, networking, TLS)
+    for style in FluentWinUI3 Fusion Imagine Material Universal iOS macOS; do
+      rm -rf "$APP/Contents/Resources/qml/QtQuick/Controls/$style"
+    done
+    rm -rf "$APP/Contents/Resources/qml/QtQuick/NativeStyle"
+    for fw in FluentWinUI3StyleImpl Fusion FusionStyleImpl Imagine ImagineStyleImpl Material MaterialStyleImpl \
+              Universal UniversalStyleImpl IOSStyleImpl MacOSStyleImpl; do
+      rm -rf "$APP/Contents/Frameworks/QtQuickControls2$fw.framework"
+    done
+    rm -rf "$APP/Contents/PlugIns/"{sqldrivers,networkinformation,tls,qmltooling,generic}
+    # the build rpath to the Qt it was built against (meson.build) has no
+    # place on another Mac, and would hide a framework missing from the bundle
+    BIN="$APP/Contents/MacOS/burrtools-qt"
+    otool -l "$BIN" | awk '/LC_RPATH/ { getline; getline; print $2 }' | { grep -v '^@' || true; } |
+      while read -r rp; do install_name_tool -delete_rpath "$rp" "$BIN"; done
+    # rewriting install names voids the linker's ad-hoc signature, without
+    # which Apple Silicon refuses to run a binary: sign the whole bundle again
+    codesign --force --deep --sign - "$APP"
+    # the bundle must start on its own: show the main window once (the cocoa
+    # plugin is the only platform bundled) with the Qt it was built against
+    # out of sight; a missing framework, QML module or a bad signature fails here
+    env -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QML_IMPORT_PATH -u DYLD_LIBRARY_PATH -u DYLD_FRAMEWORK_PATH \
+      BURRTOOLS_QT_SETTINGS="$OUT/smoke.rc" \
+      "$BIN" "--screenshot=$OUT/smoke.png"
+    test -s "$OUT/smoke.png"
+    rm -f "$OUT"/smoke.*     # the shot, its settings file and pipeline caches
+    (cd "$OUT" && ditto -c -k --keepParent burrtools-qt.app "burrtools-qt-${VERSION}-macos-${ARCH}.zip")
+    rm -rf "$APP"
+    ;;
+
+  Linux)
+    TOOLS="$OUT/.tools"
+    APPDIR="$OUT/AppDir"
+    rm -rf "$TOOLS" "$APPDIR"
+    mkdir -p "$TOOLS"
+    for t in linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage \
+             linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage; do
+      curl -fsSL -o "$TOOLS/$(basename "$t")" "https://github.com/$t"
+      chmod +x "$TOOLS/$(basename "$t")"
+    done
+    # linuxdeploy takes square icons of the usual sizes only; the source is
+    # neither (1066 x 1093), so fit it into 256 and pad it out square
+    convert mac/icon-source.png -resize 256x256 -background none -gravity center -extent 256x256 \
+      "$TOOLS/burrtools-qt.png"
+    cat > "$TOOLS/burrtools-qt.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=BurrTools (Qt preview)
+Comment=Design and solve interlocking burr puzzles
+Exec=burrtools-qt
+Icon=burrtools-qt
+Categories=Game;LogicGame;Education;
+DESKTOP
+    export PATH="$TOOLS:$PATH"            # the Qt plugin is found by name
+    export APPIMAGE_EXTRACT_AND_RUN=1     # CI runners have no FUSE
+    export QML_SOURCES_PATHS="$PWD/src/qtgui/qml"
+    export QMAKE="${QMAKE:-$(command -v qmake6 || command -v qmake)}"
+    export LDAI_OUTPUT="$OUT/burrtools-qt-${VERSION}-linux-${ARCH}.AppImage"
+    linuxdeploy-x86_64.AppImage --appdir "$APPDIR" \
+      --executable "$BUILD/burrtools-qt" \
+      --desktop-file "$TOOLS/burrtools-qt.desktop" \
+      --icon-file "$TOOLS/burrtools-qt.png" \
+      --plugin qt --output appimage
+    rm -rf "$TOOLS" "$APPDIR"
+    # the AppImage must start on its own: show the main window once on a
+    # virtual screen with the Qt it was built against out of sight (Qt
+    # Quick's software renderer, which needs no GPU on the runner); a missing
+    # library, plugin or QML module fails here
+    env -u QT_PLUGIN_PATH -u QML2_IMPORT_PATH -u QML_IMPORT_PATH -u LD_LIBRARY_PATH \
+      QT_QUICK_BACKEND=software BURRTOOLS_QT_SETTINGS="$OUT/smoke.rc" \
+      xvfb-run -a "$LDAI_OUTPUT" "--screenshot=$OUT/smoke.png"
+    test -s "$OUT/smoke.png"
+    rm -f "$OUT"/smoke.*     # the shot, its settings file and pipeline caches
+    ;;
+
+  *)
+    echo "package-qt.sh: no packaging for $(uname -s)" >&2
+    exit 1
+    ;;
+esac
+
+ls -la "$OUT"

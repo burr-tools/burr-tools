@@ -64,15 +64,24 @@ test-regression: build
 # Also absent is `--suppress="*:*test*"`: as a substring glob it matches any path
 # merely containing "test", not the test directory; `-i test` above already
 # excludes that directory, so don't add it back.
+#
+# Where Qt is found the build has the Qt GUI: --library=qt teaches cppcheck
+# Qt's macros (Q_PROPERTY, QT_CONFIG, ...), `-i build` skips what moc and
+# qmlcachegen generate, and the framework glob covers macOS Qt's headers
+# (Homebrew's and the official), which /usr/include does not.
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
              -i src/lua \
              -i test \
+             -i build \
+             --library=qt \
              --suppress="*:*subprojects*" \
              --suppress="*:*src/lua*" \
              --suppress="*:*/usr/include/*" \
+             --suppress="*:*/Qt*.framework/*" \
              --suppress="preprocessorErrorDirective:*python*" \
+             --suppress="preprocessorErrorDirective:*qt6*" \
              --enable=warning,performance,portability \
              --inline-suppr \
              --error-exitcode=1 \
@@ -102,28 +111,76 @@ check-all: check-cppcheck check-tidy
 setup-cov:
     @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
 
-# Shared gcovr filters, used by both `coverage` and `coverage-html` so the two
+# Shared gcovr options, used by both `coverage` and `coverage-html` so the two
 # recipes can never silently drift and report different numbers. Excluding
 # build-cov/subprojects skips walking vendored coverage data the filters would
 # discard anyway (~44s saved); it must not change the reported TOTAL.
-gcovr_flags := "--root . " + \
-    "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/' " + \
+gcovr_base := "--root . " + \
     "--exclude 'src/lua/' " + \
     "--exclude-directories 'build-cov/subprojects' " + \
     ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
 
-# Report test coverage for BurrTools sources (excludes subprojects and lua)
-coverage: setup-cov
-    ninja -C build-cov
-    ./build-cov/test_burrtools
-    gcovr {{ gcovr_flags }} --print-summary build-cov
+# What is measured, reported as one figure per area. The library is the
+# canonical figure compared across pull requests; the redesigned GUI's two
+# layers stand beside it. The GUI suites run library code too, so the
+# library's figure is taken from the library's own tests alone, before they
+# run (_coverage-tests) -- adding them never shifts the library's number.
+# src/qtgui counts its C++ only: QML is not compiled code gcov sees.
+gcovr_lib := "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/'"
+gcovr_uicore := "--filter 'src/uicore/'"
+gcovr_qtgui := "--filter 'src/qtgui/'"
 
-# Write an HTML coverage report to coverage-html/index.html
-coverage-html: setup-cov
+# Build the coverage build and run the suites that feed it: test_burrtools
+# (the library and, as its [ui] cases, src/uicore), then the Qt GUI's suites
+# when the coverage build has the Qt GUI (Qt >= 6.8 found). Headless Linux
+# needs the render tests' platform set up as the qt-linux CI job does.
+_coverage-tests: setup-cov
+    #!/usr/bin/env bash
+    set -euo pipefail
     ninja -C build-cov
-    ./build-cov/test_burrtools
-    mkdir -p coverage-html
-    gcovr {{ gcovr_flags }} --print-summary --html-details coverage-html/index.html
+    # counters add up across runs: start from zero, so the library's figure
+    # below holds the library's tests only, not an earlier run's GUI suites
+    find build-cov -name '*.gcda' -delete
+    ./build-cov/test_burrtools '~[ui]'
+    gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
+    ./build-cov/test_burrtools '[ui]'
+    if [ -d build-cov/test/qtgui ]; then
+        meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+    fi
+
+# One gcov pass into a JSON tracefile (and an HTML report of every area when
+# html names its index file), then a summary per area read back from it --
+# the library's from the tracefile _coverage-tests took after its own tests.
+# (The HTML report shows every suite's hits, the library's files included.)
+_coverage-summary html="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    html_args=()
+    if [ -n "{{ html }}" ]; then
+        mkdir -p "$(dirname "{{ html }}")"
+        html_args=(--html-details "{{ html }}")
+    fi
+    gcovr {{ gcovr_base }} {{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }} \
+        --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
+    area() {
+        echo "== $1"     # the CI report picks these lines out of the build's output
+        local tracefile="$2"
+        shift 2
+        # the summary is what is wanted; the full text report goes to a file
+        # (gcovr refuses /dev/null as an output)
+        gcovr --root . --add-tracefile "$tracefile" "$@" --print-summary --output build-cov/coverage-area.txt
+    }
+    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
+    area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    if [ -d build-cov/test/qtgui ]; then
+        area "Qt GUI: src/qtgui, C++ only" build-cov/coverage.json {{ gcovr_qtgui }}
+    fi
+
+# Report test coverage per area (library, UI core, Qt GUI)
+coverage: _coverage-tests _coverage-summary
+
+# Per-area coverage summary plus an HTML report of every area in coverage-html/
+coverage-html: _coverage-tests (_coverage-summary "coverage-html/index.html")
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
@@ -132,6 +189,28 @@ coverage-html: setup-cov
 # previous snapshot so one command shows the change's impact.
 bench *args: build-release
     ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
+
+# QML bindings qmlcachegen leaves to the JS engine, per file, against the baseline (--update writes it)
+qml-aot *args: build-qt
+    python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --import build/src/qtgui/qml/import --baseline test/qtgui/qml_aot_baseline.json {{args}}
+
+# burrtools-qt cold and warm start-up times (scripts/profile-qt.sh) into artifacts/profile
+startup-time: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile startup
+
+# A qmlprofiler trace of burrtools-qt in artifacts/profile/qml.qtd (a -Dqml_debug=true build of its own)
+profile-qml:
+    @if [ ! -d "build-prof" ]; then meson setup build-prof --buildtype=debugoptimized -Dqt_gui=enabled -Dqml_debug=true; fi
+    meson compile -C build-prof burrtools-qt
+    bash scripts/profile-qt.sh build-prof artifacts/profile qml
+
+# A heaptrack profile of burrtools-qt in artifacts/profile (Linux, heaptrack installed)
+heap-qt: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile heap
+
+# Micro-benchmarks of the Qt GUI's hot paths in src/uicore (release build); extra args go to Catch2
+bench-ui *args: build-release
+    ./build-rel/test_burrtools "[bench]" {{args}}
 
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
@@ -175,6 +254,43 @@ test-release:
 # Headless GUI invariant check (menu table consistency)
 check-gui: build
     ./build/burrtools --self-check
+
+# --- burrtools-qt, the redesigned GUI (src/qtgui) ---------------------------
+# Built by `just build` whenever Qt >= 6.8 and meson >= 1.7 are installed
+# (-Dqt_gui=auto); these recipes insist on it and fail clearly when it is not.
+
+# Configure the build directory with the Qt GUI required, then build
+build-qt: setup
+    meson configure build -Dqt_gui=enabled
+    ninja -C build
+
+# Run burrtools-qt, optionally with a puzzle file: just run-qt examples/PelikanBurr.xmpuzzle
+run-qt *args: build-qt
+    ./build/burrtools-qt {{args}}
+
+# Open the component gallery: every primitive in every state (light/dark toggle)
+run-gallery: build-qt
+    ./build/burrtools-qt --gallery
+
+# Run only the Qt GUI tests (controllers, QML shell, gallery at each dp ratio)
+# plus its self-check
+test-qt: build-qt
+    ./build/burrtools-qt --self-check
+    meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+
+# Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
+update-snapshots rows="": build-qt
+    BURRTOOLS_UPDATE_SNAPSHOTS=1 BURRTOOLS_SNAPSHOTS_ONLY="{{rows}}" meson test -C build --print-errorlogs qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+
+# Self-contained burrtools-qt preview in artifacts/qt: zip (Windows), .app (macOS), AppImage (Linux); as CI
+deploy-qt:
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true -Dqt_gui=enabled; else meson configure build-rel -Dqt_gui=enabled; fi
+    meson compile -C build-rel burrtools-qt
+    bash scripts/package-qt.sh build-rel artifacts/qt
+
+# Standalone burrtools-qt.exe with static Qt in artifacts/qt-static (MSYS2 qt6-static; as qt-standalone.yml)
+build-qt-static:
+    bash scripts/build-qt-static.sh build-static artifacts/qt-static
 
 # Generate the Doxygen API reference into gendoc/html
 #

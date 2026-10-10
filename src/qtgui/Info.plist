@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Linked into the burrtools-qt executable (meson.build): run from the
+     build tree, outside an app bundle, macOS would name the program after its
+     file, burrtools-qt, in the menu bar and its About, Hide and Quit items.
+     A bundle's own Info.plist (scripts/package-qt.sh) takes precedence. -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>BurrTools</string>
+	<key>CFBundleDisplayName</key>
+	<string>BurrTools</string>
+</dict>
+</plist>

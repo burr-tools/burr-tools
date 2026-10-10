@@ -55,6 +55,16 @@ jobs:
         name: burrtools-testlog-linux
         path: build/meson-logs/testlog.txt
     
+    # The redesigned GUI's hot paths in src/uicore (test/bench_ui.cpp),
+    # measured on this release build. A report, not a gate: shared runners
+    # vary too much to fail on time.
+    - name: Micro-benchmarks (report)
+      continue-on-error: true
+      shell: bash
+      run: |
+        ./build/test_burrtools "[bench]" --benchmark-samples 20 --benchmark-no-analysis | tee bench.txt
+        { echo "## Micro-benchmarks (src/uicore, release)"; echo '```'; cat bench.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
     - name: Run static analysis
       run: just check
     
@@ -159,6 +169,71 @@ jobs:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
 
+  # AddressSanitizer and UndefinedBehaviorSanitizer over the unit tests and
+  # the Qt GUI's suites (renders included, on lavapipe as in qt-linux). Qt
+  # and the Mesa driver are not instrumented and keep memory to the end, so
+  # leaks are checked in test_burrtools only.
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    - name: Find lavapipe
+      run: |
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+
+    - name: Build with ASan and UBSan
+      run: |
+        meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
+          -Dqt_gui=enabled -Dpython=disabled
+        ninja -C build-asan
+
+    - name: Unit tests, leaks included
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+      run: ./build-asan/test_burrtools --reporter compact
+
+    - name: Qt GUI suites
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sanitizers-testlog
+        path: build-asan/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
   coverage:
     runs-on: ubuntu-latest
     continue-on-error: true
@@ -176,20 +251,60 @@ jobs:
     - name: Update package list
       run: sudo apt-get update
 
+    # The Qt GUI's packages as in qt-linux, so the coverage build has
+    # burrtools-qt and its suites too; meson >= 1.7 from pip, which that GUI
+    # needs (Ubuntu's is older).
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr
+      run: |
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    # Mesa's software Vulkan driver (lavapipe), found rather than named: its
+    # manifest's file name has changed between Mesa releases. The summary
+    # shows in the log which Vulkan device the render tests will get.
+    - name: Find lavapipe
+      run: |
+        ls /usr/share/vulkan/icd.d/
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+        VK_DRIVER_FILES="$icd" vulkaninfo --summary
 
     - name: Install just
       uses: extractions/setup-just@v2
 
     # `shell: bash` sets pipefail, so a gcovr failure is not masked by tee's
-    # exit status.
+    # exit status. The Qt suites' render tests run as in qt-linux: Vulkan on
+    # Mesa's lavapipe, test_qtgui as "xcb" on Xvfb.
     - name: Report coverage and generate HTML report
       shell: bash
-      run: just coverage-html | tee coverage-summary.txt
+      env:
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+        VK_LOADER_DEBUG: error
+      run: xvfb-run -a just coverage-html | tee coverage-summary.txt
 
     # Uploaded before the report body is built, so the body can link to it:
     # the artifact-url output does not exist until the upload has run.
+    - name: Upload the coverage test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-testlog
+        path: build-cov/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
     - name: Upload HTML coverage report
       id: coverage_artifact
       uses: actions/upload-artifact@v4
@@ -206,12 +321,14 @@ jobs:
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(lines|functions|branches):' coverage-summary.txt
+          grep -E '^(== |lines:|functions:|branches:)' coverage-summary.txt
           echo '```'
           echo
           echo "Measured on ubuntu-latest with gcc. Coverage numbers are"
           echo "toolchain-specific, so this Linux figure is the canonical one for"
-          echo "comparing across pull requests."
+          echo "comparing across pull requests -- the library's, the first block;"
+          echo "the redesigned GUI's layers (src/uicore, and src/qtgui's C++ but"
+          echo "not its QML) are reported beside it."
           echo
           # artifact-url is empty if the upload was skipped or failed; fall
           # back to the run, which lists whatever artifacts do exist.
@@ -450,6 +567,265 @@ jobs:
         name: burrtools-macos
         path: artifacts/macos/*
 
+  # burrtools-qt, the redesigned Qt 6 Quick GUI (src/qtgui, design-spec/).
+  # Three jobs, one per platform, because each gets Qt differently. They build
+  # the whole project with -Dqt_gui=enabled -- so a missing Qt fails loudly
+  # instead of being skipped -- and run the fast suite, which includes the
+  # Qt controller and QML tests (headless: QT_QPA_PLATFORM=offscreen, and on
+  # Linux the render tests on Xvfb with software Vulkan, see qt-linux).
+  #
+  # meson comes from pip: qt.qml_module() needs meson >= 1.7 and the apt
+  # meson is older.
+  #
+  # Each job also packages a self-contained preview build
+  # (scripts/package-qt.sh) and uploads it as the workflow artifact
+  # burrtools-qt-<os>, for trying the GUI without building it. The release
+  # job does not pick these up: it downloads the legacy builds by name.
+  qt-linux:
+    name: Qt GUI (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build build-essential cmake libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev libcurl4-openssl-dev \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 imagemagick
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    - name: Build
+      run: |
+        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
+        ninja -C build-qt
+
+    # Mesa's software Vulkan driver (lavapipe), found rather than named: its
+    # manifest's file name has changed between Mesa releases. The summary
+    # shows in the log which Vulkan device the render tests will get.
+    - name: Find lavapipe
+      run: |
+        ls /usr/share/vulkan/icd.d/
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+        VK_DRIVER_FILES="$icd" vulkaninfo --summary
+
+    - name: Self-check
+      run: ./build-qt/burrtools-qt --self-check
+
+    # The render tests draw through Vulkan on Mesa's software lavapipe, the
+    # only driver offered (VK_DRIVER_FILES), and must not skip. Vulkan needs
+    # an instance from a windowing platform plugin, which the headless
+    # "offscreen" one cannot provide, so test_qtgui runs as "xcb" on Xvfb's
+    # in-memory screen (BURRTOOLS_TEST_QPA); the QML tests stay offscreen.
+    - name: Test
+      env:
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+        VK_LOADER_DEBUG: error
+      run: xvfb-run -a meson test -C build-qt --suite fast --print-errorlogs
+
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: qt-testlog-linux
+        path: build-qt/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
+    # The gallery's grabs: there are no Linux reference images yet, so the
+    # snapshot checks skip and these are what to commit as
+    # test/qtgui/snapshots/linux (and, after a failure, the diffs).
+    - name: Upload gallery grabs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gallery-snapshots-linux
+        path: build-qt/test/qtgui/snapshots
+        if-no-files-found: ignore
+
+    # An AppImage (linuxdeploy + its Qt plugin). New, so a packaging problem
+    # does not fail the job; the build and the tests above decide that.
+    - name: Package a preview AppImage (not yet required)
+      id: package
+      continue-on-error: true
+      run: bash scripts/package-qt.sh build-qt artifacts/qt
+
+    - name: Upload the preview build
+      if: steps.package.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-qt-linux
+        path: artifacts/qt/*.AppImage
+        retention-days: 30
+
+  qt-windows:
+    name: Qt GUI (Windows, MSYS2 UCRT64)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          git
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-meson
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-pkgconf
+          mingw-w64-ucrt-x86_64-python
+          mingw-w64-ucrt-x86_64-qt6-base
+          mingw-w64-ucrt-x86_64-qt6-declarative
+          mingw-w64-ucrt-x86_64-qt6-shadertools
+          mingw-w64-ucrt-x86_64-qt6-svg
+          mingw-w64-ucrt-x86_64-qt6-tools
+          zip
+
+    # -Ddxbc=enabled: the Direct3D shaders compiled by the runner's Windows
+    # SDK fxc, so no start-up compiles HLSL; the build fails rather than
+    # quietly shipping source if fxc is not found
+    - name: Build
+      run: |
+        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled -Ddxbc=enabled
+        ninja -C build-qt
+
+    - name: Self-check
+      run: ./build-qt/burrtools-qt.exe --self-check
+
+    # The tests by name rather than the whole fast suite: burrtxt2_cli_smoke
+    # has only ever run on Linux and macOS (the cross-compiled Windows job
+    # skips it) and its solver runs do not finish within its limits on a
+    # native Windows build. That is unrelated to the GUI and tracked apart.
+    # The render tests use Direct3D 11's WARP software rasteriser, which every
+    # Windows has, so they must run rather than skip. The gallery's reference
+    # images exist for Windows (test/qtgui/snapshots/windows), so a missing
+    # one fails too.
+    - name: Test
+      env:
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+        BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
+      run: meson test -C build-qt --print-errorlogs fast qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+
+    # grabs that did not match their reference, with the reference and a diff
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: qt-testlog-windows
+        path: build-qt/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
+    - name: Upload gallery differences
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gallery-snapshots-windows
+        path: build-qt/test/qtgui/snapshots
+        if-no-files-found: ignore
+
+    # burrtools-qt.exe with Qt (windeployqt) and the MSYS2 libraries it
+    # needs, plus a qt.conf and the examples: unzip and run, nothing to install
+    - name: Package a preview build
+      run: bash scripts/package-qt.sh build-qt artifacts/qt
+
+    - name: Upload the preview build
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-qt-windows
+        path: artifacts/qt/*.zip
+        retention-days: 30
+
+  qt-macos:
+    name: Qt GUI (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: brew install meson ninja
+
+    # The official Qt binaries, built for macOS 13 and later, so the program
+    # and the preview app run on the project's minimum (macOS 14). Homebrew's
+    # Qt would target the runner's own macOS instead.
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.11.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    - name: Build
+      run: |
+        meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
+        ninja -C build-qt
+
+    - name: Self-check
+      run: ./build-qt/burrtools-qt --self-check
+
+    # The render tests try Metal and skip where the runner offers none (not
+    # yet known for these VMs; the test log says which backend was used).
+    - name: Test
+      run: meson test -C build-qt --suite fast --print-errorlogs
+
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: qt-testlog-macos
+        path: build-qt/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
+    # no macOS reference images yet: the grabs, to commit as snapshots/macos
+    - name: Upload gallery grabs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gallery-snapshots-macos
+        path: build-qt/test/qtgui/snapshots
+        if-no-files-found: ignore
+
+    # burrtools-qt.app made by macdeployqt (unsigned: open it with
+    # right-click > Open). New, so a packaging problem does not fail the job.
+    - name: Package a preview app (not yet required)
+      id: package
+      continue-on-error: true
+      run: bash scripts/package-qt.sh build-qt artifacts/qt
+
+    - name: Upload the preview build
+      if: steps.package.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-qt-macos
+        path: artifacts/qt/*.zip
+        retention-days: 30
+
   release:
     needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
@@ -468,10 +844,25 @@ jobs:
         echo "tag=v$VERSION" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
     
-    - name: Download all artifacts
+    # the release builds by name: the run also holds test logs, coverage,
+    # gallery grabs and the Qt preview builds, none of which are released
+    - name: Download the Linux build
       uses: actions/download-artifact@v4
       with:
-        path: artifacts
+        name: burrtools-linux
+        path: artifacts/burrtools-linux
+
+    - name: Download the Windows build
+      uses: actions/download-artifact@v4
+      with:
+        name: burrtools-windows
+        path: artifacts/burrtools-windows
+
+    - name: Download the macOS build
+      uses: actions/download-artifact@v4
+      with:
+        name: burrtools-macos
+        path: artifacts/burrtools-macos
     
     - name: Generate release notes
       id: release_notes

@@ -1,0 +1,102 @@
+name: Qt standalone build
+
+# burrtools-qt as one standalone Windows program: Qt and the C/C++ runtimes
+# linked in statically (scripts/build-qt-static.sh, meson -Dqt_static=true),
+# so it runs on Windows 10 and later with nothing beside it.
+#
+# Not on every push or pull request -- the static Qt is a 550 MB download
+# (2.8 GB installed) -- but on demand and for releases. The regular CI
+# (build-and-release.yml) keeps uploading the zipped preview build, whose
+# program loads Qt from the libraries beside it.
+#
+#   Actions > Qt standalone build > Run workflow
+#       builds it and keeps it as the workflow artifact; with a release tag
+#       given, builds that tag and attaches the result to its release
+#   a pushed v*.*.* tag
+#       builds it and attaches it to the tag's release, once
+#       build-and-release.yml has created that release
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Build this tag and attach to its release (e.g. v0.8.0); empty: build the chosen branch, workflow artifact only'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: burrtools-qt standalone (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+        ref: ${{ inputs.release_tag }}
+
+    # The shared Qt provides the build tools (moc, rcc, qmlcachegen, qsb);
+    # qt6-static is what gets linked. The package cache spares the download
+    # on later runs.
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        cache: true
+        install: >-
+          git
+          zip
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-meson
+          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-cmake
+          mingw-w64-ucrt-x86_64-pkgconf
+          mingw-w64-ucrt-x86_64-python
+          mingw-w64-ucrt-x86_64-qt6-base
+          mingw-w64-ucrt-x86_64-qt6-declarative
+          mingw-w64-ucrt-x86_64-qt6-shadertools
+          mingw-w64-ucrt-x86_64-qt6-svg
+          mingw-w64-ucrt-x86_64-qt6-tools
+          mingw-w64-ucrt-x86_64-qt6-static
+
+    # builds, strips, checks it loads only Windows' own DLLs, runs its
+    # self-check, then zips it with the example puzzles
+    - name: Build the standalone program
+      run: bash scripts/build-qt-static.sh build-static artifacts/qt-static
+
+    - name: Upload it
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-qt-windows-standalone
+        path: artifacts/qt-static/*
+        retention-days: 30
+
+    # build-and-release.yml creates a tag's release once its own builds are
+    # done; wait for it rather than race it
+    - name: Attach it to the release
+      if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        TAG: ${{ inputs.release_tag || github.ref_name }}
+      run: |
+        for i in $(seq 1 80); do
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" artifacts/qt-static/*.exe artifacts/qt-static/*.zip --clobber
+            exit 0
+          fi
+          echo "waiting for the release of $TAG ($i/80)"
+          sleep 30
+        done
+        echo "no release for $TAG after 40 minutes; the build is in the workflow artifact" >&2
+        exit 1

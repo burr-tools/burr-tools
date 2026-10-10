@@ -27,6 +27,13 @@ Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
 Apple Clang emits coverage data that plain `gcov` cannot parse.
 
+**Coverage is reported per area.** The library (`src/lib`, `src/tools`, `src/halfedge`)
+is the figure compared across PRs; `src/uicore` (Catch2 `[ui]` cases) and `src/qtgui`
+(the Qt suites, C++ only — gcov does not see QML) are reported beside it. When Qt ≥ 6.8
+is found, the coverage build includes the Qt GUI and runs its suites too. The library
+figure comes from the non-`[ui]` cases alone, captured before the GUI suites run, so it
+does not depend on whether Qt was found.
+
 **First `just coverage` run is slow.** It configures a fresh `build-cov` directory and
 compiles all subprojects under instrumentation from scratch — expect several minutes,
 not the sub-second/few-second times above. Subsequent runs are incremental and much
@@ -55,9 +62,11 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 
 - **`src/lib/`**: Core domain logic. Contains voxel grids (`voxel*.cpp`), polycube symmetries (`symmetries_*.cpp`), puzzle definitions (`puzzle.cpp`, `problem.cpp`), assembly/disassembly algorithms, and solver engines (`assembler_*.cpp`, `disassembler_*.cpp`, `solvethread.cpp`).
 - **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
+- **`src/qtgui/`**: `burrtools-qt`, the redesigned Qt 6 Quick GUI (a preview next to the FLTK one): C++ controllers, the QML module `BurrTools.Ui` (`qml/`), the QRhi 3D renderer (`scenerenderer.cpp`, `shaders/`). Read [`src/qtgui/README.md`](src/qtgui/README.md) first; the spec is `design-spec/BurrTools-SPEC-FULL-FINAL-v6.md` (every spec document in one file, each part marked `<!-- FILE: path -->`).
+- **`src/uicore/`**: Toolkit-free UI logic shared by the Qt GUI and its tests (command table, camera, view cube, scene meshes, layout, settings store). No Qt or FLTK here.
 - **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
 - **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite
+- **`test/`**: Catch2 v3 automated regression test suite (`test_ui_*.cpp` cover `src/uicore`); **`test/qtgui/`** holds the Qt Test and Qt Quick Test suites and the gallery's reference images (`snapshots/<os>/`, rewritten with `just update-snapshots`).
 - **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
 - **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
 - **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
@@ -90,6 +99,10 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
    - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
    - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
+7. **Qt GUI: QML panels and dialogs, environment variables:**
+   - Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
+   - Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.
+   - A new `BURRTOOLS_*` environment variable goes into [`src/tools/envvars.h`](src/tools/envvars.h), which the programs' `--help` prints; `test_envvars.cpp` fails on one the code reads but the table does not list.
 
 ---
 
@@ -172,7 +185,11 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 | Job | Catches | Why the other jobs miss it |
 | :--- | :--- | :--- |
 | `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
-| `tsan-parallel` | Data races in the parallel assembler and disassembler. | No other job runs a sanitizer. |
+| `tsan-parallel` | Data races in the parallel assembler and disassembler. | The only ThreadSanitizer run (ASan and UBSan: `sanitizers`). |
+| `qt-linux`, `qt-windows`, `qt-macos` | Breakage in `burrtools-qt`: controllers, QML, renders (WARP on Windows, lavapipe Vulkan on Linux — required, not skipped), gallery reference images (Windows). Each uploads a preview build. | The legacy jobs build without Qt. |
+| `sanitizers` | Memory errors and undefined behaviour (ASan + UBSan) in `test_burrtools` (leaks too) and the Qt suites (renders on lavapipe). | Leaks are not checked in the Qt suites: Qt and Mesa are not instrumented. |
+| `qt-profile.yml` (on demand) | Nothing: reports only — start-up times, a QML trace, a heap profile, the `src/uicore` micro-benchmarks (artifact `qt-profile`). | Not a check: shared runners are too noisy to fail on time. |
+| `qt-standalone.yml` (on demand, release tags) | A static `burrtools-qt.exe` that still loads an MSYS2 library, or fails its self-check. Attaches the standalone program to the release. | Too slow for every push (550 MB static Qt download). |
 
 ### Rules for SIMD and intrinsics
 
