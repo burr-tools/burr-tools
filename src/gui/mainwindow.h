@@ -33,6 +33,7 @@ class VoxelEditGroup_c;
 class ChangeSize;
 class ToolTab;
 class voxel_c;
+class updateChecker_c;
 class puzzle_c;
 class puzzleHistory_c;
 class problem_c;
@@ -264,6 +265,8 @@ class mainWindow_c : public LFl_Double_Window {
   // restores tab (0=Entities, 1=Puzzle, 2=Solver) and shape selection after undo/redo
   void applyHistoryRestore(unsigned int tab, unsigned int selectedShape);
 
+  updateChecker_c * updateChecker;
+
 public:
 
   mainWindow_c(gridType_c * gt);
@@ -291,6 +294,11 @@ public:
    * the solving progress, that works in background
    */
   void update(void);
+
+  /* Starts an update check: manual ones report every outcome, automatic
+   * ones only an available update.
+   */
+  void startUpdateCheck(bool manual);
 
   /* the callback functions, as they are called from normal functions we need
    * to make them public, even though they should not be used from the outside
@@ -377,6 +385,7 @@ public:
   void cb_AssembliesToShapes(void);
   void cb_Quit(void);
   void cb_About(void);
+  void cb_CheckForUpdates(void);
   void cb_Help(void);
   void cb_Config(void);
   void cb_Coment(void);

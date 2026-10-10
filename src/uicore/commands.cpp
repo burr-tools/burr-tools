@@ -138,7 +138,8 @@ namespace btui {
       { "help",   "&Help",   Menu::Help },
     };
 
-    constexpr sv dropped[] = { "Toggle3D" };
+    // Toggle 3D: dropped. Check for Updates (legacy, #137): not ported yet
+    constexpr sv dropped[] = { "Toggle3D", "CheckForUpdates" };
   }
 
   std::span<const CommandInfo> commandTable(void) {

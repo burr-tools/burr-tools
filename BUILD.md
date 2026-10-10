@@ -36,6 +36,14 @@ sudo apt-get install -y meson ninja-build build-essential \
     libfltk1.3-dev libpng-dev zlib1g-dev
 ```
 
+The update check needs no libcurl headers and links no libcurl: the few
+ABI-stable constants it uses are declared in `src/gui/curl_abi.h`, and the
+library itself is loaded at runtime (`libcurl.so.4`, or Debian's
+`libcurl-gnutls.so.4`). Where none is installed BurrTools still runs, with
+only the update check reporting itself unavailable. Installing
+`libcurl4-openssl-dev` is optional but worthwhile: it lets the test suite
+check those declared constants against the real header.
+
 ### Windows Cross-Compilation (from Linux)
 
 Install the MinGW cross-compiler:

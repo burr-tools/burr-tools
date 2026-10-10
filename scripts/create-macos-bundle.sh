@@ -8,8 +8,8 @@ BUNDLE_ID="org.burrtools.burrtools"
 if [ -z "$1" ]; then
 	VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
 	if [ -z "$VERSION" ]; then
-		echo "Warning: Could not extract version from git, using 0.7.0"
-		VERSION="0.7.0"
+		echo "Warning: Could not extract version from git, using 0.8.0"
+		VERSION="0.8.0"
 	fi
 else
 	VERSION="$1"

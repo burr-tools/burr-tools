@@ -3,7 +3,7 @@
 # bench/run_snapshot.sh — BurrTools Single-Commit Solver Snapshot Benchmark
 #
 # Runs bench/bench_solve.py in single-binary mode over a fixed puzzle corpus
-# (the run_suite.sh set plus the Jack Krijnen Supernova problems) with
+# (the run_suite.sh set plus the Jack Krijnen Supernova problem) with
 # disassembly enabled, and stores the result CSV under a self-identifying
 # name carrying the timestamp, git hash and commit subject:
 #
@@ -19,6 +19,9 @@
 # Usage:
 #   ./bench/run_snapshot.sh [options] [puzzle:problem ...]
 #
+# Puzzle arguments REPLACE the default corpus rather than adding to it, so any
+# "path[:problem]" list is a complete selection of what gets measured.
+#
 # Options:
 #   --runs N          Number of runs per puzzle (default: 3)
 #   --timeout SECS    Max execution time per solve (default: 600s = 10 min)
@@ -33,6 +36,15 @@
 #   ./bench/run_snapshot.sh
 #   ./bench/run_snapshot.sh --runs 5 "puzzles/BTFiles/Jack Krijnen/Supernova.xmpuzzle:0"
 #   ./bench/run_snapshot.sh --threads 1 --timeout 120 examples/PelikanBurr.xmpuzzle
+#
+#   Just the high-multiplier puzzles against a baseline binary (0.7.1 is too
+#   slow for the full corpus -- see bench/README.md):
+#   ./bench/run_snapshot.sh --binary build-071/burrTxt --no-compare \
+#     "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:4" \
+#     "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle" \
+#     "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle" \
+#     "puzzles/BTFiles/Jack Krijnen/The36plus.xmpuzzle" \
+#     "puzzles/BTFiles/Jack Krijnen/CondorsPeeper.xmpuzzle:1"
 # ==============================================================================
 set -euo pipefail
 
@@ -48,8 +60,20 @@ LIST_ONLY=0
 COMPARE=1
 
 # ------------------------------------------------------------------------------
-# Snapshot Puzzle Corpus: run_suite.sh set plus the reported Supernova case.
+# Snapshot Puzzle Corpus: run_suite.sh set plus the reported Supernova case,
+# plus the hard tail (high assembly counts, disassembly-dominated searches).
 # "path[:problem]" entries; disassembly (-d) is always enabled.
+#
+# Deliberately excluded: LominoSquareProblems9-15 problems 6 (14x14, ~78s) and
+# 7 (15x15, ~293s). Both disassemble fully, but at the default 3 runs they
+# would add ~19 min to every snapshot while adding no new solver coverage --
+# they are the same assembler_1 Huang path as problems 3-5. Benchmark them by
+# name when that path is the thing under test:
+#   ./bench/run_snapshot.sh "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:7"
+#
+# Any "path[:problem]" argument replaces the whole corpus, so a subset can be
+# measured without editing this file:
+#   ./bench/run_snapshot.sh "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle" "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle"
 # ------------------------------------------------------------------------------
 PUZZLE_DEFINITIONS=(
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:1"
@@ -59,6 +83,8 @@ PUZZLE_DEFINITIONS=(
   "puzzles/BTFiles/James Fortune/unlucky block.xmpuzzle"
   "puzzles/BTFiles/Jack Krijnen/Excelsior.xmpuzzle"
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:3"
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:4"
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:5"
   "examples/SolidSixPieceBurrs.xmpuzzle"
   "puzzles/BTFiles/Jack Krijnen/Simplicity.xmpuzzle"
   "puzzles/BTFiles/Jack Krijnen/BottomLine.xmpuzzle"
@@ -67,7 +93,13 @@ PUZZLE_DEFINITIONS=(
   "examples/PelikanBurr.xmpuzzle"
   "examples/DraculasDentalDesaster.xmpuzzle"
   "puzzles/BTFiles/Jack Krijnen/Supernova.xmpuzzle:0"
-  "puzzles/BTFiles/Jack Krijnen/Supernova.xmpuzzle:1"
+  # --- Hard tail: high assembly counts and disassembly-dominated searches ---
+  "puzzles/BTFiles/Jack Krijnen/TheCube.xmpuzzle"
+  "puzzles/BTFiles/Jack Krijnen/CondorsPeeper.xmpuzzle:1"
+  "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle"
+  "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle"
+  "puzzles/BTFiles/Jack Krijnen/The36plus.xmpuzzle"
+  "puzzles/BTFiles/Jack Krijnen/Burrly Sane for Professionals.xmpuzzle"
 )
 
 # Parse command-line flags

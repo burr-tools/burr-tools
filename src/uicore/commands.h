@@ -121,9 +121,10 @@ namespace btui {
   /* a label without its access-key markers ("Save &as…" -> "Save as…") */
   std::string plainLabel(std::string_view label);
 
-  /* Legacy menu callbacks the redesign removes on purpose. The menu-table
-   * drift check skips exactly these: Toggle 3D, whose job the Focus modes
-   * now do (product decision, 2026-10-05).
+  /* Legacy menu callbacks the redesign has no command for. The menu-table
+   * drift check skips exactly these: Toggle 3D, removed on purpose -- the
+   * Focus modes now do its job (product decision, 2026-10-05) -- and Check
+   * for Updates, added to the legacy GUI in #137 and not ported yet.
    */
   std::span<const std::string_view> droppedLegacyCallbacks(void);
 }

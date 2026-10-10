@@ -19,8 +19,10 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "mainwindow.h"
+#include "version.h"
 
 #include "mainmenu.h"
+#include "updatechecker.h"
 #include "puzzlehistory.h"
 #include "platform.h"
 
@@ -105,6 +107,7 @@
 #pragma GCC diagnostic pop
 
 #include <algorithm>
+
 #include <climits>
 #include <fstream>
 #include <string>
@@ -2078,11 +2081,24 @@ void mainWindow_c::cb_Toggle3D(void) {
 }
 
 void cb_About_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_About(); }
+void cb_CheckForUpdates_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_CheckForUpdates(); }
+void mainWindow_c::cb_CheckForUpdates(void) {
+  startUpdateCheck(true);
+}
+
+void mainWindow_c::startUpdateCheck(bool manual) {
+  updateChecker->start(manual ? updatecheck::Mode::Manual : updatecheck::Mode::Auto);
+}
+
 void mainWindow_c::cb_About(void) {
 
   fl_message("This is the GUI for BurrTools\n"
-             "BurrTools (c) 2003-2025 by Andreas Röver\n"
-	     "with patches from Arne Köhn, Bryan Turner, Derek Bosch, Michael Brown\n"
+             "Version %s\n"
+             "BurrTools (c) 2003-2026 by Andreas Röver\n"
+             "with contributions from Joe Becker, George Bell, Derek Bosch,\n"
+             "Michael Brown, Tom Burns, Bram Cohen, Colin Deisenroth, Barry Downes,\n"
+             "Volker Grabsch, Ronald Kint-Bruynseels, Arne Köhn, Carlos Moreno Serrano,\n"
+             "Girish Sharma, Bryan Turner and Raoul\n"
              "The latest version is available at github.com/burr-tools/burr-tools\n"
              "\n"
              "This software is distributed under the GPL\n"
@@ -2092,10 +2108,13 @@ void mainWindow_c::cb_About(void) {
              "or see www.fsf.org\n"
              "\n"
              "The program uses\n"
-             "- Fltk, libZ, libpng, gzstream, gl2ps\n"
+             "- Fltk, libZ, libpng, gzstream, gl2ps, Lua\n"
+             "- Manifold (https://github.com/elalish/manifold)\n"
+             "- nlohmann/json (https://github.com/nlohmann/json)\n"
+             "- libcurl on Linux (https://curl.se)\n"
              "- Fl_Table (http://3dsite.com/people/erco/Fl_Table/)\n"
-             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n"
-            );
+             "- tr by Brian Paul (http://www.mesa3d.org/brianp/TR.html)\n",
+             BURRTOOLS_VERSION);
 }
 
 void mainWindow_c::StatPieceInfo(unsigned int pc) {
@@ -4445,6 +4464,7 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
   MainMenu = new LFl_Menu_Bar(0, 0, 1, 1);
 #endif
   MainMenu->copy(mainmenu::table(), this);
+  updateChecker = new updateChecker_c(this);
   MainMenu->update();
   mainmenu::installApplicationMenu(this);
 
@@ -4502,6 +4522,13 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
 }
 
 mainWindow_c::~mainWindow_c() {
+  delete updateChecker;
 
   config.windowPos(x(), y(), w(), h());
+
+  /* Settings and the window position must reach disk here: when an update
+   * worker is still in flight, main() exits with std::_Exit and skips static
+   * teardown, so nothing saved later would survive.
+   */
+  config.save();
 }

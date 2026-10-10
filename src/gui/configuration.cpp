@@ -140,6 +140,10 @@ configuration_c::configuration_c(void) {
   CNF_BOOL_D("showviewcube", &i_show_view_cube, "Show View Cube",
              "Display the 3D orientation cube in the corner of the 3D preview. Click it to snap to a face, edge, or corner view.",
              "true");
+  CNF_BOOL_D("checkForUpdates", &i_check_for_updates, "Check for updates at startup",
+             "Once a day at most, ask GitHub whether a newer BurrTools release exists and "
+             "offer its release notes. Check for Updates in the menu works either way.",
+             "true");
   {
     unsigned int hw = std::thread::hardware_concurrency();
     hw = hw ? std::min(hw, 256u) : 1u;
@@ -166,11 +170,13 @@ configuration_c::configuration_c(void) {
   CNF_INT("windowposy",           &i_window_pos_y, "30");
   CNF_INT("windowposw",           &i_window_pos_w, "800");
   CNF_INT("windowposh",           &i_window_pos_h, "600");
+  CNF_INT("updateLastCheck",      &i_update_last_check, "0");
+  CNF_INT("updateSkippedVersion", &i_update_skipped_version, "0");
 
   parse();
 }
 
-configuration_c::~configuration_c(void) {
+void configuration_c::save(void) {
 
   FILE * f = create_local_config_file();
   if (!f) return;
@@ -198,6 +204,10 @@ configuration_c::~configuration_c(void) {
   }
 
   fclose(f);
+}
+
+configuration_c::~configuration_c(void) {
+  save();
 }
 
 static void cb_ConfigDialog_stub(Fl_Widget* /*o*/, void* v) { ((Fl_Double_Window*)v)->hide(); }

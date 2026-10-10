@@ -261,6 +261,10 @@ void puzzleHistory_c::pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
     const snapshot_t * prevSnap = (cursor > 0) ? snapshots[cursor - 1].get() : nullptr;
     snapshots[cursor] = capture(puzzle, selectedShape, kind, prevSnap);
   } else {
+    /* A save point in the redo tail goes with it: the new step would land on
+     * its index, and the document would read as saved though it differs. */
+    if (savedCursorValid && savedCursor > cursor)
+      savedCursorValid = false;
     while (snapshots.size() > cursor + 1)
       snapshots.pop_back();
 
@@ -318,6 +322,9 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
 void puzzleHistory_c::markSaved(void) {
   savedCursor = cursor;
   savedCursorValid = true;
+  // the next edit must not coalesce into the saved snapshot, which would
+  // change it in place and leave the document reading as saved
+  lastKind = AK_NONE;
 }
 
 bool puzzleHistory_c::isModifiedFromSave(void) const {

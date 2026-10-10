@@ -32,6 +32,8 @@
 #include <FL/Fl.H>
 #pragma GCC diagnostic pop
 
+#include <cstdio>
+#include <cstdlib>
 #include <time.h>
 #include <string.h>
 
@@ -41,6 +43,7 @@
 
 #include "../tools/xml.h"
 #include "../tools/gzstream.h"
+#include "updatechecker.h"
 
 /* fl_open_callback() takes a plain function pointer with no user data, so
  * the window it should forward to is reached through this file-scope
@@ -52,6 +55,19 @@ static mainWindow_c * g_ui = 0;
 static void handleSystemOpen(const char * filename) {
   if (g_ui)
     g_ui->openFromSystem(filename);
+}
+
+/* Returns from main(), unless an update worker is still inside its request:
+ * then static and atexit teardown (OpenSSL/libcurl cleanup among it) would
+ * race the worker, so the process ends without running it. Everything that
+ * must persist has been written by then (~mainWindow_c saves the config).
+ */
+static int leave(int code) {
+  if (updatechecker::workerRunning()) {
+    fflush(nullptr);
+    std::_Exit(code);
+  }
+  return code;
 }
 
 class my_Fl : public Fl {
@@ -85,6 +101,11 @@ int main(int argc, char ** argv) {
     return 0;
   }
 
+  // Exercises the HTTPS backend and the update logic without a window, so
+  // the per-platform network code can be checked from a terminal.
+  if (argc == 2 && strcmp(argv[1], "--check-for-updates") == 0)
+    return updatechecker::runCli();
+
   bt_assert_init();
 
   /* And again on the normal path, so that simply running the program is
@@ -111,6 +132,7 @@ int main(int argc, char ** argv) {
   try {
 
     ui->show(argc, argv);
+    ui->startUpdateCheck(false);
 
     res = my_Fl::run(ui);
   }
@@ -136,7 +158,7 @@ int main(int argc, char ** argv) {
       ui->getPuzzle()->save(xml);
     }
 
-    return -1;
+    return leave(-1);
   }
 
   catch (...) {
@@ -145,5 +167,5 @@ int main(int argc, char ** argv) {
 
   g_ui = 0;
   delete ui;
-  return res;
+  return leave(res);
 }
