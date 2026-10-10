@@ -22,6 +22,7 @@
 /* burrtools-qt: the redesigned BurrTools GUI (Qt 6 Quick). */
 
 #include "app.h"
+#include "earlydevice.h"
 #include "pipelinecache.h"
 #include "settingscontroller.h"
 #include "documentcontroller.h"
@@ -34,6 +35,9 @@
 #ifdef QT_QML_DEBUG
 #include <QtQml/qqmldebug.h>      // its enabler lets qmlprofiler attach (-Dqml_debug=true)
 #endif
+#include <QAbstractEventDispatcher>
+#include <QAbstractNativeEventFilter>
+#include <QElapsedTimer>
 #include <QFileOpenEvent>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -42,11 +46,129 @@
 #include <QTimer>
 #include <QTranslator>
 
+#include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <functional>
 #include <memory>
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 namespace {
+
+  /* BURRTOOLS_STARTUP_TRACE=1 prints, on stderr, how long start-up took to
+   * each step: the process's own start (Windows), the application object,
+   * Main.qml, the event loop, the first frame on screen and the first frame
+   * with the workspace in it (Main.qml's contentReady). =quit also quits
+   * once that frame is up. For measuring start-up (scripts/profile-qt.sh);
+   * off, it costs one environment lookup.
+   */
+  class StartupTrace {
+  public:
+    StartupTrace(void) : m_on(!qEnvironmentVariableIsEmpty("BURRTOOLS_STARTUP_TRACE")) {
+      m_clock.start();
+#ifdef Q_OS_WIN
+      if (m_on) {
+        FILETIME created, exited, kernel, user, now;
+        GetProcessTimes(GetCurrentProcess(), &created, &exited, &kernel, &user);
+        GetSystemTimePreciseAsFileTime(&now);
+        auto ticks = [](const FILETIME & f) {
+          return (static_cast<long long>(f.dwHighDateTime) << 32) | f.dwLowDateTime;
+        };
+        fprintf(stderr, "startup: %8.1f ms  process created (before main)\n", -(ticks(now) - ticks(created)) / 1e4);
+      }
+#endif
+    }
+
+    bool on(void) const { return m_on; }
+    bool quitWhenDone(void) const { return qgetenv("BURRTOOLS_STARTUP_TRACE") == "quit"; }
+
+    void mark(const char * what) const {
+      if (m_on)
+        fprintf(stderr, "startup: %8.1f ms  %s\n", m_clock.nsecsElapsed() / 1e6, what);
+    }
+
+    /* The first frame; the first synchronised once contentReady was true;
+     * the first once `ready` also said the opened puzzle is drawn (both read
+     * while the GUI thread waits for the sync, so safely); and then the
+     * first moment the GUI thread has nothing left to do -- the app is
+     * ready to be used. =quit quits there. */
+    void watch(QQuickWindow * w, std::function<bool()> ready) {
+      if (!m_on || !w)
+        return;
+      m_ready = std::move(ready);
+      const bool hasContentFlag = w->metaObject()->indexOfProperty("contentReady") >= 0;
+      QObject::connect(w, &QQuickWindow::afterSynchronizing, w, [this, w, hasContentFlag] {
+        if (!hasContentFlag || w->property("contentReady").toBool()) {
+          m_contentSynced = true;
+          if (m_ready())
+            m_readySynced = true;
+        }
+      }, Qt::DirectConnection);
+      QObject::connect(w, &QQuickWindow::frameSwapped, w, [this] {
+        if (!m_firstFrame.exchange(true))
+          mark("first frame on screen");
+        if (m_contentSynced && !m_contentFrame.exchange(true))
+          mark("first frame with the workspace on screen");
+        if (m_readySynced && !m_readyFrame.exchange(true)) {
+          mark("first frame with the workspace and the puzzle on screen");
+          QMetaObject::invokeMethod(qApp, [this] { whenIdle(); }, Qt::QueuedConnection);
+        }
+      }, Qt::DirectConnection);
+    }
+
+  private:
+    void whenIdle(void) {
+      QObject::connect(QAbstractEventDispatcher::instance(), &QAbstractEventDispatcher::aboutToBlock, qApp, [this] {
+        mark("app ready: the GUI thread is idle");
+        if (quitWhenDone())
+          QTimer::singleShot(300, qApp, [] { QCoreApplication::exit(0); });   // not quit(): the window would refuse it (File ▸ Quit)
+      }, Qt::SingleShotConnection);
+    }
+
+    bool m_on;
+    QElapsedTimer m_clock;
+    std::function<bool()> m_ready;
+    std::atomic<bool> m_contentSynced{false};
+    std::atomic<bool> m_readySynced{false};
+    std::atomic<bool> m_firstFrame{false};
+    std::atomic<bool> m_contentFrame{false};
+    std::atomic<bool> m_readyFrame{false};
+  };
+
+#ifdef Q_OS_WIN
+  /* Between showing a window and its first frame (about 0.2-0.3 s while the
+   * graphics device is made) Windows paints it itself, and Qt's window
+   * classes have no background brush: it comes up white -- a flash in the
+   * dark theme. The erase is answered here instead, in the Qt Quick
+   * window's own colour (the main window's is Theme.bg), so the window
+   * comes up in the theme the user chose.
+   */
+  class WindowBackground : public QAbstractNativeEventFilter {
+  public:
+    bool nativeEventFilter(const QByteArray & type, void * message, qintptr * result) override {
+      const MSG * msg = static_cast<const MSG *>(message);
+      if (type != "windows_generic_MSG" || msg->message != WM_ERASEBKGND)
+        return false;
+      for (QWindow * w : QGuiApplication::topLevelWindows()) {
+        auto * quick = qobject_cast<QQuickWindow *>(w);
+        if (!quick || !w->handle() || reinterpret_cast<HWND>(w->winId()) != msg->hwnd)
+          continue;
+        const QColor c = quick->color();
+        RECT r;
+        GetClientRect(msg->hwnd, &r);
+        HBRUSH brush = CreateSolidBrush(RGB(c.red(), c.green(), c.blue()));
+        FillRect(reinterpret_cast<HDC>(msg->wParam), &r, brush);
+        DeleteObject(brush);
+        *result = 1;      // erased
+        return true;
+      }
+      return false;
+    }
+  };
+#endif
 
   /* Exceptions must not unwind through Qt's event dispatch. An internal error
    * raised in C++ code Qt calls (a timer, an event filter) is caught here and
@@ -124,6 +246,10 @@ namespace {
 
 int main(int argc, char ** argv) {
 
+  StartupTrace trace;
+  // the window's Direct3D 11 device, made meanwhile (earlydevice.h); it
+  // outlives the window
+  EarlyGraphicsDevice earlyDevice;
   bt_assert_init();
 
   // a headless invariant check for CI, before any window or QML exists
@@ -149,6 +275,7 @@ int main(int argc, char ** argv) {
     qputenv("QSG_RHI_DISABLE_DISK_CACHE", "1");
 
   BurrToolsApplication qapp(argc, argv);
+  trace.mark("application object");
   QGuiApplication::setApplicationName(QStringLiteral("BurrTools"));
   QGuiApplication::setOrganizationName(QStringLiteral("BurrTools"));
   QGuiApplication::setApplicationDisplayName(QStringLiteral("BurrTools"));
@@ -157,12 +284,18 @@ int main(int argc, char ** argv) {
   QCoreApplication::installTranslator(&macMenuNames);
 #endif
 
+#ifdef Q_OS_WIN
+  WindowBackground windowBackground;
+  qapp.installNativeEventFilter(&windowBackground);
+#endif
+
   // the Basic style is the one the spec re-skins completely
   QQuickStyle::setStyle(QStringLiteral("Basic"));
 
   /* BURRTOOLS_QT_SETTINGS names another settings file, so scripted runs
    * (screenshots, CI) never touch the user's own. */
   App app(QString::fromLocal8Bit(qgetenv("BURRTOOLS_QT_SETTINGS")), QString());
+  trace.mark("controllers");
 
   QQmlApplicationEngine engine;
   engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
@@ -174,17 +307,21 @@ int main(int argc, char ** argv) {
   engine.loadFromModule("BurrTools.Ui", gallery ? "Gallery" : "Main");
   if (engine.rootObjects().isEmpty())
     return 2;
+  trace.mark("window created and shown");
 
   /* --screenshot=<file.png>: render the window once, save it and quit --
    * for documentation and for checking the GUI in CI without a person at
    * the screen. --command=<key> runs a command once the window is up (a
    * command table key such as "export.stl"), so a screenshot can show a
    * dialog. Every other argument (but --gallery) is a puzzle file; like
-   * legacy, the first one that loads wins.
+   * legacy, the first one that loads wins. Main.qml opens it after the
+   * window's first frame, before it makes the workspace
+   * (DocumentController::loadStartupFiles); the commands and the screenshot
+   * wait for that.
    */
   QString screenshot, command;
+  QStringList files;
   const QStringList args = QCoreApplication::arguments();
-  bool loaded = false;
   for (qsizetype i = 1; i < args.size(); i++) {
     if (args.at(i).startsWith(QLatin1String("--screenshot=")))
       screenshot = args.at(i).mid(13);
@@ -192,11 +329,19 @@ int main(int argc, char ** argv) {
       command = args.at(i).mid(10);
     else if (args.at(i).startsWith(QLatin1String("-qmljsdebugger")))
       continue;           // qmlprofiler's, for Qt (a -Dqml_debug=true build), not a puzzle
-    else if (!loaded && args.at(i) != QLatin1String("--gallery"))
-      loaded = app.document()->loadPath(args.at(i));
+    else if (args.at(i) != QLatin1String("--gallery"))
+      files << args.at(i);
   }
+  DocumentController * doc = app.document();
+  doc->setStartupFiles(files);
 
   auto * mainWindow = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+  earlyDevice.adopt(mainWindow);
+  trace.mark("graphics device handed to the window");
+  // ready: the puzzle opened, if any, has its mesh in the 3D view
+  trace.watch(mainWindow, [&app, doc] {
+    return !doc->startupFilesPending() && (!doc->startupFileLoaded() || app.viewport()->meshReady());
+  });
   /* the compiled pipelines kept between runs, beside the settings file
    * (a scratch one under BURRTOOLS_QT_SETTINGS); before the first frame,
    * which comes from the event loop */
@@ -207,17 +352,20 @@ int main(int argc, char ** argv) {
   QObject::connect(app.document(), &DocumentController::fileChanged, mainWindow, showFile);
   showFile();
 
-  if (!command.isEmpty())
-    QTimer::singleShot(300, &qapp, [&app, command] { app.commands()->trigger(command); });
+  // once the files are opened (at once for the gallery, which opens none)
+  QObject::connect(doc, &DocumentController::startupFilesLoaded, &qapp, [&app, mainWindow, command, screenshot] {
+    if (!command.isEmpty())
+      QTimer::singleShot(300, &app, [&app, command] { app.commands()->trigger(command); });
+    if (!screenshot.isEmpty())
+      QTimer::singleShot(1500, &app, [mainWindow, screenshot] {
+        if (!mainWindow->grabWindow().save(screenshot))
+          fprintf(stderr, "could not write %s\n", qPrintable(screenshot));
+        QCoreApplication::exit(0);
+      });
+  }, Qt::SingleShotConnection);
+  if (gallery)
+    doc->loadStartupFiles();
 
-  if (!screenshot.isEmpty()) {
-    auto * window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
-    QTimer::singleShot(1500, &qapp, [window, screenshot] {
-      if (!window->grabWindow().save(screenshot))
-        fprintf(stderr, "could not write %s\n", qPrintable(screenshot));
-      QCoreApplication::exit(0);
-    });
-  }
-
+  trace.mark("event loop");
   return qapp.exec();
 }

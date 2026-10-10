@@ -61,7 +61,18 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   // plugin defaults to -- the headless test platform has no sensible default
   if (qobject_cast<QGuiApplication *>(QCoreApplication::instance())) {
     QFont font = QGuiApplication::font();
+#ifdef Q_OS_WIN
+    /* One family, the stack's first (Segoe UI, on every Windows). A font
+     * with fallback families makes Qt build its fallback list at the first
+     * text -- every installed font, read one by one under one lock: 0.3-0.8 s
+     * at each start (676 fonts, 2026-10). With one family it is built only
+     * when a character is missing, which the UI's own text never is
+     * (TestTheme::uiTextNeedsNoFallbackFont); a name in another script
+     * still finds its font then. */
+    font.setFamilies({ m_theme->fontFamilies().constFirst() });
+#else
     font.setFamilies(m_theme->fontFamilies());
+#endif
     QGuiApplication::setFont(font);
   }
   m_settings = new SettingsController(settingsFile, legacySettingsFile, this);

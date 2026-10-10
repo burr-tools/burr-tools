@@ -21,6 +21,7 @@ TestCase {
         win.width = 1400
         win.height = 900
         waitForRendering(win.contentItem)
+        tryVerify(() => win.contentReady, 5000)       // made after the first frame
     }
 
     function cleanup() {

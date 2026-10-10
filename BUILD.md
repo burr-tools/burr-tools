@@ -273,10 +273,12 @@ Environment variables:
 | `BURRTOOLS_REQUIRE_SNAPSHOTS` | a missing gallery reference image fails instead of skipping |
 | `BURRTOOLS_UPDATE_SNAPSHOTS=1` | gallery checks write their grabs as the new references, only where missing or no longer matching |
 | `BURRTOOLS_SNAPSHOTS_ONLY` | comma-separated gallery rows (`button,switch`) to check or update; unset: all |
+| `BURRTOOLS_EARLY_DEVICE=0` | burrtools-qt leaves the main window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own (`src/qtgui/earlydevice.h`); for A/B start-up comparisons |
+| `BURRTOOLS_STARTUP_TRACE` | `1`: burrtools-qt prints on stderr how long start-up took to each step -- the process start (Windows), Main.qml, the first frame on screen, the first with the workspace (and the opened puzzle) in it, and app ready -- the GUI thread idle after that; `quit` also quits there |
 | `BURRTOOLS_PROFILE_PUZZLE` | the puzzle `scripts/profile-qt.sh` opens (default `examples/PelikanBurr.xmpuzzle`) |
 
 Performance checks and profiles (what each measures, which fail CI and which
-only report): `design/2026-10-08-qtgui-performance-backlog.md`, "Measuring".
+only report): `design/2026-10-08-qtgui-performance-guide.md`, "Measuring".
 `-Dqml_debug=true` lets qmlprofiler and the QML debugger attach; it is for
 profiling builds, never a release. `-Ddxbc` (auto) ships the Direct3D
 shaders compiled, sparing the HLSL compile (~50 ms) of a start without a

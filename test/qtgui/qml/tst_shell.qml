@@ -31,6 +31,7 @@ TestCase {
         win.width = 1600
         win.height = 1000
         waitForRendering(win.contentItem)
+        tryVerify(() => win.contentReady, 5000)       // made after the first frame
     }
 
     function cleanup() {
@@ -488,13 +489,31 @@ TestCase {
         compare(App.viewport.viewportSize.height, surface.height)
     }
 
+    function test_theOutlineComesFirstThenTheWorkspace() {
+        // a window of its own, looked at before its first frame: only the
+        // outline (no text, which would wait for the font fallbacks), no
+        // menu bar yet; the workspace is made once a frame is on screen
+        const w = createTemporaryObject(mainComponent, tc)
+        verify(!w.contentReady)
+        verify(findChild(w, "shell.outline").visible)
+        compare(w.menuBar, null)
+        compare(findChild(w, "workspace"), null)
+        tryVerify(() => w.contentReady, 5000)
+        verify(!findChild(w, "shell.outline").visible)
+        verify(w.menuBar !== null)
+        verify(findChild(w, "workspace") !== null)
+        // and a dialog only once it is opened
+        for (const name of ["settings.dialog", "shell.newfile.dialog", "export.stl.dialog", "shell.message"])
+            compare(findChild(w, name), null, name)
+    }
+
     function test_messagesOpenOneAtATime() {
         // one file can raise two messages (an unfinished search, then its
         // comment): they open in turn, the second not over the first
-        const dialog = findChild(win, "shell.message")
-        verify(dialog !== null)
         App.document.messageRequested("First", "one")
         App.document.messageRequested("Second", "two")
+        tryVerify(() => findChild(win, "shell.message") !== null, 2000)
+        const dialog = findChild(win, "shell.message")
         tryCompare(dialog, "visible", true)
         compare(dialog.title, "First")
         compare(win.pendingMessages.length, 1)
@@ -516,8 +535,8 @@ TestCase {
 
     function test_newFileDialogMakesTheChosenType() {
         App.document.newDocument(0)                // unmodified: no question first
-        const d = dialog("shell.newfile.dialog")
         App.commands.trigger("file.new")
+        const d = dialog("shell.newfile.dialog")
         tryCompare(d, "opened", true)
         mouseClick(findChild(d.contentItem, "shell.newfile.type.spheres"))
         compare(d.selectedType, 2)
@@ -540,8 +559,8 @@ TestCase {
 
     function test_commentDialogWritesOnlyOnOk() {
         App.document.newDocument(0)
-        const d = dialog("shell.comment.dialog")
         App.commands.trigger("editcomment")
+        const d = dialog("shell.comment.dialog")
         tryCompare(d, "opened", true)
         const text = findChild(d.contentItem, "shell.comment.text")
         compare(text.text, "")
@@ -573,8 +592,8 @@ TestCase {
     }
 
     function test_aboutNamesTheVersion() {
-        const d = dialog("shell.about.dialog")
         App.commands.trigger("about")
+        const d = dialog("shell.about.dialog")
         tryCompare(d, "opened", true)
         const text = d.contentItem
         compare(text.objectName, "shell.about.text")
@@ -587,12 +606,11 @@ TestCase {
     function test_theUnsavedChangesQuestionPassesItsAnswerOn() {
         App.document.newDocument(0)
         App.document.setComment("unsaved")
-        const d = dialog("shell.discard.dialog")
 
         // Cancel: the document stays
         App.commands.trigger("file.new")
+        const d = dialog("shell.discard.dialog")
         tryCompare(d, "visible", true)
-        compare(d.action, "create a new puzzle")
         verify(d.informativeText.indexOf("create a new puzzle") >= 0)
         d.buttonClicked(MessageDialog.Cancel, MessageDialog.RejectRole)
         d.close()
@@ -608,11 +626,11 @@ TestCase {
         verify(!App.document.flowPending)
 
         // Discard goes on to the voxel type
-        const types = dialog("shell.newfile.dialog")
         App.commands.trigger("file.new")
         tryCompare(d, "visible", true)
         d.buttonClicked(MessageDialog.Discard, MessageDialog.DestructiveRole)
         d.close()
+        const types = dialog("shell.newfile.dialog")
         tryCompare(types, "opened", true)
         mouseClick(findChild(types.footer, "shell.newfile.ok"))
         tryCompare(types, "visible", false)

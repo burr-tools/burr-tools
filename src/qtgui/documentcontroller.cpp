@@ -26,6 +26,8 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include <utility>
+
 namespace {
 
   std::filesystem::path toPath(const QString & s) {
@@ -226,6 +228,20 @@ void DocumentController::finishLoad(const btui::DocumentSession::LoadResult & r,
     emit messageRequested(tr("Open"), tr("This puzzle file contains started but not finished search for solutions."));
   if (r.showComment)
     emit messageRequested(tr("Comment"), comment());
+}
+
+void DocumentController::setStartupFiles(const QStringList & files) {
+  m_startupFiles = files;
+}
+
+void DocumentController::loadStartupFiles(void) {
+  guarded([&] {
+    const QStringList files = std::exchange(m_startupFiles, {});
+    for (const QString & f : files)
+      if ((m_startupLoaded = loadPath(f)))
+        break;
+  });
+  emit startupFilesLoaded();
 }
 
 bool DocumentController::loadPath(const QString & path) {

@@ -25,6 +25,7 @@ TestCase {
         win.height = 1000
         App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
         waitForRendering(win.contentItem)
+        tryVerify(() => win.contentReady, 5000)       // made after the first frame
     }
 
     function item(name) {

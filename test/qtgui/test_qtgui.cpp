@@ -10,6 +10,7 @@
 #include "app.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
+#include "earlydevice.h"
 #include "guarded.h"
 #include "iconprovider.h"
 #include "keyboardcues.h"
@@ -38,6 +39,7 @@
 #include <QMetaMethod>
 #include <QMouseEvent>
 #include <QQuickWindow>
+#include <QRawFont>
 #include <QRegularExpression>
 #include <QScopeGuard>
 #include <QScreen>
@@ -151,7 +153,70 @@ private slots:
 #endif
     QTemporaryDir dir;
     App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+#ifdef Q_OS_WIN
+    // one family: fallback families would make Qt read every installed font
+    // at the first text (App's constructor)
+    QCOMPARE(QGuiApplication::font().families(), QStringList{ stack.first() });
+#else
     QCOMPARE(QGuiApplication::font().families(), stack);
+#endif
+  }
+
+  /* The UI's own text has only characters Segoe UI has (Windows' app font,
+   * App). One it lacks -- an emoji, a geometric arrow -- makes Qt look for a
+   * fallback font where the text is laid out, which reads every installed
+   * font: 0.3-0.8 s at every start. String literals of the QML (but the
+   * gallery, a developer's page) and of the command table are checked;
+   * comments may say what they like. */
+  void uiTextNeedsNoFallbackFont() {
+#ifndef Q_OS_WIN
+    QSKIP("Segoe UI is Windows' font");
+#else
+    const QRawFont font = QRawFont::fromFont(QFont(QStringLiteral("Segoe UI")));
+    QVERIFY(font.isValid());
+    QStringList files;
+    for (const QString & f : QDir(QStringLiteral("src/qtgui/qml")).entryList({ QStringLiteral("*.qml") }))
+      if (f != QLatin1String("Gallery.qml"))
+        files << QStringLiteral("src/qtgui/qml/") + f;
+    files << QStringLiteral("src/uicore/commands.cpp");
+    QVERIFY(files.size() > 20);
+    QStringList missing;
+    for (const QString & path : files) {
+      QFile f(path);
+      QVERIFY2(f.open(QIODevice::ReadOnly), qPrintable(path));
+      const QString text = QString::fromUtf8(f.readAll());
+      // the characters inside string literals, outside // and /* */ comments
+      enum { Code, Line, Block, Str } state = Code;
+      QChar quote;
+      for (qsizetype i = 0; i < text.size(); i++) {
+        const QChar c = text.at(i), next = i + 1 < text.size() ? text.at(i + 1) : QChar();
+        switch (state) {
+          case Code:
+            if (c == u'/' && next == u'/') state = Line;
+            else if (c == u'/' && next == u'*') state = Block;
+            else if (c == u'"' || c == u'\'') { state = Str; quote = c; }
+            break;
+          case Line:
+            if (c == u'\n') state = Code;
+            break;
+          case Block:
+            if (c == u'*' && next == u'/') { state = Code; i++; }
+            break;
+          case Str:
+            if (c == u'\\') i++;
+            else if (c == quote || c == u'\n') state = Code;
+            else if (c.unicode() > 127) {
+              const char32_t u = c.isHighSurrogate() && next.isLowSurrogate() ? QChar::surrogateToUcs4(c, next) : c.unicode();
+              if (!font.supportsCharacter(u))
+                missing << QStringLiteral("%1: U+%2").arg(path).arg(uint(u), 4, 16, QLatin1Char('0'));
+              if (u > 0xFFFF) i++;
+            }
+            break;
+        }
+      }
+    }
+    QVERIFY2(missing.isEmpty(), qPrintable(missing.join(QStringLiteral(", "))));
+#endif
   }
 
   void theMonoFontIsTheTokensStack() {
@@ -887,6 +952,48 @@ private slots:
     QCOMPARE(d->gridTypeName(), QStringLiteral("Brick"));
     d->newDocument(-1);
     QCOMPARE(d->gridTypeName(), QStringLiteral("Brick"));
+  }
+
+  void theFirstCommandLineFileThatLoadsWins() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(!d->startupFilesPending());
+    d->setStartupFiles({ QStringLiteral("examples/nope.xmpuzzle"), QStringLiteral("examples/PelikanBurr.xmpuzzle"),
+                         QStringLiteral("examples/BrokenSticks.xmpuzzle") });
+    QVERIFY(d->startupFilesPending());
+    QVERIFY(d->fileName().isEmpty());                  // nothing opened before it is asked
+    QSignalSpy done(d, &DocumentController::startupFilesLoaded);
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    d->loadStartupFiles();
+    QCOMPARE(done.count(), 1);
+    QVERIFY(!d->startupFilesPending());
+    QVERIFY(d->startupFileLoaded());
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QVERIFY(msg.count() >= 1);                         // the missing one was reported
+    d->loadStartupFiles();                             // once only
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+  }
+
+  void noCommandLineFileStillSaysItIsDone() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QSignalSpy done(d, &DocumentController::startupFilesLoaded);
+    d->loadStartupFiles();
+    QCOMPARE(done.count(), 1);
+    QVERIFY(!d->startupFileLoaded());
+  }
+
+  /* where it does not apply -- a platform other than "windows", here the
+   * tests' offscreen one -- the window keeps a device of Qt's own */
+  void theEarlyDeviceIsOnlyHandedToAWindowsWindow() {
+    EarlyGraphicsDevice early;
+    QQuickWindow w;
+    const bool adopted = early.adopt(&w);
+    if (QGuiApplication::platformName() != QLatin1String("windows"))
+      QVERIFY(!adopted);
+    QVERIFY(!early.adopt(nullptr));
   }
 
   void undoAndRedoWithNothingToDoDoNothing() {

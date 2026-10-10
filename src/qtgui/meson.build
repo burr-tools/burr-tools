@@ -103,6 +103,8 @@ qtgui_resources = qt6.compile_resources(name: 'burrtools_resources',
 qtgui_platform_deps = []
 if host_machine.system() == 'windows'
   qtgui_platform_deps += cxx.find_library('dwmapi')
+  # the window's Direct3D 11 device, made early (earlydevice.cpp)
+  qtgui_platform_deps += [cxx.find_library('d3d11'), cxx.find_library('dxgi')]
 endif
 
 # Everything except main(), so test_qtgui can link the same code. It is
@@ -113,6 +115,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'app.cpp',
     'commandcontroller.cpp',
     'documentcontroller.cpp',
+    'earlydevice.cpp',
     'iconprovider.cpp',
     'imageexportcontroller.cpp',
     'keyboardcues.cpp',

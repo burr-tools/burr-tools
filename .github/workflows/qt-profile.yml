@@ -6,7 +6,7 @@ name: Qt profile
 # fail on -- uploaded as the artifact `qt-profile`, with a summary on the
 # run's page. The same profiles run locally through `just startup-time`,
 # `just profile-qml`, `just heap-qt` and `just bench-ui`
-# (scripts/profile-qt.sh; design/2026-10-08-qtgui-performance-backlog.md).
+# (scripts/profile-qt.sh; design/2026-10-08-qtgui-performance-guide.md).
 #
 #   Actions > Qt profile > Run workflow (any branch)
 on:

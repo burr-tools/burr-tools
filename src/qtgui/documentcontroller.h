@@ -120,6 +120,15 @@ public:
    */
   bool loadPath(const QString & path);
 
+  /* The puzzle files named on the command line, opened by
+   * loadStartupFiles(): Main.qml calls it after the window's first frame,
+   * before it makes the workspace. Like legacy, the first that loads wins;
+   * the others are not tried. */
+  void setStartupFiles(const QStringList & files);
+  Q_INVOKABLE void loadStartupFiles(void);
+  bool startupFilesPending(void) const { return !m_startupFiles.isEmpty(); }
+  bool startupFileLoaded(void) const { return m_startupLoaded; }
+
   /* Called after anything changes the puzzle outside this class, so the
    * modified and undo states repaint.
    */
@@ -149,6 +158,8 @@ signals:
   void saveAsRequested(void);
   void quitApproved(void);
   void messageRequested(const QString & title, const QString & text);
+  /* loadStartupFiles() ran (whether a file loaded or not) */
+  void startupFilesLoaded(void);
 
 private:
 
@@ -163,6 +174,8 @@ private:
   Pending m_pending = Pending::None;
   QString m_pendingPath;
   bool m_continueAfterSaveAs = false;
+  QStringList m_startupFiles;
+  bool m_startupLoaded = false;
 };
 
 #endif

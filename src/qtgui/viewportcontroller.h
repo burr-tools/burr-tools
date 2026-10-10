@@ -98,6 +98,8 @@ public:
   bool showViewCube(void) const;
   bool hasShape(void) const { return m_shape != nullptr; }
   bool emptyShape(void) const { return m_shape && m_mesh && m_mesh->empty(); }
+  /* the selected shape's mesh is built (a change schedules the build) */
+  bool meshReady(void) const { return !m_meshDirty && (!m_shape || m_mesh); }
   QString shapeId(void) const;
   QString shapeLabel(void) const;
   QColor shapeColor(void) const;

@@ -23,6 +23,7 @@ TestCase {
         win.height = 900
         App.document.newDocument(0)
         waitForRendering(win.contentItem)
+        tryVerify(() => win.contentReady, 5000)       // made after the first frame
     }
 
     function cleanup() {
@@ -215,9 +216,10 @@ TestCase {
 
     function test_stlExportIsOffForAnEmptyPuzzle() {
         App.commands.trigger("export.stl")
-        const d = findChild(win, "export.stl.dialog")
         wait(50)
-        verify(!d.visible)
+        // the command is off, so its dialog is not even made (dialogs are
+        // made when first opened)
+        compare(findChild(win, "export.stl.dialog"), null)
     }
 
     function test_vectorExportOffersTheSixLegacyTypes() {

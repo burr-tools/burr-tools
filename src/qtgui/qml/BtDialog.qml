@@ -9,6 +9,9 @@ Dialog {
     modal: true
     // keyboard focus moves into the dialog while it is open
     focus: true
+    // over the whole window, wherever the dialog was made (Main.qml makes
+    // them in Loaders when first opened): its size follows the window's
+    parent: Overlay.overlay
     anchors.centerIn: Overlay.overlay
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 20

@@ -25,7 +25,29 @@ Card {
                 id: typeRow
                 anchors.centerIn: parent
                 spacing: 4
-                Text { text: "🔒"; font.pixelSize: 10; color: Theme.muted; anchors.verticalCenter: parent.verticalCenter }
+                // a padlock, drawn: an emoji would need a fallback font,
+                // which Qt finds by reading every installed one (App)
+                Item {
+                    width: 8
+                    height: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 6
+                        height: 7
+                        radius: 3
+                        color: "transparent"
+                        border.color: Theme.muted
+                        border.width: 1.5
+                    }
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: 8
+                        height: 6
+                        radius: 1.5
+                        color: Theme.muted
+                    }
+                }
                 Text {
                     text: App.document.gridTypeName
                     color: Theme.text
@@ -37,7 +59,7 @@ Card {
             HoverHandler { id: typeHover }
             BtToolTip {
                 shown: typeHover.hovered
-                text: qsTr("Voxel type: %1 — fixed when the file is created (File ▸ New); it cannot be changed afterwards").arg(App.document.gridTypeName)
+                text: qsTr("Voxel type: %1 — fixed when the file is created (File › New); it cannot be changed afterwards").arg(App.document.gridTypeName)
             }
         },
         Item { width: 1; height: 1 },
