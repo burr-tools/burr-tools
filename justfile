@@ -98,6 +98,53 @@ check: check-cppcheck
 # Run full static check suite (cppcheck + clang-tidy)
 check-all: check-cppcheck check-tidy
 
+# Pinned TLA+ tools (SANY, TLC, PlusCal translator) for the protocol models
+# in spec/. Pinned so model-checking results reproduce across machines.
+# Jar lives in build-tla/ (matched by the build-*/ gitignore), never in git.
+tla_jar := "build-tla/tla2tools.jar"
+tla_version := "1.7.4"
+
+# Fetch the pinned TLA+ tools jar (fail loudly on HTTP errors and never
+# leave a half-downloaded jar behind: without -f curl exits 0 on a 404
+# and the error page would be cached as the jar).
+spec-tools:
+    @mkdir -p build-tla
+    @if [ ! -f "{{tla_jar}}" ]; then curl -fsSL -o "{{tla_jar}}.part" "https://github.com/tlaplus/tlaplus/releases/download/v{{tla_version}}/tla2tools.jar" && mv "{{tla_jar}}.part" "{{tla_jar}}"; fi
+
+# Guard against pcal.trans silently truncating the algorithm on brace
+# imbalance: every declared PlusCal process must appear in the generated
+# translation. A stray `};` once dropped 3 of 4 processes while TLC stayed
+# green on the worker-only remainder, so this runs inside spec-check.
+spec-lint:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p tmp-tla
+    for m in spec/AssemblyPool spec/DisasmPool spec/Pipeline; do
+      awk '/BEGIN TRANSLATION/{f=1} f{print} /END TRANSLATION/{f=0}' "$m.tla" > tmp-tla/trans.chk
+      grep -oE 'process \([A-Za-z_][A-Za-z0-9_]*' "$m.tla" | sed -E 's/.*\(//' | sort -u |
+        while read -r p; do
+          grep -qw "$p" tmp-tla/trans.chk || { echo "spec-lint: process '$p' missing from translation in $m"; exit 1; }
+        done
+    done
+    rm -f tmp-tla/trans.chk
+
+# Translate the PlusCal protocol models and model-check them with TLC.
+# AssemblyPool (uncapped + forced-parking), DisasmPool (normal + tight),
+# Pipeline (minimal + wide contention). All three translate first, then one
+# lint pass covers them all, then the six TLC configs run. The wide Pipeline
+# model takes ~30s; everything else is seconds.
+spec-check: spec-tools
+    java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
+    java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old
+    java -cp "{{tla_jar}}" pcal.trans spec/Pipeline.tla && rm -f spec/Pipeline.old
+    just spec-lint
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPool.cfg spec/AssemblyPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPoolLowBudget.cfg spec/AssemblyPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPool.cfg spec/DisasmPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPoolTight.cfg spec/DisasmPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/Pipeline.cfg spec/Pipeline
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/PipelineWide.cfg spec/Pipeline
+
 # Configure the coverage build directory if not already set up
 setup-cov:
     @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
