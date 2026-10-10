@@ -14,7 +14,7 @@ brew install meson ninja cmake
 
 - **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
 - **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
-- **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
+- **Libraries**: Dependencies (FLTK 1.4, Manifold, Catch2, pybind11, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
 - **Minimum macOS**: `burrtools` and `burrTxt` run on macOS 11 Big Sur and later (`-Dmacos_deployment_target=11.0`, the default); `burrtools-qt` on macOS 14 Sonoma and later (`-Dqt_macos_deployment_target=14.0`, the default).
 
 #### Optional Static Analysis Tools (macOS)
@@ -27,14 +27,30 @@ brew install cppcheck llvm just
 
 ### Linux
 
-Install the required dependencies:
+Install the required dependencies. FLTK 1.4, Manifold, Catch2 and
+pybind11 are built automatically from the wraps in `subprojects/` (a
+system FLTK is used if one happens to be installed, otherwise it is
+built from source, which is why `cmake` is required).
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y meson ninja-build build-essential \
-    libboost-all-dev libgl-dev libglu1-mesa-dev freeglut3-dev \
-    libfltk1.3-dev libpng-dev zlib1g-dev
+sudo apt-get install -y meson ninja-build cmake build-essential \
+    libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev \
+    python3 python3-dev
 ```
+
+`python3-dev` provides the headers for the Python module (`-Dpython=auto`
+builds it when they are found; `-Dpython=disabled` skips it).
+
+#### Optional tools (Linux)
+
+```bash
+sudo apt-get install -y just cppcheck clang-tidy clang gcovr doxygen graphviz
+```
+
+`just` runs every recipe, `cppcheck` and `clang-tidy` are behind `just check`
+and `just check-tidy`, `clang` is for the x86-64 Clang build CI also runs,
+`gcovr` for `just coverage`, and `doxygen` with `graphviz` for `just docs`.
 
 The update check needs no libcurl headers and links no libcurl: the few
 ABI-stable constants it uses are declared in `src/tools/curl_abi.h`, and the
@@ -233,10 +249,13 @@ Tools modules, and meson ≥ 1.7.
 ```bash
 # Distro Qt ≥ 6.8 only (Debian/Ubuntu):
 sudo apt-get install -y qmake6 qt6-base-dev qt6-base-private-dev \
-    qt6-declarative-dev qt6-declarative-dev-tools \
+    qt6-declarative-dev qt6-declarative-private-dev qt6-declarative-dev-tools \
     qt6-svg-dev qt6-shadertools-dev \
     qt6-tools-dev qt6-tools-dev-tools \
     mesa-vulkan-drivers libvulkan-dev
+# qt6-declarative-private-dev is needed by src/qtgui/qmloutlines.cpp (QtQml
+# private headers); without it the build fails there.
+# The render tests need a display: also install xvfb and run them under xvfb-run.
 # Older distributions: Qt online installer or `pip install aqtinstall`,
 # module `qtshadertools` (as CI does with jurplel/install-qt-action).
 ```
