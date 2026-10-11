@@ -37,6 +37,40 @@ class problem_c;
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results
  * and continue later on
+ *
+ * Pause/resume contract (the one place stating the whole sequence; the
+ * per-component pieces live next to the code quoted below).
+ *
+ * Pause (stop() -> stopInternal()): assembler->stop() fires the run token
+ * and wakes parked pool workers; disasm_pool->requestStop() salvages queued
+ * (never-started) assemblies while in-flight disassemblies run to
+ * completion. The worker unwinds at task boundaries: assemble() returns,
+ * disasm_pool->finish() drains filed results, and takeSalvaged() moves the
+ * salvage into the problem's stashed assemblies. On the assembly side the
+ * pool is drained after the workers join: never-started plus re-queued
+ * in-flight tasks land back in parallelTasks (both assemblers re-queue
+ * via push_tasks, which stays accepted while stopping), with
+ * emittedSignatures suppressing repeats and parallelInterrupted marking
+ * the position resumable.
+ *
+ * Continue (start() again): stashed assemblies are re-submitted FIRST, so
+ * solution order stays stable; then assemble() continues over the drained
+ * remainder (generation is skipped while tasks remain) or regenerates
+ * fully when the stop landed during generation. Re-searched overlap is
+ * suppressed by the emittedSignatures dedup, so nothing is reported twice
+ * and nothing is lost. Across sessions, stashed assemblies are serialized
+ * with the problem; an interrupted parallel search reloads resumable when
+ * task data was persisted, and is refused on load
+ * (ERR_CAN_NOT_RESTORE_INTERRUPTED, restarting cleanly) only when the
+ * stop left no tasks behind.
+ *
+ * Load-bearing ordering rules:
+ * - takeSalvaged() only after finish(); pool.drain() only after the
+ *   workers have joined (draining mid-run steals queued tasks from live
+ *   workers and corrupts progress accounting).
+ * - No pool-level stop flag may refuse push_tasks: the resume depends on
+ *   requeue pushes staying accepted, which is why AssemblyTaskPool has no
+ *   requestStop()/abort() -- stop arrives via the run and jthread tokens.
  */
 class solveThread_c : public assembler_cb {
 
