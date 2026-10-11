@@ -81,7 +81,7 @@ properties. Read in this order:
 | `Pop` / `Fin` | `pop_task` success + `finishTask` (`releaseBudget` then `task_done`) |
 | `ShedTok` | Model-only shed of a reservation left dangling by a label-split interleave that C++ excludes (reserve is atomic with the nonempty check). Keeps the token-free-wait rule. |
 | `splitter` process | `push_tasks` dynamic splits, as environment nondeterminism (splits are optional: the owner searches the whole subtree) |
-| `stopper` process | Stop path (`runStop` semantics: pushes are still accepted after a stop, which the retry path depends on). Fair with a skip branch: skipping covers never-stop, fairness guarantees a started salvage runs to completion |
+| `stopper` process | Stop path (`runStop` semantics: pushes are still accepted after a stop, which the retry path depends on); unfair, so TLC covers stop and never-stop |
 | `BudgetConservation` | **SPEC-BUDGET-1**: takes/returns pair up |
 | `ActiveBounded` | N-active-thread bound: every in-flight task holds a token |
 | `Pairing` | **SPEC-POOL-1**: each `pop_task` pairs with exactly one `finishTask` |
@@ -100,7 +100,7 @@ properties. Read in this order:
 | `worker` + `WWait` await | `worker_loop()`: pop under `queue_mutex`; predicate deliberately omits `stop_requested` (requestStop re-wake is harmless) |
 | `WFile` await | `cv_reorder` wait. TLC proves it never blocks: `WindowBounded` guarantees a free slot whenever a job is in flight |
 | `merger` + `MWait` await | `merger_loop()`: next-seq filed, dropped-skip, or finished-and-drained |
-| `stopper` + `SalvLoop`/`DropMove` | `requestStop()`: salvage queued assemblies, then publish `dropped_` in a second step (`pendingDrop` models the queue_mutex/result_mutex window between the two; the merger just waits it out) |
+| `stopper` + `SalvLoop`/`DropMove` | `requestStop()`: salvage queued assemblies, then publish `dropped_` in a second step (`pendingDrop` models the queue_mutex/result_mutex window between the two; the merger just waits it out). Fair with a skip branch: skipping covers never-stop, fairness guarantees a started salvage reaches `dropped` |
 | `aborter` | `abort()`: discard queue, reorder buffer, drops; workers/merger exit on the flag (also covers the worker-exception path's observable protocol) |
 | `finisher` | `finish()`: set `finished` once every offer resolved; workers join, merger drains |
 | `OrderedDelivery` | **SPEC-DIS-1**: monotonic `seqNo` merge |
@@ -130,7 +130,7 @@ properties. Read in this order:
 
 Review findings that shape what the specs must cover:
 
-- **Stop during generation must discard partial state** (`assembler_1.cpp:3035): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (`simd_huang_cover.cpp:687`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is PRs #116-#118.
+- **Stop during generation must discard partial state** (`assembler_1.cpp:3035`): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (`simd_huang_cover.cpp:687`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is PRs #116-#118.
 - **Salvage-before-return** (#118, #116): every terminal path must preserve requeueable state (seeds, queued assemblies). Covered for the disassembler pool by `SeqConservation`; the assembly-side `drain()` is the wired stop path (not an abstraction), while the stop-time retry re-queue stays deliberately unmodeled — SPEC-POOL-2 is really about that path, so it is listed as a gap, not a claim.
 - **Tests must fail without the fix** (#116 `test_solver.cpp:854`, #114 verified-by-revert): the same standard applies here — every spec is mutation-checked (removing the submit window violates `WindowBounded`; dropping token releases violates `CleanExit`).
 - **NDEBUG-vanishing checks gate nothing** (#113): CI gates must throw via `bt_te()`, never `bt_assert`. Applies to the planned debug accounting asserts: they stay debug-only tripwires inside `#ifndef NDEBUG` tests, never release gates.
@@ -173,7 +173,7 @@ caches, disassembly payloads, the merger callback body, GUI.
    is never exercised yet every invariant holds). After touching an
    await, check that the distinct-state count did not collapse AND that
    a targeted mutant still fails. Current rough counts: AssemblyPool
-   ~14k/19k, DisasmPool ~179k/69k, Pipeline ~3k/300k states.
+   ~13k/13k, DisasmPool ~233k/89k, Pipeline ~3k/335k states.
 
 ## Tooling quirks found the hard way
 

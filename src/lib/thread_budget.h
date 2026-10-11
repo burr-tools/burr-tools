@@ -80,9 +80,9 @@ inline bool threadBudgetEnabled() {
  * A pointer, not a boolean: if several budgets ever coexist, release()
  * only returns a token to the budget that granted it.
  *
-  * History and measurements live in
-  * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
-  */
+ * History and measurements live in
+ * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
+ */
 class ThreadBudget {
 public:
   explicit ThreadBudget(unsigned int total) : available_(total), total_(total) {}

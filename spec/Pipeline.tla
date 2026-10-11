@@ -243,12 +243,12 @@ NoJob == -1
         \* (worker_loop(): release, then lock, then the cv_reorder wait),
         \* so no wait in this model may hold a token -- the token-free-wait
         \* rule the spec enforces by construction.
+        \* Abstract disassembly (token held), then release.
       DRel:
-        if (holdsD[self]) {
-          available := available + 1;
-          holdsD[self] := FALSE;
-        };
-        \* Abstract disassembly, then file (window slot guaranteed).
+        available := available + 1;
+        holdsD[self] := FALSE;
+        \* File under the reorder wait, token already returned (window slot
+        \* guaranteed by WindowBounded, so the await never blocks).
       DFile:
         await Cardinality(filed) < MaxR;
         filed := filed \cup {seq};
@@ -310,7 +310,7 @@ NoJob == -1
   }
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "27b89837" /\ chksum(tla) = "eb50ad82")
+\* BEGIN TRANSLATION (chksum(pcal) = "dccc5cf0" /\ chksum(tla) = "e7a690df")
 VARIABLES aq, activeA, completedA, adone, holdsA, hasTaskA, available, dq, 
           nextSubmit, nextMerge, filed, dropped, skipped, delivered, 
           salvagedSeq, busy, finished, stopReq, ddone, holdsD, mdone, 
@@ -582,11 +582,8 @@ DWait(self) == /\ pc[self] = "DWait"
                                stopReq, mdone, lastDelivered, atask >>
 
 DRel(self) == /\ pc[self] = "DRel"
-              /\ IF holdsD[self]
-                    THEN /\ available' = available + 1
-                         /\ holdsD' = [holdsD EXCEPT ![self] = FALSE]
-                    ELSE /\ TRUE
-                         /\ UNCHANGED << available, holdsD >>
+              /\ available' = available + 1
+              /\ holdsD' = [holdsD EXCEPT ![self] = FALSE]
               /\ pc' = [pc EXCEPT ![self] = "DFile"]
               /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
                               dq, nextSubmit, nextMerge, filed, dropped, 
