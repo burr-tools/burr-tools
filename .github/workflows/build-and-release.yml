@@ -237,18 +237,23 @@ jobs:
            --body-file coverage-report.md --edit-last --create-if-none
 
 
-  # Builds the Doxygen API reference and, on master, publishes it to GitHub
-  # Pages at https://burr-tools.github.io/burr-tools/.
+  # Builds the Doxygen API reference and, on master and release tags, publishes
+  # it to GitHub Pages at https://burr-tools.github.io/burr-tools/.
   #
-  # Gated to pull requests and master, matching `coverage` above. That is not
-  # just symmetry: the `release` job downloads *every* artifact of the run into
-  # one directory and attaches `artifacts/**/*` to the release, so a pages
-  # artifact present on a tag run would end up as a release asset.
+  # Release tags are included because the docs are stamped with
+  # `git describe --tags`. A release is tagged after its commit has landed on
+  # master, so the master run stamps the site `vX.Y.Z-N-g<sha>`; only the tag
+  # run can stamp it with the release version.
   docs:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
+    outputs:
+      publish: ${{ steps.publish.outputs.publish }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -274,15 +279,36 @@ jobs:
       with:
         path: gendoc/html
 
+    # A tag run publishes only when the tagged commit is still master's tip.
+    # Tagging an older commit, or tagging after master has moved on, would
+    # otherwise replace the current docs with an older tree.
+    - name: Decide whether to publish
+      id: publish
+      run: |
+        if [ "$GITHUB_EVENT_NAME" != push ]; then
+          publish=false
+        elif [ "$GITHUB_REF" = refs/heads/master ]; then
+          publish=true
+        elif [ "$GITHUB_SHA" = "$(git rev-parse origin/master)" ]; then
+          publish=true
+        else
+          publish=false
+          echo "Tagged commit is not master's tip; leaving the published docs alone."
+        fi
+        echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
 
   # Split from `docs` because deployment needs write access to Pages and an id
   # token, and a pull request from a fork must not be handed either. Keeping the
   # generation step in its own read-only job means forks still get their docs
   # build checked; only this job, which never runs for a pull request, deploys.
+  #
+  # The github-pages environment accepts deployments from `master` and from
+  # `v*.*.*` tags; a tag added to the trigger list must also be allowed there.
   deploy-docs:
     needs: docs
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: needs.docs.outputs.publish == 'true'
     permissions:
       pages: write
       id-token: write
@@ -468,9 +494,13 @@ jobs:
         echo "tag=v$VERSION" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
     
-    - name: Download all artifacts
+    # Everything under `artifacts/` becomes a release asset, so only the
+    # platform builds are downloaded: a tag run also uploads the docs' Pages
+    # artifact, and test logs on failure.
+    - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
+        pattern: burrtools-{linux,windows,macos}
         path: artifacts
     
     - name: Generate release notes
