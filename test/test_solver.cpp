@@ -1640,26 +1640,42 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
   CHECK(tookDifferentPaths);
 }
 
-/* An interrupted SIMD search must not save itself as a resumable position.
+/* An interrupted single-threaded SIMD search saves itself as a resumable position.
  *
- * Before this was handled, simdSearch() kept its search state inside the solver,
- * so an aborted run left pos == 0. When saved to an .xmpuzzle, it was
- * indistinguishable from a fresh unstarted search, so resuming it replayed
- * the entire search and duplicated all found assemblies.
+ * The serial simdSearch() is gone: SIMD-eligible runs always take the task-based
+ * parallel path, even with one thread, so an aborted run leaves a pool remainder
+ * plus reported signatures (format 1.6). Reloading resumes from the remainder and
+ * the union across both phases equals the uninterrupted multiset, without
+ * duplicating the assemblies found before the stop.
  */
-TEST_CASE("SIMD assembler: an interrupted search is not restored as resumable",
+TEST_CASE("SIMD assembler: an interrupted single-threaded search restores as resumable",
           "[assembler][simd][resume]") {
+  ScopedEnv env("BURRTOOLS_NO_SIMD", nullptr);
   auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
+  // Baseline multiset for the union check below.
+  std::multiset<std::string> serial;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE(!serial.empty());
+
   assembler_0_c assm(*problem);
   assm.setNumThreads(1);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
+  RecordingAssemblerCallback cb1;
   int seen = 0;
-  assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool {
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb1.assembly(std::move(a));
     seen++;
     return false;
   });
@@ -1675,11 +1691,19 @@ TEST_CASE("SIMD assembler: an interrupted search is not restored as resumable",
   }
 
   assembler_0_c restored(*problem);
+  restored.setNumThreads(1);
   REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   std::string payload = extractAssemblerContent(state);
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
-        == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+        == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb2;
+  restored.assemble(&cb2);
+
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == serial);
 }
 
 TEST_CASE("assembler 1: getFinished does not report 100% before starting a restored search",
