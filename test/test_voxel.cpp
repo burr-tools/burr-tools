@@ -978,3 +978,26 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
     }
   }
 }
+
+TEST_CASE("voxel: transform rejects a transformation number outside the grid's table -- in release builds too",
+          "[voxel][transform]") {
+  /* transform() indexes a fixed per-grid rotation table with its argument.
+     An out-of-range number must throw rather than read past that table: the
+     garbage "matrix" it would find there maps the voxels far outside the
+     buffer transform() allocates, and the write lands in unrelated memory.
+     The check is unconditional, so this case is not NDEBUG-guarded. */
+  for (gridType_c::gridType t : ALL_GRIDS) {
+    INFO("grid " << gridName(t));
+    gridType_c gt(t);
+    const unsigned int limit = gt.getSymmetries()->getNumTransformationsMirror();
+
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, 5, 7, 3);
+    v->setState(0, 0, 0, voxel_c::VX_FILLED);
+
+    REQUIRE_THROWS_AS(v->transform(limit), assert_exception);
+    REQUIRE_THROWS_AS(v->transform(0xFE), assert_exception);
+
+    // the last entry of the table is still a valid transformation
+    REQUIRE(v->transform(limit - 1));
+  }
+}
