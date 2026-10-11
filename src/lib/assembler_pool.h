@@ -36,8 +36,10 @@
  *
  * A worker whose pop finds an empty queue waits until either new work arrives
  * (a sibling splits a task, see the per-engine split helpers), all work is
- * done (global quiescence: queue empty and no worker active), or the search
- * is stopped/aborted. Workers therefore stay alive for the whole search and
+   * done (global quiescence: queue empty and no worker active), or the search
+   * is stopped via the run or jthread stop tokens (this pool deliberately
+   * has no stop flag of its own, so pushes stay accepted while stopping).
+   * Workers therefore stay alive for the whole search and
  * remain available when a sibling blocked in disassemblerPool_c::submit()
  * wakes up again.
  *
@@ -93,7 +95,7 @@ public:
    * Pop a task. Returns true with out_task set (caller now owns one unit of
    * `active_workers` and must call finishTask() exactly once), or false when
    * the worker should terminate: global quiescence (queue empty and no worker
-   * active), pool stop, jthread stop, or the run's stop token.
+   * active), jthread stop, or the run's stop token.
    *
    * With a budget set, a successful pop also holds one budget token for this
    * thread (returned by finishTask()). Budget exhaustion parks the thread
@@ -165,10 +167,16 @@ public:
 #ifndef NDEBUG
     // Pairing tripwire (SPEC-POOL-1, live): finishing more often than
     // popping is always a bug. End-of-run equality is pinned in
-    // test_thread_protocol.cpp; this catches double-finish live.
-    bt_assert(dbg_finishes_.load(std::memory_order_relaxed) <
-              dbg_pops_.load(std::memory_order_relaxed));
-    dbg_finishes_.fetch_add(1, std::memory_order_relaxed);
+    // test_thread_protocol.cpp; this catches double-finish live. The check
+    // and the increment run under the pool mutex: dbg_pops_ is bumped under
+    // it, so a lock-free relaxed read here could still observe a stale pop
+    // count and throw spuriously on weakly ordered hardware (arm64).
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      bt_assert(dbg_finishes_.load(std::memory_order_relaxed) <
+                dbg_pops_.load(std::memory_order_relaxed));
+      dbg_finishes_.fetch_add(1, std::memory_order_relaxed);
+    }
 #endif
     releaseBudget();
     task_done();

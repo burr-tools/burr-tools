@@ -22,7 +22,7 @@
  * throwing off-thread would terminate); they record violations in
  * atomics that the main thread asserts on after joining. */
 
-TEST_CASE("ThreadBudget balances takes and returns under contention", "[thread][protocol]") {
+TEST_CASE("ThreadBudget balances takes and returns under contention", "[thread][protocol][parallel]") {
   ThreadBudget budget(2);
 
   constexpr int kThreads = 6;
@@ -55,7 +55,7 @@ TEST_CASE("ThreadBudget balances takes and returns under contention", "[thread][
   CHECK(budget.debugTakes() == static_cast<unsigned long>(kThreads * kIters));
 }
 
-TEST_CASE("ThreadBudget re-entrant take consumes no extra token", "[thread][protocol]") {
+TEST_CASE("ThreadBudget re-entrant take consumes no extra token", "[thread][protocol][parallel]") {
   ThreadBudget budget(1);
 
   CHECK(budget.tryAcquire());
@@ -68,7 +68,7 @@ TEST_CASE("ThreadBudget re-entrant take consumes no extra token", "[thread][prot
   CHECK(budget.debugTakes() == budget.debugReturns());
 }
 
-TEST_CASE("ThreadBudget shutdown wakes parked acquirers", "[thread][protocol]") {
+TEST_CASE("ThreadBudget shutdown wakes parked acquirers", "[thread][protocol][parallel]") {
   ThreadBudget budget(1);
   REQUIRE(budget.tryAcquire());  // main thread holds the only token
 
@@ -95,7 +95,7 @@ TEST_CASE("ThreadBudget shutdown wakes parked acquirers", "[thread][protocol]") 
   CHECK(budget.debugTakes() == budget.debugReturns());
 }
 
-TEST_CASE("AssemblyTaskPool pairs every pop with a finish across splits", "[thread][protocol]") {
+TEST_CASE("AssemblyTaskPool pairs every pop with a finish across splits", "[thread][protocol][parallel]") {
   AssemblyTaskPool<int> pool;
   pool.seed({1, 2, 3, 4});
 
@@ -132,7 +132,7 @@ TEST_CASE("AssemblyTaskPool pairs every pop with a finish across splits", "[thre
   CHECK(pool.debugUnpaired() == 0);
 }
 
-TEST_CASE("AssemblyTaskPool stop preserves pairing and loses no task", "[thread][protocol]") {
+TEST_CASE("AssemblyTaskPool stop preserves pairing and loses no task", "[thread][protocol][parallel]") {
   AssemblyTaskPool<int> pool;
   std::vector<int> seed(100);
   for (int i = 0; i < 100; ++i)
@@ -174,9 +174,50 @@ TEST_CASE("AssemblyTaskPool stop preserves pairing and loses no task", "[thread]
   CHECK(finishedCount.load() + static_cast<int>(pool.drain().size()) == 100);
 }
 
+TEST_CASE("AssemblyTaskPool accepts push_tasks after stop (requeue-under-stop)", "[thread][protocol][parallel]") {
+  // Pins the contract the requestStop()/abort() removal relies on: pushes
+  // stay accepted while stopping, so a worker interrupted mid-task can
+  // re-queue it for resume. A future stop flag that refuses pushes must
+  // fail here. Deterministic: the holder owns its task before the main
+  // thread stops it, so the push lands strictly after the stop.
+  AssemblyTaskPool<int> pool;
+  pool.seed({1});
+
+  std::atomic<bool> holderHasTask{false};
+  std::atomic<bool> releaseHolder{false};
+  std::atomic<size_t> pushed{0};
+
+  std::jthread worker([&](std::stop_token st) {
+    int task = 0;
+    std::stop_token noStop;
+    if (!pool.pop_task(task, noStop, st))
+      return;
+    holderHasTask.store(true);
+    while (!releaseHolder.load())
+      std::this_thread::yield();
+    pushed.store(pool.push_tasks({task}));
+    pool.finishTask();
+  });
+
+  while (!holderHasTask.load())
+    std::this_thread::yield();
+  worker.request_stop();
+  releaseHolder.store(true);
+  worker.join();
+
+  // The re-queued task survived the stop instead of being refused, and
+  // drain() hands it back for resume.
+  CHECK(pushed.load() == 1);
+  std::vector<int> rest = pool.drain();
+  REQUIRE(rest.size() == 1);
+  CHECK(rest[0] == 1);
+  CHECK(pool.debugUnpaired() == 0);
+  CHECK(pool.debugPops() == pool.debugFinishes());
+}
+
 #else
 
-TEST_CASE("thread protocol accounting is debug-only", "[thread][protocol]") {
+TEST_CASE("thread protocol accounting is debug-only", "[thread][protocol][parallel]") {
   // The take/return and pop/finish counters compile out under NDEBUG, so
   // there is nothing to pin in release builds. This placeholder keeps the
   // case list stable across build types.

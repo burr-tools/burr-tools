@@ -8,6 +8,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
 #include <chrono>
@@ -134,11 +135,15 @@ void SolutionIterator::worker_run(std::stop_token st) {
     problem_c * problem = puzzle->getProblem(problem_idx);
     const gridType_c * gt = problem->getPuzzle().getGridType();
 
-    // Shared-shape precondition for the parallel workers (hotspots,
-    // bounding boxes, symmetries -- everything the search only reads).
-    // One canonical helper rather than a local copy, so future cache
-    // additions cannot silently leave this path under-warmed.
-    assembler_c::prewarmSharedShapeCaches(*problem);
+    // Every front end normalises shape hotspots before solving (burrTxt,
+    // burrTxt2, the GUI and lib_interface all call initHotspot() on every
+    // shape): hotspot coordinates feed placement output, and a stored
+    // non-canonical hotspot would make this path disagree with the rest.
+    // This must stay a normalisation, not a cache prewarm -- the assemblers
+    // already prewarm shared caches themselves before spawning workers.
+    for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
+      puzzle->getShape(i)->initHotspot();
+    }
 
     assm = gt->findAssembler(*problem);
     if (!assm) {

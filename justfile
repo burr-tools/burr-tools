@@ -132,7 +132,7 @@ spec-lint:
 # AssemblyPool (uncapped + forced-parking), DisasmPool (normal + tight),
 # Pipeline (minimal + wide + wide with two disassemblers) contention.
 # All three translate first, then one lint pass covers them all, then the
-# seven TLC configs run. The ND=2 Pipeline model takes ~5 min; everything
+# seven TLC configs run. The ND=2 Pipeline model takes ~2 min; everything
 # else is seconds to ~2 min.
 spec-check: spec-tools
     java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old

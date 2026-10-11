@@ -159,11 +159,13 @@ jobs:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
 
-  # The TLA+ check is deterministic in spec/** (pinned tools, hermetic
-  # models): unchanged inputs reproduce the previous result bit-for-bit,
-  # so runs outside spec/** cannot fail -- and the justfile is touched far
-  # more often than the specs. Gate the expensive job on the paths that
-  # can change its outcome.
+  # The TLA+ check is deterministic in its inputs (pinned tools, hermetic
+  # models): unchanged inputs reproduce the previous result bit-for-bit.
+  # spec/** carries the models, but the justfile defines the recipes
+  # (tla_version, spec-lint, the TLC config list), so a justfile change
+  # can break this job with spec/** untouched -- and the justfile is
+  # touched far more often than the specs. Gate the expensive job on all
+  # paths that can change its outcome.
   spec-changes:
     name: Detect spec changes
     runs-on: ubuntu-latest
@@ -181,6 +183,8 @@ jobs:
         filters: |
           spec:
             - 'spec/**'
+            - 'justfile'
+            - '.github/workflows/build-and-release.yml'
 
   # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
   # the defect class TSan cannot see — lost wakeups, hangs, token leaks —

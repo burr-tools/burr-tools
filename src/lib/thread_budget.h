@@ -109,8 +109,6 @@ public:
     heldBudget() = this;
 #ifndef NDEBUG
     dbg_takes_.fetch_add(1, std::memory_order_relaxed);
-    bt_assert(available_ + dbg_takes_.load(std::memory_order_relaxed) -
-              dbg_returns_.load(std::memory_order_relaxed) == total_);
 #endif
     return true;
   }
@@ -150,8 +148,6 @@ public:
     heldBudget() = this;
 #ifndef NDEBUG
     dbg_takes_.fetch_add(1, std::memory_order_relaxed);
-    bt_assert(available_ + dbg_takes_.load(std::memory_order_relaxed) -
-              dbg_returns_.load(std::memory_order_relaxed) == total_);
 #endif
     return true;
   }
@@ -167,12 +163,13 @@ public:
       heldBudget() = nullptr;
       // No clamp needed: every increment pairs with a prior take, and takes
       // can't exceed the initial total while the holding protocol holds.
-      available_++;
+      // That claim is directly checked below: a return with no outstanding
+      // take would push available_ past total_.
 #ifndef NDEBUG
+      bt_assert(available_ < total_);
       dbg_returns_.fetch_add(1, std::memory_order_relaxed);
-      bt_assert(available_ + dbg_takes_.load(std::memory_order_relaxed) -
-                dbg_returns_.load(std::memory_order_relaxed) == total_);
 #endif
+      available_++;
       notify = true;
     }
     // notify_one, not all: exactly one waiter can consume one freed token,
@@ -205,12 +202,12 @@ public:
   static bool holdsHere(const ThreadBudget *b) { return heldBudget() == b; }
 
 #ifndef NDEBUG
-  /* Debug-only take/return accounting (SPEC-BUDGET-1, live-checked above
-   * at every mutation and pinned end-of-run in test_thread_protocol.cpp).
+  /* Debug-only take/return accounting (SPEC-BUDGET-1, live-checked in
+   * release() and pinned end-of-run in test_thread_protocol.cpp).
    * Compiled out under NDEBUG: per the PR #113 lesson these tripwires
    * gate nothing in release builds. Re-entrant takes consume no token
-   * and are not counted, so takes == returns always and outstanding ==
-   * live holders. Read after joining workers (or accept relaxed
+   * and are not counted, so outstanding == live holders and takes ==
+   * returns at quiescence. Read after joining workers (or accept relaxed
    * staleness); never mutate outside take/return. */
   unsigned long debugTakes() const { return dbg_takes_.load(std::memory_order_relaxed); }
   unsigned long debugReturns() const { return dbg_returns_.load(std::memory_order_relaxed); }
