@@ -30,9 +30,11 @@ static double rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
 
 bool voxel_2_c::transform(unsigned int nr) {
 
-  if (nr == 0) return true;
+  // Input validation, not a debug check: see voxel_0_c::transform.
+  if (nr >= NUM_TRANSFORMATIONS_MIRROR)
+    bt_te("nr < NUM_TRANSFORMATIONS_MIRROR");
 
-  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+  if (nr == 0) return true;
 
   int minx = 100000;
   int miny = 100000;

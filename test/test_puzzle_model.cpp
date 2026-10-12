@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 using namespace bttest;
 
@@ -794,6 +795,110 @@ TEST_CASE("problem: removeAllSolutions clears the saved list and resets solving 
   REQUIRE_FALSE(pr->numAssembliesKnown());
   REQUIRE_FALSE(pr->numSolutionsKnown());
   REQUIRE_FALSE(pr->usedTimeKnown());
+}
+
+namespace {
+
+/* `count` assemblies with one non-placed slot per piece the problem has now,
+   ready for problem_c::stashAssemblies() */
+std::vector<std::unique_ptr<assembly_c>> unplacedAssemblies(const problem_c & pr, unsigned int count) {
+  std::vector<std::unique_ptr<assembly_c>> v;
+  for (unsigned int k = 0; k < count; k++) {
+    auto a = std::make_unique<assembly_c>(pr.getPuzzle().getGridType());
+    for (unsigned int i = 0; i < pr.getNumberOfPieces(); i++)
+      a->addNonPlacement();
+    v.push_back(std::move(a));
+  }
+  return v;
+}
+
+} // namespace
+
+/* The stash holds assemblies a stopped run found but never disassembled. It
+   belongs to the assembler resume state that found them: Continue re-submits
+   it, and a search from scratch re-finds those assemblies by itself. So
+   whatever throws the resume state away must throw the stash away too, or a
+   later run reports stale assemblies -- assemblies laid out for a piece list
+   the problem may no longer have (issue #149). */
+
+TEST_CASE("problem: removeAllSolutions also discards the stashed assemblies",
+          "[model][problem][stash]") {
+  std::unique_ptr<puzzle_c> puzzle = loadFreshPuzzle("examples/SolidSixPieceBurrs.xmpuzzle");
+  problem_c * pr = puzzle->getProblem(0);
+  REQUIRE(pr != nullptr);
+
+  pr->stashAssemblies(unplacedAssemblies(*pr, 3));
+
+  pr->removeAllSolutions();
+
+  REQUIRE(pr->takeStashedAssemblies().empty());
+}
+
+TEST_CASE("problem: changing a piece count of a solved problem discards the stashed assemblies",
+          "[model][problem][stash]") {
+  std::unique_ptr<puzzle_c> puzzle = loadFreshPuzzle("examples/SolidSixPieceBurrs.xmpuzzle");
+  problem_c * pr = puzzle->getProblem(0);
+  REQUIRE(pr != nullptr);
+  REQUIRE(pr->getSolveState() == SS_SOLVED);
+
+  pr->stashAssemblies(unplacedAssemblies(*pr, 3));
+
+  // one more piece of the first part's shape: the saved solutions are
+  // widened in place, the stashed assemblies would be one slot short
+  const unsigned int shape = pr->getShapeIdOfPart(0);
+  pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+
+  REQUIRE(pr->takeStashedAssemblies().empty());
+}
+
+TEST_CASE("problem: takeStashedAssemblies drops assemblies that do not match the problem's piece count",
+          "[model][problem][stash]") {
+  ProblemFixture f = makeProblemFixture(2);
+  problem_c * pr = f.problem;
+  pr->setShapeMaximum(0, 2);
+  pr->setShapeMaximum(1, 1);
+  REQUIRE(pr->getNumberOfPieces() == 3);
+
+  std::vector<std::unique_ptr<assembly_c>> v = unplacedAssemblies(*pr, 2);
+  // a short and a long assembly between the two good ones
+  for (unsigned int n : {2u, 4u}) {
+    auto bad = std::make_unique<assembly_c>(pr->getPuzzle().getGridType());
+    for (unsigned int i = 0; i < n; i++)
+      bad->addNonPlacement();
+    v.insert(v.begin() + 1, std::move(bad));
+  }
+  pr->stashAssemblies(std::move(v));
+
+  std::vector<std::unique_ptr<assembly_c>> back = pr->takeStashedAssemblies();
+  REQUIRE(back.size() == 2);
+  for (const auto & a : back)
+    CHECK(a->placementCount() == 3);
+}
+
+TEST_CASE("problem: exchangeParts reorders the stashed assemblies' placements as it does the solutions'",
+          "[model][problem][stash]") {
+  ProblemFixture f = makeProblemFixture(2);
+  problem_c * pr = f.problem;
+  pr->setShapeMaximum(0, 2);   // part 0: pieces 0 and 1
+  pr->setShapeMaximum(1, 1);   // part 1: piece 2
+
+  // every piece placed, with its own index as x, so the order can be read back
+  auto a = std::make_unique<assembly_c>(pr->getPuzzle().getGridType());
+  for (int i = 0; i < 3; i++)
+    a->addPlacement(0, i, 0, 0);
+  std::vector<std::unique_ptr<assembly_c>> v;
+  v.push_back(std::move(a));
+  pr->stashAssemblies(std::move(v));
+
+  pr->exchangeParts(0, 1);
+
+  // part 1's piece now comes first, then part 0's two pieces in their order
+  std::vector<std::unique_ptr<assembly_c>> back = pr->takeStashedAssemblies();
+  REQUIRE(back.size() == 1);
+  REQUIRE(back[0]->placementCount() == 3);
+  CHECK(back[0]->getX(0) == 2);
+  CHECK(back[0]->getX(1) == 0);
+  CHECK(back[0]->getX(2) == 1);
 }
 
 namespace {
