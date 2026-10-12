@@ -114,6 +114,11 @@ namespace btui {
 
   bool SettingsStore::load(void) {
     vals.clear();
+    // asked first: a directory opens as a stream with libc++ (macOS) and
+    // reads as an empty file there, where libstdc++ fails the open
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(path, ec))
+      return false;
     std::ifstream in(path);
     if (!in)
       return false;
