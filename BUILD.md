@@ -305,6 +305,6 @@ and `BURRTOOLS_TEST_QPA=xcb` under `xvfb-run`, as CI does).
 CI builds and tests the Qt GUI on Linux, Windows and macOS and uploads a
 preview build of each as the workflow artifact `burrtools-qt-<os>`. The
 *Qt standalone build* workflow (`.github/workflows/qt-standalone.yml`) makes
-the standalone Windows program: run it by hand from the Actions tab
-(optionally naming a release tag to attach to), and it runs by itself for
-every `v*.*.*` tag, attaching the program to the release.
+the standalone Windows program. It runs only by hand, from the Actions tab,
+optionally naming a release tag to attach the program to; release tags do
+not start it, so a release ships only the legacy GUI unless someone asks.
