@@ -575,6 +575,8 @@ void problem_c::exchangeParts(unsigned int partId1, unsigned int partId2) {
 
       for (unsigned int s = 0; s < solutions.size(); s++)
         solutions[s]->exchangeShape(p1Start+i, p1Start+j);
+      for (auto & a : stashedAssemblies)
+        a->exchangeShape(p1Start+i, p1Start+j);
 
       pos[j] = pos[i];
       // normally we would also need pos[i] = i; but as we don't touch that field any more let's save that operation
@@ -871,6 +873,8 @@ void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsign
 void problem_c::removeAllSolutions(void) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.clear();
+  // the stash belongs to the resume state reset below (see stashedAssemblies)
+  stashedAssemblies.clear();
   assm.reset();
   assemblerState = "";
   solveState = SS_UNSOLVED;
@@ -897,6 +901,18 @@ std::vector<std::unique_ptr<assembly_c>> problem_c::takeStashedAssemblies(void) 
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   std::vector<std::unique_ptr<assembly_c>> out;
   out.swap(stashedAssemblies);
+
+  /* An assembly needs exactly one placement per piece: everything that reads
+   * it indexes its placements by piece number without a bounds check. One
+   * that does not fit can only describe some other piece list, so it is
+   * dropped here rather than handed to the disassembler and then saved as a
+   * solution.
+   */
+  const unsigned int pieces = getNumberOfPieces();
+  std::erase_if(out, [pieces](const std::unique_ptr<assembly_c> & a) {
+    return a->placementCount() != pieces;
+  });
+
   return out;
 }
 
@@ -919,9 +935,6 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
        */
       if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
         removeAllSolutions();
-        // Same reasoning for the stash: the scratch restart re-finds these
-        // assemblies, so keeping them would report each a second time.
-        stashedAssemblies.clear();
         assemblerVersion = "";
         return err;
       }
@@ -1062,6 +1075,12 @@ void problem_c::makeUnknown(void)
   assm.reset();
   assemblerState = "";
   assemblerVersion = "";
+
+  {
+    // the stash belongs to the resume state dropped above (see stashedAssemblies)
+    std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+    stashedAssemblies.clear();
+  }
 
   numAssemblies = 0;
   numSolutions = 0;

@@ -28,6 +28,8 @@
 #include <mutex>
 #include <stop_token>
 
+#include "bt_assert.h"
+
 /**
  * Kill switch (benchmarking only): with BURRTOOLS_NO_BUDGET=1 every budget
  * pointer is treated as null and both pools behave exactly as without any
@@ -59,6 +61,10 @@ inline bool threadBudgetEnabled() {
  *   holds one token across a whole subtree task, a disassembler one per
  *   job. Submit pacing is deliberately absent -- the bounded queue stays
  *   a real buffer -- so pipeline overlap survives.
+ *   [SPEC-PIPE-1, model-checked in spec/Pipeline.tla: the bound is on
+ *   token holders (threads executing work), not on open tasks -- an
+ *   assembler yielded in its submit wait while a disassembler works is
+ *   designed overlap, and TLC refutes the stronger reading.]
  *
  * Load-bearing deadlock rule: a token is held only across actual
  * searching/disassembling. Every wait (empty/full queues, reorder
@@ -67,17 +73,18 @@ inline bool threadBudgetEnabled() {
  * hand (never requeued) across pickup parks. Every such wait's progress
  * condition then depends only on token holders, which always progress,
  * or on terminal flags. Releasing wakes a waiter; shutdowns wake all.
+ * [SPEC-BUDGET-1, model-checked in spec/AssemblyPool.tla]
  *
-  * Per-thread holdings ride a function-local thread_local pointer (see
-  * heldBudget below): at most one token per thread (true by construction
-  * -- one task at a time per thread in every worker loop here), so
-  * take/return pair up without threading flags through signatures.
-  * A pointer, not a boolean: if several budgets ever coexist, release()
-  * only returns a token to the budget that granted it.
+ * Per-thread holdings ride a function-local thread_local pointer (see
+ * heldBudget below): at most one token per thread (true by construction
+ * -- one task at a time per thread in every worker loop here), so
+ * take/return pair up without threading flags through signatures.
+ * A pointer, not a boolean: if several budgets ever coexist, release()
+ * only returns a token to the budget that granted it.
  *
-  * History and measurements live in
-  * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
-  */
+ * History and measurements live in
+ * design/2026-09-22-assembly-work-stealing.md; the contract lives here.
+ */
 class ThreadBudget {
 public:
   explicit ThreadBudget(unsigned int total) : available_(total), total_(total) {}
@@ -100,6 +107,9 @@ public:
       return false;
     available_--;
     heldBudget() = this;
+#ifndef NDEBUG
+    dbg_takes_.fetch_add(1, std::memory_order_relaxed);
+#endif
     return true;
   }
 
@@ -136,6 +146,9 @@ public:
       return false;
     available_--;
     heldBudget() = this;
+#ifndef NDEBUG
+    dbg_takes_.fetch_add(1, std::memory_order_relaxed);
+#endif
     return true;
   }
 
@@ -150,6 +163,12 @@ public:
       heldBudget() = nullptr;
       // No clamp needed: every increment pairs with a prior take, and takes
       // can't exceed the initial total while the holding protocol holds.
+      // That claim is directly checked below: a return with no outstanding
+      // take would push available_ past total_.
+#ifndef NDEBUG
+      bt_assert(available_ < total_);
+      dbg_returns_.fetch_add(1, std::memory_order_relaxed);
+#endif
       available_++;
       notify = true;
     }
@@ -182,7 +201,20 @@ public:
 
   static bool holdsHere(const ThreadBudget *b) { return heldBudget() == b; }
 
-private:
+#ifndef NDEBUG
+  /* Debug-only take/return accounting (SPEC-BUDGET-1, live-checked in
+   * release() and pinned end-of-run in test_thread_protocol.cpp).
+   * Compiled out under NDEBUG: per the PR #113 lesson these tripwires
+   * gate nothing in release builds. Re-entrant takes consume no token
+   * and are not counted, so outstanding == live holders and takes ==
+   * returns at quiescence. Read after joining workers (or accept relaxed
+   * staleness); never mutate outside take/return. */
+  unsigned long debugTakes() const { return dbg_takes_.load(std::memory_order_relaxed); }
+  unsigned long debugReturns() const { return dbg_returns_.load(std::memory_order_relaxed); }
+  unsigned long debugOutstanding() const { return debugTakes() - debugReturns(); }
+#endif
+
+ private:
   // NOTE: per-thread holding as a function-local static, NOT an
   // `inline thread_local` static data member: Apple's linker rejects the
   // latter with duplicate 'thread-local wrapper routine' symbols when the
@@ -199,6 +231,10 @@ private:
   unsigned int available_;
   const unsigned int total_;
   bool shutdown_{false}; // guarded by mtx_
+#ifndef NDEBUG
+  std::atomic<unsigned long> dbg_takes_{0};
+  std::atomic<unsigned long> dbg_returns_{0};
+#endif
 };
 
 /**

@@ -1478,8 +1478,14 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
   hideMarker();
   clearSpaces();
 
+  /* The loop below reads the assembly's placements by piece number, which
+   * is unchecked in release builds. An assembly with a different piece
+   * count than the problem cannot be drawn, so it is shown as empty, like a
+   * missing solution, rather than read out of bounds.
+   */
   if (puz &&
-      (solNum < puz->getNumberOfSavedSolutions())) {
+      (solNum < puz->getNumberOfSavedSolutions()) &&
+      (puz->getSavedSolution(solNum)->getAssembly()->placementCount() == puz->getNumberOfPieces())) {
 
     unsigned int num;
 

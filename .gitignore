@@ -56,3 +56,6 @@ design-spec/*
 .claude/settings.local.json
 .claude/skills
 .cache
+
+# Local TLA+ scratch (jars, mutants, ad-hoc cfgs). Never commit.
+tmp-tla/

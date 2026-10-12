@@ -57,7 +57,12 @@ static const int rotationMatrices[NUM_TRANSFORMATIONS_MIRROR][9] = {
  */
 bool voxel_0_c::transform(unsigned int nr) {
 
-  bt_assert(nr < NUM_TRANSFORMATIONS_MIRROR);
+  // Input validation, not a debug check: the number indexes the rotation
+  // table below, and one past its end would read unrelated memory as a
+  // matrix, so it is rejected in release builds too (bt_assert compiles away
+  // under NDEBUG).
+  if (nr >= NUM_TRANSFORMATIONS_MIRROR)
+    bt_te("nr < NUM_TRANSFORMATIONS_MIRROR");
 
   // first transform the corner opposite the 0,0,0 corner to find the final size
   // and the required shifts

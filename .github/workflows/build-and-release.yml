@@ -233,6 +233,74 @@ jobs:
         name: sanitizers-testlog
         path: build-asan/meson-logs/testlog.txt
         if-no-files-found: ignore
+  # The TLA+ check is deterministic in its inputs (pinned tools, hermetic
+  # models): unchanged inputs reproduce the previous result bit-for-bit.
+  # spec/** carries the models, but the justfile defines the recipes
+  # (tla_version, spec-lint, the TLC config list), so a justfile change
+  # can break this job with spec/** untouched -- and the justfile is
+  # touched far more often than the specs. Gate the expensive job on all
+  # paths that can change its outcome.
+  spec-changes:
+    name: Detect spec changes
+    runs-on: ubuntu-latest
+    outputs:
+      spec: ${{ steps.filter.outputs.spec }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check changed paths
+      id: filter
+      uses: dorny/paths-filter@v3
+      with:
+        filters: |
+          spec:
+            - 'spec/**'
+            - 'justfile'
+            - '.github/workflows/build-and-release.yml'
+
+  # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
+  # the defect class TSan cannot see — lost wakeups, hangs, token leaks —
+  # at the protocol level, before those shapes reach the C++ implementation.
+  spec:
+    name: TLA+ protocol specs
+    needs: spec-changes
+    # Tags and manual dispatches have no diff base for the filter, so they
+    # run unconditionally; PRs and pushes run only on spec/** changes.
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.spec-changes.outputs.spec == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    # The jar is pinned in the justfile (tla_version). The cache key
+    # hashes the justfile, so any pin change misses and refetches (~2MB);
+    # a static version key would silently keep serving the old jar.
+    - name: Cache TLA+ tools
+      uses: actions/cache@v4
+      with:
+        path: build-tla/tla2tools.jar
+        key: tla2tools-${{ hashFiles('justfile') }}
+
+    - name: Translate and model-check protocol specs
+      run: |
+        just spec-check
+        # spec-check re-translates in place, so without this the committed
+        # translation could drift from the PlusCal while CI stays green.
+        git diff --exit-code -- spec/ || { echo "::error::committed PlusCal translation is stale; run just spec-check and commit spec/"; exit 1; }
 
   coverage:
     runs-on: ubuntu-latest
@@ -354,18 +422,23 @@ jobs:
            --body-file coverage-report.md --edit-last --create-if-none
 
 
-  # Builds the Doxygen API reference and, on master, publishes it to GitHub
-  # Pages at https://burr-tools.github.io/burr-tools/.
+  # Builds the Doxygen API reference and, on master and release tags, publishes
+  # it to GitHub Pages at https://burr-tools.github.io/burr-tools/.
   #
-  # Gated to pull requests and master, matching `coverage` above. That is not
-  # just symmetry: the `release` job downloads *every* artifact of the run into
-  # one directory and attaches `artifacts/**/*` to the release, so a pages
-  # artifact present on a tag run would end up as a release asset.
+  # Release tags are included because the docs are stamped with
+  # `git describe --tags`. A release is tagged after its commit has landed on
+  # master, so the master run stamps the site `vX.Y.Z-N-g<sha>`; only the tag
+  # run can stamp it with the release version.
   docs:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/master' ||
+      startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
+    outputs:
+      publish: ${{ steps.publish.outputs.publish }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -391,15 +464,36 @@ jobs:
       with:
         path: gendoc/html
 
+    # A tag run publishes only when the tagged commit is still master's tip.
+    # Tagging an older commit, or tagging after master has moved on, would
+    # otherwise replace the current docs with an older tree.
+    - name: Decide whether to publish
+      id: publish
+      run: |
+        if [ "$GITHUB_EVENT_NAME" != push ]; then
+          publish=false
+        elif [ "$GITHUB_REF" = refs/heads/master ]; then
+          publish=true
+        elif [ "$GITHUB_SHA" = "$(git rev-parse origin/master)" ]; then
+          publish=true
+        else
+          publish=false
+          echo "Tagged commit is not master's tip; leaving the published docs alone."
+        fi
+        echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
 
   # Split from `docs` because deployment needs write access to Pages and an id
   # token, and a pull request from a fork must not be handed either. Keeping the
   # generation step in its own read-only job means forks still get their docs
   # build checked; only this job, which never runs for a pull request, deploys.
+  #
+  # The github-pages environment accepts deployments from `master` and from
+  # `v*.*.*` tags; a tag added to the trigger list must also be allowed there.
   deploy-docs:
     needs: docs
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: needs.docs.outputs.publish == 'true'
     permissions:
       pages: write
       id-token: write
@@ -580,7 +674,7 @@ jobs:
   # Each job also packages a self-contained preview build
   # (scripts/package-qt.sh) and uploads it as the workflow artifact
   # burrtools-qt-<os>, for trying the GUI without building it. The release
-  # job does not pick these up: it downloads the legacy builds by name.
+  # job does not pick these up: its download pattern names only the legacy builds.
   qt-linux:
     name: Qt GUI (Linux)
     runs-on: ubuntu-latest
@@ -844,25 +938,15 @@ jobs:
         echo "tag=v$VERSION" >> $GITHUB_OUTPUT
         echo "Version: $VERSION"
     
-    # the release builds by name: the run also holds test logs, coverage,
-    # gallery grabs and the Qt preview builds, none of which are released
-    - name: Download the Linux build
+    # Everything under `artifacts/` becomes a release asset, so only the
+    # legacy platform builds are downloaded: a tag run also uploads the docs'
+    # Pages artifact, test logs on failure, coverage, gallery grabs and the
+    # Qt preview builds (burrtools-qt-<os>, which this pattern does not match).
+    - name: Download platform artifacts
       uses: actions/download-artifact@v4
       with:
-        name: burrtools-linux
-        path: artifacts/burrtools-linux
-
-    - name: Download the Windows build
-      uses: actions/download-artifact@v4
-      with:
-        name: burrtools-windows
-        path: artifacts/burrtools-windows
-
-    - name: Download the macOS build
-      uses: actions/download-artifact@v4
-      with:
-        name: burrtools-macos
-        path: artifacts/burrtools-macos
+        pattern: burrtools-{linux,windows,macos}
+        path: artifacts
     
     - name: Generate release notes
       id: release_notes

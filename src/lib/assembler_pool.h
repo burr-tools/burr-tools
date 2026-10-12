@@ -28,6 +28,7 @@
 #include <stop_token>
 #include <vector>
 
+#include "bt_assert.h"
 #include "thread_budget.h"
 
 /**
@@ -35,8 +36,10 @@
  *
  * A worker whose pop finds an empty queue waits until either new work arrives
  * (a sibling splits a task, see the per-engine split helpers), all work is
- * done (global quiescence: queue empty and no worker active), or the search
- * is stopped/aborted. Workers therefore stay alive for the whole search and
+   * done (global quiescence: queue empty and no worker active), or the search
+   * is stopped via the run or jthread stop tokens (this pool deliberately
+   * has no stop flag of its own, so pushes stay accepted while stopping).
+   * Workers therefore stay alive for the whole search and
  * remain available when a sibling blocked in disassemblerPool_c::submit()
  * wakes up again.
  *
@@ -51,6 +54,7 @@
  *   even when the task body throws or the search aborts mid-task. The worker
  *   loops use try/catch for this. (task_done() alone is only correct when no
  *   budget is set; finishTask() releases the budget token first.)
+ *   [SPEC-POOL-1, model-checked in spec/AssemblyPool.tla]
  * - Progress accounting (totalTasks/completedTasks on assembler_c) stays with
  *   the caller: push_tasks() reports how many tasks it accepted via its return
  *   value so the caller can bump totalTasks; completedTasks is bumped next to
@@ -79,7 +83,6 @@ public:
     queue.clear();
     active_workers = 0;
     waiting_workers = 0;
-    stop_requested = false;
     for (auto &t : initial_tasks)
       queue.push_back(std::move(t));
   }
@@ -92,7 +95,7 @@ public:
    * Pop a task. Returns true with out_task set (caller now owns one unit of
    * `active_workers` and must call finishTask() exactly once), or false when
    * the worker should terminate: global quiescence (queue empty and no worker
-   * active), pool stop, jthread stop, or the run's stop token.
+   * active), jthread stop, or the run's stop token.
    *
    * With a budget set, a successful pop also holds one budget token for this
    * thread (returned by finishTask()). Budget exhaustion parks the thread
@@ -104,14 +107,13 @@ public:
       std::unique_lock<std::mutex> lock(mtx);
       waiting_workers++;
       auto pred = [&] {
-        return !queue.empty() || active_workers == 0 || stop_requested.load() ||
+        return !queue.empty() || active_workers == 0 ||
                runStop.stop_requested() || st.stop_requested();
       };
       cv.wait(lock, st, pred);
       waiting_workers--;
 
-      if (stop_requested.load() || runStop.stop_requested() ||
-          st.stop_requested()) {
+      if (runStop.stop_requested() || st.stop_requested()) {
         releaseBudget();
         return false;
       }
@@ -127,8 +129,7 @@ public:
         // so no lock ordering issues) until a token frees or we must stop.
         lock.unlock();
         bool got = budget_->acquire([&] {
-          return stop_requested.load() || runStop.stop_requested() ||
-                 st.stop_requested();
+          return runStop.stop_requested() || st.stop_requested();
         }, st);
         if (!got)
           return false;
@@ -140,11 +141,9 @@ public:
         // (Reaching here implies the token is freshly acquired: the check
         // above guarantees this thread held none on entry.)
         lock.lock();
-        if (queue.empty() || stop_requested.load() ||
-            runStop.stop_requested() || st.stop_requested()) {
+        if (queue.empty() || runStop.stop_requested() || st.stop_requested()) {
           releaseBudget();
-          if (stop_requested.load() || runStop.stop_requested() ||
-              st.stop_requested())
+          if (runStop.stop_requested() || st.stop_requested())
             return false;
           if (queue.empty() && active_workers == 0)
             return false;
@@ -154,6 +153,9 @@ public:
       out_task = std::move(queue.front());
       queue.pop_front();
       active_workers++;
+#ifndef NDEBUG
+      dbg_pops_.fetch_add(1, std::memory_order_relaxed);
+#endif
       return true;
     }
   }
@@ -162,6 +164,20 @@ public:
   /// any) first, then record progress. Broadcasts when the last active
   /// worker drains an empty queue so quiescent waiters can terminate.
   void finishTask() {
+#ifndef NDEBUG
+    // Pairing tripwire (SPEC-POOL-1, live): finishing more often than
+    // popping is always a bug. End-of-run equality is pinned in
+    // test_thread_protocol.cpp; this catches double-finish live. The check
+    // and the increment run under the pool mutex: dbg_pops_ is bumped under
+    // it, so a lock-free relaxed read here could still observe a stale pop
+    // count and throw spuriously on weakly ordered hardware (arm64).
+    {
+      std::lock_guard<std::mutex> lock(mtx);
+      bt_assert(dbg_finishes_.load(std::memory_order_relaxed) <
+                dbg_pops_.load(std::memory_order_relaxed));
+      dbg_finishes_.fetch_add(1, std::memory_order_relaxed);
+    }
+#endif
     releaseBudget();
     task_done();
   }
@@ -177,13 +193,18 @@ public:
       cv.notify_all();
   }
 
-  /// Push dynamically split child tasks. Returns the number accepted (0 after
-  /// stop/abort). Wakes waiters when tasks were accepted.
+  /// Push dynamically split child tasks. Returns the number accepted
+  /// (0 only for empty input). Pushes stay accepted while stopping: a
+  /// worker interrupted mid-task re-queues it here for in-session resume,
+  /// so a pool-level stop flag would refuse exactly the pushes the resume
+  /// depends on -- this pool deliberately has no requestStop()/abort();
+  /// stop arrives via the run and jthread stop tokens instead. Wakes
+  /// waiters when tasks were accepted.
   size_t push_tasks(std::vector<TaskType> new_tasks) {
     size_t accepted = 0;
     {
       std::lock_guard<std::mutex> lock(mtx);
-      if (stop_requested || new_tasks.empty())
+      if (new_tasks.empty())
         return 0;
       for (auto &t : new_tasks)
         queue.push_back(std::move(t));
@@ -208,31 +229,21 @@ public:
     return queue.size();
   }
 
+#ifndef NDEBUG
+  /* Debug-only pop/finish accounting (SPEC-POOL-1, pinned end-of-run in
+   * test_thread_protocol.cpp). Compiled out under NDEBUG: per the PR #113
+   * lesson these tripwires gate nothing in release builds. Read after
+   * joining workers (or accept relaxed staleness). */
+  unsigned long debugPops() const { return dbg_pops_.load(std::memory_order_relaxed); }
+  unsigned long debugFinishes() const { return dbg_finishes_.load(std::memory_order_relaxed); }
+  unsigned long debugUnpaired() const { return debugPops() - debugFinishes(); }
+#endif
+
   /// Wake all waiters to re-check the predicate; changes no state.
   /// Paired with ThreadBudget::notify() in a stop_callback so parked workers
   /// observe stop promptly, while in-flight retry pushes and drain() keep
-  /// working for in-session resume (unlike requestStop() below).
+  /// working for in-session resume.
   void notify() {
-    cv.notify_all();
-  }
-
-  /// Wake all waiters; subsequent pop_task() calls return false once the
-  /// queue drains. In-flight tasks still run to their next task_done().
-  void requestStop() {
-    {
-      std::lock_guard<std::mutex> lock(mtx);
-      stop_requested = true;
-    }
-    cv.notify_all();
-  }
-
-  /// requestStop() plus discard of all queued (never-started) work.
-  void abort() {
-    {
-      std::lock_guard<std::mutex> lock(mtx);
-      stop_requested = true;
-      queue.clear();
-    }
     cv.notify_all();
   }
 
@@ -265,8 +276,11 @@ private:
   std::deque<TaskType> queue;
   unsigned int active_workers{0};  // guarded by mtx (see class comment)
   unsigned int waiting_workers{0}; // guarded by mtx (see class comment)
-  std::atomic<bool> stop_requested{false};
   ThreadBudget *budget_{nullptr};  // Set via setBudget() before workers start; null = uncapped (checked per pop).
+#ifndef NDEBUG
+  std::atomic<unsigned long> dbg_pops_{0};
+  std::atomic<unsigned long> dbg_finishes_{0};
+#endif
 };
 
 #endif // __ASSEMBLER_POOL_H__

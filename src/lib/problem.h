@@ -110,6 +110,13 @@ private:
    * disassembled, awaiting re-submission on the next run. Guarded by
    * solutionMutex. Also serialized in save()/load (see stashedAssemblies
    * tag), so stop-save-load-continue loses nothing.
+   *
+   * The stash is part of the assembler's resume state: only Continue from
+   * that state needs it, and a search from scratch finds these assemblies
+   * again by itself. So everything that discards the resume state
+   * (removeAllSolutions(), makeUnknown()) discards the stash with it, and
+   * edits that keep the state (exchangeParts()) keep the stash's piece
+   * order in step with the solutions'.
    */
   std::vector<std::unique_ptr<assembly_c>> stashedAssemblies;
 
