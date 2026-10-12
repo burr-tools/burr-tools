@@ -78,8 +78,12 @@ namespace btui {
    *           face outlined, variable voxels slightly see-through
    *           (variableAlpha) with a dashed outline (C06, the mock)
    *   Legacy  legacy BurrTools': bevelled voxels in alternating light and
-   *           dark shades, variable voxels opaque with a black marker */
-  enum class VoxelStyle { Flat, Legacy };
+   *           dark shades, variable voxels opaque with a black marker
+   *   Stl     the shape as Export ▸ STL makes it, with the exporter's
+   *           default parameters: chamfered edges, no outlines, the shape's
+   *           colour; only the fixed voxels -- an exported piece is solid,
+   *           and variable voxels are not drawn */
+  enum class VoxelStyle { Flat, Legacy, Stl };
 
   struct MeshOptions {
     VoxelStyle style = VoxelStyle::Flat;
@@ -105,8 +109,13 @@ namespace btui {
    * voxelFrame_c::showMesh() draws it: one grey, the dark shade, no checker.
    * With insides, every face goes to the translucent list at 10 % for the
    * renderer's x-ray pass (legacy setInsideVisible). Bounds are the
-   * vertices' box. */
-  ShapeMesh buildPolyhedronMesh(const Polyhedron & poly, bool insides);
+   * vertices' box. A `colour` replaces the grey (the STL voxel style
+   * draws a shape in its own). With `cells` -- the shape the mesh was made
+   * from -- each face's vertices carry the grid coordinate of the voxel the
+   * exporter made it for (Face::_fb_index), as the voxel styles' do, for
+   * Dim other layers; without, none. */
+  ShapeMesh buildPolyhedronMesh(const Polyhedron & poly, bool insides, const Rgb * colour = nullptr,
+                                const voxel_c * cells = nullptr);
 
   // --- picking --------------------------------------------------------------
 

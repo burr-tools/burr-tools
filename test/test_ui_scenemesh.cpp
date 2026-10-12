@@ -14,6 +14,7 @@
 #include "../src/tools/gzstream.h"
 #include "../src/tools/xml.h"
 
+#include <algorithm>
 #include <set>
 #include <string>
 
@@ -283,6 +284,72 @@ TEST_CASE("flat style: spheres stay round and draw no facet lines", "[ui][scenem
     CHECK(vert.edge[1] >= 1.5f);
     CHECK(vert.edge[2] >= 1.5f);
     CHECK(vert.color.b == 255);                      // one colour, no checker
+  }
+}
+
+TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones not drawn", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 2, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  const ShapeMesh m = buildShapeMesh(*v, o);
+  CHECK(m.translucent.empty());
+  REQUIRE_FALSE(m.opaque.empty());
+  CHECK(m.opaque.size() > 6 * 2 * 3);              // the chamfers: more than a plain cube's faces
+  float lo[3] = { 1e9f, 1e9f, 1e9f }, hi[3] = { -1e9f, -1e9f, -1e9f };
+  for (const auto & vert : m.opaque) {
+    CHECK(vert.color.b == 255);
+    CHECK(vert.color.a == 255);
+    CHECK(vert.edge[0] == kNoOutline);              // no outlines
+    CHECK(vert.cell[0] == 0.0f);                    // the fixed voxel's, for Dim other layers
+    CHECK(vert.cell[1] == 0.0f);
+    CHECK(vert.cell[2] == 0.0f);
+    CHECK_THAT(std::hypot(vert.normal[0], vert.normal[1], vert.normal[2]), WithinAbs(1.0, 1e-3));
+    for (int k = 0; k < 3; k++) {
+      lo[k] = std::min(lo[k], vert.pos[k]);
+      hi[k] = std::max(hi[k], vert.pos[k]);
+    }
+  }
+  // the exporter's millimetres back on the voxel grid: the fixed cube only
+  // (to the drawing mesh's box, which insets each voxel by 0.005)
+  for (int k = 0; k < 3; k++) {
+    CHECK_THAT(lo[k], WithinAbs(0.0, 0.01));
+    CHECK_THAT(hi[k], WithinAbs(1.0, 0.01));
+  }
+  // the view's bounds stay the whole shape's, so switching styles keeps the camera
+  CHECK_THAT(m.boundsMax.x, WithinAbs(2.0, 1e-6));
+
+  // only variable voxels: nothing to draw
+  auto w = bttest::makeVoxel(gt, 1, 1, 1);
+  w->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  CHECK(buildShapeMesh(*w, o).empty());
+}
+
+TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  for (auto t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 4, 4, 4);
+    int placed = 0;
+    for (unsigned x = 0; x < 4 && placed < 4; x++)
+      for (unsigned y = 0; y < 4 && placed < 4; y++)
+        for (unsigned z = 0; z < 4 && placed < 4; z++)
+          if (v->validCoordinate(x, y, z)) { v->setState(x, y, z, voxel_c::VX_FILLED); placed++; }
+    REQUIRE(placed > 0);
+    INFO(bttest::gridName(t));
+    const ShapeMesh m = buildShapeMesh(*v, o);
+    CHECK_FALSE(m.opaque.empty());
+    CHECK(m.translucent.empty());
+    for (const auto & vert : m.opaque)
+      CHECK(inside(m, vert));
+    // each face knows its voxel, a filled one (Dim other layers)
+    for (const auto & vert : m.opaque) {
+      REQUIRE(vert.cell[0] >= 0.0f);
+      CHECK(v->getState(unsigned(vert.cell[0]), unsigned(vert.cell[1]), unsigned(vert.cell[2])) == voxel_c::VX_FILLED);
+    }
   }
 }
 

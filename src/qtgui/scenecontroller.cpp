@@ -47,7 +47,9 @@ void SceneController::readSettings(void) {
                              == QLatin1String("orthographic")
                            ? btui::Camera::Projection::Orthographic : btui::Camera::Projection::Perspective);
   m_lighting = m_settings->lighting();
-  m_voxelStyle = m_settings->voxelStyle() == QLatin1String("legacy") ? btui::VoxelStyle::Legacy : btui::VoxelStyle::Flat;
+  const QString style = m_settings->voxelStyle();
+  m_voxelStyle = style == QLatin1String("legacy") ? btui::VoxelStyle::Legacy
+               : style == QLatin1String("stl")    ? btui::VoxelStyle::Stl : btui::VoxelStyle::Flat;
   m_samples = m_settings->antialiasingSamples();
 }
 

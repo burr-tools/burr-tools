@@ -246,7 +246,7 @@ QString SettingsController::voxelStyle(void) const {
 }
 
 void SettingsController::setVoxelStyle(const QString & v) {
-  QString s = (v == QLatin1String("legacy")) ? v : QStringLiteral("flat");
+  QString s = (v == QLatin1String("legacy") || v == QLatin1String("stl")) ? v : QStringLiteral("flat");
   if (s == voxelStyle())
     return;
   m_store.set(kVoxelStyle, s.toStdString());

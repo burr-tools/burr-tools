@@ -21,6 +21,7 @@
 #include "scenemesh.h"
 
 #include "../lib/gridtype.h"
+#include "../lib/stl.h"
 #include "../lib/voxel.h"
 #include "../halfedge/polyhedron.h"
 
@@ -254,6 +255,74 @@ namespace btui {
     };
   }
 
+  namespace {
+
+    /* `shape` without its variable voxels */
+    std::unique_ptr<voxel_c> fixedVoxels(const voxel_c & shape) {
+      std::unique_ptr<voxel_c> v(shape.getGridType()->getVoxel(shape));
+      for (unsigned int i = 0; i < v->getXYZ(); i++)
+        if (v->getState(i) == voxel_c::VX_VARIABLE)
+          v->setState(i, voxel_c::VX_EMPTY);
+      return v;
+    }
+
+    void boundsOf(const Polyhedron & poly, Vec3 & lo, Vec3 & hi) {
+      bool first = true;
+      for (Polyhedron::const_vertex_iterator it = poly.vBegin(); it != poly.vEnd(); ++it) {
+        const Vec3 p = toVec((*it)->position());
+        lo = first ? p : Vec3(std::min(lo.x, p.x), std::min(lo.y, p.y), std::min(lo.z, p.z));
+        hi = first ? p : Vec3(std::max(hi.x, p.x), std::max(hi.y, p.y), std::max(hi.z, p.z));
+        first = false;
+      }
+    }
+
+    /* The STL style's faces: the grid's STL exporter's mesh of `fixed` (no
+     * variable voxels), default parameters. The exporter works in
+     * millimetres (a brick unit is 10 mm); its mesh goes onto the shape's own
+     * units, per axis, by matching its box to the drawing mesh's -- the bevel
+     * cuts the edges, not the extent. False where there is no exporter or it
+     * fails, and the caller draws the voxels flat instead. */
+    bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
+      std::unique_ptr<stlExporter_c> stl(fixed.getGridType()->getStlExporter());
+      if (!stl)
+        return false;
+      bool filled = false;
+      for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
+        filled = fixed.getState(i) == voxel_c::VX_FILLED;
+      if (!filled)
+        return true;                                  // nothing to draw
+
+      std::unique_ptr<Polyhedron> poly;
+      try {
+        poly.reset(stl->getMesh(fixed));
+      } catch (...) {
+        return false;
+      }
+      std::unique_ptr<Polyhedron> drawing(fixed.getDrawingMesh());
+      if (!poly || !drawing || poly->vBegin() == poly->vEnd() || drawing->vBegin() == drawing->vEnd())
+        return false;
+
+      Vec3 sLo, sHi, dLo, dHi;
+      boundsOf(*poly, sLo, sHi);
+      boundsOf(*drawing, dLo, dHi);
+      auto ratio = [](float d, float s) { return s > 1e-6f ? d / s : 1.0f; };
+      const Vec3 scale{ ratio(dHi.x - dLo.x, sHi.x - sLo.x), ratio(dHi.y - dLo.y, sHi.y - sLo.y),
+                        ratio(dHi.z - dLo.z, sHi.z - sLo.z) };
+
+      ShapeMesh m = buildPolyhedronMesh(*poly, false, &opt.piece, &fixed);
+      for (MeshVertex & v : m.opaque) {
+        v.pos[0] = dLo.x + (v.pos[0] - sLo.x) * scale.x;
+        v.pos[1] = dLo.y + (v.pos[1] - sLo.y) * scale.y;
+        v.pos[2] = dLo.z + (v.pos[2] - sLo.z) * scale.z;
+        // a normal under a per-axis scale: divided by it, then normalised
+        const Vec3 n = normalize(Vec3(v.normal[0] / scale.x, v.normal[1] / scale.y, v.normal[2] / scale.z));
+        v.normal[0] = n.x; v.normal[1] = n.y; v.normal[2] = n.z;
+      }
+      out.opaque = std::move(m.opaque);
+      return true;
+    }
+  }
+
   ShapeMesh buildShapeMesh(const voxel_c & shape, const MeshOptions & opt) {
     ShapeMesh out;
     float cx, cy, cz;
@@ -261,6 +330,14 @@ namespace btui {
     out.boundsMin = { 0, 0, 0 };
     out.boundsMax = { cx, cy, cz };
 
+    if (opt.style == VoxelStyle::Stl) {
+      const std::unique_ptr<voxel_c> fixed = fixedVoxels(shape);
+      if (!addStlFaces(*fixed, opt, out)) {
+        Builder f{ *fixed, opt, out };
+        f.addFlatVoxels();
+      }
+      return out;
+    }
     Builder b{ shape, opt, out };
     if (opt.style == VoxelStyle::Legacy) {
       std::unique_ptr<Polyhedron> poly(shape.getDrawingMesh());
@@ -284,7 +361,7 @@ namespace btui {
     return out;
   }
 
-  ShapeMesh buildPolyhedronMesh(const Polyhedron & poly, bool insides) {
+  ShapeMesh buildPolyhedronMesh(const Polyhedron & poly, bool insides, const Rgb * colour, const voxel_c * cells) {
     ShapeMesh out;
     bool first = true;
     for (Polyhedron::const_vertex_iterator it = poly.vBegin(); it != poly.vEnd(); ++it) {
@@ -298,16 +375,17 @@ namespace btui {
     }
 
     const float grey = darkShade(0.5f);
-    const Rgba8 col = rgba(grey, grey, grey, insides ? 0.1f : 1.0f);
+    const Rgba8 col = colour ? rgba(colour->r, colour->g, colour->b, insides ? 0.1f : 1.0f)
+                             : rgba(grey, grey, grey, insides ? 0.1f : 1.0f);
     const Vec3 noCell{ -1e4f, -1e4f, -1e4f };
     std::vector<MeshVertex> & dst = insides ? out.translucent : out.opaque;
 
-    auto push = [&dst, col, noCell](Vec3 p, Vec3 n) {
+    auto push = [&dst, col](Vec3 p, Vec3 n, Vec3 cell) {
       MeshVertex m;
       m.pos[0] = p.x; m.pos[1] = p.y; m.pos[2] = p.z;
       m.normal[0] = n.x; m.normal[1] = n.y; m.normal[2] = n.z;
       m.color = col;
-      m.cell[0] = noCell.x; m.cell[1] = noCell.y; m.cell[2] = noCell.z;
+      m.cell[0] = cell.x; m.cell[1] = cell.y; m.cell[2] = cell.z;
       dst.push_back(m);
     };
 
@@ -321,6 +399,10 @@ namespace btui {
       Vec3 n = toVec(f->normal());
       if (f->_flags & FF_INSIDE_FACE)
         n = n * -1.0f;
+      Vec3 cell = noCell;
+      unsigned int x, y, z;
+      if (cells && cells->indexToXYZ(f->_fb_index, &x, &y, &z))
+        cell = Vec3(float(x), float(y), float(z));
       corners.clear();
       Face::const_edge_circulator e = f->begin();
       Face::const_edge_circulator sentinel = e;
@@ -329,9 +411,9 @@ namespace btui {
         ++e;
       } while (e != sentinel);
       for (size_t i = 1; i + 1 < corners.size(); i++) {
-        push(corners[0], n);
-        push(corners[i], n);
-        push(corners[i + 1], n);
+        push(corners[0], n, cell);
+        push(corners[i], n, cell);
+        push(corners[i + 1], n, cell);
       }
     }
     return out;
