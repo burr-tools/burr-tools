@@ -135,3 +135,19 @@ TEST_CASE("pictures fill lines left to right, then pages", "[ui][imagepages]") {
   CHECK(more[4].page == 1);
   CHECK(more[4].y == 0);
 }
+
+TEST_CASE("one picture at a time lands where placing them all puts it", "[ui][imagepages]") {
+  const std::vector<unsigned int> widths = { 120, 40, 290, 10, 150, 150, 1, 300, 80, 80, 80, 80 };
+  const auto all = placePictures(widths, 300, 250, 70);
+  PagePlacer placer(300, 250, 70);
+  unsigned int page = 0;
+  for (size_t i = 0; i < widths.size(); i++) {
+    const Placement p = placer.next(widths[i]);
+    CHECK(p.page == all[i].page);
+    CHECK(p.x == all[i].x);
+    CHECK(p.y == all[i].y);
+    CHECK((p.page == page || p.page == page + 1));   // pages fill one after the other
+    page = p.page;
+  }
+  CHECK(page > 0);
+}

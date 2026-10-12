@@ -458,7 +458,6 @@ void ImageExportController::start(const QUrl & file) {
     return;
   }
   m_ratios.clear();
-  m_pictures.clear();
   m_next = 0;
   m_phase = Phase::Measure;
   m_progress = tr("create Preview image %1 / %2").arg(1).arg(m_jobs.size());
@@ -475,7 +474,8 @@ void ImageExportController::stop(const QString & text) {
   m_timer.stop();
   m_phase = Phase::Idle;
   m_jobs.clear();
-  m_pictures.clear();
+  m_placer.reset();
+  m_page = QImage();
   m_progress = text;
   emit progressChanged();
 }
@@ -494,6 +494,7 @@ void ImageExportController::step(void) {
         m_progress = tr("create Preview image %1 / %2").arg(m_next + 1).arg(m_jobs.size());
       } else {
         m_lineHeight = int(btui::planLineHeight(m_ratios, unsigned(m_pxX), unsigned(m_pxY), unsigned(m_pages)));
+        m_placer.emplace(unsigned(m_pxX), unsigned(m_pxY), unsigned(m_lineHeight));
         m_next = 0;
         m_phase = Phase::Draw;
         m_progress = tr("create image %1 / %2").arg(1).arg(m_jobs.size());
@@ -505,11 +506,16 @@ void ImageExportController::step(void) {
         emit failed(tr("The image could not be drawn."));
         return;
       }
-      m_pictures.push_back(img);
+      if (!placePicture(img))
+        return;
       if (++m_next < m_jobs.size()) {
         m_progress = tr("create image %1 / %2").arg(m_next + 1).arg(m_jobs.size());
       } else {
-        writePages();
+        if (!writePage())
+          return;
+        const int pages = int(m_written.size());
+        stop(tr("Done"));
+        emit finished(pages, m_written.isEmpty() ? QString() : QFileInfo(m_written.first()).fileName());
         return;
       }
     } else {
@@ -525,36 +531,47 @@ void ImageExportController::step(void) {
   m_timer.start();
 }
 
-void ImageExportController::writePages(void) {
-  std::vector<unsigned int> widths;
-  for (const QImage & p : m_pictures)
-    widths.push_back(unsigned(p.width()));
-  const auto places = btui::placePictures(widths, unsigned(m_pxX), unsigned(m_pxY), unsigned(m_lineHeight));
-  const unsigned int pageCount = places.empty() ? 0 : places.back().page + 1;
-
-  for (unsigned int page = 0; page < pageCount; page++) {
-    QImage out(m_pxX, m_pxY, QImage::Format_ARGB32_Premultiplied);
-    out.fill(m_transparent ? QColor(0, 0, 0, 0) : QColor(Qt::white));
-    QPainter painter(&out);
-    for (size_t i = 0; i < places.size(); i++)
-      if (places[i].page == page)
-        painter.drawImage(int(places[i].x), int(places[i].y), m_pictures[i]);
-    painter.end();
-
-    const QString name = m_base + QStringLiteral("%1.png").arg(page, 3, 10, QLatin1Char('0'));
-    m_progress = tr("save page %1").arg(page);
-    emit progressChanged();
-    if (!out.save(name, "PNG")) {
-      // one failed page fails the export: the rest would fail the same way
+/* Put a drawn picture on its page. A picture that lands on the next page
+ * completes the one before, which is written and let go first: only the
+ * page being filled is held, never every picture of the export. False (and
+ * the export stopped) when a page could not be made or written. */
+bool ImageExportController::placePicture(const QImage & img) {
+  const btui::Placement p = m_placer->next(unsigned(img.width()));
+  if (!m_page.isNull() && p.page != m_pageIndex && !writePage())
+    return false;
+  if (m_page.isNull()) {
+    m_page = QImage(m_pxX, m_pxY, QImage::Format_ARGB32_Premultiplied);
+    if (m_page.isNull()) {
       stop(tr("Failed"));
-      emit failed(tr("Could not write the image to\n%1\n\nCheck that the path exists and is writable.")
-                    .arg(QDir::toNativeSeparators(name)));
-      return;
+      emit failed(tr("There is not enough memory for a page of %1 × %2 pixels.").arg(m_pxX).arg(m_pxY));
+      return false;
     }
-    m_written << name;
+    m_page.fill(m_transparent ? QColor(0, 0, 0, 0) : QColor(Qt::white));
+    m_pageIndex = p.page;
   }
-  stop(tr("Done"));
-  emit finished(int(pageCount), m_written.isEmpty() ? QString() : QFileInfo(m_written.first()).fileName());
+  QPainter painter(&m_page);
+  painter.drawImage(int(p.x), int(p.y), img);
+  return true;
+}
+
+/* Write the page being filled, if any, and let it go. */
+bool ImageExportController::writePage(void) {
+  if (m_page.isNull())
+    return true;
+  const QString name = m_base + QStringLiteral("%1.png").arg(m_pageIndex, 3, 10, QLatin1Char('0'));
+  m_progress = tr("save page %1").arg(m_pageIndex);
+  emit progressChanged();
+  const bool saved = m_page.save(name, "PNG");
+  m_page = QImage();
+  if (!saved) {
+    // one failed page fails the export: the rest would fail the same way
+    stop(tr("Failed"));
+    emit failed(tr("Could not write the image to\n%1\n\nCheck that the path exists and is writable.")
+                  .arg(QDir::toNativeSeparators(name)));
+    return false;
+  }
+  m_written << name;
+  return true;
 }
 
 void ImageExportController::finish(void) {

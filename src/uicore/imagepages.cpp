@@ -59,27 +59,30 @@ namespace btui {
     return 1;
   }
 
+  PagePlacer::PagePlacer(unsigned int pageW_, unsigned int pageH, unsigned int lineHeight_) :
+    pageW(pageW_), lineHeight(std::max(1u, lineHeight_)), linesPerPage(std::max(1u, pageH / lineHeight)) {}
+
+  Placement PagePlacer::next(unsigned int w) {
+    if (curWidth + w < pageW || curWidth == 0) {
+      const Placement p{ curPage, curWidth, curLine * lineHeight };
+      curWidth += w + pageW / 60;
+      return p;
+    }
+    curWidth = w + pageW / 60;
+    curLine++;
+    if (curLine >= linesPerPage) {
+      curLine = 0;
+      curPage++;
+    }
+    return { curPage, 0, curLine * lineHeight };
+  }
+
   std::vector<Placement> placePictures(const std::vector<unsigned int> & widths, unsigned int pageW,
                                        unsigned int pageH, unsigned int lineHeight) {
+    PagePlacer placer(pageW, pageH, lineHeight);
     std::vector<Placement> out;
-    if (lineHeight == 0)
-      lineHeight = 1;
-    const unsigned int linesPerPage = std::max(1u, pageH / lineHeight);
-    unsigned int curWidth = 0, curLine = 0, curPage = 0;
-    for (unsigned int w : widths) {
-      if (curWidth + w < pageW || curWidth == 0) {
-        out.push_back({ curPage, curWidth, curLine * lineHeight });
-        curWidth += w + pageW / 60;
-      } else {
-        curWidth = w + pageW / 60;
-        curLine++;
-        if (curLine >= linesPerPage) {
-          curLine = 0;
-          curPage++;
-        }
-        out.push_back({ curPage, 0, curLine * lineHeight });
-      }
-    }
+    for (unsigned int w : widths)
+      out.push_back(placer.next(w));
     return out;
   }
 }

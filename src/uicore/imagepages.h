@@ -46,6 +46,22 @@ namespace btui {
 
   struct Placement { unsigned int page, x, y; };
 
+  /* Places pictures one at a time, in order. A picture's place depends only
+   * on the pictures before it, and pages fill one after the other, so a page
+   * is complete -- and can be written -- once a picture lands on the next.
+   * (legacy PostDraw places them the same way, as it draws them) */
+  class PagePlacer {
+    public:
+      PagePlacer(unsigned int pageW, unsigned int pageH, unsigned int lineHeight);
+
+      /* where the next picture, of that (final) width, goes */
+      Placement next(unsigned int width);
+
+    private:
+      unsigned int pageW, lineHeight, linesPerPage;
+      unsigned int curWidth = 0, curLine = 0, curPage = 0;
+  };
+
   /* Where pictures of the given (final) widths go, at that line height;
    * the page count is the last placement's page + 1. */
   std::vector<Placement> placePictures(const std::vector<unsigned int> & widths, unsigned int pageW,

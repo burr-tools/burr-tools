@@ -2437,6 +2437,38 @@ private slots:
     QCOMPARE(e->progressText(), QStringLiteral("Done"));
   }
 
+  /* A page is written as soon as a picture lands on the next one, while the
+   * export still draws: only the page being filled is held in memory. */
+  void pagesAreWrittenAsTheyFill() {
+    GPU_OR_SKIP(haveGraphics());
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ImageExportController * e = f.app->images();
+    e->begin();
+    e->setMode(QStringLiteral("disassembly"));
+    e->setSupersampling(1);
+    e->setPixelX(300);
+    e->setPixelY(100);
+    e->setPages(50);
+    QStringList firstOut;          // the files written when the first was, mid-export
+    bool onDisk = false;
+    connect(e, &ImageExportController::progressChanged, e, [&] {
+      if (firstOut.isEmpty() && e->busy() && !e->writtenFiles().isEmpty()) {
+        firstOut = e->writtenFiles();
+        onDisk = QFileInfo::exists(firstOut.first());
+      }
+    });
+    e->start(QUrl::fromLocalFile(f.file("s.png")));
+    e->finish();
+    QCOMPARE(firstOut, QStringList{ f.file("s000.png") });
+    QVERIFY(onDisk);
+    const QStringList files = e->writtenFiles();
+    QVERIFY(files.size() > 1);
+    for (int i = 0; i < files.size(); i++)
+      QCOMPARE(files[i], f.file("s") + QStringLiteral("%1.png").arg(i, 3, 10, QLatin1Char('0')));
+  }
+
   void aSolutionFillsThePagesAskedFor() {
     GPU_OR_SKIP(haveGraphics());
     Fixture f;

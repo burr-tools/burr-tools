@@ -24,6 +24,7 @@
 #include "scenecontroller.h"
 
 #include "../uicore/assemblyscene.h"
+#include "../uicore/imagepages.h"
 
 #include <QImage>
 #include <QString>
@@ -31,6 +32,7 @@
 #include <QUrl>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 class DocumentController;
@@ -178,7 +180,8 @@ private:
   QImage drawPicture(const Job & j, int height, int aa);
   void step(void);
   void stop(const QString & text);
-  void writePages(void);
+  bool placePicture(const QImage & img);
+  bool writePage(void);
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
@@ -199,7 +202,9 @@ private:
   Phase m_phase = Phase::Idle;
   std::vector<Job> m_jobs;
   std::vector<double> m_ratios;
-  std::vector<QImage> m_pictures;
+  std::optional<btui::PagePlacer> m_placer;
+  QImage m_page;                   // the page being filled; null before its first picture
+  unsigned int m_pageIndex = 0;
   size_t m_next = 0;
   int m_lineHeight = 0;
   QString m_base;
