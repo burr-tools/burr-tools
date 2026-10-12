@@ -23,6 +23,7 @@
 #include <QCoreApplication>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QWindow>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -49,21 +50,97 @@ void KeyboardCues::setKeyboardMode(bool on) {
   emit changed();
 }
 
+void KeyboardCues::setArmed(bool on) {
+  if (on == m_armed)
+    return;
+  m_armed = on;
+  emit menuArmedChanged();
+}
+
+QString KeyboardCues::accessKeyText(const QString & label, bool show) {
+  QString plain;
+  int at = -1;
+  for (qsizetype i = 0; i < label.size(); i++) {
+    if (label.at(i) == u'&' && i + 1 < label.size()) {
+      i++;
+      if (label.at(i) != u'&' && at < 0)
+        at = int(plain.size());
+    }
+    plain += label.at(i);
+  }
+  if (!show || at < 0)
+    return plain;
+  return plain.left(at) + QStringLiteral("<u>") + plain.at(at) + QStringLiteral("</u>") + plain.mid(at + 1);
+}
+
 bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
   switch (event->type()) {
     // a key a shortcut takes (Esc: the layout's) arrives only as the
     // ShortcutOverride sent ahead of it, never as a KeyPress
     case QEvent::ShortcutOverride:
     case QEvent::KeyPress: {
-      const auto * k = static_cast<QKeyEvent *>(event);
-      if (k->key() == Qt::Key_Alt)
+      auto * k = static_cast<QKeyEvent *>(event);
+      if (k->key() == Qt::Key_Alt) {
+        if (!k->isAutoRepeat())
+          m_altAlone = true;
         setKeyboardMode(true);
-      else if (k->key() == Qt::Key_Escape)
+        break;
+      }
+      m_altAlone = false;
+      if (k->key() == Qt::Key_Escape) {
+        // Esc only disarms the bar, before the layout's Esc ladder sees it
+        const bool wasArmed = m_armed;
+        setArmed(false);
         setKeyboardMode(false);
+        if (wasArmed) {
+          emit menusDismissed();
+          event->accept();
+          return true;
+        }
+        break;
+      }
+      const qsizetype menu = (k->key() >= Qt::Key_A && k->key() <= Qt::Key_Z)
+                             ? m_menuKeys.indexOf(QChar(char16_t(k->key()))) : -1;
+      const Qt::KeyboardModifiers mods = k->modifiers() & ~Qt::KeypadModifier;
+      if (m_armed && mods == Qt::NoModifier && k->key() >= Qt::Key_A && k->key() <= Qt::Key_Z) {
+        // armed, a letter is for the menus and no one else (not the O / P
+        // shortcuts): ahead of a shortcut, claim the key so it comes as a press
+        event->accept();
+        if (event->type() == QEvent::KeyPress && menu >= 0) {
+          emit menuKeyPressed(int(menu));     // while still armed: a submenu opens, not a dismissal
+          setArmed(false);
+        }
+        return true;
+      }
+      if (m_armed)
+        setArmed(false);               // any other key ends it
+      // Alt+letter that no shortcut took (a visible menu bar takes its own)
+      if (event->type() == QEvent::KeyPress && mods == Qt::AltModifier && menu >= 0) {
+        emit menuKeyPressed(int(menu));
+        return true;                   // once: it is passed on to each parent item
+      }
+      break;
+    }
+    case QEvent::KeyRelease: {
+      const auto * k = static_cast<QKeyEvent *>(event);
+      if (k->key() == Qt::Key_Alt && !k->isAutoRepeat() && m_altAlone) {
+        m_altAlone = false;
+        if (!m_menuKeys.isEmpty()) {
+          setArmed(!m_armed);          // a second tap disarms
+          if (!m_armed)
+            emit menusDismissed();
+          setKeyboardMode(m_armed);
+        }
+      }
       break;
     }
     case QEvent::MouseButtonPress:
+      if (const auto * w = qobject_cast<QWindow *>(watched); w && w->type() != Qt::Popup && w->type() != Qt::ToolTip)
+        emit windowPressed();
+      [[fallthrough]];
     case QEvent::ApplicationDeactivate:
+      m_altAlone = false;
+      setArmed(false);
       setKeyboardMode(false);
       break;
     default:

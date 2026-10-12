@@ -254,7 +254,7 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("Switch to Entities / Puzzle / Solver"), keysOf({ Command::WorkspaceEntities, Command::WorkspacePuzzle, Command::WorkspaceSolver })),
     row(tr("Keyboard shortcuts (this list)"), keysOf({ Command::HelpShortcuts })),
     row(tr("Settings"), keysOf({ Command::Settings })),
-    row(tr("Collapse or expand the left / right card"), keysOf({ Command::ToggleLeftCard, Command::ToggleRightCard })),
+    row(tr("Collapse or expand the left / right sidebar"), keysOf({ Command::ToggleLeftCard, Command::ToggleRightCard })),
     row(tr("Focus the 3D view (toggle)"), keysOf({ Command::Focus3d })),
     row(tr("Full screen (toggle)"), keysOf({ Command::FullScreen })),
     row(tr("Step back: close dialog → close menu → exit focus mode"), { QVariant(alt({ QStringLiteral("Esc") })) }),

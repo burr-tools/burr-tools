@@ -9,7 +9,7 @@ import BurrTools.Ui
 // Wireframe (each number marks its code below):
 //
 //   ┌───────────────────────────────────────────┐
-//   │ Voxel editor  ①(▪ Brick)  ②[⤢]        [◨] │   title, collapse: Card
+//   │ Voxel editor  ①(▪ Brick)        ②[⤢] [◨] │   title, collapse: Card
 //   ├───────────────────────────────────────────┤
 //   │                                           │
 //   │      ③ The voxel editor (tools, ...)      │
@@ -72,8 +72,9 @@ Card {
                 shown: typeHover.hovered
                 text: qsTr("Voxel type: %1 — fixed when the file is created (File › New); it cannot be changed afterwards").arg(App.document.gridTypeName)
             }
-        },
-        Item { width: 1; height: 1 },
+        }
+    ]
+    headerActions: [
         IconButton { // ②
             objectName: "entities.editor.focus2d"
             iconName: App.layout.focus === LayoutController.Focus2d ? "unfocus" : "focus"

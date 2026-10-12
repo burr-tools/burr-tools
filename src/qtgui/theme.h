@@ -64,6 +64,7 @@ class Theme : public QObject {
   Q_PROPERTY(QColor muted READ muted NOTIFY changed FINAL)
   Q_PROPERTY(QColor accent READ accent NOTIFY changed FINAL)
   Q_PROPERTY(QColor accentSoft READ accentSoft NOTIFY changed FINAL)
+  Q_PROPERTY(QColor accentEdge READ accentEdge NOTIFY changed FINAL)
   Q_PROPERTY(QColor canvas READ canvas NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisX READ axisX NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisY READ axisY NOTIFY changed FINAL)
@@ -148,6 +149,8 @@ public:
   QColor muted(void) const { return col("muted"); }
   QColor accent(void) const { return col("accent"); }
   QColor accentSoft(void) const { return col("accentSoft"); }
+  /* the accent at 35 %: the faint edge round a selected row */
+  QColor accentEdge(void) const { QColor c = accent(); c.setAlphaF(0.35f); return c; }
   QColor canvas(void) const { return col("canvas"); }
   QColor axisX(void) const { return col("axisX"); }
   QColor axisY(void) const { return col("axisY"); }

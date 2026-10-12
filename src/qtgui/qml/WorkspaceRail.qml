@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // C15 workspace rail: Entities, Puzzle, Solver -- and, while View ▸ Show
@@ -7,7 +8,7 @@ import BurrTools.Ui
 // Wireframe (each number marks its code below):
 //
 //   ┌────────┐
-//   │ ① ☰    │ ─▶ ② every menu   (while the menu bar is hidden)
+//   │ ① ☰    │ ─▶ ② every menu   (while the menu bar is hidden; Alt opens it too)
 //   │  Menu  │
 //   │ ────── │
 //   │ ③ ⬡    │
@@ -42,7 +43,65 @@ Rectangle {
             iconName: "menu"
             tip: qsTr("All menus")
             selected: allMenus.visible
-            onClicked: allMenus.visible ? allMenus.close() : allMenus.popup(menuButton, menuButton.width + 6, 0)
+            tab: false
+            onClicked: allMenus.visible ? closeMenus() : openMenus()
+
+            // Alt reaches these menus by keyboard while the menu bar is hidden
+            // (KeyboardCues): a tap opens this menu, a menu's access key its
+            // submenu, Esc or another tap closes it
+            function openMenus() {
+                if (!allMenus.visible)
+                    allMenus.popup(menuButton, menuButton.width + 6, 0)
+            }
+            // its submenus, then itself: they are windows of their own, and a
+            // submenu would outlive its parent
+            function closeMenus() {
+                for (let i = 0; i < allMenus.count; i++) {
+                    const m = allMenus.menuAt(i)
+                    if (m)
+                        m.close()
+                }
+                allMenus.close()
+            }
+            // leaving the application (another program, a click elsewhere on
+            // the desktop) puts them away, as a menu bar's menus go. The
+            // application's state, not the window's: a menu in a window of its
+            // own may take the activation from the main window
+            Connections {
+                target: Qt.application
+                function onStateChanged() {
+                    if (Qt.application.state !== Qt.ApplicationActive)
+                        menuButton.closeMenus()
+                }
+            }
+            Connections {
+                target: App.keyboardCues
+                enabled: menuButton.visible
+                function onMenuArmedChanged() {
+                    if (!App.keyboardCues.menuArmed)
+                        return
+                    // a tap while they are open closes them, as on Windows
+                    if (allMenus.visible) {
+                        menuButton.closeMenus()
+                        App.keyboardCues.reset()
+                    } else {
+                        menuButton.openMenus()
+                    }
+                }
+                function onMenuKeyPressed(index: int) {
+                    menuButton.openMenus()
+                    const item = allMenus.itemAt(index) as MenuItem
+                    if (item)
+                        item.triggered()
+                }
+                function onMenusDismissed() { menuButton.closeMenus() }
+                // a click in the window outside them (on the button itself, the
+                // button's own click toggles them)
+                function onWindowPressed() {
+                    if (allMenus.visible && !menuButton.hovered)
+                        menuButton.closeMenus()
+                }
+            }
 
             AppMenu { // ②
                 id: allMenus

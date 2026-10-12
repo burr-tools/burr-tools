@@ -35,23 +35,15 @@ MenuBar {
         }
     }
 
-    // "&File" keeps its Alt+F mnemonic in the item's text; the label shows the
-    // underline only while the keyboard drives the menus (KeyboardCues)
-    function accessKeyText(label: string, show: bool): string {
-        const i = label.search(/&[^&]/)
-        const plain = label.replace(/&(.)/g, "$1")
-        if (!show || i < 0)
-            return plain
-        return plain.substring(0, i) + "<u>" + plain.charAt(i) + "</u>" + plain.substring(i + 1)
-    }
-
     delegate: MenuBarItem { // ②
         id: barItem
         implicitHeight: 30
         leftPadding: 10
         rightPadding: 10
+        // "&File" keeps its Alt+F mnemonic in the item's text; the label shows the
+        // underline only while the keyboard drives the menus (KeyboardCues)
         contentItem: Text {
-            text: root.accessKeyText(barItem.text, App.keyboardCues.showAccessKeys)
+            text: App.keyboardCues.accessKeyText(barItem.text, App.keyboardCues.showAccessKeys)
             textFormat: Text.StyledText
             color: Theme.text
             font.pixelSize: Theme.fontBody

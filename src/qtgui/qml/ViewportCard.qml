@@ -119,7 +119,7 @@ Rectangle {
                 glyphName: "edit-tool-fixed"
                 caption: qsTr("Edit")
                 badge: "1"
-                tip: qsTr("3D edit mode arrives with the editing phase")
+                tip: qsTr("3D edit mode (E) arrives with the editing phase")
                 compact: root.compact
                 enabled: false
             }

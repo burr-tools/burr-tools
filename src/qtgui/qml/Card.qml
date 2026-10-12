@@ -9,7 +9,8 @@ Rectangle {
     property string title
     property string collapseIcon        // "panelL" / "panelR"; empty = no collapse button
     property string collapseObjectName
-    property alias headerExtras: extras.data
+    property alias headerExtras: extras.data       // after the title
+    property alias headerActions: actions.data     // at the right, before the collapse button
     default property alias content: body.data
     property bool showHeader: title.length > 0
     signal collapseClicked()
@@ -40,6 +41,11 @@ Rectangle {
                 id: extras
                 spacing: 6
                 Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+            }
+            Row {
+                id: actions
+                spacing: 2
                 Layout.alignment: Qt.AlignVCenter
             }
             IconButton {

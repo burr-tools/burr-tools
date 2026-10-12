@@ -86,6 +86,16 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
   m_cues = new KeyboardCues(this);
+  // the menus' access keys, for Alt (none on macOS, whose labels carry none)
+  {
+    QString keys;
+    for (const QVariant & m : m_commands->menuBar()) {
+      const QString label = m.toMap().value(QStringLiteral("label")).toString();
+      const qsizetype amp = label.indexOf(u'&');
+      keys += (amp >= 0 && amp + 1 < label.size()) ? label.at(amp + 1) : QChar(u' ');
+    }
+    m_cues->setMenuKeys(keys.trimmed().isEmpty() ? QString() : keys);
+  }
   m_popupStyle = new PopupWindowStyle(this);
 
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));

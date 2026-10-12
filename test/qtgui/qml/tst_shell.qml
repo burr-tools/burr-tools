@@ -37,6 +37,7 @@ TestCase {
     function cleanup() {
         App.settings.tooltips = true
         App.settings.density = "standard"
+        App.settings.showMenuBar = true
         App.viewport.navMode = "orbit"
         if (App.layout.focus !== LayoutController.FocusNone)
             App.layout.escape()
@@ -126,6 +127,43 @@ TestCase {
         mouseClick(item("workspace.left.rail.expand"))
         verify(!App.layout.leftCollapsed)
         tryCompare(item("workspace.left"), "width", 320, 1000)
+    }
+
+    function test_theCollapsedShapesCardStillListsTheShapes_data() {
+        return [ { tag: "standard", density: "standard" }, { tag: "minimal", density: "minimal" } ]
+    }
+    function test_theCollapsedShapesCardStillListsTheShapes(data) {
+        // the rail keeps a chip per shape -- colour and id -- that selects it
+        App.settings.density = data.density
+        App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
+        verify(App.shapes.count > 1)
+        App.shapes.select(0)
+        App.layout.leftCollapsed = true
+        // while the column still narrows, the chips already have their own
+        // width (they neither stretch nor shrink with the animation)
+        tryVerify(() => findChild(win.contentItem, "entities.shapes.rail.chip.0") !== null, 1000)
+        const first = item("entities.shapes.rail.chip.0")
+        if (item("workspace.left").width > Theme.collapsedRail + 20)
+            compare(first.width, Theme.collapsedRail - 14)
+        tryCompare(item("workspace.left"), "width", Theme.collapsedRail, 1000)
+        const list = item("entities.shapes.rail.list")
+        verify(list.visible)
+        tryCompare(list, "count", App.shapes.count, 1000)
+        waitForRendering(win.contentItem)
+
+        const row = item("entities.shapes.rail.row.1")
+        const chip = item("entities.shapes.rail.chip.1")
+        const rail = item("workspace.left")
+        const r = chip.mapToItem(rail, 0, 0)
+        verify(r.x >= 0 && r.x + chip.width <= rail.width, "the chip fits the rail")
+        mouseClick(row)
+        compare(App.shapes.selected, 1)
+        verify(row.selected)
+        verify(!item("entities.shapes.rail.row.0").selected)
+
+        // the other workspaces' rails have no shapes
+        App.layout.workspace = LayoutController.Puzzle
+        verify(!list.visible)
     }
 
     function test_columnWidthsAtTheReferenceSize() {
@@ -287,6 +325,88 @@ TestCase {
         keyRelease(Qt.Key_Alt)
         mouseClick(item("entities.viewport"), 20, 300)
         verify(!App.keyboardCues.showAccessKeys)
+    }
+
+    function test_altOpensTheRailMenuWhileTheMenuBarIsHidden() {
+        // View > Show menu bar off: an Alt tap opens the rail's menu (never
+        // the menu bar), a menu's access key its submenu; Esc or another tap
+        // closes it
+        if (!App.commands.menuBarHideable)
+            skip("macOS keeps the system menu bar")
+        App.settings.showMenuBar = false
+        activate(win)
+        const railMenu = item("rail-menu")
+        tryVerify(() => railMenu.visible, 1000)
+        waitForRendering(win.contentItem)
+        const popup = findChild(railMenu, "rail-menu.popup")
+
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        verify(App.keyboardCues.menuArmed)
+        tryVerify(() => popup.opened, 2000)
+        verify(!win.menuBar.visible)
+        compare(findChild(popup.itemAt(0), "label").text, "<u>F</u>ile")
+        // the access key opens that submenu
+        keyClick(Qt.Key_X)
+        tryVerify(() => popup.menuAt(3).opened, 2000)
+        compare(popup.menuAt(3).objectName, "rail-menu.export")
+        verify(!win.menuBar.visible)
+        popup.menuAt(3).close()
+        popup.close()
+        tryVerify(() => !popup.visible, 2000)
+
+        // a second tap closes it
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        tryVerify(() => popup.opened, 2000)
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        tryVerify(() => !popup.visible, 2000)
+        verify(!App.keyboardCues.menuArmed)
+
+        // Alt with the key at once opens the submenu directly
+        keyClick(Qt.Key_V, Qt.AltModifier)
+        tryVerify(() => popup.menuAt(2).opened, 2000)
+        verify(!win.menuBar.visible)
+        popup.menuAt(2).close()
+        popup.close()
+        tryVerify(() => !popup.visible, 2000)
+
+        // Alt held through a click is no tap: nothing opens
+        keyPress(Qt.Key_Alt)
+        mouseClick(item("entities.viewport"), 20, 300, Qt.LeftButton, Qt.AltModifier)
+        keyRelease(Qt.Key_Alt)
+        verify(!App.keyboardCues.menuArmed)
+        verify(!popup.visible)
+    }
+
+    function test_leavingTheRailMenuClosesItsSubmenusToo() {
+        // opened by Alt with a submenu open: a second tap, or a click in the
+        // window outside them, closes both
+        if (!App.commands.menuBarHideable)
+            skip("macOS keeps the system menu bar")
+        App.settings.showMenuBar = false
+        activate(win)
+        const railMenu = item("rail-menu")
+        tryVerify(() => railMenu.visible, 1000)
+        waitForRendering(win.contentItem)
+        const popup = findChild(railMenu, "rail-menu.popup")
+        const exportMenu = popup.menuAt(3)
+
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        keyClick(Qt.Key_X)
+        tryVerify(() => exportMenu.opened, 2000)
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        tryVerify(() => !exportMenu.visible && !popup.visible, 2000)
+
+        keyPress(Qt.Key_Alt)
+        keyRelease(Qt.Key_Alt)
+        keyClick(Qt.Key_X)
+        tryVerify(() => exportMenu.opened, 2000)
+        mouseClick(item("entities.viewport"), 300, 400)
+        tryVerify(() => !exportMenu.visible && !popup.visible, 2000)
     }
 
     function test_theWindowOpensWhereItWasLeft() {

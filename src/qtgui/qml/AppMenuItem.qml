@@ -37,8 +37,11 @@ MenuItem {
             id: label
             objectName: "label"
             anchors { left: parent.left; leftMargin: 24; verticalCenter: parent.verticalCenter }
-            // the access-key marker is for the menu bar's mnemonics; not drawn here
-            text: root.plainText
+            // a submenu (the rail's menu: File, Edit, ...) underlines its access key
+            // while the keyboard drives the menus, as the menu bar does; other
+            // items take no letters, and draw none
+            text: root.subMenu ? App.keyboardCues.accessKeyText(root.text, App.keyboardCues.showAccessKeys) : root.plainText
+            textFormat: root.subMenu ? Text.StyledText : Text.PlainText
             color: Theme.text
             font.pixelSize: Theme.fontBody
         }

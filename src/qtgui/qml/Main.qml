@@ -94,6 +94,20 @@ ApplicationWindow {
 
     // menus count themselves in here so Esc reaches them before the layout
     property int openPopups: 0
+
+    // Alt reaches the menus by keyboard (KeyboardCues): a tap arms them, an
+    // access key opens its menu -- here in the menu bar; where View ▸ Show
+    // menu bar hid it, in the rail's menu (WorkspaceRail)
+    Connections {
+        target: App.keyboardCues
+        enabled: win.menuBar !== null && win.menuBar.visible
+        function onMenuKeyPressed(index: int) {
+            const bar = win.menuBar as MenuBar
+            const item = index >= 0 && index < bar.count ? bar.itemAt(index) as MenuBarItem : null
+            if (item)
+                item.triggered()
+        }
+    }
     // a dialog is up: the dialogs are made when first opened (showDialog)
     function shown(dialog: Loader): bool { return dialog.status === Loader.Ready && (dialog.item as Dialog).visible }
     readonly property bool modalOpen: shown(newDialog) || shown(commentDialog) || shown(aboutDialog)
@@ -312,6 +326,12 @@ ApplicationWindow {
                                 title: body.ws === LayoutController.Entities ? qsTr("Shapes")
                                      : body.ws === LayoutController.Puzzle ? qsTr("Problems") : qsTr("Solver")
                                 onExpandClicked: App.layout.leftCollapsed = false
+                                list: [
+                                    CollapsedShapes {
+                                        anchors.fill: parent
+                                        visible: body.ws === LayoutController.Entities
+                                    }
+                                ]
                             }
                         }
 

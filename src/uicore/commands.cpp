@@ -81,7 +81,7 @@ namespace btui {
     const CommandInfo table[] = {
       { Command::New,              "file.new",              "&New…",                  Menu::File,   false, scNew,        none,       "New", "", "", Menu::None },
       { Command::Open,             "file.open",             "&Open…",                 Menu::File,   false, scOpen,       none,       "Load", "", "", Menu::None },
-      { Command::Import,           "file.import",           "&Import PuzzleSolver3D…", Menu::File,  false, none,         none,       "Load_Ps3d", "", "", Menu::None },
+      { Command::Import,           "file.import",           "&Import…",              Menu::File,  false, none,         none,       "Load_Ps3d", "", "", Menu::None },
       // macOS only, where a window closes with Cmd+W; the one window closing quits, as legacy's Close did
       { Command::Close,            "file.close",            "Close",                  Menu::None,   true,  none,         scCloseMac, "", "", "", Menu::File },
       { Command::Save,             "file.save",             "&Save",                  Menu::File,   false,  scSave,       none,       "Save", "", "", Menu::None },
@@ -103,8 +103,8 @@ namespace btui {
       { Command::WorkspaceEntities,"workspace.entities",    "&Entities",              Menu::View,   true,  scEntities,   none,       "", "", "", Menu::None },
       { Command::WorkspacePuzzle,  "workspace.puzzle",      "&Puzzle",                Menu::View,   false, scPuzzle,     none,       "", "", "", Menu::None },
       { Command::WorkspaceSolver,  "workspace.solver",      "S&olver",                Menu::View,   false, scSolver,     none,       "", "", "", Menu::None },
-      { Command::ToggleLeftCard,   "layout.toggleLeft",     "Collapse or expand the &left card",  Menu::View, true,  scLeftCard,  none, "", "", "", Menu::None },
-      { Command::ToggleRightCard,  "layout.toggleRight",    "Collapse or expand the &right card", Menu::View, false, scRightCard, none, "", "", "", Menu::None },
+      { Command::ToggleLeftCard,   "layout.toggleLeft",     "Collapse or expand the &left sidebar",  Menu::View, true,  scLeftCard,  none, "", "", "", Menu::None },
+      { Command::ToggleRightCard,  "layout.toggleRight",    "Collapse or expand the &right sidebar", Menu::View, false, scRightCard, none, "", "", "", Menu::None },
 
       { Command::ExportImage,      "export.image",          "&Image…",                Menu::Export, false, none,         none,       "ImageExport", "", "", Menu::None },
       { Command::ExportVector,     "export.vector",         "&Vector image…",         Menu::Export, false, none,         none,       "ImageExportVector", "", "", Menu::None },

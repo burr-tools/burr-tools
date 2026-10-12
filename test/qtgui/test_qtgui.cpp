@@ -229,7 +229,7 @@ private slots:
    * read side by side (src/qtgui/README.md, "Reading the QML"). */
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
-    QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "ShapesCard.qml",
+    QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
                           "ViewportCard.qml", "VoxelEditorCard.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
@@ -1468,6 +1468,20 @@ class TestKeyboardCues : public QObject {
     QCoreApplication::sendEvent(target, &e);
   }
 
+  static void release(QObject * target, int key) {
+    QKeyEvent e(QEvent::KeyRelease, key, Qt::NoModifier);
+    QCoreApplication::sendEvent(target, &e);
+  }
+  static bool send(QObject * target, QEvent::Type type, int key, Qt::KeyboardModifiers mods) {
+    QKeyEvent e(type, key, mods);
+    QCoreApplication::sendEvent(target, &e);
+    return e.isAccepted();
+  }
+  static void tapAlt(QObject * target) {
+    press(target, Qt::Key_Alt);
+    release(target, Qt::Key_Alt);
+  }
+
 private slots:
 
   void altShowsTheAccessKeysUntilTheKeyboardIsDone() {
@@ -1528,6 +1542,90 @@ private slots:
     QVERIFY(!cues.showAccessKeys());
   }
 
+
+  void anAltTapArmsTheMenusAndALetterOpensOne() {
+    // Windows: Alt pressed and released alone arms the menu bar; a menu's
+    // access key then opens that menu, and no shortcut sees the letter
+    KeyboardCues cues;
+    cues.setMenuKeys(QStringLiteral("FEVXH"));
+    QObject target;
+    QSignalSpy opened(&cues, &KeyboardCues::menuKeyPressed);
+
+    tapAlt(&target);
+    QVERIFY(cues.menuArmed());
+    QVERIFY(cues.showAccessKeys());
+    // the letter claims its ShortcutOverride (so the P / O shortcuts never
+    // fire) and then its press
+    QVERIFY(send(&target, QEvent::ShortcutOverride, Qt::Key_X, Qt::NoModifier));
+    QVERIFY(send(&target, QEvent::KeyPress, Qt::Key_X, Qt::NoModifier));
+    QCOMPARE(opened.count(), 1);
+    QCOMPARE(opened.at(0).at(0).toInt(), 3);      // Export
+    QVERIFY(!cues.menuArmed());
+
+    // a letter that is no menu's is swallowed while armed
+    tapAlt(&target);
+    QVERIFY(send(&target, QEvent::ShortcutOverride, Qt::Key_P, Qt::NoModifier));
+    QCOMPARE(opened.count(), 1);
+    QVERIFY(cues.menuArmed());
+    // a second tap disarms; so does Esc, which the layout then never sees
+    tapAlt(&target);
+    QVERIFY(!cues.menuArmed());
+    QVERIFY(KeyboardCues::alwaysShown() || !cues.showAccessKeys());
+    tapAlt(&target);
+    QVERIFY(send(&target, QEvent::ShortcutOverride, Qt::Key_Escape, Qt::NoModifier));
+    QVERIFY(!cues.menuArmed());
+    // with the bar armed, another key ends it and goes on as usual
+    tapAlt(&target);
+    send(&target, QEvent::KeyPress, Qt::Key_Down, Qt::NoModifier);
+    QVERIFY(!cues.menuArmed());
+  }
+
+  void altWithAKeyOrAClickIsNoTap() {
+    // Alt held for the Voxel editor's quick tool (Alt+click) or Alt+Up/Down
+    // in the shapes list arms nothing
+    KeyboardCues cues;
+    cues.setMenuKeys(QStringLiteral("FEVXH"));
+    QObject target;
+    QSignalSpy opened(&cues, &KeyboardCues::menuKeyPressed);
+
+    press(&target, Qt::Key_Alt);
+    QMouseEvent click(QEvent::MouseButtonPress, QPointF(1, 1), QPointF(1, 1), Qt::LeftButton, Qt::LeftButton, Qt::AltModifier);
+    QCoreApplication::sendEvent(&target, &click);
+    release(&target, Qt::Key_Alt);
+    QVERIFY(!cues.menuArmed());
+
+    press(&target, Qt::Key_Alt);
+    send(&target, QEvent::KeyPress, Qt::Key_Up, Qt::AltModifier);
+    release(&target, Qt::Key_Alt);
+    QVERIFY(!cues.menuArmed());
+    QCOMPARE(opened.count(), 0);
+
+    // Alt+letter that no shortcut took opens that menu (the hidden bar's)
+    press(&target, Qt::Key_Alt);
+    QVERIFY(send(&target, QEvent::KeyPress, Qt::Key_F, Qt::AltModifier));
+    release(&target, Qt::Key_Alt);
+    QCOMPARE(opened.count(), 1);
+    QCOMPARE(opened.at(0).at(0).toInt(), 0);
+    QVERIFY(!cues.menuArmed());
+  }
+
+  void withoutAccessKeysAltReachesNoMenus() {
+    // macOS: the labels carry no access keys
+    KeyboardCues cues;
+    QObject target;
+    QSignalSpy opened(&cues, &KeyboardCues::menuKeyPressed);
+    tapAlt(&target);
+    QVERIFY(!cues.menuArmed());
+    send(&target, QEvent::KeyPress, Qt::Key_F, Qt::AltModifier);
+    QCOMPARE(opened.count(), 0);
+  }
+
+  void theAccessKeyIsUnderlinedOnlyWhenAsked() {
+    QCOMPARE(KeyboardCues::accessKeyText(QStringLiteral("E&xport"), false), QStringLiteral("Export"));
+    QCOMPARE(KeyboardCues::accessKeyText(QStringLiteral("E&xport"), true), QStringLiteral("E<u>x</u>port"));
+    QCOMPARE(KeyboardCues::accessKeyText(QStringLiteral("Fish && &Chips"), true), QStringLiteral("Fish & <u>C</u>hips"));
+    QCOMPARE(KeyboardCues::accessKeyText(QStringLiteral("Plain"), true), QStringLiteral("Plain"));
+  }
   void onlyWindowsCanAskForThemAlways() {
 #ifndef Q_OS_WIN
     QVERIFY(!KeyboardCues::alwaysShown());

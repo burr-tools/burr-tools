@@ -75,7 +75,7 @@ Card {
             radius: Theme.radiusControl
             color: index === App.shapes.selected ? Theme.accentSoft : (hover.hovered ? Theme.panel2 : "transparent")
             border.width: index === App.shapes.selected ? 1 : 0
-            border.color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.35)
+            border.color: Theme.accentEdge
 
             HoverHandler { id: hover }
             TapHandler {

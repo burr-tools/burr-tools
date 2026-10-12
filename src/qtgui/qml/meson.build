@@ -17,6 +17,7 @@ qtgui_qml_files = files(
   'Card.qml',
   'CheckRow.qml',
   'CollapsedRail.qml',
+  'CollapsedShapes.qml',
   'CommandMenu.qml',
   'CommentDialog.qml',
   'ConvertDialog.qml',
