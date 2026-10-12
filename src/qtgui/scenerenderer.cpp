@@ -449,12 +449,12 @@ void SceneRenderer::Impl::createComposite(void) {
   compositeRp = outRp;
 }
 
-void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const SceneFrame & f) {
+bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const SceneFrame & f) {
   QRhi * rhi = d->rhi;
   const QSize px = rt->pixelSize();
   d->createShared();
   if (!d->ensureSceneTarget(px))
-    return;
+    return false;
   if (!d->composite || d->compositeRp != d->outRp)
     d->createComposite();
 
@@ -680,4 +680,5 @@ void SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   cb->setVertexInput(0, 1, &tvi);
   cb->draw(3);
   cb->endPass();
+  return true;
 }

@@ -23,6 +23,7 @@
 #include "app.h"
 #include "documentcontroller.h"
 #include "guarded.h"
+#include "localpath.h"
 #include "offscreenrenderer.h"
 #include "pipelinecache.h"
 #include "settingscontroller.h"
@@ -50,6 +51,10 @@ namespace {
   // times as wide as high, then crops them to their content
   const int kMeasureHeight = 200;
   const int kWidthFactor = 3;
+
+  // a page at most this many pixels wide and high: 16384 x 16384 is 1 GiB of
+  // ARGB, and A4 at 1200 dpi (9921 x 14031) still fits
+  const int kMaxPagePixels = 16384;
 
   /* the columns that hold something, as a multiple of `multiple` wide
    * (legacy image_c::minimizeWidth); at least one */
@@ -79,6 +84,11 @@ ImageExportController::ImageExportController(SettingsController * settings, Docu
   m_timer.setSingleShot(true);
   m_timer.setInterval(0);
   connect(&m_timer, &QTimer::timeout, this, &ImageExportController::step);
+
+  // a document opened from the Finder, or an undo, while the dialog is up:
+  // the shape and problem chosen may no longer exist
+  connect(doc, &DocumentController::documentReplaced, this, &ImageExportController::documentChanged);
+  connect(doc, &DocumentController::historyApplied, this, &ImageExportController::documentChanged);
 }
 
 ImageExportController::~ImageExportController() = default;
@@ -124,6 +134,17 @@ void ImageExportController::setMode(const QString & m) {
   if (!modes.contains(m) || m == m_mode)
     return;
   m_mode = m;
+  fixMode();
+  rebuildPreview();
+}
+
+void ImageExportController::documentChanged(void) {
+  if (!m_open)
+    return;
+  cancel();      // its jobs name shapes and problems of the puzzle that was
+  const puzzle_c & p = m_doc->session().puzzle();
+  m_shape = std::clamp(m_shape, 0, std::max(0, int(p.getNumberOfShapes()) - 1));
+  m_problem = std::clamp(m_problem, 0, std::max(0, int(p.getNumberOfProblems()) - 1));
   fixMode();
   rebuildPreview();
 }
@@ -239,8 +260,11 @@ void ImageExportController::setDimStatic(bool d) {
 /* legacy cb_SzUpdate: a paper size sets the millimetres, and millimetres
  * with a DPI set the pixels; an empty (0) field leaves its pixels alone */
 void ImageExportController::recomputePixels(void) {
-  if (m_mmX > 0 && m_dpi > 0) m_pxX = int(btui::pixelsFor(unsigned(m_mmX), unsigned(m_dpi)));
-  if (m_mmY > 0 && m_dpi > 0) m_pxY = int(btui::pixelsFor(unsigned(m_mmY), unsigned(m_dpi)));
+  const auto px = [](int mm, int dpi) {
+    return int(std::min(unsigned(kMaxPagePixels), btui::pixelsFor(unsigned(mm), unsigned(dpi))));
+  };
+  if (m_mmX > 0 && m_dpi > 0) m_pxX = px(m_mmX, m_dpi);
+  if (m_mmY > 0 && m_dpi > 0) m_pxY = px(m_mmY, m_dpi);
   emit sizeChanged();
 }
 
@@ -262,8 +286,8 @@ void ImageExportController::setPaper(const QString & p) {
 void ImageExportController::setSizeXmm(int v) { m_mmX = std::max(0, v); recomputePixels(); }
 void ImageExportController::setSizeYmm(int v) { m_mmY = std::max(0, v); recomputePixels(); }
 void ImageExportController::setDpi(int v) { m_dpi = std::max(0, v); recomputePixels(); }
-void ImageExportController::setPixelX(int v) { if (v == m_pxX) return; m_pxX = std::max(1, v); emit sizeChanged(); }
-void ImageExportController::setPixelY(int v) { if (v == m_pxY) return; m_pxY = std::max(1, v); emit sizeChanged(); }
+void ImageExportController::setPixelX(int v) { if (v == m_pxX) return; m_pxX = std::clamp(v, 1, kMaxPagePixels); emit sizeChanged(); }
+void ImageExportController::setPixelY(int v) { if (v == m_pxY) return; m_pxY = std::clamp(v, 1, kMaxPagePixels); emit sizeChanged(); }
 void ImageExportController::setPages(int v) { if (v == m_pages) return; m_pages = std::max(1, v); emit sizeChanged(); }
 
 QUrl ImageExportController::folder(void) const {
@@ -283,6 +307,7 @@ QString ImageExportController::suggestedName(void) const {
 
 void ImageExportController::begin(void) {
   // a fresh dialog has legacy's defaults
+  m_open = true;
   m_mode = QStringLiteral("solution");
   m_shape = 0;
   m_problem = 0;
@@ -304,6 +329,7 @@ void ImageExportController::begin(void) {
 
 void ImageExportController::end(void) {
   cancel();
+  m_open = false;
   m_renderer.reset();
   m_mesh.reset();
   m_meshRevision++;
@@ -409,7 +435,7 @@ QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
 void ImageExportController::start(const QUrl & file) {
   if (busy())
     return;
-  QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+  QString path = localPath(file);
   if (path.isEmpty())
     return;
   if (path.endsWith(QLatin1String(".png"), Qt::CaseInsensitive))
@@ -489,7 +515,7 @@ void ImageExportController::step(void) {
     } else {
       return;
     }
-  } catch (const assert_exception & e) {
+  } catch (const std::exception & e) {
     stop(tr("Failed"));
     if (App * app = App::instance())
       app->handleInternalError(e);

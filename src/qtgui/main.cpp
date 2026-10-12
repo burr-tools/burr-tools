@@ -203,9 +203,10 @@ namespace {
     std::cout.flush();
   }
 
-  /* Exceptions must not unwind through Qt's event dispatch. An internal error
-   * raised in C++ code Qt calls (a timer, an event filter) is caught here and
-   * handed to the same rescue path the QML entry points use.
+  /* Exceptions must not unwind through Qt's event dispatch. One raised in C++
+   * code Qt calls (a timer, an event filter) -- an internal error or any other
+   * std::exception -- is caught here and handed to the same rescue path the
+   * QML entry points use.
    *
    * It also receives the macOS "open this document" events (a Finder
    * double-click, a drop on the Dock icon), which go to the application
@@ -218,7 +219,7 @@ namespace {
     bool notify(QObject * receiver, QEvent * event) override {
       try {
         return QGuiApplication::notify(receiver, event);
-      } catch (const assert_exception & e) {
+      } catch (const std::exception & e) {
         if (App * app = App::instance())
           app->handleInternalError(e);
         return true;

@@ -33,6 +33,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -53,6 +54,8 @@
 #include <QTest>
 
 #include <memory>
+#include <new>
+#include <vector>
 
 namespace {
 
@@ -583,28 +586,46 @@ class TestDocument : public QObject {
 
 private slots:
 
-  /* guarded(): an internal error under an entry point QML calls is reported
-   * (rescue-save, then App::internalError) and the call returns a default,
-   * instead of unwinding through the QML engine. bt_te() throws in release
-   * builds too. */
+  /* guarded(): an internal error under an entry point QML calls -- a failed
+   * check, or any other std::exception -- is reported (rescue-save, then
+   * App::internalError) and the call returns a default, instead of unwinding
+   * through the QML engine. bt_te() throws in release builds too. */
   void anInternalErrorUnderAQmlEntryPointIsReportedNotThrown() {
     Fixture f;
     f.make();
-    const QString cwd = QDir::currentPath();
-    QVERIFY(QDir::setCurrent(f.dir.path()));   // where the rescue save goes
     QSignalSpy reported(f.app.get(), &App::internalError);
     int r = 7;
     bool threw = false;
     try {
       r = guarded([]() -> int { bt_te("test"); });
       guarded([] { bt_te("test"); });
+      guarded([] { throw std::bad_alloc(); });
+      guarded([] { (void)std::vector<int>().at(1); });
     } catch (...) {
       threw = true;
     }
-    QDir::setCurrent(cwd);
     QVERIFY(!threw);
     QCOMPARE(r, 0);
-    QCOMPARE(reported.count(), 2);
+    QCOMPARE(reported.count(), 4);
+    // an unsaved puzzle: beside the settings file
+    QVERIFY(QFileInfo::exists(f.file("__rescue.xmpuzzle")));
+    QVERIFY(reported.at(0).at(0).toString().contains(QDir::toNativeSeparators(f.file("__rescue.xmpuzzle"))));
+  }
+
+  /* The rescue file goes beside the open puzzle; where that folder cannot be
+   * written, beside the settings file. */
+  void theRescueSaveGoesBesideThePuzzleElseBesideTheSettings() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString folder = openCopy(f, d);
+    QVERIFY(!folder.isEmpty());
+    QCOMPARE(f.app->rescueSave(), QDir::toNativeSeparators(folder + QStringLiteral("/__rescue.xmpuzzle")));
+    QVERIFY(QFileInfo::exists(folder + QStringLiteral("/__rescue.xmpuzzle")));
+
+    QVERIFY(QDir(folder).removeRecursively());
+    QCOMPARE(f.app->rescueSave(), QDir::toNativeSeparators(f.file("__rescue.xmpuzzle")));
+    QVERIFY(QFileInfo::exists(f.file("__rescue.xmpuzzle")));
   }
 
   void newWithoutChangesGoesStraightToTheTypeChoice() {
@@ -715,6 +736,26 @@ private slots:
     d->saveAsFile(QUrl::fromLocalFile(f.file("no/such/dir/x")));
     QCOMPARE(msg.count(), 1);
     QVERIFY(d->fileName().isEmpty());
+  }
+
+  /* A URL that is not a local file is not a file name: no
+   * "https:/host/x.xmpuzzle" under the working directory */
+  void aRemoteUrlIsNeitherSavedToNorOpened() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    const QString cwd = QDir::currentPath();
+    QVERIFY(QDir::setCurrent(f.dir.path()));
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    d->saveAsFile(QUrl(QStringLiteral("https://example.com/x.xmpuzzle")));
+    d->openFile(QUrl(QStringLiteral("https://example.com/x.xmpuzzle")));
+    const QStringList left = QDir(f.dir.path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot);
+    QDir::setCurrent(cwd);
+    QCOMPARE(msg.count(), 2);
+    QCOMPARE(replaced.count(), 0);
+    QVERIFY(d->fileName().isEmpty());
+    QVERIFY2(!left.contains(QStringLiteral("https:")), qPrintable(left.join(u',')));
   }
 
   void undoAndRedoReportWhereTheChangeWas() {
@@ -2224,6 +2265,10 @@ private slots:
     QCOMPARE(e->pixelY(), 850);
     e->setPixelY(0);
     QCOMPARE(e->pixelY(), 1);
+    e->setPixelY(20000);                              // a page is at most 16384 wide and high
+    QCOMPARE(e->pixelY(), 16384);
+    e->setDpi(5000);
+    QCOMPARE(e->pixelX(), 16384);
     e->setPages(0);
     QCOMPARE(e->pages(), 1);
   }
@@ -2244,6 +2289,28 @@ private slots:
     e->setProblem(-3);
     QCOMPARE(e->problem(), 0);
     QVERIFY(content.count() > 0);
+  }
+
+  /* a document replaced while the dialog is up (an open from the Finder)
+   * takes the shape and problem chosen back into the new puzzle */
+  void theChoicesFollowAReplacedDocument() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->session().puzzle().addProblem();
+    ImageExportController * e = f.app->images();
+    e->begin();
+    e->setProblem(1);
+    e->setShape(int(d->session().puzzle().getNumberOfShapes()) - 1);
+    QVERIFY(e->problem() == 1 && e->shape() > 0);
+
+    d->newDocument(gridType_c::GT_BRICKS);           // no shapes, no problems
+    QCOMPARE(e->problem(), 0);
+    QCOMPARE(e->shape(), 0);
+    QCOMPARE(e->mode(), QStringLiteral("shape"));
+    QVERIFY(!e->frame(1).mesh);
+    e->end();
   }
 
   void constraintColoursRedrawThePreview() {

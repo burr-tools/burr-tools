@@ -192,7 +192,7 @@ void ShapeStatusModel::step(void) {
       m_selected.push_back(false);
       endInsertRows();
     }
-  } catch (const assert_exception & e) {
+  } catch (const std::exception & e) {
     stop();
     if (App * app = App::instance())
       app->handleInternalError(e);
@@ -340,7 +340,7 @@ int ToolsController::importAssemblies(const QVariantMap & options) {
     if (added > 0 || p.getNumberOfProblems() != problemsBefore)
       m_doc->recordStructuralEdit();
     return int(added);
-  } catch (const assert_exception & e) {
+  } catch (const std::exception & e) {
     if (App * app = App::instance())
       app->handleInternalError(e);
     return 0;

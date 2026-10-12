@@ -90,7 +90,10 @@ struct OffscreenRenderer::Impl {
     QRhiCommandBuffer * cb = nullptr;
     if (rhi->beginOffscreenFrame(&cb) != QRhi::FrameOpSuccess)
       return {};
-    renderer.render(cb, rt.get(), f);
+    if (!renderer.render(cb, rt.get(), f)) {
+      rhi->endOffscreenFrame();
+      return {};      // not a stale tile read back as this one
+    }
     QRhiReadbackResult rb;
     QRhiResourceUpdateBatch * u = rhi->nextResourceUpdateBatch();
     u->readBackTexture({ tex.get() }, &rb);

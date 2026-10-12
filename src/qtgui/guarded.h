@@ -30,16 +30,18 @@
  * includes the controllers): rescue-save, report, then QML quits. */
 void reportInternalError(const std::exception & e);
 
-/* Run the body of an entry point QML calls. An internal error raised in it --
+/* Run the body of an entry point QML calls. An exception raised in it --
  * directly, or in a slot one of its signals reaches, such as the scene
- * rebuild -- must not unwind through the QML engine: it is reported here, and
- * the entry point returns a default value (false, 0) instead.
+ * rebuild -- must not unwind through the QML engine. An internal error (a
+ * failed bt_assert) or any other std::exception (bad_alloc, out_of_range from
+ * the library) is reported here as an internal error, and the entry point
+ * returns a default value (false, 0) instead.
  */
 template <class F>
 std::invoke_result_t<F> guarded(F && body) {
   try {
     return body();
-  } catch (const assert_exception & e) {
+  } catch (const std::exception & e) {
     reportInternalError(e);
     if constexpr (!std::is_void_v<std::invoke_result_t<F>>)
       return {};

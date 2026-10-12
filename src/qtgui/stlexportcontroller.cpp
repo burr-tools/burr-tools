@@ -21,6 +21,7 @@
 #include "stlexportcontroller.h"
 
 #include "documentcontroller.h"
+#include "localpath.h"
 #include "shapesmodel.h"
 
 #include "../halfedge/polyhedron.h"
@@ -214,7 +215,7 @@ bool StlExportController::exportTo(const QUrl & file) {
   const puzzle_c & p = m_doc->session().puzzle();
   if (!m_stl || unsigned(m_shape) >= p.getNumberOfShapes())
     return false;
-  QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+  QString path = localPath(file);
   if (path.isEmpty())
     return false;
   if (QFileInfo(path).suffix().isEmpty())

@@ -20,6 +20,7 @@
  */
 #include "documentcontroller.h"
 #include "guarded.h"
+#include "localpath.h"
 
 #include "../lib/puzzle.h"
 
@@ -121,13 +122,15 @@ void DocumentController::setPending(Pending p) {
  * openFromSystem() does for repeated open requests.
  */
 void DocumentController::start(Pending p, const char * action) {
-  if (m_pending != Pending::None)
-    return;
-  setPending(p);
-  if (m_session.isModified())
-    emit confirmDiscardRequested(QString::fromLatin1(action));
-  else
-    proceed();
+  guarded([&] {
+    if (m_pending != Pending::None)
+      return;
+    setPending(p);
+    if (m_session.isModified())
+      emit confirmDiscardRequested(QString::fromLatin1(action));
+    else
+      proceed();      // may open a file (requestOpenPath)
+  });
 }
 
 void DocumentController::proceed(void) {
@@ -260,7 +263,12 @@ void DocumentController::openFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Open)
       setPending(Pending::None);
-    loadPath(file.isLocalFile() ? file.toLocalFile() : file.toString());
+    const QString path = localPath(file);
+    if (path.isEmpty()) {
+      emit messageRequested(tr("Open"), tr("Could not open %1").arg(file.toDisplayString()));
+      return;
+    }
+    loadPath(path);
   });
 }
 
@@ -268,7 +276,11 @@ void DocumentController::importFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Import)
       setPending(Pending::None);
-    const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+    const QString path = localPath(file);
+    if (path.isEmpty()) {
+      emit messageRequested(tr("Import"), tr("Could not open %1").arg(file.toDisplayString()));
+      return;
+    }
     btui::DocumentSession::LoadResult r;
     try {
       r = m_session.importPuzzleSolver3D(toPath(path));
@@ -287,13 +299,15 @@ void DocumentController::importFile(const QUrl & file) {
 }
 
 void DocumentController::save(void) {
-  if (m_session.fileName().empty()) {
-    emit saveAsRequested();
-    return;
-  }
-  if (!saveCatching(m_session))
-    emit messageRequested(tr("Save"), tr("The puzzle was NOT saved."));
-  emit stateChanged();
+  guarded([&] {
+    if (m_session.fileName().empty()) {
+      emit saveAsRequested();
+      return;
+    }
+    if (!saveCatching(m_session))
+      emit messageRequested(tr("Save"), tr("The puzzle was NOT saved."));
+    emit stateChanged();
+  });
 }
 
 void DocumentController::requestSaveAs(void) {
@@ -301,29 +315,31 @@ void DocumentController::requestSaveAs(void) {
 }
 
 void DocumentController::saveAsFile(const QUrl & file) {
-  const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
-  bool ok = false;
-  try {
-    ok = m_session.saveAs(toPath(path));
-  } catch (const std::exception &) {
-    ok = false;
-  }
+  guarded([&] {
+    const QString path = localPath(file);
+    bool ok = false;
+    try {
+      ok = !path.isEmpty() && m_session.saveAs(toPath(path));
+    } catch (const std::exception &) {
+      ok = false;
+    }
 
-  if (!ok) {
-    if (m_continueAfterSaveAs)
-      setPending(Pending::None);
-    emit messageRequested(tr("Save"), tr("The puzzle was NOT saved."));
+    if (!ok) {
+      if (m_continueAfterSaveAs)
+        setPending(Pending::None);
+      emit messageRequested(tr("Save"), tr("The puzzle was NOT saved."));
+      emit stateChanged();
+      return;
+    }
+
+    emit fileChanged();
     emit stateChanged();
-    return;
-  }
 
-  emit fileChanged();
-  emit stateChanged();
-
-  if (m_continueAfterSaveAs) {
-    m_continueAfterSaveAs = false;
-    guarded([&] { proceed(); });   // may open the pending file
-  }
+    if (m_continueAfterSaveAs) {
+      m_continueAfterSaveAs = false;
+      proceed();      // may open the pending file
+    }
+  });
 }
 
 void DocumentController::cancelFlow(void) {

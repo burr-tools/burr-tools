@@ -113,17 +113,18 @@ public:
   Q_INVOKABLE QStringList assetNames(const QString & folder) const;
   QString version(void) const;
 
-  /* Called after an internal error (a bt_assert) reached the GUI: save the
-   * puzzle to __rescue.xmpuzzle the way legacy main() does, so no work is
-   * lost. Returns the path written, or empty if that failed.
+  /* Called after an internal error reached the GUI: save the puzzle to
+   * __rescue.xmpuzzle the way legacy main() does, so no work is lost -- beside
+   * the open puzzle, else beside the settings file. Returns the path written,
+   * or empty if that failed. Never throws.
    */
   QString rescueSave(void);
 
-  /* An internal error (a bt_assert) reached the GUI. Exceptions must not
-   * unwind through Qt or the QML engine, so every entry point from QML that
-   * reaches the library catches them (guarded.h) and lands here:
-   * rescue-save, then tell the user, after which QML quits (legacy main()
-   * does the same in its catch block).
+  /* An internal error (a bt_assert, or any other std::exception) reached the
+   * GUI. Exceptions must not unwind through Qt or the QML engine, so every
+   * entry point from QML that reaches the library catches them (guarded.h)
+   * and lands here: rescue-save, then tell the user, after which QML quits
+   * (legacy main() does the same in its catch block).
    */
   void handleInternalError(const std::exception & e);
 

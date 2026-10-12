@@ -36,10 +36,13 @@
 #include "../tools/xml.h"
 
 #include <QDir>
+#include <QFileInfo>
 #include <QFont>
 #include <QGuiApplication>
 #include <QQmlEngine>
 #include <QScreen>
+
+#include <filesystem>
 
 #ifndef BURRTOOLS_VERSION
 #define BURRTOOLS_VERSION "unknown"
@@ -154,8 +157,11 @@ App * App::instance(void) {
   return s_app;
 }
 
+/* QML's singleton factory. main() makes the App before it loads any QML;
+ * without one, QML gets null and reports the singleton, not a crash here. */
 App * App::create(QQmlEngine *, QJSEngine *) {
-  QJSEngine::setObjectOwnership(s_app, QJSEngine::CppOwnership);
+  if (s_app)
+    QJSEngine::setObjectOwnership(s_app, QJSEngine::CppOwnership);
   return s_app;
 }
 
@@ -179,15 +185,38 @@ void App::updateStatusText(void) {
   }
 }
 
+/* Legacy writes __rescue.xmpuzzle to the working directory, which is "/" for
+ * an app started from the Finder and often read-only on Windows. Here it goes
+ * beside the open puzzle, where its owner looks for it, else -- an unsaved
+ * puzzle, or a folder that cannot be written -- beside the settings file.
+ *
+ * The puzzle has just failed an internal check, so writing it may throw too:
+ * that is a failed save, never a second exception out of the catch handler
+ * this runs in.
+ */
 QString App::rescueSave(void) {
-  const char * name = "__rescue.xmpuzzle";
-  ogzstream ostr(name);
-  if (!ostr.rdbuf()->is_open())
-    return QString();
-  xmlWriter_c xml(ostr);
-  m_document->session().puzzle().save(xml);
-  ostr.close();
-  return ostr ? QString::fromLatin1(name) : QString();
+  QStringList folders;
+  const std::filesystem::path & open = m_document->session().fileName();
+  if (!open.empty())
+    folders << QString::fromStdU16String(open.parent_path().u16string());
+  folders << QFileInfo(m_settings->file()).absolutePath();
+
+  for (const QString & folder : folders) {
+    const QString name = QDir(folder).absoluteFilePath(QStringLiteral("__rescue.xmpuzzle"));
+    try {
+      ogzstream ostr(std::filesystem::path(name.toStdU16String()).string().c_str());
+      if (!ostr.rdbuf()->is_open())
+        continue;
+      xmlWriter_c xml(ostr);
+      m_document->session().puzzle().save(xml);
+      ostr.close();
+      if (ostr)
+        return QDir::toNativeSeparators(name);
+    } catch (...) {
+      // the next folder, or no rescue file
+    }
+  }
+  return QString();
 }
 
 void App::handleInternalError(const std::exception & e) {

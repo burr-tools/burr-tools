@@ -298,7 +298,7 @@ void CommandController::trigger(const QString & key) {
     return;
   try {
     run(c->id);
-  } catch (const assert_exception & e) {
+  } catch (const std::exception & e) {
     if (App * app = App::instance())
       app->handleInternalError(e);
   }

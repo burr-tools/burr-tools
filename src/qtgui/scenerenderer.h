@@ -109,8 +109,9 @@ public:
   void initialize(QRhi * rhi, QRhiRenderPassDescriptor * rp, int sampleCount);
 
   /* Record one frame into cb: uploads, the scene into the renderer's own
-   * target, then a pass on rt that copies it there. */
-  void render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const SceneFrame & f);
+   * target, then a pass on rt that copies it there. False, with nothing
+   * recorded, when the scene target could not be made. */
+  bool render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const SceneFrame & f);
 
   /* After the first frame: the multisampling the scene really got, and
    * whether it is drawn in linear light (RGBA16F) or, where the device

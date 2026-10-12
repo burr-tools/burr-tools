@@ -171,6 +171,7 @@ private:
   btui::ColorMode colorMode(void) const;
   btui::SceneContent sceneFor(const Job & j) const;
   void fixMode(void);
+  void documentChanged(void);
   void rebuildPreview(void);
   void recomputePixels(void);
   std::vector<Job> jobs(void) const;
@@ -189,6 +190,7 @@ private:
   QString m_paper = QStringLiteral("manual");
   int m_mmX = 0, m_mmY = 0, m_dpi = 300, m_pxX = 300, m_pxY = 300, m_pages = 1;
 
+  bool m_open = false;             // between begin() and end()
   std::shared_ptr<const btui::ShapeMesh> m_mesh;
   quint64 m_meshRevision = 0;
 

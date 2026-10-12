@@ -23,6 +23,7 @@
 #include "documentcontroller.h"
 #include "guarded.h"
 #include "layoutcontroller.h"
+#include "localpath.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
 #include "theme.h"
@@ -312,7 +313,7 @@ QString ViewportController::vectorExtension(int format) {
 bool ViewportController::exportVector(const QUrl & file, int format) const {
   if (format < 0 || format > int(btui::VectorFormat::PGF))
     return false;
-  const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
+  const QString path = localPath(file);
   if (path.isEmpty())
     return false;
 
