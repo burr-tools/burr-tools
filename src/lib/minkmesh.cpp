@@ -9,8 +9,11 @@
 #include <manifold/polygon.h>
 
 #include <algorithm>
+#include <cstdio>
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <functional>
 #include <tuple>
 #include <map>
 #include <set>
@@ -966,6 +969,412 @@ bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & f
   return true;
 }
 
+typedef __int128 i128;
+
+/* ---------------------------------------------------------------------
+ * The exact path (cube and octahedron bits: the rhombic and tetra-octa
+ * grids).
+ *
+ * Everything happens in an integer frame: one cell is FRAME units, the
+ * gap and the bevel are rounded once to whole units, every step size is
+ * derived from them exactly, and every true vertex of every step is then
+ * a whole number of units (the planes all have small integer normals and
+ * integer offsets, and FRAME carries the factors their intersections
+ * divide by). The booleans are Manifold's; around them nothing is
+ * measured against a tolerance:
+ *  - each piece of the surface is swept with Manifold::Hull, whose
+ *    corners are exact since the points are whole numbers of units;
+ *  - each boolean result is rebuilt from exact planes: every triangle is
+ *    put on its integer plane (normal recovered as a small integer
+ *    vector, offset rounded to a whole unit), every vertex on three or
+ *    more planes is replaced by their exact intersection, every vertex
+ *    on only two planes (a point along a straight edge) is dropped, and
+ *    each planar face is re-triangulated from integer coordinates, with
+ *    its area checked exactly.
+ * Anything that does not fit (a triangle on no integer plane, a corner
+ * that is not a whole unit, a face whose triangulation does not cover
+ * it) is an error, never patched over.
+ * ------------------------------------------------------------------- */
+
+/* units per cell: 12 for the thirds and quarters plane intersections
+ * divide by, 10^4 so that a gap or bevel with four decimals of a cell is
+ * exact, 2^10 for headroom */
+const double FRAME = 12.0 * 10000.0 * 1024.0;
+
+/* a size in whole units, rounded to a multiple of 12, so that the planes
+ * it moves meet in whole units (their intersections divide by 1, 2, 3 or 4) */
+int64_t units(double x) { return 12 * std::llround(x / 12); }
+
+struct iplane_s { int64_t a = 0, b = 0, c = 0, d = 0; };
+inline bool operator<(const iplane_s & x, const iplane_s & y) { return std::tie(x.a, x.b, x.c, x.d) < std::tie(y.a, y.b, y.c, y.d); }
+
+int64_t gcd64(int64_t a, int64_t b) { a = a < 0 ? -a : a; b = b < 0 ? -b : b; while (b) { int64_t t = a % b; a = b; b = t; } return a; }
+
+/* the small integer vector a float normal is a multiple of */
+bool intNormal(const vec3 & n, int64_t out[3]) {
+  double mx = std::max(std::fabs(n.x), std::max(std::fabs(n.y), std::fabs(n.z)));
+  if (mx <= 0) return false;
+  const double v[3] = { n.x / mx, n.y / mx, n.z / mx };
+  for (int q = 1; q <= 12; q++) {
+    int64_t r[3]; bool ok = true;
+    for (int k = 0; k < 3; k++) { r[k] = std::llround(v[k] * q); if (std::fabs(v[k] * q - r[k]) > 1e-7 * q) ok = false; }
+    if (!ok) continue;
+    int64_t g = gcd64(gcd64(r[0], r[1]), r[2]);
+    for (int k = 0; k < 3; k++) out[k] = r[k] / g;
+    return true;
+  }
+  return false;
+}
+
+struct ipt { int64_t x, y, z; };
+inline i128 planeValue(const iplane_s & P, const ipt & p) { return (i128)P.a * p.x + (i128)P.b * p.y + (i128)P.c * p.z - P.d; }
+
+/* convex pieces of a face from its triangulation, in exact integer 2D
+ * coordinates (counterclockwise): triangles merged across shared edges
+ * while the union stays convex (collinear corners allowed) */
+void convexPiecesExact(const std::vector<std::array<int64_t, 2> > & p2, const std::vector<int> & tt, std::vector<std::vector<int> > & out) {
+  auto cross = [&](int a, int b, int c) { return (i128)(p2[b][0] - p2[a][0]) * (p2[c][1] - p2[a][1]) - (i128)(p2[b][1] - p2[a][1]) * (p2[c][0] - p2[a][0]); };
+  std::vector<std::vector<int> > poly;
+  for (size_t t = 0; t + 2 < tt.size(); t += 3) poly.push_back({ tt[t], tt[t + 1], tt[t + 2] });
+  std::vector<bool> alive(poly.size(), true);
+  std::map<std::pair<int, int>, size_t> edgeOwner;
+  for (size_t i = 0; i < poly.size(); i++) for (size_t c = 0; c < 3; c++) edgeOwner[std::make_pair(poly[i][c], poly[i][(c + 1) % 3])] = i;
+  auto convex = [&](const std::vector<int> & p) {
+    std::set<int> seen;
+    for (int v : p) if (!seen.insert(v).second) return false;
+    for (size_t i = 0; i < p.size(); i++) if (cross(p[i], p[(i + 1) % p.size()], p[(i + 2) % p.size()]) < 0) return false;
+    return true;
+  };
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (size_t i = 0; i < poly.size(); i++) {
+      if (!alive[i]) continue;
+      for (size_t c = 0; c < poly[i].size(); c++) {
+        int a = poly[i][c], b = poly[i][(c + 1) % poly[i].size()];
+        auto it = edgeOwner.find(std::make_pair(b, a));
+        if (it == edgeOwner.end() || it->second == i || !alive[it->second]) continue;
+        const std::vector<int> & q = poly[it->second];
+        size_t ia = 0;
+        while (q[ia] != a) ia++;
+        std::vector<int> merged;
+        for (size_t d = 1; d <= poly[i].size(); d++) merged.push_back(poly[i][(c + d) % poly[i].size()]);
+        for (size_t d = 1; d + 1 < q.size(); d++) merged.push_back(q[(ia + d) % q.size()]);
+        if (!convex(merged)) continue;
+        size_t j = it->second;
+        for (size_t d = 0; d < q.size(); d++) edgeOwner.erase(std::make_pair(q[d], q[(d + 1) % q.size()]));
+        for (size_t d = 0; d < poly[i].size(); d++) edgeOwner.erase(std::make_pair(poly[i][d], poly[i][(d + 1) % poly[i].size()]));
+        poly[i] = merged; alive[j] = false;
+        for (size_t d = 0; d < merged.size(); d++) edgeOwner[std::make_pair(merged[d], merged[(d + 1) % merged.size()])] = i;
+        changed = true;
+        break;
+      }
+    }
+  }
+  for (size_t i = 0; i < poly.size(); i++) if (alive[i]) out.push_back(poly[i]);
+}
+
+/* the exact rebuild of a boolean result: see the comment at the top */
+bool exactFaces(const Manifold & m, faces_s & out, std::string & err) {
+  out.pos.clear(); out.tri.clear(); out.orig.clear(); out.pieces.clear();
+  manifold::MeshGL64 G = m.GetMeshGL64();
+  const size_t np = G.numProp;
+  std::vector<vec3> & pos = out.pos;
+  for (size_t i = 0; i * np < G.vertProperties.size(); i++) pos.push_back(vec3(G.vertProperties[i * np], G.vertProperties[i * np + 1], G.vertProperties[i * np + 2]));
+  const std::vector<uint64_t> & tv = G.triVerts;
+  out.orig = tv;
+  const size_t nt = tv.size() / 3, nv = pos.size();
+  if (!nt) return true;
+  auto P = [&](size_t t, int c) -> const vec3 & { return pos[tv[3 * t + c]]; };
+  std::map<std::pair<uint64_t, uint64_t>, size_t> owner;
+  for (size_t t = 0; t < nt; t++) for (int c = 0; c < 3; c++) owner[std::make_pair(tv[3 * t + c], tv[3 * t + (c + 1) % 3])] = t;
+  auto neighbour = [&](size_t t, int c) -> long {
+    auto it = owner.find(std::make_pair(tv[3 * t + (c + 1) % 3], tv[3 * t + c]));
+    return it == owner.end() ? -1 : (long)it->second;
+  };
+  auto onPlane = [&](const iplane_s & pl, const vec3 & p) {
+    long double v = (long double)pl.a * p.x + (long double)pl.b * p.y + (long double)pl.c * p.z - pl.d;
+    return std::fabs((double)v) < 0.05;
+  };
+  /* 1. every triangle with a decent altitude on its integer plane */
+  std::vector<iplane_s> planes;
+  std::map<iplane_s, int> planeId;
+  std::vector<int> plane(nt, -1);
+  for (size_t t = 0; t < nt; t++) {
+    vec3 n = manifold::la::cross(P(t, 1) - P(t, 0), P(t, 2) - P(t, 0));
+    double l = manifold::la::length(n), longest = 0;
+    for (int c = 0; c < 3; c++) longest = std::max(longest, manifold::la::length(P(t, (c + 1) % 3) - P(t, c)));
+    if (longest <= 0 || l / longest < 1000) continue;            /* altitude under 1e-5 of a cell: its normal is noise */
+    int64_t in[3];
+    if (!intNormal(n / l, in)) {
+      char why[200];
+      snprintf(why, sizeof why, "a face of a Minkowski step is not on a plane with a small integer normal (normal %.9f %.9f %.9f, altitude %.3g units)", n.x / l, n.y / l, n.z / l, l / longest);
+      err = why; return false;
+    }
+    iplane_s pl; pl.a = in[0]; pl.b = in[1]; pl.c = in[2];
+    long double dv = (long double)pl.a * P(t, 0).x + (long double)pl.b * P(t, 0).y + (long double)pl.c * P(t, 0).z;
+    pl.d = std::llround((double)dv);
+    for (int c = 0; c < 3; c++) if (!onPlane(pl, P(t, c))) { err = "a triangle of a Minkowski step is not on a whole-unit plane"; return false; }
+    auto it = planeId.find(pl);
+    if (it == planeId.end()) { it = planeId.insert(std::make_pair(pl, (int)planes.size())).first; planes.push_back(pl); }
+    plane[t] = it->second;
+  }
+  /* 2. every sliver on the plane of a neighbour that all its corners are on */
+  for (bool changed = true; changed;) {
+    changed = false;
+    for (size_t t = 0; t < nt; t++) {
+      if (plane[t] >= 0) continue;
+      for (int c = 0; c < 3 && plane[t] < 0; c++) {
+        long u = neighbour(t, c);
+        if (u < 0 || plane[u] < 0) continue;
+        const iplane_s & pl = planes[plane[u]];
+        if (onPlane(pl, P(t, 0)) && onPlane(pl, P(t, 1)) && onPlane(pl, P(t, 2))) { plane[t] = plane[u]; changed = true; }
+      }
+    }
+  }
+  for (size_t t = 0; t < nt; t++) if (plane[t] < 0) { err = "a sliver of a Minkowski step lies on no plane of its neighbours"; return false; }
+  /* 3. vertices: the planes around each; three independent ones make a
+   * corner, put at their exact intersection; two make a point along a
+   * straight edge, dropped */
+  std::vector<std::set<int> > vplanes(nv);
+  for (size_t t = 0; t < nt; t++) for (int c = 0; c < 3; c++) vplanes[tv[3 * t + c]].insert(plane[t]);
+  enum { UNUSED, CORNER, EDGE, INSIDE };
+  std::vector<int> kind(nv, UNUSED);
+  std::vector<ipt> exact(nv);
+  for (size_t v = 0; v < nv; v++) {
+    if (vplanes[v].empty()) continue;
+    std::vector<int> ps(vplanes[v].begin(), vplanes[v].end());
+    int found[3] = { -1, -1, -1 }; i128 det = 0;
+    for (size_t i = 0; i < ps.size() && found[0] < 0; i++)
+      for (size_t j = i + 1; j < ps.size() && found[0] < 0; j++)
+        for (size_t k = j + 1; k < ps.size() && found[0] < 0; k++) {
+          const iplane_s & A = planes[ps[i]], & B = planes[ps[j]], & C = planes[ps[k]];
+          i128 dd = (i128)A.a * ((i128)B.b * C.c - (i128)B.c * C.b) - (i128)A.b * ((i128)B.a * C.c - (i128)B.c * C.a) + (i128)A.c * ((i128)B.a * C.b - (i128)B.b * C.a);
+          if (dd != 0) { found[0] = ps[i]; found[1] = ps[j]; found[2] = ps[k]; det = dd; }
+        }
+    if (found[0] < 0) {
+      /* the normals span a plane (an edge) or a line (inside a face) */
+      bool line = false;
+      for (size_t i = 0; i < ps.size() && !line; i++)
+        for (size_t j = i + 1; j < ps.size() && !line; j++) {
+          const iplane_s & A = planes[ps[i]], & B = planes[ps[j]];
+          if ((i128)A.b * B.c - (i128)A.c * B.b != 0 || (i128)A.c * B.a - (i128)A.a * B.c != 0 || (i128)A.a * B.b - (i128)A.b * B.a != 0) line = true;
+        }
+      kind[v] = line ? EDGE : INSIDE;
+      continue;
+    }
+    /* Cramer */
+    const iplane_s & A = planes[found[0]], & B = planes[found[1]], & C = planes[found[2]];
+    i128 dx = (i128)A.d * ((i128)B.b * C.c - (i128)B.c * C.b) - (i128)A.b * ((i128)B.d * C.c - (i128)B.c * C.d) + (i128)A.c * ((i128)B.d * C.b - (i128)B.b * C.d);
+    i128 dy = (i128)A.a * ((i128)B.d * C.c - (i128)B.c * C.d) - (i128)A.d * ((i128)B.a * C.c - (i128)B.c * C.a) + (i128)A.c * ((i128)B.a * C.d - (i128)B.d * C.a);
+    i128 dz = (i128)A.a * ((i128)B.b * C.d - (i128)B.d * C.b) - (i128)A.b * ((i128)B.a * C.d - (i128)B.d * C.a) + (i128)A.d * ((i128)B.a * C.b - (i128)B.b * C.a);
+    if (dx % det || dy % det || dz % det) { err = "a corner of a Minkowski step is not a whole number of units"; return false; }
+    ipt q{ (int64_t)(dx / det), (int64_t)(dy / det), (int64_t)(dz / det) };
+    for (int p : ps) if (planeValue(planes[p], q) != 0) { err = "a corner of a Minkowski step is not on all the planes around it"; return false; }
+    if (std::fabs(pos[v].x - q.x) > 1 || std::fabs(pos[v].y - q.y) > 1 || std::fabs(pos[v].z - q.z) > 1) { err = "a corner of a Minkowski step is far from its exact place"; return false; }
+    kind[v] = CORNER; exact[v] = q;
+  }
+  /* 4. faces: triangles on one plane joined across shared edges */
+  std::vector<size_t> parent(nt);
+  for (size_t t = 0; t < nt; t++) parent[t] = t;
+  std::function<size_t(size_t)> find = [&](size_t i) { while (parent[i] != i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (size_t t = 0; t < nt; t++) for (int c = 0; c < 3; c++) { long u = neighbour(t, c); if (u >= 0 && plane[u] == plane[t]) parent[find(t)] = find((size_t)u); }
+  std::map<size_t, std::vector<size_t> > groups;
+  for (size_t t = 0; t < nt; t++) groups[find(t)].push_back(t);
+  /* exact positions out, for the corners */
+  for (size_t v = 0; v < nv; v++) if (kind[v] == CORNER) pos[v] = vec3((double)exact[v].x, (double)exact[v].y, (double)exact[v].z);
+  for (const auto & g : groups) {
+    const std::vector<size_t> & members = g.second;
+    const iplane_s & pl = planes[plane[members[0]]];
+    const vec3 n = manifold::la::normalize(vec3((double)pl.a, (double)pl.b, (double)pl.c));
+    /* the outline loops (as in extractFaces: sharpest left turn where it touches itself) */
+    std::set<size_t> inGroup(members.begin(), members.end());
+    std::multimap<uint64_t, uint64_t> next;
+    for (size_t t : members) for (int c = 0; c < 3; c++) { long u = neighbour(t, c); if (u >= 0 && inGroup.count((size_t)u)) continue; next.insert(std::make_pair(tv[3 * t + c], tv[3 * t + (c + 1) % 3])); }
+    std::vector<std::vector<uint64_t> > loops;
+    std::set<std::pair<uint64_t, uint64_t> > used;
+    for (const auto & e0 : next) {
+      if (used.count(e0)) continue;
+      std::vector<uint64_t> loop;
+      std::pair<uint64_t, uint64_t> e = e0;
+      bool closed = false;
+      for (size_t guard = 0; guard <= next.size() + 1; guard++) {
+        used.insert(e); loop.push_back(e.first);
+        uint64_t v = e.second;
+        if (v == e0.first) { closed = true; break; }
+        auto range = next.equal_range(v);
+        std::pair<uint64_t, uint64_t> pick(0, 0); bool have = false; double bestAng = -10;
+        vec3 din = pos[v] - pos[e.first];
+        for (auto it = range.first; it != range.second; ++it) {
+          std::pair<uint64_t, uint64_t> cand(it->first, it->second);
+          if (used.count(cand)) continue;
+          vec3 dout = pos[cand.second] - pos[v];
+          double ang = std::atan2(manifold::la::dot(manifold::la::cross(din, dout), n), manifold::la::dot(din, dout));
+          if (!have || ang > bestAng) { bestAng = ang; pick = cand; have = true; }
+        }
+        if (!have) break;
+        e = pick;
+      }
+      if (!closed) { err = "the outline of a face of a Minkowski step does not close"; return false; }
+      loops.push_back(loop);
+    }
+    /* only the corners: points along straight edges and inside the face go */
+    std::vector<std::vector<uint64_t> > kept;
+    for (const std::vector<uint64_t> & loop : loops) {
+      std::vector<uint64_t> l;
+      for (uint64_t v : loop) {
+        if (kind[v] == CORNER) l.push_back(v);
+        else if (kind[v] == INSIDE) { err = "a face outline of a Minkowski step passes a point with only that face around it"; return false; }
+      }
+      if (l.size() < 3) { err = "a face outline of a Minkowski step has fewer than three corners"; return false; }
+      kept.push_back(l);
+    }
+    /* exact 2D coordinates: drop the axis the normal leans on most, keep counterclockwise */
+    const int64_t nn[3] = { pl.a, pl.b, pl.c };
+    int ax = 0; for (int k = 1; k < 3; k++) if (std::llabs(nn[k]) > std::llabs(nn[ax])) ax = k;
+    int u0 = (ax + 1) % 3, u1 = (ax + 2) % 3;
+    if (nn[ax] < 0) std::swap(u0, u1);
+    std::vector<std::array<int64_t, 2> > p2;
+    std::vector<uint64_t> flat;
+    std::vector<std::vector<int> > idx(kept.size());
+    for (size_t l = 0; l < kept.size(); l++)
+      for (uint64_t v : kept[l]) {
+        const int64_t c3[3] = { exact[v].x, exact[v].y, exact[v].z };
+        idx[l].push_back((int)p2.size()); p2.push_back({ c3[u0], c3[u1] }); flat.push_back(v);
+      }
+    auto cross2 = [&](int a, int b, int c) { return (i128)(p2[b][0] - p2[a][0]) * (p2[c][1] - p2[a][1]) - (i128)(p2[b][1] - p2[a][1]) * (p2[c][0] - p2[a][0]); };
+    i128 outline = 0;
+    for (size_t l = 0; l < kept.size(); l++)
+      for (size_t q = 0; q < idx[l].size(); q++) { const auto & a = p2[idx[l][q]], & b = p2[idx[l][(q + 1) % idx[l].size()]]; outline += (i128)a[0] * b[1] - (i128)a[1] * b[0]; }
+    if (outline <= 0) { err = "a face of a Minkowski step has no area (or runs backwards)"; return false; }
+    std::vector<int> tt;
+    {
+      manifold::Polygons polys(kept.size());
+      for (size_t l = 0; l < kept.size(); l++) for (int i : idx[l]) polys[l].push_back(manifold::vec2((double)p2[i][0], (double)p2[i][1]));
+      std::vector<manifold::ivec3> tri3;
+      try { tri3 = manifold::Triangulate(polys, 0.5); }
+      catch (...) { err = "a face of a Minkowski step could not be triangulated"; return false; }
+      for (const manifold::ivec3 & t3 : tri3) { tt.push_back(t3.x); tt.push_back(t3.y); tt.push_back(t3.z); }
+    }
+    i128 covered = 0;
+    for (size_t k = 0; k + 2 < tt.size(); k += 3) {
+      i128 a2 = cross2(tt[k], tt[k + 1], tt[k + 2]);
+      if (a2 < 0) { err = "the triangulation of a face of a Minkowski step has a triangle turned over"; return false; }
+      covered += a2;
+    }
+    if (covered != outline) { err = "the triangulation of a face of a Minkowski step does not cover it exactly"; return false; }
+    for (int i : tt) out.tri.push_back(flat[i]);
+    std::vector<std::vector<int> > cp;
+    convexPiecesExact(p2, tt, cp);
+    for (const std::vector<int> & p : cp) {
+      std::vector<vec3> piece;
+      for (int i : p) piece.push_back(pos[flat[i]]);
+      out.pieces.push_back(piece);
+    }
+  }
+  return true;
+}
+
+/* zero-area triangles (three exactly collinear corners, where a corner of
+ * other faces sits on a straight run of this face's outline) flipped with
+ * their neighbour across the longest edge, which is on the same plane */
+void flipFlatExact(const std::vector<vec3> & pos, std::vector<uint64_t> & tri) {
+  auto I = [&](uint64_t v) { return ipt{ (int64_t)pos[v].x, (int64_t)pos[v].y, (int64_t)pos[v].z }; };
+  auto flat = [&](size_t t) {
+    ipt a = I(tri[3 * t]), b = I(tri[3 * t + 1]), c = I(tri[3 * t + 2]);
+    i128 ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z, vx = c.x - a.x, vy = c.y - a.y, vz = c.z - a.z;
+    return uy * vz - uz * vy == 0 && uz * vx - ux * vz == 0 && ux * vy - uy * vx == 0;
+  };
+  std::map<std::pair<uint64_t, uint64_t>, size_t> owner;
+  auto own = [&](size_t t) { for (int c = 0; c < 3; c++) owner[std::make_pair(tri[3 * t + c], tri[3 * t + (c + 1) % 3])] = t; };
+  auto disown = [&](size_t t) { for (int c = 0; c < 3; c++) owner.erase(std::make_pair(tri[3 * t + c], tri[3 * t + (c + 1) % 3])); };
+  for (size_t t = 0; t * 3 < tri.size(); t++) own(t);
+  for (int round = 0; round < 16; round++) {
+    bool any = false;
+    for (size_t t = 0; t * 3 < tri.size(); t++) {
+      if (!flat(t)) continue;
+      int m = 0; double longest = -1;
+      for (int c = 0; c < 3; c++) { double e = manifold::la::length(pos[tri[3 * t + (c + 1) % 3]] - pos[tri[3 * t + (c + 2) % 3]]); if (e > longest) { longest = e; m = c; } }
+      uint64_t M = tri[3 * t + m], A = tri[3 * t + (m + 1) % 3], B = tri[3 * t + (m + 2) % 3];
+      auto it = owner.find(std::make_pair(B, A));
+      if (it == owner.end() || it->second == t) continue;
+      size_t u = it->second;
+      uint64_t D = 0;
+      for (int c = 0; c < 3; c++) if (tri[3 * u + c] != A && tri[3 * u + c] != B) D = tri[3 * u + c];
+      disown(t); disown(u);
+      tri[3 * t] = A; tri[3 * t + 1] = D; tri[3 * t + 2] = M;
+      tri[3 * u] = D; tri[3 * u + 1] = B; tri[3 * u + 2] = M;
+      own(t); own(u);
+      any = true;
+    }
+    if (!any) break;
+  }
+}
+
+bool rebuiltExact(faces_s & f, Manifold & out, std::string & err) {
+  flipFlatExact(f.pos, f.tri);
+  out = fromTriangles(f.pos, f.tri);
+  if (out.Status() != Manifold::Error::NoError) { err = "the exact rebuild of a Minkowski step is not a valid solid"; return false; }
+  return true;
+}
+
+/* one step: the solid plus or minus the sweep of its surface by the bit
+ * (size in whole units) */
+bool stepExact(Manifold & m, faces_s & f, const std::vector<vec3> & unit, int64_t size, bool add, std::string & err) {
+  if (size <= 0) return true;
+  std::vector<Manifold> hulls;
+  for (const std::vector<vec3> & piece : f.pieces) {
+    std::vector<vec3> pts;
+    for (const vec3 & p : piece) for (const vec3 & b : unit) pts.push_back(p + b * (double)size);
+    hulls.push_back(Manifold::Hull(pts));
+    if (hulls.back().Status() != Manifold::Error::NoError) { err = "the hull of a piece of a Minkowski step is not a valid solid"; return false; }
+    if (hulls.back().IsEmpty()) { err = "a piece of a Minkowski step sweeps into nothing"; return false; }
+  }
+  Manifold tube = Manifold::BatchBoolean(hulls, manifold::OpType::Add);
+  Manifold u = add ? m + tube : m - tube;
+  faces_s g;
+  if (!exactFaces(u, g, err)) return false;
+  if (!rebuiltExact(g, m, err)) return false;
+  /* the next step's pieces: the faces just rebuilt, which are exactly m's */
+  f = g;
+  return true;
+}
+
+/* the construction for the cube-and-octahedron bits, on a body already in
+ * the frame and gap and bevel in whole units */
+bool constructExact(const Manifold & body, const bits_s & b, int64_t g, int64_t r, double rCells, bool fills, Manifold & out, std::string & err) {
+  faces_s f;
+  if (!exactFaces(body, f, err)) return false;
+  Manifold m;
+  if (!rebuiltExact(f, m, err)) return false;
+  auto go = [&](const std::vector<vec3> & unit, int64_t size, bool add) { return stepExact(m, f, unit, size, add, err); };
+  /* the chamfer bit is the Minkowski sum of a cube of half-size sqrt2 - 1
+   * and an octahedron of radius 2 - sqrt2 (in the same proportions as its
+   * vertices (+-1, +-(sqrt2-1), +-(sqrt2-1))): one step with each */
+  auto goChamfer = [&](int64_t size, bool add) {
+    if (!go(b.offset, units((SQRT2 - 1) * (double)size), add)) return false;
+    return go(b.chamferFill, units((2 - SQRT2) * (double)size), add);
+  };
+  if (fills) {
+    const int64_t bp = r;                                                   /* kFill = 1 */
+    if (!go(b.offset, 2 * bp, false)) return false;
+    if (m.IsEmpty()) { err = "nothing is left of the shape after the bevel step (twice the bevel too large for its cells)"; return false; }
+    if (!go(b.chamferFill, 2 * bp, true)) return false;
+    if (!go(b.chamferFill, bp, false)) return false;
+    if (!go(b.offset, bp, true)) return false;
+    if (!goChamfer(g, false)) return false;
+  } else {
+    const int64_t bp = units(b.k * rCells * FRAME);
+    if (!go(b.offset, bp, false)) return false;
+    if (m.IsEmpty()) { err = "nothing is left of the shape after the bevel step (bevel too large for its cells)"; return false; }
+    if (bp > g) { if (!goChamfer(bp - g, true)) return false; }
+    else if (g > bp) { if (!goChamfer(g - bp, false)) return false; }
+  }
+  if (m.IsEmpty()) { err = "nothing is left of the shape after the gap step"; return false; }
+  out = m;
+  return true;
+}
+
 } // namespace
 
 bool handles(const voxel_c & v) {
@@ -1025,7 +1434,12 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
   Manifold body = exactBody(v, err);
   if (body.IsEmpty()) return 0;
   Manifold outer;
-  if (!construct(body, b, g, r, fills, outer, err)) return 0;
+  if (!b.prism) {
+    /* the exact path, in the integer frame */
+    const int64_t gu = units(g * FRAME), ru = units(r * FRAME);
+    if (!constructExact(body.Scale(vec3(FRAME)), b, gu, ru, r, fills, outer, err)) return 0;
+    outer = outer.Scale(vec3(1 / FRAME));
+  } else if (!construct(body, b, g, r, fills, outer, err)) return 0;
   Polyhedron * poly = new Polyhedron();
   if (!addFaces(poly, outer, facets, cellFaces, g, err)) { delete poly; return 0; }
   poly->finalize();

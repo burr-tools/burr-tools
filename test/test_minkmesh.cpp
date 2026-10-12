@@ -60,6 +60,38 @@ TEST_CASE("Minkowski mesher: prism, rhombic and tetra-octa shapes, both variants
   }
 }
 
+/* shape 2 of a user's clasp puzzle: its chamfer once splintered in the
+ * view, because a Manifold Simplify between the Minkowski steps deleted
+ * real material and left corners standing unchamfered. With interior
+ * chamfers every edge is bevelled, so no edge may turn by more than about
+ * 63 degrees; the splintered mesh had edges turning by 90. */
+TEST_CASE("Minkowski mesher: a rhombic shape whose chamfer splintered", "[minkmesh]") {
+  gridType_c gt(gridType_c::GT_RHOMBIC);
+  std::unique_ptr<voxel_c> v(gt.getVoxel(10, 10, 10, voxel_c::VX_EMPTY));
+  const int cells[][3] = {
+    { 2, 1, 0 }, { 3, 2, 0 }, { 4, 2, 1 }, { 5, 2, 1 }, { 4, 3, 2 }, { 5, 3, 2 },
+    { 3, 4, 2 }, { 6, 4, 2 }, { 6, 5, 2 }, { 4, 2, 3 }, { 7, 4, 3 }, { 3, 2, 4 },
+    { 7, 3, 4 }, { 3, 2, 5 }, { 7, 3, 5 }, { 4, 2, 6 }, { 5, 2, 6 },
+  };
+  for (const auto & c : cells) {
+    REQUIRE(v->validCoordinate(c[0], c[1], c[2]));
+    v->setState(c[0], c[1], c[2], voxel_c::VX_FILLED);
+  }
+  std::string err;
+  std::unique_ptr<Polyhedron> p(minkMesh::polyhedron(*v, 0.02, 0.05, true, err));
+  INFO(err);
+  REQUIRE(p);
+  REQUIRE(p->check(false));
+  int sharp = 0;
+  for (Polyhedron::const_edge_iterator it = p->eBegin(); it != p->eEnd(); ++it) {
+    Vector3Df a = (*it)->face()->normal(), b = (*it)->twin()->face()->normal();
+    a.normalize();
+    b.normalize();
+    if (a * b < 0.342f) sharp++;  /* cos 70 degrees */
+  }
+  CHECK(sharp == 0);
+}
+
 TEST_CASE("Minkowski mesher: the exporter and the view use it on the rhombic grid", "[minkmesh][stl]") {
   gridType_c gt(gridType_c::GT_RHOMBIC);
   std::unique_ptr<voxel_c> v = shape(gt, 5, 5, 5);
