@@ -772,8 +772,8 @@ jobs:
       run: brew install meson ninja
 
     # The official Qt binaries, built for macOS 13 and later, so the program
-    # and the preview app run on the project's minimum (macOS 14). Homebrew's
-    # Qt would target the runner's own macOS instead.
+    # and the preview app run on its minimum (qt_macos_deployment_target,
+    # macOS 14). Homebrew's Qt would target the runner's own macOS instead.
     - name: Install Qt
       uses: jurplel/install-qt-action@v4
       with:

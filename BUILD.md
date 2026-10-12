@@ -15,7 +15,7 @@ brew install meson ninja cmake
 - **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
 - **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
 - **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
-- **Minimum macOS**: the binaries run on macOS 14 Sonoma and later (`-Dmacos_deployment_target=14.0`, the default).
+- **Minimum macOS**: `burrtools` and `burrTxt` run on macOS 11 Big Sur and later (`-Dmacos_deployment_target=11.0`, the default); `burrtools-qt` on macOS 14 Sonoma and later (`-Dqt_macos_deployment_target=14.0`, the default).
 
 #### Optional Static Analysis Tools (macOS)
 
@@ -227,7 +227,7 @@ Tools modules, and meson ≥ 1.7.
 | Platform | Getting Qt |
 | :--- | :--- |
 | Windows | MSYS2 UCRT64: `pacman -S mingw-w64-ucrt-x86_64-qt6-{base,declarative,shadertools,svg,tools} zip` |
-| macOS | the Qt online installer or `aqtinstall` (as CI does), whose Qt runs on macOS 13 and later; `brew install qt` works too, but Homebrew builds it for your own macOS, so set `-Dmacos_deployment_target` to that version (the linker warns otherwise) |
+| macOS | the Qt online installer or `aqtinstall` (as CI does), whose Qt runs on macOS 13 and later; `brew install qt` works too, but Homebrew builds it for your own macOS, so `burrtools-qt` then targets that version (the build finds it in Qt's frameworks; the legacy binaries keep theirs) |
 | Linux | Distributions shipping Qt ≥ 6.8 (e.g. Ubuntu 25.10+, Debian `forky`/`sid`; check with `apt-cache policy qt6-base-dev`) via apt, else the Qt online installer or `aqtinstall` (e.g. Ubuntu 22.04 ships 6.2, 24.04 ships 6.4), always with `qtshadertools`; the render tests also use `mesa-vulkan-drivers` |
 
 ```bash
@@ -262,8 +262,8 @@ links Qt and the C/C++ runtimes into one `burrtools-qt.exe` of about 50 MB
 (20 MB zipped) that needs nothing beside it on Windows 10 and later. It
 configures a separate `build-static` directory with `-Dqt_static=true`;
 `scripts/qt_static_link.py` works out the static link line and the plugin
-imports. CI builds it only on demand and for releases (the *Qt standalone
-build* workflow), not on every push.
+imports. CI builds it only on demand (the *Qt standalone build* workflow,
+which can attach it to a given release), not on every push or release tag.
 
 `burrtools-qt` also takes `--gallery`, `--screenshot=<file.png>` (draw the
 window once, save it, quit), `--command=<key>` (run a command, e.g.

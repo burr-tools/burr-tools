@@ -27,9 +27,9 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target: the oldest macOS the binaries run on, 14.0
-# (Sonoma) by default -- above official Qt 6.11's floor (macOS 13), so the
-# legacy GUI and burrtools-qt share it.
+# Set macOS deployment target: the oldest macOS the legacy binaries (burrtools,
+# burrTxt) and the libraries run on, 11.0 (Big Sur) by default. burrtools-qt
+# targets a later one, qt_macos_deployment_target (below, beside Qt).
 #
 # These are global rather than project arguments deliberately: meson subprojects
 # (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
@@ -37,8 +37,6 @@ endif
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
 #
-# An option so a build can raise it: one against Homebrew's Qt, whose bottles
-# target the macOS they were built on, cannot go below that.
 macos_deployment_target = get_option('macos_deployment_target')
 
 if host_machine.system() == 'darwin'
@@ -329,13 +327,10 @@ if not fltk_dep.found()
 endif
 
 
-# The Windows binaries are linked fully static so they run without shipping
-# any DLLs. These used to be project-wide link arguments; they are now passed
-# to each legacy target explicitly, because the Qt GUI (src/qtgui) links
-# against Qt's shared libraries, and a static C++ runtime in its executable
-# would sit next to the one those DLLs already load -- two copies of libstdc++
-# in one process. Every target that had them before still gets exactly the
-# same arguments.
+# The legacy Windows binaries are linked fully static so they run without
+# shipping any DLLs. The Qt GUI (src/qtgui) does not get these: it links Qt's
+# shared libraries, and a static C++ runtime in its executable would put two
+# copies of libstdc++ in one process.
 legacy_link_args = []
 
 if host_machine.system() == 'windows'
@@ -633,21 +628,29 @@ if qt6_dep.found() and host_machine.system() == 'darwin' and not qt_static
   endif
 endif
 
-# Homebrew's Qt bottles target the macOS they were built on, not ours: linking
-# one built for a newer macOS than macos_deployment_target makes ld warn (Xcode
-# 26's ld does), and --werror fail. The Qt executables then target the newest
-# macOS any of Qt's frameworks needs; the legacy binaries keep the option's.
-# The official Qt (built for macOS 13) never raises it.
-qt_link_args = []
-if qt_build_rpath != ''
-  qt_macos_min = run_command('sh', '-c',
-    'd=$1; shift; for m; do otool -l "$d/Qt$m.framework/Qt$m"; done 2>/dev/null | sed -n "s/^ *minos //p" | sort -t. -k1,1n -k2,2n | tail -n 1',
-    'sh', qt_build_rpath, 'Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg',
-    check: false).stdout().strip()
-  if qt_macos_min != '' and qt_macos_min.version_compare('>' + macos_deployment_target)
-    message('Qt is built for macOS @0@, so the Qt executables target it (macos_deployment_target is @1@)'.format(qt_macos_min, macos_deployment_target))
-    qt_link_args = ['-mmacosx-version-min=' + qt_macos_min]
+# The Qt GUI and its tests target qt_macos_deployment_target (14.0, above
+# official Qt 6.11's macOS 13), compiled and linked; the legacy binaries keep
+# macos_deployment_target. Homebrew's Qt bottles target the macOS they were
+# built on, and linking one built for a newer macOS than the target makes ld
+# warn (Xcode 26's ld does), and --werror fail: the Qt targets then target the
+# newest macOS any of Qt's frameworks needs.
+qt_macos_args = []
+if host_machine.system() == 'darwin'
+  qt_macos_target = get_option('qt_macos_deployment_target')
+  if qt_macos_target.version_compare('<' + macos_deployment_target)
+    qt_macos_target = macos_deployment_target
   endif
+  if qt_build_rpath != ''
+    qt_macos_min = run_command('sh', '-c',
+      'd=$1; shift; for m; do otool -l "$d/Qt$m.framework/Qt$m"; done 2>/dev/null | sed -n "s/^ *minos //p" | sort -t. -k1,1n -k2,2n | tail -n 1',
+      'sh', qt_build_rpath, 'Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg',
+      check: false).stdout().strip()
+    if qt_macos_min != '' and qt_macos_min.version_compare('>' + qt_macos_target)
+      message('Qt is built for macOS @0@, so the Qt targets target it (qt_macos_deployment_target is @1@)'.format(qt_macos_min, qt_macos_target))
+      qt_macos_target = qt_macos_min
+    endif
+  endif
+  qt_macos_args = ['-mmacosx-version-min=' + qt_macos_target]
 endif
 
 if qt6_dep.found()
@@ -671,9 +674,9 @@ if qt6_dep.found()
 
   burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources,
     include_directories: inc,
-    cpp_args: qtgui_main_args,
+    cpp_args: qtgui_main_args + qt_macos_args,
     link_whole: libburr_qtgui,
-    link_args: qtgui_static_link_args + qt_link_args + qtgui_plist_args,
+    link_args: qtgui_static_link_args + qt_macos_args + qtgui_plist_args,
     link_depends: qtgui_plist,
     build_rpath: qt_build_rpath,
     dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],

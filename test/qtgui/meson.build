@@ -35,8 +35,8 @@ if qt6_test_dep.found()
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
     # the shaders' Direct3D form (src/qtgui/meson.build, -Ddxbc)
-    cpp_args: qt_test_args + (qtgui_dxbc ? ['-DBURRTOOLS_DXBC=1'] : []),
-    link_args: qt_link_args,
+    cpp_args: qt_test_args + qt_macos_args + (qtgui_dxbc ? ['-DBURRTOOLS_DXBC=1'] : []),
+    link_args: qt_macos_args,
     build_rpath: qt_build_rpath,
     dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
   )
@@ -52,8 +52,8 @@ if qt6_test_dep.found()
      qt6.compile_moc(sources: 'test_qtgui_qml.cpp', headers: 'snapshots.h', dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
-    cpp_args: qt_test_args,
-    link_args: qt_link_args,
+    cpp_args: qt_test_args + qt_macos_args,
+    link_args: qt_macos_args,
     build_rpath: qt_build_rpath,
     dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
   )
