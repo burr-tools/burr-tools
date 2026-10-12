@@ -143,7 +143,7 @@ libburr_qtgui = static_library('burr_qtgui', [
   ],
   include_directories: [inc, include_directories('.')],
   cpp_args: ['-DBURRTOOLS_VERSION="' + meson.project_version() + '"'] + qt_macos_args,
-  link_with: [libburr_uicore, libburr_guicommon, libburr_core],
+  link_with: [libburr_uicore, libburr_core],
   dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
 )
 

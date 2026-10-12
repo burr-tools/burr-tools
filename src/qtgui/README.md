@@ -46,7 +46,8 @@ how the camera turns, which faces a voxel shows, how wide a card is — sits in
 `src/uicore`, free of Qt and FLTK, so it is tested without a window and
 could serve another front end. `src/qtgui` turns it into Qt objects and
 pixels. The legacy GUI (`src/gui`) shares the library and one file with it:
-`puzzlehistory` (the undo history) gained a depth limit both use.
+`src/uicore/puzzlehistory`, the undo history, which gained a depth limit
+both use.
 
 ### Controllers and the QML module
 
@@ -261,9 +262,11 @@ commit holds just the images that changed.
 - A standalone Windows program: `-Dqt_static=true` links a static Qt
   (MSYS2's qt6-static) into one ~50 MB `burrtools-qt.exe`
   (`scripts/build-qt-static.sh`, `scripts/qt_static_link.py`), built on
-  demand and for release tags by the *Qt standalone build* workflow.
-- Shared: `src/gui/puzzlehistory` gained an undo-depth limit (legacy keeps
-  its behaviour), with tests.
+  demand by the *Qt standalone build* workflow, which can attach it to a
+  given release.
+- Shared: the undo history moved from `src/gui` to
+  `src/uicore/puzzlehistory` and gained an undo-depth limit, with tests.
+  Lowering the limit now drops the oldest steps at once, in legacy too.
 
 ## Next
 

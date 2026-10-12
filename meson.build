@@ -160,7 +160,6 @@ gui_src = [
   'src/gui/main.cpp',
   'src/gui/mainmenu.cpp',
   'src/gui/mainwindow.cpp',
-  'src/gui/puzzlehistory.cpp',
   'src/gui/movementbrowser.cpp',
   'src/gui/multilinewindow.cpp',
   'src/gui/piececolor.cpp',
@@ -186,6 +185,8 @@ gui_src = [
   'src/gui/LFl_Tile.cpp',
   'src/gui/Layouter.cpp',
   'src/gui/Images.cpp',
+  # the undo history, shared with the Qt GUI (burr_uicore)
+  'src/uicore/puzzlehistory.cpp',
 ]
 
 # Vendored third-party C sources, built separately so that their warnings can be
@@ -419,14 +420,13 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
 
 # The GUI-independent parts of the user interface: camera and view-cube maths,
 # mesh building and picking for the 3D view, the layout model, the command
-# table, the document session and the settings store. Nothing in here may
-# include a toolkit header -- that is what lets test_burrtools cover it
-# without Qt or FLTK, and what keeps a later toolkit change cheap.
+# table, the document session and its undo history, and the settings store.
+# Nothing in here may include a toolkit header -- that is what lets
+# test_burrtools cover it without Qt or FLTK, and what keeps a later toolkit
+# change cheap.
 #
-# The document session uses puzzleHistory_c, which lives in src/gui and was
-# GUI-free before this library existed. It is not compiled in here because
-# test_burrtools already compiles it itself; burr_guicommon carries it (and
-# its neighbour solveprogresscache) for the Qt GUI instead.
+# The undo history (puzzlehistory) is shared: the legacy GUI compiles it into
+# burrtools from here too.
 libburr_uicore = static_library('burr_uicore', [
     'src/uicore/assemblyscene.cpp',
     'src/uicore/camera.cpp',
@@ -436,6 +436,7 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/imagepages.cpp',
     'src/uicore/layoutmodel.cpp',
     'src/uicore/palette.cpp',
+    'src/uicore/puzzlehistory.cpp',
     'src/uicore/puzzletools.cpp',
     'src/uicore/scenemesh.cpp',
     'src/uicore/settingsstore.cpp',
@@ -447,14 +448,6 @@ libburr_uicore = static_library('burr_uicore', [
   include_directories: inc,
   link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep],
-)
-
-libburr_guicommon = static_library('burr_guicommon', [
-    'src/gui/puzzlehistory.cpp',
-    'src/gui/solveprogresscache.cpp',
-  ],
-  include_directories: inc,
-  link_with: libburr_core,
 )
 
 uicore_test_src = [
@@ -479,7 +472,7 @@ catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_ma
 
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'src/gui/solveprogresscache.cpp',
-    'test/test_puzzle_history.cpp', 'src/gui/puzzlehistory.cpp',
+    'test/test_puzzle_history.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
     'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
   include_directories: inc,

@@ -21,8 +21,9 @@
 #ifndef BTUI_DOCUMENTSESSION_H
 #define BTUI_DOCUMENTSESSION_H
 
+#include "puzzlehistory.h"
+
 #include "../lib/gridtype.h"
-#include "../gui/puzzlehistory.h"
 
 #include <filesystem>
 #include <memory>
