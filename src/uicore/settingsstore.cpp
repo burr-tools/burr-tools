@@ -88,11 +88,12 @@ namespace btui {
   SettingsStore::SettingsStore(std::filesystem::path file) : path(std::move(file)) {}
 
   SettingsStore::Values SettingsStore::parseFile(const std::filesystem::path & file) {
-    Values out;
     std::ifstream in(file);
-    if (!in)
-      return out;
+    return in ? parseLines(in) : Values();
+  }
 
+  SettingsStore::Values SettingsStore::parseLines(std::istream & in) {
+    Values out;
     std::string line;
     while (std::getline(in, line)) {
       std::string_view l = trim(line);
@@ -113,10 +114,13 @@ namespace btui {
 
   bool SettingsStore::load(void) {
     vals.clear();
-    std::error_code ec;
-    if (!std::filesystem::exists(path, ec))
+    std::ifstream in(path);
+    if (!in)
       return false;
-    vals = parseFile(path);
+    Values read = parseLines(in);
+    if (in.bad())          // a read error part way: not the file's contents
+      return false;
+    vals = std::move(read);
     return true;
   }
 

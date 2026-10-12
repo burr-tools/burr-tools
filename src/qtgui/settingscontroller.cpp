@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <filesystem>
 #include <thread>
 
 namespace {
@@ -92,7 +93,10 @@ SettingsController::SettingsController(const QString & file, const QString & leg
   if (QCoreApplication * app = QCoreApplication::instance())
     connect(app, &QCoreApplication::aboutToQuit, this, &SettingsController::flush);
 
-  if (!m_store.load()) {
+  // the first start seeds a file; one that exists but could not be read is
+  // not written over at once, and the session starts from the defaults
+  std::error_code ec;
+  if (!m_store.load() && !std::filesystem::exists(m_store.file(), ec)) {
     seedFromLegacy(legacyFile.isEmpty() ? defaultLegacyFile() : legacyFile);
     m_store.save();          // the first start's file, at once
   }

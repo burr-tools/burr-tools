@@ -22,6 +22,7 @@
 #define BTUI_SETTINGSSTORE_H
 
 #include <filesystem>
+#include <iosfwd>
 #include <map>
 #include <optional>
 #include <string>
@@ -90,6 +91,8 @@ namespace btui {
       void set(std::string_view key, Value v);
 
     private:
+
+      static Values parseLines(std::istream & in);
 
       std::filesystem::path path;
       Values vals;

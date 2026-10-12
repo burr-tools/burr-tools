@@ -85,7 +85,7 @@ namespace btui {
           // the layer dimming must not touch an assembly: no cell
           v.cell[0] = v.cell[1] = v.cell[2] = -1e4f;
           if (alpha < 1.0f)
-            v.color.a = std::uint8_t(std::clamp(v.color.a * alpha, 0.0f, 255.0f));
+            v.color.a = std::uint8_t(std::clamp(v.color.a * alpha + 0.5f, 0.0f, 255.0f));     // rounded, as channel()
           (fromTranslucent || alpha < 1.0f ? dst.translucent : dst.opaque).push_back(v);
         }
       }

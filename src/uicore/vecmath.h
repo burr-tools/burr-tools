@@ -21,6 +21,8 @@
 #ifndef BTUI_VECMATH_H
 #define BTUI_VECMATH_H
 
+#include "../lib/bt_assert.h"
+
 #include <array>
 #include <cmath>
 
@@ -49,7 +51,10 @@ namespace btui {
     Vec3 operator-() const { return { -x, -y, -z }; }
     Vec3 operator*(float s) const { return { x * s, y * s, z * s }; }
     Vec3 & operator+=(Vec3 o) { x += o.x; y += o.y; z += o.z; return *this; }
-    float operator[](int i) const { return i == 0 ? x : (i == 1 ? y : z); }
+    float operator[](int i) const {
+      bt_assert(i >= 0 && i < 3);     // no silent z for a bad index (debug builds)
+      return i == 0 ? x : (i == 1 ? y : z);
+    }
   };
 
   inline float dot(Vec3 a, Vec3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }

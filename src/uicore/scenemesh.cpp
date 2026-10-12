@@ -56,7 +56,9 @@ namespace btui {
       const float s = per / 2;
       const float r = std::sqrt(std::max(0.0f, (s - a) * (s - b) * (s - c) / s));
       if (r <= 1e-9f) return p2;
-      const float k = (r - SHRINK) / r;
+      // a face whose inradius is under SHRINK (a small facet, a sphere mesh)
+      // shrinks to its incentre, not through it into an inverted marker
+      const float k = std::max(0.0f, (r - SHRINK) / r);
       return ic + (p2 - ic) * k + n * MY;
     }
 

@@ -115,6 +115,14 @@ TEST_CASE("unparsable lines are skipped, not fatal", "[ui][settings]") {
   CHECK(v.count("alsogood") == 1);
 }
 
+TEST_CASE("something there that cannot be read does not load", "[ui][settings]") {
+  TempFile f;
+  std::filesystem::create_directory(f.path);      // exists, but is no file
+  SettingsStore s(f.path);
+  CHECK_FALSE(s.load());
+  CHECK(s.values().empty());
+}
+
 TEST_CASE("a missing file loads as empty and a wrong type reads as absent", "[ui][settings]") {
   TempFile f;
   SettingsStore s(f.path);
