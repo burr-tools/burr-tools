@@ -24,7 +24,12 @@
  * cube's edges); the cuboctahedron with faces on the (100), (110) and
  * (111) directions, (100) and (110) at 1, (111) at 1.0557; the
  * hexagonal prism and the hexagonal bipyramid aligned to the grid, the
- * bipyramid's faces on the facet directions at 45 degrees. */
+ * bipyramid's faces on the facet directions at 45.0001 degrees (height
+ * over hexagon 181/209, the nearest small fraction on the steep side of
+ * the irrational 45: no overhang beyond it).
+ *
+ * All of it is computed exactly, in whole units (the prism grid in its
+ * triangular-lattice coordinates): see minkmesh.cpp. */
 #ifndef MINKMESH_H
 #define MINKMESH_H
 
