@@ -5,16 +5,14 @@ name: Qt standalone build
 # so it runs on Windows 10 and later with nothing beside it.
 #
 # Not on every push or pull request -- the static Qt is a 550 MB download
-# (2.8 GB installed) -- but on demand and for releases. The regular CI
-# (build-and-release.yml) keeps uploading the zipped preview build, whose
-# program loads Qt from the libraries beside it.
+# (2.8 GB installed) -- and not on release tags: a release ships only the
+# legacy GUI, so the preview is attached to one only when asked to. The
+# regular CI (build-and-release.yml) keeps uploading the zipped preview build,
+# whose program loads Qt from the libraries beside it.
 #
 #   Actions > Qt standalone build > Run workflow
 #       builds it and keeps it as the workflow artifact; with a release tag
 #       given, builds that tag and attaches the result to its release
-#   a pushed v*.*.* tag
-#       builds it and attaches it to the tag's release, once
-#       build-and-release.yml has created that release
 on:
   workflow_dispatch:
     inputs:
@@ -22,9 +20,6 @@ on:
         description: 'Build this tag and attach to its release (e.g. v0.8.0); empty: build the chosen branch, workflow artifact only'
         required: false
         default: ''
-  push:
-    tags:
-      - 'v*.*.*'
 
 permissions:
   contents: write
@@ -80,15 +75,15 @@ jobs:
         path: artifacts/qt-static/*
         retention-days: 30
 
-    # build-and-release.yml creates a tag's release once its own builds are
-    # done; wait for it rather than race it
+    # a tag pushed a moment ago may not have its release yet
+    # (build-and-release.yml creates it once its own builds are done)
     - name: Attach it to the release
-      if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+      if: inputs.release_tag != ''
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
-        TAG: ${{ inputs.release_tag || github.ref_name }}
+        TAG: ${{ inputs.release_tag }}
       run: |
         for i in $(seq 1 80); do
           if gh release view "$TAG" > /dev/null 2>&1; then
