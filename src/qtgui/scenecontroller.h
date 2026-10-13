@@ -113,6 +113,13 @@ protected:
   /* the frame's camera and canvas, for subclasses to add to */
   SceneFrame baseFrame(float devicePixelRatio) const;
 
+  /* how a voxel style is drawn -- the one rule for the 3D view, the export
+   * previews and the exported pictures. Flat and STL: back faces culled
+   * (closed solids), translucent layers blended back to front (Flat's
+   * variable voxels; STL has none). Classic: legacy's one translucent layer
+   * and both sides of every face (its bevelled mesh's seams). */
+  static void applyStyle(SceneFrame & f, btui::VoxelStyle style);
+
   /* Re-read from the settings what the view draws with: rotation method,
    * projection, lighting, voxel style and anti-aliasing. Read once here and
    * on every change, not per frame: a frame is built while the render

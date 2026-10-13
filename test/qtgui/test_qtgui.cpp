@@ -1703,6 +1703,23 @@ private slots:
     QCOMPARE(m->selected(), -1);
   }
 
+  void aNewEmptyDocumentClearsTheSelectionForTheViews() {
+    // File > New gives a puzzle with no shapes: the selection goes to none,
+    // and the views (QML binds to selected) are told so -- they kept
+    // highlighting the old row when the reset skipped the notification
+    Fixture f;
+    f.make();
+    ShapesModel * m = f.app->shapes();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    m->select(2);
+    QCOMPARE(m->selected(), 2);
+    QSignalSpy changed(m, &ShapesModel::selectedChanged);
+    f.app->document()->newDocument(0);
+    QCOMPARE(m->count(), 0);
+    QCOMPARE(m->selected(), -1);
+    QCOMPARE(changed.count(), 1);
+  }
+
   void anEditKeepsTheRowsAndBuildsTheSceneOnce() {
     // an edit used to reset the whole list (every delegate made again) and
     // build the 3D view's mesh two or three times over; now the rows stay,

@@ -89,16 +89,19 @@ SettingsController::SettingsController(const QString & file, const QString & leg
 {
   m_saveTimer.setSingleShot(true);
   m_saveTimer.setInterval(500);
-  connect(&m_saveTimer, &QTimer::timeout, this, [this] { m_store.save(); });
+  connect(&m_saveTimer, &QTimer::timeout, this, &SettingsController::save);
   if (QCoreApplication * app = QCoreApplication::instance())
     connect(app, &QCoreApplication::aboutToQuit, this, &SettingsController::flush);
 
   // the first start seeds a file; one that exists but could not be read is
-  // not written over at once, and the session starts from the defaults
+  // not written over (save()), and the session starts from the defaults
   std::error_code ec;
-  if (!m_store.load() && !std::filesystem::exists(m_store.file(), ec)) {
+  const bool loaded = m_store.load();
+  if (!loaded && std::filesystem::exists(m_store.file(), ec))
+    m_unreadable = true;     // kept as it is, for the user to look at
+  else if (!loaded) {
     seedFromLegacy(legacyFile.isEmpty() ? defaultLegacyFile() : legacyFile);
-    m_store.save();          // the first start's file, at once
+    save();                  // the first start's file, at once
   }
   applyToTheme();
 }
@@ -111,7 +114,21 @@ void SettingsController::flush(void) {
   if (!m_saveTimer.isActive())
     return;
   m_saveTimer.stop();
-  m_store.save();
+  save();
+}
+
+/* Every write of the file. A file that exists but could not be read stays
+ * untouched for the session (a later write -- any change, the window place
+ * saved at quit -- would replace it with the defaults); a write that fails
+ * is said on stderr, the settings living on in memory. */
+void SettingsController::save(void) {
+  if (m_unreadable) {
+    qWarning("settings: %s could not be read, so it is left as it is; changes are not saved",
+             qPrintable(file()));
+    return;
+  }
+  if (!m_store.save())
+    qWarning("settings: %s could not be written", qPrintable(file()));
 }
 
 QString SettingsController::file(void) const {
@@ -277,16 +294,19 @@ int SettingsController::antialiasingSamples(void) const {
   return a == QLatin1String("off") ? 1 : a == QLatin1String("2x") ? 2 : a == QLatin1String("8x") ? 8 : 4;
 }
 
-int SettingsController::snapUndoDepth(int v) {
+/* any number -- a hand-edited file holds a 64-bit one -- to the nearest
+ * offered depth; clamped first, so the differences cannot overflow */
+int SettingsController::snapUndoDepth(long long v) {
+  const int c = int(std::clamp(v, 0LL, 100000LL));
   int best = undoDepths[0];
   for (int d : undoDepths)
-    if (std::abs(d - v) < std::abs(best - v))
+    if (std::abs(d - c) < std::abs(best - c))
       best = d;
   return best;
 }
 
 int SettingsController::undoDepth(void) const {
-  return snapUndoDepth(int(m_store.getInt(kUndoDepth, 25)));
+  return snapUndoDepth(m_store.getInt(kUndoDepth, 25));
 }
 
 void SettingsController::setUndoDepth(int v) {

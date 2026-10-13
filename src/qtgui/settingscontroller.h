@@ -50,8 +50,9 @@ class SettingsController : public QObject {
   Q_PROPERTY(bool reverseScroll READ reverseScroll WRITE setReverseScroll NOTIFY changed FINAL)
   Q_PROPERTY(QString rotationMethod READ rotationMethod WRITE setRotationMethod NOTIFY changed FINAL)
   Q_PROPERTY(bool lighting READ lighting WRITE setLighting NOTIFY changed FINAL)
-  /* "flat" (the redesign's outlined faces) or "legacy" (bevelled voxels in
-   * a light / dark checker); a new setting, no legacy counterpart */
+  /* "flat" (the redesign's outlined faces), "legacy" (bevelled voxels in
+   * a light / dark checker) or "stl" (the STL export's chamfered look, no
+   * variable voxels); a new setting, no legacy counterpart */
   Q_PROPERTY(QString voxelStyle READ voxelStyle WRITE setVoxelStyle NOTIFY changed FINAL)
   // the 3D view's multisampling: "off", "2x", "4x" (default) or "8x"
   Q_PROPERTY(QString antialiasing READ antialiasing WRITE setAntialiasing NOTIFY changed FINAL)
@@ -121,7 +122,7 @@ public:
   /* The undo depths the dropdown offers (C12): 25 50 100 200 500. Any other
    * value snaps to the nearest of these.
    */
-  static int snapUndoDepth(int v);
+  static int snapUndoDepth(long long v);
 
   /* Generic access for the UI state other controllers persist (layout,
    * display options). Keys are dotted names.
@@ -152,10 +153,12 @@ private:
 
   void seedFromLegacy(const QString & legacyFile);
   void write(void);
+  void save(void);
   void applyToTheme(void);
 
   btui::SettingsStore m_store;
   QTimer m_saveTimer;              ///< runs while a change waits to be written
+  bool m_unreadable = false;       ///< the file exists but could not be read: never written
 };
 
 #endif

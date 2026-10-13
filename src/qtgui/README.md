@@ -22,11 +22,36 @@ it can replace it.
 
 | Phase | Content | State |
 | :--- | :--- | :--- |
-| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except primitives first needed later: Stepper, GlyphButton, ActionButton, Accordion, Chip (P2/P4/P6), edit cursors (P4) |
-| P1 Shell and layout | Native window and title, menus, workspace rail, cards with rails and Focus modes, status bar, densities | Done; the cursor readout waits for the 2D grid (P4) |
-| — Legacy dialogs | Settings, Keyboard shortcuts, Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
-| — 3D view | The Entities 3D view: camera, gestures, view cube, display options, two voxel styles | Done; editing in 3D arrives with P4 |
-| P2 onward | Shapes sidebar, voxel editor, Puzzle and Solver workspaces | Next; the Puzzle and Solver cards are placeholders |
+| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except what later phases need first: the Stepper, GlyphButton, ActionButton, Accordion and Chip primitives, and the composed edit cursors (see *Deferred*) |
+| P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout waits for the 2D grid (P4) |
+| P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
+| P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
+| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*) |
+| — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
+| — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles | Done; editing in 3D (Edit button, quick tools, ghosts, cursors) arrives with P4 |
+| P2 onward | Shapes sidebar (its collapsed rail's chips are in already), voxel editor, Puzzle and Solver workspaces | Next; the Puzzle and Solver cards are placeholders |
+
+### Deferred to the next phase
+
+Work that belongs to the phases above but waits, each for the reason given.
+Pick these up with the phase named.
+
+| Item | Spec | Why it waits | Pick up with |
+| :--- | :--- | :--- | :--- |
+| Composed edit cursors (OS pointer + tool badge) | P0 exit criteria, C06 | Only the voxel editor and 3D editing use them | P4 |
+| Stepper, GlyphButton, ActionButton, Accordion, Chip primitives | PR-08 and others | First used by the Shapes sidebar, the editor and the inspector | P2, P4, P6 |
+| Status bar cursor readout | AC-C10-02 | Shows the hovered cell of the 2D grid, which does not exist yet; `StatusController::setCursorText` is ready, nothing calls it | P4 |
+| Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a, before cut-over |
+| `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P4 |
+| Layer slab and Dim other layers | AC-C06-05, AC-C11-08 | Drawn only while the voxel editor is on screen, so not visible yet; every voxel style (STL included) carries the voxel per vertex the dimming needs -- check them on screen then | P4 |
+| Quick tool 2 (Alt+click) | AC-C06-06 | Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P4 design |
+| Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P4 |
+| STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | before cut-over |
+| Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 polish |
+| STL dialog after the document changes under it | `StlExportController` | Keeps the exporter of the grid it opened with; only reachable when a file opens while the modal dialog is up (macOS Finder) | before cut-over |
+| Settings and modes as strings | `SettingsController`, `ImageExportController` | Voxel style, rotation, density, colour view, image mode: parsed from strings in several places each; one typed table per vocabulary would keep them in step | P3 cleanup |
+| Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 polish |
+| macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | before cut-over |
 
 ## Architecture
 
@@ -191,7 +216,12 @@ export and the render tests through `OffscreenRenderer`.
   variable voxels see-through with dashed outlines and every translucent
   layer blended back to front, so inner variable voxels show through the
   outer ones. *Classic* is legacy's look: bevelled voxels in a light and dark
-  checker, variable voxels opaque with a black marker.
+  checker, variable voxels opaque with a black marker. *STL* is the shape as
+  Export ▸ STL makes it -- the library's chamfer meshers
+  (`voxel_c::getSTLMesh`), no outlines, the shape's colour -- and leaves the
+  variable voxels out, as an exported piece does. One rule decides how each
+  style is drawn (back faces, translucent layers) for the view, the export
+  previews and the exported pictures alike (`SceneController::applyStyle`).
 - **Meshes** come from `uicore/scenemesh` — the library's own voxel geometry
   for every grid type (cubes, prisms, spheres, both tetrahedral grids).
 - **Pipeline cache.** Compiled pipelines are kept between runs next to the
@@ -217,9 +247,9 @@ renamed over the old one, so a crash part way leaves the old settings.
 
 | Suite | What | How it runs |
 | :--- | :--- | :--- |
-| Catch2 `[ui]` (`test/test_ui_*.cpp`, 101 cases) | `src/uicore`: command table vs legacy menus, camera, view cube, meshes and picking for every grid type, layout model, settings store, undo session, vector export, … | `just test`, no window |
-| Qt Test `test_qtgui` (16 classes, ~140 functions) | the controllers, theme, settings, icons; real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
-| Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~80 functions) | the shell, menus, settings, dialogs, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
+| Catch2 `[ui]` (`test/test_ui_*.cpp`, 113 cases) | `src/uicore`: command table vs legacy menus, camera, view cube, meshes and picking for every grid type, layout model, settings store, undo session, vector export, … | `just test`, no window |
+| Qt Test `test_qtgui` (17 classes, ~165 functions) | the controllers, theme, settings, icons; real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
+| Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~90 functions) | the shell, menus, settings, dialogs, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
 | Gallery snapshots | each gallery row and the glyph / icon sheets against reference images, light and dark, at device-pixel ratios 1, 1.5 and 2 | `test/qtgui/snapshots/<os>/`; tolerant diff |
 | Performance | work counts per edit, the scene targets' graphics memory, allocations per frame (none per triangle), QML bindings left to the JS engine (`qtgui_qml_aot`, against a baseline); benchmarks and profiles as reports | Qt suites and `just qml-aot`; `just bench-ui`, `startup-time`, `profile-qml`, `heap-qt`; see `design/2026-10-08-qtgui-performance-guide.md` |
 
@@ -242,8 +272,18 @@ commit holds just the images that changed.
   system's title bar and a menu bar, which can be hidden (View ▸ Show menu bar).
 - **Theme** defaults to Light, as legacy looks (spec: System).
 - **Variable voxels** (Flat) are 60 % opaque and the inner ones show
-  through (spec: 50 %, outer surface only). The **Classic** voxel style is
-  an addition.
+  through (spec: 50 %, outer surface only). The **Classic** and **STL**
+  voxel styles are additions.
+- **Workspace rail**: the selected workspace's fill runs to the rail's right
+  edge, square there, with the indicator bar on that edge -- a tab joined to
+  the workspace (spec AC-C15-02: the bar at the left). Minimal density's rail
+  buttons are 40 dp high.
+- **Menus by keyboard**: an Alt tap underlines the access keys and arms the
+  menus (Windows' convention); with the menu bar hidden it opens the rail's
+  menu button instead. Alt held through a click or another key arms
+  nothing, so the planned Alt+click quick tool keeps working.
+- **Collapsed Shapes card**: its rail lists the shapes as clickable chips
+  (colour and id) -- C01's rail chips, ahead of P2.
 - **Rendering** is gamma-correct; the layer slab's tint is scaled so it
   still reads like the mock's sRGB mix.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
@@ -267,6 +307,20 @@ commit holds just the images that changed.
 - Shared: the undo history moved from `src/gui` to
   `src/uicore/puzzlehistory` and gained an undo-depth limit, with tests.
   Lowering the limit now drops the oldest steps at once, in legacy too.
+- `burrtools-qt` builds into the build folder itself (`build/burrtools-qt`),
+  beside `burrtools` and `burrTxt`.
+- Every environment variable is in one table, `src/tools/envvars.h`;
+  `burrtools-qt --help`, `burrTxt --help` and `burrTxt2 --help` print the
+  ones each reads, and `test_envvars.cpp` fails on one the code reads but
+  the table does not list.
+- Reading the QML: wireframe headers in every panel and dialog, checked by
+  a test, and the `BURRTOOLS_QML_OUTLINES` overlay (above).
+- Start-up: the window first, its content after the first frame, dialogs
+  loaded when first opened, the Direct3D device made early on a thread;
+  first paint ~0.3 s and app ready ~0.5 s warm on Windows (the performance
+  guide has the measurements and what was tried).
+- Saving a puzzle writes beside the file and renames it over, so a save
+  that fails part way leaves the old file intact (it used to truncate it).
 
 ## Next
 

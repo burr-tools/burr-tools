@@ -67,6 +67,11 @@ interleaved (2026-10-10):
 | before (2026-10-09) | 1130 / 1236 ms | 1131 / 1236 ms |
 | round 1: the window first, dialogs on demand, fonts warmed on a thread | 555 / 700 ms | 892 / 966 ms |
 | round 2: the device made early, one font family (no fallback scan), the puzzle opened after the first frame, dialog files loaded on demand | **349 / 486 ms** | **624 / 917 ms** |
+| check after the first cut's final pass (2026-10-13; 5 warm runs, not interleaved, so a sanity check rather than a comparison) | 309 ms (275–433) / — | 515 ms (447–684) / — |
+
+Memory at that point, release build with PelikanBurr open and idle: 116–118 MB
+working set, ~310 MB committed (much of it the Direct3D driver's), the same
+in the Flat and STL voxel styles.
 
 Where the time goes now (warm, ms from `main()`; process start ~25 ms before):
 
@@ -382,6 +387,10 @@ says so). Qt Quick's own shaders stay as the Qt build packaged them.
 | Settings keys in one place | `viewportcontroller.cpp` and others | `"view.display.axes"` etc. scattered as strings. | One header of keys (or typed accessors on `SettingsController`). |
 | Undo memory | `puzzleHistory_c` | Each edit stores a copy of the edited shape: 500 steps on a 100³ shape ≈ 500 MB worst case. | Say so in the Undo depth setting; store run-length diffs for large shapes. |
 | Small cleanups | `SceneRenderer::release` (raw `delete`), per-frame `std::vector<LineVertex>` | Style; an allocation per frame. | `d = std::make_unique<Impl>()`; keep the line buffer as a member. |
+| The view cube's own signal | `ViewCubeItem`, `SceneController::frameChanged` | One signal for both: the CPU-painted cube repaints on every pan and zoom step (0.3–1 ms plus a texture upload), and a cube hover re-renders the whole multisampled scene. | A `cubeChanged` beside `frameChanged`, or the cube skipping `update()` while its orientation, projection, hover and theme are unchanged. |
+| Theme colours without strings | `Theme::col()` / `dens()` | Each read builds a `QString` key: ~8 allocations per frame (inside `synchronize()`) and ~11 per cube paint, which the frame-allocation test cannot see (it counts `operator new`, Qt allocates with `malloc`). | Colours in an enum-indexed array refreshed on `changed`; count `malloc` in the test too. |
+| Image export: smaller pictures, meshes once | `ImageExportController::drawPicture` | Each picture is drawn 3× as wide as high, supersampled, and kept whole: A4 at 300 dpi with 3× supersampling is a 31572 × 10524 canvas (~1.3 GB, more with its copies), and the largest page sizes cannot be allocated at all. Every piece's mesh is built again for every picture, in both the measuring and the drawing pass. | Size the canvas from the measured content; downsample each tile as it is read back; refuse sizes past a budget up front; cache a mesh per piece for the export. |
+| STL style: cache the mesh | `ViewportController::buildMesh` | The STL look (the library's chamfer mesher) is rebuilt on every selection change; switching between two shapes rebuilds both every time, and each editing stroke (P4) would rebuild it. | A small cache keyed by shape and revision, or the off-thread build above. |
 
 ## History: start-up, measured 2026-10-08
 

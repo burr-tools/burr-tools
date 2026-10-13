@@ -79,8 +79,8 @@ namespace btui {
    *           (variableAlpha) with a dashed outline (C06, the mock)
    *   Legacy  legacy BurrTools': bevelled voxels in alternating light and
    *           dark shades, variable voxels opaque with a black marker
-   *   Stl     the shape as Export ▸ STL makes it, with the exporter's
-   *           default parameters: chamfered edges, no outlines, the shape's
+   *   Stl     the shape as Export ▸ STL makes it (voxel_c::getSTLMesh, the
+   *           view's bevel and gap): chamfered edges, no outlines, the shape's
    *           colour; only the fixed voxels -- an exported piece is solid,
    *           and variable voxels are not drawn */
   enum class VoxelStyle { Flat, Legacy, Stl };

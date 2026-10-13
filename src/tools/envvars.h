@@ -22,6 +22,7 @@
 #define BT_TOOLS_ENVVARS_H
 
 #include <cstddef>
+#include <initializer_list>
 #include <ostream>
 #include <span>
 #include <string>

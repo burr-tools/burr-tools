@@ -113,6 +113,7 @@ public:
   /* not default-constructible, so QML uses create() and shares this
    * instance rather than making its own (see App) */
   explicit Theme(QObject * parent);
+  ~Theme() override;
 
   /* The one instance the application uses; QML's singleton factory hands
    * this out so QML and C++ see the same object.
@@ -210,7 +211,9 @@ signals:
 private:
 
   void load(void);
-  void updateDark(void);
+  /* re-derive dark from the mode and the system; true when it changed (and
+   * changed() was emitted) */
+  bool updateDark(void);
 
   QColor col(const QString & name) const;
   qreal num(const QString & path) const { return m_numbers.value(path, 0.0); }

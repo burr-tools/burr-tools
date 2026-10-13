@@ -36,6 +36,28 @@ Against:
 3. Must move to each new minor release, and Windows builds are harder.
 
 
+## Where it stands (2026-10-13)
+
+The decision held: `burrtools-qt` (Qt 6 Quick, the 3D view on QRhi) is a
+working preview next to the FLTK program, in CI on Linux, Windows and macOS.
+Phase-by-phase status, and what is deferred to the next phase and why, are
+in [`src/qtgui/README.md`](../src/qtgui/README.md#status-the-first-cut).
+
+Some of the estimates below can now be checked against measurements
+(Windows, release build, PelikanBurr open; details in
+`design/2026-10-08-qtgui-performance-guide.md`):
+
+| Estimate below | Measured |
+| :--- | :--- |
+| Qt "typically adds a few hundred milliseconds to cold start" | First paint 0.35 s warm / 0.49 s cold, app ready 0.62 s / 0.92 s, after the start-up work; it was 1.1–1.2 s before it |
+| Memory "often 2–4× RmlUi's" | 116 MB working set, ~310 MB committed (much of it the Direct3D driver's); no RmlUi build to compare with |
+| "Tens of megabytes of DLLs" | The standalone Windows program, Qt linked in, is ~50 MB |
+| An extra full-viewport texture pass | Kept, and used: the scene is drawn into a linear-light multisampled target and composited to sRGB in that pass |
+| Screenshot tests "easy" | Gallery reference images for every primitive, both themes, three pixel ratios, on Windows CI; render tests on WARP and lavapipe |
+
+The two-week spike in both frameworks was not run; the Qt build was
+grown directly from the controller layer.
+
 ## Full Analysis
 
 <p>I'd pick <strong>Qt 6 with Qt Quick (QML)</strong>, with your C++ controllers behind it and the 3D view drawn natively through Qt's GPU layer. RmlUi is the better engine for small size, minimal rendering overhead and porting the HTML mock almost as-is. Qt wins on testability, native platform features, contributor pool, AI tooling and the 5-year outlook. For a volunteer-run open-source project those factors outweigh RmlUi's performance lead, which BurrTools' workload mostly won't notice.</p>

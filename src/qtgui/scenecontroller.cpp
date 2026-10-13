@@ -53,6 +53,20 @@ void SceneController::readSettings(void) {
   m_samples = m_settings->antialiasingSamples();
 }
 
+void SceneController::applyStyle(SceneFrame & f, btui::VoxelStyle style) {
+  switch (style) {
+    case btui::VoxelStyle::Flat:
+    case btui::VoxelStyle::Stl:
+      f.translucentLayers = true;
+      f.cullBackFaces = true;
+      return;
+    case btui::VoxelStyle::Legacy:
+      f.translucentLayers = false;
+      f.cullBackFaces = false;
+      return;
+  }
+}
+
 SceneFrame SceneController::baseFrame(float devicePixelRatio) const {
   SceneFrame f;
   const Theme * t = Theme::instance();

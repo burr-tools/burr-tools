@@ -93,6 +93,7 @@ private:
   btui::ColumnWidths columns(void) const;
   btui::Density density(void) const;
   void persist(void);
+  template <typename Change> void changeLayout(Change change);
 
   SettingsController * m_settings;
   btui::LayoutModel m_model;

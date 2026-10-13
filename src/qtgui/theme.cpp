@@ -35,6 +35,11 @@
 namespace {
   Theme * s_instance = nullptr;
 }
+Theme::~Theme() {
+  // instance() must not outlive the theme it hands out
+  if (s_instance == this)
+    s_instance = nullptr;
+}
 
 Theme::Theme(QObject * parent) : QObject(parent) {
   if (!s_instance)
@@ -141,8 +146,9 @@ void Theme::setMode(const QString & m) {
    * choice back to the operating system. */
   if (auto * hints = QGuiApplication::styleHints())
     hints->setColorScheme(requestedColorScheme());
-  updateDark();
-  emit changed();
+  // once: updateDark() emits when dark changes, else the mode alone did
+  if (!updateDark())
+    emit changed();
 }
 
 void Theme::setDensity(const QString & d) {
@@ -153,7 +159,7 @@ void Theme::setDensity(const QString & d) {
   emit changed();
 }
 
-void Theme::updateDark(void) {
+bool Theme::updateDark(void) {
   bool d;
   if (m_mode == QLatin1String("dark"))
     d = true;
@@ -164,9 +170,10 @@ void Theme::updateDark(void) {
     d = m_systemScheme == Qt::ColorScheme::Dark;
   }
   if (d == m_dark)
-    return;
+    return false;
   m_dark = d;
   emit changed();
+  return true;
 }
 
 QColor Theme::col(const QString & name) const {

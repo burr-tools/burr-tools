@@ -220,6 +220,7 @@ void ImageExportController::rebuildPreview(void) {
 
 SceneFrame ImageExportController::frame(float devicePixelRatio) const {
   SceneFrame f = baseFrame(devicePixelRatio);
+  applyStyle(f, m_voxelStyle);                                       // as the pictures
   if (m_mesh) {
     f.mesh = m_mesh;
     f.meshRevision = m_meshRevision;
@@ -306,6 +307,8 @@ QString ImageExportController::suggestedName(void) const {
 // --- the dialog -------------------------------------------------------------
 
 void ImageExportController::begin(void) {
+  // the 3D view's projection (Display > Projection sends no settings signal)
+  readSettings();
   // a fresh dialog has legacy's defaults
   m_open = true;
   m_mode = QStringLiteral("solution");
@@ -403,7 +406,7 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
  * cropped to the columns with content and scaled down. */
 QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
   static quint64 revision = 0;
-  const btui::SceneContent c = sceneFor(j);
+  btui::SceneContent c = sceneFor(j);
   const int h = height * aa, w = height * kWidthFactor * aa;
 
   btui::Camera cam;
@@ -416,11 +419,10 @@ QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
   f.clear = QColor(0, 0, 0, 0);
   f.view = cam.viewMatrix();
   f.projection = cam.projectionMatrix();
-  f.mesh = std::make_shared<btui::ShapeMesh>(c.mesh);
+  f.mesh = std::make_shared<btui::ShapeMesh>(std::move(c.mesh));   // moved, not copied
   f.meshRevision = ++revision;
   f.lighting = m_lighting;
-  f.translucentLayers = m_voxelStyle == btui::VoxelStyle::Flat;     // as the 3D view
-  f.cullBackFaces = m_voxelStyle == btui::VoxelStyle::Flat;
+  applyStyle(f, m_voxelStyle);                                       // as the 3D view
 
   QImage img = m_renderer->render(f, QSize(w, h));
   if (img.isNull())

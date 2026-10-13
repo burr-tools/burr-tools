@@ -21,7 +21,6 @@
 #include "scenemesh.h"
 
 #include "../lib/gridtype.h"
-#include "../lib/stl.h"
 #include "../lib/voxel.h"
 #include "../halfedge/polyhedron.h"
 
@@ -266,59 +265,23 @@ namespace btui {
       return v;
     }
 
-    void boundsOf(const Polyhedron & poly, Vec3 & lo, Vec3 & hi) {
-      bool first = true;
-      for (Polyhedron::const_vertex_iterator it = poly.vBegin(); it != poly.vEnd(); ++it) {
-        const Vec3 p = toVec((*it)->position());
-        lo = first ? p : Vec3(std::min(lo.x, p.x), std::min(lo.y, p.y), std::min(lo.z, p.z));
-        hi = first ? p : Vec3(std::max(hi.x, p.x), std::max(hi.y, p.y), std::max(hi.z, p.z));
-        first = false;
-      }
-    }
-
-    /* The STL style's faces: the grid's STL exporter's mesh of `fixed` (no
-     * variable voxels), default parameters. The exporter works in
-     * millimetres (a brick unit is 10 mm); its mesh goes onto the shape's own
-     * units, per axis, by matching its box to the drawing mesh's -- the bevel
-     * cuts the edges, not the extent. False where there is no exporter or it
-     * fails, and the caller draws the voxels flat instead. */
+    /* The STL style's faces: the library's STL-look mesh of `fixed` (no
+     * variable voxels) -- the export's meshers at the view's defaults, in
+     * the shape's own units, each face tagged with its voxel
+     * (voxel_c::getSTLMesh; it falls back to the flat mesh itself when a
+     * mesher fails). False when even that is not to be had, and the caller
+     * draws the voxels flat instead. */
     bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
-      std::unique_ptr<stlExporter_c> stl(fixed.getGridType()->getStlExporter());
-      if (!stl)
-        return false;
       bool filled = false;
       for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
         filled = fixed.getState(i) == voxel_c::VX_FILLED;
       if (!filled)
         return true;                                  // nothing to draw
 
-      std::unique_ptr<Polyhedron> poly;
-      try {
-        poly.reset(stl->getMesh(fixed));
-      } catch (...) {
+      const std::unique_ptr<Polyhedron> poly(fixed.getSTLMesh());
+      if (!poly || poly->vBegin() == poly->vEnd())
         return false;
-      }
-      std::unique_ptr<Polyhedron> drawing(fixed.getDrawingMesh());
-      if (!poly || !drawing || poly->vBegin() == poly->vEnd() || drawing->vBegin() == drawing->vEnd())
-        return false;
-
-      Vec3 sLo, sHi, dLo, dHi;
-      boundsOf(*poly, sLo, sHi);
-      boundsOf(*drawing, dLo, dHi);
-      auto ratio = [](float d, float s) { return s > 1e-6f ? d / s : 1.0f; };
-      const Vec3 scale{ ratio(dHi.x - dLo.x, sHi.x - sLo.x), ratio(dHi.y - dLo.y, sHi.y - sLo.y),
-                        ratio(dHi.z - dLo.z, sHi.z - sLo.z) };
-
-      ShapeMesh m = buildPolyhedronMesh(*poly, false, &opt.piece, &fixed);
-      for (MeshVertex & v : m.opaque) {
-        v.pos[0] = dLo.x + (v.pos[0] - sLo.x) * scale.x;
-        v.pos[1] = dLo.y + (v.pos[1] - sLo.y) * scale.y;
-        v.pos[2] = dLo.z + (v.pos[2] - sLo.z) * scale.z;
-        // a normal under a per-axis scale: divided by it, then normalised
-        const Vec3 n = normalize(Vec3(v.normal[0] / scale.x, v.normal[1] / scale.y, v.normal[2] / scale.z));
-        v.normal[0] = n.x; v.normal[1] = n.y; v.normal[2] = n.z;
-      }
-      out.opaque = std::move(m.opaque);
+      out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
       return true;
     }
   }

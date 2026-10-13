@@ -144,15 +144,46 @@ namespace btui {
    * documents for reading). `if (!ostr)` therefore never catches an
    * unwritable path -- which is why legacy cb_Save reports such a save as a
    * success.
+   *
+   * Written beside the file and renamed over it, as the settings are: a
+   * save that fails part way (a full disk, an error thrown while writing)
+   * leaves the previous file as it was, where writing in place had already
+   * truncated it. The partial copy is removed.
    */
   static bool writePuzzle(const puzzle_c & p, const std::filesystem::path & file) {
-    ogzstream ostr(file.string().c_str());
-    if (!ostr.rdbuf()->is_open())
+    std::filesystem::path tmp = file;
+    tmp += ".tmp";
+    // the partial copy goes on every way out but the rename
+    class Discard {
+    public:
+      explicit Discard(const std::filesystem::path & f) : file(f) {}
+      Discard(const Discard &) = delete;
+      Discard & operator=(const Discard &) = delete;
+      ~Discard() {
+        std::error_code ec;
+        if (!keep)
+          std::filesystem::remove(file, ec);
+      }
+      bool keep = false;
+    private:
+      const std::filesystem::path & file;
+    } discard(tmp);
+    {
+      ogzstream ostr(tmp.string().c_str());
+      if (!ostr.rdbuf()->is_open())
+        return false;
+      xmlWriter_c xml(ostr);
+      p.save(xml);
+      ostr.close();
+      if (!ostr)
+        return false;
+    }
+    std::error_code ec;
+    std::filesystem::rename(tmp, file, ec);       // replaces the old file
+    if (ec)
       return false;
-    xmlWriter_c xml(ostr);
-    p.save(xml);
-    ostr.close();
-    return static_cast<bool>(ostr);
+    discard.keep = true;
+    return true;
   }
 
   bool DocumentSession::save(void) {

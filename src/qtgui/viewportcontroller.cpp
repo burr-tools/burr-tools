@@ -146,7 +146,10 @@ void ViewportController::setColourView(const QString & v) {
   if (c == colourView())
     return;
   m_settings->setStringValue(QString::fromLatin1(kColourView), c);
-  scheduleMesh();
+  // the STL style draws in the shape's colour alone: nothing to rebuild (a
+  // later switch of style rebuilds, and reads the colours then)
+  if (m_voxelStyle != btui::VoxelStyle::Stl)
+    scheduleMesh();
   emit optionsChanged();
 }
 
@@ -268,12 +271,7 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
     const_cast<ViewportController *>(this)->buildMesh();
   SceneFrame f = baseFrame(devicePixelRatio);
   const Theme * t = Theme::instance();
-  // the flat style's variable voxels: the inner ones show through
-  // Classic is legacy's look: one translucent layer, opaque faces from
-  // both sides (its bevelled mesh's seams)
-  const bool classic = m_meshStyle == btui::VoxelStyle::Legacy;
-  f.translucentLayers = !classic;
-  f.cullBackFaces = !classic;
+  applyStyle(f, m_meshStyle);
 
   // the Entities scene; Puzzle and Solver bring their own in later phases
   if (m_layout->workspace() != LayoutController::Entities || !m_shape || !t)

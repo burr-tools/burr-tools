@@ -38,6 +38,12 @@ namespace {
     void synchronize(QQuickRhiItem * item) override {
       auto * v = static_cast<VoxelViewport *>(item);
       const float dpr = item->window() ? float(item->window()->effectiveDevicePixelRatio()) : 1.0f;
+      // the device's limits, asked on this thread: only the render thread
+      // may use the window's QRhi
+      if (QRhi * r = rhi()) {
+        v->setSupportedSampleCounts(r->supportedSampleCounts());
+        m_countsKnown = true;
+      }
       m_samples = v->msaaSamples();
       if (SceneController * c = v->controller())
         m_frame = c->frame(dpr);
@@ -46,12 +52,16 @@ namespace {
     void render(QRhiCommandBuffer * cb) override {
       m_renderer.initialize(rhi(), renderTarget()->renderPassDescriptor(), m_samples);
       m_renderer.render(cb, renderTarget(), m_frame);
+      // synchronized before the device existed: once more, to learn its limits
+      if (!m_countsKnown)
+        update();
     }
 
   private:
     SceneRenderer m_renderer;
     SceneFrame m_frame;
     int m_samples = 4;
+    bool m_countsKnown = false;
   };
 }
 
@@ -63,9 +73,6 @@ VoxelViewport::VoxelViewport(QQuickItem * parent) : QQuickRhiItem(parent) {
   setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton | Qt::RightButton);
   setFlag(ItemIsFocusScope, false);
   setActiveFocusOnTab(false);
-  // made with a parent already in a window: the scene change happened
-  // inside QQuickItem's constructor, before itemChange() could see it
-  watchWindow(window());
 }
 
 void VoxelViewport::setController(SceneController * c) {
@@ -100,34 +107,13 @@ int VoxelViewport::msaaSamples(void) const {
   return m_supported.isEmpty() ? wanted : bestSampleCount(m_supported, wanted);
 }
 
-void VoxelViewport::adoptSampleCounts(void) {
-  if (QQuickWindow * w = window())
-    if (QRhi * r = w->rhi()) {
-      const QList<int> s = r->supportedSampleCounts();
-      if (s != m_supported) {
-        m_supported = s;
-        update();
-      }
-    }
-}
 
-void VoxelViewport::itemChange(ItemChange change, const ItemChangeData & data) {
-  QQuickRhiItem::itemChange(change, data);
-  if (change != ItemSceneChange)
-    return;
-  watchWindow(data.window);
+bool VoxelViewport::setSupportedSampleCounts(const QList<int> & counts) {
+  if (counts == m_supported)
+    return false;
+  m_supported = counts;
+  return true;
 }
-
-void VoxelViewport::watchWindow(QQuickWindow * w) {
-  disconnect(m_windowConnection);
-  if (!w)
-    return;
-  // emitted on the render thread: answered on this one
-  m_windowConnection = connect(w, &QQuickWindow::sceneGraphInitialized, this,
-                               &VoxelViewport::adoptSampleCounts, Qt::QueuedConnection);
-  adoptSampleCounts();          // already initialised
-}
-
 void VoxelViewport::geometryChange(const QRectF & newGeometry, const QRectF & oldGeometry) {
   QQuickRhiItem::geometryChange(newGeometry, oldGeometry);
   if (m_controller && newGeometry.size() != oldGeometry.size())

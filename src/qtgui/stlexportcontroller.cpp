@@ -88,6 +88,9 @@ QVariantMap StlExportController::parameter(int index) const {
 }
 
 void StlExportController::begin(void) {
+  // the 3D view's projection: Display > Projection changes it without a
+  // settings signal (view state, not a preference)
+  readSettings();
   m_stl.reset(m_doc->session().puzzle().getGridType()->getStlExporter());
   if (m_stl)
     m_binary = m_stl->getBinaryMode();
@@ -144,7 +147,10 @@ void StlExportController::setParameter(int index, double value) {
     return;
   switch (m_stl->getParameterType(unsigned(index))) {
     case stlExporter_c::PAR_TYP_POS_DOUBLE:  value = std::max(0.0, value); break;
-    case stlExporter_c::PAR_TYP_POS_INTEGER: value = std::max(0.0, std::floor(value)); break;
+    /* the one integer parameter, the spheres' Recursions, splits every
+     * triangle in four per step, recursively, on this thread: past a few
+     * steps the preview hangs the GUI, then overflows the stack */
+    case stlExporter_c::PAR_TYP_POS_INTEGER: value = std::clamp(std::floor(value), 0.0, 6.0); break;
     case stlExporter_c::PAR_TYP_SWITCH:      value = value != 0 ? 1 : 0; break;
     default: break;
   }

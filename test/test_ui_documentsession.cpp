@@ -108,6 +108,31 @@ TEST_CASE("save needs a name, and a failed save keeps the document modified", "[
   CHECK(d.fileName().empty());
 }
 
+TEST_CASE("a save replaces the file whole, and a failed one leaves the old file as it was", "[ui][document]") {
+  TempDir t;
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  const std::filesystem::path file = t.path / "keep.xmpuzzle";
+  REQUIRE(d.saveAs(file));
+  const auto size = std::filesystem::file_size(file);
+  d.puzzle().getShape(0)->setName("changed");
+  d.record(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  REQUIRE(d.save());                                   // over the existing file
+  CHECK_FALSE(std::filesystem::exists(t.path / "keep.xmpuzzle.tmp"));
+
+  // the copy cannot be written (a directory where it would go): the save
+  // fails, and the file on disk is still the last good one
+  std::filesystem::create_directory(t.path / "keep.xmpuzzle.tmp");
+  d.puzzle().getShape(0)->setName("lost");
+  d.record(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  CHECK_FALSE(d.save());
+  CHECK(d.isModified());
+  DocumentSession e;
+  REQUIRE(e.load(file).ok);
+  CHECK(e.puzzle().getShape(0)->getName() == "changed");
+  CHECK(std::filesystem::file_size(file) > size / 2);
+}
+
 TEST_CASE("withPuzzleExtension leaves a correct name alone", "[ui][document]") {
   CHECK(DocumentSession::withPuzzleExtension("a/b.xmpuzzle") == std::filesystem::path("a/b.xmpuzzle"));
   CHECK(DocumentSession::withPuzzleExtension("a/b") == std::filesystem::path("a/b.xmpuzzle"));

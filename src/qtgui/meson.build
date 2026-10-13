@@ -158,8 +158,7 @@ if qt_static
   qt_static_script = files('../../scripts/qt_static_link.py')
   qt_static_args = ['--qmake', qmake.full_path(), '--qml-root', meson.current_source_dir() / 'qml']
   qtgui_static_link_args = run_command(python3, qt_static_script, qt_static_args, '--link-args',
-                                       check: true).stdout().strip().split('
-') + ['-static']
+                                       check: true).stdout().strip().split('\n') + ['-static']
   qtgui_static_sources += configure_file(output: 'qt_static_imports.cpp',
     command: [python3, qt_static_script, qt_static_args, '--cpp', '@OUTPUT@'])
 endif

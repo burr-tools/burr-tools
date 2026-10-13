@@ -55,6 +55,11 @@ public:
    * default), as far as the device goes once it is known */
   int msaaSamples(void) const;
 
+  /* the device's sample counts, set by the renderer during synchronize()
+   * (the render thread, the GUI thread waiting): only that thread may ask
+   * the window's QRhi. True when they changed. */
+  bool setSupportedSampleCounts(const QList<int> & counts);
+
 signals:
 
   void controllerChanged(void);
@@ -62,7 +67,6 @@ signals:
 protected:
 
   QQuickRhiItemRenderer * createRenderer(void) override;
-  void itemChange(ItemChange change, const ItemChangeData & data) override;
 
   void geometryChange(const QRectF & newGeometry, const QRectF & oldGeometry) override;
   void mousePressEvent(QMouseEvent * e) override;
@@ -72,14 +76,8 @@ protected:
 
 private:
 
-  /* the window's device limits the sample count; its QRhi exists once
-   * the scene graph is initialised */
-  void adoptSampleCounts(void);
-  void watchWindow(QQuickWindow * w);
-
   QPointer<SceneController> m_controller;
   QMetaObject::Connection m_frameConnection;
-  QMetaObject::Connection m_windowConnection;
   QList<int> m_supported;          ///< the device's sample counts; empty until known
 };
 

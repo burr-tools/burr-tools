@@ -32,10 +32,15 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
   QAbstractListModel(parent), m_doc(doc)
 {
   connect(doc, &DocumentController::documentReplaced, this, [this] {
-    // a new document starts at its first shape
+    // a new document starts at its first shape. The selection is reset
+    // behind select()'s change check, so an empty document (File > New)
+    // still tells the views it has none -- once, and only if it changed.
+    const int before = m_selected;
     m_selected = -1;
     refresh(true);
     select(0);
+    if (m_selected == -1 && before != -1)
+      emit selectedChanged();
   });
   connect(doc, &DocumentController::historyApplied, this, [this](int, int shape) {
     refresh();

@@ -73,6 +73,9 @@ def main():
         return 2
 
     binary, source_root = sys.argv[1], sys.argv[2]
+    # absolute: Windows runs a bare relative path ("build/burrTxt2.exe")
+    # only while NoDefaultCurrentDirectoryInExePath is unset
+    binary = str(Path(binary).resolve())
 
     # A grid without a disassembler must be refused up front, before anything
     # builds one: the disassembler asserts on the movement cache such a grid

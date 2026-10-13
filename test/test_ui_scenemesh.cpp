@@ -312,11 +312,11 @@ TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the vari
       hi[k] = std::max(hi[k], vert.pos[k]);
     }
   }
-  // the exporter's millimetres back on the voxel grid: the fixed cube only
-  // (to the drawing mesh's box, which insets each voxel by 0.005)
+  // on the voxel grid, in the shape's own units: the fixed cube only
+  // (each side inset by the view's gap, 0.02)
   for (int k = 0; k < 3; k++) {
-    CHECK_THAT(lo[k], WithinAbs(0.0, 0.01));
-    CHECK_THAT(hi[k], WithinAbs(1.0, 0.01));
+    CHECK_THAT(lo[k], WithinAbs(0.0, 0.03));
+    CHECK_THAT(hi[k], WithinAbs(1.0, 0.03));
   }
   // the view's bounds stay the whole shape's, so switching styles keeps the camera
   CHECK_THAT(m.boundsMax.x, WithinAbs(2.0, 1e-6));

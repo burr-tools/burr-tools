@@ -21,6 +21,8 @@
 #include "layoutcontroller.h"
 #include "settingscontroller.h"
 
+#include <tuple>
+
 namespace {
 
   const char * const workspaceKeys[] = { "entities", "puzzle", "solver" };
@@ -64,23 +66,40 @@ void LayoutController::persist(void) {
   m_settings->setBoolValue(key(w, "right"), m_model.rightCollapsed());
 }
 
+/* Emit changed only when the layout did change: every emit re-evaluates the
+ * menus' enabled states and redraws the 3D view. The whole state is
+ * compared, not the one flag -- expanding a sidebar shown as a rail exits a
+ * Focus mode while the flag stays as it was. */
+template <typename Change>
+void LayoutController::changeLayout(Change change) {
+  const auto state = [this] {
+    return std::tuple(m_model.workspace(), m_model.focus(), m_model.leftCollapsed(), m_model.rightCollapsed());
+  };
+  const auto before = state();
+  change();
+  if (state() != before)
+    emit changed();
+}
+
 void LayoutController::setWorkspace(int w) {
-  if (w < 0 || w > 2)
+  // the workspace already shown is no switch: its Focus mode stays
+  if (w < 0 || w > 2 || btui::Workspace(w) == m_model.workspace())
     return;
-  m_model.setWorkspace(btui::Workspace(w));
-  emit changed();
+  changeLayout([&] { m_model.setWorkspace(btui::Workspace(w)); });
 }
 
 void LayoutController::setLeftCollapsed(bool c) {
-  m_model.setLeftCollapsed(c);
-  persist();
-  emit changed();
+  changeLayout([&] {
+    m_model.setLeftCollapsed(c);
+    persist();
+  });
 }
 
 void LayoutController::setRightCollapsed(bool c) {
-  m_model.setRightCollapsed(c);
-  persist();
-  emit changed();
+  changeLayout([&] {
+    m_model.setRightCollapsed(c);
+    persist();
+  });
 }
 
 void LayoutController::setWindowWidth(qreal w) {
