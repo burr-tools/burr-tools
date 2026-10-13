@@ -393,7 +393,13 @@ int main(int argc, char ** argv) {
   showFile();
 
   // once the files are opened (at once for the gallery, which opens none)
-  QObject::connect(doc, &DocumentController::startupFilesLoaded, &qapp, [&app, mainWindow, command, screenshot] {
+  QObject::connect(doc, &DocumentController::startupFilesLoaded, &qapp, [&app, mainWindow, command, screenshot, gallery] {
+    /* the update check at launch (UpdateController: at most daily, if on),
+     * once the window is up and quiet; never in a scripted run (a
+     * screenshot, a command, the gallery, a scratch settings file), which
+     * must not reach the network */
+    if (command.isEmpty() && screenshot.isEmpty() && !gallery && qEnvironmentVariableIsEmpty("BURRTOOLS_QT_SETTINGS"))
+      QTimer::singleShot(2000, &app, [&app] { app.updates()->checkAtLaunch(); });
     if (!command.isEmpty())
       QTimer::singleShot(300, &app, [&app, command] { app.commands()->trigger(command); });
     if (!screenshot.isEmpty())

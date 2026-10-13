@@ -18,11 +18,16 @@ AbstractButton {
     implicitWidth: Theme.minimal ? 36 : 52
     implicitHeight: Theme.minimal ? 40 : 50
     hoverEnabled: true
-    focusPolicy: Qt.TabFocus
+    focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
+    // a workspace is a tab of the window; the menu button is a plain button
+    Accessible.role: tab ? Accessible.PageTab : Accessible.Button
+    Accessible.selected: tab && selected
     Accessible.name: text
+    Accessible.description: tip
     // the button's tooltip (PR-14), for tests
     readonly property alias toolTip: tipPopup
-    BtToolTip { id: tipPopup; shown: root.hovered; text: root.tip }
+    // on keyboard focus too: the tip holds the shortcut and, in Minimal, the caption
+    BtToolTip { id: tipPopup; shown: root.hovered || root.visualFocus; text: root.tip }
 
     // the gap between the button and the rail's edge, each side
     readonly property real railGap: (Theme.workspaceRail - width) / 2

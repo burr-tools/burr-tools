@@ -38,6 +38,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "export.image.dialog"
+    defaultButton: okButton
     title: qsTr("Export images")
     width: Math.min(1180, (parent ? parent.width : 1200) - 32)
     height: Math.min(660, (parent ? parent.height : 800) - 32)
@@ -123,6 +124,9 @@ BtDialog {
                         width: ListView.view.width
                         height: 26
                         hoverEnabled: true
+                        Accessible.role: Accessible.RadioButton
+                        Accessible.name: idText + (label.length ? " " + label : "")
+                        Accessible.checked: root.ex.shape === index
                         onClicked: root.ex.shape = index
                         background: Rectangle {
                             radius: Theme.radiusChip
@@ -164,6 +168,7 @@ BtDialog {
 
             SectionTitle { text: qsTr("Problem") }
             ProblemList { // ③
+                name: qsTr("Problem")
                 id: problemList
                 objectName: "export.image.problems"
                 Layout.fillWidth: true
@@ -189,6 +194,7 @@ BtDialog {
                 rowSpacing: 6
                 Label { text: qsTr("Background") }
                 Segmented {
+                    Accessible.name: qsTr("Background")
                     objectName: "export.image.background"
                     options: [{ value: false, label: qsTr("White") }, { value: true, label: qsTr("Transparent") }]
                     value: root.ex.transparent
@@ -196,6 +202,7 @@ BtDialog {
                 }
                 Label { text: qsTr("Supersampling") }
                 Segmented {
+                    Accessible.name: qsTr("Supersampling")
                     objectName: "export.image.supersampling"
                     options: [
                         { value: 1, label: qsTr("Off") }, { value: 2, label: "2×2" }, { value: 3, label: "3×3" },
@@ -206,6 +213,7 @@ BtDialog {
                 }
                 Label { text: qsTr("Colours") }
                 Segmented {
+                    Accessible.name: qsTr("Colours")
                     objectName: "export.image.colours"
                     options: [{ value: false, label: qsTr("Pieces") }, { value: true, label: qsTr("Constraints") }]
                     value: root.ex.constraintColours
@@ -246,14 +254,16 @@ BtDialog {
                 rowSpacing: 6
                 Label { text: qsTr("Size mm") }
                 NumberField {
+                    Accessible.name: qsTr("Width in mm")
                     objectName: "export.image.mmX"
                     implicitWidth: 80
                     enabled: root.ex.paper === "manual"
                     value: root.ex.sizeXmm
                     onTextEdited: root.ex.sizeXmm = value
                 }
-                Label { text: "×" }
+                Label { text: "×"; Accessible.ignored: true }
                 NumberField {
+                    Accessible.name: qsTr("Height in mm")
                     objectName: "export.image.mmY"
                     implicitWidth: 80
                     enabled: root.ex.paper === "manual"
@@ -262,6 +272,7 @@ BtDialog {
                 }
                 Label { text: qsTr("DPI") }
                 NumberField {
+                    Accessible.name: qsTr("DPI")
                     objectName: "export.image.dpi"
                     implicitWidth: 80
                     value: root.ex.dpi
@@ -270,13 +281,15 @@ BtDialog {
                 Item { Layout.columnSpan: 2; implicitHeight: 1 }
                 Label { text: qsTr("Pixels") }
                 NumberField {
+                    Accessible.name: qsTr("Pixels wide")
                     objectName: "export.image.pxX"
                     implicitWidth: 80
                     value: root.ex.pixelX
                     onEditingFinished: root.ex.pixelX = value
                 }
-                Label { text: "×" }
+                Label { text: "×"; Accessible.ignored: true }
                 NumberField {
+                    Accessible.name: qsTr("Pixels high")
                     objectName: "export.image.pxY"
                     implicitWidth: 80
                     value: root.ex.pixelY
@@ -284,6 +297,7 @@ BtDialog {
                 }
                 Label { text: qsTr("Files") }
                 NumberField {
+                    Accessible.name: qsTr("Files")
                     objectName: "export.image.pages"
                     implicitWidth: 80
                     value: root.ex.pages
@@ -342,6 +356,7 @@ BtDialog {
             BtButton {
                 objectName: "export.image.export"
                 text: qsTr("Export images…")
+                id: okButton
                 primary: true
                 enabled: !root.ex.busy
                 onClicked: {

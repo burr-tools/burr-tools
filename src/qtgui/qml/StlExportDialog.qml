@@ -36,6 +36,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "export.stl.dialog"
+    defaultButton: okButton
     title: qsTr("Export STL")
     width: Math.min(1040, (parent ? parent.width : 1200) - 32)
     height: Math.min(700, (parent ? parent.height : 800) - 32)
@@ -164,6 +165,8 @@ BtDialog {
                         DecimalField {
                             id: field
                             objectName: "export.stl.param.field." + param.index
+                            Accessible.name: param.info.name
+                            Accessible.description: param.info.text
                             visible: !param.isSwitch
                             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
                             width: 120
@@ -229,6 +232,7 @@ BtDialog {
             }
 
             Segmented { // ⑤
+                Accessible.name: qsTr("Preview")
                 objectName: "export.stl.mode"
                 anchors { top: parent.top; right: parent.right; margins: 10 }
                 options: [
@@ -278,6 +282,7 @@ BtDialog {
             BtButton {
                 objectName: "export.stl.export"
                 text: qsTr("Export STL…")
+                id: okButton
                 primary: true
                 enabled: root.stl.hasMesh
                 onClicked: {

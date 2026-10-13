@@ -72,7 +72,7 @@ namespace btenv {
     { "BURRTOOLS_QML_OUTLINES", Scope::QtGui, "1", "outline every named item; the one under the mouse is highlighted and labelled with its objectName and QML file:line, its parents printed on stderr (for reading the QML)" },
 
     // the legacy GUI
-    { "BURRTOOLS_UPDATE_VERSION_OVERRIDE", Scope::LegacyGui, "<version>", "the update check compares against this version instead of the program's (testing)" },
+    { "BURRTOOLS_UPDATE_VERSION_OVERRIDE", Scope::QtGui, "<version>", "the update check (Help > Check for updates; the legacy GUI's too) compares against this version instead of the program's (testing)" },
 
     // tests and scripts
     { "BURRTOOLS_TEST_QPA", Scope::Tests, "<platform>", "test_qtgui's Qt platform plugin (default offscreen; Linux CI uses xcb on Xvfb for Vulkan)" },

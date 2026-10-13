@@ -41,6 +41,13 @@ Rectangle {
         objectName: "entities.viewport.surface"
         anchors.fill: parent
         controller: App.viewport
+        // to assistive tech: what it shows, and the gestures the hint line (hidden
+        // in Minimal and Focus 2D) explains
+        Accessible.role: Accessible.Graphic
+        Accessible.name: App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
+        Accessible.description: App.viewport.navMode === "orbit"
+                                ? qsTr("Drag to orbit, Shift-drag or middle-drag to pan, wheel to zoom. O orbit mode, P pan mode, Home home view, F fit.")
+                                : qsTr("Drag to pan, Shift-drag to orbit, middle-drag to pan, wheel to zoom. O orbit mode, P pan mode, Home home view, F fit.")
     }
 
     // --- view tag (top left) ---
@@ -58,7 +65,7 @@ Rectangle {
                 id: tagId
                 anchors.centerIn: parent
                 text: App.viewport.shapeId
-                color: (App.viewport.shapeColor.r * 0.3 + App.viewport.shapeColor.g * 0.59 + App.viewport.shapeColor.b * 0.11) > 0.6 ? "black" : "white"
+                color: App.viewport.shapeTextColor
                 font.pixelSize: Theme.fontMicro
                 font.weight: Font.Bold
             }
@@ -96,6 +103,7 @@ Rectangle {
 
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.orbit"
+                toggle: true
                 iconName: "orbit"
                 caption: qsTr("Orbit")
                 tip: qsTr("Orbit: drag to rotate the view (O)")
@@ -105,6 +113,7 @@ Rectangle {
             }
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.pan"
+                toggle: true
                 iconName: "pan"
                 caption: qsTr("Pan")
                 tip: qsTr("Pan: drag to move the view (P)")
@@ -127,6 +136,7 @@ Rectangle {
             ToolbarButton {
                 id: displayButton
                 objectName: "entities.viewport.toolbar.display"
+                toggle: true
                 iconName: "eye"
                 caption: qsTr("Display")
                 tip: qsTr("Display options")
@@ -143,6 +153,7 @@ Rectangle {
             Separator {}
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.focus"
+                toggle: true
                 iconName: App.layout.focus === LayoutController.Focus3d ? "unfocus" : "focus"
                 caption: App.layout.focus === LayoutController.Focus3d ? qsTr("Exit") : qsTr("Focus")
                 tip: qsTr("Focus the 3D view (Ctrl+Shift+F, Esc to exit)")

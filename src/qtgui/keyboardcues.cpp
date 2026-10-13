@@ -99,6 +99,11 @@ bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
         }
         break;
       }
+      // a dialog is up: its keys are its own, no menu opens over it
+      if (blocked()) {
+        setArmed(false);
+        break;
+      }
       const qsizetype menu = (k->key() >= Qt::Key_A && k->key() <= Qt::Key_Z)
                              ? m_menuKeys.indexOf(QChar(char16_t(k->key()))) : -1;
       const Qt::KeyboardModifiers mods = k->modifiers() & ~Qt::KeypadModifier;
@@ -125,7 +130,7 @@ bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
       const auto * k = static_cast<QKeyEvent *>(event);
       if (k->key() == Qt::Key_Alt && !k->isAutoRepeat() && m_altAlone) {
         m_altAlone = false;
-        if (!m_menuKeys.isEmpty()) {
+        if (!m_menuKeys.isEmpty() && !blocked()) {
           setArmed(!m_armed);          // a second tap disarms
           if (!m_armed)
             emit menusDismissed();

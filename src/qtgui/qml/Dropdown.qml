@@ -47,6 +47,7 @@ ComboBox {
         width: ListView.view ? ListView.view.width : implicitWidth
         text: root.textRole ? modelData[root.textRole] : modelData
         selected: root.currentIndex === index
+        highlighted: root.highlightedIndex === index      // the keyboard's row while the list is open
         onClicked: {
             root.currentIndex = index
             root.activated(index)

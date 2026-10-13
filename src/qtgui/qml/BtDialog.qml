@@ -3,7 +3,8 @@ import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // PR-12 Dialog: modal, centred over a scrim, radius 14; Esc and a scrim click
-// close it; focus stays inside while it is open.
+// close it; focus stays inside while it is open, starting on its first field
+// or default button, and Enter presses the default button.
 Dialog {
     id: root
     modal: true
@@ -16,6 +17,29 @@ Dialog {
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 20
     topPadding: 16
+
+    /* Keyboard: the control focused when the dialog opens (a dialog's first
+     * field; else its default button), and the button Enter presses -- not
+     * while a multi-line text field has the focus, where Enter is a new line.
+     * The Shortcut sits in the dialog, so it lives only while this is the
+     * dialog that is open. */
+    property Item initialFocus: null
+    property AbstractButton defaultButton: null
+    onOpened: {
+        const f = initialFocus ? initialFocus : defaultButton
+        if (f)
+            f.forceActiveFocus(Qt.TabFocusReason)
+    }
+    Shortcut {
+        sequences: ["Return", "Enter"]
+        enabled: root.opened && root.defaultButton !== null && root.defaultButton.enabled
+                 && root.defaultButton.visible && !(root.activeFocusItemIsMultiLine())
+        onActivated: root.defaultButton.clicked()
+    }
+    function activeFocusItemIsMultiLine(): bool {
+        const w = root.contentItem ? root.contentItem.Window.window : null
+        return w !== null && (w.activeFocusItem as TextEdit) !== null
+    }
 
     Overlay.modal: Rectangle { color: Theme.scrim }
 

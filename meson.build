@@ -234,6 +234,9 @@ else
   httpget_src = ['src/gui/httpget_curl.cpp']
   httpget_dep = dependency('dl')
 endif
+# the same as files, for subdirectories (burrtools-qt's update check)
+httpget_files = files(httpget_src)
+updatecheck_files = files('src/tools/updatecheck.cpp')
 
 if host_machine.system() == 'windows'
   wm = import('windows')
@@ -681,7 +684,7 @@ if qt6_dep.found()
     link_args: qtgui_static_link_args + qt_macos_args + qtgui_plist_args,
     link_depends: qtgui_plist,
     build_rpath: qt_build_rpath,
-    dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
+    dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps, json_dep, httpget_dep],
     win_subsystem: 'windows',
   )
 

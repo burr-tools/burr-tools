@@ -32,6 +32,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "tools.import.dialog"
+    defaultButton: okButton
     title: qsTr("Import assemblies as shapes")
     width: 740
 
@@ -119,6 +120,7 @@ BtDialog {
 
                 SectionTitle { text: qsTr("Source"); Layout.topMargin: 0 }
                 ProblemList { // ③
+                    name: qsTr("Source problem")
                     id: source
                     objectName: "tools.import.source"
                     Layout.fillWidth: true
@@ -148,6 +150,7 @@ BtDialog {
                     onClicked: root.destination = "existing"
                 }
                 ProblemList { // ⑤
+                    name: qsTr("Destination problem")
                     id: target
                     objectName: "tools.import.target"
                     Layout.fillWidth: true
@@ -163,9 +166,9 @@ BtDialog {
                     enabled: root.destination !== "shapes"
                     // the fields dim themselves when disabled
                     Text { text: qsTr("Min"); color: parent.enabled ? Theme.text : Theme.muted; font.pixelSize: Theme.fontBody }
-                    NumberField { id: rangeMin; objectName: "tools.import.rangeMin" }
+                    NumberField { id: rangeMin; objectName: "tools.import.rangeMin"; Accessible.name: qsTr("Range min") }
                     Text { text: qsTr("Max"); color: parent.enabled ? Theme.text : Theme.muted; font.pixelSize: Theme.fontBody; Layout.leftMargin: 8 }
-                    NumberField { id: rangeMax; objectName: "tools.import.rangeMax" }
+                    NumberField { id: rangeMax; objectName: "tools.import.rangeMax"; Accessible.name: qsTr("Range max") }
                 }
             }
 
@@ -185,9 +188,9 @@ BtDialog {
                 RowLayout { // ⑧
                     spacing: 8
                     Text { text: qsTr("Shape min"); color: Theme.text; font.pixelSize: Theme.fontBody }
-                    NumberField { id: shapeMin; objectName: "tools.import.shapeMin" }
+                    NumberField { id: shapeMin; objectName: "tools.import.shapeMin"; Accessible.name: qsTr("Shape size min") }
                     Text { text: qsTr("max"); color: Theme.text; font.pixelSize: Theme.fontBody; Layout.leftMargin: 8 }
-                    NumberField { id: shapeMax; objectName: "tools.import.shapeMax" }
+                    NumberField { id: shapeMax; objectName: "tools.import.shapeMax"; Accessible.name: qsTr("Shape size max") }
                 }
                 Text { text: qsTr("Shape sizes count the fixed voxels."); color: Theme.muted; font.pixelSize: Theme.fontSecondary }
             }
@@ -209,6 +212,7 @@ BtDialog {
                 objectName: "tools.import.ok"
                 visible: root.hasProblems
                 text: qsTr("Import")
+                id: okButton
                 primary: true
                 onClicked: root.accept()
             }

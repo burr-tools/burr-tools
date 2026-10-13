@@ -11,20 +11,24 @@ AbstractButton {
     property string caption
     property string tip
     property bool on: false
+    property bool toggle: false     // `on` is a state (a mode, a menu open): checked to assistive tech
     property bool compact: false
     property string badge            // the Edit button's tool number
 
     implicitWidth: compact ? 34 : Theme.toolbarButtonWidth
     implicitHeight: compact ? 34 : Theme.toolbarButtonHeight
     hoverEnabled: true
-    focusPolicy: Qt.TabFocus
+    focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     Accessible.name: caption
+    Accessible.checkable: toggle
+    Accessible.checked: toggle && on
+    Accessible.description: tip
 
     // the button's tooltip (PR-14), for tests
     readonly property alias toolTip: tipPopup
     BtToolTip {
         id: tipPopup
-        shown: root.hovered && (root.tip.length > 0 || root.compact)
+        shown: (root.hovered || root.visualFocus) && (root.tip.length > 0 || root.compact)
         text: root.tip.length > 0 ? root.tip : root.caption
     }
 

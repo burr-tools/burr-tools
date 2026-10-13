@@ -201,6 +201,10 @@ QColor ViewportController::shapeColor(void) const {
   return m_shapeIndex >= 0 ? ShapesModel::chipColor(m_shapeIndex) : QColor();
 }
 
+QColor ViewportController::shapeTextColor(void) const {
+  return m_shapeIndex >= 0 && !btui::prefersWhiteText(m_shapeIndex) ? QColor(Qt::black) : QColor(Qt::white);
+}
+
 /* The selected shape, looked up again after any change to the puzzle or the
  * selection; its mesh follows once the current burst of changes is over. */
 void ViewportController::refreshShape(void) {

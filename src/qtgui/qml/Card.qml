@@ -11,6 +11,7 @@ Rectangle {
     property string collapseObjectName
     property alias headerExtras: extras.data       // after the title
     property alias headerActions: actions.data     // at the right, before the collapse button
+    readonly property Item collapseButton: collapseBtn   // Main keeps the keyboard on it (or the rail's expand)
     default property alias content: body.data
     property bool showHeader: title.length > 0
     signal collapseClicked()
@@ -49,6 +50,7 @@ Rectangle {
                 Layout.alignment: Qt.AlignVCenter
             }
             IconButton {
+                id: collapseBtn
                 visible: root.collapseIcon.length > 0
                 objectName: root.collapseObjectName
                 iconName: root.collapseIcon

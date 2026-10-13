@@ -8,7 +8,8 @@ import BurrTools.Ui
 // on -- the setting is checked here, so no host can forget it.
 //
 // Put one inside the control it explains:
-//     BtToolTip { shown: root.hovered; text: root.tip }
+//     BtToolTip { shown: root.hovered || root.visualFocus; text: root.tip }
+// -- on keyboard focus as well as hover, so the keyboard reaches what it says.
 ToolTip {
     id: root
     property bool shown: false

@@ -120,6 +120,7 @@ signals:
   void revisionChanged(void);
 
   void aboutRequested(void);
+  void checkForUpdatesRequested(void);
   void commentRequested(void);
   void settingsRequested(void);
   void shortcutsHelpRequested(void);

@@ -49,7 +49,7 @@ namespace btui {
     // Export
     ExportImage, ExportVector, ExportStl,
     // Help
-    HelpGuide, HelpShortcuts, About,
+    HelpGuide, HelpShortcuts, CheckForUpdates, About,
     // not in a menu: the 3D view (every workspace) and the active layer (Entities)
     ViewOrbit, ViewPan, ViewHome, ViewFit,
     LayerUp, LayerDown,

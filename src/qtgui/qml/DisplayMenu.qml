@@ -35,6 +35,31 @@ Popup {
     onAboutToShow: if (parent && parent.ApplicationWindow.window) parent.ApplicationWindow.window.openPopups++
     onAboutToHide: if (parent && parent.ApplicationWindow.window) parent.ApplicationWindow.window.openPopups--
 
+    /* Keyboard: the menu takes focus when it opens (so Esc closes it) with
+     * its first usable row focused; Up / Down move between the rows; closing
+     * hands focus back to the Display button. */
+    focus: true
+    function rows(): list<Item> {
+        const out = []
+        const kids = root.contentItem.children     // (an id on the content item breaks its layout)
+        for (let i = 0; i < kids.length; i++) {
+            const c = kids[i] as CheckRow
+            if (c !== null && c.visible && c.enabled)
+                out.push(c)
+        }
+        return out
+    }
+    function step(by: int) {
+        const r = rows()
+        if (r.length === 0)
+            return
+        let i = r.findIndex(c => c.activeFocus)
+        i = i < 0 ? 0 : (i + by + r.length) % r.length
+        r[i].forceActiveFocus(Qt.TabFocusReason)
+    }
+    onOpened: step(0)
+    onClosed: if (parent) (parent as Item).forceActiveFocus()
+
     background: Rectangle {
         color: Theme.panel
         border.color: Theme.line2
@@ -57,6 +82,10 @@ Popup {
     }
 
     contentItem: Column {
+        Accessible.role: Accessible.PopupMenu
+        Accessible.name: qsTr("Display options")
+        Keys.onUpPressed: root.step(-1)
+        Keys.onDownPressed: root.step(1)
         spacing: 0
         width: 240
 
@@ -102,6 +131,7 @@ Popup {
         Section { text: qsTr("PROJECTION") } // ②
         CheckRow {
             objectName: "entities.viewport.display.persp"
+            radio: true
             width: parent.width
             text: qsTr("Perspective")
             selected: App.viewport.projection === "perspective"
@@ -109,6 +139,7 @@ Popup {
         }
         CheckRow {
             objectName: "entities.viewport.display.ortho"
+            radio: true
             width: parent.width
             text: qsTr("Orthographic")
             selected: App.viewport.projection === "orthographic"
@@ -119,6 +150,7 @@ Popup {
         Section { text: qsTr("VOXEL COLOUR") } // ③
         CheckRow {
             objectName: "entities.viewport.display.colourPiece"
+            radio: true
             width: parent.width
             text: qsTr("Piece colour")
             selected: App.viewport.colourView === "piece"
@@ -126,6 +158,7 @@ Popup {
         }
         CheckRow {
             objectName: "entities.viewport.display.colourVoxel"
+            radio: true
             width: parent.width
             text: qsTr("Voxel colour")
             selected: App.viewport.colourView === "voxel"

@@ -98,7 +98,10 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
       keys += (amp >= 0 && amp + 1 < label.size()) ? label.at(amp + 1) : QChar(u' ');
     }
     m_cues->setMenuKeys(keys.trimmed().isEmpty() ? QString() : keys);
+    m_cues->setBlockedBy([this] { return m_commands->blocked(); });
   }
+  m_updates = new UpdateController(m_settings, this);
+  connect(m_commands, &CommandController::checkForUpdatesRequested, m_updates, &UpdateController::checkNow);
   m_popupStyle = new PopupWindowStyle(this);
 
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));

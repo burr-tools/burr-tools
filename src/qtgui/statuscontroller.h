@@ -40,6 +40,10 @@ class StatusController : public QObject {
   Q_PROPERTY(QString text READ text NOTIFY changed FINAL)
   Q_PROPERTY(QString cursorText READ cursorText NOTIFY changed FINAL)
   Q_PROPERTY(bool flashing READ flashing NOTIFY changed FINAL)
+  /* the same for assistive tech: the text without its markup, and the last
+   * flash message, kept after the flash itself has gone */
+  Q_PROPERTY(QString plainText READ plainText NOTIFY changed FINAL)
+  Q_PROPERTY(QString lastMessage READ lastMessage NOTIFY changed FINAL)
 
 public:
 
@@ -48,6 +52,8 @@ public:
   QString text(void) const { return m_flashing ? m_flash : m_live; }
   const QString & cursorText(void) const { return m_cursor; }
   bool flashing(void) const { return m_flashing; }
+  QString plainText(void) const;
+  const QString & lastMessage(void) const { return m_lastMessage; }
 
   void setLiveText(const QString & markup);
   void setCursorText(const QString & t);
@@ -68,9 +74,13 @@ signals:
 
   void changed(void);
 
+  /* a flash began: what the status bar announces to assistive tech */
+  void announced(const QString & message);
+
 private:
 
   QString m_live, m_cursor, m_flash;
+  QString m_lastMessage;           ///< the last flash, plain, for assistive tech
   bool m_flashing = false;
   QTimer m_timer;
 };

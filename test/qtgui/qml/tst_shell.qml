@@ -129,6 +129,44 @@ TestCase {
         tryCompare(item("workspace.left"), "width", 320, 1000)
     }
 
+    function test_collapseAndExpandKeepTheKeyboardOnTheirButton() {
+        // Space on the focused collapse button collapses the card, and the
+        // keyboard is then on the rail's expand button: Space again expands
+        activate(win)
+        const collapse = item("entities.shapes.collapse")
+        for (let i = 0; i < 40 && !collapse.activeFocus; i++)
+            keyClick(Qt.Key_Tab)
+        verify(collapse.activeFocus, "Tab reaches the collapse button")
+        keyClick(Qt.Key_Space)
+        verify(App.layout.leftCollapsed)
+        const expand = item("workspace.left.rail.expand")
+        tryVerify(() => expand.activeFocus, 1000)
+        verify(expand.visualFocus)                       // still the keyboard's, ring and all
+        keyClick(Qt.Key_Space)
+        verify(!App.layout.leftCollapsed)
+        tryVerify(() => collapse.activeFocus, 1000)
+    }
+
+    function test_tabGoesOnFromTheButtonLastClicked() {
+        // a mouse click makes the button the keyboard's starting point (no ring)
+        activate(win)
+        const orbit = item("entities.viewport.toolbar.orbit")
+        const pan = item("entities.viewport.toolbar.pan")
+        mouseClick(orbit)
+        verify(orbit.activeFocus)
+        verify(!orbit.visualFocus)
+        keyClick(Qt.Key_Tab)
+        verify(pan.activeFocus)
+        verify(pan.visualFocus)
+    }
+
+    function test_theVoxelTypeChipIsNoTabStop() {
+        // read-only: Tab passes it by; assistive tech still reads its note
+        const chip = item("entities.editor.voxelType")
+        verify(!chip.activeFocusOnTab)
+        verify(chip.Accessible.description.length > 0)
+    }
+
     function test_theCollapsedShapesCardStillListsTheShapes_data() {
         return [ { tag: "standard", density: "standard" }, { tag: "minimal", density: "minimal" } ]
     }

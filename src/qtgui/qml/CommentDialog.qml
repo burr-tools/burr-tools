@@ -19,6 +19,8 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "shell.comment.dialog"
+    defaultButton: okButton
+    initialFocus: editor
     title: qsTr("Edit comment")
     width: 560
     height: 420
@@ -61,7 +63,7 @@ BtDialog {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             spacing: 8
             BtButton { objectName: "shell.comment.cancel"; text: qsTr("Cancel"); onClicked: root.reject() }
-            BtButton { objectName: "shell.comment.ok"; text: qsTr("OK"); primary: true; onClicked: root.accept() }
+            BtButton { id: okButton; objectName: "shell.comment.ok"; text: qsTr("OK"); primary: true; onClicked: root.accept() }
         }
     }
 }

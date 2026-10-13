@@ -23,6 +23,7 @@
 #include "shapesmodel.h"
 #include "statuscontroller.h"
 #include "theme.h"
+#include "updatecontroller.h"
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
@@ -53,6 +54,7 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <ctime>
 #include <memory>
 #include <new>
 #include <vector>
@@ -1514,9 +1516,12 @@ class TestKeyboardCues : public QObject {
     QCoreApplication::sendEvent(target, &e);
   }
   static bool send(QObject * target, QEvent::Type type, int key, Qt::KeyboardModifiers mods) {
+    // claimed: a filter took it, or someone accepted it (events start accepted,
+    // so it starts ignored here, as Qt sends a ShortcutOverride)
     QKeyEvent e(type, key, mods);
-    QCoreApplication::sendEvent(target, &e);
-    return e.isAccepted();
+    e.ignore();
+    const bool filtered = QCoreApplication::sendEvent(target, &e);
+    return filtered || e.isAccepted();
   }
   static void tapAlt(QObject * target) {
     press(target, Qt::Key_Alt);
@@ -1650,6 +1655,27 @@ private slots:
     QVERIFY(!cues.menuArmed());
   }
 
+  void aDialogKeepsAltFromTheMenus() {
+    // while a dialog is up the menus neither arm nor open, and the letters
+    // typed into the dialog stay its own
+    KeyboardCues cues;
+    cues.setMenuKeys(QStringLiteral("FEVXH"));
+    bool dialogUp = true;
+    cues.setBlockedBy([&dialogUp] { return dialogUp; });
+    QObject target;
+    QSignalSpy opened(&cues, &KeyboardCues::menuKeyPressed);
+
+    tapAlt(&target);
+    QVERIFY(!cues.menuArmed());
+    QVERIFY(!send(&target, QEvent::ShortcutOverride, Qt::Key_F, Qt::NoModifier));   // not claimed
+    send(&target, QEvent::KeyPress, Qt::Key_F, Qt::AltModifier);
+    QCOMPARE(opened.count(), 0);
+
+    dialogUp = false;
+    tapAlt(&target);
+    QVERIFY(cues.menuArmed());
+  }
+
   void withoutAccessKeysAltReachesNoMenus() {
     // macOS: the labels carry no access keys
     KeyboardCues cues;
@@ -1676,6 +1702,86 @@ private slots:
   }
 };
 
+
+// ---------------------------------------------------------------------------
+
+/* Help > Check for updates and the launch check, up to the network: what
+ * needs no request is checked here, and no test asks GitHub anything. */
+class TestUpdates : public QObject {
+  Q_OBJECT
+
+  static void installed(const char * version) {
+    qputenv("BURRTOOLS_UPDATE_VERSION_OVERRIDE", version);
+  }
+
+private slots:
+
+  void cleanup() {
+    qunsetenv("BURRTOOLS_UPDATE_VERSION_OVERRIDE");
+  }
+
+  void theCommandIsInTheHelpMenu() {
+    Fixture f;
+    f.make();
+    QStringList keys;
+    for (const QVariant & it : f.app->commands()->menuItems(QStringLiteral("help")))
+      keys << it.toMap().value(QStringLiteral("key")).toString();
+    QVERIFY2(keys.contains(QStringLiteral("help.checkForUpdates")), qPrintable(keys.join(u' ')));
+    QVERIFY(keys.indexOf(QStringLiteral("help.checkForUpdates")) < keys.indexOf(QStringLiteral("about")));
+  }
+
+  void anUncomparableBuildIsOfferedTheReleasesPage() {
+    // legacy: "can't be compared ... open the releases page?" -- no request
+    installed("not-a-version");
+    Fixture f;
+    f.make();
+    UpdateController * u = f.app->updates();
+    QSignalSpy offer(u, &UpdateController::offer);
+    u->checkNow();
+    QCOMPARE(offer.count(), 1);
+    QCOMPARE(offer.at(0).at(2).toString(), QStringLiteral("https://github.com/burr-tools/burr-tools/releases"));
+    QVERIFY(!offer.at(0).at(3).toBool());           // nothing to skip
+    QVERIFY(!u->checking());
+  }
+
+  void theLaunchCheckWaitsForItsSettingAndItsDay() {
+    installed("0.7.1");
+    Fixture f;
+    f.make();
+    SettingsController * s = f.app->settings();
+    UpdateController * u = f.app->updates();
+    QVERIFY(s->checkForUpdates());                  // on by default, as legacy
+    s->setUpdateLastCheck(std::time(nullptr) - 60); // asked a minute ago
+    u->checkAtLaunch();
+    QVERIFY(!u->checking());
+    s->setUpdateLastCheck(std::time(nullptr) - 2 * 86400);
+    s->setCheckForUpdates(false);                   // a day ago, but switched off
+    u->checkAtLaunch();
+    QVERIFY(!u->checking());
+    s->setCheckForUpdates(true);
+    installed("0.7.1-42-gabc123");                  // a development build never asks by itself
+    u->checkAtLaunch();
+    QVERIFY(!u->checking());
+  }
+
+  void onlyGitHubReleasePagesAreOpened() {
+    // the URL comes from the network: only BurrTools' release pages open
+    Fixture f;
+    f.make();
+    UrlCatcher links;
+    for (const char * scheme : { "https", "http", "file" })
+      QDesktopServices::setUrlHandler(QString::fromLatin1(scheme), &links, "open");
+    auto restore = qScopeGuard([] {
+      for (const char * scheme : { "https", "http", "file" })
+        QDesktopServices::unsetUrlHandler(QString::fromLatin1(scheme));
+    });
+    f.app->updates()->openPage(QStringLiteral("file:///etc/passwd"));
+    f.app->updates()->openPage(QStringLiteral("https://example.com/burr-tools/burr-tools/"));
+    QVERIFY(links.urls.isEmpty());
+    f.app->updates()->openPage(QStringLiteral("https://github.com/burr-tools/burr-tools/releases/tag/v0.8.1"));
+    QCOMPARE(links.urls.size(), 1);
+  }
+};
 // ---------------------------------------------------------------------------
 
 class TestShapesAndStatus : public QObject {
@@ -2622,6 +2728,7 @@ int main(int argc, char ** argv) {
   run(TestLayout());
   run(TestCommands());
   run(TestKeyboardCues());
+  run(TestUpdates());
   run(TestShapesAndStatus());
   run(TestIcons());
   run(TestTools());

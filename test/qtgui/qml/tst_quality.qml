@@ -30,12 +30,14 @@ TestCase {
     }
 
     function cleanup() {
-        for (const name of ["settings.dialog", "help.shortcuts.dialog"]) {
+        for (const name of ["settings.dialog", "help.shortcuts.dialog", "shell.about.dialog"]) {
             const d = findChild(win, name)
             if (d && d.visible)
                 d.close()
         }
         App.settings.theme = "system"
+        App.settings.tooltips = true
+        App.viewport.navMode = "orbit"
     }
 
     // --- WCAG contrast ---------------------------------------------------------
@@ -222,5 +224,113 @@ TestCase {
         verify(system.Accessible.checked)
 
         compare(find("settings.done").Accessible.name, "Done")
+    }
+
+    // --- the accessibility review's fixes ----------------------------------------
+
+    function activate() {
+        // the file's own messages first (its comment, an unfinished search):
+        // modal, they would take the keys
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                break
+            m.close()
+        }
+        win.requestActivate()
+        tryVerify(() => win.active, 3000)
+    }
+
+    function test_shapeRowsAreNamedSelectableListItems() {
+        const list = findChild(win.contentItem, "entities.shapes.list")
+        compare(list.Accessible.role, Accessible.List)
+        compare(list.Accessible.name, "Shapes")
+        App.shapes.select(1)
+        const row = findChild(list.contentItem, "entities.shapes.row.1")
+        tryVerify(() => row !== null)
+        compare(row.Accessible.role, Accessible.ListItem)
+        compare(row.Accessible.name, "S2 Cage, weight 2")            // the weight badge, in words
+        verify(row.Accessible.selected)
+        verify(!findChild(list.contentItem, "entities.shapes.row.0").Accessible.selected)
+        compare(findChild(win.contentItem, "entities.shapes.count").Accessible.name,
+                App.shapes.count + " shapes")
+    }
+
+    function test_theViewTagTextReadsOnEveryShapeColour() {
+        for (let i = 0; i < App.shapes.count; i++) {
+            App.shapes.select(i)
+            verify(contrast(App.viewport.shapeColor, App.viewport.shapeTextColor) >= 4.5,
+                   "S" + (i + 1) + ": " + contrast(App.viewport.shapeColor, App.viewport.shapeTextColor).toFixed(2))
+        }
+    }
+
+    function test_settingsDialogIsNamed() {
+        App.commands.trigger("settings")
+        const d = findChild(win, "settings.dialog")
+        tryVerify(() => d.opened, 2000)
+        compare(d.title, "Settings")             // a Dialog's accessible name
+    }
+
+    function test_statusBarSpeaksPlainText() {
+        const bar = findChild(win.contentItem, "status")
+        compare(bar.Accessible.role, Accessible.StatusBar)
+        verify(bar.Accessible.name.indexOf("<") < 0, bar.Accessible.name)
+        verify(bar.Accessible.name.indexOf("S1") >= 0, bar.Accessible.name)
+        App.status.flash("Exported a.stl")
+        compare(bar.Accessible.name, "Exported a.stl")
+        compare(App.status.lastMessage, "Exported a.stl")       // kept after the flash goes
+    }
+
+    function test_displayMenuTakesTheKeyboard() {
+        activate()
+        const button = findChild(win.contentItem, "entities.viewport.toolbar.display")
+        mouseClick(button)
+        const menu = findChild(button, "entities.viewport.display.menu")
+        tryVerify(() => menu.opened, 1000)
+        const axes = findChild(menu.contentItem, "entities.viewport.display.axes")
+        const bounds = findChild(menu.contentItem, "entities.viewport.display.bounds")
+        tryVerify(() => axes.activeFocus, 1000)                  // the first row, at once
+        keyClick(Qt.Key_Down)
+        verify(bounds.activeFocus)
+        keyClick(Qt.Key_Up)
+        verify(axes.activeFocus)
+        compare(findChild(menu.contentItem, "entities.viewport.display.persp").Accessible.role,
+                Accessible.RadioButton)                         // one of a set
+        compare(axes.Accessible.role, Accessible.CheckBox)
+        keyClick(Qt.Key_Escape)                                 // the menu has the focus, so Esc closes it
+        tryVerify(() => !menu.visible, 1000)
+    }
+
+    function test_toolbarStatesAndTipsReachTheKeyboard() {
+        activate()
+        const orbit = findChild(win.contentItem, "entities.viewport.toolbar.orbit")
+        App.viewport.navMode = "orbit"
+        verify(orbit.Accessible.checkable)
+        verify(orbit.Accessible.checked)
+        verify(orbit.Accessible.description.indexOf("(O)") >= 0)
+        App.viewport.navMode = "pan"
+        verify(!orbit.Accessible.checked)
+        App.viewport.navMode = "orbit"
+        // the tooltip shows on keyboard focus (Tab), not only under the mouse
+        App.settings.tooltips = true
+        for (let i = 0; i < 40 && !orbit.activeFocus; i++)
+            keyClick(Qt.Key_Tab)
+        verify(orbit.activeFocus, "Tab reaches the Orbit button")
+        verify(orbit.visualFocus)
+        tryVerify(() => orbit.toolTip.visible, 2000)
+        const rail = findChild(win.contentItem, "rail-entities")
+        compare(rail.Accessible.role, Accessible.PageTab)
+        verify(rail.Accessible.selected)
+    }
+
+    function test_enterPressesTheDialogsDefaultButton() {
+        activate()
+        App.commands.trigger("about")
+        const d = findChild(win, "shell.about.dialog")
+        tryVerify(() => d.opened, 2000)
+        tryVerify(() => findChild(d.footer, "shell.about.close").activeFocus, 1000)   // focus starts there
+        keyClick(Qt.Key_Return)
+        tryVerify(() => !d.visible, 2000)
     }
 }

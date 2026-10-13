@@ -52,6 +52,18 @@ Pick these up with the phase named.
 | Settings and modes as strings | `SettingsController`, `ImageExportController` | Voxel style, rotation, density, colour view, image mode: parsed from strings in several places each; one typed table per vocabulary would keep them in step | P3 cleanup |
 | Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 polish |
 | macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | before cut-over |
+| **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
+| — 3D view and view cube by keyboard | WCAG 2.1.1, spec §5 "3D canvas" Tab stop | The canvas takes no focus and has no keys; orbit, pan, zoom and the cube's views need the pointer (O/P/Home/F exist). Wants a focusable canvas (ring on the card edge), arrows to orbit, Shift+arrows to pan, +/− to zoom, commands for the six faces and the rolls, listed in Help | P4/P5 (3D editing brings keyboard picking) |
+| — Reduced motion | spec: durations 0 under the OS setting | Camera snaps (360 ms), eased zoom, card transitions (200 ms) and BtSwitch (literal 150 ms) ignore Windows' "Show animations" and macOS's Reduce motion. Theme should read the setting (notifying), zero its duration tokens, and the camera jump straight to its target | P8 |
+| — Text size and high contrast | WCAG 1.4.4, 1.4.11 | Fonts are constant dp sizes: Windows' "Make text bigger" changes nothing, and chips/buttons have fixed heights that would clip. High-contrast themes are not detected; the tokens override them. Wants a text-scale factor on the font tokens and a high-contrast token set | P8 |
+| — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
+| — Dark-theme button text | WCAG 1.4.3 | White on the dark danger (2.71:1) and accent (2.77:1, a known XFAIL) buttons: a design-token decision (dark text, or darker tokens) | P8 |
+| — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; control borders and unchecked switch/checkbox 1.3–1.6:1 (want a ≥ 3:1 border token); toggled toolbar icons differ by hue only (the list now rings its selection when focused) | P8 |
+| — Single-key shortcuts | WCAG 2.1.4 | O, P, F work window-wide and cannot be turned off or remapped; limit them to the focused 3D view (once it takes focus) or add a setting | with the keyboard 3D view |
+| — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 |
+| — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard; the collapsed rail's chips are not a Tab stop | P8 / P2 (rail chips) |
+| — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, elided shape names without a tooltip, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
+| — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 audit |
 
 ## Architecture
 
@@ -89,6 +101,7 @@ both use.
 | `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
 | `KeyboardCues`, `PopupWindowStyle` | Windows' access-key underlines; Windows 11 menu corners and borders |
+| `UpdateController` | Help ▸ Check for updates and the launch check (GitHub Releases, as legacy) |
 
 `Theme` (a singleton too) reads `resources/design-tokens.json` and gives QML
 every colour, size and duration of the spec in the light or dark set.
@@ -321,6 +334,15 @@ commit holds just the images that changed.
   guide has the measurements and what was tried).
 - Saving a puzzle writes beside the file and renames it over, so a save
   that fails part way leaves the old file intact (it used to truncate it).
+- Help ▸ Check for updates, and the same check at launch (at most daily;
+  Settings ▸ General ▸ Check for updates at launch), as legacy has since
+  #137: the shared rules in `src/tools/updatecheck`, the platform's HTTPS
+  (`src/gui/httpget`), `UpdateController` and `UpdateDialog.qml` here.
+  Scripted runs (a screenshot, a command, the gallery, a scratch settings
+  file) never check.
+- Focus follows use: a clicked button is where Tab goes on from (no ring
+  until the keyboard moves), and collapsing or expanding a sidebar keeps the
+  keyboard on the button that undoes it.
 
 ## Next
 

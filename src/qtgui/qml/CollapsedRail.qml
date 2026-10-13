@@ -27,6 +27,7 @@ Rectangle {
     property string expandObjectName
     default property alias extras: extraColumn.data
     property alias list: listSlot.data          // below the title, filling the rest
+    readonly property Item expandButton: expandBtn   // Main keeps the keyboard on it (or the card's collapse)
     signal expandClicked()
 
     /* The rail shows at once while its column narrows from the card's width
@@ -48,6 +49,7 @@ Rectangle {
         anchors { top: parent.top; topMargin: 8 }
         spacing: 8
         IconButton { // ①
+            id: expandBtn
             objectName: root.expandObjectName
             anchors.horizontalCenter: parent.horizontalCenter
             iconName: root.expandIcon

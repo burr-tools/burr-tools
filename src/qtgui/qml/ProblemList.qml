@@ -11,6 +11,9 @@ Rectangle {
     property var problems: []
     property int currentProblem: 0
     property bool showSolutions: true
+    property string name                // what the list is for, to assistive tech
+    Accessible.role: Accessible.List
+    Accessible.name: name
 
     implicitHeight: 112
     implicitWidth: 360
@@ -34,7 +37,7 @@ Rectangle {
             width: ListView.view.width
             height: 28
             hoverEnabled: true
-            focusPolicy: Qt.TabFocus
+            focusPolicy: Qt.StrongFocus
             Accessible.role: Accessible.RadioButton
             Accessible.name: modelData.label
             Accessible.checked: root.currentProblem === modelData.index

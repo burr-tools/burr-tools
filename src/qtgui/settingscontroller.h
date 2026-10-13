@@ -46,6 +46,8 @@ class SettingsController : public QObject {
   Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed FINAL)
   Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed FINAL)
   Q_PROPERTY(bool tooltips READ tooltips WRITE setTooltips NOTIFY changed FINAL)
+  // Help > Check for updates, at launch too (at most daily; legacy checkForUpdates)
+  Q_PROPERTY(bool checkForUpdates READ checkForUpdates WRITE setCheckForUpdates NOTIFY changed FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed FINAL)
   Q_PROPERTY(bool reverseScroll READ reverseScroll WRITE setReverseScroll NOTIFY changed FINAL)
   Q_PROPERTY(QString rotationMethod READ rotationMethod WRITE setRotationMethod NOTIFY changed FINAL)
@@ -93,6 +95,12 @@ public:
   void setDensity(const QString & v);
   bool tooltips(void) const;
   void setTooltips(bool v);
+  bool checkForUpdates(void) const;
+  void setCheckForUpdates(bool v);
+  long long updateLastCheck(void) const;
+  void setUpdateLastCheck(long long epochSeconds);
+  int updateSkippedVersion(void) const;
+  void setUpdateSkippedVersion(int packed);
   bool showViewCube(void) const;
   void setShowViewCube(bool v);
   bool reverseScroll(void) const;

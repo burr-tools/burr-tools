@@ -110,12 +110,16 @@ ApplicationWindow {
     }
     // a dialog is up: the dialogs are made when first opened (showDialog)
     function shown(dialog: Loader): bool { return dialog.status === Loader.Ready && (dialog.item as Dialog).visible }
+    // the message dialogs (unsaved changes, messages, an internal error) too
+    function messageShown(dialog: Loader): bool { return dialog.status === Loader.Ready && (dialog.item as MessageDialog).visible }
     readonly property bool modalOpen: shown(newDialog) || shown(commentDialog) || shown(aboutDialog)
                                       || shown(settingsDialog) || shown(noticeDialog)
                                       || shown(convertDialog) || shown(importAssembliesDialog)
                                       || shown(statusDialog) || shown(stlDialog)
                                       || shown(vectorDialog) || shown(imageDialog)
-                                      || shown(shortcutsDialog)
+                                      || shown(shortcutsDialog) || shown(updateDialog)
+                                      || messageShown(discardDialog) || messageShown(messageDialog)
+                                      || messageShown(internalErrorDialog)
     function showDialog(dialog: Loader) {
         dialog.active = true
         const d = dialog.item as Dialog
@@ -130,6 +134,46 @@ ApplicationWindow {
     property int restoreVisibility: Window.Windowed
 
     Binding { target: App.layout; property: "windowWidth"; value: win.width }
+
+    /* Collapse and expand keep the keyboard: when a side swaps its card for
+     * its rail (or back), focus that was on the button that did it moves to
+     * the button that undoes it -- the rail's expand, the card's collapse --
+     * so Space toggles again, with a keyboard ring only if there was one. */
+    property Item lastToggle: null          // the collapse / expand button focused last
+    property bool lastToggleVisual: false
+    onActiveFocusItemChanged: {
+        const f = activeFocusItem
+        if (f === null)
+            return
+        if (f.objectName.endsWith(".collapse") || f.objectName.endsWith(".rail.expand")) {
+            lastToggle = f
+            lastToggleVisual = (f as AbstractButton) !== null && (f as AbstractButton).visualFocus
+        } else if (f.activeFocusOnTab) {
+            lastToggle = null               // the keyboard moved on to something else
+        }
+    }
+    function keepToggleFocus(slot: Item) {
+        const t = lastToggle
+        if (t === null || t.visible)
+            return                          // not hidden by this swap
+        let p = t.parent
+        while (p !== null && p !== slot)
+            p = p.parent
+        if (p === null)
+            return                          // the other side's
+        for (let i = 0; i < slot.children.length; i++) {
+            const c = slot.children[i]
+            if (!c.visible)
+                continue
+            const rail = c as CollapsedRail
+            const card = c as Card
+            const target = rail !== null ? rail.expandButton : card !== null ? card.collapseButton : null
+            if (target !== null && target.visible) {
+                target.forceActiveFocus(lastToggleVisual ? Qt.TabFocusReason : Qt.MouseFocusReason)
+                return
+            }
+        }
+    }
 
     onClosing: (close) => {
         if (!win.quitApproved) {
@@ -287,6 +331,11 @@ ApplicationWindow {
                         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: statusBar.top; margins: Theme.bodyPadding }
 
                         readonly property int ws: App.layout.workspace
+                        // the swap's bindings settle first, then the keyboard follows
+                        readonly property bool leftRail: App.layout.leftShownAsRail
+                        readonly property bool rightRail: App.layout.rightShownAsRail
+                        onLeftRailChanged: Qt.callLater(win.keepToggleFocus, leftSlot)
+                        onRightRailChanged: Qt.callLater(win.keepToggleFocus, rightSlot)
 
                         Item { // ③
                             id: leftSlot
@@ -409,6 +458,7 @@ ApplicationWindow {
     Loader { id: vectorDialog; active: false; source: "VectorExportDialog.qml" }
     Loader { id: imageDialog; active: false; source: "ImageExportDialog.qml" }
     Loader { id: shortcutsDialog; active: false; source: "KeyboardShortcutsDialog.qml" }
+    Loader { id: updateDialog; active: false; source: "UpdateDialog.qml" }
 
     Loader {
         id: noticeDialog
@@ -417,6 +467,7 @@ ApplicationWindow {
             BtDialog {
                 id: notice
                 objectName: "shell.notice.dialog"
+                defaultButton: noticeOk
                 width: 440
                 property string body
                 contentItem: Text {
@@ -429,6 +480,7 @@ ApplicationWindow {
                     implicitHeight: 60
                     BtButton {
                         anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
+                        id: noticeOk
                         text: qsTr("OK"); primary: true
                         onClicked: notice.close()
                     }
@@ -596,6 +648,17 @@ ApplicationWindow {
                 win.showFullScreen()
             }
         }
+    }
+
+    // Help > Check for updates and the check at launch (UpdateController)
+    Connections {
+        target: App.updates
+        function onOffer(heading: string, notes: string, url: string, canSkip: bool) {
+            updateDialog.active = true
+            const d = updateDialog.item as UpdateDialog
+            d.show(heading, notes, url, canSkip)
+        }
+        function onMessage(title: string, text: string) { win.showMessage(title, text) }
     }
 
     Connections {

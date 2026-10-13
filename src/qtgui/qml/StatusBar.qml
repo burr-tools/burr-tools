@@ -14,6 +14,18 @@ Rectangle {
     height: Theme.statusBar
     color: Theme.panel
 
+    // to assistive tech: a status bar named by its text without the markup,
+    // its last message kept as the description, and each message announced
+    // (a flash shows for 2.4 s only; Qt 6.8's announcement reaches screen
+    // readers whatever has the focus)
+    Accessible.role: Accessible.StatusBar
+    Accessible.name: App.status.plainText
+    Accessible.description: App.status.lastMessage
+    Connections {
+        target: App.status
+        function onAnnounced(message: string) { root.Accessible.announce(message) }
+    }
+
     Rectangle {
         anchors { left: parent.left; right: parent.right; top: parent.top }
         height: 1
@@ -22,6 +34,7 @@ Rectangle {
 
     Text { // ①
         objectName: "status.text"
+        Accessible.ignored: true                   // the bar's name says it
         anchors { left: parent.left; leftMargin: 14; right: cursor.left; rightMargin: 14; verticalCenter: parent.verticalCenter }
         // the emphasised parts (shape id, counts) in text colour, the rest muted
         textFormat: Text.StyledText

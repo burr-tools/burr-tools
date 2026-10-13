@@ -329,6 +329,7 @@ void CommandController::run(Command c) {
     case Command::EditComment:      emit commentRequested(); break;
     case Command::HelpGuide:        QDesktopServices::openUrl(QUrl(QString::fromLatin1(userGuideUrl))); break;
     case Command::HelpShortcuts:    emit shortcutsHelpRequested(); break;
+    case Command::CheckForUpdates:  emit checkForUpdatesRequested(); break;
     case Command::About:            emit aboutRequested(); break;
     case Command::Settings:         emit settingsRequested(); break;
     case Command::FullScreen:       emit fullScreenToggleRequested(); break;

@@ -38,6 +38,9 @@ namespace {
   const char * const kTheme       = "ui.theme";
   const char * const kDensity     = "ui.density";
   const char * const kTooltips    = "ui.tooltips";
+  const char * const kUpdateCheck = "update.checkAtLaunch";
+  const char * const kUpdateLast  = "update.lastCheck";       // epoch seconds of the last good fetch
+  const char * const kUpdateSkip  = "update.skippedVersion";  // updatecheck::packVersion; 0: none
   const char * const kUndoDepth   = "ui.undoDepth";
   const char * const kViewCube    = "view.cube";
   const char * const kReverse     = "view.reverseScroll";
@@ -161,6 +164,7 @@ void SettingsController::seedFromLegacy(const QString & legacyFile) {
   };
 
   copyBool("tooltips", kTooltips);
+  copyBool("checkForUpdates", kUpdateCheck);
   copyBool("lightning", kLighting);
   copyBool("fadeout", kFade);
   copyBool("reversescrollzoom", kReverse);
@@ -236,6 +240,7 @@ void SettingsController::setDensity(const QString & v) {
   }
 
 BOOL_SETTING(tooltips, setTooltips, kTooltips, true)
+BOOL_SETTING(checkForUpdates, setCheckForUpdates, kUpdateCheck, true)
 BOOL_SETTING(showViewCube, setShowViewCube, kViewCube, true)
 BOOL_SETTING(reverseScroll, setReverseScroll, kReverse, false)
 BOOL_SETTING(lighting, setLighting, kLighting, true)
@@ -362,7 +367,7 @@ void SettingsController::setStringValue(const QString & key, const QString & v) 
 
 void SettingsController::resetSection(const QString & page) {
   if (page == QLatin1String("general")) {
-    for (const char * k : { kTheme, kDensity, kTooltips, kUndoDepth })
+    for (const char * k : { kTheme, kDensity, kTooltips, kUndoDepth, kUpdateCheck })
       m_store.remove(k);
   } else if (page == QLatin1String("view3d")) {
     for (const char * k : { kViewCube, kReverse, kRotation, kVoxelStyle, kAntialiasing, kLighting, kFade })
@@ -404,5 +409,25 @@ void SettingsController::saveWindowGeometry(int x, int y, int width, int height,
     m_store.set(kWinW, (long long)width);
     m_store.set(kWinH, (long long)height);
   }
+  write();
+}
+
+/* The update check's own state (UpdateController): when it last fetched,
+ * and the release the user chose to skip. Not settings anyone edits. */
+long long SettingsController::updateLastCheck(void) const {
+  return m_store.getInt(kUpdateLast, 0);
+}
+
+void SettingsController::setUpdateLastCheck(long long epochSeconds) {
+  m_store.set(kUpdateLast, epochSeconds);
+  write();
+}
+
+int SettingsController::updateSkippedVersion(void) const {
+  return int(std::clamp(m_store.getInt(kUpdateSkip, 0), 0LL, 999999999LL));
+}
+
+void SettingsController::setUpdateSkippedVersion(int packed) {
+  m_store.set(kUpdateSkip, (long long)packed);
   write();
 }

@@ -26,6 +26,7 @@
 #include "documentcontroller.h"
 #include "imageexportcontroller.h"
 #include "keyboardcues.h"
+#include "updatecontroller.h"
 #include "popupwindowstyle.h"
 #include "layoutcontroller.h"
 #include "settingscontroller.h"
@@ -70,6 +71,7 @@ class App : public QObject {
   Q_PROPERTY(StlExportController * stl READ stl CONSTANT FINAL)
   Q_PROPERTY(ImageExportController * images READ images CONSTANT FINAL)
   Q_PROPERTY(KeyboardCues * keyboardCues READ keyboardCues CONSTANT FINAL)
+  Q_PROPERTY(UpdateController * updates READ updates CONSTANT FINAL)
   Q_PROPERTY(PopupWindowStyle * popupStyle READ popupStyle CONSTANT FINAL)
   Q_PROPERTY(QString version READ version CONSTANT FINAL)
 
@@ -98,6 +100,7 @@ public:
   StlExportController * stl(void) const { return m_stl; }
   ImageExportController * images(void) const { return m_images; }
   KeyboardCues * keyboardCues(void) const { return m_cues; }
+  UpdateController * updates(void) const { return m_updates; }
   PopupWindowStyle * popupStyle(void) const { return m_popupStyle; }
 
   /* the primary screen's area for windows (without taskbar or dock) */
@@ -148,6 +151,7 @@ private:
   StlExportController * m_stl;
   ImageExportController * m_images;
   KeyboardCues * m_cues;
+  UpdateController * m_updates;
   PopupWindowStyle * m_popupStyle;
 };
 

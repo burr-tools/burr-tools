@@ -113,7 +113,8 @@ namespace btui {
       // macOS: the app's own help, first in Help with Cmd+? (legacy: "BurrTools User Guide", Cmd+?)
       { Command::HelpGuide,        "help.guide",            "&User guide",            Menu::Help,   false, none,         scGuideMac, "Help", "", "BurrTools Help", Menu::None },
       { Command::HelpShortcuts,    "help.shortcuts",        "&Keyboard shortcuts",    Menu::Help,   false, scShortcuts,  none,       "", "", "", Menu::None },
-      { Command::About,            "about",                 "&About BurrTools",       Menu::Help,   true,  none,         none,       "About", "", "", Menu::None },
+      { Command::CheckForUpdates,  "help.checkForUpdates",  "&Check for updates…",   Menu::Help,   true,  none,         none,       "CheckForUpdates", "", "", Menu::None },
+      { Command::About,            "about",                 "&About BurrTools",       Menu::Help,   false, none,         none,       "About", "", "", Menu::None },
 
       { Command::ViewOrbit,        "view.orbit",            "Orbit mode",             Menu::None,   false, scOrbit,      none,       "", "", "", Menu::None },
       { Command::ViewPan,          "view.pan",              "Pan mode",               Menu::None,   false, scPan,        none,       "", "", "", Menu::None },
@@ -138,8 +139,8 @@ namespace btui {
       { "help",   "&Help",   Menu::Help },
     };
 
-    // Toggle 3D: dropped. Check for Updates (legacy, #137): not ported yet
-    constexpr sv dropped[] = { "Toggle3D", "CheckForUpdates" };
+    // Toggle 3D: dropped
+    constexpr sv dropped[] = { "Toggle3D" };
   }
 
   std::span<const CommandInfo> commandTable(void) {

@@ -8,18 +8,22 @@ AbstractButton {
     property string iconName
     property string tip
     property bool on: false
+    property bool toggle: false     // `on` is a state (a mode, a menu open): checked to assistive tech
     property bool dangerHover: false
     property real iconSize: 18
 
     implicitWidth: 28
     implicitHeight: 28
-    focusPolicy: Qt.TabFocus
+    focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     hoverEnabled: true
 
     Accessible.name: tip
+    Accessible.checkable: toggle
+    Accessible.checked: toggle && on
     // the button's tooltip (PR-14), for tests
     readonly property alias toolTip: tipPopup
-    BtToolTip { id: tipPopup; shown: root.hovered; text: root.tip }
+    // on keyboard focus too: the tip holds the shortcut and, in Minimal, the caption
+    BtToolTip { id: tipPopup; shown: root.hovered || root.visualFocus; text: root.tip }
 
     background: Rectangle {
         radius: Theme.radiusChip

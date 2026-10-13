@@ -21,6 +21,7 @@ qtgui_moc_headers = files(
   'stlexportcontroller.h',
   'theme.h',
   'toolscontroller.h',
+  'updatecontroller.h',
   'viewcubeitem.h',
   'viewportcontroller.h',
   'voxelviewport.h',
@@ -133,9 +134,12 @@ libburr_qtgui = static_library('burr_qtgui', [
     'stlexportcontroller.cpp',
     'theme.cpp',
     'toolscontroller.cpp',
+    'updatecontroller.cpp',
     'viewcubeitem.cpp',
     'viewportcontroller.cpp',
     'voxelviewport.cpp',
+    httpget_files,
+    updatecheck_files,
     qtgui_shader_src,
     qtgui_qmlmod,
     qtgui_qmlcache,
@@ -144,7 +148,7 @@ libburr_qtgui = static_library('burr_qtgui', [
   include_directories: [inc, include_directories('.')],
   cpp_args: ['-DBURRTOOLS_VERSION="' + meson.project_version() + '"'] + qt_macos_args,
   link_with: [libburr_uicore, libburr_core],
-  dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps],
+  dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps, json_dep, httpget_dep],
 )
 
 # A static Qt (-Dqt_static=true): the plugins have to be linked and named

@@ -17,6 +17,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "shell.about.dialog"
+    defaultButton: okButton
     title: qsTr("About BurrTools")
     width: 520
 
@@ -47,6 +48,7 @@ BtDialog {
             objectName: "shell.about.close"
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             text: qsTr("Close")
+            id: okButton
             primary: true
             onClicked: root.close()
         }

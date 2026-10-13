@@ -11,7 +11,8 @@ import BurrTools.Ui
 // complete with colours), connectivity, holes, the brick-only tool checks
 // and the symmetry. As in legacy, a cell that flags a problem -- not
 // connected, has holes, unknown symmetry -- is filled with the shape's
-// colour, and an Identical cell shows the other shape's chip.
+// colour -- and, for connectivity, says "no" -- and an Identical cell shows
+// the other shape's chip. Each cell names its column for assistive tech.
 //
 // The table fills in as it is computed; Cancel stops that and keeps the rows
 // so far, and the Select / Remove buttons then act on those rows only.
@@ -33,6 +34,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "tools.status.dialog"
+    defaultButton: okButton
     title: qsTr("Shape information")
     width: Math.min(table.tableWidth + 42, (parent ? parent.width : 1200) - 32)
     height: Math.min(640, (parent ? parent.height : 800) - 32)
@@ -60,9 +62,14 @@ BtDialog {
         g.push({ title: "", cols: [qsTr("Sym")] })
         return g
     }
+    // a connectivity problem says so in words as well as in the shape's colour
+    readonly property string notConnected: qsTr("no", "status: not connected")
 
     component Cell: Rectangle {
         property string text
+        property string column              // what the cell says, for assistive tech
+        Accessible.role: Accessible.Cell
+        Accessible.name: column + ": " + (text.length > 0 ? text : qsTr("none", "status cell: nothing to report"))
         property color ink: Theme.text
         property bool bold: false
         width: root.colW
@@ -70,6 +77,7 @@ BtDialog {
         color: "transparent"
         Text {
             anchors.centerIn: parent
+            Accessible.ignored: true                   // the cell's name says it
             text: parent.text
             color: parent.ink
             font.pixelSize: Theme.fontSecondary
@@ -227,20 +235,20 @@ BtDialog {
                             }
                         }
                     }
-                    Cell { text: row.fixed }
-                    Cell { text: row.variable }
-                    Cell { text: row.total }
-                    ChipCell { shape: row.identicalMirror - 1; text: row.identicalMirror > 0 ? row.identicalMirror : "" }
-                    ChipCell { shape: row.identicalShape - 1; text: row.identicalShape > 0 ? row.identicalShape : "" }
-                    ChipCell { shape: row.identicalComplete - 1; text: row.identicalComplete > 0 ? row.identicalComplete : "" }
-                    ChipCell { shape: row.face ? -1 : row.index; text: row.face ? "X" : "" }
-                    ChipCell { shape: row.edge ? -1 : row.index; text: row.edge ? "X" : "" }
-                    ChipCell { shape: row.corner ? -1 : row.index; text: row.corner ? "X" : "" }
-                    ChipCell { shape: row.holes2d ? row.index : -1; text: row.holes2d ? "X" : "" }
-                    ChipCell { shape: row.holes3d ? row.index : -1; text: row.holes3d ? "X" : "" }
-                    Cell { visible: root.model.bricks; text: row.notchable ? "X" : "" }
-                    Cell { visible: root.model.bricks; text: row.millable ? "X" : "" }
-                    ChipCell { shape: row.symmetry === "---" ? row.index : -1; text: row.symmetry }
+                    Cell { column: qsTr("Fixed units"); text: row.fixed }
+                    Cell { column: qsTr("Variable units"); text: row.variable }
+                    Cell { column: qsTr("Total units"); text: row.total }
+                    ChipCell { column: qsTr("Identical as mirror"); shape: row.identicalMirror - 1; text: row.identicalMirror > 0 ? row.identicalMirror : "" }
+                    ChipCell { column: qsTr("Identical shape"); shape: row.identicalShape - 1; text: row.identicalShape > 0 ? row.identicalShape : "" }
+                    ChipCell { column: qsTr("Identical with colours"); shape: row.identicalComplete - 1; text: row.identicalComplete > 0 ? row.identicalComplete : "" }
+                    ChipCell { column: qsTr("Face connected"); shape: row.face ? -1 : row.index; text: row.face ? "X" : root.notConnected }
+                    ChipCell { column: qsTr("Edge connected"); shape: row.edge ? -1 : row.index; text: row.edge ? "X" : root.notConnected }
+                    ChipCell { column: qsTr("Corner connected"); shape: row.corner ? -1 : row.index; text: row.corner ? "X" : root.notConnected }
+                    ChipCell { column: qsTr("Holes 2D"); shape: row.holes2d ? row.index : -1; text: row.holes2d ? "X" : "" }
+                    ChipCell { column: qsTr("Holes 3D"); shape: row.holes3d ? row.index : -1; text: row.holes3d ? "X" : "" }
+                    Cell { column: qsTr("Notchable"); visible: root.model.bricks; text: row.notchable ? "X" : "" }
+                    Cell { column: qsTr("Millable"); visible: root.model.bricks; text: row.millable ? "X" : "" }
+                    ChipCell { column: qsTr("Symmetry"); shape: row.symmetry === "---" ? row.index : -1; text: row.symmetry }
                 }
             }
 
@@ -311,7 +319,7 @@ BtDialog {
                     App.status.flash(n === 1 ? qsTr("Removed 1 shape") : qsTr("Removed %1 shapes").arg(n))
                 }
             }
-            BtButton { objectName: "tools.status.close"; text: qsTr("Close"); primary: true; onClicked: root.close() }
+            BtButton { id: okButton; objectName: "tools.status.close"; text: qsTr("Close"); primary: true; onClicked: root.close() }
         }
     }
 }

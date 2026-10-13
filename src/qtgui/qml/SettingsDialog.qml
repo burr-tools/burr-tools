@@ -30,6 +30,8 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "settings.dialog"
+    // the dialog's accessible name; the custom header below shows it
+    title: qsTr("Settings")
     width: Math.min(780, (parent ? parent.width : 800) - 32)
     height: Math.min(580, (parent ? parent.height : 700) - 32)
     padding: 0
@@ -55,7 +57,9 @@ BtDialog {
               desc: qsTr("Number of undo steps kept in memory. Higher values use more RAM for large puzzles."),
               opts: [25, 50, 100, 200, 500] },
             { key: "tooltips", prop: "tooltips", type: "switch", title: qsTr("Show tooltips"),
-              desc: qsTr("Show short help text when the mouse rests on buttons and other controls.") }
+              desc: qsTr("Show short help text when the mouse rests on buttons and other controls.") },
+            { key: "checkForUpdates", prop: "checkForUpdates", type: "switch", title: qsTr("Check for updates at launch"),
+              desc: qsTr("At most once a day, ask GitHub whether a newer BurrTools release exists and offer its release notes. Help › Check for updates asks at any time.") }
         ] },
         { id: "view3d", name: qsTr("3D view"), rows: [
             { key: "viewCube", prop: "showViewCube", type: "switch", title: qsTr("Show view cube"),
@@ -219,7 +223,7 @@ BtDialog {
             anchors { fill: parent; leftMargin: 20; rightMargin: 12 }
             spacing: 16
             Text {
-                text: qsTr("Settings")
+                text: root.title
                 color: Theme.text
                 font.pixelSize: Theme.fontDialogTitle
                 font.weight: Font.Bold
@@ -278,6 +282,7 @@ BtDialog {
                             focusPolicy: Qt.StrongFocus
                             Accessible.role: Accessible.PageTab
                             Accessible.name: modelData.name
+                            Accessible.selected: current
                             onClicked: {
                                 search.text = ""
                                 root.page = modelData.id

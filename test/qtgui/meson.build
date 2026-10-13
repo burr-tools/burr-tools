@@ -38,7 +38,7 @@ if qt6_test_dep.found()
     cpp_args: qt_test_args + qt_macos_args + (qtgui_dxbc ? ['-DBURRTOOLS_DXBC=1'] : []),
     link_args: qt_macos_args,
     build_rpath: qt_build_rpath,
-    dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
+    dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep, httpget_dep],
   )
 
   test('qtgui', test_qtgui,
@@ -55,7 +55,7 @@ if qt6_test_dep.found()
     cpp_args: qt_test_args + qt_macos_args,
     link_args: qt_macos_args,
     build_rpath: qt_build_rpath,
-    dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep],
+    dependencies: [qt6_test_dep, thread_dep, zlib_dep, manifold_dep, httpget_dep],
   )
 
   # where the reference images are, and where grabs that did not match go

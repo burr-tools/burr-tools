@@ -58,6 +58,18 @@ TestCase {
         compare(App.document.fileName, file)
     }
 
+    // a file's messages (its comment, an unfinished search) come up one by
+    // one and are modal too; a user answers them before anything else
+    function dismissMessages() {
+        for (let i = 0; i < 5; i++) {
+            wait(50)                        // the next opens once the last closed
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                return
+            m.close()
+        }
+    }
+
     function test_convertListsTheTargetsAndConverts() {
         load("PelikanBurr.xmpuzzle")
         const targets = App.tools.convertTargets()
@@ -146,6 +158,7 @@ TestCase {
 
     function test_dialogsBlockTheShortcuts() {
         load("PelikanBurr.xmpuzzle")
+        dismissMessages()
         const d = open("status", "tools.status.dialog")
         verify(win.modalOpen)
         const shortcuts = findChild(win, "shell.shortcuts")

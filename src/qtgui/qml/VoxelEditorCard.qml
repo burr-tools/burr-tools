@@ -27,6 +27,10 @@ Card {
     headerExtras: [
         Rectangle { // ①
             objectName: "entities.editor.voxelType"
+            // read-only, so no Tab stop: assistive tech reads its note from here
+            Accessible.role: Accessible.StaticText
+            Accessible.name: qsTr("Voxel type: %1").arg(App.document.gridTypeName)
+            Accessible.description: typeTip.text
             height: 22
             width: typeRow.implicitWidth + 16
             radius: 11
@@ -69,6 +73,7 @@ Card {
             }
             HoverHandler { id: typeHover }
             BtToolTip {
+                id: typeTip
                 shown: typeHover.hovered
                 text: qsTr("Voxel type: %1 — fixed when the file is created (File › New); it cannot be changed afterwards").arg(App.document.gridTypeName)
             }
@@ -77,6 +82,7 @@ Card {
     headerActions: [
         IconButton { // ②
             objectName: "entities.editor.focus2d"
+            toggle: true
             iconName: App.layout.focus === LayoutController.Focus2d ? "unfocus" : "focus"
             on: App.layout.focus === LayoutController.Focus2d
             tip: qsTr("Focus 2D editor (Esc to exit)")

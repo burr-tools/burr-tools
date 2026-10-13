@@ -23,6 +23,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "tools.convert.dialog"
+    defaultButton: okButton
     title: qsTr("Convert puzzle")
     width: 440
 
@@ -74,6 +75,7 @@ BtDialog {
             BtButton {
                 objectName: "tools.convert.ok"
                 text: root.targets.length > 0 ? qsTr("Convert") : qsTr("OK")
+                id: okButton
                 primary: true
                 onClicked: root.targets.length > 0 ? root.accept() : root.reject()
             }

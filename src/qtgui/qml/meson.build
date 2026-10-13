@@ -48,6 +48,7 @@ qtgui_qml_files = files(
   'StatusDialog.qml',
   'StlExportDialog.qml',
   'ToolbarButton.qml',
+  'UpdateDialog.qml',
   'VectorExportDialog.qml',
   'ViewportCard.qml',
   'VoxelEditorCard.qml',

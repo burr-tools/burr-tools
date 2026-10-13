@@ -22,6 +22,8 @@
 #define BTQT_KEYBOARDCUES_H
 
 #include <QObject>
+
+#include <functional>
 #include <QtQml/qqmlregistration.h>
 
 /* Whether menu labels underline their access keys now.
@@ -62,6 +64,10 @@ public:
    * macOS, and Alt reaches no menus */
   void setMenuKeys(const QString & keys) { m_menuKeys = keys.toUpper(); }
 
+  /* asked before Alt arms or opens a menu: true while a dialog is up, which
+   * the menus must not open over (nor take the letters typed into it) */
+  void setBlockedBy(std::function<bool()> blocked) { m_blocked = std::move(blocked); }
+
   /* "&File" -> "File", or "<u>F</u>ile" while the access keys show */
   Q_INVOKABLE static QString accessKeyText(const QString & label, bool show);
 
@@ -100,6 +106,8 @@ private:
   bool m_altAlone = false;     // Alt is down, nothing else since
   bool m_armed = false;
   QString m_menuKeys;
+  std::function<bool()> m_blocked;
+  bool blocked(void) const { return m_blocked && m_blocked(); }
 };
 
 #endif

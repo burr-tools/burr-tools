@@ -49,9 +49,18 @@ namespace btui {
   inline float darkShade(float f) { return f * 0.9f; }
   inline float lightShade(float f) { return 1.0f - 0.9f * (1.0f - f); }
 
-  /* true when white text reads better than black on the shape's colour
-   * (legacy contrastPieceColor)
-   */
+  /* WCAG 2 relative luminance of an sRGB colour, and the contrast ratio of
+   * two (1 to 21) */
+  float relativeLuminance(const Rgb & c);
+  float contrastRatio(const Rgb & a, const Rgb & b);
+
+  /* Whether text on this colour -- the shape's -- is white rather than
+   * black: whichever contrasts more, by WCAG's measure, so the better of
+   * the two (always at least 4.5:1) is the one drawn. Legacy's weighted
+   * channel sum (contrastPieceColor) chose white on red, magenta and some
+   * greens at 3 to 4:1. One rule for every chip, list and the 3D view's
+   * tag. */
+  bool prefersWhiteText(const Rgb & background);
   bool prefersWhiteText(int shape);
 }
 

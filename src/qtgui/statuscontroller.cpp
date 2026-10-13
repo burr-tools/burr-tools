@@ -20,6 +20,8 @@
  */
 #include "statuscontroller.h"
 
+#include <QTextDocumentFragment>
+
 StatusController::StatusController(QObject * parent) : QObject(parent) {
   m_timer.setSingleShot(true);
   m_timer.setInterval(flashMs);
@@ -46,12 +48,19 @@ void StatusController::setCursorText(const QString & t) {
 
 void StatusController::flash(const QString & text) {
   m_flash = text.toHtmlEscaped();
+  m_lastMessage = text;
   m_flashing = true;
   m_timer.start();
   emit changed();
+  emit announced(text);
 }
 
 QString StatusController::shapeText(unsigned int shapeIndex, unsigned int fixed, unsigned int variable) {
   return QStringLiteral("Shape <b>S%1</b> has <b>%2</b> voxels (%3 fixed, %4 variable)")
     .arg(shapeIndex + 1).arg(fixed + variable).arg(fixed).arg(variable);
+}
+
+QString StatusController::plainText(void) const {
+  // the bar's markup (bold ids and counts) read as words, not tags
+  return QTextDocumentFragment::fromHtml(text()).toPlainText();
 }

@@ -26,6 +26,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "export.vector.dialog"
+    defaultButton: okButton
     title: qsTr("Export vector image")
     width: 480
 
@@ -92,6 +93,7 @@ BtDialog {
             BtButton {
                 objectName: "export.vector.export"
                 text: qsTr("Export…")
+                id: okButton
                 primary: true
                 onClicked: {
                     const ext = App.viewport.vectorExtension(root.format)

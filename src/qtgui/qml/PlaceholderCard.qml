@@ -5,6 +5,7 @@ import BurrTools.Ui
 Card {
     id: root
     property string note
+    collapseObjectName: objectName + ".collapse"     // "puzzle.left.collapse", ...
 
     Text {
         anchors.centerIn: parent

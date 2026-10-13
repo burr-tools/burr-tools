@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -29,12 +31,15 @@ Card {
     headerExtras: [
         Rectangle { // ①
             objectName: "entities.shapes.count"
+            Accessible.role: Accessible.StaticText
+            Accessible.name: qsTr("%1 shapes").arg(App.shapes.count)
             height: 20
             width: Math.max(24, countText.implicitWidth + 12)
             radius: 10
             color: Theme.muted
             Text {
                 id: countText
+                Accessible.ignored: true
                 anchors.centerIn: parent
                 text: App.shapes.count
                 color: Theme.panel
@@ -56,6 +61,8 @@ Card {
         activeFocusOnTab: true
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        Accessible.role: Accessible.List
+        Accessible.name: qsTr("Shapes")
 
         Keys.onUpPressed: App.shapes.select(Math.max(0, App.shapes.selected - 1))
         Keys.onDownPressed: App.shapes.select(App.shapes.selected + 1)
@@ -68,14 +75,21 @@ Card {
             required property color chipColor
             required property color chipTextColor
             required property int weight
+            readonly property bool selected: index === App.shapes.selected
 
             objectName: "entities.shapes.row." + index
             width: ListView.view.width
             height: Theme.listRow
             radius: Theme.radiusControl
-            color: index === App.shapes.selected ? Theme.accentSoft : (hover.hovered ? Theme.panel2 : "transparent")
-            border.width: index === App.shapes.selected ? 1 : 0
-            border.color: Theme.accentEdge
+            color: selected ? Theme.accentSoft : (hover.hovered ? Theme.panel2 : "transparent")
+            // with the keyboard in the list, the selected row is ringed in the accent
+            border.width: selected ? (list.activeFocus ? 2 : 1) : 0
+            border.color: list.activeFocus ? Theme.accent : Theme.accentEdge
+            Accessible.role: Accessible.ListItem
+            Accessible.name: weight !== 1 ? qsTr("%1 %2, weight %3").arg(idText).arg(label).arg(weight) : idText + " " + label
+            Accessible.selectable: true
+            Accessible.selected: selected
+            Accessible.onPressAction: App.shapes.select(row.index)
 
             HoverHandler { id: hover }
             TapHandler {
@@ -93,6 +107,7 @@ Card {
                     color: row.chipColor
                     Text {
                         id: chipText
+                        Accessible.ignored: true          // the row's name says it
                         anchors.centerIn: parent
                         text: row.idText
                         color: row.chipTextColor
@@ -102,6 +117,7 @@ Card {
                 }
                 Text { // ④
                     objectName: "entities.shapes.row." + row.index + ".label"
+                    Accessible.ignored: true
                     anchors.verticalCenter: parent.verticalCenter
                     width: row.width - 120
                     text: row.label
@@ -121,6 +137,7 @@ Card {
                 border.color: Theme.line
                 Text {
                     id: weightText
+                    Accessible.ignored: true
                     anchors.centerIn: parent
                     text: "W" + row.weight
                     color: Theme.muted

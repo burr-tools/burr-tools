@@ -51,7 +51,10 @@ FocusScope {
                 Accessible.role: Accessible.RadioButton
                 Accessible.name: modelData.label
                 Accessible.checked: root.value === modelData.value
-                onClicked: root.activated(modelData.value)
+                onClicked: {
+                    root.forceActiveFocus(Qt.MouseFocusReason)      // Tab goes on from here
+                    root.activated(modelData.value)
+                }
                 background: Rectangle {
                     radius: Theme.radiusChip
                     color: root.value === segment.modelData.value ? Theme.panel : "transparent"

@@ -24,6 +24,7 @@ import BurrTools.Ui
 BtDialog {
     id: root
     objectName: "shell.newfile.dialog"
+    defaultButton: okButton
     title: qsTr("New puzzle — select the voxel type")
     width: 460
 
@@ -64,7 +65,7 @@ BtDialog {
             anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             spacing: 8
             BtButton { objectName: "shell.newfile.cancel"; text: qsTr("Cancel"); onClicked: root.reject() }
-            BtButton { objectName: "shell.newfile.ok"; text: qsTr("Create"); primary: true; onClicked: root.accept() }
+            BtButton { id: okButton; objectName: "shell.newfile.ok"; text: qsTr("Create"); primary: true; onClicked: root.accept() }
         }
     }
 }

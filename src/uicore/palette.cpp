@@ -20,6 +20,7 @@
  */
 #include "palette.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace btui {
@@ -113,10 +114,21 @@ namespace btui {
     return { r + jr[j] * 0.5f * ramp(r), g + jg[j] * 0.4f * ramp(g), b + jb[j] * 0.7f * ramp(b) };
   }
 
+  float relativeLuminance(const Rgb & c) {
+    auto lin = [](float v) { return v <= 0.04045f ? v / 12.92f : std::pow((v + 0.055f) / 1.055f, 2.4f); };
+    return 0.2126f * lin(c.r) + 0.7152f * lin(c.g) + 0.0722f * lin(c.b);
+  }
+
+  float contrastRatio(const Rgb & a, const Rgb & b) {
+    const float la = relativeLuminance(a), lb = relativeLuminance(b);
+    return (std::max(la, lb) + 0.05f) / (std::min(la, lb) + 0.05f);
+  }
+
+  bool prefersWhiteText(const Rgb & background) {
+    return contrastRatio(background, { 1, 1, 1 }) > contrastRatio(background, { 0, 0, 0 });
+  }
+
   bool prefersWhiteText(int shape) {
-    // the integer channels legacy uses: truncation of value*255
-    auto ch = [](float f) { return static_cast<unsigned int>(f * 255); };
-    Rgb c = pieceColor(shape);
-    return 3 * ch(c.r) + 6 * ch(c.g) + ch(c.b) < 1275;
+    return prefersWhiteText(pieceColor(shape));
   }
 }

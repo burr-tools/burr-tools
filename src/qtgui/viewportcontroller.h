@@ -69,6 +69,8 @@ class ViewportController : public SceneController {
   Q_PROPERTY(QString shapeId READ shapeId NOTIFY sceneChanged FINAL)
   Q_PROPERTY(QString shapeLabel READ shapeLabel NOTIFY sceneChanged FINAL)
   Q_PROPERTY(QColor shapeColor READ shapeColor NOTIFY sceneChanged FINAL)
+  // the text on that colour (the view tag): the shape list's choice, one rule
+  Q_PROPERTY(QColor shapeTextColor READ shapeTextColor NOTIFY sceneChanged FINAL)
 
 public:
 
@@ -103,6 +105,7 @@ public:
   QString shapeId(void) const;
   QString shapeLabel(void) const;
   QColor shapeColor(void) const;
+  QColor shapeTextColor(void) const;
 
   Q_INVOKABLE void layerStep(int delta);
 

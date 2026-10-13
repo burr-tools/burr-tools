@@ -27,6 +27,8 @@ ListView { // ①
     currentIndex: App.shapes.selected      // keeps the selected one in view
     boundsBehavior: Flickable.StopAtBounds
     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 4 }
+    Accessible.role: Accessible.List
+    Accessible.name: qsTr("Shapes")
 
     delegate: Item { // ②
         id: row
@@ -61,6 +63,7 @@ ListView { // ①
                 width: parent.width - 4
                 horizontalAlignment: Text.AlignHCenter
                 text: row.idText
+                Accessible.ignored: true
                 color: row.chipTextColor
                 font.pixelSize: Theme.fontMicro
                 font.weight: Font.Bold
@@ -74,7 +77,10 @@ ListView { // ①
             shown: hover.hovered
             text: row.label.length > 0 ? row.idText + "  " + row.label : row.idText
         }
-        Accessible.role: Accessible.Button
-        Accessible.name: row.idText
+        Accessible.role: Accessible.ListItem
+        Accessible.name: row.label.length > 0 ? row.idText + " " + row.label : row.idText
+        Accessible.selectable: true
+        Accessible.selected: row.selected
+        Accessible.onPressAction: App.shapes.select(row.index)
     }
 }

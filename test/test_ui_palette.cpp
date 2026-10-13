@@ -7,6 +7,7 @@
 
 #include "../src/uicore/palette.h"
 
+#include <algorithm>
 #include <cmath>
 
 using namespace btui;
@@ -50,11 +51,20 @@ TEST_CASE("copies of a shape get distinct colours inside [0, 1]", "[ui][palette]
   }
 }
 
-TEST_CASE("text contrast follows the legacy weighting", "[ui][palette]") {
+TEST_CASE("chip text is whichever of white and black contrasts more, always at least 4.5:1", "[ui][palette]") {
   CHECK(prefersWhiteText(0));        // blue
   CHECK_FALSE(prefersWhiteText(1));  // green
   CHECK_FALSE(prefersWhiteText(3));  // cyan
-  CHECK(prefersWhiteText(2));        // red: 3*255 < 1275
+  CHECK_FALSE(prefersWhiteText(2));  // red: black 5.3:1 (legacy's white was 4.0)
+  const Rgb white{ 1, 1, 1 }, black{ 0, 0, 0 };
+  for (int shape = 0; shape < 120; shape++) {
+    INFO("shape " << shape);
+    const Rgb c = pieceColor(shape);
+    const float onWhite = contrastRatio(c, white), onBlack = contrastRatio(c, black);
+    CHECK(prefersWhiteText(shape) == (onWhite > onBlack));
+    CHECK(std::max(onWhite, onBlack) >= 4.5f);
+  }
+  CHECK_THAT(contrastRatio(white, black), Catch::Matchers::WithinAbs(21.0, 1e-3));
 }
 
 TEST_CASE("an index a view hands over while its rows go (-1) gives a colour too", "[ui][palette]") {
