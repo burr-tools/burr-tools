@@ -158,12 +158,15 @@ void solveThread_c::run(void){
 
       action = solveThread_c::ACT_ASSEMBLING;
       a->assemble(this);
+      assemblyPhaseEnded();
 
       /* freeze the assembly cost: from here on the machine is draining the
        * disassembly queue, and charging that time to assembly too would make
        * the blend approach 1 without any of the remaining work being done
        */
       assemblyEndNs.store(steadyNowNs(), std::memory_order_relaxed);
+
+      bool assembliesStashed = false;
 
       if (disasm_pool) {
         if (!stopPressed)
@@ -172,12 +175,21 @@ void solveThread_c::run(void){
         // Move anything the pool salvaged (stop with a full queue, or
         // submits rejected after stop) to the problem for the next run.
         // Normally empty; finish() already delivered everything filed.
-        puzzle.stashAssemblies(disasm_pool->takeSalvaged());
+        auto salvaged = disasm_pool->takeSalvaged();
+        assembliesStashed = !salvaged.empty();
+        puzzle.stashAssemblies(std::move(salvaged));
       }
 
       puzzle.addTime(time(0)-startTime);
 
-      if (a->getFinished() >= 1) {
+      /* A complete search is not a complete solve while stashed assemblies
+       * are still waiting for disassembly: a stop that lands after the
+       * search ends but before the pool drains leaves exactly that. Such a
+       * run pauses, so the next start() re-submits the stash; finishing it
+       * would mark the problem solved with those assemblies uncounted, and
+       * a solved problem is never continued.
+       */
+      if (a->getFinished() >= 1 && !assembliesStashed) {
         action = solveThread_c::ACT_FINISHED;
         puzzle.finishedSolving();
       } else

@@ -280,8 +280,20 @@ private:
   // helper to stop without virtual dispatch in destructor
   void stopInternal(void);
 
-  // the call-back
+protected:
+
+  // the call-back; may be called from several assembler threads at once
   bool assembly(std::unique_ptr<assembly_c> a) override;
+
+  /* Called on the worker thread once assemble() has returned and before the
+   * disassembly pool is drained. The default does nothing. It exists so a
+   * test can act in that window, which no poll from outside the worker can
+   * hit reliably: a subclass overriding it must join the worker in its own
+   * destructor, before its part of the object is torn down.
+   */
+  virtual void assemblyPhaseEnded(void) {}
+
+private:
 
   // Shared thread budget for the search (null when uncapped).
   ThreadBudget *threadBudget() override { return threadBudget_.get(); }
