@@ -22,6 +22,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <atomic>
+#include <mutex>
 
 namespace {
 
@@ -550,6 +551,85 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
       CHECK(first_phase_assemblies == 96);
     }
   }
+}
+
+namespace {
+
+/* Stops the solve between the assembler completing its search and the
+ * disassembly pool draining. The first assembly found is held back and only
+ * handed to the pool after stop(), so the pool salvages it instead of
+ * disassembling it: the run ends with the search complete but an assembly
+ * still undisassembled, which is the state a GUI Stop lands in when it
+ * arrives just as a fast search finishes.
+ */
+class stopAfterSearchSolveThread_c : public solveThread_c {
+  std::mutex heldMutex;
+  std::unique_ptr<assembly_c> held;
+
+public:
+  using solveThread_c::solveThread_c;
+
+  // assemblyPhaseEnded() is called on the worker: join it while this
+  // subclass is still intact
+  ~stopAfterSearchSolveThread_c() override { joinThread(); }
+
+protected:
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    {
+      std::lock_guard<std::mutex> lock(heldMutex);
+      if (!held) {
+        held = std::move(a);
+        return true;
+      }
+    }
+    return solveThread_c::assembly(std::move(a));
+  }
+
+  void assemblyPhaseEnded(void) override {
+    stop();
+    std::lock_guard<std::mutex> lock(heldMutex);
+    if (held)
+      solveThread_c::assembly(std::move(held));
+  }
+};
+
+}
+
+TEST_CASE("solveThread_c: a stop after the search completes stays resumable until every assembly is disassembled", "[disasm][pool][solvethread]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  const int par = solveThread_c::PAR_DISASSM |
+                  solveThread_c::PAR_KEEP_ROTATIONS |
+                  solveThread_c::PAR_KEEP_MIRROR;
+
+  {
+    stopAfterSearchSolveThread_c st1(*problem, par);
+    REQUIRE(st1.start(false));
+    while (st1.isRunning())
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // The search is complete, but the held-back assembly was salvaged
+    // rather than disassembled, so the solve is paused, not finished.
+    REQUIRE(problem->getAssembler() != nullptr);
+    CHECK(problem->getAssembler()->getFinished() >= 1);
+    CHECK(st1.currentAction() == solveThread_c::ACT_PAUSING);
+    CHECK(problem->getSolveState() == SS_SOLVING);
+  }
+
+  // Continue disassembles the stashed assembly and only then finishes.
+  solveThread_c st2(*problem, par);
+  REQUIRE(st2.start(false));
+  while (st2.isRunning())
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+  CHECK(problem->getSolveState() == SS_SOLVED);
+  CHECK(problem->getNumAssemblies() == 12);
+  CHECK(problem->getNumSolutions() == 1);
 }
 
 TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvethread][threads]") {
