@@ -302,6 +302,9 @@ static int solve(int argv, char* args[]) {
             cout << "Something went wrong the program can not solve your puzzle definitions.\n";
             cout << "You should send the puzzle file to the programmer!\n";
             break;
+          case assembler_c::ERR_CAN_NOT_START:
+            cout << "The problem can not be started in its current state, use -R to solve it again\n";
+            break;
           case assembler_c::ERR_NONE:
             cout << "unknown\n";
             break;
