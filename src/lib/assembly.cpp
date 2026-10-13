@@ -788,16 +788,16 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
-std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
+std::vector<std::unique_ptr<voxel_c>> assembly_c::placedPieces(const problem_c & puz, int & maxX, int & maxY, int & maxZ) const {
 
   std::vector<std::unique_ptr<voxel_c>> pieces(placements.size());
 
-  int maxX = 1;
-  int maxY = 1;
-  int maxZ = 1;
+  maxX = 1;
+  maxY = 1;
+  maxZ = 1;
 
-  // now iterate over all shapes in the assembly and find out their placement
-  // to create the proper sized result voxel space
+  // iterate over all shapes in the assembly and find out their placement
+  // to find the size of the voxel space holding the whole assembly
   for (unsigned int i = 0; i < placements.size(); i++)
     if (placements[i].transformation != UNPLACED_TRANS) {
 
@@ -821,30 +821,65 @@ std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
       pieces[i] = std::move(pc);
     }
 
+  return pieces;
+}
+
+/* copy the filled voxels of a placed piece into a space, at its position */
+static void placeInto(voxel_c & space, const voxel_c & pc, int dx, int dy, int dz) {
+  for (unsigned int x = 0; x < pc.getX(); x++)
+    for (unsigned int y = 0; y < pc.getY(); y++)
+      for (unsigned int z = 0; z < pc.getZ(); z++) {
+        if (pc.getState(x, y, z) != voxel_c::VX_EMPTY)
+          space.set(x+dx, y+dy, z+dz, pc.get(x, y, z));
+      }
+}
+
+std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
+
+  int maxX, maxY, maxZ;
+  std::vector<std::unique_ptr<voxel_c>> pieces = placedPieces(puz, maxX, maxY, maxZ);
+
   // create a shape identical in size with the result shape of the problem
   std::unique_ptr<voxel_c> res(puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0));
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result
   for (unsigned int i = 0; i < placements.size(); i++)
-    if (placements[i].transformation != UNPLACED_TRANS) {
-
-      const voxel_c * pc = pieces[i].get();
-
-      int dx = (int)placements[i].xpos - (int)pc->getHx();
-      int dy = (int)placements[i].ypos - (int)pc->getHy();
-      int dz = (int)placements[i].zpos - (int)pc->getHz();
-
-      for (unsigned int x = 0; x < pc->getX(); x++)
-        for (unsigned int y = 0; y < pc->getY(); y++)
-          for (unsigned int z = 0; z < pc->getZ(); z++) {
-            if (pc->getState(x, y, z) != voxel_c::VX_EMPTY)
-              res->set(x+dx, y+dy, z+dz, pc->get(x, y, z));
-          }
-    }
+    if (pieces[i])
+      placeInto(*res, *pieces[i],
+                (int)placements[i].xpos - (int)pieces[i]->getHx(),
+                (int)placements[i].ypos - (int)pieces[i]->getHy(),
+                (int)placements[i].zpos - (int)pieces[i]->getHz());
 
   res->skipRecalcBoundingBox(false);
   res->initHotspot();
+  return res;
+}
+
+std::vector<std::unique_ptr<voxel_c>> assembly_c::createPieceSpaces(const problem_c & puz) const {
+
+  int maxX, maxY, maxZ;
+  std::vector<std::unique_ptr<voxel_c>> pieces = placedPieces(puz, maxX, maxY, maxZ);
+
+  std::vector<std::unique_ptr<voxel_c>> res;
+
+  // each piece into its own space of the size of the whole assembly
+  for (unsigned int i = 0; i < placements.size(); i++)
+    if (pieces[i]) {
+
+      std::unique_ptr<voxel_c> space(puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0));
+      space->skipRecalcBoundingBox(true);
+
+      placeInto(*space, *pieces[i],
+                (int)placements[i].xpos - (int)pieces[i]->getHx(),
+                (int)placements[i].ypos - (int)pieces[i]->getHy(),
+                (int)placements[i].zpos - (int)pieces[i]->getHz());
+
+      space->skipRecalcBoundingBox(false);
+      space->initHotspot();
+      res.push_back(std::move(space));
+    }
+
   return res;
 }
 

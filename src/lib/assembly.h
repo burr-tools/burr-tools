@@ -187,6 +187,13 @@ private:
    */
   bool validSolution(const problem_c & puz) const;
 
+  /**
+   * the placed pieces, each transformed into its orientation in the
+   * assembly (an empty pointer for a piece that isn't placed), and the
+   * size of the voxel space that holds the whole assembly
+   */
+  std::vector<std::unique_ptr<voxel_c>> placedPieces(const problem_c & puz, int & maxX, int & maxY, int & maxZ) const;
+
 public:
 
   assembly_c(const gridType_c * gt) : sym(gt->getSymmetries()) {}
@@ -307,6 +314,15 @@ public:
    * all pieces put into the space
    */
   std::unique_ptr<voxel_c> createSpace(const problem_c & puz) const;
+
+  /** calculate one voxelspace per placed piece of the assembly. All
+   * spaces have the size of the whole assembly, so the pieces keep their
+   * placement relative to one another, and every grid's mesh generator
+   * positions them correctly. This is used to export an assembled solution
+   * with each piece meshed on its own (e.g. STL export, where each piece
+   * gets its own offset and bevel)
+   */
+  std::vector<std::unique_ptr<voxel_c>> createPieceSpaces(const problem_c & puz) const;
 
   void removePieces(unsigned int from, unsigned int cnt);
 

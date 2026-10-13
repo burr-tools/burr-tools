@@ -13,6 +13,7 @@
 #include "tools/gzstream.h"
 #include "tools/xml.h"
 
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1414,6 +1415,57 @@ TEST_CASE("assembly: createSpace assembles a voxel space matching the problem's 
             break;
         }
       }
+}
+
+TEST_CASE("assembly: createPieceSpaces gives each placed piece its own space, together exactly createSpace's",
+          "[model][assembly]") {
+  /* every example puzzle (all grid types), the first saved solution of
+     each problem that has one */
+  unsigned int checked = 0;
+  for (const auto & entry : std::filesystem::directory_iterator("examples")) {
+    if (entry.path().extension() != ".xmpuzzle") continue;
+    std::unique_ptr<puzzle_c> puzzle = loadFreshPuzzle(entry.path().string().c_str());
+
+    for (unsigned int p = 0; p < puzzle->getNumberOfProblems(); p++) {
+      problem_c & pr = *puzzle->getProblem(p);
+      if (pr.getNumberOfSavedSolutions() == 0) continue;
+      const assembly_c * assm = pr.getSavedSolution(0)->getAssembly();
+      if (!assm) continue;
+      INFO(entry.path().filename().string() << " problem " << p);
+
+      std::unique_ptr<voxel_c> whole = assm->createSpace(pr);
+      std::vector<std::unique_ptr<voxel_c>> pieces = assm->createPieceSpaces(pr);
+
+      unsigned int placed = 0;
+      for (unsigned int i = 0; i < assm->placementCount(); i++)
+        if (assm->isPlaced(i)) placed++;
+      REQUIRE(pieces.size() == placed);
+
+      for (const std::unique_ptr<voxel_c> & piece : pieces) {
+        REQUIRE(piece->getX() == whole->getX());
+        REQUIRE(piece->getY() == whole->getY());
+        REQUIRE(piece->getZ() == whole->getZ());
+      }
+
+      /* no cell in two pieces, and each cell is in a piece exactly when
+         createSpace fills it, with the same value */
+      for (unsigned int z = 0; z < whole->getZ(); z++)
+        for (unsigned int y = 0; y < whole->getY(); y++)
+          for (unsigned int x = 0; x < whole->getX(); x++) {
+            unsigned int in = 0;
+            for (const std::unique_ptr<voxel_c> & piece : pieces)
+              if (piece->getState(x, y, z) != voxel_c::VX_EMPTY) {
+                in++;
+                REQUIRE(piece->get(x, y, z) == whole->get(x, y, z));
+              }
+            INFO("cell " << x << "," << y << "," << z);
+            REQUIRE(in <= 1);
+            REQUIRE((in == 1) == (whole->getState(x, y, z) != voxel_c::VX_EMPTY));
+          }
+      checked++;
+    }
+  }
+  REQUIRE(checked > 0);
 }
 
 /* ------------------------------------------------------------------ */
