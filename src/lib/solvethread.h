@@ -71,6 +71,26 @@ class problem_c;
  * - No pool-level stop flag may refuse push_tasks: the resume depends on
  *   requeue pushes staying accepted, which is why AssemblyTaskPool has no
  *   requestStop()/abort() -- stop arrives via the run and jthread tokens.
+ *
+ * Lifecycle invariants (LIFECYCLE-n). These are the canonical definitions;
+ * tests and comments cite the IDs, the design doc repeats them with
+ * enforcement pointers.
+ *
+ * - LIFECYCLE-1: ACT_FINISHED implies SS_SOLVED with a complete search
+ *   (getFinished() >= 1) and an empty stash. A complete search with salvaged
+ *   assemblies outstanding ends ACT_PAUSING instead, so the next start()
+ *   re-submits them first.
+ * - LIFECYCLE-2: ACT_PAUSING implies SS_SOLVING with the assembler present;
+ *   the run is resumable.
+ * - LIFECYCLE-3: stop() is total and idempotent: accepted in every action,
+ *   effective only while preparing, reducing, assembling or disassembling.
+ * - LIFECYCLE-4: start() requires a fresh object (one object per run); a
+ *   problem that canStartSolving() denies fails the run with
+ *   ACT_ERROR/ERR_CAN_NOT_START, leaving the problem untouched.
+ * - LIFECYCLE-5: every found assembly is enqueued, salvaged or delivered,
+ *   never lost; the stash is re-submitted first on the next run.
+ * - LIFECYCLE-6: takeSalvaged() runs only after finish(); pool drain only
+ *   after the workers have joined (see the ordering rules above).
  */
 class solveThread_c : public assembler_cb {
 
@@ -303,7 +323,12 @@ private:
 public:
 
   // let the thread start
-  // returns true, if everything went well, false otherwise
+  // returns true, if everything went well, false on thread-creation failure.
+  // Throws assert_exception (all build modes) when started on an
+  // already-started object: one object per run. An unstartable problem is
+  // rejected worker-side at run() entry instead (run ends in ACT_ERROR with
+  // ERR_CAN_NOT_START, leaving the problem untouched), so polling frontends
+  // keep working.
   bool start(bool stop_after_prep = false);
 
   /* Whole-solve progress in [0,1] for the GUI's bar and its time estimate.

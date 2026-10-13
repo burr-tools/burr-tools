@@ -139,6 +139,7 @@ public:
     ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
     ERR_CAN_NOT_RESTORE_INTERRUPTED, ///< happens on restore, when the saved search was a parallel one that got interrupted and is therefore not resumable
+    ERR_CAN_NOT_START,           ///< happens when solving is started on a problem that is not startable (already solved or invalidated); reset it first
     ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
@@ -151,6 +152,7 @@ public:
       case ERR_CAN_NOT_RESTORE_VERSION: return "Impossible to restore saved state: internal format changed";
       case ERR_CAN_NOT_RESTORE_SYNTAX: return "Impossible to restore saved state: corrupt data";
       case ERR_CAN_NOT_RESTORE_INTERRUPTED: return "The saved search was running on several cores when it was stopped, which can not be continued; it has been reset and must be started again";
+      case ERR_CAN_NOT_START: return "The problem can not be started in its current state; reset it and start again";
       case ERR_PUZZLE_UNHANDABLE: return "Puzzle contains unhandable definitions";
       default: return "Unknown error";
     }
