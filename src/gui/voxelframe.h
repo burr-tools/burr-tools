@@ -346,7 +346,7 @@ class voxelFrame_c : public Fl_Gl_Window {
     /* Home pan+zoom smooth animation (driven by the same cubeAnimCb timer). */
     double homeAnimPanX0 = 0, homeAnimPanY0 = 0;
     double homeAnimSize0 = 1, homeAnimSize1 = 1;
-    Fl_Timestamp homeAnimStart;
+    Fl_Timestamp homeAnimStart{};
     bool homeAnimating = false;
     void (*zoomAnimCb)(void *, double) = nullptr;
     void * zoomAnimUser = nullptr;

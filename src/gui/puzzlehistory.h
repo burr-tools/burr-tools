@@ -118,16 +118,16 @@ private:
   };
 
   struct partSnap_t {
-    unsigned int shapeId;
-    unsigned int min;
-    unsigned int max;
+    unsigned int shapeId = 0;
+    unsigned int min = 0;
+    unsigned int max = 0;
     std::vector<groupSnap_t> groups;
   };
 
   struct problemSnap_t {
     std::string name;
-    bool resultValid;
-    unsigned int resultId;
+    bool resultValid = false;
+    unsigned int resultId = 0;
     std::set<uint32_t> colorConstraints;
     std::vector<partSnap_t> parts;
   };
