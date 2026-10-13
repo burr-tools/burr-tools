@@ -44,6 +44,32 @@ void solveThread_c::run(void){
 
   try {
 
+    /* Lifecycle enforcement (LIFECYCLE-4): reject unstartable problems here,
+     * at worker entry, so every outcome stays a terminal action for polling
+     * frontends. This sits above both the assembler-reuse branch and the
+     * fresh setAssembler() path.
+     *
+     * Rejection reports ACT_ERROR with ERR_CAN_NOT_START and leaves the
+     * problem untouched for the next attempt; every frontend already
+     * handles the ERROR state.
+     *
+     * TOCTOU note: this check and setAssembler()'s own preconditions below
+     * overlap deliberately, with different failure modes. This gate is the
+     * usage-error path (solved/invalidated problem, no reset yet): it is
+     * non-destructive. setAssembler()'s bt_te() throws are unreachable
+     * defense-in-depth against programming errors -- a state change between
+     * this check and that call -- and end in ACT_ASSERT with a full reset,
+     * which is only acceptable because that interleaving cannot happen
+     * through the GUI (buttons are disabled mid-run) or burrTxt2 (gated on
+     * canStartSolving() before start()). Do not "simplify" one away.
+     */
+    if (!puzzle.canStartSolving()) {
+      errState = assembler_c::ERR_CAN_NOT_START;
+      errParam = static_cast<int>(puzzle.getSolveState());
+      action = solveThread_c::ACT_ERROR;
+      return;
+    }
+
     /* local pointer for this thread's own use; the shared member `assm` is
      * only written (published) here and read by the GUI thread
      */
@@ -444,6 +470,14 @@ void solveThread_c::stop(void) {
 }
 
 bool solveThread_c::start(bool stop_after_prep) {
+
+  /* Lifecycle enforcement (LIFECYCLE-4): restarting an already-started
+   * object is a programming error, so it throws via bt_te(). The bool return
+   * stays reserved for thread-creation failure, which the GUI already reports.
+   * Unstartable problems are rejected worker-side at run() entry; see there.
+   */
+  if (running.load(std::memory_order_acquire) || worker_thread.joinable())
+    bt_te("solveThread_c::start: thread already started, use one object per run");
 
   stopPressed = false;
   return_after_prep = stop_after_prep;
