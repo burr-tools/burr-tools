@@ -3551,6 +3551,18 @@ void mainWindow_c::update(void) {
         fl_message("Impossible to restore the saved state because something with the data is wrong.\n"
                    "You have to start from the beginning, sorry");
         break;
+      case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+        fl_message("The saved search was running on several cores when it was stopped.\n"
+                   "It can not be continued, so it has been reset -- please start it again.");
+        break;
+      case assembler_c::ERR_CAN_NOT_START:
+        if (assmThread->getErrorParam() == SS_SOLVED)
+          fl_message("The problem is already solved.\n"
+                     "Use Start, not Continue, to solve it again from the beginning.");
+        else
+          fl_message("The problem can not be continued in its current state.\n"
+                     "Use Start to solve it from the beginning.");
+        break;
       case assembler_c::ERR_PUZZLE_UNHANDABLE:
         fl_message("Something went wrong the program can not solve your puzzle definitions.\n"
                    "You should send the puzzle file to the programmer!");
