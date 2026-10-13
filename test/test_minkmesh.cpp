@@ -5,6 +5,7 @@
 #include "lib/voxel.h"
 #include "lib/stl.h"
 #include "halfedge/polyhedron.h"
+#include "halfedge/face.h"
 
 #include <cstdlib>
 #include <memory>
@@ -207,6 +208,99 @@ TEST_CASE("Minkowski mesher: random shapes", "[minkmesh][stress]") {
  * voxel across the tagged cell face: every face of the view's mesh must
  * lie in the cell of its voxel, and a tagged cell face must face the
  * neighbour it names */
+/* Shapes with pockets, where two cells touch only along an edge but are
+ * joined around its ends through other cells: four faces meet along the
+ * edge. The body's corners used to be shared cell by cell, which made that
+ * edge one edge of four faces; Manifold repaired it with triangles without
+ * area, and the exact rebuild then traced an outline through them that
+ * isn't a face ("triangle turned over", "fewer than three corners"). */
+TEST_CASE("Minkowski mesher: shapes with pockets", "[minkmesh]") {
+  struct case_s { gridType_c::gridType g; unsigned sx, sy, sz; const char * name; };
+  const case_s cases[] = {
+    { gridType_c::GT_TRIANGULAR_PRISM, 8, 4, 3, "prism, every seventh cell missing" },
+    { gridType_c::GT_RHOMBIC, 6, 6, 6, "rhombic, the middle cell missing" },
+  };
+  for (const case_s & cs : cases) {
+    gridType_c gt(cs.g);
+    std::unique_ptr<voxel_c> v(gt.getVoxel(cs.sx, cs.sy, cs.sz, voxel_c::VX_EMPTY));
+    int mx = -1, my = -1, mz = -1;
+    double md = 1e9;
+    for (unsigned z = 0; z < cs.sz; z++)
+      for (unsigned y = 0; y < cs.sy; y++)
+        for (unsigned x = 0; x < cs.sx; x++) {
+          if (!v->validCoordinate(x, y, z)) continue;
+          if (cs.g == gridType_c::GT_TRIANGULAR_PRISM && (x + 2 * y + 3 * z) % 7 == 0) continue;
+          v->setState(x, y, z, voxel_c::VX_FILLED);
+          const double d = (x - cs.sx / 2.0) * (x - cs.sx / 2.0) + (y - cs.sy / 2.0) * (y - cs.sy / 2.0) + (z - cs.sz / 2.0) * (z - cs.sz / 2.0);
+          if (d < md) { md = d; mx = x; my = y; mz = z; }
+        }
+    if (cs.g == gridType_c::GT_RHOMBIC) v->setState(mx, my, mz, voxel_c::VX_EMPTY);
+    for (double g : { 0.0, 0.02 })
+      for (bool fills : { true, false }) {
+        std::string err;
+        std::unique_ptr<Polyhedron> p(minkMesh::polyhedron(*v, g, 0.05, fills, err));
+        INFO(cs.name << " g " << g << " fills " << fills << ": " << err);
+        REQUIRE(p);
+        CHECK(p->check(false));
+      }
+  }
+}
+
+/* On the prism grid the bits' hexagon reaches 209 (sqrt3/2) / 181 of their
+ * height sideways, so side faces land a hair less than the gap inside
+ * their cells (3.7e-6 of it). At a gap near the cells' inradius that is
+ * more than the face tagging's 1e-6, and the side faces used to lose the
+ * cell face the 3D view adds the neighbour across. */
+TEST_CASE("Minkowski mesher: prism side faces keep their cell face at a large gap", "[minkmesh][view]") {
+  gridType_c gt(gridType_c::GT_TRIANGULAR_PRISM);
+  std::unique_ptr<voxel_c> v = shape(gt, 4, 3, 2);
+  std::string err;
+  std::unique_ptr<Polyhedron> p(minkMesh::polyhedron(*v, 0.28, 0, false, err));
+  INFO(err);
+  REQUIRE(p);
+  /* every facet face whose voxel's cell has a cell face pointing the same
+   * way lies on it (a triangle of a face merged across several cells can
+   * have its centroid in a neighbouring cell that hasn't, and is left out) */
+  int checked = 0, untagged = 0;
+  for (Polyhedron::const_face_iterator it = p->fBegin(); it != p->fEnd(); ++it) {
+    const Face * f = *it;
+    if (f->_flags & FF_BEVEL_FACE) continue;
+    Vector3Df nrm = f->normal();
+    nrm.normalize();
+    unsigned int x, y, z;
+    REQUIRE(v->indexToXYZ(f->_fb_index, &x, &y, &z));
+    std::vector<float> corners;
+    int nx, ny, nz;
+    bool sameWay = false;
+    for (unsigned q = 0; v->getNeighbor(q, 0, x, y, z, &nx, &ny, &nz); q++) {
+      corners.clear();
+      v->getConnectionFace(x, y, z, (int)q, 0, 0, corners);
+      if (corners.size() < 9) continue;
+      const Vector3Df a(corners[0], corners[1], corners[2]), b(corners[3], corners[4], corners[5]), c(corners[6], corners[7], corners[8]);
+      Vector3Df cn = (b - a) ^ (c - a);
+      cn.normalize();
+      if (std::fabs(cn * nrm) > 0.9999f) {
+        /* outward: away from the cell's own centre */
+        Vector3Df centre(0, 0, 0);
+        int nc = 0;
+        for (unsigned m = 0; v->getNeighbor(m, 0, x, y, z, &nx, &ny, &nz); m++) {
+          std::vector<float> k2;
+          v->getConnectionFace(x, y, z, (int)m, 0, 0, k2);
+          for (unsigned i = 0; i + 2 < k2.size(); i += 3) { centre = centre + Vector3Df(k2[i], k2[i + 1], k2[i + 2]); nc++; }
+        }
+        centre = centre / (float)nc;
+        if (cn * (a - centre) < 0) cn = -cn;
+        if (cn * nrm > 0.9999f) sameWay = true;
+      }
+    }
+    if (!sameWay) continue;
+    checked++;
+    if (f->_fb_face < 0) untagged++;
+  }
+  CHECK(checked > 0);
+  CHECK(untagged == 0);
+}
+
 TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[minkmesh][view]") {
   const grid_test_def_s grids[] = {
     { gridType_c::GT_BRICKS, 3, 3, 2, "bricks" },

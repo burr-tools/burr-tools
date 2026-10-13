@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <tuple>
+#include <limits>
 #include <map>
 #include <set>
 #include <vector>
@@ -28,82 +29,181 @@ using manifold::vec3;
 
 const double SQRT2 = 1.4142135623730951;
 
+/* A solid without its cavities: only the shells enclosing positive
+ * volume. A printed piece never wants an enclosed void, so the voids of the
+ * voxel shape, and any a step leaves, are filled. Never applied to a sweep
+ * tube, whose one cavity is the part of the solid an inward step keeps. */
+Manifold outerShells(const Manifold & m) {
+  std::vector<Manifold> shells = m.Decompose();
+  std::vector<Manifold> outer;
+  for (const Manifold & s : shells)
+    if (s.Volume() > 0) outer.push_back(s);
+  if (outer.size() == shells.size()) return m;
+  return Manifold::BatchBoolean(outer, manifold::OpType::Add);
+}
+
 /* The shape's surface, exactly: the cell faces whose neighbour is not
  * filled (at bevel 0 and offset 0, the same enumeration
  * voxel_c::getMeshInternal uses). The faces between two filled cells
  * cancel by identity here and never reach a boolean, whose float
  * arithmetic would have to rediscover them and now and then leaves a
- * seam. Corners are shared between a cell's own faces and across the
- * faces shared with filled neighbours (their corner coordinates agree
- * exactly); two cells that touch only along an edge or at a corner keep
- * separate vertices there, which is what a manifold mesh needs. */
+ * seam.
+ *
+ * The vertices come from how the surface wraps around each point. Where
+ * two cells touch only along an edge, four faces meet there: each is paired
+ * with the face reached by turning about the edge into its own cell's side,
+ * so that every pair wraps one solid wedge and the wedges stay apart. The
+ * corners around a point that the pairings join are one vertex; where the
+ * solid only touches itself (along an edge, at a corner) a point gets one
+ * vertex per sheet. The mesh is then a manifold as it stands, and Manifold
+ * never has to repair it (which it would do with triangles without area). */
 Manifold exactBody(const voxel_c & v, std::string & err) {
-  struct corner_s { vec3 p; };
-  std::vector<corner_s> corners;
-  std::vector<size_t> parent;
-  auto find = [&](size_t i) { while (parent[i] != i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  std::map<std::pair<unsigned, std::tuple<float, float, float> >, size_t> slot;   /* (cell, exact position) -> corner */
-  auto corner = [&](unsigned cell, const vec3 & p) {
-    auto key = std::make_pair(cell, std::make_tuple((float)p.x, (float)p.y, (float)p.z));
-    auto it = slot.find(key);
-    if (it != slot.end()) return it->second;
-    corners.push_back({ p }); parent.push_back(corners.size() - 1);
-    slot[key] = corners.size() - 1;
-    return corners.size() - 1;
+  std::map<std::tuple<float, float, float>, uint64_t> pointId;
+  std::vector<vec3> points;
+  auto point = [&](float x, float y, float z) {
+    auto it = pointId.find(std::make_tuple(x, y, z));
+    if (it != pointId.end()) return it->second;
+    points.push_back(vec3(x, y, z));
+    return pointId[std::make_tuple(x, y, z)] = points.size() - 1;
   };
   auto filled = [&](int x, int y, int z) {
     return x >= 0 && y >= 0 && z >= 0 && x < (int)v.getX() && y < (int)v.getY() && z < (int)v.getZ()
       && v.validCoordinate(x, y, z) && v.getState(x, y, z) == voxel_c::VX_FILLED;
   };
-  std::vector<std::vector<size_t> > faces;
+  /* the boundary cell faces, fanned into triangles over the points */
+  std::vector<std::array<uint64_t, 3>> tris;
   std::vector<float> fc;
   int nx, ny, nz;
   for (unsigned z = 0; z < v.getZ(); z++)
     for (unsigned y = 0; y < v.getY(); y++)
       for (unsigned x = 0; x < v.getX(); x++) {
         if (!filled(x, y, z)) continue;
-        unsigned cell = v.getIndex(x, y, z);
         for (unsigned n = 0; v.getNeighbor(n, 0, x, y, z, &nx, &ny, &nz); n++) {
+          if (filled(nx, ny, nz)) continue;
           fc.clear();
           v.getConnectionFace(x, y, z, (int)n, 0, 0, fc);
           if (fc.size() < 9) continue;
-          std::vector<size_t> face;
-          for (unsigned k = 0; k + 2 < fc.size(); k += 3) face.push_back(corner(cell, vec3(fc[k], fc[k + 1], fc[k + 2])));
-          if (filled(nx, ny, nz)) {
-            /* an interior face: its corners are the neighbour's too */
-            unsigned other = v.getIndex(nx, ny, nz);
-            for (size_t c : face) {
-              size_t o = corner(other, corners[c].p);
-              parent[find(c)] = find(o);
-            }
-          } else {
-            faces.push_back(face);
-          }
+          std::vector<uint64_t> face;
+          for (unsigned k = 0; k + 2 < fc.size(); k += 3) face.push_back(point(fc[k], fc[k + 1], fc[k + 2]));
+          for (size_t k = 1; k + 1 < face.size(); k++) tris.push_back({ face[0], face[k], face[k + 1] });
         }
       }
+  if (tris.empty()) { err = "the shape has no surface"; return Manifold(); }
+  /* the faces come all wound one way round: outward, from here on */
+  double volume6 = 0;
+  for (const auto & t : tris) volume6 += manifold::la::dot(points[t[0]], manifold::la::cross(points[t[1]], points[t[2]]));
+  if (volume6 < 0) for (auto & t : tris) std::swap(t[1], t[2]);
+
+  /* half-edge h = 3 t + c runs from corner c of triangle t to the next */
+  const size_t nh = 3 * tris.size();
+  auto from = [&](size_t h) { return tris[h / 3][h % 3]; };
+  auto to = [&](size_t h) { return tris[h / 3][(h % 3 + 1) % 3]; };
+  auto next = [](size_t h) { return h - h % 3 + (h % 3 + 1) % 3; };
+  std::map<std::pair<uint64_t, uint64_t>, std::vector<size_t>> along;
+  for (size_t h = 0; h < nh; h++) along[std::make_pair(from(h), to(h))].push_back(h);
+  /* Edges with several sheets, and how each pairs its faces: by default
+   * each face with the next one turning into its own cell's side (the
+   * wedges stay apart). Where the wedges are joined around both ends of the
+   * edge anyway (through other cells), that gives two sheets between the
+   * same two vertices, which a manifold mesh can't have; such an edge pairs
+   * each face with the next one turning into the empty side instead (the
+   * wedges join across the edge), which gives each end one vertex per sheet. */
+  std::vector<std::pair<uint64_t, uint64_t>> multi;
+  std::map<std::pair<uint64_t, uint64_t>, bool> intoEmpty;
+  for (const auto & e : along) {
+    const uint64_t a = e.first.first, b = e.first.second;
+    if (a > b) continue;
+    auto back = along.find(std::make_pair(b, a));
+    if (back == along.end() || back->second.size() != e.second.size()) { err = "the shape's cell faces do not close up into a solid"; return Manifold(); }
+    if (e.second.size() > 1) { multi.push_back(e.first); intoEmpty[e.first] = false; }
+  }
+  std::vector<size_t> twin(nh, ~(size_t)0);
+  auto pairUp = [&]() {
+    for (const auto & e : along) {
+      const uint64_t a = e.first.first, b = e.first.second;
+      if (a > b) continue;
+      const std::vector<size_t> & H = e.second;
+      const std::vector<size_t> & K = along.find(std::make_pair(b, a))->second;
+      if (H.size() == 1) { twin[H[0]] = K[0]; twin[K[0]] = H[0]; continue; }
+      const double side = intoEmpty[e.first] ? -1.0 : 1.0;
+      const vec3 d = manifold::la::normalize(points[b] - points[a]);
+      auto across = [&](size_t h) {
+        /* the direction from the edge into triangle h, perpendicular to it */
+        const vec3 c = points[tris[h / 3][(h % 3 + 2) % 3]] - points[a];
+        return manifold::la::normalize(c - d * manifold::la::dot(c, d));
+      };
+      const vec3 ref = across(H[0]);
+      auto angle = [&](size_t h) {
+        const vec3 w = across(h);
+        return std::atan2(manifold::la::dot(manifold::la::cross(ref, w), d), manifold::la::dot(ref, w));
+      };
+      auto solidTurn = [&](size_t h) {
+        /* which way about d turns from the face into the solid behind it */
+        const size_t t = h / 3;
+        const vec3 n = manifold::la::cross(points[tris[t][1]] - points[tris[t][0]], points[tris[t][2]] - points[tris[t][0]]);
+        return manifold::la::dot(manifold::la::cross(across(h), -n), d) > 0 ? 1.0 : -1.0;
+      };
+      auto pair = [&](const std::vector<size_t> & mine, const std::vector<size_t> & theirs) {
+        for (size_t h : mine) {
+          const double a0 = angle(h), turn = solidTurn(h) * side;
+          size_t best = ~(size_t)0; double bestTurn = 1e300;
+          for (size_t k : theirs) {
+            double delta = (angle(k) - a0) * turn;
+            while (delta <= 0) delta += 2 * M_PI;
+            if (delta < bestTurn) { bestTurn = delta; best = k; }
+          }
+          twin[h] = best;
+        }
+      };
+      pair(H, K);
+      pair(K, H);
+    }
+  };
+
+  /* the vertices: corners around a point joined across the pairings (the
+   * corner a half-edge starts from, and across its twin the corner of the
+   * face beyond, at the same point) */
+  std::vector<size_t> parent(nh);
+  std::function<size_t(size_t)> find = [&](size_t i) { while (parent[i] != i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (;;) {
+    pairUp();
+    for (size_t h = 0; h < nh; h++)
+      if (twin[h] == ~(size_t)0 || twin[twin[h]] != h) { err = "the shape's surface does not pair up into sheets along an edge"; return Manifold(); }
+    for (size_t h = 0; h < nh; h++) parent[h] = h;
+    for (size_t h = 0; h < nh; h++) parent[find(h)] = find(next(twin[h]));
+    /* two sheets between the same two vertices? */
+    bool switched = false;
+    for (const auto & e : multi) {
+      const std::vector<size_t> & H = along[e];
+      std::set<std::pair<size_t, size_t>> ends;
+      for (size_t h : H) ends.insert(std::make_pair(find(h), find(next(h))));
+      if (ends.size() == H.size()) continue;
+      if (intoEmpty[e]) { err = "the shape's surface has two sheets along an edge between the same corners"; return Manifold(); }
+      intoEmpty[e] = true;
+      switched = true;
+    }
+    if (!switched) break;
+  }
+
   manifold::MeshGL64 mesh;
   mesh.numProp = 3;
-  std::vector<uint64_t> index(corners.size(), ~(uint64_t)0);
-  auto vertex = [&](size_t c) {
-    size_t r = find(c);
-    if (index[r] == ~(uint64_t)0) {
-      index[r] = mesh.vertProperties.size() / 3;
-      mesh.vertProperties.push_back(corners[r].p.x); mesh.vertProperties.push_back(corners[r].p.y); mesh.vertProperties.push_back(corners[r].p.z);
+  std::vector<uint64_t> vertexOf(nh, ~(uint64_t)0);
+  mesh.triVerts.resize(nh);
+  for (size_t h = 0; h < nh; h++) {
+    const size_t r = find(h);
+    if (vertexOf[r] == ~(uint64_t)0) {
+      vertexOf[r] = mesh.vertProperties.size() / 3;
+      const vec3 & p = points[from(h)];
+      mesh.vertProperties.push_back(p.x); mesh.vertProperties.push_back(p.y); mesh.vertProperties.push_back(p.z);
     }
-    return index[r];
-  };
-  for (const std::vector<size_t> & face : faces)
-    for (size_t k = 1; k + 1 < face.size(); k++) {
-      mesh.triVerts.push_back(vertex(face[0])); mesh.triVerts.push_back(vertex(face[k])); mesh.triVerts.push_back(vertex(face[k + 1]));
-    }
+    mesh.triVerts[h] = vertexOf[r];
+  }
   Manifold m(mesh);
   if (m.Status() != Manifold::Error::NoError) { err = "the shape's cell faces do not close up into a solid"; return Manifold(); }
-  if (m.Volume() < 0) {
-    /* the faces were wound the other way round */
-    for (size_t t = 0; t + 2 < mesh.triVerts.size(); t += 3) std::swap(mesh.triVerts[t + 1], mesh.triVerts[t + 2]);
-    m = Manifold(mesh);
+  if (m.NumTri() != tris.size() || m.NumVert() != mesh.vertProperties.size() / 3) {
+    err = "the shape's surface was changed on its way into Manifold"; return Manifold();
   }
-  return m;
+  return outerShells(m);
 }
 
 /* the distinct unit face normals of one cell (the grid's facet directions
@@ -197,7 +297,7 @@ struct cellFaces_s {
  * cell holds its centroid (the 3D view removes that voxel on a click),
  * and a face lying on one of that cell's faces, g inside it, with the
  * number of that cell face (the view adds the neighbour across it). */
-bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & facets, const std::vector<cellFaces_s> & cells, double g, std::string & err) {
+bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & facets, const std::vector<cellFaces_s> & cells, double gAxial, double gSide, std::string & err) {
   manifold::MeshGL64 mesh = m.GetMeshGL64();
   const size_t np = mesh.numProp;
   const size_t nv = mesh.vertProperties.size() / np;
@@ -236,7 +336,8 @@ bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & f
     int side = -1;
     if (!cells.empty())
       for (const cellFaces_s::face_s & cf : cells[best].faces)
-        if (manifold::la::dot(cf.normal, n) > 1 - 1e-4 && std::fabs(manifold::la::dot(cf.normal, c) - (cf.d - g)) < 1e-6) side = cf.n;
+        if (manifold::la::dot(cf.normal, n) > 1 - 1e-4 &&
+            std::fabs(manifold::la::dot(cf.normal, c) - (cf.d - (std::fabs(cf.normal.z) > 0.5 ? gAxial : gSide))) < 1e-6) side = cf.n;
     Face * f = poly->addFace(id[i0], id[i1], id[i2]);
     f->_fb_face = side; f->_fb_index = cells.empty() ? 0 : (int)cells[best].index;
     f->_flags = facet ? 0 : FF_BEVEL_FACE;
@@ -370,9 +471,20 @@ bool exactFaces(const Manifold & m, faces_s & out, std::string & err) {
     auto it = owner.find(std::make_pair(tv[3 * t + (c + 1) % 3], tv[3 * t + c]));
     return it == owner.end() ? -1 : (long)it->second;
   };
+  /* A point on a plane leaves a residual of rounding only: the booleans'
+   * new vertices and the evaluation itself err relative to the size of
+   * the terms (measured up to about 120 epsilon of |normal| * |coordinate|),
+   * so the tolerance is relative too, with four times that margin. Planes
+   * have integer offsets, so anything below half a unit is unambiguous; a
+   * shape so large that the tolerance gets near that is refused. */
+  double maxCoord = 0;
+  for (const vec3 & p : pos) maxCoord = std::max(maxCoord, std::max(std::fabs(p.x), std::max(std::fabs(p.y), std::fabs(p.z))));
+  bool tooLarge = false;
   auto onPlane = [&](const iplane_s & pl, const vec3 & p) {
+    const double tol = 512 * std::numeric_limits<double>::epsilon() * (double)(std::llabs(pl.a) + std::llabs(pl.b) + std::llabs(pl.c)) * maxCoord;
+    if (tol > 0.4) tooLarge = true;
     long double v = (long double)pl.a * p.x + (long double)pl.b * p.y + (long double)pl.c * p.z - pl.d;
-    return std::fabs((double)v) < 0.05;
+    return std::fabs((double)v) < tol;
   };
   /* 1. every triangle with a decent altitude on its integer plane */
   std::vector<iplane_s> planes;
@@ -393,6 +505,7 @@ bool exactFaces(const Manifold & m, faces_s & out, std::string & err) {
     long double dv = (long double)pl.a * P(t, 0).x + (long double)pl.b * P(t, 0).y + (long double)pl.c * P(t, 0).z;
     pl.d = std::llround((double)dv);
     for (int c = 0; c < 3; c++) if (!onPlane(pl, P(t, c))) { err = "a triangle of a Minkowski step is not on a whole-unit plane"; return false; }
+    if (tooLarge) { err = "the shape is too large for the exact Minkowski construction (rounding near half a unit)"; return false; }
     auto it = planeId.find(pl);
     if (it == planeId.end()) { it = planeId.insert(std::make_pair(pl, (int)planes.size())).first; planes.push_back(pl); }
     plane[t] = it->second;
@@ -566,7 +679,9 @@ bool exactFaces(const Manifold & m, faces_s & out, std::string & err) {
     i128 covered = 0;
     for (size_t k = 0; k + 2 < tt.size(); k += 3) {
       i128 a2 = cross2(tt[k], tt[k + 1], tt[k + 2]);
-      if (a2 <= 0) { err = "the triangulation of a face of a Minkowski step has a triangle turned over or without area"; return false; }
+      /* a triangle without area (an ear across a corner on a straight run
+       * of the outline) is flipped away in rebuiltExact */
+      if (a2 < 0) { err = "the triangulation of a face of a Minkowski step has a triangle turned over"; return false; }
       covered += a2;
     }
     if (covered != outline) { err = "the triangulation of a face of a Minkowski step does not cover it exactly"; return false; }
@@ -620,8 +735,25 @@ void flipFlatExact(const std::vector<vec3> & pos, std::vector<uint64_t> & tri) {
 
 bool rebuiltExact(faces_s & f, Manifold & out, std::string & err) {
   flipFlatExact(f.pos, f.tri);
+  std::vector<bool> used(f.pos.size(), false);
+  for (size_t t = 0; t + 2 < f.tri.size(); t += 3) {
+    const vec3 & a = f.pos[f.tri[t]], & b = f.pos[f.tri[t + 1]], & c = f.pos[f.tri[t + 2]];
+    const i128 ux = (i128)(b.x - a.x), uy = (i128)(b.y - a.y), uz = (i128)(b.z - a.z);
+    const i128 vx = (i128)(c.x - a.x), vy = (i128)(c.y - a.y), vz = (i128)(c.z - a.z);
+    if (uy * vz - uz * vy == 0 && uz * vx - ux * vz == 0 && ux * vy - uy * vx == 0) {
+      err = "a face of a Minkowski step kept a triangle without area"; return false;
+    }
+    for (int k = 0; k < 3; k++) used[f.tri[t + k]] = true;
+  }
   out = fromTriangles(f.pos, f.tri);
   if (out.Status() != Manifold::Error::NoError) { err = "the exact rebuild of a Minkowski step is not a valid solid"; return false; }
+  /* the next step sweeps the pieces of f, so the solid must be exactly the
+   * mesh they came from: nothing merged or dropped on the way in */
+  size_t nv = 0;
+  for (bool u : used) nv += u;
+  if (out.NumTri() != f.tri.size() / 3 || out.NumVert() != nv) {
+    err = "the exact rebuild of a Minkowski step was changed on its way into Manifold"; return false;
+  }
   return true;
 }
 
@@ -638,12 +770,13 @@ bool stepExact(Manifold & m, faces_s & f, const std::vector<vec3> & unit, int64_
     if (hulls.back().IsEmpty()) { err = "a piece of a Minkowski step sweeps into nothing"; return false; }
   }
   Manifold tube = Manifold::BatchBoolean(hulls, manifold::OpType::Add);
-  Manifold u = add ? m + tube : m - tube;
+  Manifold u = outerShells(add ? m + tube : m - tube);
   faces_s g;
   if (!exactFaces(u, g, err)) return false;
   if (!rebuiltExact(g, m, err)) return false;
-  /* the next step's pieces: the faces just rebuilt, which are exactly m's */
-  f = g;
+  /* the next step's pieces: the faces just rebuilt, which are exactly m's
+   * (rebuiltExact checks that) */
+  f = std::move(g);
   return true;
 }
 
@@ -655,9 +788,17 @@ bool stepExact(Manifold & m, faces_s & f, const std::vector<vec3> & unit, int64_
  * every step size is one integer and the steps cancel exactly. */
 const int64_t PRISM_HEX = 209, PRISM_HEIGHT = 181;
 
-/* units per lattice step: FRAME times the bits' height, so that a gap or
- * bevel with four decimals of a cell is a whole multiple of 12 bits */
-const double PRISM_FRAME = FRAME * PRISM_HEIGHT;
+/* gap and bevel in multiples of the unit bits: 12 * 10^4 of them per
+ * cell, so that a gap or bevel with four decimals of a cell is a whole
+ * multiple of 12 bits (FRAME's 2^10 of headroom is for the irrational step
+ * sizes of the rhombic bits; the prism's step sizes are all whole multiples
+ * of the gap and the bevel, and its plane normals run into the hundreds, so
+ * it does without the headroom and keeps that much more precision) */
+const double PRISM_SCALE = 12.0 * 10000.0;
+
+/* units per lattice step: the bits reach PRISM_HEIGHT units, 1 / PRISM_SCALE
+ * of a cell */
+const double PRISM_FRAME = PRISM_SCALE * PRISM_HEIGHT;
 
 /* The prism grid in its lattice frame: coordinates (u, v, w) along
  * (1, 0, 0), (1/2, sqrt3/2, 0) and the axis (0, 0, 1), PRISM_FRAME units
@@ -824,7 +965,10 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
   Manifold body = exactBody(v, err);
   if (body.IsEmpty()) return 0;
   Manifold outer;
-  double gap = g;
+  /* how far inside its cell a facet face lands: the gap, except that on
+   * the prism grid the bits' hexagon reaches 209 (sqrt3/2) / 181 of their
+   * height sideways, so side faces land a hair (3.7e-6 g) less far in */
+  double gapAxial = g, gapSide = g;
   if (v.getGridType()->getType() != gridType_c::GT_TRIANGULAR_PRISM) {
     /* the integer frame */
     const int64_t gu = units(g * FRAME), ru = units(r * FRAME);
@@ -832,18 +976,19 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
     outer = outer.Scale(vec3(1 / FRAME));
   } else {
     /* the lattice frame; gap and bevel as multiples of the unit bits,
-     * whose reach is PRISM_HEIGHT units, 1 / FRAME of a cell */
+     * whose reach is 1 / PRISM_SCALE of a cell */
     Manifold lattice;
     if (!prismToLattice(body, lattice, err)) return 0;
     bits_s b;
     prismLatticeBits(b);
-    const int64_t gs = units(g * FRAME), rs = units(r * FRAME);
+    const int64_t gs = units(g * PRISM_SCALE), rs = units(r * PRISM_SCALE);
     if (!constructPrismExact(lattice, b, gs, rs, fills, outer, err)) return 0;
     outer = prismFromLattice(outer);
-    gap = (double)gs / FRAME;
+    gapAxial = (double)(gs * PRISM_HEIGHT) / PRISM_FRAME;
+    gapSide = (double)(gs * PRISM_HEX) * PRISM_ROW / PRISM_FRAME;
   }
   Polyhedron * poly = new Polyhedron();
-  if (!addFaces(poly, outer, facets, cellFaces, gap, err)) { delete poly; return 0; }
+  if (!addFaces(poly, outer, facets, cellFaces, gapAxial, gapSide, err)) { delete poly; return 0; }
   poly->finalize();
   return poly;
 }
