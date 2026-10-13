@@ -29,10 +29,11 @@ OUTPUT_DIRECTORY       = gendoc
 
 # The landing page is the \mainpage block in src/lib/voxel.cpp -- the original
 # author's guided tour of the library, which is a far better introduction to the
-# API than the repository README. The two markdown files are listed so they show
-# up under "Related Pages" and so the README's link to BUILD.md resolves;
+# API than the repository README. The markdown files are listed so they show
+# up under "Related Pages" and so the links between them resolve (the README's
+# to BUILD.md, src/qtgui/README.md's to the redesign spec in design-spec/);
 # deliberately no USE_MDFILE_AS_MAINPAGE, which would displace voxel.cpp's block.
-INPUT                  = src README.md BUILD.md
+INPUT                  = src README.md BUILD.md design-spec/BurrTools-SPEC-FULL-FINAL-v6.md design-spec/gui-migration.md
 
 INPUT_ENCODING         = UTF-8
 RECURSIVE              = YES

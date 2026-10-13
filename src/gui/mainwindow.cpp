@@ -23,7 +23,7 @@
 
 #include "mainmenu.h"
 #include "updatechecker.h"
-#include "puzzlehistory.h"
+#include "../uicore/puzzlehistory.h"
 #include "platform.h"
 
 #include "filechooser.h"
