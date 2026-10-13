@@ -413,7 +413,16 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
           win_subsystem: 'windows',
 	  )
 
-catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
+# On macOS always the bundled Catch2, like libpng above: a system copy (e.g.
+# Homebrew's bottle) is prebuilt for the host's macOS version, and linking
+# it into a binary declaring macOS 11 makes the linker warn once per object
+# file, which --werror (the release build, CI's ship jobs) turns into a
+# failed link. Built here, it gets the deployment target like everything else.
+if host_machine.system() == 'darwin'
+  catch2_dep = subproject('catch2', default_options: ['tests=false']).get_variable('catch2_with_main_dep')
+else
+  catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
+endif
 
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'test/test_thread_protocol.cpp', 'src/gui/solveprogresscache.cpp',
