@@ -45,9 +45,13 @@ namespace minkMesh {
 
   /* the chamfered surface of the shape v as a halfedge Polyhedron in cell
    * units, finalized: gap g, bevel legs r, with or without the interior
-   * chamfers. Returns 0 with a message when the construction fails or
-   * nothing is left of the shape. */
-  Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::string & err);
+   * chamfers. Faces carry the voxel and cell face the 3D view acts on
+   * when clicked; split (the view) cuts the merged facet faces along
+   * the cell faces' edges, so that each triangle lies over one cell
+   * face (more triangles, so not for the export). Returns 0 with a
+   * message when the construction fails or nothing is left of the
+   * shape. */
+  Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, bool split, std::string & err);
 }
 
 #endif

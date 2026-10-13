@@ -281,66 +281,385 @@ Manifold fromTriangles(const std::vector<vec3> & pos, const std::vector<uint64_t
 }
 
 /* one cell of the shape for tagging the faces: its index and its faces
- * as outward planes, in getNeighbor's numbering */
+ * as outward planes, in getNeighbor's numbering, with their corners and
+ * whether the neighbour across them is empty */
 struct cellFaces_s {
   unsigned index = 0;
-  struct face_s { int n = 0; vec3 normal{}; double d = 0; };
+  struct face_s { int n = 0; vec3 normal{}; double d = 0; bool exposed = false; std::vector<vec3> corners; };
   std::vector<face_s> faces;
 };
+
+/* the view's split: points closer than this are one, a point closer
+ * than this to a line lies on it (cell units: the rebuilt mesh's
+ * rounding is far below it, its features far above) */
+const double SPLIT_EPS = 1e-7;
+
+/* a point of a facet triangle being split: its vertex, its place in the
+ * plane's 2D frame, the triangle's edges it lies on (bit k: corner k to
+ * corner k + 1) and its parameter along each of them */
+struct splitPt_s { size_t id = 0; double x = 0, y = 0; unsigned edges = 0; double t[3] = { 0, 0, 0 }; };
+
+/* the distance of (x, y) from a convex polygon, 0 inside */
+double polygonDistance(double x, double y, const std::vector<std::pair<double, double> > & q) {
+  const size_t n = q.size();
+  double area = 0;
+  for (size_t i = 0; i < n; i++) area += q[i].first * q[(i + 1) % n].second - q[(i + 1) % n].first * q[i].second;
+  bool inside = true;
+  double best = 1e300;
+  for (size_t i = 0; i < n; i++) {
+    const double ax = q[i].first, ay = q[i].second, dx = q[(i + 1) % n].first - ax, dy = q[(i + 1) % n].second - ay;
+    if ((dx * (y - ay) - dy * (x - ax)) * area < 0) inside = false;
+    const double l2 = dx * dx + dy * dy;
+    const double s = l2 > 0 ? std::max(0.0, std::min(1.0, ((x - ax) * dx + (y - ay) * dy) / l2)) : 0;
+    best = std::min(best, std::hypot(x - ax - s * dx, y - ay - s * dy));
+  }
+  return inside ? 0 : best;
+}
+
+/* do two convex polygons overlap by more than SPLIT_EPS (no edge of
+ * either has the other all on its outside, up to that) */
+bool overlaps(const std::vector<std::pair<double, double> > & a, const std::vector<std::pair<double, double> > & b) {
+  for (int pass = 0; pass < 2; pass++) {
+    const std::vector<std::pair<double, double> > & p = pass ? b : a, & q = pass ? a : b;
+    const size_t n = p.size();
+    double area = 0;
+    for (size_t i = 0; i < n; i++) area += p[i].first * p[(i + 1) % n].second - p[(i + 1) % n].first * p[i].second;
+    for (size_t i = 0; i < n; i++) {
+      const double ax = p[i].first, ay = p[i].second, dx = p[(i + 1) % n].first - ax, dy = p[(i + 1) % n].second - ay;
+      const double l = std::hypot(dx, dy);
+      if (l == 0) continue;
+      double inside = -1e300;   /* how far the other reaches inside this edge */
+      for (const auto & r : q) inside = std::max(inside, (dx * (r.second - ay) - dy * (r.first - ax)) / l * (area > 0 ? 1 : -1));
+      if (inside < SPLIT_EPS) return false;
+    }
+  }
+  return true;
+}
+
+/* does the segment a-b pass through the inside of the triangle p, more
+ * than SPLIT_EPS away from its edges */
+bool crossesInside(double ax, double ay, double bx, double by, const splitPt_s p[3]) {
+  const double area = (p[1].x - p[0].x) * (p[2].y - p[0].y) - (p[2].x - p[0].x) * (p[1].y - p[0].y);
+  double lo = 0, hi = 1;
+  for (int k = 0; k < 3; k++) {
+    const splitPt_s & e0 = p[k], & e1 = p[(k + 1) % 3];
+    const double ex = e1.x - e0.x, ey = e1.y - e0.y, el = std::hypot(ex, ey);
+    auto inward = [&](double x, double y) { return (ex * (y - e0.y) - ey * (x - e0.x)) / el * (area > 0 ? 1 : -1) - SPLIT_EPS; };
+    const double fa = inward(ax, ay), fb = inward(bx, by);
+    if (fa <= 0 && fb <= 0) return false;
+    if (fa < 0) lo = std::max(lo, fa / (fa - fb));
+    if (fb < 0) hi = std::min(hi, fa / (fa - fb));
+  }
+  return (hi - lo) * std::hypot(bx - ax, by - ay) > SPLIT_EPS;
+}
 
 /* the manifold's triangles into the polyhedron, one polyhedron vertex per
  * manifold vertex (the manifold's mesh is a manifold with shared vertex
  * indices; welding by position would merge vertices that only float
  * precision tells apart and break that). Facet faces (normal on a facet
- * direction) plain, everything else flagged as bevel. Every face is
- * tagged with the voxel whose
- * cell holds its centroid (the 3D view removes that voxel on a click),
- * and a face lying on one of that cell's faces, g inside it, with the
- * number of that cell face (the view adds the neighbour across it). */
-bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & facets, const std::vector<cellFaces_s> & cells, double gAxial, double gSide, std::string & err) {
+ * direction) plain, everything else flagged as bevel.
+ *
+ * Every face is tagged with a voxel (the 3D view removes it on a click)
+ * and a facet face with the cell face it was inset from (the view adds
+ * the neighbour across it). A facet face lies g inside the exposed cell
+ * faces of its plane and belongs to the one it was inset from: moved
+ * back by g onto the plane, its centroid lies in that face's polygon,
+ * even where the face itself passes through a neighbouring cell (the
+ * tips of the prism grid's downward triangles above a row's bottom,
+ * tetra-octa's slanted neighbours). Beyond them (the strip a concave
+ * edge leaves, g cot(a / 2) wide at angle a) it belongs to the nearest
+ * exposed face its own flat face lies over somewhere. A flat face over
+ * none (the floor the bit's face leaves at a concave vertex or edge), and
+ * a bevel, belong to the cell holding their centroid, the one whose
+ * planes it violates least, with no cell face.
+ *
+ * The rebuild merges coplanar faces across cells, so one triangle can
+ * span several cell faces. With split (the view), every facet triangle
+ * is cut along the lines of the exposed cell faces' edges that cross it,
+ * so that each piece lies over one of them, and every triangle gets the
+ * cut points on its edges (the mesh stays closed). */
+bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & facets, const std::vector<cellFaces_s> & cells, double gAxial, double gSide, bool split, std::string & err) {
+  using manifold::la::dot;
+  using manifold::la::cross;
+  using manifold::la::length;
   manifold::MeshGL64 mesh = m.GetMeshGL64();
   const size_t np = mesh.numProp;
-  const size_t nv = mesh.vertProperties.size() / np;
-  std::vector<int> id(nv);
-  std::vector<Vector3Df> fp(nv);
-  for (size_t i = 0; i < nv; i++) {
-    fp[i] = Vector3Df((float)mesh.vertProperties[i * np], (float)mesh.vertProperties[i * np + 1], (float)mesh.vertProperties[i * np + 2]);
-    id[i] = poly->addVertex(fp[i])->index();
-  }
-  for (size_t t = 0; t + 2 < mesh.triVerts.size(); t += 3) {
-    size_t i0 = mesh.triVerts[t], i1 = mesh.triVerts[t + 1], i2 = mesh.triVerts[t + 2];
-    vec3 p0(mesh.vertProperties[i0 * np], mesh.vertProperties[i0 * np + 1], mesh.vertProperties[i0 * np + 2]);
-    vec3 p1(mesh.vertProperties[i1 * np], mesh.vertProperties[i1 * np + 1], mesh.vertProperties[i1 * np + 2]);
-    vec3 p2(mesh.vertProperties[i2 * np], mesh.vertProperties[i2 * np + 1], mesh.vertProperties[i2 * np + 2]);
-    vec3 n = manifold::la::cross(p1 - p0, p2 - p0);
-    double l = manifold::la::length(n);
-    /* the polyhedron holds single precision, and a face that has no area
-     * there has no normal (the STL writer asserts on it) */
-    Vector3Df fn = (fp[i1] - fp[i0]) ^ (fp[i2] - fp[i0]);
-    if (l < 1e-14 || fn.squaredModule() == 0) {
+  std::vector<vec3> pos;
+  for (size_t i = 0; i * np < mesh.vertProperties.size(); i++) pos.push_back(vec3(mesh.vertProperties[i * np], mesh.vertProperties[i * np + 1], mesh.vertProperties[i * np + 2]));
+  const std::vector<uint64_t> & tv = mesh.triVerts;
+  const size_t nt = tv.size() / 3;
+
+  /* per triangle: its corners, its unit normal and a 2D frame of its
+   * plane, and for a facet triangle the exposed cell faces it was inset
+   * from and the pieces it is cut into */
+  struct tri_s {
+    size_t v[3] = { 0, 0, 0 };
+    vec3 n{}, u{}, w{};
+    bool facet = false;
+    std::vector<std::pair<size_t, size_t> > faces;   /* (cell, face) */
+    std::vector<std::vector<splitPt_s> > pieces;
+  };
+  std::vector<tri_s> tris(nt);
+  for (size_t t = 0; t < nt; t++) {
+    tri_s & T = tris[t];
+    for (int k = 0; k < 3; k++) T.v[k] = tv[3 * t + k];
+    const vec3 & p0 = pos[T.v[0]], & p1 = pos[T.v[1]], & p2 = pos[T.v[2]];
+    vec3 n = cross(p1 - p0, p2 - p0);
+    const double l = length(n);
+    if (l < 1e-14) {
       char why[400];
       snprintf(why, sizeof why, "the Minkowski construction left a face without area (%.12g %.12g %.12g) (%.12g %.12g %.12g) (%.12g %.12g %.12g)", p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
       err = why; return false;
     }
-    bool facet = false;
-    n = n / l;
-    for (const vec3 & d : facets) if (manifold::la::dot(d, n) > 1 - 1e-4) facet = true;
-    /* the cell holding the centroid: the one it violates least */
-    vec3 c = (p0 + p1 + p2) / 3.0;
-    size_t best = 0; double bestViolation = 1e300;
-    for (size_t k = 0; k < cells.size(); k++) {
-      double violation = -1e300;
-      for (const cellFaces_s::face_s & cf : cells[k].faces) violation = std::max(violation, manifold::la::dot(cf.normal, c) - cf.d);
-      if (violation < bestViolation) { bestViolation = violation; best = k; }
+    T.n = n / l;
+    for (const vec3 & d : facets) if (dot(d, T.n) > 1 - 1e-4) T.facet = true;
+    const vec3 a = std::fabs(T.n.x) < 0.5 ? vec3(1, 0, 0) : vec3(0, 1, 0);
+    T.u = cross(T.n, a); T.u = T.u / length(T.u);
+    T.w = cross(T.n, T.u);
+    if (!T.facet) continue;
+    const vec3 c = (p0 + p1 + p2) / 3.0;
+    for (size_t k = 0; k < cells.size(); k++)
+      for (size_t f = 0; f < cells[k].faces.size(); f++) {
+        const cellFaces_s::face_s & cf = cells[k].faces[f];
+        if (cf.exposed && dot(cf.normal, T.n) > 1 - 1e-4 &&
+            std::fabs(dot(cf.normal, c) - (cf.d - (std::fabs(cf.normal.z) > 0.5 ? gAxial : gSide))) < 1e-6)
+          T.faces.push_back(std::make_pair(k, f));
+      }
+  }
+
+  /* the points cut into the mesh's edges, by edge (lower vertex first),
+   * with their parameter from the lower vertex */
+  std::map<std::pair<size_t, size_t>, std::vector<std::pair<double, size_t> > > cuts;
+  auto edgePoint = [&](size_t a, size_t b, double t) -> size_t {
+    if (a > b) { std::swap(a, b); t = 1 - t; }
+    std::vector<std::pair<double, size_t> > & on = cuts[std::make_pair(a, b)];
+    const double len = length(pos[b] - pos[a]);
+    for (const auto & c : on) if (std::fabs(c.first - t) * len < SPLIT_EPS) return c.second;
+    const vec3 p = pos[a] + (pos[b] - pos[a]) * t;
+    pos.push_back(p);
+    on.push_back(std::make_pair(t, pos.size() - 1));
+    return pos.size() - 1;
+  };
+  auto corners = [&](const tri_s & T) {
+    std::vector<splitPt_s> P(3);
+    for (int k = 0; k < 3; k++) {
+      P[k].id = T.v[k];
+      P[k].x = dot(pos[T.v[k]], T.u); P[k].y = dot(pos[T.v[k]], T.w);
+      P[k].edges = (1u << k) | (1u << ((k + 2) % 3));
+      P[k].t[k] = 0; P[k].t[(k + 2) % 3] = 1;
     }
+    return P;
+  };
+
+  /* the cuts */
+  for (size_t t = 0; split && t < nt; t++) {
+    tri_s & T = tris[t];
+    if (T.faces.empty()) continue;
+    const std::vector<splitPt_s> P = corners(T);
+    /* the lines of the exposed faces' edges through the triangle's inside,
+     * as (normal, offset) with the normal's sign fixed */
+    std::vector<std::array<double, 3> > lines;
+    for (const auto & fc : T.faces) {
+      const std::vector<vec3> & C = cells[fc.first].faces[fc.second].corners;
+      for (size_t i = 0; i < C.size(); i++) {
+        const double ax = dot(C[i], T.u), ay = dot(C[i], T.w);
+        const double bx = dot(C[(i + 1) % C.size()], T.u), by = dot(C[(i + 1) % C.size()], T.w);
+        if (!crossesInside(ax, ay, bx, by, P.data())) continue;
+        const double l = std::hypot(bx - ax, by - ay);
+        double nx = (ay - by) / l, ny = (bx - ax) / l;
+        if (nx < -1e-9 || (std::fabs(nx) <= 1e-9 && ny < 0)) { nx = -nx; ny = -ny; }
+        const double off = nx * ax + ny * ay;
+        bool seen = false;
+        for (const auto & L : lines) if (nx * L[0] + ny * L[1] > 1 - 1e-12 && std::fabs(off - L[2]) < SPLIT_EPS) seen = true;
+        if (!seen) lines.push_back({ nx, ny, off });
+      }
+    }
+    if (lines.empty()) continue;
+    const double off = dot(T.n, pos[T.v[0]]);
+    std::vector<splitPt_s> inner;   /* the points cut inside the triangle */
+    auto crossing = [&](const splitPt_s & a, const splitPt_s & b, double f) {
+      splitPt_s c;
+      const unsigned common = a.edges & b.edges;
+      if (common) {
+        const int k = common & 1 ? 0 : common & 2 ? 1 : 2;
+        c.edges = 1u << k;
+        c.t[k] = a.t[k] + f * (b.t[k] - a.t[k]);
+        c.id = edgePoint(T.v[k], T.v[(k + 1) % 3], c.t[k]);
+        c.x = dot(pos[c.id], T.u); c.y = dot(pos[c.id], T.w);
+        return c;
+      }
+      c.x = a.x + f * (b.x - a.x); c.y = a.y + f * (b.y - a.y);
+      for (const splitPt_s & q : inner) if (std::hypot(q.x - c.x, q.y - c.y) < SPLIT_EPS) return q;
+      const vec3 p = T.u * c.x + T.w * c.y + T.n * off;
+      pos.push_back(p);
+      c.id = pos.size() - 1;
+      inner.push_back(c);
+      return c;
+    };
+    std::vector<std::vector<splitPt_s> > pieces(1, P);
+    for (const auto & L : lines) {
+      std::vector<std::vector<splitPt_s> > next;
+      for (const std::vector<splitPt_s> & Q : pieces) {
+        const size_t n = Q.size();
+        std::vector<double> s(n);
+        bool above = false, below = false;
+        for (size_t i = 0; i < n; i++) {
+          s[i] = L[0] * Q[i].x + L[1] * Q[i].y - L[2];
+          if (s[i] > SPLIT_EPS) above = true;
+          if (s[i] < -SPLIT_EPS) below = true;
+        }
+        if (!above || !below) { next.push_back(Q); continue; }
+        std::vector<splitPt_s> A, B;
+        for (size_t i = 0; i < n; i++) {
+          const size_t j = (i + 1) % n;
+          if (s[i] >= -SPLIT_EPS) A.push_back(Q[i]);
+          if (s[i] <= SPLIT_EPS) B.push_back(Q[i]);
+          if ((s[i] > SPLIT_EPS && s[j] < -SPLIT_EPS) || (s[i] < -SPLIT_EPS && s[j] > SPLIT_EPS)) {
+            const splitPt_s c = crossing(Q[i], Q[j], s[i] / (s[i] - s[j]));
+            A.push_back(c); B.push_back(c);
+          }
+        }
+        next.push_back(A); next.push_back(B);
+      }
+      pieces.swap(next);
+    }
+    T.pieces = pieces;
+  }
+
+  /* the output: every piece (or uncut triangle) with the cut points on
+   * the triangle's edges added, triangulated as a fan from a corner where
+   * no fan triangle is flat, else from its centre */
+  std::vector<std::array<size_t, 3> > out;
+  std::vector<size_t> parent;
+  for (size_t t = 0; t < nt; t++) {
+    const tri_s & T = tris[t];
+    std::vector<std::vector<splitPt_s> > pieces = T.pieces;
+    if (pieces.empty()) pieces.push_back(corners(T));
+    for (const std::vector<splitPt_s> & Q : pieces) {
+      std::vector<size_t> ids;
+      for (size_t i = 0; i < Q.size(); i++) {
+        const splitPt_s & a = Q[i], & b = Q[(i + 1) % Q.size()];
+        ids.push_back(a.id);
+        const unsigned common = a.edges & b.edges;
+        if (!common) continue;
+        const int k = common & 1 ? 0 : common & 2 ? 1 : 2;
+        const size_t e0 = T.v[k], e1 = T.v[(k + 1) % 3];
+        auto it = cuts.find(std::make_pair(std::min(e0, e1), std::max(e0, e1)));
+        if (it == cuts.end()) continue;
+        const double len = length(pos[e1] - pos[e0]);
+        std::vector<std::pair<double, size_t> > on;
+        for (const auto & c : it->second) {
+          const double tk = e0 < e1 ? c.first : 1 - c.first;
+          if (std::min(tk - a.t[k], b.t[k] - tk) * len > SPLIT_EPS) on.push_back(std::make_pair(tk, c.second));
+          else if (std::min(tk - b.t[k], a.t[k] - tk) * len > SPLIT_EPS) on.push_back(std::make_pair(-tk, c.second));
+        }
+        std::sort(on.begin(), on.end());
+        for (const auto & c : on) ids.push_back(c.second);
+      }
+      const size_t n = ids.size();
+      for (size_t i = 0; i < n; i++)
+        if (ids[i] == ids[(i + 1) % n]) { err = "the view's split of the Minkowski mesh made a piece with a repeated corner"; return false; }
+      size_t from = n;
+      for (size_t s = 0; s < n && from == n && n > 3; s++) {
+        bool flat = false;
+        for (size_t i = 1; i + 1 < n; i++)
+          if (length(cross(pos[ids[(s + i) % n]] - pos[ids[s]], pos[ids[(s + i + 1) % n]] - pos[ids[s]])) < 1e-12) flat = true;
+        if (!flat) from = s;
+      }
+      if (n == 3) from = 0;
+      if (from < n) {
+        for (size_t i = 1; i + 1 < n; i++) { out.push_back({ ids[from], ids[(from + i) % n], ids[(from + i + 1) % n] }); parent.push_back(t); }
+      } else {
+        vec3 c(0, 0, 0);
+        for (size_t id : ids) c = c + pos[id];
+        pos.push_back(c / (double)n);
+        for (size_t i = 0; i < n; i++) { out.push_back({ pos.size() - 1, ids[i], ids[(i + 1) % n] }); parent.push_back(t); }
+      }
+    }
+  }
+
+  /* closed: every edge once each way */
+  if (split) {
+    std::map<std::pair<size_t, size_t>, int> edges;
+    for (const auto & o : out) for (int k = 0; k < 3; k++) edges[std::make_pair(o[k], o[(k + 1) % 3])]++;
+    for (const auto & e : edges)
+      if (e.second != 1 || edges.find(std::make_pair(e.first.second, e.first.first)) == edges.end()) {
+        err = "the view's split of the Minkowski mesh left it open"; return false;
+      }
+  }
+
+  /* the flat faces: facet triangles joined across their shared edges
+   * when coplanar */
+  std::vector<size_t> region(nt);
+  for (size_t t = 0; t < nt; t++) region[t] = t;
+  std::function<size_t(size_t)> root = [&](size_t t) { return region[t] == t ? t : region[t] = root(region[t]); };
+  {
+    std::map<std::pair<size_t, size_t>, size_t> owner;
+    for (size_t t = 0; t < nt; t++) for (int k = 0; k < 3; k++) owner[std::make_pair(tris[t].v[k], tris[t].v[(k + 1) % 3])] = t;
+    for (size_t t = 0; t < nt; t++) {
+      if (!tris[t].facet) continue;
+      for (int k = 0; k < 3; k++) {
+        auto it = owner.find(std::make_pair(tris[t].v[(k + 1) % 3], tris[t].v[k]));
+        if (it == owner.end() || !tris[it->second].facet || dot(tris[it->second].n, tris[t].n) < 1 - 1e-9) continue;
+        region[root(t)] = root(it->second);
+      }
+    }
+  }
+
+  /* the exposed faces each flat face lies over somewhere */
+  auto polygon2 = [&](const tri_s & T, const std::vector<vec3> & corners) {
+    std::vector<std::pair<double, double> > q;
+    for (const vec3 & p : corners) q.push_back(std::make_pair(dot(p, T.u), dot(p, T.w)));
+    return q;
+  };
+  std::map<size_t, std::set<std::pair<size_t, size_t> > > covers;   /* region -> (cell, face) */
+  for (size_t t = 0; t < nt; t++) {
+    const tri_s & T = tris[t];
+    const std::vector<std::pair<double, double> > a = polygon2(T, { pos[T.v[0]], pos[T.v[1]], pos[T.v[2]] });
+    for (const auto & fc : T.faces)
+      if (overlaps(a, polygon2(T, cells[fc.first].faces[fc.second].corners))) covers[root(t)].insert(fc);
+  }
+
+  std::vector<int> id(pos.size());
+  std::vector<Vector3Df> fp(pos.size());
+  for (size_t i = 0; i < pos.size(); i++) {
+    fp[i] = Vector3Df((float)pos[i].x, (float)pos[i].y, (float)pos[i].z);
+    id[i] = poly->addVertex(fp[i])->index();
+  }
+  for (size_t o = 0; o < out.size(); o++) {
+    const tri_s & T = tris[parent[o]];
+    const vec3 & p0 = pos[out[o][0]], & p1 = pos[out[o][1]], & p2 = pos[out[o][2]];
+    /* the polyhedron holds single precision, and a face that has no area
+     * there has no normal (the STL writer asserts on it) */
+    Vector3Df fn = (fp[out[o][1]] - fp[out[o][0]]) ^ (fp[out[o][2]] - fp[out[o][0]]);
+    if (length(cross(p1 - p0, p2 - p0)) < 1e-14 || fn.squaredModule() == 0) {
+      char why[400];
+      snprintf(why, sizeof why, "the Minkowski mesh has a face without area (%.12g %.12g %.12g) (%.12g %.12g %.12g) (%.12g %.12g %.12g)", p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+      err = why; return false;
+    }
+    size_t best = 0;
     int side = -1;
-    if (!cells.empty())
-      for (const cellFaces_s::face_s & cf : cells[best].faces)
-        if (manifold::la::dot(cf.normal, n) > 1 - 1e-4 &&
-            std::fabs(manifold::la::dot(cf.normal, c) - (cf.d - (std::fabs(cf.normal.z) > 0.5 ? gAxial : gSide))) < 1e-6) side = cf.n;
-    Face * f = poly->addFace(id[i0], id[i1], id[i2]);
+    /* the nearest exposed face its flat face covers */
+    const vec3 c = (p0 + p1 + p2) / 3.0;
+    auto it = covers.find(root(parent[o]));
+    if (it != covers.end()) {
+      double bestDistance = 1e300;
+      for (const auto & fc : it->second) {
+        const double d = polygonDistance(dot(c, T.u), dot(c, T.w), polygon2(T, cells[fc.first].faces[fc.second].corners));
+        if (d < bestDistance) { bestDistance = d; best = fc.first; side = cells[fc.first].faces[fc.second].n; }
+      }
+    } else {
+      /* the cell holding the centroid: the one it violates least */
+      double bestViolation = 1e300;
+      for (size_t k = 0; k < cells.size(); k++) {
+        double violation = -1e300;
+        for (const cellFaces_s::face_s & cf : cells[k].faces) violation = std::max(violation, dot(cf.normal, c) - cf.d);
+        if (violation < bestViolation) { bestViolation = violation; best = k; }
+      }
+    }
+    Face * f = poly->addFace(id[out[o][0]], id[out[o][1]], id[out[o][2]]);
     f->_fb_face = side; f->_fb_index = cells.empty() ? 0 : (int)cells[best].index;
-    f->_flags = facet ? 0 : FF_BEVEL_FACE;
+    f->_flags = T.facet ? 0 : FF_BEVEL_FACE;
   }
   return true;
 }
@@ -916,9 +1235,10 @@ bool handles(const voxel_c & v) {
   return t == gridType_c::GT_TRIANGULAR_PRISM || t == gridType_c::GT_RHOMBIC || t == gridType_c::GT_TETRA_OCTA;
 }
 
-Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::string & err)
+Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, bool split, std::string & err)
 {
   if (!handles(v)) { err = "grid not handled by the Minkowski mesher"; return 0; }
+  const bool prism = v.getGridType()->getType() == gridType_c::GT_TRIANGULAR_PRISM;
   /* the cells, the facet directions, the bits */
   std::vector<vec3> facets;
   std::vector<cellFaces_s> cellFaces;
@@ -938,7 +1258,14 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
           corners.clear();
           v.getConnectionFace(x, y, z, (int)n, 0, 0, corners);
           std::vector<vec3> pts;
-          for (unsigned k = 0; k + 2 < corners.size(); k += 3) { pts.push_back(vec3(corners[k], corners[k + 1], corners[k + 2])); centre = centre + pts.back(); np++; }
+          for (unsigned k = 0; k + 2 < corners.size(); k += 3) {
+            /* the corners come in single precision: on the prism grid, back
+             * onto the lattice the mesh was built on (x a multiple of 1/2,
+             * y of sqrt3/2, z whole), elsewhere they are exact */
+            vec3 q(corners[k], corners[k + 1], corners[k + 2]);
+            if (prism) q = vec3(std::round(2 * q.x) / 2, std::round(q.y / PRISM_ROW) * PRISM_ROW, std::round(q.z));
+            pts.push_back(q); centre = centre + q; np++;
+          }
           polys.push_back(std::make_pair((int)n, pts));
         }
         centre = centre / (double)np;
@@ -951,7 +1278,13 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
           if (ln < 1e-300) continue;
           nrm = nrm / ln;
           if (manifold::la::dot(nrm, pts[0] - centre) < 0) nrm = nrm * -1.0;
-          cf.faces.push_back({ pn.first, nrm, manifold::la::dot(nrm, pts[0]) });
+          /* exposed: the neighbour across is outside the voxel space or not filled */
+          bool exposed = true;
+          if (v.getNeighbor((unsigned)pn.first, 0, x, y, z, &nx, &ny, &nz) && nx >= 0 && ny >= 0 && nz >= 0 &&
+              (unsigned)nx < v.getX() && (unsigned)ny < v.getY() && (unsigned)nz < v.getZ() &&
+              v.validCoordinate(nx, ny, nz) && v.getState(nx, ny, nz) == voxel_c::VX_FILLED)
+            exposed = false;
+          cf.faces.push_back({ pn.first, nrm, manifold::la::dot(nrm, pts[0]), exposed, pts });
         }
         cellFaces.push_back(cf);
       }
@@ -969,7 +1302,7 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
    * the prism grid the bits' hexagon reaches 209 (sqrt3/2) / 181 of their
    * height sideways, so side faces land a hair (3.7e-6 g) less far in */
   double gapAxial = g, gapSide = g;
-  if (v.getGridType()->getType() != gridType_c::GT_TRIANGULAR_PRISM) {
+  if (!prism) {
     /* the integer frame */
     const int64_t gu = units(g * FRAME), ru = units(r * FRAME);
     if (!constructExact(body.Scale(vec3(FRAME)), cubeBits(), gu, ru, r, fills, outer, err)) return 0;
@@ -988,7 +1321,7 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
     gapSide = (double)(gs * PRISM_HEX) * PRISM_ROW / PRISM_FRAME;
   }
   Polyhedron * poly = new Polyhedron();
-  if (!addFaces(poly, outer, facets, cellFaces, gapAxial, gapSide, err)) { delete poly; return 0; }
+  if (!addFaces(poly, outer, facets, cellFaces, gapAxial, gapSide, split, err)) { delete poly; return 0; }
   poly->finalize();
   return poly;
 }
