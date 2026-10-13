@@ -376,7 +376,8 @@ public:
   mutable std::mutex callbackMutex;
 
   /* worker count actually used: numThreads, else BURRTOOLS_THREADS, else the
-   * hardware concurrency -- every path clamped to MAX_THREADS
+   * hardware concurrency -- every path clamped to MAX_THREADS, and every path
+   * yields at least 1 (a zero setting means "auto", never "no workers")
    */
   unsigned int getEffectiveThreads(void) const;
 

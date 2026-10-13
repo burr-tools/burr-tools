@@ -1642,11 +1642,11 @@ TEST_CASE("SIMD and DLX solvers agree across the regression corpus",
 
 /* An interrupted single-threaded SIMD search saves itself as a resumable position.
  *
- * The serial simdSearch() is gone: SIMD-eligible runs always take the task-based
- * parallel path, even with one thread, so an aborted run leaves a pool remainder
- * plus reported signatures (format 1.6). Reloading resumes from the remainder and
- * the union across both phases equals the uninterrupted multiset, without
- * duplicating the assemblies found before the stop.
+ * A 1-thread SIMD-eligible run takes the task-based parallel path, so an
+ * aborted run leaves a pool remainder plus reported signatures (format 1.6).
+ * Reloading resumes from the remainder and the union across both phases
+ * equals the uninterrupted multiset, without duplicating the assemblies
+ * found before the stop.
  */
 TEST_CASE("SIMD assembler: an interrupted single-threaded search restores as resumable",
           "[assembler][simd][resume]") {
@@ -1695,6 +1695,32 @@ TEST_CASE("SIMD assembler: an interrupted single-threaded search restores as res
   REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   std::string payload = extractAssemblerContent(state);
+
+  /* The run must have taken the task-based path, not serial DLX: an
+   * interrupted task run writes interrupted=1 next to a root position and a
+   * non-empty pool remainder, while a serial DLX stop writes interrupted=0
+   * next to a mid-search position with zero tasks. Without this, a puzzle
+   * falling out of canUseSimd() would silently test the DLX path here.
+   */
+  {
+    std::istringstream in(payload);
+    unsigned int interrupted = 0, pos = 0;
+    unsigned long it = 0;
+    REQUIRE(in >> interrupted >> pos >> it);
+    for (unsigned int j = 0; j <= pos; j++) {
+      char open = 0, close = 0;
+      unsigned int r = 0, c = 0;
+      REQUIRE(in >> open >> r >> c >> close);
+      REQUIRE(open == '(');
+      REQUIRE(close == ')');
+    }
+    unsigned int taskCount = 0;
+    REQUIRE(in >> taskCount);
+    CHECK(interrupted == 1);
+    CHECK(pos == 0);
+    CHECK(taskCount > 0);
+  }
+
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
         == assembler_c::ERR_NONE);
 
@@ -1704,6 +1730,87 @@ TEST_CASE("SIMD assembler: an interrupted single-threaded search restores as res
   std::multiset<std::string> resumed = cb1.fingerprints;
   resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
   CHECK(resumed == serial);
+}
+
+TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as resumable",
+          "[assembler][simd][resume]") {
+  ScopedEnv env("BURRTOOLS_NO_SIMD", nullptr);
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  // Baseline multiset for the union check below.
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(!baseline.empty());
+
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(1);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb1;
+  int seen = 0;
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb1.assembly(std::move(a));
+    seen++;
+    return false;
+  });
+  REQUIRE(seen == 1);
+  REQUIRE(assm.getFinished() < 1.0f);
+
+  std::string state;
+  {
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+  CHECK(assemblerVersionOf(state) == "2.1");
+
+  assembler_1_c restored(*problem);
+  restored.setNumThreads(1);
+  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+  std::string payload = extractAssemblerContent(state);
+
+  /* The run must have taken the SIMD task path (Huang prefixes, ptype 2),
+   * not serial DLX (no remainder) or the DLX task path (ptype 1). Without
+   * this, a puzzle falling out of canUseSimd() would silently test DLX here.
+   */
+  {
+    std::istringstream in(payload);
+    unsigned int interrupted = 0;
+    REQUIRE(in >> interrupted);
+    for (int v = 0; v < 7; v++) {
+      unsigned int n = 0;
+      REQUIRE(in >> n);
+      unsigned int dummy = 0;
+      for (unsigned int i = 0; i < n; i++)
+        REQUIRE(in >> dummy);
+    }
+    unsigned int ptype = 0;
+    REQUIRE(in >> ptype);
+    CHECK(interrupted == 1);
+    CHECK(ptype == 2);
+  }
+
+  CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+        == assembler_c::ERR_NONE);
+
+  RecordingAssemblerCallback cb2;
+  restored.assemble(&cb2);
+
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == baseline);
 }
 
 TEST_CASE("assembler 1: getFinished does not report 100% before starting a restored search",
@@ -2042,12 +2149,15 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
 
   /* The 4-thread sections above always take the parallel path, which sets
    * totalTasks and therefore never touches the total == 0 fallback in
-   * getFinished(). A single-threaded run falls to simdSearch()/iterative()
-   * instead (assemble() routes to the parallel path only when threads > 1),
-   * which is exactly the path that under-reported completion before the
-   * searchComplete check was hoisted above the total > 0 branch.
+   * getFinished(). The single-threaded sections below force the serial DLX
+   * path via BURRTOOLS_NO_SIMD: 1-thread SIMD-eligible runs take the
+   * task-based parallel path (which sets totalTasks), so without this they
+   * would no longer cover that fallback. This is exactly the path that
+   * under-reported completion before the searchComplete check was hoisted
+   * above the total > 0 branch.
    */
   SECTION("assembler_0 single-threaded") {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
     assembler_0_c assm(*problem);
     assm.setNumThreads(1);
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
@@ -2059,6 +2169,7 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
   }
 
   SECTION("assembler_1 single-threaded") {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
     assembler_1_c assm(*problem);
     assm.setNumThreads(1);
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
@@ -2439,6 +2550,12 @@ TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
  */
 TEST_CASE("parallel progress state does not leak into a serial resume",
           "[assembler][parallel][progress]") {
+  /* Forced DLX: the resume below has to be a serial one for the assertion to
+   * test anything -- 1-thread SIMD-eligible runs take the task-based parallel
+   * path (reusing the pool remainder and its share), so without this the
+   * "serial" progress could legitimately equal the stale share.
+   */
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
   auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
@@ -2835,10 +2952,10 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
 
   SECTION("assembler_1") {
     /* The serial run below has to be the DLX one for the stated mechanism to
-     * be the real one: simdSearch() never touches next_row_stack, so with the
-     * SIMD back end the final check would pass on rows being left non-empty by
-     * the solution callback instead -- right answer, wrong reason, and it
-     * would stop holding on a puzzle with no assemblies. PelikanBurr rather
+     * be the real one: the SIMD back end runs under the task-based path and
+     * never drains next_row_stack the way iterative() does, so without the
+     * forced-DLX guard the final check could pass for the wrong reason -- and
+     * it would stop holding on a puzzle with no assemblies. PelikanBurr rather
      * than HexSticks because the DLX serial path has to run to completion
      * here: 5272 nodes against 1.8M.
      */

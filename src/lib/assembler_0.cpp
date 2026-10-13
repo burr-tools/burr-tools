@@ -2427,9 +2427,14 @@ bool assembler_0_c::willRunParallel(unsigned int threads) const {
   /* the condition assemble() dispatches on, in one place. pos != 0 is a
    * resumed search that carries a partial DLX stack the task generator cannot
    * start from, so it always runs serially however many threads are
-   * configured.
+   * configured. SIMD-eligible fresh runs take the task-based parallel path
+   * even with a single thread: parallelMultiSearch() runs worker 0 inline
+   * with no extra thread, and its pool remainder makes an interrupted run
+   * resumable.
    */
-  return (errorsState == ERR_NONE) && (pos == 0) && (threads > 1);
+  if ((errorsState != ERR_NONE) || (pos != 0))
+    return false;
+  return (threads > 1) || canUseSimd();
 }
 
 unsigned int assembler_0_c::getRunThreads(void) const {
@@ -2451,15 +2456,11 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   asm_bc = callback;
   const unsigned int threads = getEffectiveThreads();
-  /* SIMD-eligible fresh runs always take the task-based parallel path, even
-   * with a single thread: parallelMultiSearch() runs worker 0 inline with no
-   * extra thread, and its pool remainder makes an interrupted run resumable.
-   * The deleted serial simdSearch() kept its position in the solver and could
-   * only mark an aborted run unresumable. Serial DLX (resume) still uses the
-   * iterative path below.
+  /* Single dispatch source: willRunParallel() covers the multi-thread case
+   * and SIMD-eligible fresh runs (single-threaded ones included). Only serial
+   * DLX resumes reach the iterative path below.
    */
-  const bool runParallel = willRunParallel(threads) ||
-                           ((errorsState == ERR_NONE) && (pos == 0) && canUseSimd());
+  const bool runParallel = willRunParallel(threads);
 
   /* The task counters are switched OFF for a non-parallel run, not merely
    * left alone. A solve aborted on the parallel path leaves totalTasks and
@@ -2480,9 +2481,9 @@ void assembler_0_c::assemble(assembler_cb * callback) {
   }
 
   if (runParallel) {
-    parallelMultiSearch(std::max(threads, 1u));
+    parallelMultiSearch(threads);
   } else {
-    // Serial DLX path (in-session continue): hold a budget
+    // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
     // token too, so the cap covers resume runs as well. Skipped only when
     // stopping (no token with a callback set).
     BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
