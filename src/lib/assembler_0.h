@@ -134,7 +134,7 @@ private:
   bool canUseSimd(void) const;
   std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
   std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
-  void handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop);
+  bool handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop, bool & didConsume);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
@@ -238,6 +238,8 @@ private:
      * subtrees pruned during generation, sum to 1
      */
     float share = 0;
+    uint64_t replaySkip = 0;
+    uint64_t replayAnchor = 0;
   };
 
   /* The progress the GUI thread reads: the summed share of every task that is
@@ -289,7 +291,12 @@ private:
    */
   float prunedTaskShare = 0.0f;
 
-  std::unordered_set<uint64_t> emittedSignatures;
+  enum RemainderEngine : unsigned int {
+    ENGINE_NONE = 0,
+    ENGINE_DLX = 1,
+    ENGINE_SIMD = 2,
+  };
+  RemainderEngine remainderEngine = ENGINE_NONE;
 
   /* set when a parallel search stopped before finishing.
    *
@@ -297,10 +304,9 @@ private:
    * prefix). A parallel search has no single such point: progress lives in
    * the pool remainder saved back into parallelTasks (see parallelMultiSearch)
    * plus whatever each worker had reached inside the task it was in the
-   * middle of, and the assemblies already handed to the callback are only
-   * remembered in emittedSignatures. Since format 1.6 all of that is
-   * persisted (tasks plus sorted signatures), so a stopped parallel search
-   * reloads as resumable; older payloads and task-less stops are refused.
+   * middle of, with replaySkip and replayAnchor skipping already-reported
+   * assemblies. Since format 1.7 all of that is persisted, so a stopped
+   * parallel search reloads as resumable; older payloads and task-less stops are refused.
    */
   bool parallelInterrupted = false;
 

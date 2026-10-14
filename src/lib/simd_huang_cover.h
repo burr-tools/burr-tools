@@ -34,6 +34,14 @@ class ThreadBudget;
 #include <unordered_map>
 #include <bit>
 
+struct HuangSeed {
+  std::vector<unsigned int> prefix;
+  uint64_t replaySkip = 0;
+  uint64_t replayAnchor = 0;
+
+  bool operator==(const HuangSeed & o) const = default;
+};
+
 /**
  * Interface for hardware-vectorized exact cover solvers for Huang's algorithm
  * (assembler 1), handling duplicate piece shapes, variable voxels (holes),
@@ -44,6 +52,7 @@ public:
   virtual ~ISimdHuangCover() = default;
 
   using SolutionCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes)>;
+  using ConsumeCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes, bool &consumed)>;
 
   virtual void setColumnBounds(
     unsigned int col,
@@ -87,15 +96,26 @@ public:
   // stop_source::request_stop() non-const, unlike libstdc++. A const ref
   // fails to compile on macOS when the body fires the source on exceptions.
   //
-  // resume_prefixes/salvaged_prefixes implement incremental in-session
-  // resume (issue #111), mirroring the DLX pool remainder: when non-null
-  // and non-empty, the pool is seeded from these placed-node prefixes
-  // instead of generateTasks(); when salvaged_prefixes is non-null,
-  // interrupted in-flight tasks and the pool remainder are appended to it
-  // as placed-node prefixes for the next run (completed subtrees are
-  // simply absent). Prefixes stay valid across runs because the matrix is
-  // rebuilt identically; emittedSignatures dedup covers re-searched overlap.
+  // resume_seeds/salvaged_seeds implement bounded in-session resume,
+  // mirroring the DLX pool remainder: when non-null and non-empty, the pool
+  // is seeded from these placed-node prefixes plus skip counters instead of
+  // generateTasks(); when salvaged_seeds is non-null, interrupted in-flight
+  // tasks and the pool remainder are appended to it. Prefixes stay valid
+  // across runs because the matrix is rebuilt identically; deterministic
+  // in-task replay with replaySkip skips already-reported assemblies.
   virtual void parallelSolve(
+    unsigned int num_workers,
+    ConsumeCallback callback,
+    std::stop_source &runStop,
+    std::atomic<unsigned long> &iterations,
+    std::atomic<size_t> &total_tasks,
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr,
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
+  ) const = 0;
+
+  void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
     std::stop_source &runStop,
@@ -103,9 +123,17 @@ public:
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
-    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
-    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
-  ) const = 0;
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
+  ) const {
+    parallelSolve(
+      num_workers,
+      [cb = std::move(callback)](const std::vector<unsigned int> & s, bool & consumed) {
+        consumed = true;
+        return cb(s);
+      },
+      runStop, iterations, total_tasks, completed_tasks, budget, resume_seeds, salvaged_seeds);
+  }
 
   virtual unsigned int getNumRows() const = 0;
   virtual unsigned int getNumColumns() const = 0;
@@ -185,16 +213,18 @@ public:
     std::atomic<uint64_t> &iterations
   ) const override;
 
+  using ISimdHuangCover::parallelSolve;
+
   void parallelSolve(
     unsigned int num_workers,
-    SolutionCallback callback,
+    ConsumeCallback callback,
     std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
-    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
-    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
@@ -290,6 +320,8 @@ private:
   struct SubtreeTask {
     unsigned int depth = 0;
     SearchContext ctx;
+    uint64_t replaySkip = 0;
+    uint64_t replayAnchor = 0;
   };
 
     void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;

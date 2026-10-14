@@ -37,6 +37,19 @@
 #endif
 
 /**
+ * Canonical 64-bit FNV-1a hash over raw solution node IDs.
+ * Used for anchor validation when replaying search subtrees on resume.
+ */
+inline uint64_t rawNodesHash(const unsigned int * nodes, size_t count) {
+  uint64_t h = 14695981039346656037ULL;
+  for (size_t i = 0; i < count; i++) {
+    h ^= nodes[i];
+    h *= 1099511628211ULL;
+  }
+  return h;
+}
+
+/**
  * Bitset templated on N_WORDS (multiples of 4, i.e. 256-bit chunks),
  * aligned to 64 bytes for AVX2 vector operations.
  */

@@ -1035,8 +1035,8 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   };
 
   auto runCollect = [](SimdHuangCover256 & solver, std::stop_source & stopSrc,
-                       const std::vector<std::vector<unsigned int>> * seeds,
-                       std::vector<std::vector<unsigned int>> * salvaged) {
+                       const std::vector<HuangSeed> * seeds,
+                       std::vector<HuangSeed> * salvaged) {
     std::vector<std::vector<unsigned int>> sols;
     std::atomic<unsigned long> iterations{0};
     std::atomic<size_t> total_tasks{0};
@@ -1067,7 +1067,7 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   // Stop after the first solution: salvage must be non-empty...
   auto solver = makeSolver();
   std::vector<std::vector<unsigned int>> first;
-  std::vector<std::vector<unsigned int>> salvaged;
+  std::vector<HuangSeed> salvaged;
   {
     std::stop_source stopSrc;
     std::atomic<unsigned long> iterations{0};
@@ -1075,11 +1075,12 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
     std::atomic<size_t> completed_tasks{0};
     solver->parallelSolve(
       1,
-      [&](const std::vector<unsigned int> & s) {
+      [&](const std::vector<unsigned int> & s, bool & consumed) {
         std::vector<unsigned int> sorted = s;
         std::sort(sorted.begin(), sorted.end());
         first.push_back(sorted);
         stopSrc.request_stop();
+        consumed = true;
         return false;
       },
       stopSrc, iterations, total_tasks, completed_tasks,
@@ -1088,46 +1089,17 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   REQUIRE(first.size() == 1);
   CHECK(!salvaged.empty());
 
-  // Resume from only the salvaged prefixes whose subtree does NOT contain
-  // the reported solution (drop any prefix fully contained in first[0]):
-  // the rest must then equal the full set minus first. Without seeding the
-  // resume regenerates everything and re-reports first, failing the check;
-  // with it, remaining subtrees are searched exactly once.
-  const std::vector<unsigned int> &firstSol = first[0];
-  std::vector<std::vector<unsigned int>> seeds;
-  for (const auto &prefix : salvaged) {
-    bool containsFirst = true;
-    for (unsigned int node : prefix) {
-      if (std::find(firstSol.begin(), firstSol.end(), node) == firstSol.end()) {
-        containsFirst = false;
-        break;
-      }
-    }
-    if (!containsFirst)
-      seeds.push_back(prefix);
-  }
-  INFO("at least one salvaged subtree must lie outside the first solution");
-  CHECK(!seeds.empty());
-
-  // ...and resuming from the seeds reproduces the full multiset.
+  // Resume directly from all salvaged seeds: replaySkip skips first[0] without dedup.
   std::vector<std::vector<unsigned int>> rest;
   {
     std::stop_source stopSrc2;
-    rest = runCollect(*solver, stopSrc2, &seeds, nullptr);
+    rest = runCollect(*solver, stopSrc2, &salvaged, nullptr);
   }
-  // Union as a SET: the salvaged in-flight task re-searches its whole
-  // subtree, so the already-reported first solution may appear again --
-  // that overlap is inherent to prefix granularity and dedups upstairs
-  // (emittedSignatures). What must hold is completeness: every solution
-  // appears at least once, i.e. nothing was lost to the salvage.
-  std::vector<std::vector<unsigned int>> resumed = first;
-  resumed.insert(resumed.end(), rest.begin(), rest.end());
-  std::sort(resumed.begin(), resumed.end());
-  resumed.erase(std::unique(resumed.begin(), resumed.end()), resumed.end());
-  CHECK(resumed == full);
-  // Seeding pinned: the remaining subtrees exclude the first solution, so
-  // a resume that regenerates instead of seeding would re-report it.
-  CHECK(std::find(rest.begin(), rest.end(), firstSol) == rest.end());
+  REQUIRE(rest.size() == 1);
+  CHECK(rest[0] != first[0]);
+  std::vector<std::vector<unsigned int>> combined = {first[0], rest[0]};
+  std::sort(combined.begin(), combined.end());
+  CHECK(combined == full);
 }
 
 /* Stop before the first pop salvages the seeds verbatim (issue #111).
@@ -1150,8 +1122,8 @@ TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[s
   solver->addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
   solver->addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
 
-  const std::vector<std::vector<unsigned int>> seeds = {{1}, {2}};
-  std::vector<std::vector<unsigned int>> salvaged;
+  const std::vector<HuangSeed> seeds = {HuangSeed{.prefix = {1}}, HuangSeed{.prefix = {2}}};
+  std::vector<HuangSeed> salvaged;
   std::stop_source stopSrc;
   stopSrc.request_stop();          // stop before anything is popped
   std::atomic<unsigned long> iterations{0};

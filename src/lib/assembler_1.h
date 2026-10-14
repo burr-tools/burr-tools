@@ -22,6 +22,7 @@
 #define __ASSEMBLER_1_H__
 
 #include "assembler.h"
+#include "simd_huang_cover.h"
 
 #include <vector>
 #include <set>
@@ -101,6 +102,8 @@ private:
     std::vector<unsigned int> column_stack;
     std::vector<unsigned int> rows;
     std::vector<unsigned int> hidden_rows;
+    uint64_t replaySkip = 0;
+    uint64_t replayAnchor = 0;
   };
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
@@ -116,7 +119,6 @@ private:
   friend class assemblerWorker_1;
 
   std::vector<SubtreeTask_1> parallelTasks;
-  std::unordered_set<uint64_t> emittedSignatures;
 
   /* getFinished() has two progress sources and this picks between them: the
    * task-based one used for the whole of a parallel run, and the
@@ -177,25 +179,13 @@ private:
    * not running.
    */
   std::atomic<bool> searchComplete{false};
-  /* Serial dedup gate (issue #118): set whenever a run may already have
-   * reported assemblies that a serial re-search would repeat -- at the end
-   * of setPosition() when signatures were restored, and on every parallel
-   * stop. Serial solution() then suppresses re-reports instead of
-   * duplicating every one. Deliberately NOT set on fresh runs (signatures
-   * empty there): duplicate suppression on a fresh search would mask search
-   * bugs that the SIMD-vs-DLX equivalence tests must catch. Cleared together
-   * with emittedSignatures whenever a run completes or a fresh matrix is
-   * built.
-   */
-  bool resumeDedup = false;
-
   /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
    * resume (issue #111): interrupted in-flight tasks plus the pool
    * remainder, filled by parallelSolve on stop. The next assemble() feeds
    * them back as seeds instead of regenerating everything. Persisted by
    * save() for cross-session resume, like parallelTasks.
    */
-  std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
+  std::vector<HuangSeed> pendingHuangPrefixes;
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing. save() records

@@ -646,29 +646,32 @@ void SimdHuangCover<BitsetType>::generateTasks(
 template <typename BitsetType>
 void SimdHuangCover<BitsetType>::parallelSolve(
   unsigned int num_workers,
-  SolutionCallback callback,
+  ConsumeCallback callback,
   std::stop_source &runStop,
   std::atomic<unsigned long> &iterations,
   std::atomic<size_t> &total_tasks,
   std::atomic<size_t> &completed_tasks,
   ThreadBudget *budget,
-  const std::vector<std::vector<unsigned int>> *resume_prefixes,
-  std::vector<std::vector<unsigned int>> *salvaged_prefixes
+  const std::vector<HuangSeed> *resume_seeds,
+  std::vector<HuangSeed> *salvaged_seeds
 ) const {
   // One token for the whole run: workers share it for cancellation checks,
   // and a worker that throws fires the source so siblings stop promptly.
   std::stop_token stop = runStop.get_token();
   std::vector<SubtreeTask> tasks;
-  if (resume_prefixes != nullptr && !resume_prefixes->empty()) {
+  if (resume_seeds != nullptr && !resume_seeds->empty()) {
     // Incremental in-session continue: rebuild pool tasks by replaying the
     // salvaged placed-node prefixes instead of regenerating (and
     // re-searching) everything. Prefixes that no longer resolve are
     // skipped defensively; that cannot happen for salvage from an
     // identical matrix.
-    for (const auto &prefix : *resume_prefixes) {
+    for (const auto &seed : *resume_seeds) {
       SubtreeTask t;
-      if (taskFromPrefix(prefix, t))
+      if (taskFromPrefix(seed.prefix, t)) {
+        t.replaySkip = seed.replaySkip;
+        t.replayAnchor = seed.replayAnchor;
         tasks.push_back(std::move(t));
+      }
     }
   } else {
     unsigned int target_tasks = std::max(16u, num_workers * 4);
@@ -679,20 +682,23 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   // seeds are exactly the tasks it left uncompleted, already counted in
   // total_tasks (in-flight ones via the salvage bump, the pool remainder
   // from the start), so resetting here would drop the bar back to 0.
-  if (resume_prefixes == nullptr || resume_prefixes->empty()) {
+  if (resume_seeds == nullptr || resume_seeds->empty()) {
     total_tasks.store(tasks.size(), std::memory_order_relaxed);
     completed_tasks.store(0, std::memory_order_relaxed);
   }
 
   if (tasks.empty() || stop.stop_requested()) {
     // Stopped before (or without) any work: salvage the built tasks'
-    // prefixes so a continue resumes them instead of regenerating (the
-    // caller already consumed resume seeds, so dropping these would lose
-    // them silently; dedup keeps any overlap correct).
-    if (stop.stop_requested() && salvaged_prefixes != nullptr) {
+    // prefixes and replay counters so a continue resumes them instead of regenerating.
+    if (stop.stop_requested() && salvaged_seeds != nullptr) {
       for (auto &t : tasks) {
-        if (!t.ctx.current_solution.empty())
-          salvaged_prefixes->push_back(t.ctx.current_solution);
+        if (!t.ctx.current_solution.empty()) {
+          HuangSeed s;
+          s.prefix = t.ctx.current_solution;
+          s.replaySkip = t.replaySkip;
+          s.replayAnchor = t.replayAnchor;
+          salvaged_seeds->push_back(std::move(s));
+        }
       }
     }
     return;
@@ -717,9 +723,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
 
   std::exception_ptr worker_exception = nullptr;
   std::mutex exception_mutex;
-  // Salvaged prefixes from interrupted in-flight tasks (issue #111). Shared
-  // across workers; content is small placed-node vectors, so a plain mutex
-  // is ample. Only filled when salvaged_prefixes was provided.
+  // Salvaged seeds from interrupted in-flight tasks. Shared across workers.
   std::mutex salvage_mutex;
 
   auto worker_fn = [&](std::stop_token st = {}) {
@@ -734,16 +738,33 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           // relying on the unwinding. Mirrors the DLX requeue of
           // untouched snapshots.
           std::vector<unsigned int> task_prefix;
-          if (salvaged_prefixes != nullptr)
+          if (salvaged_seeds != nullptr)
             task_prefix = t.ctx.current_solution;
           std::atomic<uint64_t> task_iter{0};
+          uint64_t seen = 0;
+          uint64_t consumed = t.replaySkip;
+          uint64_t lastAnchor = t.replayAnchor;
+
           // Drain per-solution remainders to the shared counter as they
           // arise, so live readers observe advancing iterations (see the
           // serial flush above); exact totals preserved (exchange drains).
           ISimdHuangCover::SolutionCallback flushingCb = [&](const std::vector<unsigned int> &s) -> bool {
             iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
                                  std::memory_order_relaxed);
-            return callback(s);
+            seen++;
+            if (seen <= t.replaySkip) {
+              if (seen == t.replaySkip) {
+                bt_assert(t.replayAnchor == 0 || rawNodesHash(s.data(), s.size()) == t.replayAnchor);
+              }
+              return !stop.stop_requested() && !st.stop_requested();
+            }
+            bool didConsume = false;
+            bool cont = callback(s, didConsume);
+            if (didConsume) {
+              consumed = seen;
+              lastAnchor = rawNodesHash(s.data(), s.size());
+            }
+            return cont && !stop.stop_requested() && !st.stop_requested();
           };
           search(t.depth, t.ctx, flushingCb, stop, task_iter);
 
@@ -751,15 +772,16 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
           if (!stop.stop_requested() && !st.stop_requested()) {
             completed_tasks.fetch_add(1, std::memory_order_relaxed);
-          } else if (salvaged_prefixes != nullptr && !task_prefix.empty()) {
-            // Interrupted mid-task: salvage the pristine prefix so an
-            // in-session continue re-searches it from scratch. Assemblies
-            // reported twice are suppressed via emittedSignatures.
-            // total_tasks grows like the DLX requeue path, so getFinished()
-            // does not dip on stop.
+          } else if (salvaged_seeds != nullptr && !task_prefix.empty()) {
+            // Interrupted mid-task: salvage the pristine prefix and replay state so an
+            // in-session continue re-searches it from scratch without duplicating.
+            HuangSeed s;
+            s.prefix = std::move(task_prefix);
+            s.replaySkip = consumed;
+            s.replayAnchor = lastAnchor;
             {
               std::lock_guard<std::mutex> lock(salvage_mutex);
-              salvaged_prefixes->push_back(std::move(task_prefix));
+              salvaged_seeds->push_back(std::move(s));
             }
             total_tasks.fetch_add(1, std::memory_order_relaxed);
           }
@@ -794,15 +816,17 @@ void SimdHuangCover<BitsetType>::parallelSolve(
     std::rethrow_exception(worker_exception);
   }
 
-  // Salvage the pool remainder for incremental in-session resume (issue
-  // #111): queued tasks never ran, so their placed prefixes are pristine by
-  // construction. Skips empty prefixes -- only the degenerate no-rows task
-  // has none, and it can report nothing anyway. Mirrors the DLX
-  // pool.drain() remainder in assembler_1_c::parallelMultiSearch.
-  if (salvaged_prefixes != nullptr) {
+  // Salvage the pool remainder for incremental in-session resume:
+  // queued tasks never ran, so their placed prefixes are pristine by construction.
+  if (salvaged_seeds != nullptr) {
     for (auto &t : pool.drain()) {
-      if (!t.ctx.current_solution.empty())
-        salvaged_prefixes->push_back(t.ctx.current_solution);
+      if (!t.ctx.current_solution.empty()) {
+        HuangSeed s;
+        s.prefix = t.ctx.current_solution;
+        s.replaySkip = t.replaySkip;
+        s.replayAnchor = t.replayAnchor;
+        salvaged_seeds->push_back(std::move(s));
+      }
     }
   }
 }
