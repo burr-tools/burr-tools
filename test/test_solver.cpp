@@ -3156,6 +3156,70 @@ TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
   }
 }
 
+/* Serial save on an all-placed stop (assembler_0).
+ *
+ * Stopping inside the callback of an all-placed solution can leave
+ * pos == piecenumber. rows/columns hold no entry for that transient, but
+ * save() used to read rows[pos] anyway (heap OOB, aborting under
+ * _GLIBCXX_ASSERTIONS) and setPosition wrote the phantom pair past the
+ * vectors' end. Kangaroo's first assembly lands the stop there
+ * deterministically on the forced-serial path (1 thread, DLX): save,
+ * restore and continue must yield the exact union with no crash. Verified
+ * to abort in save() without the guard.
+ */
+TEST_CASE("serial save on an all-placed stop restores exact-once",
+          "[assembler][resume][save]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+  auto p = puzzle_c::load("puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() == 9831);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 1;
+    });
+    REQUIRE(seen == 1);
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  RecordingAssemblerCallback cb2;
+  {
+    assembler_0_c restored(*problem);
+    restored.setNumThreads(1);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+            == assembler_c::ERR_NONE);
+    restored.assemble(&cb2);
+    CHECK(restored.getFinished() == 1.0f);
+  }
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == baseline);
+}
+
 /* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
  * task list is generated, at the top of parallelMultiSearch, on that thread,
  * before any worker exists. A resumed run finds parallelTasks already
