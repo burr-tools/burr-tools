@@ -88,6 +88,16 @@ the whole subtree's order; children would each need their own share of it.
 At most one such task exists per worker per stop, so the lost split
 opportunity is negligible.
 
+Fan-out per split is capped at `kSplitFanout` (16): a column fatter than
+that yields singletons plus one cursor task (`cursorCol/cursorSkip`) for
+the rest instead of one task per row. Without the cap, a depth<3 split on
+a breadth-B column enumerates ~B^2 queued tasks, each persisting its full
+flat prefix -- RAM, save size and re-parse time all linear in the queue.
+Cursors are never searched (pop re-splits or, defensively, drops them
+counted with zero share) and persist their position in the 1.7 payload,
+so resume continues splitting where it left off. Columns at or below the
+cap enumerate exactly as before.
+
 ### 3.3 Engine pinning
 
 A skip count is only valid for the engine that produced it (DLX and the SIMD

@@ -251,8 +251,8 @@ public:
    * Move all still-queued tasks out for an in-session resume. Active
    * (half-searched) tasks are NOT included: the worker re-queues its current
    * task when it notices the abort, so the continue re-searches it from
-   * scratch with already-reported assemblies suppressed via the
-   * emittedSignatures dedup under callbackMutex.
+   * scratch with already-reported assemblies skipped via its replaySkip
+   * counter (see assembler_0_c::SubtreeTask).
    */
   std::vector<TaskType> drain() {
     std::vector<TaskType> rest;

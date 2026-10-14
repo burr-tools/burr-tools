@@ -232,6 +232,14 @@ private:
     unsigned int row;
   };
 
+  /* A task is either a single prefix path (plain subtree) or a cursor:
+   * cursorCol != 0 means "the rows of column cursorCol below this prefix,
+   * skipping the first cursorSkip of them, still need splitting". Cursors
+   * are created by splitPrefix when a column is too fat to enumerate at
+   * once (see kSplitFanout) and are never searched -- on pop they split
+   * again until exhausted. All cursor fields are 0 on plain tasks, and
+   * replaySkip/Anchor stay 0 on cursors (nothing reported from them).
+   */
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
     /* this subtree's fraction of the whole search tree; all tasks, plus the
@@ -240,7 +248,19 @@ private:
     float share = 0;
     uint64_t replaySkip = 0;
     uint64_t replayAnchor = 0;
+    unsigned int cursorCol = 0;
+    unsigned int cursorSkip = 0;
+    bool hasCursor(void) const { return cursorCol != 0; }
   };
+
+  /* Max children per split (see splitPrefix): a fat column fans out K-1
+   * singleton tasks plus one cursor for the rest instead of one task per
+   * row. Bounds the queue (and with it RAM, save size and parse time) at
+   * ~K per split regardless of column breadth, while keeping refinement
+   * fine enough for load balance. Columns at or below K enumerate exactly
+   * as before -- thin puzzles behave byte-identically.
+   */
+  static constexpr unsigned int kSplitFanout = 16;
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a

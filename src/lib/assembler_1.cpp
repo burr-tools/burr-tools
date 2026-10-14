@@ -3886,6 +3886,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
     vectorToStream(kEmpty, str);    // finished_b
   }
   str << ptype << " ";
+  size_t replayedTasks = 0;
   if (ptype == 1) {
     str << parallelTasks.size() << " ";
     for (const auto &t : parallelTasks) {
@@ -3895,14 +3896,25 @@ void assembler_1_c::save(xmlWriter_c & xml) const
       vectorToStream(t.rows, str);
       vectorToStream(t.hidden_rows, str);
       str << t.replaySkip << " " << t.replayAnchor << " ";
+      if (t.replaySkip > 0)
+        replayedTasks++;
     }
   } else if (ptype == 2) {
     str << pendingHuangPrefixes.size() << " ";
     for (const auto &seed : pendingHuangPrefixes) {
       vectorToStream(seed.prefix, str);
       str << seed.replaySkip << " " << seed.replayAnchor << " ";
+      if (seed.replaySkip > 0)
+        replayedTasks++;
     }
   }
+
+  /* Remainder census for save-size diagnosis (see assembler_0::save):
+   * task/seed count vs the generation target (max(16, 4*workers)) exposes
+   * fan-out; replayed counts describe resume shape. */
+  fprintf(stderr, "[assembler_1] save: interrupted=%d ptype=%u tasks=%zu replayed=%zu\n",
+      parallelInterrupted ? 1 : 0, ptype,
+      ptype == 1 ? parallelTasks.size() : pendingHuangPrefixes.size(), replayedTasks);
 
   xml.endTag("assembler");
 }

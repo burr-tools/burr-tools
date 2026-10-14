@@ -28,6 +28,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -2100,12 +2101,14 @@ TEST_CASE("Tampered replay anchor triggers assertion failure",
     }
     double share = 0;
     uint64_t replaySkip = 0, replayAnchor = 0;
-    REQUIRE(in >> share >> replaySkip >> replayAnchor);
+    unsigned int cursorCol = 0, cursorSkip = 0;
+    REQUIRE(in >> share >> replaySkip >> replayAnchor >> cursorCol >> cursorSkip);
     if (!foundAnchor && replayAnchor != 0) {
       replayAnchor ^= 0xDEADBEEFCAFEULL;
       foundAnchor = true;
     }
-    tampered << share << " " << replaySkip << " " << replayAnchor << " ";
+    tampered << share << " " << replaySkip << " " << replayAnchor << " "
+             << cursorCol << " " << cursorSkip << " ";
   }
   double compShare = 0;
   REQUIRE(in >> compShare);
@@ -2999,6 +3002,155 @@ TEST_CASE("a budgeted stop resumes exact-once across save and restore",
     /* exact union, no duplicates, nothing lost -- whichever landing the
      * budgeted stop took */
     std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+}
+
+/* Chunked splitting (kSplitFanout) acceptance experiment.
+ *
+ * examples/Burr-Glar.xmpuzzle:0 under assembler_0 was picked by screening
+ * the corpus with a stop-and-save probe: it is the only repo puzzle whose
+ * remainder shows runtime split fan-out (101 tasks from a generation
+ * target of 16, single-threaded). With chunking the same deterministic run
+ * (1 thread, stop after exactly 100,000 assemblies) must:
+ * - stay fully deterministic (identical task counts across runs),
+ * - actually chunk (rests > 0 in the remainder -- without the cap this
+ *   field does not exist; if heuristics ever stop fanning out here this
+ *   assertion goes vacuous, hence the explicit comment),
+ * - resume exact-once: stopped prefix + continued suffix == uninterrupted
+ *   baseline as multisets, on both the SIMD and the DLX task path (the
+ *   splitter is shared, but cursor tasks resume through different code).
+ */
+TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
+          "[assembler][resume][save]") {
+  /* SIMD section (below) runs single-threaded: fully deterministic, so it
+   * pins exact task counts. The DLX section needs threads > 1 to take the
+   * task-based path at all (a fresh 1-thread DLX run goes serial), so only
+   * order-independent properties are asserted there: non-empty remainder,
+   * exact union, finished run.
+   */
+  struct Case { bool forceDlx; const char * name; unsigned int threads; unsigned int stopAfter; };
+  const Case cases[] = {
+    {false, "SIMD", 1, 100000},
+    {true, "DLX", 4, 100000},
+  };
+
+  for (const auto & c : cases) {
+    INFO("engine: " << c.name);
+    // Absent toggle for SIMD (mirroring the pinned-engine test), "1" to
+    // force the pure-DLX task path.
+    ScopedEnv simdGuard("BURRTOOLS_NO_SIMD", c.forceDlx ? "1" : nullptr);
+
+    auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    /* Baseline multiset (4 threads). */
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+    REQUIRE(baseline.size() > c.stopAfter);
+
+    /* Deterministic stop after exactly stopAfter assemblies (twice for
+     * the deterministic SIMD section; once is enough where thread races
+     * rule out count pins). */
+    auto stopAfter = [&](RecordingAssemblerCallback & cb) {
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(c.threads);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb.assembly(std::move(a));
+        return ++seen < static_cast<int>(c.stopAfter);
+      });
+      REQUIRE(seen == static_cast<int>(c.stopAfter));
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      return str.str();
+    };
+    RecordingAssemblerCallback cb1a, cb1b;
+    std::string stateA = stopAfter(cb1a);
+    /* Parse the remainder: task count and rest (cursor) count. */
+    auto parseRemainder = [](const std::string & state) {
+      std::string payload = extractAssemblerContent(state);
+      std::istringstream in(payload);
+      unsigned int interrupted = 0, engine = 0, pos = 0;
+      unsigned long it = 0;
+      REQUIRE(in >> interrupted >> engine >> pos >> it);
+      for (unsigned int j = 0; j <= pos; j++) {
+        char o = 0, cl = 0;
+        unsigned int r = 0, col = 0;
+        REQUIRE(in >> o >> r >> col >> cl);
+      }
+      unsigned int taskCount = 0;
+      REQUIRE(in >> taskCount);
+      unsigned int rests = 0;
+      for (unsigned int i = 0; i < taskCount; i++) {
+        unsigned int prefixLen = 0;
+        REQUIRE(in >> prefixLen);
+        for (unsigned int k = 0; k < prefixLen; k++) {
+          unsigned int cc = 0, rr = 0;
+          REQUIRE(in >> cc >> rr);
+        }
+        double share = 0;
+        uint64_t rSkip = 0, rAnchor = 0;
+        unsigned int cCol = 0, cSkip = 0;
+        REQUIRE(in >> share >> rSkip >> rAnchor >> cCol >> cSkip);
+        if (cCol != 0)
+          rests++;
+      }
+      return std::make_pair(taskCount, rests);
+    };
+    if (!c.forceDlx) {
+      // Single-threaded search is fully deterministic: same discovery
+      // order, same remainder, twice.
+      std::string stateB = stopAfter(cb1b);
+      CHECK(cb1a.fingerprints == cb1b.fingerprints);
+      auto [tasksB, restsB] = parseRemainder(stateB);
+      auto [tasksA2, restsA2] = parseRemainder(stateA);
+      CHECK(tasksA2 == tasksB);
+      CHECK(restsA2 == restsB);
+    }
+
+    auto [tasksA, restsA] = parseRemainder(stateA);
+    INFO("tasks: " << tasksA << " rests: " << restsA);
+    if (!c.forceDlx) {
+      // The cap must actually fire on this puzzle; without chunking the
+      // same run leaves 101 tasks and no rests.
+      CHECK(restsA > 0);
+      // Bounded: far below what full fan-out would leave (see the B^2
+      // analysis), with room for heuristic drift either way.
+      CHECK(tasksA < 101);
+    } else {
+      // Thread races rule out exact pins here; but the callback stop
+      // always leaves the interrupted tasks behind (100k of ~960k), so
+      // the remainder is non-empty.
+      CHECK(tasksA > 0);
+    }
+
+    /* Restore and continue to completion: exact union. */
+    RecordingAssemblerCallback cb2;
+    {
+      assembler_0_c restored(*problem);
+      restored.setNumThreads(4);
+      REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      std::string payload = extractAssemblerContent(stateA);
+      REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(stateA).c_str())
+              == assembler_c::ERR_NONE);
+      restored.assemble(&cb2);
+      CHECK(restored.getFinished() == 1.0f);
+    }
+    std::multiset<std::string> resumed = cb1a.fingerprints;
     resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
     CHECK(resumed == baseline);
   }
