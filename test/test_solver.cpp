@@ -2662,6 +2662,110 @@ TEST_CASE("serial save on an all-placed stop restores exact-once",
   CHECK(resumed == baseline);
 }
 
+/* Truth table for drainedPoolComplete(), the stop-after-drain rule shared
+ * by all three pool-drain sites (assembler_0 DLX/SIMD, assembler_1 DLX,
+ * assembler_1 Huang). A stop that lands after the pool fully drained must
+ * complete instead of interrupting; anything else -- unstopped, tasks left
+ * queued, or counters that do not cover the total -- keeps the interrupted
+ * remainder. The `>=` on the counters is deliberate, not sloppy: splits
+ * inflate the total mid-run, so equality is what happens, not what is
+ * guaranteed.
+ */
+TEST_CASE("drainedPoolComplete pins the stop-after-drain rule",
+          "[assembler][resume]") {
+  CHECK(!drainedPoolComplete(false, 0, 5, 5));
+  CHECK(!drainedPoolComplete(false, 0, 0, 0));
+  CHECK(!drainedPoolComplete(true, 2, 5, 5));
+  CHECK(!drainedPoolComplete(true, 0, 0, 0));
+  CHECK(!drainedPoolComplete(true, 0, 5, 3));
+  CHECK(drainedPoolComplete(true, 0, 5, 5));
+  CHECK(drainedPoolComplete(true, 0, 5, 7));
+}
+
+/* A stop that lands while work is outstanding must still resume exact-once:
+ * save the stopped position, restore it into a fresh assembler, continue to
+ * completion, and compare the union against an uninterrupted baseline as
+ * multisets. The stop here comes from a time budget on another thread, so
+ * it can land anywhere -- mid-task, mid-drain, or just after the last task
+ * was counted. Every landing must satisfy the same invariant, which is what
+ * makes this deterministic: it never asserts which path was taken, only
+ * that the union is exact and the run ends finished. Without the
+ * drainedPoolComplete rule, a stop landing just after the final count
+ * saves an empty interrupted remainder whose continue regenerates (and
+ * duplicates) everything.
+ */
+TEST_CASE("a budgeted stop resumes exact-once across save and restore",
+          "[assembler][resume][save]") {
+  struct Case { const char * path; bool assembler0; };
+  // PelikanBurr (assembler_0) and CubeInCage (assembler_1) both solve in
+  // well under a second, so a ~1s budget interrupts mid-search on any
+  // machine fast enough to matter, while a glacial machine simply
+  // completes first -- and a completed run trivially satisfies the same
+  // union check below.
+  const Case cases[] = {
+    {"examples/PelikanBurr.xmpuzzle", true},
+    {"examples/CubeInCage.xmpuzzle", false},
+  };
+
+  for (const auto & c : cases) {
+    INFO("puzzle: " << c.path);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      std::unique_ptr<assembler_c> assm(c.assembler0
+        ? static_cast<assembler_c *>(new assembler_0_c(*problem))
+        : static_cast<assembler_c *>(new assembler_1_c(*problem)));
+      assm->setNumThreads(4);
+      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm->assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+
+    RecordingAssemblerCallback cb1;
+    std::string state;
+    {
+      std::unique_ptr<assembler_c> assm(c.assembler0
+        ? static_cast<assembler_c *>(new assembler_0_c(*problem))
+        : static_cast<assembler_c *>(new assembler_1_c(*problem)));
+      assm->setNumThreads(4);
+      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      traceSolveStoppingAfter(*assm, cb1, std::chrono::milliseconds(1000),
+                              std::chrono::milliseconds(50));
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm->save(xml);
+      state = str.str();
+    }
+
+    /* restore into a fresh assembler and continue to completion */
+    RecordingAssemblerCallback cb2;
+    {
+      std::unique_ptr<assembler_c> restored(c.assembler0
+        ? static_cast<assembler_c *>(new assembler_0_c(*problem))
+        : static_cast<assembler_c *>(new assembler_1_c(*problem)));
+      restored->setNumThreads(4);
+      REQUIRE(restored->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      std::string payload = extractAssemblerContent(state);
+      REQUIRE(restored->setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+              == assembler_c::ERR_NONE);
+      restored->assemble(&cb2);
+      CHECK(restored->getFinished() == 1.0f);
+    }
+
+    /* exact union, no duplicates, nothing lost -- whichever landing the
+     * budgeted stop took */
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+}
+
 /* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
  * task list is generated, at the top of parallelMultiSearch, on that thread,
  * before any worker exists. A resumed run finds parallelTasks already
