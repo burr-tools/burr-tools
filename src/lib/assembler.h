@@ -39,6 +39,26 @@ class problem_c;
 class xmlWriter_c;
 class ThreadBudget;
 
+/* Whether a stopped parallel run with a drained remainder must complete
+ * instead of interrupting: a stop that lands after the pool fully drained
+ * (every task counted, nothing left queued) means the search genuinely
+ * finished. Saving that empty remainder as interrupted would make a
+ * continue regenerate everything from scratch (duplicating every assembly,
+ * since there is no dedup set anymore) or refuse the restore.
+ *
+ * Shared by all three drain sites (assembler_0 DLX/SIMD, assembler_1 DLX,
+ * assembler_1 Huang) so the condition cannot silently diverge between
+ * engines; its truth table is unit-tested directly.
+ *
+ * Note this is protocol-shape neutral (task requeue/drain/finish pairing
+ * is unchanged), so spec/ needs no update for it.
+ */
+inline bool drainedPoolComplete(bool stopped, size_t drainedTasks,
+                                size_t totalTasks, size_t completedTasks) {
+  return stopped && drainedTasks == 0 && totalTasks > 0 &&
+         completedTasks >= totalTasks;
+}
+
 /**
  * Helper for the assembler preparation step: enumerates all placements of a
  * rotated piece inside the result shape.
