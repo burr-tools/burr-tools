@@ -22,6 +22,7 @@
 #define __DL_ASSEMBLER_H__
 
 #include "assembler.h"
+#include "split_fanout.h"
 
 #include <vector>
 #include <algorithm>
@@ -232,13 +233,35 @@ private:
     unsigned int row;
   };
 
+  /* A task is either a single prefix path (plain subtree) or a cursor:
+   * cursorCol != 0 means "the rows of column cursorCol below this prefix,
+   * skipping the first cursorSkip of them, still need splitting". Cursors
+   * are created by splitPrefix when a column is too fat to enumerate at
+   * once (see kSplitFanout) and are never searched -- on pop they split
+   * again until exhausted. All cursor fields are 0 on plain tasks.
+   */
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
     /* this subtree's fraction of the whole search tree; all tasks, plus the
      * subtrees pruned during generation, sum to 1
      */
     float share = 0;
+    unsigned int cursorCol = 0;
+    unsigned int cursorSkip = 0;
+    bool hasCursor(void) const { return cursorCol != 0; }
   };
+
+  /* Max children per split (see splitPrefix): a fat column fans out up to K
+   * singleton tasks plus one cursor for the rest instead of one task per
+   * row. Bounds the queue (and with it RAM, save size and parse time) at
+   * ~K per split regardless of column breadth, while keeping refinement
+   * fine enough for load balance. Columns at or below K enumerate exactly
+   * as before -- thin puzzles behave byte-identically. K is kSplitFanout
+   * unless BURRTOOLS_SPLIT_FANOUT overrides it (see split_fanout.h); read
+   * at the start of every parallel run, before any worker exists.
+   */
+  static constexpr unsigned int kSplitFanout = SplitFanout::kDefault;
+  unsigned int splitFanout = kSplitFanout;
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a
