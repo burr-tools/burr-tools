@@ -45,7 +45,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.6"
+#define ASSEMBLER_VERSION "1.7"
 
 /* print out the current matrix */
 void printMatrix(
@@ -1746,7 +1746,11 @@ public:
 
     unsigned int maxPrefix =
         parent.piecenumber > 1 ? parent.piecenumber - 1 : 1u;
-    if (task.prefix.size() >= maxPrefix)
+    // Plain tasks past the cap run whole (the caller searches the
+    // original); cursors bypass it -- a cursor has no whole to run
+    // (searching its prefix would duplicate the emitted singletons), so
+    // refusing to split one can only lose its remaining rows.
+    if (task.prefix.size() >= maxPrefix && !task.hasCursor())
       return children;
 
     for (const auto &step : task.prefix) {
@@ -1768,11 +1772,25 @@ public:
       return children;
     }
 
-    // Same MRV column choice as searchSubtree, holes check included.
+    // Same MRV column choice as searchSubtree, holes check included
+    // (plain tasks; cursor tasks re-enumerate their fixed column below).
     unsigned int c = right[0];
-    unsigned int s = colCount[c];
+    unsigned int skip = 0;
+    unsigned int s;
+    if (task.hasCursor()) {
+      // Fixed column and skip: re-enumerate the same rows the cursor was
+      // created from. The scratch state is rebuilt identically every time
+      // (same base, same prefix covers), so the links -- and the cursor --
+      // are still valid. Selection (s = 1) only enters the enumeration
+      // below; MRV scan and holes check are skipped.
+      c = task.cursorCol;
+      skip = task.cursorSkip;
+      s = 1;
+    } else {
+      s = colCount[c];
+    }
 
-    if (s) {
+    if (s && !task.hasCursor()) {
       unsigned int j = right[c];
       while (j) {
         if (colCount[j] < s) {
@@ -1784,7 +1802,7 @@ public:
       }
     }
 
-    if (s) {
+    if (s && !task.hasCursor()) {
       unsigned int currentHoles = parent.holes;
       unsigned int j = right[parent.varivoxelEnd];
       while (j != parent.varivoxelEnd) {
@@ -1800,26 +1818,62 @@ public:
     }
 
     if (s) {
-      /* colCount[c] (== s) is still live here: c has not been covered yet,
-       * so this reads the same local branching factor generateSubtreeTasks()
-       * would multiply into a fresh task's share. Dividing task.share by s
-       * is that same product taken one step further rather than recomputed
-       * from scratch, and since this loop creates exactly s children, their
-       * shares sum back to task.share exactly -- the split conserves share
-       * the same way the original generation does.
+      /* Enumerate the column's rows, skipping the cursor's share on rest
+       * tasks. At most splitFanout units leave here: singletons plus, when
+       * rows remain, one cursor for the rest. Thin columns (at most K rows)
+       * enumerate exactly as before -- same tasks, same shares, same order.
        */
-      float childShare = task.share / static_cast<float>(s);
-      for (unsigned int r = down(c); r != c; r = down(r)) {
+      unsigned int r = down(c);
+      for (unsigned int i = 0; i < skip && r != c; i++)
+        r = down(r);
+      std::vector<unsigned int> rows;
+      while (r != c && rows.size() < parent.splitFanout) {
+        rows.push_back(r);
+        r = down(r);
+      }
+      const bool exhausted = (r == c);
+
+      if (rows.empty()) {
+        // Dead column, or an exhausted cursor (defensive only -- cursors
+        // are created with rows remaining, on an identically rebuilt
+        // matrix). Either way there is nothing to split off.
+        unwind();
+        return children;
+      }
+      if (!task.hasCursor() && rows.size() < 2 && exhausted) {
+        // Single live child, plain task: splitting is pointless (as
+        // before); the worker searches the task itself. A cursor in the
+        // same shape must still emit its one row -- dropping it would lose
+        // the subtree -- so cursors never take this path.
+        unwind();
+        return children;
+      }
+
+      /* Share is divided evenly over the emitted units (singletons plus
+       * the rest cursor, if any), so the children's shares sum back to
+       * task.share exactly -- the split conserves share the same way the
+       * original generation does. (Progress accounting only.)
+       */
+      const float unitShare = task.share /
+          static_cast<float>(rows.size() + (exhausted ? 0u : 1u));
+      for (unsigned int row : rows) {
         assembler_0_c::SubtreeTask child = task;
-        child.prefix.push_back({c, r});
-        child.share = childShare;
+        child.prefix.push_back({c, row});
+        child.cursorCol = 0;
+        child.cursorSkip = 0;
+        child.share = unitShare;
         children.push_back(std::move(child));
+      }
+      if (!exhausted) {
+        assembler_0_c::SubtreeTask rest = task;
+        rest.cursorCol = c;
+        rest.cursorSkip = skip + static_cast<unsigned int>(rows.size());
+        rest.share = unitShare;
+        children.push_back(std::move(rest));
       }
     }
 
     unwind();
-    if (children.size() < 2)
-      children.clear();
     return children;
   }
 };
@@ -1960,6 +2014,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   // shared run state in a hot path.
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
+  // Fan-out for splits and stop-time divides, fixed for the whole run.
+  splitFanout = SplitFanout::fromEnv();
 
   /* Workers call smallerRotationExists() outside callbackMutex, which reaches
    * the lazy mutable caches on the result shape AND on every part shape.
@@ -2061,6 +2117,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   // splitPrefix itself returns empty at the depth cap, on dead ends, and
   // for single children, so neither trigger can over-refine.
   auto shouldSplit = [&](const SubtreeTask &task) {
+    // Cursor tasks are never searchable -- they split again (or drop when
+    // exhausted) wherever they are popped.
+    if (task.hasCursor())
+      return true;
     if (task.prefix.size() < 3)
       return true;
     return pool.has_waiting_workers() && pool.queued() < 2u * workers;
@@ -2158,6 +2218,16 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                 children.erase(children.begin());
                 totalTasks.fetch_add(pool.push_tasks(std::move(children)),
                                      std::memory_order_relaxed);
+              } else if (task.hasCursor()) {
+                // Exhausted cursor (defensive only -- live cursors always
+                // enumerate): its rows are fully covered by already-emitted
+                // singletons, so count it with zero share instead of
+                // searching the whole prefix (which would duplicate
+                // completed siblings' solutions).
+                task.share = 0;
+                finishTask(slot, task, true);
+                pool.finishTask();
+                continue;
               }
             }
 
@@ -2241,6 +2311,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                 children.erase(children.begin());
                 totalTasks.fetch_add(pool.push_tasks(std::move(children)),
                                      std::memory_order_relaxed);
+              } else if (task.hasCursor()) {
+                // Exhausted cursor, see the SIMD branch above: count with
+                // zero share, never search the whole prefix.
+                task.share = 0;
+                finishTask(slot, task, true);
+                pool.finishTask();
+                continue;
               }
             }
             beginTask(slot, task);
@@ -2678,10 +2755,15 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   prunedTaskShare = 0.0f;
   emittedSignatures.clear();
 
-  /* Only the current version reloads: it persists the parallel remainder
-   * with per-task shares and the completed share for exact progress
-   * resume. Anything else is refused rather than silently misparsed. */
-  if (version == nullptr || strcmp(version, ASSEMBLER_VERSION) != 0)
+  /* The current version and 1.6 (0.8.0) reload: both persist the parallel
+   * remainder with per-task shares and the completed share for exact
+   * progress resume; 1.7 adds the per-task cursor (see SubtreeTask).
+   * Anything else is refused rather than silently misparsed. */
+  if (version == nullptr)
+    return ERR_CAN_NOT_RESTORE_VERSION;
+  const bool is17 = strcmp(version, ASSEMBLER_VERSION) == 0;
+  const bool is16 = strcmp(version, "1.6") == 0;
+  if (!is17 && !is16)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   unsigned int len = strlen(string);
@@ -2746,7 +2828,8 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   }
 
   /* Parallel remainder (issue #90): pool tasks as flat prefix steps with
-   * per-task shares, then the completed share, then reported signatures.
+   * per-task shares (1.7: plus cursor column and skip), then the completed
+   * share, then reported signatures.
    * Parsed into locals first so a syntax failure leaves no partial tasks
    * behind. Shares are round-trip exact (float/double max_digits10). */
   std::vector<SubtreeTask> newTasks;
@@ -2772,8 +2855,17 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
     double share = 0;
     spos += getDouble(string+spos, &share);
-    if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (spos >= len && (is17 || i + 1 < taskCount)) return ERR_CAN_NOT_RESTORE_SYNTAX;
     t.share = static_cast<float>(share);
+    if (is17) {
+      unsigned int cCol = 0, cSkip = 0;
+      spos += getInt(string+spos, &cCol);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &cSkip);
+      if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      t.cursorCol = cCol;
+      t.cursorSkip = cSkip;
+    }
     // An empty prefix re-searches the whole space (dedup keeps it
     // correct); kept as-is rather than rejected.
     newTasks.push_back(std::move(t));
@@ -2867,20 +2959,30 @@ void assembler_0_c::save(xmlWriter_c & xml) const
     }
 
   /* Parallel remainder for cross-session resume (issue #90): pool tasks as
-   * flat column/row prefix steps, then reported signatures (sorted for
-   * determinism). Shared by the DLX and SIMD paths -- both consume the same
-   * SubtreeTask prefix pool. A serial stop writes zero tasks and resumes
-   * from the position above; signatures are always written when non-empty.
+   * flat column/row prefix steps with per-task share and cursor position
+   * (format 1.7: cursor tasks, see SubtreeTask, persist their column and
+   * skip so a rest continues splitting where it left off), then the
+   * completed share, then reported signatures (sorted for determinism).
+   * Shared by the DLX and SIMD paths -- both consume the same SubtreeTask
+   * prefix pool. A serial stop writes zero tasks and resumes from the
+   * position above; signatures are always written when non-empty.
    */
   str << " " << parallelTasks.size() << " ";
+  size_t maxPrefix = 0;
+  size_t restTasks = 0;
   for (const auto &t : parallelTasks) {
     str << t.prefix.size() << " ";
+    if (t.prefix.size() > maxPrefix)
+      maxPrefix = t.prefix.size();
+    if (t.hasCursor())
+      restTasks++;
     for (const auto &step : t.prefix)
       str << step.col << " " << step.row << " ";
     // Per-task share, round-trip exact (float max_digits10), so a reload
     // reproduces the progress state instead of sitting at 0%.
     str << std::setprecision(std::numeric_limits<float>::max_digits10)
         << t.share << " ";
+    str << t.cursorCol << " " << t.cursorSkip << " ";
   }
   // Completed share with double precision for the same reason.
   str << std::setprecision(std::numeric_limits<double>::max_digits10)
@@ -2891,6 +2993,14 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   str << sigs.size() << " ";
   for (uint64_t s : sigs)
     str << s << " ";
+
+  /* Remainder census for save-size diagnosis: task count vs the generation
+   * target (max(16, 16*workers)) exposes runtime split fan-out; maxPrefix
+   * and the cursor rests describe its shape. One line on stderr per save;
+   * saves only happen on pause, so this is not hot-path noise.
+   */
+  fprintf(stderr, "[assembler_0] save: interrupted=%d tasks=%zu maxPrefix=%zu rests=%zu\n",
+      parallelInterrupted ? 1 : 0, parallelTasks.size(), maxPrefix, restTasks);
 
   xml.endTag("assembler");
 }

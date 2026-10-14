@@ -138,6 +138,7 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and by the disassembly pool, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 | `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
+| `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
 
 ### Running an Interleaved A/B Benchmark
 
