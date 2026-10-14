@@ -16,6 +16,7 @@
 #include "lib/progressmodel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
+#include "test_helpers.h"
 
 #include <algorithm>
 #include <atomic>
@@ -28,6 +29,7 @@
 #include <set>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -1271,8 +1273,8 @@ TEST_CASE("Assembler-0 save, load and continue reproduces the full multiset",
           "[assembler][parallel][resume][save]") {
   struct Case { const char * path; int stopAfter; bool forceDlx; const char * version; };
   const Case cases[] = {
-    {"puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle", 100, true, "1.6"},
-    {"examples/PelikanBurr.xmpuzzle", 5, false, "1.6"},
+    {"puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle", 100, true, "1.7"},
+    {"examples/PelikanBurr.xmpuzzle", 5, false, "1.7"},
   };
 
   for (const auto & c : cases) {
@@ -2758,6 +2760,182 @@ TEST_CASE("a stop after the pool drained completes the run",
     CHECK(cb2.fingerprints.empty());
   }
 }
+
+/* A small assembler_0 puzzle with a wide search tree, built in code (the
+ * bundled examples are either tiny trees or Burr-Glar): straight pieces of
+ * lengths 1..n tiling a line of n(n+1)/2 voxels. Every piece is used
+ * exactly once and there are no holes, so it is SIMD-eligible; every
+ * search level has several candidate rows, so a low fan-out cap
+ * (BURRTOOLS_SPLIT_FANOUT) reliably leaves rests at a stop. n = 6 gives a
+ * few hundred assemblies and runs in milliseconds.
+ */
+static std::unique_ptr<puzzle_c> makeLinePuzzle(unsigned int n = 6) {
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const gridType_c & gt = *puzzle->getGridType();
+  std::vector<unsigned int> pieces;
+  for (unsigned int len = 1; len <= n; len++)
+    pieces.push_back(puzzle->addShape(bttest::fromLayers(gt, {{std::string(len, '#')}})));
+  unsigned int result = puzzle->addShape(bttest::fromLayers(gt, {{std::string(n * (n + 1) / 2, '#')}}));
+  problem_c * problem = puzzle->getProblem(puzzle->addProblem());
+  problem->setResultId(result);
+  for (unsigned int id : pieces) {
+    problem->setShapeMinimum(id, 1);
+    problem->setShapeMaximum(id, 1);
+  }
+  return puzzle;
+}
+
+/* Chunked splitting (fan-out cap) bounds the remainder and resumes.
+ *
+ * At the default cap (16) only Burr-Glar among the bundled puzzles has
+ * columns wide enough to chunk, and it takes minutes. The cap is a
+ * parameter (BURRTOOLS_SPLIT_FANOUT, see split_fanout.h) and exact for any
+ * value, so this runs the synthetic line puzzle (makeLinePuzzle) at a cap
+ * of 1: every split of a column with two or more rows emits a cursor
+ * rest. Each run (stop after a fixed number of assemblies)
+ * must:
+ * - stay fully deterministic on the single-threaded SIMD path (identical
+ *   remainders across runs),
+ * - actually chunk (rests > 0 in the remainder),
+ * - resume exact-once: stopped prefix + continued suffix == uninterrupted
+ *   baseline as multisets, on both the SIMD and the DLX task path (the
+ *   splitter is shared, but cursor tasks resume through different code).
+ */
+TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
+          "[assembler][resume][save]") {
+  /* SIMD section (below) runs single-threaded: fully deterministic, so it
+   * pins exact task counts. The DLX section needs threads > 1 to take the
+   * task-based path at all (a fresh 1-thread DLX run goes serial), so only
+   * order-independent properties are asserted there: non-empty remainder,
+   * exact union, finished run.
+   */
+  struct Case { bool forceDlx; const char * name; unsigned int threads; unsigned int stopAfter;
+                const char * path; const char * fanout; };
+  const Case cases[] = {
+    // single-threaded, so deterministic: stopping after 50 leaves the
+    // splitter's cursor queued (after 100 it happens to be used up)
+    {false, "SIMD", 1, 50, nullptr, "1"},
+    {true, "DLX", 4, 100, nullptr, "1"},
+  };
+
+  for (const auto & c : cases) {
+    INFO("engine: " << c.name);
+    ScopedEnv fanout("BURRTOOLS_SPLIT_FANOUT", c.fanout);
+    // Absent toggle for SIMD (mirroring the pinned-engine test), "1" to
+    // force the pure-DLX task path.
+    ScopedEnv simdGuard("BURRTOOLS_NO_SIMD", c.forceDlx ? "1" : nullptr);
+
+    // nullptr: the synthetic line puzzle (see makeLinePuzzle)
+    auto p = c.path ? puzzle_c::load(c.path) : makeLinePuzzle();
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+    REQUIRE(assembler_0_c::canHandle(*problem));
+
+    /* Baseline multiset (4 threads). */
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+    REQUIRE(baseline.size() > c.stopAfter);
+
+    /* Deterministic stop after exactly stopAfter assemblies (twice for
+     * the deterministic SIMD section; once is enough where thread races
+     * rule out count pins). */
+    auto stopAfter = [&](RecordingAssemblerCallback & cb) {
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(c.threads);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb.assembly(std::move(a));
+        return ++seen < static_cast<int>(c.stopAfter);
+      });
+      REQUIRE(seen == static_cast<int>(c.stopAfter));
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      return str.str();
+    };
+    RecordingAssemblerCallback cb1a, cb1b;
+    std::string stateA = stopAfter(cb1a);
+    /* Parse the remainder: task count and cursor (rest) count. */
+    auto parseRemainder = [](const std::string & state) {
+      struct Summary { unsigned int tasks = 0; unsigned int rests = 0; };
+      Summary s;
+      std::string payload = extractAssemblerContent(state);
+      std::istringstream in(payload);
+      unsigned int interrupted = 0, pos = 0;
+      unsigned long it = 0;
+      REQUIRE(in >> interrupted >> pos >> it);
+      for (unsigned int j = 0; j <= pos; j++) {
+        char o = 0, cl = 0;
+        unsigned int r = 0, col = 0;
+        REQUIRE(in >> o >> r >> col >> cl);
+      }
+      REQUIRE(in >> s.tasks);
+      for (unsigned int i = 0; i < s.tasks; i++) {
+        unsigned int prefixLen = 0;
+        REQUIRE(in >> prefixLen);
+        for (unsigned int k = 0; k < prefixLen; k++) {
+          unsigned int cc = 0, rr = 0;
+          REQUIRE(in >> cc >> rr);
+        }
+        double share = 0;
+        unsigned int cCol = 0, cSkip = 0;
+        REQUIRE(in >> share >> cCol >> cSkip);
+        if (cCol != 0)
+          s.rests++;
+      }
+      return s;
+    };
+    if (!c.forceDlx) {
+      // Single-threaded search is fully deterministic: same discovery
+      // order, same remainder, twice.
+      std::string stateB = stopAfter(cb1b);
+      CHECK(cb1a.fingerprints == cb1b.fingerprints);
+      auto sumB = parseRemainder(stateB);
+      auto sumA2 = parseRemainder(stateA);
+      CHECK(sumA2.tasks == sumB.tasks);
+      CHECK(sumA2.rests == sumB.rests);
+    }
+
+    auto sumA = parseRemainder(stateA);
+    INFO("tasks: " << sumA.tasks << " rests: " << sumA.rests);
+    // The stop lands well before the end, so a remainder is left.
+    CHECK(sumA.tasks > 0);
+    if (!c.forceDlx) {
+      // The cap must actually fire: at a cap of 1 the deterministic SIMD
+      // run leaves cursor rests. (DLX workers split only shallow tasks or
+      // for starving siblings, so whether a cursor is still queued at the
+      // stop depends on scheduling; divided remainders pin DLX rests.)
+      CHECK(sumA.rests > 0);
+    }
+
+    /* Restore and continue to completion: exact union, finished run. */
+    RecordingAssemblerCallback cb2;
+    {
+      assembler_0_c restored(*problem);
+      restored.setNumThreads(4);
+      REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      std::string payload = extractAssemblerContent(stateA);
+      REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(stateA).c_str())
+              == assembler_c::ERR_NONE);
+      restored.assemble(&cb2);
+      CHECK(restored.getFinished() == 1.0f);
+    }
+    std::multiset<std::string> resumed = cb1a.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+}
+
 
 /* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
  * task list is generated, at the top of parallelMultiSearch, on that thread,

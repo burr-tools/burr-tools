@@ -3976,6 +3976,13 @@ void assembler_1_c::save(xmlWriter_c & xml) const
   std::sort(sigs.begin(), sigs.end());
   vectorToStream64(sigs, str);
 
+  /* Remainder census for save-size diagnosis (see assembler_0::save):
+   * task/seed count vs the generation target (max(16, 4*workers)) exposes
+   * fan-out. */
+  fprintf(stderr, "[assembler_1] save: interrupted=%d ptype=%u tasks=%zu\n",
+      parallelInterrupted ? 1 : 0, ptype,
+      ptype == 1 ? parallelTasks.size() : pendingHuangPrefixes.size());
+
   xml.endTag("assembler");
 }
 
