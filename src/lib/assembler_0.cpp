@@ -2423,51 +2423,18 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
   return solver;
 }
 
-void assembler_0_c::simdSearch(void) {
-  // Snapshot of the run token: assemble() refreshed the source.
-  std::stop_token runTok = currentRunToken();
-  running.store(true, std::memory_order_relaxed);
-
-  // See iterativeMultiSearch(): a serial run supersedes saved remainder.
-  parallelTasks.clear();
-
-  auto solver = createSimdSolver();
-  std::atomic<uint64_t> simd_iter{0};
-
-  // Drain per-solution remainders to the shared counter as they arise, so
-  // live readers (GUI progress, iterator API) observe advancing iterations
-  // even on single-threaded runs; exact totals preserved (exchange drains).
-  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
-    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
-                               std::memory_order_relaxed);
-    handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
-    return !runTok.stop_requested();
-  }, runTok, simd_iter);
-
-  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-  if (!runTok.stop_requested()) {
-    pos = piecenumber + 1;
-    parallelInterrupted = false;
-    searchComplete.store(true, std::memory_order_relaxed);
-  } else {
-    /* The SIMD search keeps its position in the solver, not in pos/rows[], so
-     * an aborted run leaves pos == 0 -- indistinguishable from "not started".
-     * Saving that next to an already populated solution list and continuing
-     * would replay the whole search and report every assembly again, so mark
-     * it unresumable, exactly as the parallel path does.
-     */
-    parallelInterrupted = true;
-  }
-  running.store(false, std::memory_order_relaxed);
-}
-
 bool assembler_0_c::willRunParallel(unsigned int threads) const {
   /* the condition assemble() dispatches on, in one place. pos != 0 is a
    * resumed search that carries a partial DLX stack the task generator cannot
    * start from, so it always runs serially however many threads are
-   * configured.
+   * configured. SIMD-eligible fresh runs take the task-based parallel path
+   * even with a single thread: parallelMultiSearch() runs worker 0 inline
+   * with no extra thread, and its pool remainder makes an interrupted run
+   * resumable.
    */
-  return (errorsState == ERR_NONE) && (pos == 0) && (threads > 1);
+  if ((errorsState != ERR_NONE) || (pos != 0))
+    return false;
+  return (threads > 1) || canUseSimd();
 }
 
 unsigned int assembler_0_c::getRunThreads(void) const {
@@ -2489,6 +2456,10 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   asm_bc = callback;
   const unsigned int threads = getEffectiveThreads();
+  /* Single dispatch source: willRunParallel() covers the multi-thread case
+   * and SIMD-eligible fresh runs (single-threaded ones included). Only serial
+   * DLX resumes reach the iterative path below.
+   */
   const bool runParallel = willRunParallel(threads);
 
   /* The task counters are switched OFF for a non-parallel run, not merely
@@ -2512,17 +2483,13 @@ void assembler_0_c::assemble(assembler_cb * callback) {
   if (runParallel) {
     parallelMultiSearch(threads);
   } else {
-    // Serial path (single thread or in-session continue): hold a budget
+    // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
     // token too, so the cap covers resume runs as well. Skipped only when
     // stopping (no token with a callback set).
     BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
                        runTok);
     if (callback == nullptr || budget.holds()) {
-      if (canUseSimd()) {
-        simdSearch();
-      } else {
-        iterativeMultiSearch();
-      }
+      iterativeMultiSearch();
     }
   }
 }

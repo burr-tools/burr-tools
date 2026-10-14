@@ -813,7 +813,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
    */
   task_stack = { 0 };
   next_row_stack = { 0 };
-  simdCompleted = false;
 
   errorsState = ERR_NONE;
   return errorsState;
@@ -1600,7 +1599,7 @@ void assembler_1_c::iterative(void) {
   // A serial run supersedes any saved parallel remainder: it resumes from
   // the stacks, so stale tasks/prefixes must not linger into a later save()
   // (their subtrees are re-covered here; overlap stays correct via the kept
-  // signatures). Same clearing in simdSearch().
+  // signatures).
   parallelTasks.clear();
   pendingHuangPrefixes.clear();
   // The serial stacks are a real resume point from here on; a flag left over
@@ -2609,13 +2608,19 @@ public:
 };
 
 bool assembler_1_c::willRunParallel(unsigned int threads) const {
-  /* a task_stack/next_row_stack that is not at its initial state is a resumed
+  /* the condition assemble() dispatches on, in one place. A
+   * task_stack/next_row_stack that is not at its initial state is a resumed
    * search: the task generator cannot start from it, so a resume runs serially
-   * however many threads are configured
+   * however many threads are configured. SIMD-eligible fresh runs take the
+   * task-based parallel path even with a single thread: parallelMultiSearch()
+   * runs worker 0 inline with no extra thread, and its pool remainder makes
+   * an interrupted run resumable.
    */
-  return (errorsState == ERR_NONE) && threads > 1 &&
-         task_stack.size() == 1 && rows.empty() &&
-         next_row_stack.size() == 1;
+  if (errorsState != ERR_NONE)
+    return false;
+  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
+    return false;
+  return (threads > 1) || canUseSimd();
 }
 
 unsigned int assembler_1_c::getRunThreads(void) const {
@@ -3352,48 +3357,6 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
   return solver;
 }
 
-void assembler_1_c::simdSearch(void) {
-  // Snapshot of the run token: assemble() refreshed the source.
-  std::stop_token runTok = currentRunToken();
-  running.store(true, std::memory_order_relaxed);
-
-  // See iterative(): a serial run supersedes saved parallel remainder.
-  parallelTasks.clear();
-  pendingHuangPrefixes.clear();
-
-  auto solver = createSimdSolver();
-  std::atomic<uint64_t> simd_iter{0};
-
-  // Drain per-solution remainders to the shared counter as they arise, so
-  // live readers observe advancing iterations even on single-threaded runs;
-  // exact totals preserved (exchange drains). Mirrors the parallel worker.
-  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
-    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
-                               std::memory_order_relaxed);
-    rows = solution_nodes;
-    solution();
-    return !runTok.stop_requested();
-  }, runTok, simd_iter);
-
-  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-
-  /* as in assembler_0: the SIMD search keeps its position in the solver, so an
-   * aborted run leaves the master looking untouched. Saving that would claim
-   * nothing had been searched and the continue would replay everything.
-   */
-  parallelInterrupted = runTok.stop_requested();
-  simdCompleted.store(!parallelInterrupted, std::memory_order_release);
-  if (simdCompleted.load(std::memory_order_relaxed)) {
-    next_row_stack.clear();
-    task_stack.clear();
-    searchComplete.store(true, std::memory_order_relaxed);
-    emittedSignatures.clear();
-    resumeDedup = false;
-  }
-
-  running.store(false, std::memory_order_relaxed);
-}
-
 void assembler_1_c::assemble(assembler_cb * callback) {
 
   running.store(true, std::memory_order_relaxed);
@@ -3404,9 +3367,10 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   debug = false;
 
   const unsigned int threads = getEffectiveThreads();
-  /* the same condition the branch below used to test inline, hoisted so the
-   * progress source can be chosen before anything is written, and factored
-   * out so getRunThreads() cannot drift from it
+  /* Single dispatch source, shared with getRunThreads(): willRunParallel()
+   * covers the multi-thread case and SIMD-eligible fresh runs
+   * (single-threaded ones included). Only serial DLX resumes reach the
+   * iterative path below.
    */
   const bool runParallel = willRunParallel(threads);
 
@@ -3426,9 +3390,9 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    * its whole body. That is what orders a poll that arrived BEFORE the switch
    * -- and so did read finished_a and next_row_stack, legitimately, while
    * nothing was running -- against the writes below: read, then lock, then
-   * write, with the lock carrying the happens-before edge. simdCompleted and
-   * inFlightProgress are atomics in their own right, so the lock is not what
-   * makes storing them safe; it is what makes this switch indivisible from
+   * write, with the lock carrying the happens-before edge. inFlightProgress is
+   * atomic in its own right, so the lock is not what
+   * makes storing it safe; it is what makes this switch indivisible from
    * getFinished()'s point of view, so no poll can land between "flag says
    * parallel" and "finished_a/next_row_stack are mid-write".
    *
@@ -3449,7 +3413,6 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    */
   {
     std::lock_guard<std::mutex> lock(finishedMutex);
-    simdCompleted.store(false, std::memory_order_relaxed);
     inFlightProgress.store(runParallel, std::memory_order_relaxed);
     if (!runParallel) {
       totalTasks.store(0, std::memory_order_relaxed);
@@ -3475,22 +3438,19 @@ void assembler_1_c::assemble(assembler_cb * callback) {
       if (runParallel) {
         parallelMultiSearch(threads);
       } else {
-        // Serial path: hold a budget token too (see assembler_0_c::assemble).
+        // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
+        // token too (see assembler_0_c::assemble).
         BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
                            runTok);
         if (callback == nullptr || budget.holds()) {
-          if (canUseSimd()) {
-            simdSearch();
-          } else {
-            iterative();
-            // A completed serial run retires restored dedup state (mirrors
-            // the completion paths above); a stopped run keeps it for save().
-            // Completion is exactly empty stacks: iterative() only breaks
-            // with restorable states 1/2/5 on top otherwise.
-            if (task_stack.empty() && !runTok.stop_requested()) {
-              emittedSignatures.clear();
-              resumeDedup = false;
-            }
+          iterative();
+          // A completed serial run retires restored dedup state (mirrors
+          // the completion paths above); a stopped run keeps it for save().
+          // Completion is exactly empty stacks: iterative() only breaks
+          // with restorable states 1/2/5 on top otherwise.
+          if (task_stack.empty() && !runTok.stop_requested()) {
+            emittedSignatures.clear();
+            resumeDedup = false;
           }
         }
       }
@@ -3642,15 +3602,12 @@ float assembler_1_c::getFinished(void) const {
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 
-  /* Reaching here means inFlightProgress is off, i.e. a non-parallel run --
+  /* Reaching here means inFlightProgress is off, i.e. a serial DLX run --
    * and assemble() zeroes totalTasks for exactly those, so there is no
-   * task-count source to consult. The SIMD back end needs no case of its own
-   * here: it runs under inFlightProgress too and is served by the branch
+   * task-count source to consult. All SIMD runs (including single-threaded
+   * ones) take the task-based parallel path and are served by the branch
    * above.
    */
-
-  if (simdCompleted.load(std::memory_order_acquire))
-    return 1.0f;
 
   if (next_row_stack.size() == 0) return 1;
 
@@ -3753,7 +3710,6 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   emittedSignatures.clear();
   resumeDedup = false;
   resetTaskProgress();
-  simdCompleted.store(false, std::memory_order_relaxed);
 
   unsigned int pos = 0;
 
