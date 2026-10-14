@@ -30,12 +30,14 @@
 #include "../lib/bt_assert.h"
 
 #include "../halfedge/polyhedron.h"
+#include "../halfedge/vertex.h"
 
 #include "../tools/fileexists.h"
 #include "../tools/homedir.h"
 
 #include <stdlib.h>
 #include <ctype.h>
+#include <algorithm>
 #include <filesystem>
 
 #pragma GCC diagnostic push
@@ -50,6 +52,20 @@ struct stlExportDialog_c::parameterField_c {
   stlExporter_c::parameterTypes type;
   Fl_Widget * w;
 };
+
+/* the longest side of the mesh's bounding box */
+static double longestSide(const Polyhedron & p)
+{
+  bt_assert(p.vBegin() != p.vEnd());
+  Vector3Df lo = (*p.vBegin())->position();
+  Vector3Df hi = lo;
+  for (Polyhedron::const_vertex_iterator it = p.vBegin(); it != p.vEnd(); ++it)
+    for (int k = 0; k < 3; k++) {
+      lo[k] = std::min(lo[k], (*it)->position()[k]);
+      hi[k] = std::max(hi[k], (*it)->position()[k]);
+    }
+  return std::max({ hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2] });
+}
 
 static void cb_Export_stub      (Fl_Widget*, void* v) { ((stlExportDialog_c*)v)->cb_Export(); }
 static void cb_Close_stub       (Fl_Widget*, void* v) { ((stlExportDialog_c*)v)->cb_Close(); }
@@ -301,23 +317,43 @@ void stlExportDialog_c::cb_Update3DView(void)
   try {
     std::string text;
     std::unique_ptr<Polyhedron> p = previewMesh(text);
-    if (p)
-      view3D->getView()->showMesh(p.release());
-    else
-      view3D->getView()->showNothing();
     status->copy_label(text.c_str());
+
+    if (!p) {
+      view3D->getView()->showNothing();
+      previewLength = 0;
+      return;
+    }
+
+    const double length = longestSide(*p);
+    view3D->getView()->showMesh(p.release());
+
+    if (refit || previewLength <= 0)
+      view3D->fitToContent();
+    else
+      view3D->scaleZoom(length / previewLength);
+    refit = false;
+    previewLength = length;
   }
   catch (stlException_c & e) {
     /* nothing to show: the preview must not keep the last mesh */
     view3D->getView()->showNothing();
+    previewLength = 0;
     status->label("");
     fl_message("%s", e.comment);
   }
   catch (...) {
     view3D->getView()->showNothing();
+    previewLength = 0;
     status->label("");
     fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
   }
+}
+
+void stlExportDialog_c::cb_NewPreviewSubject(void)
+{
+  refit = true;
+  cb_Update3DView();
 }
 
 void stlExportDialog_c::cb_Update3DViewParams(void)

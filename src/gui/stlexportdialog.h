@@ -125,6 +125,10 @@ class stlExportDialog_c : public LFl_Double_Window {
     void cb_Update3DView(void);
     void cb_Update3DViewParams(void);
 
+    /* the preview shows something else (another piece, another mode):
+     * show it fitted into the view */
+    void cb_NewPreviewSubject(void);
+
   private:
 
     struct parameterField_c;
@@ -132,6 +136,16 @@ class stlExportDialog_c : public LFl_Double_Window {
 
     LView3dGroup * view3D = nullptr;
     ButtonGroup_c * viewMode = nullptr;
+
+    /* The zoom of the preview: fitted to what it shows when that changes,
+     * else kept where the user put it, scaled with the longest side of the
+     * mesh's bounding box when a parameter (the unit size) changes the
+     * mesh's size. The longest side, not the fit, so that changing the
+     * proportions doesn't jump the zoom where the fit turns from being
+     * limited by the width to the height. 0 when nothing is shown, the
+     * next mesh is fitted then. */
+    bool refit = true;
+    double previewLength = 0;
 
     pixmapList_c pm;
 };

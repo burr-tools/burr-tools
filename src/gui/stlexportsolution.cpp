@@ -138,7 +138,7 @@ namespace {
 } // namespace
 
 static void cb_Mode_stub(Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Mode(); }
-static void cb_PieceSelect_stub(Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Update3DView(); }
+static void cb_PieceSelect_stub(Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_NewPreviewSubject(); }
 
 bool stlExportSolution_c::assembled(void) const { return ModeAssembled->value() != 0; }
 
@@ -156,7 +156,7 @@ void stlExportSolution_c::activateModeFields(void)
 void stlExportSolution_c::cb_Mode(void)
 {
   activateModeFields();
-  cb_Update3DView();
+  cb_NewPreviewSubject();
 }
 
 void stlExportSolution_c::cb_FileChooser(void)

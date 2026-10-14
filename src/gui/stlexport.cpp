@@ -34,7 +34,7 @@
 #include <FL/fl_ask.H>
 #pragma GCC diagnostic pop
 
-static void cb_ShapeSelect_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
+static void cb_ShapeSelect_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_NewPreviewSubject(); }
 
 stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : stlExportDialog_c(p, puzzleFile, "Export STL") {
 
