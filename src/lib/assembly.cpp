@@ -788,13 +788,9 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
-std::vector<std::unique_ptr<voxel_c>> assembly_c::placedPieces(const problem_c & puz, int & maxX, int & maxY, int & maxZ) const {
+assembly_c::placedPieces_c assembly_c::placedPieces(const problem_c & puz) const {
 
-  std::vector<std::unique_ptr<voxel_c>> pieces(placements.size());
-
-  maxX = 1;
-  maxY = 1;
-  maxZ = 1;
+  placedPieces_c res;
 
   // iterate over all shapes in the assembly and find out their placement
   // to find the size of the voxel space holding the whole assembly
@@ -814,14 +810,14 @@ std::vector<std::unique_ptr<voxel_c>> assembly_c::placedPieces(const problem_c &
       int dy = (int)placements[i].ypos - (int)pc->getHy();
       int dz = (int)placements[i].zpos - (int)pc->getHz();
 
-      if ((int)pc->getX()+dx > maxX) maxX = (int)pc->getX()+dx;
-      if ((int)pc->getY()+dy > maxY) maxY = (int)pc->getY()+dy;
-      if ((int)pc->getZ()+dz > maxZ) maxZ = (int)pc->getZ()+dz;
+      if ((int)pc->getX()+dx > res.sizeX) res.sizeX = (int)pc->getX()+dx;
+      if ((int)pc->getY()+dy > res.sizeY) res.sizeY = (int)pc->getY()+dy;
+      if ((int)pc->getZ()+dz > res.sizeZ) res.sizeZ = (int)pc->getZ()+dz;
 
-      pieces[i] = std::move(pc);
+      res.pieces.push_back(placedPiece_c{std::move(pc), dx, dy, dz});
     }
 
-  return pieces;
+  return res;
 }
 
 /* copy the filled voxels of a placed piece into a space, at its position */
@@ -836,20 +832,15 @@ static void placeInto(voxel_c & space, const voxel_c & pc, int dx, int dy, int d
 
 std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
 
-  int maxX, maxY, maxZ;
-  std::vector<std::unique_ptr<voxel_c>> pieces = placedPieces(puz, maxX, maxY, maxZ);
+  placedPieces_c placed = placedPieces(puz);
 
   // create a shape identical in size with the result shape of the problem
-  std::unique_ptr<voxel_c> res(puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0));
+  std::unique_ptr<voxel_c> res(puz.getPuzzle().getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result
-  for (unsigned int i = 0; i < placements.size(); i++)
-    if (pieces[i])
-      placeInto(*res, *pieces[i],
-                (int)placements[i].xpos - (int)pieces[i]->getHx(),
-                (int)placements[i].ypos - (int)pieces[i]->getHy(),
-                (int)placements[i].zpos - (int)pieces[i]->getHz());
+  for (const placedPiece_c & p : placed.pieces)
+    placeInto(*res, *p.shape, p.dx, p.dy, p.dz);
 
   res->skipRecalcBoundingBox(false);
   res->initHotspot();
@@ -858,27 +849,22 @@ std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
 
 std::vector<std::unique_ptr<voxel_c>> assembly_c::createPieceSpaces(const problem_c & puz) const {
 
-  int maxX, maxY, maxZ;
-  std::vector<std::unique_ptr<voxel_c>> pieces = placedPieces(puz, maxX, maxY, maxZ);
+  placedPieces_c placed = placedPieces(puz);
 
   std::vector<std::unique_ptr<voxel_c>> res;
 
   // each piece into its own space of the size of the whole assembly
-  for (unsigned int i = 0; i < placements.size(); i++)
-    if (pieces[i]) {
+  for (const placedPiece_c & p : placed.pieces) {
 
-      std::unique_ptr<voxel_c> space(puz.getPuzzle().getGridType()->getVoxel(maxX, maxY, maxZ, 0));
-      space->skipRecalcBoundingBox(true);
+    std::unique_ptr<voxel_c> space(puz.getPuzzle().getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
+    space->skipRecalcBoundingBox(true);
 
-      placeInto(*space, *pieces[i],
-                (int)placements[i].xpos - (int)pieces[i]->getHx(),
-                (int)placements[i].ypos - (int)pieces[i]->getHy(),
-                (int)placements[i].zpos - (int)pieces[i]->getHz());
+    placeInto(*space, *p.shape, p.dx, p.dy, p.dz);
 
-      space->skipRecalcBoundingBox(false);
-      space->initHotspot();
-      res.push_back(std::move(space));
-    }
+    space->skipRecalcBoundingBox(false);
+    space->initHotspot();
+    res.push_back(std::move(space));
+  }
 
   return res;
 }

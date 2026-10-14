@@ -1452,13 +1452,13 @@ TEST_CASE("assembly: createPieceSpaces gives each placed piece its own space, to
       for (unsigned int z = 0; z < whole->getZ(); z++)
         for (unsigned int y = 0; y < whole->getY(); y++)
           for (unsigned int x = 0; x < whole->getX(); x++) {
+            INFO("cell " << x << "," << y << "," << z);
             unsigned int in = 0;
             for (const std::unique_ptr<voxel_c> & piece : pieces)
               if (piece->getState(x, y, z) != voxel_c::VX_EMPTY) {
                 in++;
                 REQUIRE(piece->get(x, y, z) == whole->get(x, y, z));
               }
-            INFO("cell " << x << "," << y << "," << z);
             REQUIRE(in <= 1);
             REQUIRE((in == 1) == (whole->getState(x, y, z) != voxel_c::VX_EMPTY));
           }
