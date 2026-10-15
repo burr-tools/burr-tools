@@ -592,6 +592,15 @@ if not meson.is_cross_build()
     timeout: 300,
     workdir: meson.project_source_root(),
   )
+
+  # the puzzle piped into the solvers, compressed or plain
+  test('cli_stdin',
+    find_program('python3'),
+    args: [meson.project_source_root() / 'test/cli_stdin.py', burrtxt_exe, burrtxt2_exe, meson.project_source_root()],
+    suite: 'fast',
+    timeout: 300,
+    workdir: meson.project_source_root(),
+  )
 endif
 
 # burrtools-qt: the redesigned GUI (design-spec/, the Qt 6 Quick profile).

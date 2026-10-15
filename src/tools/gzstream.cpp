@@ -28,6 +28,14 @@
 
 #include "gzstream.h"
 #include <string.h>  // for memcpy
+#include <stdio.h>   // for fileno
+
+#ifdef _WIN32
+#include <io.h>      // for _dup, _close, _setmode
+#include <fcntl.h>   // for _O_BINARY
+#else
+#include <unistd.h>  // for dup, close
+#endif
 
 // ----------------------------------------------------------------------------
 // Internal classes to implement gzstream. See header file for user classes.
@@ -37,15 +45,14 @@
 // class gzstreambuf:
 // --------------------------------------
 
-gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
-    if ( is_open())
-        return (gzstreambuf*)0;
+// records open_mode and writes the matching gzopen() mode string into fmode;
+// false for the modes gzstream does not support
+bool gzstreambuf::setMode( int open_mode, char* fmode) {
     mode = open_mode;
     // no append nor read/write mode
     if ((mode & std::ios::ate) || (mode & std::ios::app)
         || ((mode & std::ios::in) && (mode & std::ios::out)))
-        return (gzstreambuf*)0;
-    char  fmode[10];
+        return false;
     char* fmodeptr = fmode;
     if ( mode & std::ios::in)
         *fmodeptr++ = 'r';
@@ -54,7 +61,29 @@ gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
     *fmodeptr++ = 'b';
     *fmodeptr++ = '9';
     *fmodeptr = '\0';
+    return true;
+}
+
+gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
+    if ( is_open())
+        return (gzstreambuf*)0;
+    char  fmode[10];
+    if ( ! setMode( open_mode, fmode))
+        return (gzstreambuf*)0;
     file = gzopen( name, fmode);
+    if (file == 0)
+        return (gzstreambuf*)0;
+    opened = 1;
+    return this;
+}
+
+gzstreambuf* gzstreambuf::open( int fd, int open_mode) {
+    if ( is_open())
+        return (gzstreambuf*)0;
+    char  fmode[10];
+    if ( ! setMode( open_mode, fmode))
+        return (gzstreambuf*)0;
+    file = gzdopen( fd, fmode);
     if (file == 0)
         return (gzstreambuf*)0;
     opened = 1;
@@ -187,3 +216,31 @@ std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path)
   return openGzFile(path.string().c_str());
 }
 
+std::unique_ptr<std::istream> openGzStdin()
+{
+#ifdef _WIN32
+  // a text-mode stdin turns CR LF into LF and ends at the first ^Z, either of
+  // which corrupts compressed data
+  _setmode(_fileno(stdin), _O_BINARY);
+  int fd = _dup(_fileno(stdin));
+#else
+  int fd = dup(fileno(stdin));
+#endif
+  // gzclose() closes the descriptor gzdopen() was given, so hand it a
+  // duplicate and leave the process's stdin itself open
+  if (fd < 0)
+    return nullptr;
+
+  auto gz = std::make_unique<igzstream>();
+  if (!gz->rdbuf()->open(fd, std::ios::in))
+  {
+#ifdef _WIN32
+    _close(fd);
+#else
+    close(fd);
+#endif
+    return nullptr;
+  }
+
+  return gz;
+}
