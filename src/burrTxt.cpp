@@ -36,6 +36,13 @@
 #include "tools/cliargs.h"
 
 #include <stdlib.h>
+#include <stdio.h>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include <fstream>
 #include <iostream>
@@ -108,9 +115,11 @@ public:
  * a wrong command line would only scroll the usage away with. */
 void usage(bool full = false) {
 
-  cout << "burrTxt [options] file [options]\n\n";
-  cout << "  file: puzzle file with the puzzle definition to solve\n\n";
-  cout << "  -h, --help  this help, with the environment variables\n";
+  cout << "burrTxt [options] [file] [options]\n\n";
+  cout << "  file: puzzle file with the puzzle definition to solve, compressed or\n";
+  cout << "        not; \"-\" or no file at all reads it from standard input\n\n";
+  cout << "  -h, --help  this help, with the environment variables
+";
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
@@ -127,6 +136,14 @@ void usage(bool full = false) {
   cout << "     c  print comment\n";
   if (full)
     btenv::print(cout, { btenv::Scope::Solver });
+}
+
+static bool stdinIsTerminal(void) {
+#ifdef _WIN32
+  return _isatty(_fileno(stdin));
+#else
+  return isatty(fileno(stdin));
+#endif
 }
 
 int main(int argv, char* args[]) {
@@ -235,15 +252,33 @@ int main(int argv, char* args[]) {
     }
   }
 
+  /* "-" names standard input explicitly; without a file argument a puzzle
+   * piped or redirected into stdin is read, while a terminal there gets the
+   * usage text instead of a program silently waiting for input
+   */
+  bool fromStdin = (filenumber != 0) && (strcmp(args[filenumber], "-") == 0);
+
   if (filenumber == 0) {
-    usage();
-    return 1;
+    if (stdinIsTerminal()) {
+      usage();
+      return 1;
+    }
+    fromStdin = true;
   }
 
-  auto str = openGzFile(args[filenumber]);
+  auto str = fromStdin ? openGzStdin() : openGzFile(args[filenumber]);
   if (!str) {
-    printf("could not open input file \"%s\"\n", args[filenumber]);
+    if (fromStdin)
+      printf("could not read standard input\n");
+    else
+      printf("could not open input file \"%s\"\n", args[filenumber]);
     return 2;
+  }
+
+  if (fromStdin && str->peek() == EOF) {
+    printf("no puzzle file given and nothing on standard input\n\n");
+    usage();
+    return 1;
   }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
