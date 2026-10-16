@@ -125,7 +125,6 @@ private:
   friend class assemblerWorker_1;
 
   std::vector<SubtreeTask_1> parallelTasks;
-  std::unordered_set<uint64_t> emittedSignatures;
 
   /* getFinished() has two progress sources and this picks between them: the
    * task-based one used for the whole of a parallel run, and the
@@ -186,18 +185,6 @@ private:
    * not running.
    */
   std::atomic<bool> searchComplete{false};
-  /* Serial dedup gate (issue #118): set whenever a run may already have
-   * reported assemblies that a serial re-search would repeat -- at the end
-   * of setPosition() when signatures were restored, and on every parallel
-   * stop. Serial solution() then suppresses re-reports instead of
-   * duplicating every one. Deliberately NOT set on fresh runs (signatures
-   * empty there): duplicate suppression on a fresh search would mask search
-   * bugs that the SIMD-vs-DLX equivalence tests must catch. Cleared together
-   * with emittedSignatures whenever a run completes or a fresh matrix is
-   * built.
-   */
-  bool resumeDedup = false;
-
   /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
    * resume (issue #111): interrupted in-flight tasks plus the pool
    * remainder, filled by parallelSolve on stop. The next assemble() feeds
