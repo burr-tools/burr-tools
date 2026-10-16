@@ -22,6 +22,7 @@
 #define __ASSEMBLER_1_H__
 
 #include "assembler.h"
+#include "simd_huang_cover.h"
 
 #include <vector>
 #include <set>
@@ -203,7 +204,7 @@ private:
    * them back as seeds instead of regenerating everything. Persisted by
    * save() for cross-session resume, like parallelTasks.
    */
-  std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
+  std::vector<HuangSeed> pendingHuangPrefixes;
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing. save() records

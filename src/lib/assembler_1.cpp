@@ -2977,12 +2977,16 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     // salvaged prefixes as seeds; collect fresh salvage for a possible next
     // run. Separate vectors: seeds are read up front while salvage is
     // appended during the run.
-    std::vector<std::vector<unsigned int>> huangSeeds;
+    std::vector<HuangSeed> huangSeeds;
     huangSeeds.swap(pendingHuangPrefixes);
-    std::vector<std::vector<unsigned int>> huangSalvaged;
+    std::vector<HuangSeed> huangSalvaged;
     solver->parallelSolve(
       workers,
-      [this, runTok](const std::vector<unsigned int> &solution_nodes) -> bool {
+      // consumed: done with this solution (delivered, filtered, or already
+      // reported); false only when the stop declined it, which the solver
+      // then keeps as a remainder piece (see SimdHuangCover::StopTrace).
+      [this, runTok](const std::vector<unsigned int> &solution_nodes, bool &consumed) -> bool {
+        consumed = false;
         if (getCallback()) {
           auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
@@ -3013,8 +3017,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
 
           if (avoidTransformedAssemblies &&
               assembly->smallerRotationExists(problem, avoidTransformedPivot,
-                                              avoidTransformedMirror.get(), complete))
+                                              avoidTransformedMirror.get(), complete)) {
+            consumed = true;
             return true;
+          }
 
           uint64_t sig = assemblySignature(assembly.get(), piecenumber);
 
@@ -3022,6 +3028,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
             std::lock_guard<std::mutex> lock(callbackMutex);
             if (runTok.stop_requested())
               return false;
+            consumed = true;
             if (!emittedSignatures.insert(sig).second)
               return true;
             if (!getCallback()->assembly(std::move(assembly))) {
@@ -3853,7 +3860,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
     // Parse into locals first: a syntax failure must not leave partial
     // tasks behind (the caller may retry or report).
     std::vector<SubtreeTask_1> newTasks;
-    std::vector<std::vector<unsigned int>> newPrefixes;
+    std::vector<HuangSeed> newPrefixes;
     if (ptype == 1) {
       unsigned int count = 0;
       pos += getInt(string+pos, &count);
@@ -3877,11 +3884,26 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
       pos += getInt(string+pos, &count);
       if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       for (unsigned int i = 0; i < count; i++) {
-        std::vector<unsigned int> prefix;
-        pos += stringToVector(string+pos, prefix);
-        if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        if (!prefix.empty())
-          newPrefixes.push_back(std::move(prefix));
+        // 2.2: prefix, pivot-kind bits (one per step), rest start (see
+        // HuangSeed); 2.1: prefix only (replayed without the monotonic
+        // filter -- a superset, which the signature dedup absorbs). An
+        // empty prefix is the whole search, kept.
+        HuangSeed seed;
+        pos += stringToVector(string+pos, seed.prefix);
+        if (pos >= len && (is22 || i + 1 < count)) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        if (is22) {
+          std::vector<unsigned int> pivots;
+          pos += stringToVector(string+pos, pivots);         if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+          if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
+          for (unsigned int b : pivots) {
+            if (b > 1) return ERR_CAN_NOT_RESTORE_SYNTAX;
+            seed.pivotShape.push_back(static_cast<uint8_t>(b));
+          }
+          unsigned int restSkip = 0;
+          pos += getInt(string+pos, &restSkip);              if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+          seed.restSkip = restSkip;
+        }
+        newPrefixes.push_back(std::move(seed));
       }
     }
 
@@ -4048,8 +4070,14 @@ void assembler_1_c::save(xmlWriter_c & xml) const
     }
   } else if (ptype == 2) {
     str << pendingHuangPrefixes.size() << " ";
-    for (const auto &p : pendingHuangPrefixes)
-      vectorToStream(p, str);
+    for (const auto &seed : pendingHuangPrefixes) {
+      vectorToStream(seed.prefix, str);
+      std::vector<unsigned int> pivots(seed.prefix.size(), 0);
+      for (size_t k = 0; k < pivots.size() && k < seed.pivotShape.size(); k++)
+        pivots[k] = seed.pivotShape[k];
+      vectorToStream(pivots, str);
+      str << seed.restSkip << " ";
+    }
   }
 
   std::vector<uint64_t> sigs(emittedSignatures.begin(), emittedSignatures.end());

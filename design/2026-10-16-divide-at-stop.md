@@ -138,3 +138,50 @@ Three details make write-back exact:
 Test: "assembler_1 pool write-back resumes exact-once" (a synthetic 1-D
 range puzzle A0 refuses, DLX pool, stop after 5, save/restore/continue,
 multiset union). Fails 6/6 with the resume floor at the live size.
+
+## 5. assembler_1, Huang: divide while unwinding
+
+The Huang engine (`SimdHuangCover`) is a recursive bit-parallel search, so
+there is no explicit stack to divide. None is needed: every frame's
+candidate list (`scratch_active_rows[depth]`) is still intact when the stop
+unwinds the recursion (deeper frames only write deeper levels), and every
+frame returns through a stop check. Frames record their own remainder on
+the way out (`StopTrace`), in code that only runs once a stop is requested
+-- nothing per node:
+
+- entry check: the node was never explored -> one piece over the full path
+  (at the task root: the task itself, including its rest position);
+- post-backtrack check at depth d: the current branch is done (the child
+  returned), later branches untouched -> one seed per remaining branch
+  (same `coversPivot`/`fitsBounds` filters as the loop), up to
+  `kRestFanout` (16), then one *rest* seed (`restSkip` = index into the
+  frame's active list) for the remainder; rests resume through
+  `search(depth, ..., start)`, which re-derives the same pivot and list
+  from the replayed state;
+- a solution declined by the stop (`consumed == false`) -> one leaf piece.
+
+An empty trace means the task was fully searched: completion is decided by
+the trace, not by re-reading the token. The pieces partition the task, so
+its unit in `total_tasks` transfers to them (`+= n - 1`).
+
+**Seeds must replay exactly.** `search()` and `generateTasks()` apply a
+monotonic shape-row filter below a step chosen on a shape pivot (identical
+pieces are enumerated in increasing row order only). Seeds used to hold
+only node ids, and `replayPrefix` replayed every step without that filter,
+so a replayed seed searched a superset: permutations of identical pieces
+reappeared in a sibling seed's territory. The signature set absorbed this;
+once it is gone (§7) it would re-report. Seeds therefore carry one
+`pivotShape` bit per step; `replayPrefix` applies the filter exactly as the
+search did, and `generateTasks` records the bits along its expansion path.
+Empty-prefix seeds (the whole search) are no longer dropped.
+
+Format 2.2 Huang seeds: prefix, pivot bits (a vector, one 0/1 per step),
+rest start. 2.1 seeds (prefix only) still load, replayed as before.
+
+Tests: "SimdHuangCover: salvaged seeds replay the monotonic shape filter"
+(engine level, no dedup: one shape needed twice, 20 placements in optional
+voxels; resuming from the 20 salvaged seeds must report C(20,2) = 190 --
+380 without the bits), "Huang divided remainders resume exact-once across
+chained stops" (PiecesOfEight, CubeInCage, DemoPieceGenerator,
+SolidSixPieceBurrs at fan-out 1; stop/save/restore twice, then finish;
+every save contains rests).

@@ -950,6 +950,105 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   }
 }
 
+/* Huang divide-at-stop: chained stops resume exact-once.
+ *
+ * A stopped Huang worker divides its task while search() unwinds (see
+ * SimdHuangCover::StopTrace): untouched branches become seeds, the
+ * searched region is dropped, a never-explored node is kept whole, and a
+ * declined solution is kept as its own leaf. Resuming must therefore
+ * report every assembly exactly once, however many stops land in between.
+ *
+ * Each case stops after k1 assemblies, saves, restores, stops again after
+ * k2 more, saves, restores and runs to completion; the union of the three
+ * phases must equal the uninterrupted baseline as a multiset. Callback
+ * stops with 4 workers leave the other workers mid-task, so every stop
+ * divides live frames. Thread races rule out remainder pins; union and
+ * finished == 1 hold under every schedule. All four are assembler_1
+ * puzzles on the Huang path (the saves carry ptype 2 seeds); CubeInCage
+ * has identical pieces, so shape pivots (and the monotonic filter the
+ * seeds must replay) occur, and SolidSixPieceBurrs (25 parts) stops deep,
+ * with many live frames to divide. The fan-out cap of 1 puts rests into
+ * every save.
+ */
+TEST_CASE("Huang divided remainders resume exact-once across chained stops",
+          "[assembler][parallel][resume][simd][save]") {
+  // A fan-out cap of 1 makes every divided frame with more than one
+  // remaining branch leave a rest seed, so rests (and rests of rests across
+  // the chained stops) occur on these small puzzles.
+  ScopedEnv fanout("BURRTOOLS_SPLIT_FANOUT", "1");
+  struct Case { const char * path; unsigned int problem; };
+  const Case cases[] = {
+    {"examples/PiecesOfEight.xmpuzzle", 0},
+    {"examples/CubeInCage.xmpuzzle", 0},
+    {"examples/DemoPieceGenerator.xmpuzzle", 0},
+    {"examples/SolidSixPieceBurrs.xmpuzzle", 0},
+  };
+  for (const auto & c : cases) {
+    INFO("puzzle: " << c.path << ":" << c.problem);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(c.problem);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(baseline.size() > 3);
+    INFO("baseline: " << baseline.size());
+
+    /* One phase: restore (unless fresh), run until stopAfter assemblies
+     * (0 = to completion), save. */
+    auto phase = [&](const std::string & in, unsigned int stopAfter,
+                     RecordingAssemblerCallback & cb, bool & finished) {
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      if (!in.empty()) {
+        std::string payload = extractAssemblerContent(in);
+        REQUIRE(assm.setPosition(payload.c_str(), assemblerVersionOf(in).c_str())
+                == assembler_c::ERR_NONE);
+      }
+      unsigned int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb.assembly(std::move(a));
+        return stopAfter == 0 || ++seen < stopAfter;
+      });
+      finished = assm.getFinished() == 1.0f;
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      return str.str();
+    };
+
+    const size_t n = baseline.size();
+    const unsigned int stops[][2] = {
+      {1, 1},
+      {static_cast<unsigned int>(n / 3), static_cast<unsigned int>(n / 3)},
+      {static_cast<unsigned int>(n - 2), 1},
+    };
+    for (const auto & k : stops) {
+      INFO("stops: " << k[0] << ", " << k[1]);
+      RecordingAssemblerCallback cb1, cb2, cb3;
+      bool f1 = false, f2 = false, f3 = false;
+      std::string s1 = phase("", k[0], cb1, f1);
+      std::string s2 = f1 ? s1 : phase(s1, k[1], cb2, f2);
+      if (!f1 && !f2)
+        phase(s2, 0, cb3, f3);
+      CHECK((f1 || f2 || f3));
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      resumed.insert(cb3.fingerprints.begin(), cb3.fingerprints.end());
+      CHECK(resumed == baseline);
+    }
+  }
+}
+
 /* Serial continue after a parallel save (issue #118 review): the restored
  * remainder carries no serial stacks, so a single-threaded continue
  * re-searches from the root -- without the resumeDedup gate it would report
