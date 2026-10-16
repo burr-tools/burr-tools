@@ -135,7 +135,7 @@ private:
   bool canUseSimd(void) const;
   std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
   std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
-  void handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop);
+  bool handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop, bool & didConsume);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
