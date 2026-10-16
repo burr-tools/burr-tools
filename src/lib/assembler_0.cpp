@@ -1257,11 +1257,10 @@ void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
 }
 
 /* Delivers one raw solution. didConsume reports whether the solution is
- * done with -- delivered, filtered as a rotation, or already reported
- * (signature dedup) -- as opposed to declined because the stop arrived
- * first: a declined solution must be found again on resume (see
- * assemblerWorker_c::solution()). Returns false when the callback asked
- * to stop.
+ * done with -- delivered or filtered as a rotation -- as opposed to
+ * declined because the stop arrived first: a declined solution must be
+ * found again on resume (see assemblerWorker_c::solution()). Returns false
+ * when the callback asked to stop.
  */
 bool assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok, bool & didConsume) {
   didConsume = false;
@@ -1274,25 +1273,11 @@ bool assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int c
       return true;
     }
 
-    uint64_t sig = 14695981039346656037ULL;
-    for (unsigned int i = 0; i < piecenumber; i++) {
-      if (assembly->isPlaced(i)) {
-        sig ^= assembly->getTransformation(i); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(assembly->getX(i)); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(assembly->getY(i)); sig *= 1099511628211ULL;
-        sig ^= static_cast<uint32_t>(assembly->getZ(i)); sig *= 1099511628211ULL;
-      } else {
-        sig ^= 0xFF; sig *= 1099511628211ULL;
-      }
-    }
-
     {
       std::lock_guard<std::mutex> lock(callbackMutex);
       if (stopTok.stop_requested())
         return false;
       didConsume = true;
-      if (!emittedSignatures.insert(sig).second)
-        return true;
       if (!getCallback()->assembly(std::move(assembly))) {
         stop();
         return false;
@@ -2341,7 +2326,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     // Stopped before searching (possibly mid-generation with only a partial
     // task list): discard it and mark interrupted, mirroring the
     // assembler_1 path. A partial list would silently drop subtrees on
-    // continue/save; regenerating fully with dedup stays correct.
+    // continue/save; nothing was searched yet, so regenerating fully is
+    // exact.
     parallelTasks.clear();
     parallelInterrupted = true;
     remainderEngine = ENGINE_NONE;
@@ -2746,15 +2732,14 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     pos = piecenumber + 1;
     parallelTasks.clear();
     prunedTaskShare = 0.0f;
-    emittedSignatures.clear();
     parallelInterrupted = false;
     remainderEngine = ENGINE_NONE;
     searchComplete.store(true, std::memory_order_relaxed);
   } else {
     /* Stopped part way. In-memory continue is fine -- the pool remainder is
-     * saved back into parallelTasks and anything a half-searched task repeats
-     * is suppressed via emittedSignatures. save() persists both (format 1.6),
-     * so cross-session continue resumes from the same remainder.
+     * saved back into parallelTasks (divided continuations of interrupted
+     * tasks, untouched tasks); save() persists all of it (format 1.7), so
+     * cross-session continue resumes from the same remainder.
      */
     parallelInterrupted = true;
   }
@@ -2874,6 +2859,12 @@ bool assembler_0_c::willRunParallel(unsigned int threads) const {
    */
   if ((errorsState != ERR_NONE) || (pos != 0))
     return false;
+  // A restored DLX or SIMD remainder must keep running the task pool even
+  // single-threaded: the serial path resumes from pos/rows (root after a
+  // parallel run) and would re-search everything without dedup. Mirrors
+  // assembler_1_c::willRunParallel(), which keys off its two remainders.
+  if (remainderEngine != ENGINE_NONE || !parallelTasks.empty())
+    return true;
   return (threads > 1) || canUseSimd();
 }
 
@@ -3072,18 +3063,6 @@ static unsigned int getLong(const char * s, unsigned long * i) {
     return 500000;
 }
 
-static unsigned int getUInt64(const char * s, uint64_t * i) {
-
-  char * s2;
-
-  *i = std::strtoull (s, &s2, 10);
-
-  if (s2)
-    return s2-s;
-  else
-    return 500000;
-}
-
 static unsigned int getDouble(const char * s, double * d) {
 
   char * s2;
@@ -3104,14 +3083,12 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   bt_assert(pos == 0);
   parallelTasks.clear();
   prunedTaskShare = 0.0f;
-  emittedSignatures.clear();
   remainderEngine = ENGINE_NONE;
 
-  /* The current version and 1.6 (0.8.0) reload: both persist the parallel
-   * remainder with per-task shares and the completed share for exact
-   * progress resume; 1.7 adds the remainder's engine and the per-task
-   * cursor and SIMD rest start (see SubtreeTask).
-   * Anything else is refused rather than silently misparsed. */
+  /* The current version and 1.6 (0.8.0) reload; 1.7 adds the remainder's
+   * engine and the per-task cursor and SIMD rest start (see SubtreeTask),
+   * and drops the signature list. Anything else is refused rather than
+   * silently misparsed. */
   if (version == nullptr)
     return ERR_CAN_NOT_RESTORE_VERSION;
   const bool is17 = strcmp(version, ASSEMBLER_VERSION) == 0;
@@ -3122,14 +3099,16 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   unsigned int len = strlen(string);
   unsigned int spos = 0;
 
-  /* leading flag written by save(): a parallel search that was interrupted did
-   * not record how far its workers got, nor which assemblies it had already
-   * reported, so resuming it would report them again. Refusal is decided
-   * below: the remainder may carry resumable task data.
-   */
+  /* leading flag written by save(): 1 marks an interrupted search */
   unsigned int interrupted = 0;
   spos += getInt(string+spos, &interrupted);
   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+  // An interrupted 1.6 remainder re-searches its in-flight tasks whole and
+  // relied on the signature list to suppress the repeats; without it a
+  // resume would re-report them, so such saves are refused.
+  if (is16 && interrupted != 0)
+    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
 
   unsigned int engineInt = 0;
   if (is17) {
@@ -3187,37 +3166,42 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
   }
 
-  /* Parallel remainder (issue #90): pool tasks as flat prefix steps with
-   * per-task shares (1.7: plus cursor column/skip and SIMD rest start), then the completed
-   * share, then reported signatures.
-   * Parsed into locals first so a syntax failure leaves no partial tasks
-   * behind. Shares are round-trip exact (float/double max_digits10). */
-  std::vector<SubtreeTask> newTasks;
-  std::vector<uint64_t> newSigs;
-  unsigned int taskCount = 0;
-  spos += getInt(string+spos, &taskCount);
-  if (spos >= len && taskCount > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  for (unsigned int i = 0; i < taskCount; i++) {
-    SubtreeTask t;
-    unsigned int steps = 0;
-    spos += getInt(string+spos, &steps);
-    if (spos >= len && steps > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    for (unsigned int k = 0; k < steps; k++) {
-      PrefixStep step;
-      unsigned int col = 0, row = 0;
-      spos += getInt(string+spos, &col);
+  if (is16) {
+    // Uninterrupted 1.6 payload: if it carries tasks, refuse as interrupted.
+    unsigned int taskCount = 0;
+    spos += getInt(string+spos, &taskCount);
+    if (taskCount > 0)
+      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  } else {
+    /* Parallel remainder: pool tasks as flat prefix steps with per-task
+     * share, cursor position and SIMD rest start, then the completed
+     * share. Format 1.7 eliminates the unbounded signatures list: the
+     * remainder holds only unexplored territory. */
+    std::vector<SubtreeTask> newTasks;
+    unsigned int taskCount = 0;
+    spos += getInt(string+spos, &taskCount);
+    if (spos >= len && taskCount > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int i = 0; i < taskCount; i++) {
+      SubtreeTask t;
+      unsigned int steps = 0;
+      spos += getInt(string+spos, &steps);
+      if (spos >= len && steps > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int k = 0; k < steps; k++) {
+        PrefixStep step;
+        unsigned int col = 0, row = 0;
+        spos += getInt(string+spos, &col);
+        if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        spos += getInt(string+spos, &row);
+        if (spos >= len && k + 1 < steps) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        step.col = col;
+        step.row = row;
+        t.prefix.push_back(step);
+      }
+      double share = 0;
+      spos += getDouble(string+spos, &share);
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &row);
-      if (spos >= len && k + 1 < steps) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      step.col = col;
-      step.row = row;
-      t.prefix.push_back(step);
-    }
-    double share = 0;
-    spos += getDouble(string+spos, &share);
-    if (spos >= len && (is17 || i + 1 < taskCount)) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    t.share = static_cast<float>(share);
-    if (is17) {
+      t.share = static_cast<float>(share);
+
       unsigned int cCol = 0, cSkip = 0, rest = 0;
       spos += getInt(string+spos, &cCol);
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3232,43 +3216,30 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
       // SIMD remainder, and never combined with a DLX cursor.
       if (rest != 0 && (engineInt != ENGINE_SIMD || cCol != 0))
         return ERR_CAN_NOT_RESTORE_SYNTAX;
+
+      newTasks.push_back(std::move(t));
     }
-    // An empty prefix re-searches the whole space (dedup keeps it
-    // correct); kept as-is rather than rejected.
-    newTasks.push_back(std::move(t));
-  }
 
-  double restoredShare = 0;
-  spos += getDouble(string+spos, &restoredShare);
-  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    double restoredShare = 0;
+    // The completed share is always written by save(), even with zero
+    // tasks: a payload ending here is truncated, not valid.
+    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    spos += getDouble(string+spos, &restoredShare);
 
-  unsigned int sigCount = 0;
-  spos += getInt(string+spos, &sigCount);
-  for (unsigned int i = 0; i < sigCount; i++) {
-    uint64_t sig = 0;
-    spos += getUInt64(string+spos, &sig);
-    if (spos >= len && i + 1 < sigCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    newSigs.push_back(sig);
-  }
+    if (interrupted && newTasks.empty())
+      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
 
-  if (interrupted && newTasks.empty())
-    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-
-  // Commit the remainder. A parallel continue resumes from these tasks
-  // (parallelMultiSearch skips generation when non-empty); the serial
-  // position above is root after parallel runs and restores as no-op.
-  // Progress restarts from the remainder: restored per-task shares plus
-  // the completed share reproduce the in-session state exactly (see
-  // save()), because pool.drain() keeps the shares.
-  parallelTasks = std::move(newTasks);
-  remainderEngine = static_cast<RemainderEngine>(engineInt);
-  for (uint64_t s : newSigs)
-    emittedSignatures.insert(s);
-  if (!parallelTasks.empty()) {
-    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
-    completedTasks.store(0, std::memory_order_relaxed);
-    completedShare.store(restoredShare, std::memory_order_relaxed);
-    parallelInterrupted = false;
+    // Commit the remainder. A parallel continue resumes from these tasks
+    // (parallelMultiSearch skips generation when non-empty); the serial
+    // position above is root after parallel runs and restores as no-op.
+    parallelTasks = std::move(newTasks);
+    remainderEngine = static_cast<RemainderEngine>(engineInt);
+    if (!parallelTasks.empty()) {
+      totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+      completedTasks.store(0, std::memory_order_relaxed);
+      completedShare.store(restoredShare, std::memory_order_relaxed);
+      parallelInterrupted = false;
+    }
   }
 
   /* here we need to get the matrix into this exact position as it has been, when we
@@ -3327,15 +3298,12 @@ void assembler_0_c::save(xmlWriter_c & xml) const
       if (j < pos) str << " ";
     }
 
-  /* Parallel remainder for cross-session resume (issue #90): pool tasks as
-   * flat column/row prefix steps with per-task share, cursor position and
-   * SIMD rest start (format 1.7: cursor tasks, see SubtreeTask, persist
-   * their column and skip so a rest continues splitting where it left
-   * off), then the
-   * completed share, then reported signatures (sorted for determinism).
-   * Shared by the DLX and SIMD paths -- both consume the same SubtreeTask
-   * prefix pool. A serial stop writes zero tasks and resumes from the
-   * position above; signatures are always written when non-empty.
+  /* Parallel remainder for cross-session resume: pool tasks as
+   * flat column/row prefix steps, with per-task share, cursor position,
+   * SIMD rest start, and the completed share. Format 1.7 has no
+   * signature list: the remainder holds only unexplored territory. Cursor
+   * tasks (see SubtreeTask) persist their column and skip so a rest
+   * continues splitting where it left off.
    */
   str << " " << parallelTasks.size() << " ";
   for (const auto &t : parallelTasks) {
@@ -3350,13 +3318,7 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   }
   // Completed share with double precision for the same reason.
   str << std::setprecision(std::numeric_limits<double>::max_digits10)
-      << completedShare.load(std::memory_order_relaxed) << " ";
-
-  std::vector<uint64_t> sigs(emittedSignatures.begin(), emittedSignatures.end());
-  std::sort(sigs.begin(), sigs.end());
-  str << sigs.size() << " ";
-  for (uint64_t s : sigs)
-    str << s << " ";
+      << completedShare.load(std::memory_order_relaxed);
 
   xml.endTag("assembler");
 }

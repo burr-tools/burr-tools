@@ -322,8 +322,6 @@ private:
    */
   float prunedTaskShare = 0.0f;
 
-  std::unordered_set<uint64_t> emittedSignatures;
-
   /* Engine that produced the saved remainder: a remainder may hold SIMD
    * rests (valid only for the SIMD engine), so a resumed run keeps the
    * engine regardless of the benchmark toggles. NONE when no remainder.
@@ -341,10 +339,10 @@ private:
    * prefix). A parallel search has no single such point: progress lives in
    * the pool remainder saved back into parallelTasks (see parallelMultiSearch)
    * plus whatever each worker had reached inside the task it was in the
-   * middle of, and the assemblies already handed to the callback are only
-   * remembered in emittedSignatures. Since format 1.6 all of that is
-   * persisted (tasks plus sorted signatures), so a stopped parallel search
-   * reloads as resumable; older payloads and task-less stops are refused.
+   * middle of -- which a stop divides into exact continuation tasks (DLX:
+   * divideRemainder, SIMD: SubtreeRemainder) holding only unexplored
+   * territory. Since format 1.7 all of that is persisted, so a stopped
+   * parallel search reloads as resumable; older payloads and task-less stops are refused.
    */
   bool parallelInterrupted = false;
 

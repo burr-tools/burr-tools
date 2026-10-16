@@ -1898,6 +1898,7 @@ TEST_CASE("SIMD assembler: an interrupted single-threaded search restores as res
     unsigned int taskCount = 0;
     REQUIRE(in >> taskCount);
     CHECK(interrupted == 1);
+    CHECK(engine == 2);
     CHECK(pos == 0);
     CHECK(taskCount > 0);
   }
@@ -2014,6 +2015,211 @@ TEST_CASE("assembler 1: getFinished does not report 100% before starting a resto
   // "idle means done" shortcut would falsely return 1.0f here).
   CHECK(assm.getFinished() < 1.0f);
 }
+
+TEST_CASE("Saved interrupted search XML size is bounded and independent of solution count",
+          "[assembler][resume][save]") {
+  // Test assembler_0
+  {
+    auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+      return ++seen < 5;
+    });
+    REQUIRE(seen == 5);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    std::string state = str.str();
+    CHECK(assemblerVersionOf(state) == "1.7");
+    CHECK(state.size() < 4096);
+  }
+
+  // Test assembler_1
+  {
+    auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
+      return ++seen < 5;
+    });
+    REQUIRE(seen == 5);
+
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    std::string state = str.str();
+    CHECK(assemblerVersionOf(state) == "2.2");
+    CHECK(state.size() < 4096);
+  }
+}
+
+TEST_CASE("Legacy interrupted search saves are refused on restore",
+          "[assembler][resume][save]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  // assembler_0: interrupted 1.6 payload refused
+  {
+    assembler_0_c assm(*problem);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    // Payload with interrupted=1, taskCount=1
+    const char * interrupted16 = "1 0 0 (0 0) 1";
+    CHECK(assm.setPosition(interrupted16, "1.6") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+
+    // Uninterrupted 1.6 payload accepted
+    const char * uninterrupted16 = "0 0 0 (0 0) 0";
+    CHECK(assm.setPosition(uninterrupted16, "1.6") == assembler_c::ERR_NONE);
+  }
+
+  // assembler_1: interrupted 2.1 payload refused
+  {
+    assembler_1_c assm(*problem);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    // Payload with interrupted=1
+    const char * interrupted21 = "1 0 0 0 0 0 0 0 0";
+    CHECK(assm.setPosition(interrupted21, "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+
+    // Payload with interrupted=0 but ptype=1 (DLX tasks)
+    const char * ptype21 = "0 0 0 0 0 0 0 0 1";
+    CHECK(assm.setPosition(ptype21, "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+
+    // Uninterrupted 2.1 payload accepted
+    const char * uninterrupted21 = "0 0 0 0 0 0 0 0 0";
+    CHECK(assm.setPosition(uninterrupted21, "2.1") == assembler_c::ERR_NONE);
+  }
+}
+
+TEST_CASE("Interrupted search resumes with pinned engine across environment overrides",
+          "[assembler][resume][simd]") {
+  // Test assembler_0
+  {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+    auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_0_c assm(*problem);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+
+    RecordingAssemblerCallback cb1;
+    std::string state;
+    {
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb1.assembly(std::move(a));
+        return ++seen < 10;
+      });
+      REQUIRE(seen == 10);
+
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      state = str.str();
+    }
+    CHECK(assemblerVersionOf(state) == "1.7");
+
+    // Resume under BURRTOOLS_NO_SIMD=1 and threads=1
+    ScopedEnv disableSimd("BURRTOOLS_NO_SIMD", "1");
+    assembler_0_c restored(*problem);
+    restored.setNumThreads(1);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+
+  // Test assembler_1
+  {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", nullptr);
+    auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+
+    RecordingAssemblerCallback cb1;
+    std::string state;
+    {
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      int seen = 0;
+      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb1.assembly(std::move(a));
+        return ++seen < 5;
+      });
+      REQUIRE(seen == 5);
+
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm.save(xml);
+      state = str.str();
+    }
+    CHECK(assemblerVersionOf(state) == "2.2");
+
+    // Resume under BURRTOOLS_NO_SIMD=1 and threads=1
+    ScopedEnv disableSimd("BURRTOOLS_NO_SIMD", "1");
+    assembler_1_c restored(*problem);
+    restored.setNumThreads(1);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+          == assembler_c::ERR_NONE);
+
+    RecordingAssemblerCallback cb2;
+    restored.assemble(&cb2);
+
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+}
+
 
 
 /* A problem loaded in SS_SOLVED with no saved assembler state cannot be
@@ -2710,31 +2916,35 @@ TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
   CHECK(prunedShare == Catch::Approx(0.5).margin(1e-6));
 }
 
-/* A solve aborted on the parallel path leaves totalTasks and completedShare
- * holding that run's numbers, and totalTasks is what selects the task-based
- * branch of getFinished(). Without assemble() clearing them for a non-parallel
- * run, a resume with one thread reports the abandoned run's constant share for
- * the whole of the serial search.
+/* A single-threaded DLX continue reuses the pool remainder instead of
+ * re-searching serially from the root.
  *
- * Two observations that must differ, taken from the main thread with nothing
- * else alive, so it is deterministic and needs no sampling thread.
+ * Divide-at-stop design (design/2026-10-16-divide-at-stop.md §7):
+ * willRunParallel() returns true whenever a remainder exists, so a
+ * single-threaded DLX continue runs the task pool with one worker. The
+ * divided remainder holds only territory the interrupted run had not
+ * searched, and progress carries the remainder's share forward -- so the
+ * progress after the resume legitimately continues from the stale share
+ * rather than differing from it. (Before the signature set was removed this
+ * case fell through to the serial path and this test asserted the two
+ * values differed; that dispatch no longer exists.)
  *
  * DiagonalCube rather than PelikanBurr, and the difference is this base's, not
  * a preference. Here a task the run token cut short is NOT counted as
  * complete (completedTasks and completedShare are only updated by
  * finishTask() when the task actually finished), so on a puzzle that prunes
  * nothing an abort landing on the first assembly leaves completedShare at
- * exactly 0 and there is no stale value to leak. DiagonalCube prunes about
- * half its tree during task generation, and that pruned share is seeded into
- * completedShare before any worker starts -- so the stale value is non-zero
- * and deterministic whenever the abort lands.
+ * exactly 0. DiagonalCube prunes about half its tree during task generation,
+ * and that pruned share is seeded into completedShare before any worker
+ * starts -- so the stale value is non-zero and deterministic whenever the
+ * abort lands.
  */
-TEST_CASE("parallel progress state does not leak into a serial resume",
-          "[assembler][parallel][progress]") {
-  /* Forced DLX: the resume below has to be a serial one for the assertion to
-   * test anything -- 1-thread SIMD-eligible runs take the task-based parallel
-   * path (reusing the pool remainder and its share), so without this the
-   * "serial" progress could legitimately equal the stale share.
+TEST_CASE("single-threaded DLX continue reuses the pool remainder",
+          "[assembler][parallel][progress][resume]") {
+  /* Forced DLX: the remainder below has to be a DLX one for the assertion to
+   * test anything -- SIMD-eligible runs take the task-based parallel path
+   * regardless, so without this the resume would pin the SIMD engine and the
+   * DLX remainder path would go unexercised.
    */
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
   auto p = puzzle_c::load("examples/DiagonalCube.xmpuzzle");
@@ -2742,34 +2952,50 @@ TEST_CASE("parallel progress state does not leak into a serial resume",
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
+  /* Baseline multiset for the union check below. */
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(!baseline.empty());
+
   assembler_0_c assm(*problem);
   assm.setNumThreads(4);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   /* a parallel run, stopped from the callback so the abort is deterministic */
-  int parallelAssemblies = 0;
-  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
-    parallelAssemblies++;
+  RecordingAssemblerCallback cb1;
+  assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+    cb1.assembly(std::move(a));
     return false;
   });
-  REQUIRE(parallelAssemblies == 1);
+  REQUIRE(cb1.fingerprints.size() == 1);
 
   const float stale = assm.getFinished();
   INFO("stale parallel share: " << stale);
   REQUIRE(stale > 0.0f);
   REQUIRE(stale < 1.0f);
 
-  /* resume single-threaded and stop it the same way */
+  /* resume single-threaded to completion: the DLX remainder routes this
+   * through the task pool with one worker, skipping the reported assembly */
   assm.setNumThreads(1);
-  int serialAssemblies = 0;
-  assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
-    serialAssemblies++;
-    return false;
-  });
-  REQUIRE(serialAssemblies == 1);
+  RecordingAssemblerCallback cb2;
+  assm.assemble(&cb2);
 
-  INFO("progress after the serial resume: " << assm.getFinished());
-  CHECK(assm.getFinished() != stale);
+  INFO("progress after the single-threaded resume: " << assm.getFinished());
+  CHECK(assm.getFinished() == 1.0f);
+
+  /* exact union, no duplicates: the resumed run must neither repeat the
+   * interrupted run's assembly nor lose any other */
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == baseline);
+  CHECK(cb2.fingerprints.count(*cb1.fingerprints.begin()) == 0);
 }
 
 /* Serial save on an all-placed stop (assembler_0).
@@ -3005,7 +3231,7 @@ static A0Steps a0SerialLeaf(problem_c & problem, int k) {
 
 /* An interrupted DLX remainder holding the given plain tasks (format 1.7:
  * interrupted, engine DLX, an inert serial position, tasks, completed
- * share, no signatures). */
+ * share). */
 static std::string a0TaskPayload(const std::vector<A0Steps> & tasks) {
   std::ostringstream payload;
   payload << "1 1 0 0 (0 0) " << tasks.size() << " ";
@@ -3015,7 +3241,7 @@ static std::string a0TaskPayload(const std::vector<A0Steps> & tasks) {
       payload << c << " " << r << " ";
     payload << "0.5 0 0 0 ";
   }
-  payload << "0 0";
+  payload << "0";
   return payload.str();
 }
 
@@ -3227,7 +3453,6 @@ TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
     CHECK(resumed == baseline);
   }
 }
-
 
 /* Divide-at-stop resumes exact-once (assembler_0 DLX).
  *
