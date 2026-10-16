@@ -931,7 +931,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   }
 
   // The payload must carry task data under the current version.
-  CHECK(assemblerVersionOf(state) == "2.1");
+  CHECK(assemblerVersionOf(state) == "2.2");
 
   // Phase 2: restore into a fresh assembler and continue.
   {
@@ -1248,7 +1248,7 @@ TEST_CASE("DLX save, load and continue reproduces the full multiset",
     state = str.str();
   }
 
-  CHECK(assemblerVersionOf(state) == "2.1");
+  CHECK(assemblerVersionOf(state) == "2.2");
 
   {
     assembler_1_c restored(*problem);
@@ -1775,7 +1775,7 @@ TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as r
     assm.save(xml);
     state = str.str();
   }
-  CHECK(assemblerVersionOf(state) == "2.1");
+  CHECK(assemblerVersionOf(state) == "2.2");
 
   assembler_1_c restored(*problem);
   restored.setNumThreads(1);
@@ -3119,6 +3119,81 @@ TEST_CASE("divided DLX remainders resume exact-once",
   // The cap of 1 makes divided levels leave cursor rests, so the rest
   // resume path ran.
   CHECK(cursors > 0);
+}
+
+/* assembler_1 pool write-back resumes exact-once (DLX tasks).
+ *
+ * A stopped A1 pool worker writes its five live stacks back into the
+ * requeued task (see writeBack): delivered solutions sit behind the
+ * frontier, missed ones hold it for rediscovery, so no skip is needed.
+ * The puzzle below routes to assembler_1 (a piece range A0 refuses) and
+ * runs the DLX pool (NO_SIMD); stop/save/restore/continue must yield the
+ * exact union with a finished run. Thread races rule out exact remainder
+ * pins; union and finished==1 hold under every schedule.
+ */
+TEST_CASE("assembler_1 pool write-back resumes exact-once",
+          "[assembler][resume][save]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const gridType_c & gt = *puzzle->getGridType();
+  unsigned int three = puzzle->addShape(bttest::fromLayers(gt, {{"###"}}));
+  unsigned int two = puzzle->addShape(bttest::fromLayers(gt, {{"##"}}));
+  unsigned int one = puzzle->addShape(bttest::fromLayers(gt, {{"#"}}));
+  unsigned int result = puzzle->addShape(bttest::fromLayers(gt, {{"########"}}));
+  problem_c * problem = puzzle->getProblem(puzzle->addProblem());
+  problem->setResultId(result);
+  problem->setShapeMinimum(three, 1);
+  problem->setShapeMaximum(three, 1);
+  problem->setShapeMinimum(two, 1);
+  problem->setShapeMaximum(two, 1);
+  problem->setShapeMinimum(one, 1);
+  problem->setShapeMaximum(one, 3);
+  REQUIRE_FALSE(assembler_0_c::canHandle(*problem));
+
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() >= 10);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 5;
+    });
+    REQUIRE(seen == 5);
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+
+  RecordingAssemblerCallback cb2;
+  {
+    assembler_1_c restored(*problem);
+    restored.setNumThreads(4);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+            == assembler_c::ERR_NONE);
+    restored.assemble(&cb2);
+    CHECK(restored.getFinished() == 1.0f);
+  }
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == baseline);
 }
 
 /* A missed solution on an exhausted task must survive the stop.

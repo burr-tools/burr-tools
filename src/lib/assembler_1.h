@@ -101,6 +101,14 @@ private:
     std::vector<unsigned int> column_stack;
     std::vector<unsigned int> rows;
     std::vector<unsigned int> hidden_rows;
+    /* Root depth of the task's territory: the stack size the search must
+     * pop below to finish. Write-back overwrites the five stacks with the
+     * live (deeper) frontier, so the root would be lost without this --
+     * and resuming with the live size as base exits early, abandoning the
+     * ancestor levels' remaining alternatives. Set at generation, never
+     * touched by write-back.
+     */
+    unsigned int baseDepth = 0;
   };
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
