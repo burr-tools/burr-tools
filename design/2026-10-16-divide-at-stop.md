@@ -185,3 +185,32 @@ voxels; resuming from the 20 salvaged seeds must report C(20,2) = 190 --
 chained stops" (PiecesOfEight, CubeInCage, DemoPieceGenerator,
 SolidSixPieceBurrs at fan-out 1; stop/save/restore twice, then finish;
 every save contains rests).
+
+## 6. assembler_0, SIMD: divide while unwinding
+
+Same scheme as §5 inside `SimdExactCover::search()`
+(`ISimdExactCover::SubtreeRemainder`): entry check -> continue piece,
+post-backtrack check -> remaining branches (16 singletons + one rest),
+declined solution -> leaf piece (added by the A0 worker, which knows about
+delivery). No pivot bits: this engine's filter depends only on the chosen
+row's mask. An empty remainder means the task is complete.
+
+The A0 worker converts pieces back to ordinary `SubtreeTask`s: steps inside
+the task's own prefix are copied verbatim, deeper steps become
+`{colCount[node], node}` (a node's DLX column), so divided pieces are normal
+splittable tasks. SIMD rests carry `restSkip` (an index into the SIMD
+frame's own candidate order): never split (`shouldSplit`), resumed through
+`solveSubtree(..., start = restSkip)`.
+
+Rests are only valid for the engine that made them, so the remainder now
+pins its engine (`remainderEngine`, saved after the interrupted flag): a
+resumed run keeps it regardless of `BURRTOOLS_NO_SIMD` and friends. Parse
+rejects a rest under a non-SIMD remainder or combined with a DLX cursor.
+Format 1.7 per task: prefix, share, cursor column/skip, rest start.
+
+Tests: "SimdExactCover: stop remainders with rests resume exact-once"
+(engine level: 40 branches at the root, stop after every delivery, rests of
+rests), "A0-SIMD divided remainders resume exact-once across chained stops"
+(PelikanBurr, DraculasDentalDesaster), "A0-SIMD remainders with SIMD rests resume
+exact-once" (the synthetic line puzzle at fan-out 1, four stop points;
+SIMD rests occur).
