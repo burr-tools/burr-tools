@@ -214,3 +214,59 @@ rests), "A0-SIMD divided remainders resume exact-once across chained stops"
 (PelikanBurr, DraculasDentalDesaster), "A0-SIMD remainders with SIMD rests resume
 exact-once" (the synthetic line puzzle at fan-out 1, four stop points;
 SIMD rests occur).
+
+## 7. Removing the signature set
+
+With every engine dividing (§3-§6), nothing re-walks searched territory,
+so the signature set goes: `emittedSignatures`, `resumeDedup`,
+`assemblySignature()`, and the signature lists in both formats. Three
+things depended on it and change with it:
+
+- **Single-threaded continue stays on the pool.** A restored remainder used
+  to resume single-threaded through the serial search from the root, with
+  the signatures suppressing the repeats. `willRunParallel()` now returns
+  true whenever a remainder exists, so the pool runs it with one worker.
+- **assembler_1 pins its engine too.** A DLX remainder (ptype 1) resumes on
+  DLX and Huang seeds (ptype 2) on Huang, regardless of the benchmark
+  toggles; a run on the other engine used to regenerate and dedup.
+- **Interrupted 0.8.0 saves (1.6 / 2.1) are refused** with
+  `ERR_CAN_NOT_RESTORE_INTERRUPTED`: their remainder re-searches in-flight
+  tasks whole and relied on the signature list. Uninterrupted ones still
+  load. Neither 1.7 nor 2.2 is in a tagged release yet, so both are final
+  here.
+
+The disassembly stash (`problem_c::stashAssemblies`) stays required, for a
+new reason: assemblies found but never disassembled are not found again,
+because resume never re-walks the territory they came from.
+
+Spec (`spec/`): unaffected. Divide and write-back change what a stopped
+worker hands back, not the pool protocol: an interrupted DLX/A0-SIMD task
+still re-enters the pool (now as one or more pieces) before `finishTask`,
+Huang still appends to its salvage list, and the drain/finish pairing is
+unchanged.
+
+Tests (now exact in both directions -- duplicates are no longer masked):
+the union tests of §3-§6, plus "Saved interrupted search XML size is
+bounded and independent of solution count", "Legacy interrupted search
+saves are refused on restore", "Interrupted search resumes with pinned
+engine across environment overrides", "single-threaded DLX continue reuses
+the pool remainder".
+
+## 8. Validation
+
+On the final tree (dev and release `--werror -Db_ndebug=true` builds):
+fast and slow suites, `test_examples_regression.py` 20/20 against 0.7.1,
+cppcheck clean, `just spec-check` (all seven model configurations, no
+errors). The fast suite takes about 26 s on a 4-core laptop; no test needs
+Burr-Glar's minutes any more. Mutation checks per engine, each applied
+alone: no continue piece,
+missed solutions not recorded, rests dropped, rest start ignored on
+resume, pivot bits ignored, resume floor at the live size -- every one is
+caught by at least one of the tests above.
+
+Performance (indicative, shared dev machine; a full A/B is still to be run
+on a quieter machine): identical results everywhere; LominoSquare 3/4
+(Huang) at 1.00, :5 at 1.05; Krijnen TheCube/JiminyJack/Tipperary at
+1.08-1.14 on one or two samples; a 10x interleaved single-thread check on
+CondorsPeeper:1 at +1.3% (noise level). Command:
+`bench/bench_solve.py --ab <before> <after> --no-disassemble --runs 3`.
