@@ -22,6 +22,7 @@
 #define __SIMD_HUANG_COVER_H__
 
 #include "simd_exact_cover.h"
+#include "split_fanout.h"
 
 class ThreadBudget;
 
@@ -35,6 +36,30 @@ class ThreadBudget;
 #include <bit>
 
 /**
+ * One unit of saved Huang remainder: the subtree under a placed-node
+ * prefix, rebuilt exactly by replay (see SimdHuangCover::replayPrefix).
+ *
+ * pivotShape[k] records whether step k was chosen while branching on a
+ * shape column. That decides whether the monotonic shape-row filter
+ * applied below it -- without the bit a replay reopens lower-indexed
+ * copies of identical pieces and enumerates their permutations again in
+ * a sibling's territory. Same length as prefix; empty only for seeds
+ * built by hand (treated as all-zero).
+ *
+ * restSkip > 0 marks a rest: the remaining branches of the frame at
+ * depth prefix.size(), starting at index restSkip of its active-row list
+ * (the frame re-derives the same pivot and list from the replayed state).
+ * 0 means the whole subtree under prefix.
+ */
+struct HuangSeed {
+  std::vector<unsigned int> prefix;
+  std::vector<uint8_t> pivotShape;
+  uint32_t restSkip = 0;
+
+  bool operator==(const HuangSeed & o) const = default;
+};
+
+/**
  * Interface for hardware-vectorized exact cover solvers for Huang's algorithm
  * (assembler 1), handling duplicate piece shapes, variable voxels (holes),
  * and piece range constraints.
@@ -44,6 +69,7 @@ public:
   virtual ~ISimdHuangCover() = default;
 
   using SolutionCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes)>;
+  using ConsumeCallback = std::function<bool(const std::vector<unsigned int> &solution_nodes, bool &consumed)>;
 
   virtual void setColumnBounds(
     unsigned int col,
@@ -87,15 +113,27 @@ public:
   // stop_source::request_stop() non-const, unlike libstdc++. A const ref
   // fails to compile on macOS when the body fires the source on exceptions.
   //
-  // resume_prefixes/salvaged_prefixes implement incremental in-session
-  // resume (issue #111), mirroring the DLX pool remainder: when non-null
-  // and non-empty, the pool is seeded from these placed-node prefixes
-  // instead of generateTasks(); when salvaged_prefixes is non-null,
-  // interrupted in-flight tasks and the pool remainder are appended to it
-  // as placed-node prefixes for the next run (completed subtrees are
-  // simply absent). Prefixes stay valid across runs because the matrix is
-  // rebuilt identically; emittedSignatures dedup covers re-searched overlap.
+  // resume_seeds/salvaged_seeds implement bounded in-session resume,
+  // mirroring the DLX pool remainder: when non-null and non-empty, the pool
+  // is seeded from these seeds instead of generateTasks(); when
+  // salvaged_seeds is non-null, the remainder of interrupted in-flight
+  // tasks (divided at the stop, see StopTrace) and the pool remainder are
+  // appended to it. Seeds stay valid across runs because the matrix is
+  // rebuilt identically; they hold only unexplored territory, so a resume
+  // re-walks nothing and needs no dedup.
   virtual void parallelSolve(
+    unsigned int num_workers,
+    ConsumeCallback callback,
+    std::stop_source &runStop,
+    std::atomic<unsigned long> &iterations,
+    std::atomic<size_t> &total_tasks,
+    std::atomic<size_t> &completed_tasks,
+    ThreadBudget *budget = nullptr,
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
+  ) const = 0;
+
+  void parallelSolve(
     unsigned int num_workers,
     SolutionCallback callback,
     std::stop_source &runStop,
@@ -103,9 +141,17 @@ public:
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
-    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
-    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
-  ) const = 0;
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
+  ) const {
+    parallelSolve(
+      num_workers,
+      [cb = std::move(callback)](const std::vector<unsigned int> & s, bool & consumed) {
+        consumed = true;
+        return cb(s);
+      },
+      runStop, iterations, total_tasks, completed_tasks, budget, resume_seeds, salvaged_seeds);
+  }
 
   virtual unsigned int getNumRows() const = 0;
   virtual unsigned int getNumColumns() const = 0;
@@ -185,16 +231,18 @@ public:
     std::atomic<uint64_t> &iterations
   ) const override;
 
+  using ISimdHuangCover::parallelSolve;
+
   void parallelSolve(
     unsigned int num_workers,
-    SolutionCallback callback,
+    ConsumeCallback callback,
     std::stop_source &runStop,
     std::atomic<unsigned long> &iterations,
     std::atomic<size_t> &total_tasks,
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
-    const std::vector<std::vector<unsigned int>> *resume_prefixes = nullptr,
-    std::vector<std::vector<unsigned int>> *salvaged_prefixes = nullptr
+    const std::vector<HuangSeed> *resume_seeds = nullptr,
+    std::vector<HuangSeed> *salvaged_seeds = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
@@ -232,6 +280,8 @@ private:
    */
   [[maybe_unused]] bool use_neon = false;
 
+  struct StopTrace;
+
   struct SearchContext {
     BitsetType placed_voxels;
     std::vector<uint32_t> col_weights;
@@ -242,7 +292,64 @@ private:
     // Nodes already published (see flushIterations in simd_exact_cover.h
     // for the batching contract shared by both solvers).
     uint64_t flushed_iterations = 0;
+    // Set by parallelSolve's workers to collect the remainder of an
+    // interrupted task (see StopTrace); null elsewhere. Only touched on
+    // the stop path, never per node.
+    StopTrace *trace = nullptr;
   };
+
+  /* Remainder of an interrupted task, collected while search() unwinds
+   * after a stop. Every frame on the stack returns through a stop check
+   * (the entry check at the deepest node, the post-backtrack check in each
+   * ancestor), so the trace sees the whole live path:
+   *
+   * - entry check: the node was never explored -- one piece over the full
+   *   path (a "continue"; for the task root, the task itself);
+   * - post-backtrack check in the frame at depth d: its current branch is
+   *   fully searched (the child returned) and the branches after it are
+   *   untouched -- each becomes a piece over the path plus that row, up to
+   *   `fanout`, then one rest piece for the remainder of the list;
+   * - a solution found but declined by the stop (missed): one piece over
+   *   its full path.
+   *
+   * These are disjoint and cover exactly the unexplored leaves; the
+   * searched region is dropped. pivots[d] records each frame's pivot kind
+   * as it unwinds, completing the pieces' pivotShape bits (see finalize).
+   * An empty trace after a stop means the task was fully searched.
+   */
+  struct StopTrace {
+    unsigned int rootDepth = 0;
+    uint32_t rootRestSkip = 0;
+    unsigned int fanout = kRestFanout;
+    std::vector<uint8_t> pivots;
+    std::vector<uint8_t> pivotKnown;
+    std::vector<HuangSeed> pieces;
+
+    void setPivot(unsigned int depth, bool isShape) {
+      if (pivots.size() <= depth) {
+        pivots.resize(depth + 1, 0);
+        pivotKnown.resize(depth + 1, 0);
+      }
+      pivots[depth] = isShape ? 1 : 0;
+      pivotKnown[depth] = 1;
+    }
+    void addPiece(std::vector<unsigned int> prefix, uint32_t restSkip = 0) {
+      HuangSeed s;
+      s.prefix = std::move(prefix);
+      s.restSkip = restSkip;
+      pieces.push_back(std::move(s));
+    }
+    /* Fill pivotShape: steps inside the task prefix from the task's own
+     * bits, deeper steps from the unwinding frames. */
+    void finalize(const std::vector<uint8_t> & taskPivots);
+  };
+
+  /* Default branches per frame emitted as singletons on a stop before the
+   * rest goes into one rest piece (the shared fan-out cap, see
+   * split_fanout.h): keeps the remainder at O(depth x K) pieces per
+   * interrupted task. parallelSolve reads the effective value once per run
+   * into StopTrace::fanout. */
+  static constexpr unsigned int kRestFanout = SplitFanout::kDefault;
 
   // Publish visited-but-unpublished nodes. Exact: every node is published
   // exactly once (256-batches plus remainders). Called at each reported
@@ -290,46 +397,79 @@ private:
   struct SubtreeTask {
     unsigned int depth = 0;
     SearchContext ctx;
+    // pivot kind per prefix step and rest start, as in HuangSeed
+    std::vector<uint8_t> pivot_shape;
+    uint32_t rest_skip = 0;
+
+    HuangSeed seed() const {
+      HuangSeed s;
+      s.prefix = ctx.current_solution;
+      s.pivotShape = pivot_shape;
+      s.restSkip = rest_skip;
+      return s;
+    }
   };
 
     void generateTasks(unsigned int target_tasks, std::vector<SubtreeTask> &tasks) const;
 
   /**
-   * Rebuild a pool task by replaying placed node ids from a fresh context:
-   * the same conflict checks and row filtering solveSubtree applies to its
-   * prefix, but without hidden-row support (resume prefixes are always
-   * replayed against the full matrix) and without the shape-pivot
-   * monotonic row filter (which depends on the pivot chosen at the time,
-   * not recorded here). The replayed set is therefore a superset of the
-   * original subtree; re-searched overlap dedups via emittedSignatures, so
-   * this costs search time, never correctness. Returns false when the
-   * prefix no longer resolves (defensive; cannot happen for prefixes
-   * salvaged from an identical matrix, which are skipped then).
+   * Rebuild a pool task from a seed by replaying its placed node ids from a
+   * fresh context: the same conflict checks and row filtering the search
+   * applied, including the shape-pivot monotonic filter per the seed's
+   * pivotShape bits, so the task covers exactly the seed's subtree. No
+   * hidden-row support (resume prefixes are always replayed against the
+   * full matrix). Returns false when the prefix no longer resolves
+   * (defensive; cannot happen for seeds salvaged from an identical matrix,
+   * which are skipped then).
    */
-  bool taskFromPrefix(
-    const std::vector<unsigned int> &prefix_node_ids,
-    SubtreeTask &task
-  ) const;
+  bool taskFromSeed(const HuangSeed &seed, SubtreeTask &task) const;
 
   /**
    * Apply placed node ids to a prepared context (initial active set already
    * installed by the caller, optionally minus hidden rows): conflict checks,
-   * placement and next-level filtering per node. Shared by solveSubtree()
-   * and taskFromPrefix(). Returns false on conflict.
+   * placement and next-level filtering per node. pivot_shape[d] (missing
+   * entries read as 0) selects the monotonic filter for step d exactly as
+   * search() applied it. Shared by solveSubtree() and taskFromSeed().
+   * Returns false on conflict.
    */
   bool replayPrefix(
     const std::vector<unsigned int> &prefix_node_ids,
+    const std::vector<uint8_t> &pivot_shape,
     SearchContext &ctx
   ) const;
 
+  /* Whether a candidate row branches on the pivot column at all, and
+   * whether the current weights still admit it; shared by search()'s
+   * branch loop and the stop-path remainder enumeration. */
+  bool coversPivot(const Row &cand, unsigned int best_col) const {
+    return columns[best_col].is_shape ? (cand.shape_col == best_col)
+         : columns[best_col].is_voxel ? cand.voxel_mask.test(best_col - 1)
+         : (cand.range_weight > 0);
+  }
+  bool fitsBounds(const Row &cand, const SearchContext &ctx) const {
+    if (ctx.col_weights[cand.shape_col] + 1 > columns[cand.shape_col].max_weight)
+      return false;
+    if (has_range && ctx.col_weights[range_column] + cand.range_weight > columns[range_column].max_weight)
+      return false;
+    return true;
+  }
+
+  /* Stop path of the frame at depth: record its pivot kind and its
+   * untouched branches (from index next) into ctx.trace. */
+  void recordFrame(unsigned int depth, unsigned int best_col, size_t next,
+                   SearchContext &ctx) const;
+
   // Recursive hot path: the token is borrowed, not copied (see
   // SimdExactCover::search for why).
+  // start > 0 resumes a rest: the branch loop of this (root) frame begins
+  // at that index of its active-row list. Recursive calls pass 0.
   void search(
     unsigned int depth,
     SearchContext &ctx,
     SolutionCallback &callback,
     const std::stop_token &stop,
-    std::atomic<uint64_t> &iterations
+    std::atomic<uint64_t> &iterations,
+    size_t start = 0
   ) const;
 
   void filterRows(
