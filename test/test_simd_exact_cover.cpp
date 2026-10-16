@@ -1212,3 +1212,51 @@ TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
   CHECK(distinct.size() == N * (N - 1) / 2);
   CHECK(resumed.size() == N * (N - 1) / 2);
 }
+
+/* SimdExactCover's stop remainder partitions the unexplored subtree,
+ * rests included.
+ *
+ * One required column (0) and 40 rows {0, i}: every row alone is a
+ * solution, all 40 branch from the root frame -- wider than kRestFanout,
+ * so a stop there emits 16 singletons plus one rest. Driving every piece
+ * through solveSubtree with a callback that stops after each delivered
+ * solution chains stops through rests of rests; the delivered solutions
+ * must be exactly the 40 rows, each once, with nothing left over.
+ */
+TEST_CASE("SimdExactCover: stop remainders with rests resume exact-once",
+          "[simd][exact_cover][resume]") {
+  constexpr unsigned int N = 40;
+  SimdExactCover256 solver(N + 1, 1);
+  SimdBitset256 req;
+  req.set(0);
+  solver.setRequiredColumns(req);
+  for (unsigned int i = 1; i <= N; i++)
+    solver.addRow(i, 0, {0, i});
+
+  using Remainder = ISimdExactCover::SubtreeRemainder;
+  std::vector<Remainder::Piece> queue{Remainder::Piece{}};  // the whole search
+  std::multiset<unsigned int> delivered;
+  unsigned int runs = 0, rests = 0;
+  while (!queue.empty()) {
+    REQUIRE(++runs < 10 * N);  // must terminate
+    Remainder::Piece piece = std::move(queue.back());
+    queue.pop_back();
+    std::stop_source stopSrc;
+    std::atomic<uint64_t> iterations{0};
+    Remainder rem;
+    solver.solveSubtree(piece.nodes, [&](const std::vector<unsigned int> &sol) {
+      REQUIRE(sol.size() == 1);
+      delivered.insert(sol[0]);
+      stopSrc.request_stop();
+      return false;
+    }, stopSrc.get_token(), iterations, &rem, piece.restSkip);
+    for (auto &p : rem.pieces) {
+      if (p.restSkip != 0)
+        rests++;
+      queue.push_back(std::move(p));
+    }
+  }
+  CHECK(rests > 0);
+  CHECK(delivered.size() == N);
+  CHECK(std::set<unsigned int>(delivered.begin(), delivered.end()).size() == N);
+}
