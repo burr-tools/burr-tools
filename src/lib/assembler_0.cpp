@@ -1255,13 +1255,23 @@ void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
   avoidTransformedMirror = std::move(mir);
 }
 
-void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok) {
+/* Delivers one raw solution. didConsume reports whether the solution is
+ * done with -- delivered, filtered as a rotation, or already reported
+ * (signature dedup) -- as opposed to declined because the stop arrived
+ * first: a declined solution must be found again on resume (see
+ * assemblerWorker_c::solution()). Returns false when the callback asked
+ * to stop.
+ */
+bool assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok, bool & didConsume) {
+  didConsume = false;
   if (getCallback()) {
     std::unique_ptr<assembly_c> assembly = buildAssembly(row_nodes, count);
 
     if (avoidTransformedAssemblies &&
-        assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
-      return;
+        assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete)) {
+      didConsume = true;
+      return true;
+    }
 
     uint64_t sig = 14695981039346656037ULL;
     for (unsigned int i = 0; i < piecenumber; i++) {
@@ -1278,17 +1288,22 @@ void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int c
     {
       std::lock_guard<std::mutex> lock(callbackMutex);
       if (stopTok.stop_requested())
-        return;
+        return false;
+      didConsume = true;
       if (!emittedSignatures.insert(sig).second)
-        return;
-      if (!getCallback()->assembly(std::move(assembly)))
+        return true;
+      if (!getCallback()->assembly(std::move(assembly))) {
         stop();
+        return false;
+      }
     }
   }
+  return true;
 }
 
 void assembler_0_c::solution(std::stop_token stop) {
-  handleSolution(rows.data(), pos, stop);
+  bool didConsume = false;
+  handleSolution(rows.data(), pos, stop, didConsume);
 }
 
 /* to understand this function you need to first completely understand the
@@ -1475,6 +1490,12 @@ public:
    * publication site in searchSubtree()
    */
   float publishedFraction;
+  /* Full paths of solutions found but never delivered (stop arrived
+   * between discovery and delivery -- see solution()). Emitted as exact
+   * single-leaf pieces by divideRemainder; cleared per task at
+   * searchSubtree() entry so nothing leaks across tasks.
+   */
+  std::vector<assembler_0_c::SubtreeTask> missedTasks;
 
   assemblerWorker_c(assembler_0_c & p, std::stop_token stop_ = {}) :
     parent(p),
@@ -1534,7 +1555,19 @@ public:
 
   void solution() {
     flushIterations();
-    parent.handleSolution(rows.data(), pos, stop);
+    bool didConsume = false;
+    parent.handleSolution(rows.data(), pos, stop, didConsume);
+    if (!didConsume && parent.getCallback()) {
+      // Stop arrived between discovery and delivery: found but never
+      // handed over (and uncounted). Divide drops searched regions, so
+      // record its full path here; divideRemainder re-emits it as an
+      // exact single-leaf piece.
+      // (Without a callback there is nobody to deliver to; skip it.)
+      assembler_0_c::SubtreeTask missed;
+      for (unsigned int i = 0; i < pos && i < parent.piecenumber; i++)
+        missed.prefix.push_back({columns[i], rows[i]});
+      missedTasks.push_back(std::move(missed));
+    }
   }
 
   /* fraction of this worker's own subtree explored so far, in [0,1].
@@ -1568,7 +1601,15 @@ public:
     return erg;
   }
 
-  void searchSubtree(const assembler_0_c::SubtreeTask & task,
+  /* Returns true when the loop itself ran out of territory (retreated
+   * below the prefix, or overflowed past the last piece) -- the task is
+   * fully searched, whatever the stop token says afterwards. False means
+   * the stop interrupted it: the live state is the resume point (see
+   * divideRemainder). Callers must use this rather than re-reading the
+   * token: a stop landing after exhaustion would otherwise read as an
+   * interruption of an already-unwound (or unwinding) task.
+   */
+  bool searchSubtree(const assembler_0_c::SubtreeTask & task,
                      assembler_0_c::WorkerProgress * slot) {
     unsigned int prefixDepth = task.prefix.size();
 
@@ -1576,6 +1617,7 @@ public:
      * published fraction to 0 for this task
      */
     publishedFraction = 0;
+    missedTasks.clear();
 
     // Apply prefix
     for (unsigned int d = 0; d < prefixDepth; d++) {
@@ -1587,9 +1629,18 @@ public:
     pos = prefixDepth;
 
     bool cont;
+    bool exhausted = false;
 
-    while (!stop.stop_requested()) {
-      if (pos < prefixDepth || pos > parent.piecenumber)
+    // Exhaustion is checked before the stop: with an empty prefix a
+    // retreat past level 0 wraps pos to UINT_MAX and is only recognized
+    // here, so testing the token first would misread a finished task as
+    // an interrupted one.
+    for (;;) {
+      if (pos < prefixDepth || pos > parent.piecenumber) {
+        exhausted = true;
+        break;
+      }
+      if (stop.stop_requested())
         break;
 
       if (!right[0])
@@ -1597,8 +1648,10 @@ public:
 
       if (pos == parent.piecenumber) {
         pos--;
-        if (pos < prefixDepth)
+        if (pos < prefixDepth) {
+          exhausted = true;
           break;
+        }
       }
 
       cont = false;
@@ -1678,8 +1731,10 @@ public:
         if (!cont) {
           rows[pos] = 0;
           pos--;
-          if (pos < prefixDepth)
+          if (pos < prefixDepth) {
+            exhausted = true;
             break;
+          }
           continue;
         }
 
@@ -1699,13 +1754,16 @@ public:
         uncover(columns[pos]);
         rows[pos] = 0;
         pos--;
-        if (pos < prefixDepth)
+        if (pos < prefixDepth) {
+          exhausted = true;
           break;
+        }
       }
     }
 
-    // Unwind prefix if search finished normally
-    if (!stop.stop_requested()) {
+    // Unwind prefix if search finished normally (an interrupted search
+    // keeps its live state for divideRemainder)
+    if (exhausted) {
       for (int d = (int)prefixDepth - 1; d >= 0; d--) {
         uncover_row(task.prefix[d].row);
         uncover(task.prefix[d].col);
@@ -1714,6 +1772,224 @@ public:
       }
       pos = 0;
     }
+    return exhausted;
+  }
+
+  /* Remainder of an interrupted task as exact continuation tasks.
+   *
+   * Runs on the stopped worker's live state: rows[]/columns[]/pos and the
+   * matrix links are exactly as the search left them (single-use workers
+   * never touch another task after a stop, so no cleanup is needed
+   * afterwards, and nothing here mutates shared state).
+   *
+   * The unexplored territory at a stop is, by the DLX DFS shape, two
+   * disjoint sets: for every placed level, the rows after the current one
+   * (each becomes a task over the live above-path plus that row, with the
+   * full subtree below it searched fresh); plus the completions of the
+   * live path itself below the deepest placed level, when the worker
+   * arrived by descent and had not gone below yet (one "continue" task
+   * over the full live path). A retreat landing has those levels fully
+   * searched already, so no continue (it would duplicate).
+   * The already-searched regions (everything before the current path) are
+   * simply absent: dropped, not stored. That is the whole point -- the
+   * remainder holds future work only, so every piece starts with a clean
+   * skip and resume re-walks nothing.
+   *
+   * The continue task is emitted only for a fresh descent; retreat
+   * landings have the levels below fully searched -- delivered or
+   * missed-recorded (see solution()) -- so emitting it again would
+   * duplicate. Solutions found but never delivered (stop arriving between
+   * discovery and delivery) are re-emitted from the recorded paths (see
+   * takeMissed): they lie on dropped current paths no divergent piece can
+   * contain. Fat levels chunk like runtime splits (up to K singletons
+   * plus a cursor rest, same splitFanout rule), so the piece count stays
+   * bounded; the cursor resumes through the existing cursor machinery
+   * with no format changes.
+   *
+   * rows[d] != 0 means covered at every level: descent covers before
+   * advancing, retreat zeroes before dropping below. The stop is only
+   * noticed at the loop head, so exactly two states reach here: a fresh
+   * descent (rows[pos] == 0, covered range [prefix, pos-1]) or a retreat
+   * landing (covered range [prefix, pos]). A solution's own level is
+   * never a loop-head state: the pos == piecenumber branch retreats and
+   * advances in the same iteration. The covered range is scanned, not
+   * assumed from pos.
+   *
+   * Only for interrupted tasks (searchSubtree returned false); exhausted
+   * ones go through takeMissed. requeueWhole asks the caller to requeue
+   * the task itself: exact for an untouched task (nothing placed past the
+   * prefix, nothing delivered). Its other uses are invariant breaches
+   * (asserted): requeueing whole there re-delivers, so release builds
+   * degrade to duplicates rather than losses. An empty result WITHOUT
+   * requeueWhole is a real outcome, not a fallback: a retreat landing on
+   * the last row of every covered level has nothing left -- the task was
+   * fully searched and must count as done.
+   */
+  std::vector<assembler_0_c::SubtreeTask> divideRemainder(
+      const assembler_0_c::SubtreeTask & task, bool & requeueWhole) {
+    const unsigned int prefixDepth = static_cast<unsigned int>(task.prefix.size());
+    requeueWhole = false;
+
+    // searchSubtree reports exhaustion itself (checked before the stop),
+    // so an interrupted loop always sits inside the territory.
+    bt_assert(pos >= prefixDepth && pos <= parent.piecenumber);
+    if (pos < prefixDepth || pos > parent.piecenumber) {
+      requeueWhole = true;
+      return {};
+    }
+
+    // Covered range scan: the topmost covered level, contiguous down to
+    // the prefix. Anything else contradicts the descent/retreat pairing
+    // above and falls back rather than risk a misread range.
+    unsigned int topCovered = prefixDepth;
+    bool anyCovered = false;
+    for (unsigned int d = prefixDepth; d < parent.piecenumber; d++) {
+      if (!rows[d])
+        break;
+      topCovered = d;
+      anyCovered = true;
+    }
+    if (!anyCovered) {
+      // Nothing placed past the prefix (untouched, or stopped exactly at
+      // the prefix before its first pick): nothing searched, nothing
+      // delivered, so the whole task is the exact remainder.
+      bt_assert(missedTasks.empty());
+      requeueWhole = true;
+      return {};
+    }
+    // Nothing covered above the range, and the range ends at pos (retreat
+    // landing) or just below it (fresh descent).
+    for (unsigned int d = topCovered + 1; d < parent.piecenumber; d++)
+      bt_assert(rows[d] == 0);
+    bt_assert(topCovered == pos || topCovered + 1 == pos);
+
+    std::vector<assembler_0_c::SubtreeTask> out;
+    // Continue task, only for a fresh descent (topCovered + 1 == pos): the
+    // worker had not descended below the deepest placed level, so this
+    // whole subtree is unexplored. A retreat landing (topCovered == pos)
+    // has the levels below fully searched -- delivered live or
+    // missed-recorded -- so emitting it would re-search them into
+    // duplicates. Captured before the unwind below zeroes rows[].
+    if (topCovered + 1 == pos) {
+      // Continue task over the full live path.
+      assembler_0_c::SubtreeTask cont;
+      cont.prefix = task.prefix;
+      for (unsigned int k = prefixDepth; k <= topCovered; k++)
+        cont.prefix.push_back({columns[k], rows[k]});
+      out.push_back(std::move(cont));
+    }
+    // Unwind deepest-first: when level d is enumerated, all levels below
+    // it are already uncovered, so its column links hold exactly the rows
+    // compatible with the above-path. The current row and everything
+    // before it were searched -- only rows after it become pieces.
+    // rows[d] != 0 for d <= topCovered is established by the scan above.
+    for (unsigned int top = topCovered + 1; top-- > prefixDepth;) {
+      const unsigned int d = top;
+      bt_assert(rows[d] != 0);
+      if (!rows[d]) {
+        requeueWhole = true;
+        return {};
+      }
+      const unsigned int col = columns[d];
+      const unsigned int cur = rows[d];
+
+      // Uncover the current row BEFORE enumerating: its placement masks
+      // rows that conflict only with it but are valid alternatives under
+      // the above-path. Deeper levels are already uncovered (descending)
+      // and the above-path stays covered, so the chain now holds exactly
+      // the compatible set, including the current row itself (a placed
+      // row's own column node is never unlinked: the column choice strips
+      // its other nodes first, shielding it from its own row covers, and
+      // no deeper cover can touch it). Enumerating before this uncover
+      // silently drops those masked alternatives.
+      uncover_row(cur);
+      // Index of the current row from the column head, then up to K
+      // following rows; anything beyond becomes one cursor rest (same
+      // K-singletons-plus-rest rule as splitPrefix).
+      unsigned int m = 0;
+      unsigned int r = down(col);
+      while (r != col && r != cur) {
+        r = down(r);
+        m++;
+      }
+      // The current row is always linked in its own column (see above).
+      bt_assert(r == cur);
+      if (r != cur) {
+        requeueWhole = true;
+        return {};
+      }
+      std::vector<unsigned int> following;
+      for (r = down(r); r != col && following.size() < parent.splitFanout; r = down(r))
+        following.push_back(r);
+      const bool exhaustedLevel = (r == col);
+      auto emitPiece = [&](unsigned int altRow) {
+        assembler_0_c::SubtreeTask piece;
+        piece.prefix = task.prefix;
+        for (unsigned int k = prefixDepth; k < d; k++)
+          piece.prefix.push_back({columns[k], rows[k]});
+        piece.prefix.push_back({col, altRow});
+        out.push_back(std::move(piece));
+      };
+      for (unsigned int alt : following)
+        emitPiece(alt);
+      if (!exhaustedLevel) {
+        assembler_0_c::SubtreeTask rest;
+        rest.prefix = task.prefix;
+        for (unsigned int k = prefixDepth; k < d; k++)
+          rest.prefix.push_back({columns[k], rows[k]});
+        rest.cursorCol = col;
+        // Skip through the current row and the emitted singletons
+        // (absolute indices 0..m+s), counted from the column head on
+        // the identically rebuilt resume state -- the same convention
+        // as splitPrefix.
+        rest.cursorSkip = m + static_cast<unsigned int>(following.size()) + 1;
+        out.push_back(std::move(rest));
+      }
+
+      // The row covers are already undone above; now drop the level
+      // itself before moving up.
+      uncover(col);
+      rows[d] = 0;
+      columns[d] = 0;
+    }
+
+    // Missed solutions (found but never delivered -- see solution()):
+    // they lie on dropped current paths, so no divergent piece can
+    // contain them.
+    for (auto & missed : missedTasks)
+      out.push_back(std::move(missed));
+    missedTasks.clear();
+
+    assignShares(out, task.share);
+    return out;
+  }
+
+  /* Remainder of an exhausted task: only its missed solutions (found but
+   * never delivered because the stop arrived between discovery and
+   * delivery -- see solution()), each as an exact single-leaf piece. The
+   * rest of the territory was searched with everything else delivered.
+   * Usually empty; non-empty only when a stop lands inside the very last
+   * deliveries of a task, e.g. on a single-leaf task (a re-emitted missed
+   * piece, or a continue task over a full path) -- whose territory is
+   * nothing but that leaf.
+   */
+  std::vector<assembler_0_c::SubtreeTask> takeMissed(
+      const assembler_0_c::SubtreeTask & task) {
+    std::vector<assembler_0_c::SubtreeTask> out = std::move(missedTasks);
+    missedTasks.clear();
+    assignShares(out, task.share);
+    return out;
+  }
+
+  // Shares divide evenly over a remainder (progress accounting only); the
+  // caller keeps the task-count total consistent with the transfer.
+  static void assignShares(std::vector<assembler_0_c::SubtreeTask> & pieces,
+                           float share) {
+    if (pieces.empty())
+      return;
+    const float unitShare = share / static_cast<float>(pieces.size());
+    for (auto & piece : pieces)
+      piece.share = unitShare;
   }
 
   void flushIterations() {
@@ -2251,7 +2527,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             auto flushingCb = [this, &st, runTok, &task_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
               this->iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
                                          std::memory_order_relaxed);
-              handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
+              bool didConsume = false;
+              handleSolution(solution_nodes.data(), solution_nodes.size(), runTok, didConsume);
               return !runTok.stop_requested() && !st.stop_requested();
             };
             solver->solveSubtree(prefix_nodes, flushingCb, runTok, task_iter);
@@ -2330,17 +2607,33 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               }
             }
             beginTask(slot, task);
-            worker.searchSubtree(task, slot);
-            const bool completed = !runTok.stop_requested() && !st.stop_requested();
-            if (!completed) {
-              // See SIMD branch: re-queue interrupted tasks for continue,
-              // without inflating totalTasks -- it is the same task, not
-              // new work.
-              std::vector<SubtreeTask> retry;
-              retry.push_back(task);
-              pool.push_tasks(std::move(retry));
+            const bool exhausted = worker.searchSubtree(task, slot);
+            // An interrupted task is divided into exact continuation tasks
+            // from the stopped live state (see divideRemainder) instead of
+            // being requeued whole: resume re-walks nothing. An exhausted
+            // one leaves only its missed solutions (see takeMissed), if
+            // the stop landed inside its last deliveries.
+            std::vector<SubtreeTask> toPush;
+            if (exhausted) {
+              toPush = worker.takeMissed(task);
+            } else {
+              bool requeueWhole = false;
+              toPush = worker.divideRemainder(task, requeueWhole);
+              // Untouched: the task itself, which delivered nothing, so a
+              // plain requeue resumes exactly. (No pieces without this
+              // flag means the stop landed after the last branch.)
+              if (requeueWhole)
+                toPush.assign(1, task);
             }
-            finishTask(slot, task, completed);
+            // The pieces partition the parent's remaining territory, so
+            // the parent's unit in totalTasks transfers to them.
+            const bool done = toPush.empty();
+            if (!done) {
+              totalTasks.fetch_add(toPush.size() - 1,
+                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(toPush));
+            }
+            finishTask(slot, task, done);
           } catch (...) {
             pool.finishTask();
             throw;
