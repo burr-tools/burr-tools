@@ -103,3 +103,38 @@ declined as missed; fails without `takeMissed`), "a task stopped right
 after its last branch is not requeued" (prefixes two levels short of a
 full path, stopped at their last assembly; deterministic, fails 12/12
 checks with an empty result read as "requeue whole").
+
+## 4. assembler_1, DLX: live write-back
+
+assembler_1's DLX worker keeps its whole position in five explicit stacks
+(`task_stack`, `next_row_stack`, `column_stack`, `rows`, `hidden_rows`),
+which fully determine the matrix via `restoreMatrix()`. So no division is
+needed: a stopped worker writes its live stacks back into the requeued
+task, and resume continues exactly there. Delivered solutions sit behind
+the frontier; a missed one (`worker_solution()` returns false) holds it,
+so the resumed task re-discovers and delivers it.
+
+Three details make write-back exact:
+
+- **Restore replays the frontier too.** Generated tasks have a cover-free
+  top, so `restoreMatrix` used to replay all but the last entry. A stopped
+  worker's top can carry live covers (1/2/5); skipping it started the
+  resume on a corrupted matrix and silently lost subtrees. Restore now
+  replays every entry; cover-clean tops (0/3/4/7) are no-ops.
+- **A stopped top-6 drains first.** Case 6 (mid-row bookkeeping, covers
+  applied) never delivers or descends, so the loop runs it out even after
+  the stop, bounded by the live depth.
+- **`baseDepth`, the territory root.** `worker_iterative(size)` used the
+  stack size as its floor; after write-back that is the (deeper) live
+  size, so a resumed task exited as soon as it popped below the interrupt
+  depth, abandoning its ancestors' remaining alternatives. The root is
+  persisted per task (set at generation, never touched by write-back), and
+  both the resume floor and the completion rule key on it: a worker that
+  popped below its root exhausted the task -- also when the stop landed
+  after the last pop.
+
+`baseDepth` bumps the assembler_1 format to 2.2; 2.1 (0.8.0) still loads.
+
+Test: "assembler_1 pool write-back resumes exact-once" (a synthetic 1-D
+range puzzle A0 refuses, DLX pool, stop after 5, save/restore/continue,
+multiset union). Fails 6/6 with the resume floor at the live size.
