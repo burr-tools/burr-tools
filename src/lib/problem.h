@@ -545,9 +545,9 @@ public:
   /**
    * Assemblies found but never disassembled because a run stopped with a
    * full disassembly queue (see disassemblerPool_c::requestStop). They must
-   * be re-submitted on the next run: the assembler's emitted-signatures
-   * dedup persists across runs, so without this they would be suppressed
-   * forever on pause/continue. Guarded by solutionMutex, like solutions.
+   * be re-submitted on the next run: the assembler's resume holds only
+   * territory it had not searched yet, so without this they would be lost
+   * on pause/continue. Guarded by solutionMutex, like solutions.
    */
   void stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v);
   /** Move all stashed assemblies out (submit order preserved). */
