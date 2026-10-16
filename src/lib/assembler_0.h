@@ -239,6 +239,12 @@ private:
    * are created by splitPrefix when a column is too fat to enumerate at
    * once (see kSplitFanout) and are never searched -- on pop they split
    * again until exhausted. All cursor fields are 0 on plain tasks.
+   *
+   * restSkip > 0 marks a SIMD rest (engine SIMD only, from a divided
+   * interrupted task -- see ISimdExactCover::SubtreeRemainder): the
+   * branches of the SIMD search frame at depth prefix.size(), starting at
+   * that index of its active-row list. Rests are searched, never split:
+   * the index refers to the SIMD frame's order, not to a DLX column.
    */
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
@@ -248,6 +254,7 @@ private:
     float share = 0;
     unsigned int cursorCol = 0;
     unsigned int cursorSkip = 0;
+    uint32_t restSkip = 0;
     bool hasCursor(void) const { return cursorCol != 0; }
   };
 
@@ -316,6 +323,17 @@ private:
   float prunedTaskShare = 0.0f;
 
   std::unordered_set<uint64_t> emittedSignatures;
+
+  /* Engine that produced the saved remainder: a remainder may hold SIMD
+   * rests (valid only for the SIMD engine), so a resumed run keeps the
+   * engine regardless of the benchmark toggles. NONE when no remainder.
+   */
+  enum RemainderEngine : unsigned int {
+    ENGINE_NONE = 0,
+    ENGINE_DLX = 1,
+    ENGINE_SIMD = 2,
+  };
+  RemainderEngine remainderEngine = ENGINE_NONE;
 
   /* set when a parallel search stopped before finishing.
    *
