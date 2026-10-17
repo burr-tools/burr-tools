@@ -251,7 +251,8 @@ void SimdExactCover<BitsetType>::solveSubtree(
   std::stop_token stop,
   std::atomic<uint64_t> &iterations,
   SubtreeRemainder *remainder,
-  size_t start
+  size_t start,
+  DonationSink *donor
 ) const {
   if (rows.empty() || active_column_list.empty())
     return;
@@ -298,8 +299,19 @@ void SimdExactCover<BitsetType>::solveSubtree(
       remainder->rootRestSkip = static_cast<uint32_t>(start);
       ctx.trace = remainder;
     }
+    if (donor != nullptr) {
+      const size_t frames = ctx.scratch_active_rows.size();
+      ctx.donor = donor;
+      ctx.root_depth = static_cast<unsigned int>(prefix_node_ids.size());
+      ctx.next_donate_poll = donor->interval;
+      ctx.frame_col.assign(frames, 0);
+      ctx.frame_count.assign(frames, 0);
+      ctx.frame_next.assign(frames, 0);
+      ctx.frame_end.assign(frames, 0);
+    }
     search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations, start);
     ctx.trace = nullptr;
+    ctx.donor = nullptr;
   }
 
   flushIterations(ctx, iterations);
@@ -331,6 +343,11 @@ void SimdExactCover<BitsetType>::search(
   if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);
     ctx.flushed_iterations += 256;
+  }
+  if (ctx.donor != nullptr && ctx.local_iterations >= ctx.next_donate_poll) {
+    ctx.next_donate_poll = ctx.local_iterations + ctx.donor->interval;
+    if (ctx.donor->wanted())
+      donateFrame(depth, ctx);
   }
 
   // Check goal: are all required columns covered?
@@ -394,8 +411,17 @@ void SimdExactCover<BitsetType>::search(
   if (best_col == UINT32_MAX)
     return;
 
-  // Branch on all candidate rows covering best_col
-  for (size_t i = start; i < curr_active.size(); i++) {
+  // Branch on all candidate rows covering best_col. With a donor the
+  // frame registers itself, and the loop end lives in ctx so a donation
+  // from a deeper node can cut it (see donateFrame).
+  size_t end = curr_active.size();
+  if (ctx.donor != nullptr) {
+    ctx.frame_col[depth] = best_col;
+    ctx.frame_count[depth] = min_count;
+    ctx.frame_next[depth] = start;
+    ctx.frame_end[depth] = end;
+  }
+  for (size_t i = start; i < end; i++) {
     const uint32_t r_idx = curr_active[i];
     const auto &candidate_row = rows[r_idx];
     if (!candidate_row.mask.test(best_col))
@@ -410,15 +436,52 @@ void SimdExactCover<BitsetType>::search(
 
     filterRows(curr_active, candidate_row.mask, next_active);
 
+    if (ctx.donor != nullptr)
+      ctx.frame_next[depth] = i + 1;
     search(depth + 1, occupied | candidate_row.mask, ctx, callback, stop, iterations);
+    if (ctx.donor != nullptr)
+      end = ctx.frame_end[depth];
 
     if (stop.stop_requested()) {
       // This branch is done (the child returned); the ones after it are
-      // untouched. Stop path only: nothing here runs per node.
+      // untouched up to the loop end (a donation may have lowered it).
+      // Stop path only: nothing here runs per node.
       if (ctx.trace != nullptr)
-        recordFrame(depth, best_col, i + 1, ctx);
+        recordFrame(depth, best_col, i + 1, end, ctx);
       return;
     }
+  }
+}
+
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::donateFrame(unsigned int depth,
+                                             SearchContext &ctx) const {
+  // Shallowest first: the biggest untried chunk, so donations stay rare.
+  // Frames within two levels of the bottom are not worth the handoff.
+  double weight = 1.0;
+  const unsigned int last = num_pieces > 2 ? num_pieces - 2 : 0;
+  for (unsigned int d = ctx.root_depth; d < depth && d < last; d++) {
+    const auto &active = ctx.scratch_active_rows[d];
+    const unsigned int col = ctx.frame_col[d];
+    const size_t next = ctx.frame_next[d];
+    const size_t end = ctx.frame_end[d];
+    unsigned int remaining = 0;
+    for (size_t j = next; j < end; j++)
+      if (rows[active[j]].mask.test(col))
+        remaining++;
+    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
+    if (remaining > 0) {
+      // scratch_active_rows[d] is intact (deeper frames write deeper
+      // levels only) and re-derives identically from the replayed path,
+      // so index `next` names the same branch on resume (as for rests).
+      const std::vector<unsigned int> path(ctx.current_solution.begin(),
+                                           ctx.current_solution.begin() + d);
+      ctx.frame_end[d] = next;
+      ctx.donor->give(path, static_cast<uint32_t>(next),
+                      weight * remaining / count);
+      return;
+    }
+    weight /= count;
   }
 }
 
@@ -427,6 +490,7 @@ void SimdExactCover<BitsetType>::recordFrame(
   unsigned int depth,
   unsigned int best_col,
   size_t next,
+  size_t end,
   SearchContext &ctx
 ) const {
   // scratch_active_rows[depth] is intact (deeper frames only write deeper
@@ -436,7 +500,7 @@ void SimdExactCover<BitsetType>::recordFrame(
   const std::vector<unsigned int> path(ctx.current_solution.begin(),
                                        ctx.current_solution.begin() + depth);
   unsigned int emitted = 0;
-  for (size_t j = next; j < curr_active.size(); j++) {
+  for (size_t j = next; j < end; j++) {
     const auto &cand = rows[curr_active[j]];
     if (!cand.mask.test(best_col))
       continue;
