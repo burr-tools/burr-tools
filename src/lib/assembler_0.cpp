@@ -2016,6 +2016,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   running.store(true, std::memory_order_relaxed);
   // Fan-out for splits and stop-time divides, fixed for the whole run.
   splitFanout = SplitFanout::fromEnv();
+  splitBreadthFirst = SplitFanout::breadthFirstFromEnv();
 
   /* Workers call smallerRotationExists() outside callbackMutex, which reaches
    * the lazy mutable caches on the result shape AND on every part shape.
@@ -2216,8 +2217,12 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               if (!children.empty()) {
                 task = std::move(children.front());
                 children.erase(children.begin());
-                totalTasks.fetch_add(pool.push_tasks(std::move(children)),
-                                     std::memory_order_relaxed);
+                size_t pushed = 0;
+                if (splitBreadthFirst)
+                  pushed = pool.push_tasks(std::move(children));
+                else
+                  pushed = pool.push_tasks_front(std::move(children));
+                totalTasks.fetch_add(pushed, std::memory_order_relaxed);
               } else if (task.hasCursor()) {
                 // Exhausted cursor (defensive only -- live cursors always
                 // enumerate): its rows are fully covered by already-emitted
@@ -2309,8 +2314,12 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               if (!children.empty()) {
                 task = std::move(children.front());
                 children.erase(children.begin());
-                totalTasks.fetch_add(pool.push_tasks(std::move(children)),
-                                     std::memory_order_relaxed);
+                size_t pushed = 0;
+                if (splitBreadthFirst)
+                  pushed = pool.push_tasks(std::move(children));
+                else
+                  pushed = pool.push_tasks_front(std::move(children));
+                totalTasks.fetch_add(pushed, std::memory_order_relaxed);
               } else if (task.hasCursor()) {
                 // Exhausted cursor, see the SIMD branch above: count with
                 // zero share, never search the whole prefix.
