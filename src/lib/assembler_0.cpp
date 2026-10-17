@@ -2309,6 +2309,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
    * every assembly) or refuse the restore. drainedPoolComplete() pins the
    * condition; its truth table is unit-tested directly.
    */
+  runPoolDrainedHook();
   const bool stopped = runTok.stop_requested();
   if (stopped)
     parallelTasks = pool.drain();

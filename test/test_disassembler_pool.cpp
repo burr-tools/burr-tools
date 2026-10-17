@@ -719,8 +719,8 @@ TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes
   CHECK_THROWS_AS(st.start(false), assert_exception);
 
   // Starting a solved problem without reset is rejected worker-side: the run
-  // ends in ACT_ERROR with ERR_CAN_NOT_START (all build modes, no longer
-  // debug-only), so polling frontends observe a stopped thread instead of a
+  // ends in ACT_ERROR with ERR_CAN_NOT_START in all build modes, so polling
+  // frontends observe a stopped thread instead of a
   // wedged or silently-clobbered solve -- and the solved problem is left
   // exactly as it was.
   solveThread_c fresh(*problem, par);

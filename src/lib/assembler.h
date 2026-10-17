@@ -281,6 +281,14 @@ public:
   /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
 
+  /** Test hook: called on the assembling thread once a parallel run's
+   * workers have joined, right before the run decides between "complete"
+   * and "interrupted" (see drainedPoolComplete). Lets a test land a stop
+   * exactly after the pool drained -- the one landing no timing-based stop
+   * hits reliably. Null (the default) does nothing.
+   */
+  void setPoolDrainedHook(std::function<void()> hook) { poolDrainedHook = std::move(hook); }
+
   /**
    * sets the position of the assembly process, so that it continues exactly
    * where it stood, when getPosition was called
@@ -364,6 +372,13 @@ public:
    */
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
+
+  // see setPoolDrainedHook()
+  std::function<void()> poolDrainedHook;
+  void runPoolDrainedHook() {
+    if (poolDrainedHook)
+      poolDrainedHook();
+  }
 
   /* One cancellation contract for all engines.
    *
