@@ -242,7 +242,10 @@ Workers == 1..N
       while (pushesLeft > 0 /\ splitOpen) {
         either {
           await active > 0;
-          queue := Append(queue, nextId);
+          \* Split children go to the FRONT (assembler_pool.h
+          \* push_tasks_front: depth-first order); no invariant depends on
+          \* queue order, the model just follows the code.
+          queue := <<nextId>> \o queue;
           nextId := nextId + 1;
           pushesLeft := pushesLeft - 1;
         } or {
@@ -255,7 +258,7 @@ Workers == 1..N
   };
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "52ff3492" /\ chksum(tla) = "c4cc74cd")
+\* BEGIN TRANSLATION (chksum(pcal) = "ad184791" /\ chksum(tla) = "3265fdd2")
 VARIABLES queue, genList, genDone, genStopped, active, stopRequested, 
           available, holdsToken, hasTask, terminated, completed, nextId, 
           pushesLeft, splitOpen, pc, task
@@ -463,7 +466,7 @@ SplitStart == /\ pc[N + 1] = "SplitStart"
 SplitLoop == /\ pc[N + 1] = "SplitLoop"
              /\ IF pushesLeft > 0 /\ splitOpen
                    THEN /\ \/ /\ active > 0
-                              /\ queue' = Append(queue, nextId)
+                              /\ queue' = <<nextId>> \o queue
                               /\ nextId' = nextId + 1
                               /\ pushesLeft' = pushesLeft - 1
                               /\ UNCHANGED splitOpen
