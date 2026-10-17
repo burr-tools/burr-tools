@@ -3716,7 +3716,8 @@ TEST_CASE("donated work is searched exactly once",
   }
 }
 
-/* Split on demand in assembler_1's Huang engine. Same shape as "donated work is searched exactly once": forced
+/* Split on demand in assembler_1 (Huang, and A1-DLX with the DLX engine
+ * forced). Same shape as "donated work is searched exactly once": forced
  * donations, every run -- uninterrupted, and stopped + restored -- must
  * reproduce the baseline as a multiset and finish at progress 1.
  * CubeInCage has identical pieces, so donated seeds must carry the pivot
@@ -3731,6 +3732,10 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
     {"examples/CubeInCage.xmpuzzle", false, 4, "5"},
     {"examples/PiecesOfEight.xmpuzzle", false, 4, "3"},
     {"examples/SolidSixPieceBurrs.xmpuzzle", false, 4, "50"},
+    {"examples/CubeInCage.xmpuzzle", true, 2, "1"},
+    {"examples/CubeInCage.xmpuzzle", true, 4, "7"},
+    {"examples/CubeInCage.xmpuzzle", true, 4, "61"},
+    {"examples/PiecesOfEight.xmpuzzle", true, 4, "3"},
   };
   for (const auto & c : cases) {
     INFO(c.path << (c.dlx ? " DLX" : " Huang") << ", " << c.threads << " threads, every " << c.every);
@@ -3951,8 +3956,8 @@ TEST_CASE("assembler_1 pool write-back resumes exact-once",
 /* Number of saved A1-DLX pool tasks whose written-back frontier is in
  * state 4 (see the test below). Payload (format 2.2): interrupted flag,
  * seven serial-stack vectors, ptype, then for ptype 1 the task count and
- * per task five stack vectors (task_stack first) plus baseDepth; a vector
- * is its length followed by its entries. */
+ * per task five stack vectors (task_stack first), baseDepth and the cuts
+ * vector; a vector is its length followed by its entries. */
 static unsigned int a1DlxTopFourTasks(const std::string & state) {
   std::istringstream in(extractAssemblerContent(state));
   auto readVector = [&in]() {
@@ -3979,6 +3984,7 @@ static unsigned int a1DlxTopFourTasks(const std::string & state) {
       readVector();
     unsigned int baseDepth = 0;
     in >> baseDepth;
+    readVector();  // cuts
     if (!taskStack.empty() && taskStack.back() == 4)
       topFour++;
   }
