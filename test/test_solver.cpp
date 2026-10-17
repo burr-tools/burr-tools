@@ -3417,6 +3417,10 @@ TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
     // Absent toggle for SIMD (mirroring the pinned-engine test), "1" to
     // force the pure-DLX task path.
     ScopedEnv simdGuard("BURRTOOLS_NO_SIMD", c.forceDlx ? "1" : nullptr);
+    // The pop-time splitter under test is what runs without donation (with
+    // it, only cursors split at pop; see "donated work is searched exactly
+    // once").
+    ScopedEnv noDonate("BURRTOOLS_NO_DONATE", "1");
 
     // nullptr: the synthetic line puzzle (see makeLinePuzzle)
     auto p = c.path ? puzzle_c::load(c.path) : makeLinePuzzle();
@@ -3610,6 +3614,93 @@ TEST_CASE("divided DLX remainders resume exact-once",
   // The cap of 1 makes divided levels leave cursor rests, so the rest
   // resume path ran.
   CHECK(cursors > 0);
+}
+
+/* Split on demand: a running task hands its shallowest open level to the
+ * pool (DLX: a cursor over the level's later rows; SIMD: a rest of the
+ * frame's later branches) and stops before them itself.
+ *
+ * Hunger is a scheduling accident, so BURRTOOLS_DONATE_EVERY forces a
+ * donation every N nodes: even one worker then donates and later pops its
+ * own pieces, which makes every case deterministic enough to require
+ * donations at all. Every run -- uninterrupted, and stopped + restored --
+ * must reproduce the serial baseline as a multiset (a donated region
+ * searched twice shows up as duplicates, one searched by nobody as
+ * losses) and end at progress 1.
+ */
+TEST_CASE("donated work is searched exactly once",
+          "[assembler][resume][save][parallel]") {
+  auto p = makeLinePuzzle();
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> baseline;
+  {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);  // serial DLX: no pool, no donation
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() > 70);
+
+  struct Case { bool dlx; unsigned int threads; const char * every; };
+  const Case cases[] = {
+    {true, 2, "1"}, {true, 4, "2"}, {true, 4, "7"},
+  };
+  for (const auto & c : cases) {
+    INFO((c.dlx ? "DLX" : "SIMD") << ", " << c.threads << " threads, every " << c.every);
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.dlx ? "1" : nullptr);
+    ScopedEnv every("BURRTOOLS_DONATE_EVERY", c.every);
+
+    {
+      RecordingAssemblerCallback cb;
+      assembler_0_c assm(*problem);
+      assm.setNumThreads(c.threads);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      CHECK(assm.getDonations() > 0);
+      CHECK(assm.getFinished() == 1.0f);
+      CHECK(cb.fingerprints == baseline);
+    }
+
+    for (unsigned int stopAfter : {5u, 40u}) {
+      INFO("stop after " << stopAfter);
+      RecordingAssemblerCallback cb1, cb2;
+      std::string state;
+      {
+        assembler_0_c assm(*problem);
+        assm.setNumThreads(c.threads);
+        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        unsigned int seen = 0;
+        assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+          cb1.assembly(std::move(a));
+          return ++seen < stopAfter;
+        });
+        REQUIRE(seen == stopAfter);
+        std::ostringstream str;
+        xmlWriter_c xml(str);
+        assm.save(xml);
+        state = str.str();
+      }
+      {
+        assembler_0_c restored(*problem);
+        restored.setNumThreads(c.threads);
+        REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        std::string payload = extractAssemblerContent(state);
+        REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+                == assembler_c::ERR_NONE);
+        restored.assemble(&cb2);
+        CHECK(restored.getFinished() == 1.0f);
+      }
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      CHECK(resumed == baseline);
+    }
+  }
 }
 
 /* A0-SIMD divide-at-stop with SIMD rests on a real puzzle.
