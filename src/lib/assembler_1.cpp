@@ -2294,13 +2294,24 @@ class assemblerWorker_1 {
       // All entries below the frontier are settled covers (1/2/5: pushes
       // always settle the parent first, so 0/3/4/6/7 never occur below the
       // top). The frontier itself is replayed too: tops 1/2/5 carry live
-      // covers the resume cases uncover, while 0/3/4/7 are cover-clean
-      // (column/row selection not yet applied) and replay as no-ops.
+      // covers the resume cases uncover, 0/3/7 are cover-clean (column/row
+      // selection not yet applied, a 7's tried-rows segment is empty) and
+      // replay as no-ops. A top 4 is not clean: case 6 hid every row tried
+      // so far at this level into the segment case 3 opened, then moved on
+      // to the next row (the state a drained top-6 stop lands in). Those
+      // hides are replayed; the next row's own weight and hiderows are not
+      // applied yet (case 4 does that on resume).
       switch (task_stack[i]) {
         case 0:
         case 3:
-        case 4:
         case 7:
+          break;
+        case 4:
+          bt_assert(i + 1 == task_stack.size());
+          hiderows_pos++;
+          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+            hiderow(hidden_rows[hiderows_pos++]);
+          }
           break;
         case 1:
           cover_column_only(column_stack[column_stack_pos++]);
