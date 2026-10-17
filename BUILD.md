@@ -24,6 +24,15 @@ To run the static analysis and code quality checks (`just check` and `just check
 brew install cppcheck llvm just
 ```
 
+Homebrew installs `llvm` keg-only, so `run-clang-tidy` and `clang-tidy` are not
+on your `PATH`. You don't need to add them: `just check-tidy` finds them in the
+keg (`$(brew --prefix llvm)/bin`) when they aren't on `PATH`.
+
+Homebrew's cppcheck is usually newer than the one CI installs from Ubuntu, and
+a newer cppcheck can report findings that CI's version doesn't. `just check`
+prints the cppcheck version first, so check it before assuming a local-only
+failure comes from your change.
+
 ### Linux
 
 Install the required dependencies:
