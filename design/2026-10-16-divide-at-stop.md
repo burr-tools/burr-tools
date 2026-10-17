@@ -133,7 +133,8 @@ Three details make write-back exact:
   popped below its root exhausted the task -- also when the stop landed
   after the last pop.
 
-`baseDepth` bumps the assembler_1 format to 2.2; 2.1 (0.8.0) still loads.
+`baseDepth` bumps the assembler_1 format to 2.2; 2.1 (0.8.0) still loads
+here (until §9).
 
 Test: "assembler_1 pool write-back resumes exact-once" (a synthetic 1-D
 range puzzle A0 refuses, DLX pool, stop after 5, save/restore/continue,
@@ -176,7 +177,8 @@ search did, and `generateTasks` records the bits along its expansion path.
 Empty-prefix seeds (the whole search) are no longer dropped.
 
 Format 2.2 Huang seeds: prefix, pivot bits (a vector, one 0/1 per step),
-rest start. 2.1 seeds (prefix only) still load, replayed as before.
+rest start. 2.1 seeds (prefix only) still load here, replayed as before
+(until §9).
 
 Tests: "SimdHuangCover: salvaged seeds replay the monotonic shape filter"
 (engine level, no dedup: one shape needed twice, 20 placements in optional
@@ -234,6 +236,7 @@ things depended on it and change with it:
   tasks whole and relied on the signature list. Uninterrupted ones still
   load. Neither 1.7 nor 2.2 is in a tagged release yet, so both are final
   here.
+  (Superseded by §9: other versions do not resume at all.)
 
 The disassembly stash (`problem_c::stashAssemblies`) stays required, for a
 new reason: assemblies found but never disassembled are not found again,
@@ -270,3 +273,21 @@ on a quieter machine): identical results everywhere; LominoSquare 3/4
 1.08-1.14 on one or two samples; a 10x interleaved single-thread check on
 CondorsPeeper:1 at +1.3% (noise level). Command:
 `bench/bench_solve.py --ab <before> <after> --no-disassemble --runs 3`.
+
+## 9. No resume across versions
+
+Policy: a paused search resumes only with the BurrTools version that saved
+it (README, "Pausing a search and continuing later"). The assemblers
+therefore read only their current format -- A0 1.7, A1 2.2 -- and refuse
+everything else with `ERR_CAN_NOT_RESTORE_VERSION`: the saved search state
+is dropped, the found assemblies stay viewable, and the next Start resets
+them and begins from scratch (lifecycle T2c). This removes the 0.8.0 readers (A0 1.6, A1 2.1)
+and the 0.7.1 one (A1 2.0, no leading flag); A1's task-type field is
+required now that `save()` always writes it. Only paused searches are
+affected: the assembler state is written and read only while a problem is
+`SS_SOLVING`, so completed searches and plain puzzle files load as before.
+
+Test: "Search state saved by another version is refused on restore"
+(minimal 1.6, 2.0, 2.1 payloads, interrupted or not, refused; current ones
+load).
+
