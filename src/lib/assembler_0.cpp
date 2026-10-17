@@ -2509,10 +2509,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  // Pop-time split decision -- for DLX workers only with
-  // BURRTOOLS_NO_DONATE: by default they donate on demand instead and a pop
-  // splits only cursors (see assemblerWorker_c::donate). Evaluated at task
-  // granularity
+  // Pop-time split decision -- only with BURRTOOLS_NO_DONATE: by default
+  // running tasks donate on demand instead and a pop splits only cursors
+  // (see assemblerWorker_c::donate and
+  // design/2026-10-17-split-on-demand.md). Evaluated at task granularity
   // (the two locked reads cost
   // nothing against a millisecond-scale task; splitPrefix itself is
   // microseconds on the worker-local scratch copy).
@@ -2632,7 +2632,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         SubtreeTask task;
         while (pool.pop_task(task, runTok, st)) {
           try {
-            if (shouldSplit(task)) {
+            // With donation only cursors split at pop (see the DLX loop).
+            if (donate ? task.hasCursor() : shouldSplit(task)) {
               auto children = splitter.splitPrefix(task);
               if (!children.empty()) {
                 task = std::move(children.front());
@@ -2665,6 +2666,41 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             }
 
             std::atomic<uint64_t> task_iter{0};
+            // Split on demand (see ISimdExactCover::DonationSink): donated
+            // rests are ordinary pool tasks, carved out of this task's
+            // share (its slot keeps the original; the SIMD path publishes
+            // no in-task fraction, so the slot term is 0 anyway).
+            struct Sink : ISimdExactCover::DonationSink {
+              assembler_0_c & self;
+              AssemblyTaskPool<SubtreeTask> & pool;
+              SubtreeTask & task;
+              float rootShare;
+              bool forced;
+              Sink(assembler_0_c & s, AssemblyTaskPool<SubtreeTask> & p,
+                   SubtreeTask & t, unsigned long every)
+                : self(s), pool(p), task(t), rootShare(t.share), forced(every > 0) {
+                interval = every > 0 ? every : 256;
+              }
+              bool wanted() override { return forced || pool.wants_work(); }
+              void give(const std::vector<unsigned int> & nodes, uint32_t restSkip,
+                        double fraction) override {
+                SubtreeTask piece;
+                for (size_t k = 0; k < nodes.size(); k++) {
+                  if (k < task.prefix.size())
+                    piece.prefix.push_back(task.prefix[k]);
+                  else
+                    piece.prefix.push_back({self.colCount[nodes[k]], nodes[k]});
+                }
+                piece.restSkip = restSkip;
+                piece.share = std::min(static_cast<float>(fraction * rootShare), task.share);
+                task.share -= piece.share;
+                self.donations.fetch_add(1, std::memory_order_relaxed);
+                self.totalTasks.fetch_add(1, std::memory_order_relaxed);
+                std::vector<SubtreeTask> one;
+                one.push_back(std::move(piece));
+                pool.push_tasks(std::move(one));
+              }
+            } sink(*this, pool, task, donateEvery);
             // Remainder of this task if the stop interrupts it (see
             // ISimdExactCover::SubtreeRemainder): filled only on the stop
             // path, empty when the task runs to completion.
@@ -2687,7 +2723,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               return cont && !runTok.stop_requested() && !st.stop_requested();
             };
             solver->solveSubtree(prefix_nodes, flushingCb, runTok, task_iter,
-                                 &remainder, task.restSkip);
+                                 &remainder, task.restSkip,
+                                 donate ? &sink : nullptr);
 
             iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
             // The remainder decides completion, not the token: a stop that
