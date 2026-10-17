@@ -20,6 +20,7 @@
  */
 #include "filechooser.h"
 
+#include <filesystem>
 #include <string>
 #include <string.h>
 
@@ -84,7 +85,11 @@ static void glRedrawPump(void *)
 
 bool fileChooserConfirmedOverwrite(const char * name)
 {
-  return name && !lastNativeSave.empty() && lastNativeSave == name;
+  /* compared as paths, not as strings: a caller that joins the folder and
+   * the name itself gets the native separator, '\\' on Windows, where the
+   * dialog's answer has '/' */
+  return name && !lastNativeSave.empty() &&
+         std::filesystem::path(lastNativeSave) == std::filesystem::path(name);
 }
 
 const char * fileChooser(const char * title, const char * filterName, const char * pattern, const char * fname, bool save)
