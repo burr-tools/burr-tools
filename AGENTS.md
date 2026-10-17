@@ -158,6 +158,8 @@ The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) app
 | `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
 | `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
 | `BURRTOOLS_SPLIT_BREADTH_FIRST=1` | Queues assembler_0's dynamically split child tasks at the back of the pool (breadth-first order) instead of the front (depth-first, the default). | A/B the depth-first order: queue/remainder size (breadth-first grows towards every node of the split depth on wide puzzles) and long-tail wall time. |
+| `BURRTOOLS_NO_DONATE=1` | Disables split on demand in assembler_0 (DLX workers): running tasks no longer hand their shallowest open level to waiting siblings, and the eager pop-time splitting (shallow prefixes, starving siblings) comes back. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
+| `BURRTOOLS_DONATE_EVERY=N` | Tests only: additionally donate every N search nodes whether or not a sibling is waiting, so donation paths run deterministically, even single-threaded. | Exercise the donation/cut/divide interplay on small puzzles. |
 
 ### Running an Interleaved A/B Benchmark
 
