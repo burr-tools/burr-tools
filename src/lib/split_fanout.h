@@ -37,6 +37,14 @@ namespace SplitFanout {
 
 inline constexpr unsigned int kDefault = 16;
 
+/* BURRTOOLS_SPLIT_BREADTH_FIRST=1 queues assembler_0's split children at
+ * the back (the old breadth-first order) instead of the front, for A/B
+ * benchmarking the depth-first order (see AssemblyTaskPool::
+ * push_tasks_front). Read once per run. */
+inline bool breadthFirstFromEnv() {
+  return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
+}
+
 inline unsigned int fromEnv() {
   const char * env = std::getenv("BURRTOOLS_SPLIT_FANOUT");
   if (env != nullptr && *env != '\0') {

@@ -262,6 +262,9 @@ private:
    */
   static constexpr unsigned int kSplitFanout = SplitFanout::kDefault;
   unsigned int splitFanout = kSplitFanout;
+  // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
+  // (A/B toggle, see split_fanout.h); read with splitFanout
+  bool splitBreadthFirst = false;
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a
