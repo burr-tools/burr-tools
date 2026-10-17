@@ -2944,11 +2944,12 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     std::vector<HuangSeed> huangSalvaged;
     solver->parallelSolve(
       workers,
-      // consumed: done with this solution (delivered or filtered); false
-      // only when the stop declined it, which the solver then keeps as a
-      // remainder piece (see SimdHuangCover::StopTrace).
+      // consumed: done with this solution (delivered, filtered, or nobody
+      // to deliver to -- as in assembler_0); false only when the stop
+      // declined it, which the solver then keeps as a remainder piece (see
+      // SimdHuangCover::StopTrace).
       [this, runTok](const std::vector<unsigned int> &solution_nodes, bool &consumed) -> bool {
-        consumed = false;
+        consumed = (getCallback() == nullptr);
         if (getCallback()) {
           auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
@@ -3880,10 +3881,9 @@ void assembler_1_c::save(xmlWriter_c & xml) const
   /* Parallel remainder for cross-session resume: which engine's
    * tasks, if any. 0 = none (serial stops resume from the stacks above);
    * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes.
-   * Format 2.2 replaces the unbounded signature list with bounded
-   * remainders that hold only unexplored territory: DLX tasks as five
-   * live stacks plus baseDepth, Huang seeds as prefix, pivot bits and
-   * rest start.
+   * Both are bounded remainders that hold only unexplored territory: DLX
+   * tasks as five live stacks plus baseDepth, Huang seeds as prefix, pivot
+   * bits and rest start.
    */
   unsigned int ptype = !parallelTasks.empty() ? 1
                      : !pendingHuangPrefixes.empty() ? 2 : 0;
