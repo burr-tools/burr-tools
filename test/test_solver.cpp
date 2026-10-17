@@ -3534,10 +3534,11 @@ TEST_CASE("divided DLX remainders resume exact-once",
  * must never be split by the DLX splitter. At a cap of 1 every divided
  * frame with two or more remaining branches does, so a small SIMD puzzle
  * covers it (the synthetic line puzzle, see makeLinePuzzle).
- * Stops after several counts on 4 workers land in many frames; each
- * remainder is saved, restored and run to completion, and the union must
- * equal the uninterrupted baseline. Over all stop points SIMD rests must
- * have occurred.
+ * Each remainder is saved, restored and run to completion, and the union
+ * must equal the uninterrupted baseline. One worker makes the stop points
+ * deterministic, so SIMD rests are required there (where a stop lands on
+ * 4 workers depends on the schedule -- an ASan runner reached none); the
+ * 4-worker runs check exact-once on whatever frames the schedule gives.
  */
 TEST_CASE("A0-SIMD remainders with SIMD rests resume exact-once",
           "[assembler][resume][save][simd]") {
@@ -3559,13 +3560,14 @@ TEST_CASE("A0-SIMD remainders with SIMD rests resume exact-once",
   REQUIRE(baseline.size() > 70);
 
   unsigned int simdRests = 0;
+  for (unsigned int threads : {1u, 4u})
   for (unsigned int stopAfter : {5u, 20u, 40u, 70u}) {
-    INFO("stop after " << stopAfter);
+    INFO(threads << " threads, stop after " << stopAfter);
     RecordingAssemblerCallback cb1;
     std::string state;
     {
       assembler_0_c assm(*problem);
-      assm.setNumThreads(4);
+      assm.setNumThreads(threads);
       REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
       unsigned int seen = 0;
       assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
@@ -3578,12 +3580,13 @@ TEST_CASE("A0-SIMD remainders with SIMD rests resume exact-once",
       assm.save(xml);
       state = str.str();
     }
-    simdRests += a0RemainderOf(state).simdRests;
+    if (threads == 1)
+      simdRests += a0RemainderOf(state).simdRests;
 
     RecordingAssemblerCallback cb2;
     {
       assembler_0_c restored(*problem);
-      restored.setNumThreads(4);
+      restored.setNumThreads(threads);
       REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
       std::string payload = extractAssemblerContent(state);
       REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
