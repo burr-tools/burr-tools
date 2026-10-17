@@ -110,7 +110,13 @@ private:
      * touched by write-back.
      */
     unsigned int baseDepth = 0;
+    // progress units this task carries (see TaskUnits); not saved -- a
+    // task read from a file is a whole one
+    size_t units = TaskUnits::kWhole;
   };
+
+  // tasks donated by running workers to idle siblings (diagnostics, tests)
+  std::atomic<unsigned long> donations{0};
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
@@ -397,6 +403,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers donated to idle siblings so far (see
+   * split_fanout.h); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }

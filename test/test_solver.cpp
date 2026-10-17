@@ -3794,6 +3794,89 @@ TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
   }
 }
 
+/* Split on demand in assembler_1's Huang engine. Same shape as "donated work is searched exactly once": forced
+ * donations, every run -- uninterrupted, and stopped + restored -- must
+ * reproduce the baseline as a multiset and finish at progress 1.
+ * CubeInCage has identical pieces, so donated seeds must carry the pivot
+ * bits that make their replay apply the monotonic shape filter;
+ * SolidSixPieceBurrs has a range column and stops deep.
+ */
+TEST_CASE("assembler_1 donated work is searched exactly once",
+          "[assembler][resume][save][parallel]") {
+  struct Case { const char * path; bool dlx; unsigned int threads; const char * every; };
+  const Case cases[] = {
+    {"examples/CubeInCage.xmpuzzle", false, 1, "1"},
+    {"examples/CubeInCage.xmpuzzle", false, 4, "5"},
+    {"examples/PiecesOfEight.xmpuzzle", false, 4, "3"},
+    {"examples/SolidSixPieceBurrs.xmpuzzle", false, 4, "50"},
+  };
+  for (const auto & c : cases) {
+    INFO(c.path << (c.dlx ? " DLX" : " Huang") << ", " << c.threads << " threads, every " << c.every);
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.dlx ? "1" : nullptr);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      ScopedEnv noDonate("BURRTOOLS_NO_DONATE", "1");
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(baseline.size() > 3);
+
+    ScopedEnv every("BURRTOOLS_DONATE_EVERY", c.every);
+    {
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(c.threads);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      CHECK(assm.getDonations() > 0);
+      CHECK(assm.getFinished() == 1.0f);
+      CHECK(cb.fingerprints == baseline);
+    }
+
+    for (unsigned int stopAfter : {2u, static_cast<unsigned int>(baseline.size() / 2)}) {
+      INFO("stop after " << stopAfter);
+      RecordingAssemblerCallback cb1, cb2;
+      std::string state;
+      {
+        assembler_1_c assm(*problem);
+        assm.setNumThreads(c.threads);
+        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        unsigned int seen = 0;
+        assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+          cb1.assembly(std::move(a));
+          return ++seen < stopAfter;
+        });
+        std::ostringstream str;
+        xmlWriter_c xml(str);
+        assm.save(xml);
+        state = str.str();
+      }
+      {
+        assembler_1_c restored(*problem);
+        restored.setNumThreads(c.threads);
+        REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        std::string payload = extractAssemblerContent(state);
+        REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+                == assembler_c::ERR_NONE);
+        restored.assemble(&cb2);
+        CHECK(restored.getFinished() == 1.0f);
+      }
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      CHECK(resumed == baseline);
+    }
+  }
+}
+
 /* A0-SIMD divide-at-stop with SIMD rests on a real puzzle.
  *
  * A SIMD frame with more remaining branches than the fan-out cap leaves a

@@ -1009,7 +1009,7 @@ TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as complet
   // solution may have had nothing else left (its root is that leaf) and
   // then counts as completed -- but never the one the stop cut short.
   CHECK(completed_tasks.load() < total_tasks.load());
-  CHECK(completed_tasks.load() <= 1);
+  CHECK(completed_tasks.load() <= TaskUnits::kWhole);  // counters are in units
 }
 
 /* Stopped Huang parallel runs salvage resumable prefixes (issue #111).
@@ -1211,6 +1211,49 @@ TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
   std::set<std::vector<unsigned int>> distinct(resumed.begin(), resumed.end());
   CHECK(distinct.size() == N * (N - 1) / 2);
   CHECK(resumed.size() == N * (N - 1) / 2);
+}
+
+/* Donated Huang rests replay the monotonic shape filter.
+ *
+ * The donation counterpart of the salvage test above: one shape needed six
+ * times, ten single-voxel placements, so every branch is a shape branch
+ * and each 6-subset must be reported once: C(10, 6) = 210. Generation
+ * stops at depth 2 (45 tasks), and with a donation forced every node the
+ * frames at depths 2 and 3 hand rests to the pool. A rest from depth 3
+ * holds a step chosen by a live frame, whose pivot bit the donor has to
+ * supply; with a wrong bit the replay drops the filter and the rest
+ * re-enumerates permutations, reporting subsets twice.
+ */
+TEST_CASE("SimdHuangCover: donated rests replay the monotonic shape filter",
+          "[simd][huang][parallel]") {
+  constexpr unsigned int N = 10, K = 6;
+  HcScopedEnv every("BURRTOOLS_DONATE_EVERY", "1");
+  SimdHuangCover256 solver(N + 1, 1);
+  solver.setColumnBounds(1, K, K, false, true, false, false);
+  for (unsigned int v = 2; v <= N + 1; v++)
+    solver.setColumnBounds(v, 0, 1, true, false, false, false);
+  for (unsigned int i = 0; i < N; i++)
+    solver.addRow(i + 1, 0, 1, i, 0, {1, i + 2}, {1, 1});
+
+  std::vector<std::vector<unsigned int>> sols;
+  std::stop_source stopSrc;
+  std::atomic<unsigned long> iterations{0}, donations{0};
+  std::atomic<size_t> total_tasks{0}, completed_tasks{0};
+  solver.parallelSolve(
+    1,
+    [&](const std::vector<unsigned int> & s) {
+      std::vector<unsigned int> sorted = s;
+      std::sort(sorted.begin(), sorted.end());
+      sols.push_back(sorted);
+      return true;
+    },
+    stopSrc, iterations, total_tasks, completed_tasks,
+    nullptr, nullptr, nullptr, &donations);
+  CHECK(donations.load() > 0);
+  std::set<std::vector<unsigned int>> distinct(sols.begin(), sols.end());
+  CHECK(distinct.size() == 210);
+  CHECK(sols.size() == 210);
+  CHECK(completed_tasks.load() == total_tasks.load());
 }
 
 /* SimdExactCover's stop remainder partitions the unexplored subtree,

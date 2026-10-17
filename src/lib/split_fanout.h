@@ -46,15 +46,16 @@ inline bool breadthFirstFromEnv() {
   return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
 }
 
-/* Donation (split on demand): a running assembler_0 task, on the DLX and
- * the SIMD workers alike, hands the unexplored part of its shallowest open
- * level to the pool whenever a sibling is waiting for work, and stops
- * before that part itself. Tasks are thereby split where the work actually
- * is, instead of eagerly at pop time by depth guesses that cannot split a
- * task found large after it started. Busy workers poll the pool's hunger
- * flag every few hundred nodes; one donor claims it per waiter.
- * BURRTOOLS_NO_DONATE=1 restores the eager pop-time splitting on both (A/B
- * toggle). Read once per run. */
+/* Donation (split on demand): a running task (assembler_0 DLX and SIMD,
+ * Huang) hands the unexplored part of its shallowest open level to the
+ * pool whenever a sibling is waiting for work, and stops before that part
+ * itself. Tasks are thereby split where the work actually is, instead of
+ * eagerly at pop time by depth guesses that cannot split a task found
+ * large after it started. Busy workers poll the pool's hunger flag every
+ * few hundred nodes; one donor claims it per waiter.
+ * BURRTOOLS_NO_DONATE=1 turns it off (A/B toggle): assembler_0 then splits
+ * eagerly at pop time again, Huang runs its tasks as seeded. Read once per
+ * run. */
 inline bool noDonateFromEnv() {
   return std::getenv("BURRTOOLS_NO_DONATE") != nullptr;
 }
@@ -71,6 +72,38 @@ inline unsigned long donateEveryFromEnv() {
   }
   return 0;
 }
+
+} // namespace SplitFanout
+
+/* Progress units of one generated or restored task in the engines whose
+ * progress counts tasks (assembler_1, Huang): a task that donates part of
+ * its territory, or is divided at a stop, splits its units among the
+ * pieces instead of adding tasks, so the total does not move and the bar
+ * does not step back.
+ *
+ * Invariant: every outstanding task holds at least one unit. Completed
+ * units reach the total only when no work is left, and solvethread treats
+ * a full bar as a finished search -- a 0-unit piece would let it finish
+ * with that piece unsearched. So a donor gives away units only while it
+ * holds two or more and keeps at least one (give() below), and a stop that
+ * divides a task into more pieces than it has units adds the missing
+ * units to the total (stop time only, where a small dip is harmless). */
+namespace TaskUnits {
+inline constexpr size_t kWhole = size_t(1) << 20;
+
+/* Units for a donated piece out of `held`, given its estimated share of
+ * `root` units: at least 1, and at least 1 left to the donor. 0 means the
+ * donor cannot spare any (held < 2) and must not donate. */
+inline size_t give(size_t held, size_t root, double share) {
+  if (held < 2)
+    return 0;
+  double est = share * static_cast<double>(root);
+  size_t u = est < 1.0 ? 1 : static_cast<size_t>(est);
+  return u > held - 1 ? held - 1 : u;
+}
+} // namespace TaskUnits
+
+namespace SplitFanout {
 
 inline unsigned int fromEnv() {
   const char * env = std::getenv("BURRTOOLS_SPLIT_FANOUT");

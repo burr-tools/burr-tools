@@ -2078,6 +2078,10 @@ class assemblerWorker_1 {
    * only its value is published, through the atomic slot
    */
   huangSubtreeProgress_c tracker;
+  /* the published slot is in task-equivalents: the tracker's share of the
+   * current task times the task's units at pop over a whole task's
+   */
+  double slotScale = 1.0;
 
   void cover_column_only(int col) {
     right[left[col]] = right[col];
@@ -2310,7 +2314,7 @@ class assemblerWorker_1 {
 
     /* The task this worker was handed is the whole of what this walk
      * measures, so the tracker starts at 0 and drains to 1 as the task runs
-     * out; getFinished() adds it as one task's worth of progress.
+     * out; getFinished() adds it scaled by the task's units (slotScale).
      */
     tracker.reset();
     if (slot)
@@ -2338,7 +2342,7 @@ class assemblerWorker_1 {
        * more slowly than the 250 ms GUI refresh and defeat the purpose.
        */
       if ((local_iterations & 0xFFF) == 0 && slot)
-        slot->fraction.store(static_cast<float>(tracker.doneShare()), std::memory_order_relaxed);
+        slot->fraction.store(static_cast<float>(tracker.doneShare() * slotScale), std::memory_order_relaxed);
 
       switch (task_stack.back()) {
         case 0:
@@ -2563,7 +2567,7 @@ class assemblerWorker_1 {
      */
     tracker.flush();
     if (slot)
-      slot->fraction.store(static_cast<float>(tracker.doneShare()), std::memory_order_relaxed);
+      slot->fraction.store(static_cast<float>(tracker.doneShare() * slotScale), std::memory_order_relaxed);
   }
 
 public:
@@ -2603,6 +2607,7 @@ public:
     const unsigned int base =
         task.baseDepth != 0 ? task.baseDepth
                             : static_cast<unsigned int>(task.task_stack.size());
+    slotScale = static_cast<double>(task.units) / static_cast<double>(TaskUnits::kWhole);
     restoreMatrix(task);
     worker_iterative(base, slot);
   }
@@ -3015,7 +3020,8 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       completedTasks,
       (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr,
       huangSeeds.empty() ? nullptr : &huangSeeds,
-      &huangSalvaged
+      &huangSalvaged,
+      &donations
     );
 
     /* Same stop-after-drain rule as the DLX paths (see
@@ -3076,11 +3082,12 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * from under the completed count already accumulated against the
      * original total. A resumed run therefore skips this whole block and
      * leaves both totalTasks and completedTasks exactly as the paused run
-     * left them (tasks are weighted equally; see the note on workerProgress
-     * in the header for why this engine does not weight them by structural
-     * share).
+     * left them. Generated tasks are weighted equally (one TaskUnits::kWhole
+     * each; see the note on workerProgress in the header for why this
+     * engine does not weight them by structural share); donations and stops
+     * only move units between tasks.
      */
-    totalTasks.store(parallelTasks.size(), std::memory_order_release);
+    totalTasks.store(parallelTasks.size() * TaskUnits::kWhole, std::memory_order_release);
   }
 
   runPoolSeedHook();
@@ -3111,7 +3118,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   // Non-terminating pool as in assembler_0 (see assembler_pool.h): idle
   // workers wait for quiescence, so siblings blocked in
   // disassemblerPool_c::submit are still alive when disassembly permits
-  // return. Dynamic splitting of Huang subtrees is not implemented --
+  // return. Dynamic splitting of A1-DLX subtrees is not implemented --
   // tasks run as seeded -- so skew between seeded subtrees is only absorbed
   // at task granularity.
   AssemblyTaskPool<SubtreeTask_1> pool;
@@ -3208,7 +3215,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
             pool.push_tasks(std::move(retry));
           }
           if (!stopped || exhausted)
-            completedTasks.fetch_add(1, std::memory_order_release);
+            completedTasks.fetch_add(task.units, std::memory_order_release);
         } catch (...) {
           pool.finishTask();
           throw;
@@ -3547,9 +3554,12 @@ float assembler_1_c::getFinished(void) const {
 
   /* Completed subtree tasks plus how far each running worker has got into the
    * task it holds. Without the second term a task contributes nothing until it
-   * finishes, which is what made the bar sit still on the tail task. Every
-   * task is worth the same 1/n here; see the note on workerProgress in the
-   * header for why this engine does not weight them by structural share.
+   * finishes, which is what made the bar sit still on the tail task. The
+   * counters are in progress units and the slots in task-equivalents (see
+   * TaskUnits): every generated task is worth the same, and donations only
+   * move units between tasks; see the note on workerProgress in the header
+   * for why this engine does not weight generated tasks by structural
+   * share.
    *
    * Only published atomics are read here; a worker's matrix and its progress
    * tracker are private to its thread and are never touched from this (GUI)
@@ -3642,7 +3652,9 @@ float assembler_1_c::getFinished(void) const {
        * exactly the non-monotonicity this snapshot exists to remove, just in
        * a rarer window.
        */
-      const double candidate = static_cast<double>(done) + sum;
+      // counters in units, slots in task-equivalents (see TaskUnits)
+      const double candidate =
+          static_cast<double>(done) / static_cast<double>(TaskUnits::kWhole) + sum;
       if (candidate > best)
         best = candidate;
 
@@ -3656,7 +3668,7 @@ float assembler_1_c::getFinished(void) const {
       done = after;
     }
 
-    double erg = best / static_cast<double>(n);
+    double erg = best / (static_cast<double>(n) / static_cast<double>(TaskUnits::kWhole));
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 
@@ -3828,7 +3840,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   restoredSimdSolver = std::move(seedSolver);
   const unsigned int restoredPtype = ptype;
   if (ptype != 0) {
-    totalTasks.store(parallelTasks.size() + pendingHuangPrefixes.size(),
+    totalTasks.store((parallelTasks.size() + pendingHuangPrefixes.size()) * TaskUnits::kWhole,
                      std::memory_order_relaxed);
     completedTasks.store(0, std::memory_order_relaxed);
     parallelInterrupted = false;
