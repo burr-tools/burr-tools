@@ -219,10 +219,9 @@ public:
   /// Push dynamically split children to the FRONT of the queue, keeping
   /// their order (the next pop takes the first of them). Workers pop from
   /// the front, so a split subtree is explored depth-first: the queue then
-  /// stays at about workers x depth x fan-out tasks instead of growing
-  /// towards every node of the split depth, as breadth-first order did
-  /// (measured on a wide puzzle: 93k queued tasks after 10 minutes, 374k
-  /// after 30). The old, shallow tasks drift to the back and are taken
+  /// stays at about workers x depth x fan-out tasks; breadth-first order
+  /// grows it towards every node of the split depth (see
+  /// design/2026-10-16-divide-at-stop.md). The old, shallow tasks drift to the back and are taken
   /// when the front runs dry -- exactly when workers starve, so the split
   /// heuristic breaks them up; dynamic splitting, not queue order, is what
   /// bounds the tail. Returns the number accepted; wakes waiters.
