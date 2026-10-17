@@ -1,7 +1,7 @@
-# Split on demand (assembler_0)
+# Split on demand
 
-Status: implemented for assembler_0 (DLX and SIMD workers). Huang and
-A1-DLX follow separately.
+Status: implemented for assembler_0 (DLX and SIMD workers, sections 3-4)
+and assembler_1's Huang engine (sections 8-9). A1-DLX tasks run as seeded.
 
 ## 1. Problem
 
@@ -171,11 +171,70 @@ prefix-depth guess, with no cost where it does not help.
 - "chunked splitting ..." pins the pop-time splitter, so it runs with
   `BURRTOOLS_NO_DONATE=1`.
 
-## 8. Not covered here
+## 8. assembler_1: progress units
 
-- **Huang** (A1 default) has no runtime splitting at all. Its progress
-  counts tasks as equal units, so a donation would need fractional task
-  units first.
-- **A1-DLX** keeps five explicit stacks. A donation there means handing
-  over the remaining rows of a state-3/4 frame, which needs its own
-  write-back-style task.
+assembler_1's progress counts tasks: completed tasks plus the in-flight
+fraction of each running one, over the task total. A donation that added
+a task would make the bar step back. So the counters (`totalTasks`,
+`completedTasks`, and the Huang solver's pair) count **units**: a
+generated or restored task holds `TaskUnits::kWhole` (2^20), a donation
+moves units from the donor to the piece, and a stop divides a task's
+units among its pieces. The total only grows at a stop that cuts a task
+into more pieces than it has units.
+
+**Invariant: every outstanding task holds at least one unit.** Completed
+units reach the total only when no work is left, and `solvethread`
+treats a full bar as a finished search. A 0-unit piece would let it
+finish with that piece unsearched. An earlier draft that rounded small
+shares down to 0 units did exactly that: the chained-stop Huang test lost
+two assemblies on SolidSixPieceBurrs. A donor therefore gives units only
+while it holds two or more and keeps at least one (`TaskUnits::give`).
+
+Units are bookkeeping, not territory: they are not saved (a restored
+task is a whole one), and `HuangSeed::operator==` ignores them.
+
+## 9. Huang
+
+Huang's recursion is the SIMD exact cover shape, so donation is too. A
+per-depth frame registry (pivot column, candidate count, first untried
+index, loop end) lets a deeper node cut the shallowest frame with untried
+pivot candidates. The frame's remaining branches become a rest seed:
+path, pivot bits and restSkip = the first untried index. `taskFromSeed`
+replays the seed into a pool task.
+
+- **Pivot bits.** Steps inside the task's prefix take the task's own bits;
+  a step chosen by a live frame takes that frame's pivot kind. With a
+  wrong bit the replay drops the monotonic shape filter and the rest
+  re-enumerates permutations of identical pieces. The unit test
+  "donated rests replay the monotonic shape filter" (one shape needed six
+  times, C(10, 6) = 210) reports 350 with the bits zeroed.
+- **Existence check.** It uses `coversPivot` only. `fitsBounds` would see
+  the deeper placements' weights, and with identical pieces those fill
+  the very shape the frame branches on, so it would hide every sibling.
+  A candidate that does not fit at the frame is skipped when the rest
+  replays the frame's own state, so overcounting costs at most an empty
+  rest.
+- **Units.** The piece's units are the structural estimate (product of
+  1/branching above the frame, times remaining/branching at it) of the
+  donor's units at pop, clamped by `TaskUnits::give`. Huang publishes no
+  in-flight fraction, so nothing else depends on the estimate.
+
+## 10. Tests (assembler_1)
+
+- "assembler_1 donated work is searched exactly once": Huang,
+  CubeInCage (identical pieces), PiecesOfEight and SolidSixPieceBurrs
+  (range), 1 to 4 threads, forced donation every 1 to 50 nodes. Uninterrupted runs and stopped + restored runs must equal the
+  baseline as a multiset and finish at progress 1, and donations must
+  occur. Mutation checks:
+  - Dropping the cut (runaway duplication), or recording stop branches
+    past the loop end, fails it.
+- The solver suite passes with forced donation (every 1/7/200 on the
+  default engines). It shows no failures that it does not also show
+  without donation.
+## 11. Limits
+
+- A1-DLX (the fallback when Huang's memory budget refuses a puzzle) does
+  not donate: its tasks run as seeded.
+- No engine donates within two levels of the bottom (A0: two pieces
+  before the last; Huang: two placements before the minimum piece
+  count, or the depth bound when no shape has a minimum).
