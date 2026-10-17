@@ -2985,6 +2985,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * counted with nothing salvaged completes exactly as an unstopped run
      * instead of saving an empty interrupted remainder.
      */
+    runPoolDrainedHook();
     const bool huangStopped = runTok.stop_requested();
     if (huangStopped)
       pendingHuangPrefixes = std::move(huangSalvaged);
@@ -3211,6 +3212,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
    * queued completes exactly as an unstopped run instead of saving an
    * empty interrupted remainder.
    */
+  runPoolDrainedHook();
   const bool dlxStopped = runTok.stop_requested();
   if (dlxStopped)
     parallelTasks = pool.drain();

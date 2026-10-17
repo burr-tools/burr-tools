@@ -225,19 +225,20 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   if (str.length())
     maxHoles = atoi(str.c_str());
 
-  str = pars.getAttributeValue("state");
-  if (str.length())
-    solveState = (solveState_e)atoi(str.c_str());
-
   /* A hand-edited or corrupt file can claim any integer here, including
-   * values outside the enum. Fail closed to UNKNOWN (never startable
-   * without a reset): mapping garbage to UNSOLVED would leave UNSOLVED
-   * with the file's nonzero counters, which the fresh setAssembler()
-   * path must reject, turning a bad file into an assert instead of a
-   * clean "reset first" rejection from canStartSolving().
+   * values outside the enum. The range check runs on the int, before the
+   * cast: casting an out-of-range value to the unscoped enum is undefined,
+   * and the compiler may then fold the check away. Fail closed to UNKNOWN
+   * (never startable without a reset): mapping garbage to UNSOLVED would
+   * leave UNSOLVED with the file's nonzero counters, which the fresh
+   * setAssembler() path must reject, turning a bad file into an assert
+   * instead of a clean "reset first" rejection from canStartSolving().
    */
-  if (solveState < SS_UNSOLVED || solveState > SS_UNKNOWN)
-    solveState = SS_UNKNOWN;
+  str = pars.getAttributeValue("state");
+  if (str.length()) {
+    const int st = atoi(str.c_str());
+    solveState = (st >= SS_UNSOLVED && st <= SS_UNKNOWN) ? (solveState_e)st : SS_UNKNOWN;
+  }
 
   if (solveState != SS_UNSOLVED)
   {
