@@ -3215,6 +3215,78 @@ TEST_CASE("assembler_1 pool write-back resumes exact-once",
  * only the loss makes it fail. Distinct leaves keep the expected union
  * free of repeats.
  */
+/* A1-DLX write-back on a frontier in state 4.
+ *
+ * Case 6 of the A1 walk hides the row it just finished into its level's
+ * tried-rows segment and moves to the next row as state 4; a stop that
+ * drains a top-6 lands exactly there. That top is not cover-clean:
+ * restoreMatrix() must replay the segment's hides, or the restored matrix
+ * offers already-tried rows again and the later unhiderows() unlinks rows
+ * that were never hidden -- the resumed run then reports assemblies that
+ * are not in the baseline, some with a piece missing. SolidSixPieceBurrs
+ * (25 shapes, 6 placed) reaches such stops on the DLX pool path for most
+ * stop points; the union of stopped and resumed run must equal the
+ * uninterrupted baseline. Three full DLX runs (~8 s on a 4-core laptop),
+ * hence the slow suite ([stress]).
+ */
+TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
+          "[assembler][resume][save][stress]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+  auto p = puzzle_c::load("examples/SolidSixPieceBurrs.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_1_c assm(*problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() == 588);
+
+  // Where the stop lands depends on the schedule; these two reached a
+  // top-4 stop in every observed run without the fix.
+  for (unsigned int threads : {4u}) {
+    for (unsigned int stopAfter : {50u, 300u}) {
+      INFO("threads " << threads << ", stop after " << stopAfter);
+      RecordingAssemblerCallback cb1, cb2;
+      std::string state;
+      {
+        assembler_1_c assm(*problem);
+        assm.setNumThreads(threads);
+        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        unsigned int seen = 0;
+        assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+          cb1.assembly(std::move(a));
+          return ++seen < stopAfter;
+        });
+        REQUIRE(seen == stopAfter);
+        std::ostringstream str;
+        xmlWriter_c xml(str);
+        assm.save(xml);
+        state = str.str();
+      }
+      {
+        assembler_1_c restored(*problem);
+        restored.setNumThreads(threads);
+        REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        std::string payload = extractAssemblerContent(state);
+        REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+                == assembler_c::ERR_NONE);
+        restored.assemble(&cb2);
+        CHECK(restored.getFinished() == 1.0f);
+      }
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      CHECK(resumed == baseline);
+    }
+  }
+}
+
 TEST_CASE("a missed solution on an exhausted task survives the stop",
           "[assembler][resume][save]") {
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
