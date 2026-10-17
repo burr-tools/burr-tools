@@ -2980,7 +2980,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       &huangSalvaged
     );
 
-    if (!runTok.stop_requested()) {
+    /* Same stop-after-drain rule as the DLX paths (see
+     * drainedPoolComplete): a stop that lands after every seeded task was
+     * counted with nothing salvaged completes exactly as an unstopped run
+     * instead of saving an empty interrupted remainder.
+     */
+    runPoolDrainedHook();
+    const bool huangStopped = runTok.stop_requested();
+    if (huangStopped)
+      pendingHuangPrefixes = std::move(huangSalvaged);
+    if (!huangStopped || drainedPoolComplete(huangStopped, pendingHuangPrefixes.size(),
+          totalTasks.load(std::memory_order_relaxed),
+          completedTasks.load(std::memory_order_relaxed))) {
       /* Same reset as the DLX completion path below. Without clearing the
        * stacks a completed run still looks like an unstarted search, so
        * save() would write interrupted = 0 next to the root position and the
@@ -2999,7 +3010,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       // assemble() resumes from them instead of regenerating everything
       // (overlap re-searched, dedup via the kept emittedSignatures). Flag
       // serial dedup too: a serial continue re-searches everything.
-      pendingHuangPrefixes = std::move(huangSalvaged);
       resumeDedup = true;
       parallelInterrupted = true;
     }
@@ -3197,7 +3207,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     std::rethrow_exception(workerException);
   }
 
-  if (!runTok.stop_requested()) {
+  /* Same stop-after-drain rule as assembler_0 (see drainedPoolComplete):
+   * a stop that lands after every task was counted with nothing left
+   * queued completes exactly as an unstopped run instead of saving an
+   * empty interrupted remainder.
+   */
+  runPoolDrainedHook();
+  const bool dlxStopped = runTok.stop_requested();
+  if (dlxStopped)
+    parallelTasks = pool.drain();
+  if (!dlxStopped || drainedPoolComplete(dlxStopped, parallelTasks.size(),
+        totalTasks.load(std::memory_order_relaxed),
+        completedTasks.load(std::memory_order_relaxed))) {
     next_row_stack.clear();
     task_stack.clear();
     parallelTasks.clear();
@@ -3214,7 +3235,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * remainder instead (appended below) and setPosition() resumes from it.
      * Flag serial dedup as well: a serial continue re-searches everything.
      */
-    parallelTasks = pool.drain();
     resumeDedup = true;
     parallelInterrupted = true;
   }

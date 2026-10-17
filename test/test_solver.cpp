@@ -2662,6 +2662,103 @@ TEST_CASE("serial save on an all-placed stop restores exact-once",
   CHECK(resumed == baseline);
 }
 
+/* Truth table for drainedPoolComplete(), the stop-after-drain rule shared
+ * by all three pool-drain sites (assembler_0 DLX/SIMD, assembler_1 DLX,
+ * assembler_1 Huang). A stop that lands after the pool fully drained must
+ * complete instead of interrupting; anything else -- unstopped, tasks left
+ * queued, or counters that do not cover the total -- keeps the interrupted
+ * remainder. The `>=` on the counters is deliberate, not sloppy: splits
+ * inflate the total mid-run, so equality is what happens, not what is
+ * guaranteed.
+ */
+TEST_CASE("drainedPoolComplete pins the stop-after-drain rule",
+          "[assembler][resume]") {
+  CHECK(!drainedPoolComplete(false, 0, 5, 5));
+  CHECK(!drainedPoolComplete(false, 0, 0, 0));
+  CHECK(!drainedPoolComplete(true, 2, 5, 5));
+  CHECK(!drainedPoolComplete(true, 0, 0, 0));
+  CHECK(!drainedPoolComplete(true, 0, 5, 3));
+  CHECK(drainedPoolComplete(true, 0, 5, 5));
+  CHECK(drainedPoolComplete(true, 0, 5, 7));
+}
+
+/* A stop that lands after the pool drained -- every task counted, nothing
+ * queued -- must complete the run exactly as an unstopped one
+ * (drainedPoolComplete at all three drain sites). The pool-drained hook
+ * fires the stop at exactly that point, so each engine takes the path
+ * deterministically: the run reports finished, holds every assembly, and
+ * its saved state restores to a run that finds nothing more. A run saved
+ * as interrupted here would carry an empty remainder, which a continue
+ * re-searches from scratch (every assembly twice) or refuses.
+ */
+TEST_CASE("a stop after the pool drained completes the run",
+          "[assembler][resume][save]") {
+  struct Case { const char * path; bool assembler0; bool dlx; };
+  const Case cases[] = {
+    {"examples/PelikanBurr.xmpuzzle", true, false},
+    {"examples/PelikanBurr.xmpuzzle", true, true},
+    {"examples/CubeInCage.xmpuzzle", false, false},
+    {"examples/CubeInCage.xmpuzzle", false, true},
+  };
+
+  for (const auto & c : cases) {
+    INFO("puzzle: " << c.path << (c.dlx ? " (DLX)" : " (SIMD)"));
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.dlx ? "1" : nullptr);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+    auto make = [&]() {
+      std::unique_ptr<assembler_c> assm(c.assembler0
+        ? static_cast<assembler_c *>(new assembler_0_c(*problem))
+        : static_cast<assembler_c *>(new assembler_1_c(*problem)));
+      assm->setNumThreads(4);
+      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      return assm;
+    };
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      auto assm = make();
+      assm->assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(!baseline.empty());
+
+    RecordingAssemblerCallback cb1;
+    std::string state;
+    {
+      auto assm = make();
+      bool fired = false;
+      assembler_c * raw = assm.get();
+      assm->setPoolDrainedHook([&] { fired = true; raw->stop(); });
+      assm->assemble(&cb1);
+      REQUIRE(fired);
+      CHECK(assm->getFinished() == 1.0f);
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm->save(xml);
+      state = str.str();
+    }
+    CHECK(cb1.fingerprints == baseline);
+
+    RecordingAssemblerCallback cb2;
+    {
+      auto restored = make();
+      std::string payload = extractAssemblerContent(state);
+      // CHECK, not REQUIRE: every engine's case reports on its own
+      const auto err = restored->setPosition(payload.c_str(), assemblerVersionOf(state).c_str());
+      CHECK(err == assembler_c::ERR_NONE);
+      if (err == assembler_c::ERR_NONE) {
+        restored->assemble(&cb2);
+        CHECK(restored->getFinished() == 1.0f);
+      }
+    }
+    CHECK(cb2.fingerprints.empty());
+  }
+}
+
 /* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
  * task list is generated, at the top of parallelMultiSearch, on that thread,
  * before any worker exists. A resumed run finds parallelTasks already

@@ -2302,7 +2302,20 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     std::rethrow_exception(workerException);
   }
 
-  if (!runTok.stop_requested()) {
+  /* A stop that lands after the pool fully drained (every task counted,
+   * nothing left queued) means the search genuinely finished: complete
+   * exactly as an unstopped run. Saving that empty remainder as interrupted
+   * would make a continue regenerate everything from scratch (duplicating
+   * every assembly) or refuse the restore. drainedPoolComplete() pins the
+   * condition; its truth table is unit-tested directly.
+   */
+  runPoolDrainedHook();
+  const bool stopped = runTok.stop_requested();
+  if (stopped)
+    parallelTasks = pool.drain();
+  if (!stopped || drainedPoolComplete(stopped, parallelTasks.size(),
+        totalTasks.load(std::memory_order_relaxed),
+        completedTasks.load(std::memory_order_relaxed))) {
     pos = piecenumber + 1;
     parallelTasks.clear();
     prunedTaskShare = 0.0f;
@@ -2315,7 +2328,6 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
      * is suppressed via emittedSignatures. save() persists both (format 1.6),
      * so cross-session continue resumes from the same remainder.
      */
-    parallelTasks = pool.drain();
     parallelInterrupted = true;
   }
 
