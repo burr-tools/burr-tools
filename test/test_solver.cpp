@@ -2922,9 +2922,7 @@ TEST_CASE("pruned subtree shares are folded into completedShare, not dropped",
  * divided remainder holds only territory the interrupted run had not
  * searched, and progress carries the remainder's share forward -- so the
  * progress after the resume legitimately continues from the stale share
- * rather than differing from it. (Before the signature set was removed this
- * case fell through to the serial path and this test asserted the two
- * values differed; that dispatch no longer exists.)
+ * rather than differing from it.
  *
  * DiagonalCube rather than PelikanBurr, and the difference is this base's, not
  * a preference. Here a task the run token cut short is NOT counted as

@@ -3157,8 +3157,7 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
 
   /* Parallel remainder: pool tasks as flat prefix steps with per-task
    * share, cursor position and SIMD rest start, then the completed
-   * share. Format 1.7 eliminates the unbounded signatures list: the
-   * remainder holds only unexplored territory. */
+   * share. The remainder holds only unexplored territory. */
   std::vector<SubtreeTask> newTasks;
   unsigned int taskCount = 0;
   spos += getInt(string+spos, &taskCount);
@@ -3281,8 +3280,8 @@ void assembler_0_c::save(xmlWriter_c & xml) const
 
   /* Parallel remainder for cross-session resume: pool tasks as
    * flat column/row prefix steps, with per-task share, cursor position,
-   * SIMD rest start, and the completed share. Format 1.7 has no
-   * signature list: the remainder holds only unexplored territory. Cursor
+   * SIMD rest start, and the completed share. The remainder holds only
+   * unexplored territory. Cursor
    * tasks (see SubtreeTask) persist their column and skip so a rest
    * continues splitting where it left off.
    */
