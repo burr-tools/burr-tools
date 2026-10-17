@@ -3085,15 +3085,12 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   prunedTaskShare = 0.0f;
   remainderEngine = ENGINE_NONE;
 
-  /* The current version and 1.6 (0.8.0) reload; 1.7 adds the remainder's
-   * engine and the per-task cursor and SIMD rest start (see SubtreeTask),
-   * and drops the signature list. Anything else is refused rather than
-   * silently misparsed. */
-  if (version == nullptr)
-    return ERR_CAN_NOT_RESTORE_VERSION;
-  const bool is17 = strcmp(version, ASSEMBLER_VERSION) == 0;
-  const bool is16 = strcmp(version, "1.6") == 0;
-  if (!is17 && !is16)
+  /* Only the current version resumes: a paused search saved by another
+   * BurrTools version is refused (the found assemblies stay, the search
+   * starts over -- see the README, "Pausing a search and continuing
+   * later"). That keeps a single
+   * reader and no legacy resume paths. */
+  if (version == nullptr || strcmp(version, ASSEMBLER_VERSION) != 0)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   unsigned int len = strlen(string);
@@ -3104,18 +3101,10 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   spos += getInt(string+spos, &interrupted);
   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  // An interrupted 1.6 remainder re-searches its in-flight tasks whole and
-  // relied on the signature list to suppress the repeats; without it a
-  // resume would re-report them, so such saves are refused.
-  if (is16 && interrupted != 0)
-    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-
   unsigned int engineInt = 0;
-  if (is17) {
-    spos += getInt(string+spos, &engineInt);
-    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    if (engineInt > ENGINE_SIMD) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  }
+  spos += getInt(string+spos, &engineInt);
+  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (engineInt > ENGINE_SIMD) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   /* get the values from the string.
    */
@@ -3166,80 +3155,72 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
   }
 
-  if (is16) {
-    // Uninterrupted 1.6 payload: if it carries tasks, refuse as interrupted.
-    unsigned int taskCount = 0;
-    spos += getInt(string+spos, &taskCount);
-    if (taskCount > 0)
-      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-  } else {
-    /* Parallel remainder: pool tasks as flat prefix steps with per-task
-     * share, cursor position and SIMD rest start, then the completed
-     * share. Format 1.7 eliminates the unbounded signatures list: the
-     * remainder holds only unexplored territory. */
-    std::vector<SubtreeTask> newTasks;
-    unsigned int taskCount = 0;
-    spos += getInt(string+spos, &taskCount);
-    if (spos >= len && taskCount > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    for (unsigned int i = 0; i < taskCount; i++) {
-      SubtreeTask t;
-      unsigned int steps = 0;
-      spos += getInt(string+spos, &steps);
-      if (spos >= len && steps > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      for (unsigned int k = 0; k < steps; k++) {
-        PrefixStep step;
-        unsigned int col = 0, row = 0;
-        spos += getInt(string+spos, &col);
-        if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        spos += getInt(string+spos, &row);
-        if (spos >= len && k + 1 < steps) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        step.col = col;
-        step.row = row;
-        t.prefix.push_back(step);
-      }
-      double share = 0;
-      spos += getDouble(string+spos, &share);
+  /* Parallel remainder: pool tasks as flat prefix steps with per-task
+   * share, cursor position and SIMD rest start, then the completed
+   * share. Format 1.7 eliminates the unbounded signatures list: the
+   * remainder holds only unexplored territory. */
+  std::vector<SubtreeTask> newTasks;
+  unsigned int taskCount = 0;
+  spos += getInt(string+spos, &taskCount);
+  if (spos >= len && taskCount > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  for (unsigned int i = 0; i < taskCount; i++) {
+    SubtreeTask t;
+    unsigned int steps = 0;
+    spos += getInt(string+spos, &steps);
+    if (spos >= len && steps > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int k = 0; k < steps; k++) {
+      PrefixStep step;
+      unsigned int col = 0, row = 0;
+      spos += getInt(string+spos, &col);
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      t.share = static_cast<float>(share);
-
-      unsigned int cCol = 0, cSkip = 0, rest = 0;
-      spos += getInt(string+spos, &cCol);
-      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &cSkip);
-      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &rest);
-      if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      t.cursorCol = cCol;
-      t.cursorSkip = cSkip;
-      t.restSkip = rest;
-      // A SIMD rest indexes the SIMD frame's order: only valid under a
-      // SIMD remainder, and never combined with a DLX cursor.
-      if (rest != 0 && (engineInt != ENGINE_SIMD || cCol != 0))
-        return ERR_CAN_NOT_RESTORE_SYNTAX;
-
-      newTasks.push_back(std::move(t));
+      spos += getInt(string+spos, &row);
+      if (spos >= len && k + 1 < steps) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      step.col = col;
+      step.row = row;
+      t.prefix.push_back(step);
     }
-
-    double restoredShare = 0;
-    // The completed share is always written by save(), even with zero
-    // tasks: a payload ending here is truncated, not valid.
+    double share = 0;
+    spos += getDouble(string+spos, &share);
     if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    spos += getDouble(string+spos, &restoredShare);
+    t.share = static_cast<float>(share);
 
-    if (interrupted && newTasks.empty())
-      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+    unsigned int cCol = 0, cSkip = 0, rest = 0;
+    spos += getInt(string+spos, &cCol);
+    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    spos += getInt(string+spos, &cSkip);
+    if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    spos += getInt(string+spos, &rest);
+    if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    t.cursorCol = cCol;
+    t.cursorSkip = cSkip;
+    t.restSkip = rest;
+    // A SIMD rest indexes the SIMD frame's order: only valid under a
+    // SIMD remainder, and never combined with a DLX cursor.
+    if (rest != 0 && (engineInt != ENGINE_SIMD || cCol != 0))
+      return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-    // Commit the remainder. A parallel continue resumes from these tasks
-    // (parallelMultiSearch skips generation when non-empty); the serial
-    // position above is root after parallel runs and restores as no-op.
-    parallelTasks = std::move(newTasks);
-    remainderEngine = static_cast<RemainderEngine>(engineInt);
-    if (!parallelTasks.empty()) {
-      totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
-      completedTasks.store(0, std::memory_order_relaxed);
-      completedShare.store(restoredShare, std::memory_order_relaxed);
-      parallelInterrupted = false;
-    }
+    newTasks.push_back(std::move(t));
+  }
+
+  double restoredShare = 0;
+  // The completed share is always written by save(), even with zero
+  // tasks: a payload ending here is truncated, not valid.
+  if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  spos += getDouble(string+spos, &restoredShare);
+
+  if (interrupted && newTasks.empty())
+    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+
+  // Commit the remainder. A parallel continue resumes from these tasks
+  // (parallelMultiSearch skips generation when non-empty); the serial
+  // position above is root after parallel runs and restores as no-op.
+  parallelTasks = std::move(newTasks);
+  remainderEngine = static_cast<RemainderEngine>(engineInt);
+  if (!parallelTasks.empty()) {
+    totalTasks.store(parallelTasks.size(), std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_relaxed);
+    completedShare.store(restoredShare, std::memory_order_relaxed);
+    parallelInterrupted = false;
   }
 
   /* here we need to get the matrix into this exact position as it has been, when we
