@@ -42,58 +42,18 @@ Manifold outerShells(const Manifold & m) {
   return Manifold::BatchBoolean(outer, manifold::OpType::Add);
 }
 
-/* The shape's surface, exactly: the cell faces whose neighbour is not
- * filled (at bevel 0 and offset 0, the same enumeration
- * voxel_c::getMeshInternal uses). The faces between two filled cells
- * cancel by identity here and never reach a boolean, whose float
- * arithmetic would have to rediscover them and now and then leaves a
- * seam.
- *
- * The vertices come from how the surface wraps around each point. Where
- * two cells touch only along an edge, four faces meet there: each is paired
- * with the face reached by turning about the edge into its own cell's side,
- * so that every pair wraps one solid wedge and the wedges stay apart. The
- * corners around a point that the pairings join are one vertex; where the
- * solid only touches itself (along an edge, at a corner) a point gets one
- * vertex per sheet. The mesh is then a manifold as it stands, and Manifold
- * never has to repair it (which it would do with triangles without area). */
-Manifold exactBody(const voxel_c & v, std::string & err) {
-  std::map<std::tuple<float, float, float>, uint64_t> pointId;
-  std::vector<vec3> points;
-  auto point = [&](float x, float y, float z) {
-    auto it = pointId.find(std::make_tuple(x, y, z));
-    if (it != pointId.end()) return it->second;
-    points.push_back(vec3(x, y, z));
-    return pointId[std::make_tuple(x, y, z)] = points.size() - 1;
-  };
-  auto filled = [&](int x, int y, int z) {
-    return x >= 0 && y >= 0 && z >= 0 && x < (int)v.getX() && y < (int)v.getY() && z < (int)v.getZ()
-      && v.validCoordinate(x, y, z) && v.getState(x, y, z) == voxel_c::VX_FILLED;
-  };
-  /* the boundary cell faces, fanned into triangles over the points */
-  std::vector<std::array<uint64_t, 3>> tris;
-  std::vector<float> fc;
-  int nx, ny, nz;
-  for (unsigned z = 0; z < v.getZ(); z++)
-    for (unsigned y = 0; y < v.getY(); y++)
-      for (unsigned x = 0; x < v.getX(); x++) {
-        if (!filled(x, y, z)) continue;
-        for (unsigned n = 0; v.getNeighbor(n, 0, x, y, z, &nx, &ny, &nz); n++) {
-          if (filled(nx, ny, nz)) continue;
-          fc.clear();
-          v.getConnectionFace(x, y, z, (int)n, 0, 0, fc);
-          if (fc.size() < 9) continue;
-          std::vector<uint64_t> face;
-          for (unsigned k = 0; k + 2 < fc.size(); k += 3) face.push_back(point(fc[k], fc[k + 1], fc[k + 2]));
-          for (size_t k = 1; k + 1 < face.size(); k++) tris.push_back({ face[0], face[k], face[k + 1] });
-        }
-      }
-  if (tris.empty()) { err = "the shape has no surface"; return Manifold(); }
-  /* the faces come all wound one way round: outward, from here on */
-  double volume6 = 0;
-  for (const auto & t : tris) volume6 += manifold::la::dot(points[t[0]], manifold::la::cross(points[t[1]], points[t[2]]));
-  if (volume6 < 0) for (auto & t : tris) std::swap(t[1], t[2]);
-
+/* A solid from outward triangles over welded points, its vertices from how
+ * the surface wraps around each point. Where two parts of the solid touch
+ * along an edge, four (or more) faces meet there: each is paired with the
+ * face reached by turning about the edge into the solid behind it, so that
+ * every pair wraps one solid wedge and the wedges stay apart. The corners
+ * around a point that the pairings join are one vertex; where the solid
+ * only touches itself (along an edge, at a corner) a point gets one vertex
+ * per sheet. The mesh is then a manifold as it stands, and Manifold never
+ * has to repair it (which it would do with triangles without area). what
+ * names the surface in the messages. */
+bool sheetSolid(const std::vector<vec3> & points, const std::vector<std::array<uint64_t, 3>> & tris, const char * what, Manifold & out, std::string & err) {
+  auto fail = [&](const char * why) { err = std::string(what) + " " + why; return false; };
   /* half-edge h = 3 t + c runs from corner c of triangle t to the next */
   const size_t nh = 3 * tris.size();
   auto from = [&](size_t h) { return tris[h / 3][h % 3]; };
@@ -102,9 +62,9 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
   std::map<std::pair<uint64_t, uint64_t>, std::vector<size_t>> along;
   for (size_t h = 0; h < nh; h++) along[std::make_pair(from(h), to(h))].push_back(h);
   /* Edges with several sheets, and how each pairs its faces: by default
-   * each face with the next one turning into its own cell's side (the
+   * each face with the next one turning into the solid behind it (the
    * wedges stay apart). Where the wedges are joined around both ends of the
-   * edge anyway (through other cells), that gives two sheets between the
+   * edge anyway (elsewhere in the solid), that gives two sheets between the
    * same two vertices, which a manifold mesh can't have; such an edge pairs
    * each face with the next one turning into the empty side instead (the
    * wedges join across the edge), which gives each end one vertex per sheet. */
@@ -114,7 +74,7 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
     const uint64_t a = e.first.first, b = e.first.second;
     if (a > b) continue;
     auto back = along.find(std::make_pair(b, a));
-    if (back == along.end() || back->second.size() != e.second.size()) { err = "the shape's cell faces do not close up into a solid"; return Manifold(); }
+    if (back == along.end() || back->second.size() != e.second.size()) return fail("does not close up into a solid");
     if (e.second.size() > 1) { multi.push_back(e.first); intoEmpty[e.first] = false; }
   }
   std::vector<size_t> twin(nh, ~(size_t)0);
@@ -168,7 +128,7 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
   for (;;) {
     pairUp();
     for (size_t h = 0; h < nh; h++)
-      if (twin[h] == ~(size_t)0 || twin[twin[h]] != h) { err = "the shape's surface does not pair up into sheets along an edge"; return Manifold(); }
+      if (twin[h] == ~(size_t)0 || twin[twin[h]] != h) return fail("does not pair up into sheets along an edge");
     for (size_t h = 0; h < nh; h++) parent[h] = h;
     for (size_t h = 0; h < nh; h++) parent[find(h)] = find(next(twin[h]));
     /* two sheets between the same two vertices? */
@@ -178,7 +138,7 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
       std::set<std::pair<size_t, size_t>> ends;
       for (size_t h : H) ends.insert(std::make_pair(find(h), find(next(h))));
       if (ends.size() == H.size()) continue;
-      if (intoEmpty[e]) { err = "the shape's surface has two sheets along an edge between the same corners"; return Manifold(); }
+      if (intoEmpty[e]) return fail("has two sheets along an edge between the same corners");
       intoEmpty[e] = true;
       switched = true;
     }
@@ -199,10 +159,58 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
     mesh.triVerts[h] = vertexOf[r];
   }
   Manifold m(mesh);
-  if (m.Status() != Manifold::Error::NoError) { err = "the shape's cell faces do not close up into a solid"; return Manifold(); }
-  if (m.NumTri() != tris.size() || m.NumVert() != mesh.vertProperties.size() / 3) {
-    err = "the shape's surface was changed on its way into Manifold"; return Manifold();
-  }
+  if (m.Status() != Manifold::Error::NoError) return fail("is not a valid solid");
+  if (m.NumTri() != tris.size() || m.NumVert() != mesh.vertProperties.size() / 3) return fail("was changed on its way into Manifold");
+  out = m;
+  return true;
+}
+
+/* The shape's surface, exactly: the cell faces whose neighbour is not
+ * filled (at bevel 0 and offset 0, the same enumeration
+ * voxel_c::getMeshInternal uses). The faces between two filled cells
+ * cancel by identity here and never reach a boolean, whose float
+ * arithmetic would have to rediscover them and now and then leaves a
+ * seam. Where two cells touch only along an edge, the vertices come from
+ * sheetSolid. */
+Manifold exactBody(const voxel_c & v, std::string & err) {
+  std::map<std::tuple<float, float, float>, uint64_t> pointId;
+  std::vector<vec3> points;
+  auto point = [&](float x, float y, float z) {
+    auto it = pointId.find(std::make_tuple(x, y, z));
+    if (it != pointId.end()) return it->second;
+    points.push_back(vec3(x, y, z));
+    return pointId[std::make_tuple(x, y, z)] = points.size() - 1;
+  };
+  auto filled = [&](int x, int y, int z) {
+    return x >= 0 && y >= 0 && z >= 0 && x < (int)v.getX() && y < (int)v.getY() && z < (int)v.getZ()
+      && v.validCoordinate(x, y, z) && v.getState(x, y, z) == voxel_c::VX_FILLED;
+  };
+  /* the boundary cell faces, fanned into triangles over the points */
+  std::vector<std::array<uint64_t, 3>> tris;
+  std::vector<float> fc;
+  int nx, ny, nz;
+  for (unsigned z = 0; z < v.getZ(); z++)
+    for (unsigned y = 0; y < v.getY(); y++)
+      for (unsigned x = 0; x < v.getX(); x++) {
+        if (!filled(x, y, z)) continue;
+        for (unsigned n = 0; v.getNeighbor(n, 0, x, y, z, &nx, &ny, &nz); n++) {
+          if (filled(nx, ny, nz)) continue;
+          fc.clear();
+          v.getConnectionFace(x, y, z, (int)n, 0, 0, fc);
+          if (fc.size() < 9) continue;
+          std::vector<uint64_t> face;
+          for (unsigned k = 0; k + 2 < fc.size(); k += 3) face.push_back(point(fc[k], fc[k + 1], fc[k + 2]));
+          for (size_t k = 1; k + 1 < face.size(); k++) tris.push_back({ face[0], face[k], face[k + 1] });
+        }
+      }
+  if (tris.empty()) { err = "the shape has no surface"; return Manifold(); }
+  /* the faces come all wound one way round: outward, from here on */
+  double volume6 = 0;
+  for (const auto & t : tris) volume6 += manifold::la::dot(points[t[0]], manifold::la::cross(points[t[1]], points[t[2]]));
+  if (volume6 < 0) for (auto & t : tris) std::swap(t[1], t[2]);
+
+  Manifold m;
+  if (!sheetSolid(points, tris, "the shape's surface", m, err)) return Manifold();
   return outerShells(m);
 }
 
@@ -270,15 +278,6 @@ struct faces_s {
   std::vector<uint64_t> tri;                   /* the rebuilt triangulation, index triples */
   std::vector<std::vector<vec3> > pieces;      /* convex pieces of the faces */
 };
-
-Manifold fromTriangles(const std::vector<vec3> & pos, const std::vector<uint64_t> & tri) {
-  manifold::MeshGL64 mesh;
-  mesh.numProp = 3;
-  mesh.vertProperties.reserve(pos.size() * 3);
-  for (const vec3 & p : pos) { mesh.vertProperties.push_back(p.x); mesh.vertProperties.push_back(p.y); mesh.vertProperties.push_back(p.z); }
-  mesh.triVerts = tri;
-  return Manifold(mesh);
-}
 
 /* one cell of the shape for tagging the faces: its index and its faces
  * as outward planes, in getNeighbor's numbering, with their corners and
@@ -1052,9 +1051,18 @@ void flipFlatExact(const std::vector<vec3> & pos, std::vector<uint64_t> & tri) {
   }
 }
 
+/* The solid of rebuilt faces. Its corners are welded by their exact place
+ * and its vertices derived anew by sheetSolid: where the solid touches
+ * itself, the boolean's own vertices follow how it happened to pair the
+ * sheets, which can change partway along an edge (a pinch at a point that
+ * the rebuild drops with the other points along straight edges). The next
+ * step sweeps the pieces of f, so the solid must be exactly the mesh they
+ * came from: sheetSolid checks that nothing was merged or dropped. */
 bool rebuiltExact(faces_s & f, Manifold & out, std::string & err) {
   flipFlatExact(f.pos, f.tri);
-  std::vector<bool> used(f.pos.size(), false);
+  std::map<std::array<int64_t, 3>, uint64_t> pointId;
+  std::vector<vec3> points;
+  std::vector<std::array<uint64_t, 3>> tris;
   for (size_t t = 0; t + 2 < f.tri.size(); t += 3) {
     const vec3 & a = f.pos[f.tri[t]], & b = f.pos[f.tri[t + 1]], & c = f.pos[f.tri[t + 2]];
     const i128 ux = (i128)(b.x - a.x), uy = (i128)(b.y - a.y), uz = (i128)(b.z - a.z);
@@ -1062,18 +1070,19 @@ bool rebuiltExact(faces_s & f, Manifold & out, std::string & err) {
     if (uy * vz - uz * vy == 0 && uz * vx - ux * vz == 0 && ux * vy - uy * vx == 0) {
       err = "a face of a Minkowski step kept a triangle without area"; return false;
     }
-    for (int k = 0; k < 3; k++) used[f.tri[t + k]] = true;
+    std::array<uint64_t, 3> corners;
+    for (int k = 0; k < 3; k++) {
+      const vec3 & q = f.pos[f.tri[t + k]];
+      const std::array<int64_t, 3> at = { std::llround(q.x), std::llround(q.y), std::llround(q.z) };
+      if ((double)at[0] != q.x || (double)at[1] != q.y || (double)at[2] != q.z) { err = "a corner of a Minkowski step is not at a whole number of units"; return false; }
+      auto it = pointId.find(at);
+      if (it == pointId.end()) { it = pointId.insert(std::make_pair(at, (uint64_t)points.size())).first; points.push_back(q); }
+      corners[k] = it->second;
+    }
+    tris.push_back(corners);
   }
-  out = fromTriangles(f.pos, f.tri);
-  if (out.Status() != Manifold::Error::NoError) { err = "the exact rebuild of a Minkowski step is not a valid solid"; return false; }
-  /* the next step sweeps the pieces of f, so the solid must be exactly the
-   * mesh they came from: nothing merged or dropped on the way in */
-  size_t nv = 0;
-  for (bool u : used) nv += u;
-  if (out.NumTri() != f.tri.size() / 3 || out.NumVert() != nv) {
-    err = "the exact rebuild of a Minkowski step was changed on its way into Manifold"; return false;
-  }
-  return true;
+  if (tris.empty()) { out = Manifold(); return true; }
+  return sheetSolid(points, tris, "the exact rebuild of a Minkowski step", out, err);
 }
 
 /* one step: the solid plus or minus the sweep of its surface by the bit
