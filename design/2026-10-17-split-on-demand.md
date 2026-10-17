@@ -1,7 +1,7 @@
 # Split on demand
 
-Status: implemented for assembler_0 (DLX and SIMD workers, sections 3-4)
-and assembler_1's Huang engine (sections 8-9). A1-DLX tasks run as seeded.
+Status: implemented for every engine: assembler_0 (DLX and SIMD
+workers, sections 3-4) and assembler_1 (Huang and DLX, sections 8-10).
 
 ## 1. Problem
 
@@ -223,22 +223,56 @@ replays the seed into a pool task.
   donor's units at pop, clamped by `TaskUnits::give`. Huang publishes no
   in-flight fraction, so nothing else depends on the estimate.
 
-## 10. Tests (assembler_1)
+## 10. A1-DLX
 
-- "assembler_1 donated work is searched exactly once": Huang,
-  CubeInCage (identical pieces), PiecesOfEight and SolidSixPieceBurrs
-  (range), 1 to 4 threads, forced donation every 1 to 50 nodes. Uninterrupted runs and stopped + restored runs must equal the
+The DLX walk keeps five explicit stacks. A frame in state 5 has placed a
+row and descended; when its child returns, case 5 undoes the row's hides
+and case 6 moves on to the next row.
+
+- **The piece.** The donated task is the stacks truncated just after that
+  frame, top 5:
+  - task_stack and next_row_stack up to the frame;
+  - column_stack holds one entry per state-1 frame;
+  - rows holds one entry per state-5 frame;
+  - hidden_rows keeps everything before the next frame's first segment
+    marker, which is two 0-led segments per state-5 frame (asserted).
+
+  `restoreMatrix()` replays a top 5 whole, so the receiver runs cases 5
+  and 6 itself on the frame's own matrix. baseDepth = frame + 1 ends the
+  task when the frame pops.
+- **The cut.** The donor sets `cut[frame]`, and its case 6 then ends the
+  frame after the current row. The cut is part of the territory, so
+  `SubtreeTask_1::cuts` is written back and saved, as part of format 2.2
+  (unreleased, so no version bump; only the saving version resumes).
+- **Progress.** The tracker follows every frame of the territory. For a
+  written-back task, `seedTracker()` gives the restored ancestor frames
+  their levels, with their current child as the active slot. The piece
+  receives floor(tracker share x units at pop) of the frame's
+  unattributed share, and the tracker gives that share away. The donor's
+  published slot (done x units at pop) therefore never exceeds the units
+  it still holds, so the handoff at finish never over-reports. A share
+  too small for one unit is not donated.
+
+## 11. Tests (assembler_1)
+
+- "assembler_1 donated work is searched exactly once": Huang and DLX
+  (forced), CubeInCage (identical pieces), PiecesOfEight and
+  SolidSixPieceBurrs (range), 1 to 4 threads, forced donation every 1 to
+  61 nodes. Uninterrupted runs and stopped + restored runs must equal the
   baseline as a multiset and finish at progress 1, and donations must
   occur. Mutation checks:
-  - Dropping the cut (runaway duplication), or recording stop branches
-    past the loop end, fails it.
+  - Huang: dropping the cut (runaway duplication), or recording stop
+    branches past the loop end, fails it.
+  - A1-DLX: dropping the cut, not writing the cuts back, or keeping
+    deeper frames' hidden-row segments in the piece fails it.
 - The solver suite passes with forced donation (every 1/7/200 on the
-  default engines). It shows no failures that it does not also show
-  without donation.
-## 11. Limits
+  default engines, every 1/9/300 with DLX forced). The failures it shows
+  are exactly those without donation, i.e. env-forced mismatches.
+## 12. Limits
 
-- A1-DLX (the fallback when Huang's memory budget refuses a puzzle) does
-  not donate: its tasks run as seeded.
+- A1-DLX donates only state-5 frames: the rows after a placed row. A
+  state-2 frame (the empty-row-set child in progress, rows still ahead)
+  is not donated; its rows become donatable once the frame reaches them.
 - No engine donates within two levels of the bottom (A0: two pieces
   before the last; Huang: two placements before the minimum piece
   count, or the depth bound when no shape has a minimum).

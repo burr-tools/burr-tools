@@ -110,6 +110,11 @@ private:
      * touched by write-back.
      */
     unsigned int baseDepth = 0;
+    /* Stack indices of frames whose remaining rows were donated (split on
+     * demand): such a frame ends after its current row. Saved with the
+     * stacks, so a written-back task keeps them.
+     */
+    std::vector<unsigned int> cuts;
     // progress units this task carries (see TaskUnits); not saved -- a
     // task read from a file is a whole one
     size_t units = TaskUnits::kWhole;

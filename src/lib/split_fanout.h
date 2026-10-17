@@ -46,16 +46,16 @@ inline bool breadthFirstFromEnv() {
   return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
 }
 
-/* Donation (split on demand): a running task (assembler_0 DLX and SIMD,
- * Huang) hands the unexplored part of its shallowest open level to the
- * pool whenever a sibling is waiting for work, and stops before that part
- * itself. Tasks are thereby split where the work actually is, instead of
- * eagerly at pop time by depth guesses that cannot split a task found
- * large after it started. Busy workers poll the pool's hunger flag every
- * few hundred nodes; one donor claims it per waiter.
+/* Donation (split on demand): a running task, in every engine, hands the
+ * unexplored part of its shallowest open level to the pool whenever a
+ * sibling is waiting for work, and stops before that part itself. Tasks
+ * are thereby split where the work actually is, instead of eagerly at pop
+ * time by depth guesses that cannot split a task found large after it
+ * started. Busy workers poll the pool's hunger flag every few hundred
+ * nodes; one donor claims it per waiter.
  * BURRTOOLS_NO_DONATE=1 turns it off (A/B toggle): assembler_0 then splits
- * eagerly at pop time again, Huang runs its tasks as seeded. Read once per
- * run. */
+ * eagerly at pop time again, assembler_1 runs its tasks as seeded. Read
+ * once per run. */
 inline bool noDonateFromEnv() {
   return std::getenv("BURRTOOLS_NO_DONATE") != nullptr;
 }

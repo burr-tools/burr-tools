@@ -2008,6 +2008,23 @@ public:
 
   double doneShare(void) const { return done; }
 
+  /* the share level i has not attributed yet: its untried child slots */
+  double remainingAt(size_t i) const {
+    return i < levels.size() ? levels[i].remaining : 0.0;
+  }
+
+  /* Give that share away and return it: the walk will never reach those
+   * slots, so done plus the live stack then sums to 1 minus what was given
+   * away.
+   */
+  double takeRemaining(size_t i) {
+    if (i >= levels.size()) return 0.0;
+    const double r = levels[i].remaining;
+    levels[i].remaining = 0.0;
+    levels[i].childShare = 0.0;
+    return r;
+  }
+
   void setChildren(unsigned int n) {
     if (levels.empty()) return;
     levels.back().childShare = (n > 0) ? levels.back().remaining / n : 0.0;
@@ -2080,6 +2097,19 @@ class assemblerWorker_1 {
    * current task times the task's units at pop over a whole task's
    */
   double slotScale = 1.0;
+
+  /* Split on demand (see donate()): cut[i] != 0 ends frame i after its
+   * current row. donatePool null = no donation.
+   */
+  std::vector<unsigned char> cut;
+  bool isCut(size_t i) const { return i < cut.size() && cut[i]; }
+  AssemblyTaskPool<assembler_1_c::SubtreeTask_1> * donatePool = nullptr;
+  unsigned long donateInterval = 128;
+  bool donateForced = false;
+  unsigned long nextDonatePoll = 0;
+  assembler_1_c::SubtreeTask_1 * curTask = nullptr;
+  size_t rootUnits = 0;
+  unsigned int curBase = 0;
 
   void cover_column_only(int col) {
     right[left[col]] = right[col];
@@ -2311,10 +2341,11 @@ class assemblerWorker_1 {
     unsigned int row, col;
 
     /* The task this worker was handed is the whole of what this walk
-     * measures, so the tracker starts at 0 and drains to 1 as the task runs
-     * out; getFinished() adds it scaled by the task's units (slotScale).
+     * measures, so the tracker starts at 0 and drains to 1 (minus what the
+     * task donates) as it runs out; getFinished() adds it scaled by the
+     * task's units (slotScale).
      */
-    tracker.reset();
+    seedTracker(base_depth);
     if (slot)
       slot->fraction.store(0.0f, std::memory_order_relaxed);
 
@@ -2330,6 +2361,11 @@ class assemblerWorker_1 {
       if ((local_iterations - flushed_iterations) >= 128) {
         parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
         flushed_iterations = local_iterations;
+      }
+      if (donatePool && local_iterations >= nextDonatePoll) {
+        nextDonatePoll = local_iterations + donateInterval;
+        if (donateForced || donatePool->wants_work())
+          donate();
       }
 
       /* Publishing is a single relaxed float store -- the tracker keeps the
@@ -2536,7 +2572,8 @@ class assemblerWorker_1 {
           hidden_rows.push_back(row);
 
           row = down[row];
-          if (up[row] < row) {
+          // a cut frame's later rows belong to a donated task
+          if (up[row] < row && !isCut(task_stack.size() - 1)) {
             rows.push_back(row);
             task_stack.back() = 4;
             tracker.beginSlot();
@@ -2546,6 +2583,8 @@ class assemblerWorker_1 {
 
         case 7:
           unhiderows();
+          if (task_stack.size() - 1 < cut.size())
+            cut[task_stack.size() - 1] = 0;
           next_row_stack.pop_back();
           task_stack.pop_back();
           tracker.pop();
@@ -2586,7 +2625,7 @@ public:
     column_stack.reserve(parent.headerNodes);
   }
 
-  void searchSubtree(const assembler_1_c::SubtreeTask_1 & task,
+  void searchSubtree(assembler_1_c::SubtreeTask_1 & task,
                      assembler_1_c::WorkerProgress * slot) {
     /* re-seed straight from the parent: base_* is written once in assemble()
      * and never touched while workers run, so a private copy per worker only
@@ -2606,8 +2645,145 @@ public:
         task.baseDepth != 0 ? task.baseDepth
                             : static_cast<unsigned int>(task.task_stack.size());
     slotScale = static_cast<double>(task.units) / static_cast<double>(TaskUnits::kWhole);
+    curTask = &task;
+    rootUnits = task.units;
+    curBase = base;
+    cut.assign(task.task_stack.size() + 1, 0);
+    for (unsigned int c : task.cuts)
+      cut[c] = 1;
     restoreMatrix(task);
     worker_iterative(base, slot);
+    curTask = nullptr;
+  }
+
+  /* Start the tracker for a task whose territory root is frame
+   * base_depth - 1. A generated task's stacks end at that root, so this is
+   * just reset(). A written-back task resumes deeper: the frames between
+   * the root and the live top still hold untried children (the rows after
+   * a state-5 frame's current row, a state-2 frame's rows after its empty
+   * row set), so each gets a level with its current child as the active
+   * slot. Every frame of the territory then has a tracker level --
+   * level j is stack index base_depth - 1 + j -- which donate() relies on.
+   * The counts come from the restored matrix, where deeper hides can only
+   * hide rows, so they may undercount; beginSlot() clamps and pop()
+   * credits any residue, so conservation holds either way.
+   */
+  void seedTracker(unsigned int base_depth) {
+    tracker.reset();
+    if (base_depth == 0 || task_stack.empty())
+      return;
+    size_t rowIdx = 0;
+    for (size_t i = 0; i + 1 < base_depth && i < task_stack.size(); i++)
+      if (task_stack[i] == 5)
+        rowIdx++;
+    for (size_t i = base_depth - 1; i + 1 < task_stack.size(); i++) {
+      unsigned int n = 1;
+      if (task_stack[i] == 5) {
+        if (!isCut(i))
+          n += countRowChildren(up, down, down[rows[rowIdx]]);
+        rowIdx++;
+      } else if (task_stack[i] == 2) {
+        n += countRowChildren(up, down, next_row_stack[i]);
+      }
+      tracker.setChildren(n);
+      tracker.beginSlot();
+      tracker.push();
+    }
+  }
+
+  void enableDonation(AssemblyTaskPool<assembler_1_c::SubtreeTask_1> & pool,
+                      unsigned long every) {
+    donatePool = &pool;
+    donateForced = every > 0;
+    donateInterval = every > 0 ? every : 128;
+  }
+
+  /* Split on demand: hand the remaining rows of the shallowest open row
+   * frame to the pool.
+   *
+   * A frame in state 5 has placed a row and descended; when its child
+   * returns, case 5 undoes the row's hides and case 6 moves on to the next
+   * row. The donated task is the stacks truncated just after that frame,
+   * top 5: restoreMatrix() replays every frame up to it exactly (top 5 is
+   * replayed whole), so on resume the receiver runs case 5 and 6 itself and
+   * walks precisely the rows after the current one, on the frame's own
+   * matrix. baseDepth = frame + 1 ends the task when the frame pops. The
+   * donor sets cut[frame]: its case 6 then ends the frame after the current
+   * row. The cut survives a write-back (SubtreeTask_1::cuts).
+   *
+   * Open frames: state 5 below the top, inside the task's territory
+   * (index >= baseDepth - 1), not cut, and with a next row in the live
+   * matrix. Deeper hides only unlink rows, so a next row seen here exists
+   * at the frame too.
+   *
+   * Progress: the tracker follows every frame of the territory (see
+   * seedTracker()). The piece receives floor(share x units at pop) of the
+   * frame's unattributed tracker share and the tracker gives that share
+   * away, so the donor's walk then drains to 1 minus it: its published
+   * slot (done x units at pop) never exceeds the units it still holds, and
+   * the handoff at finish never over-reports. A share too small for one
+   * unit, or a donor that cannot spare one, is not donated (TaskUnits).
+   */
+  void donate() {
+    const size_t top = task_stack.size() - 1;
+    size_t rowIdx = 0, columnIdx = 0, markers = 0;
+    const size_t first = curBase > 0 ? curBase - 1 : 0;
+    for (size_t i = 0; i < top; i++) {
+      const unsigned int st = task_stack[i];
+      if (st == 1)
+        columnIdx++;
+      if (st != 5)
+        continue;
+      rowIdx++;
+      markers += 2;
+      if (i < first || isCut(i))
+        continue;
+      const unsigned int r = down[rows[rowIdx - 1]];
+      if (!(up[r] < r))
+        continue;
+      const size_t level = i - first;
+      const size_t units = static_cast<size_t>(
+          tracker.remainingAt(level) * static_cast<double>(rootUnits));
+      if (units < 1 || curTask->units < units + 1)
+        continue;  // too small to carry a unit, or nothing to spare (TaskUnits)
+
+      assembler_1_c::SubtreeTask_1 piece;
+      piece.task_stack.assign(task_stack.begin(), task_stack.begin() + i + 1);
+      piece.next_row_stack.assign(next_row_stack.begin(), next_row_stack.begin() + i + 1);
+      piece.column_stack.assign(column_stack.begin(), column_stack.begin() + columnIdx);
+      piece.rows.assign(rows.begin(), rows.begin() + rowIdx);
+      // hidden_rows: two 0-led segments per state-5 frame; keep everything
+      // before the next frame's first marker
+      size_t end = 0, seen = 0;
+      while (end < hidden_rows.size()) {
+        if (hidden_rows[end] == 0) {
+          if (seen == markers)
+            break;
+          seen++;
+        }
+        end++;
+      }
+      piece.hidden_rows.assign(hidden_rows.begin(), hidden_rows.begin() + end);
+      // restoreMatrix() consumes exactly two segments per state-5 frame
+      bt_assert(static_cast<size_t>(std::count(piece.hidden_rows.begin(),
+                                               piece.hidden_rows.end(), 0u)) == markers);
+      piece.baseDepth = static_cast<unsigned int>(i + 1);
+      for (size_t k = 0; k < i; k++)
+        if (isCut(k))
+          piece.cuts.push_back(static_cast<unsigned int>(k));
+
+      tracker.takeRemaining(level);
+      piece.units = units;
+      curTask->units -= units;
+      if (cut.size() <= i)
+        cut.resize(i + 1, 0);
+      cut[i] = 1;
+      parent.donations.fetch_add(1, std::memory_order_relaxed);
+      std::vector<assembler_1_c::SubtreeTask_1> one;
+      one.push_back(std::move(piece));
+      donatePool->push_tasks(std::move(one));
+      return;
+    }
   }
 
   size_t liveDepth() const { return task_stack.size(); }
@@ -2624,6 +2800,10 @@ public:
     task.column_stack = column_stack;
     task.rows = rows;
     task.hidden_rows = hidden_rows;
+    task.cuts.clear();
+    for (size_t i = 0; i < task_stack.size(); i++)
+      if (isCut(i))
+        task.cuts.push_back(static_cast<unsigned int>(i));
   }
 
   void flushIterations() {
@@ -3113,9 +3293,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   // Non-terminating pool as in assembler_0 (see assembler_pool.h): idle
   // workers wait for quiescence, so siblings blocked in
   // disassemblerPool_c::submit are still alive when disassembly permits
-  // return. Dynamic splitting of A1-DLX subtrees is not implemented --
-  // tasks run as seeded -- so skew between seeded subtrees is only absorbed
-  // at task granularity.
+  // return. Running tasks split on demand when siblings wait (see
+  // assemblerWorker_1::donate), so skew between seeded subtrees does not
+  // leave workers idle.
   AssemblyTaskPool<SubtreeTask_1> pool;
   pool.seed(std::move(parallelTasks));
   parallelTasks.clear();
@@ -3153,10 +3333,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       workerProgress.push_back(std::make_unique<WorkerProgress>());
   }
 
-  auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok](std::stop_token st, unsigned int workerIdx) {
+  // Split on demand (see assemblerWorker_1::donate); toggles as in
+  // assembler_0, read once per run.
+  const bool donate = !SplitFanout::noDonateFromEnv();
+  const unsigned long donateEvery = SplitFanout::donateEveryFromEnv();
+
+  auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok,
+                     donate, donateEvery](std::stop_token st, unsigned int workerIdx) {
     try {
       assemblerWorker_1 worker(*this, runTok);
       WorkerProgress * slot = workerProgress[workerIdx].get();
+      if (donate)
+        worker.enableDonation(pool, donateEvery);
 
       SubtreeTask_1 task;
       while (pool.pop_task(task, runTok, st)) {
@@ -3778,8 +3966,12 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
       pos += stringToVector(string+pos, t.rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       pos += stringToVector(string+pos, t.hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       unsigned int baseDepth = 0;
-      pos += getInt(string+pos, &baseDepth);               if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      pos += getInt(string+pos, &baseDepth);               if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       t.baseDepth = baseDepth;
+      pos += stringToVector(string+pos, t.cuts);           if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int c : t.cuts)
+        if (c >= t.task_stack.size() || t.task_stack[c] != 5)
+          return ERR_CAN_NOT_RESTORE_SYNTAX;
       newTasks.push_back(std::move(t));
     }
   } else if (ptype == 2) {
@@ -3961,6 +4153,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
       vectorToStream(t.rows, str);
       vectorToStream(t.hidden_rows, str);
       str << t.baseDepth << " ";
+      vectorToStream(t.cuts, str);
     }
   } else if (ptype == 2) {
     str << pendingHuangPrefixes.size() << " ";
