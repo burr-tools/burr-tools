@@ -3462,7 +3462,12 @@ void mainWindow_c::updateInterface(void) {
           break;
         case SS_SOLVING:
           OutputActivity->value("pause");
-          BtnCont->activate();
+          // a refused restore keeps SS_SOLVING but drops the saved state
+          // (lifecycle T2c): nothing left to continue
+          if (pr->canStartSolving())
+            BtnCont->activate();
+          else
+            BtnCont->deactivate();
           break;
         case SS_UNKNOWN:
           OutputActivity->value("partial");

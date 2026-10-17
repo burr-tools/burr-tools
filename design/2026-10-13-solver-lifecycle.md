@@ -15,14 +15,14 @@ There is no single "solver state". Three state machines plus a poll loop interac
 
 | Actor | States | Lifetime | Owner thread writes |
 | :--- | :--- | :--- | :--- |
-| `solveThread_c::action` (`solvethread.h:79`) | `PREPARATION REDUCE ASSEMBLING DISASSEMBLING PAUSING FINISHED ERROR ASSERT WAIT_TO_STOP` | One `solveThread_c` per run; destroyed by the GUI after the run ends | worker (plus `stop()` → `WAIT_TO_STOP`) |
-| `problem_c::solveState` (`problem.h:54`) | `UNSOLVED SOLVING SOLVED UNKNOWN` (+ freestyle via edits) | Persistent across runs, saved to file | worker (`setAssembler`, `finishedSolving`, `removeAllSolutions`, `makeUnknown`); GUI edits |
-| `disassemblerPool_c` (`disassemblerpool.h:136`) | accepting → stop-requested → finished; aborted | Owned by the `solveThread_c` (`disasm_pool`, null in assembly-only mode) | worker + pool workers/merger |
-| GUI (`mainwindow.cpp`) | `assmThread == 0` vs alive; Start/Cont/Stop enabled flags | Whole session | GUI thread polls `currentAction()` in `update()` (`mainwindow.cpp:3521`) and destroys the thread object on `PAUSING` / `FINISHED` / `ERROR` |
+| `solveThread_c::action` (`solvethread.h`) | `PREPARATION REDUCE ASSEMBLING DISASSEMBLING PAUSING FINISHED ERROR ASSERT WAIT_TO_STOP` | One `solveThread_c` per run; destroyed by the GUI after the run ends | worker (plus `stop()` → `WAIT_TO_STOP`) |
+| `problem_c::solveState` (`problem.h`) | `UNSOLVED SOLVING SOLVED UNKNOWN` (+ freestyle via edits) | Persistent across runs, saved to file | worker (`setAssembler`, `finishedSolving`, `removeAllSolutions`, `makeUnknown`); GUI edits |
+| `disassemblerPool_c` (`disassemblerpool.h`) | accepting → stop-requested → finished; aborted | Owned by the `solveThread_c` (`disasm_pool`, null in assembly-only mode) | worker + pool workers/merger |
+| GUI (`mainwindow.cpp`) | `assmThread == 0` vs alive; Start/Cont/Stop enabled flags | Whole session | GUI thread polls `currentAction()` in `update()` (`mainwindow.cpp`) and destroys the thread object on `PAUSING` / `FINISHED` / `ERROR` |
 
-`stopped()` (`solvethread.h:389`) is `PAUSING | FINISHED | ERROR | ASSERT`.
+`stopped()` (`solvethread.h`) is `PAUSING | FINISHED | ERROR | ASSERT`.
 `WAIT_TO_STOP` is deliberately **not** stopped: it is the transient "please wait"
-(`mainwindow.cpp:3383`) between `stop()` and the worker unwinding.
+(`mainwindow.cpp`) between `stop()` and the worker unwinding.
 
 ## 2. Statechart
 
@@ -78,7 +78,7 @@ stateDiagram-v2
 ```
 
 `Continue` is not a transition: it is `start()` again on a `SOLVING` problem whose
-assembler survived. The run re-submits the stash **first** (`solvethread.cpp:112`),
+assembler survived. The run re-submits the stash **first** (`solvethread.cpp`),
 then resumes the drained search; overlap is suppressed by the assembler's
 `emittedSignatures` dedup. Order stability comes from submitting the stash first
 and from the pool's ordered merger (`SPEC-DIS-1`).
@@ -88,25 +88,25 @@ and from the pool's ordered merger (`SPEC-DIS-1`).
 | # | Event / source | Guard | Effect | Target |
 | --- | :--- | :--- | :--- | :--- |
 | T1 | `start()` | fresh object (`!running && !joinable`, else throw); problem startability is checked worker-side, rejecting to `ACT_ERROR` | `stopPressed=false`, spawn worker | `PREPARATION` (ctor value) |
-| T2 | prep | `createMatrix` / `setAssembler` fails | publish `errState/errParam`, (`ERR_CAN_NOT_RESTORE_INTERRUPTED` also drops resume state, `problem.cpp:936`) | `ERROR` (terminal) |
+| T2 | prep | `createMatrix` / `setAssembler` fails | publish `errState/errParam`, (`ERR_CAN_NOT_RESTORE_INTERRUPTED` also drops resume state, `problem.cpp`) | `ERROR` (terminal) |
 | T2b | run entry | `!canStartSolving()` (solved/invalidated without reset) | `ERR_CAN_NOT_START`, problem untouched (rejection is `ERROR`, not `ASSERT`, precisely so valid results survive) | `ERROR` (terminal) |
 | T2c | prep | saved assembler state undecodable (version/syntax) | resume bytes dropped, `SS_SOLVING` kept with partial results viewable; `canStartSolving()` goes false so a retry lands in T2b instead of failing here again | `ERROR` (terminal) |
 | T3 | prep | `return_after_prep` (Prepare button) | assembler kept, no search | `PAUSING` |
-| T4 | `stop()` in `PREPARATION REDUCE ASSEMBLING DISASSEMBLING` (`solvethread.cpp:422`) | — | `WAIT_TO_STOP` + `assembler->stop()` + `pool->requestStop()` + `stopPressed=true` | `WAIT_TO_STOP` |
+| T4 | `stop()` in `PREPARATION REDUCE ASSEMBLING DISASSEMBLING` (`solvethread.cpp`) | — | `WAIT_TO_STOP` + `assembler->stop()` + `pool->requestStop()` + `stopPressed=true` | `WAIT_TO_STOP` |
 | T5 | `stop()` in any other action | — | no-op (idempotent; double-Stop safe) | unchanged |
-| T6 | `assemble()` returns | — | test hook `assemblyPhaseEnded()` (`solvethread.cpp:161`), freeze assembly cost clock | `DISASSEMBLING` label (skipped if `stopPressed`) |
-| T7 | `finish()` + `takeSalvaged()` (`solvethread.cpp:171`) | `getFinished() >= 1 && salvage.empty()` — the PR #156 guard | `finishedSolving()` → `SS_SOLVED` | `FINISHED` (terminal) |
+| T6 | `assemble()` returns | — | test hook `assemblyPhaseEnded()` (`solvethread.cpp`), freeze assembly cost clock | `DISASSEMBLING` label (skipped if `stopPressed`) |
+| T7 | `finish()` + `takeSalvaged()` (`solvethread.cpp`) | `getFinished() >= 1 && salvage.empty()` — the PR #156 guard | `finishedSolving()` → `SS_SOLVED` | `FINISHED` (terminal) |
 | T8 | same | search incomplete **or** anything salvaged | stash stays for next run | `PAUSING` (terminal, `SS_SOLVING` kept) |
-| T9 | `stopPressed` before search | stash re-submit skipped (`solvethread.cpp:112`), `assemble()` skipped | `addTime()` | `PAUSING` |
+| T9 | `stopPressed` before search | stash re-submit skipped (`solvethread.cpp`), `assemble()` skipped | `addTime()` | `PAUSING` |
 | T10 | `assert_exception` anywhere in `run()` | — | `pool->abort()` (if any), `removeAllSolutions()` → `SS_UNSOLVED` | `ASSERT` (terminal) |
-| T11 | GUI `update()` poll (`mainwindow.cpp:3521`) | `PAUSING | FINISHED` (also `ERROR`, `ASSERT` w/ dialog) | `assmThread.reset()` → dtor `stopInternal()` (no-op) + `join()` | no thread; buttons re-derive from `solveState` (`mainwindow.cpp:3454`) |
-| T12 | `~solveThread_c()` (`solvethread.cpp:252`) | worker still alive | `stopInternal()` + `join()` on the destroying thread — an implicit stop | — |
+| T11 | GUI `update()` poll (`mainwindow.cpp`) | `PAUSING | FINISHED` (also `ERROR`, `ASSERT` w/ dialog) | `assmThread.reset()` → dtor `stopInternal()` (no-op) + `join()` | no thread; buttons re-derive from `solveState` (`mainwindow.cpp`) |
+| T12 | `~solveThread_c()` (`solvethread.cpp`) | worker still alive | `stopInternal()` + `join()` on the destroying thread — an implicit stop | — |
 
 Notes that bite:
 
 - On **Continue** the worker never visits `REDUCE` and, if the assembler already
   exists, never visibly leaves `PREPARATION` until `ASSEMBLING`: the ctor value
-  persists through the assembler-reuse branch (`solvethread.cpp:55`). Poll loops
+  persists through the assembler-reuse branch (`solvethread.cpp`). Poll loops
   must not treat "still `PREPARATION`" as "still preparing".
 - `WAIT_TO_STOP` is always overwritten by the worker (T8/T7/T9) — it is never
   terminal, and a second `stop()` during it is a no-op (T5).
@@ -123,12 +123,12 @@ Defined canonically as `LIFECYCLE-n` in the `solveThread_c` contract comment
 
 | ID | Invariant | Enforced by |
 | :--- | :--- | :--- |
-| LIFECYCLE-1 | `FINISHED ⇒ SS_SOLVED ∧ getFinished() >= 1 ∧ stash empty` (PR #156) | `solvethread.cpp:192`; test `stop after the search completes…` + guard test below |
-| LIFECYCLE-2 | `PAUSING ⇒ SS_SOLVING ∧ assembler present` (resume state survived) | all `PAUSING` assignments keep `assm`; guard test below |
-| LIFECYCLE-3 | `stop()` is total and idempotent: legal in every action, mutating only T4 | `stopInternal` guard (`solvethread.cpp:422`); guard test (stop-after-finish no-op) |
-| LIFECYCLE-4 | `start()` requires no live thread; unstartable problems fail the run to `ACT_ERROR` with `ERR_CAN_NOT_START`, problem untouched | `start()` throws on reuse; `run()` entry rejects worker-side (all build modes); `canStartSolving()` gates (`burrTxt2.cpp:198`, GUI Start-resets flow) |
-| LIFECYCLE-5 | Every assembly is enqueued ∨ salvaged ∨ delivered, never lost (pool half) | `SPEC-DIS-5`; stash re-submit-first (`solvethread.cpp:112`) + dedup |
-| LIFECYCLE-6 | `takeSalvaged()` runs only after `finish()`; pool drain only after workers join | header contract (`solvethread.h:41`); `run()` ordering (`solvethread.cpp:171`) |
+| LIFECYCLE-1 | `FINISHED ⇒ SS_SOLVED ∧ getFinished() >= 1 ∧ stash empty` (PR #156) | `solvethread.cpp`; test `stop after the search completes…` + guard test below |
+| LIFECYCLE-2 | `PAUSING ⇒ SS_SOLVING ∧ assembler present` (resume state survived) | all `PAUSING` assignments keep `assm`; the pause branches of the `interactive solve thread lifecycle…` tests check `SS_SOLVING` after a pause |
+| LIFECYCLE-3 | `stop()` is total and idempotent: legal in every action, mutating only T4 | `stopInternal` guard (`solvethread.cpp`); guard test (stop-after-finish no-op) |
+| LIFECYCLE-4 | `start()` requires no live thread; unstartable problems fail the run to `ACT_ERROR` with `ERR_CAN_NOT_START`, problem untouched | `start()` throws on reuse; `run()` entry rejects worker-side (all build modes); `canStartSolving()` gates (`burrTxt2.cpp`, GUI Start-resets flow) |
+| LIFECYCLE-5 | Every assembly is enqueued ∨ salvaged ∨ delivered, never lost (pool half) | `SPEC-DIS-5`; stash re-submit-first (`solvethread.cpp`) + dedup |
+| LIFECYCLE-6 | `takeSalvaged()` runs only after `finish()`; pool drain only after workers join | header contract (`solvethread.h`); `run()` ordering (`solvethread.cpp`) |
 
 ## 5. Edge-case catalog
 
@@ -161,7 +161,7 @@ Handled today; recorded so a refactor can check it didn't drop one.
   on the assembler's stop token.
 - **E9 — Unrestorable resume.** `ERR_CAN_NOT_RESTORE_INTERRUPTED` drops
   solutions *and* saved state and reports the error, so the next solve restarts
-  clean instead of failing on the same bytes forever (`problem.cpp:936`).
+  clean instead of failing on the same bytes forever (`problem.cpp`).
   `ERR_CAN_NOT_RESTORE_VERSION` / `ERR_CAN_NOT_RESTORE_SYNTAX` keep `SS_SOLVING`
   with the partial results viewable but drop the undecodable resume bytes
   (T2c): `canStartSolving()` goes false, so a retry is rejected up front as
@@ -172,24 +172,22 @@ Handled today; recorded so a refactor can check it didn't drop one.
   (`problem.cpp`, load ctor) for the same reason.
 - **E10 — `assert_exception` in the worker.** Pool aborted, solutions wiped,
   `ASSERT` published; the GUI reaps it via `stopped()` and shows the assert
-  window instead of hanging (`mainwindow.cpp:3504`). Partial results are
+  window instead of hanging (`mainwindow.cpp`). Partial results are
   intentionally discarded — an assert means the search itself is untrusted.
 - **E11 — Destroying a running `solveThread_c`.** Destructor stops and joins on
   the destroying thread. The GUI only destroys after polling a terminal action,
   so the join is immediate; the test subclass joins in its own dtor because the
-  hook runs on the worker (`test_disassembler_pool.cpp:574`). Never destroy
+  hook runs on the worker (`test_disassembler_pool.cpp`). Never destroy
   from the worker itself.
-- **E12 — `start()` while running.** Was unguarded in
-  `solveThread_c::start()` and GUI-prevented only. Now enforced: a second
-  `start()` on a live or already-run object throws `assert_exception` via
-  `bt_te()` in all build modes (one object per run — the `reportedProgress`
-  monotone guard assumes a fresh object per solve). The GUI's
-  `bt_assert(assmThread == 0)` (`mainwindow.cpp:1105`) is the remaining
-  debug-only link in that chain; it is unreachable while Start/Cont stay
-  disabled during a run, and lib-level enforcement now catches any path
-  through anyway.
+- **E12 — `start()` while running.** A second `start()` on a live or
+  already-run object throws `assert_exception` via `bt_te()` in all build
+  modes (one object per run — the `reportedProgress` monotone guard
+  assumes a fresh object per solve). The GUI's `bt_assert(assmThread == 0)`
+  (`mainwindow.cpp`) is the only debug-only link in that chain; it is
+  unreachable while Start/Cont stay disabled during a run, and the
+  lib-level check catches any path through anyway.
 - **E12b — `start()` on an unstartable problem.** Deliberately NOT thrown in
-  `start()`: `test_solver.cpp:1712` pins the contract that such a run ends
+  `start()`: `test_solver.cpp` pins the contract that such a run ends
   stopped (`stopped()` must terminate the `burrTxt2`-style poll), and neither
   `burrTxt2` nor `lib_interface` catches around `start()`. Enforcement lives
   worker-side at `run()` entry (T2b) — `canStartSolving()` is checked before
@@ -198,13 +196,12 @@ Handled today; recorded so a refactor can check it didn't drop one.
   never calls `setAssembler()`, so a check there alone still silently re-"solves"
   an `SS_SOLVED` problem with a live assembler in release (caught by the release
   run of the guard test, which failed exactly that way).
-- **E12c — why `ERROR`, not `ASSERT`.** The first cut rejected worker-side via
-  a throw, ending in `ACT_ASSERT` — but the assert handler calls
-  `removeAllSolutions()`, so starting an `SS_SOLVED` problem wiped valid
-  results, and the GUI presented the internal-error dialog for a usage error.
-  `ERR_CAN_NOT_START` keeps the rejection poll-visible and non-destructive:
+- **E12c — why `ERROR`, not `ASSERT`.** A worker-side throw would end in
+  `ACT_ASSERT`, whose handler calls `removeAllSolutions()`: starting an
+  `SS_SOLVED` problem would wipe valid results, and the GUI would present
+  the internal-error dialog for a usage error. `ERR_CAN_NOT_START` keeps the rejection poll-visible and non-destructive:
   the problem is left exactly as it was. Frontends that can avoid the wasted
-  run gate on `canStartSolving()` first (`burrTxt2.cpp:198`).
+  run gate on `canStartSolving()` first (`burrTxt2.cpp`).
 - **E13 — `stop()` from the worker thread (test hook).** Safe: `stop()` never
   joins, only publishes flags. The worker's own final assignment overwrites
   `WAIT_TO_STOP` (T7/T8). GUI-thread `stop()` and worker-thread `stop()` compose
@@ -213,7 +210,7 @@ Handled today; recorded so a refactor can check it didn't drop one.
   problem (`stashedAssemblies` tag); loading restores `SS_SOLVING`; the next
   `start()` re-submits the stash first. Stop-save-load-continue loses nothing.
 - **E15 — Edits while `SOLVING`/`SOLVED`.** `makeUnknown()` / freestyle paths
-  invalidate the resume state and discard the stash with it (`problem.h:114`);
+  invalidate the resume state and discard the stash with it (`problem.h`);
   `canStartSolving()` goes false and Cont disables. The stash is part of the
   resume state, never independent of it.
 - **E16 — Inline (single-threaded) pool.** `submit()` runs synchronously, so
@@ -270,9 +267,13 @@ format.
 - `test_disassembler_pool.cpp`, `lifecycle guard invariants` (added with this
   doc): `canStartSolving()` truth table (LIFECYCLE-4), stop-after-finish no-op
   (LIFECYCLE-3), and `FINISHED ⇒ SS_SOLVED ∧ getFinished() >= 1 ∧ stash empty`
-  (LIFECYCLE-1) plus `PAUSING ⇒ SS_SOLVING ∧ assembler present`
-  (LIFECYCLE-2) as post-mortem checks on real runs. Deterministic by
+  (LIFECYCLE-1) as post-mortem checks on real runs. Deterministic by
   construction: no timing windows, only terminal-state assertions.
+  LIFECYCLE-2 is checked by the pause branches of the
+  `interactive solve thread lifecycle…` tests, not here.
+- `test_problem_config.cpp`: T2c (a refused restore keeps `SS_SOLVING`
+  and `canStartSolving()` goes false, which also disables the GUI's
+  Continue) and the solve-state clamp on load.
 - Existing `interactive solve thread lifecycle…` sections cover E6-style
   pause-during-search + Continue for both assemblers; flaky-window hardened by
   branching on the terminal action rather than on counts.
