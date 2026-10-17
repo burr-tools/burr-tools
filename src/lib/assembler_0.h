@@ -272,6 +272,12 @@ private:
   // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
   // (A/B toggle, see split_fanout.h); read with splitFanout
   bool splitBreadthFirst = false;
+  // donation (split on demand, DLX workers): on unless BURRTOOLS_NO_DONATE;
+  // donateEvery forces a donation every N nodes (tests). See split_fanout.h.
+  bool donate = true;
+  unsigned long donateEvery = 0;
+  // donations made since construction (diagnostics and tests)
+  std::atomic<unsigned long> donations{0};
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a
@@ -456,6 +462,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers donated to idle siblings so far (see
+   * split_fanout.h); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
    * unvalidated value from the CLI or the python binding would otherwise
