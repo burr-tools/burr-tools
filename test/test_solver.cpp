@@ -2591,6 +2591,77 @@ TEST_CASE("parallel progress state does not leak into a serial resume",
   CHECK(assm.getFinished() != stale);
 }
 
+/* Serial save on an all-placed stop (assembler_0).
+ *
+ * Stopping inside the callback of an all-placed solution leaves
+ * pos == piecenumber, one past the last rows/columns entry; save and
+ * restore must round-trip that position. DraculasDentalDesaster's first
+ * assembly lands the stop there deterministically on the forced-serial
+ * path (1 thread, DLX) -- asserted on the saved position, so the test
+ * cannot pass without reaching the boundary. Save, restore and continue
+ * must yield the exact union.
+ */
+TEST_CASE("serial save on an all-placed stop restores exact-once",
+          "[assembler][resume][save]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+  auto p = puzzle_c::load("examples/DraculasDentalDesaster.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() == 84);
+
+  RecordingAssemblerCallback cb1;
+  std::string state;
+  {
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb1.assembly(std::move(a));
+      return ++seen < 1;
+    });
+    REQUIRE(seen == 1);
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    state = str.str();
+  }
+  {
+    // payload: interrupted flag, pos, iterations, (row col) pairs, ...
+    std::istringstream in(extractAssemblerContent(state));
+    unsigned int interrupted = 1, pos = 0;
+    REQUIRE(in >> interrupted >> pos);
+    CHECK(interrupted == 0);
+    REQUIRE(pos == problem->getNumberOfPieces());
+  }
+
+  RecordingAssemblerCallback cb2;
+  {
+    assembler_0_c restored(*problem);
+    restored.setNumThreads(1);
+    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    std::string payload = extractAssemblerContent(state);
+    REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+            == assembler_c::ERR_NONE);
+    restored.assemble(&cb2);
+    CHECK(restored.getFinished() == 1.0f);
+  }
+  std::multiset<std::string> resumed = cb1.fingerprints;
+  resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+  CHECK(resumed == baseline);
+}
+
 /* The share accumulator is only seeded -- to prunedTaskShare -- when a fresh
  * task list is generated, at the top of parallelMultiSearch, on that thread,
  * before any worker exists. A resumed run finds parallelTasks already

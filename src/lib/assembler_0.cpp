@@ -2702,8 +2702,20 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
       spos++;
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-      spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      /* Slot number piecenumber is the inert dummy pair save() writes when
+       * a stop lands with everything placed (pos == piecenumber has no
+       * rows/columns entry of its own): parsed for format alignment, never
+       * stored. The restore loop below only covers p < piecenumber.
+       */
+      unsigned int r = 0, c = 0;
+      spos += getInt(string+spos, &r);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &c);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      if (i < piecenumber) {
+        rows[i] = r;
+        columns[i] = c;
+      }
 
       while ((spos < len) && (*(string+spos) != ')')) spos++;
       spos++;
@@ -2828,7 +2840,16 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   if (pos <= piecenumber)
     for (unsigned int j = 0; j <= pos; j++)
     {
-      str << "(" << rows[j] << " " << columns[j] << ")";
+      /* rows/columns hold one entry per placed piece (indices below
+       * piecenumber). A stop that lands with everything placed leaves
+       * pos == piecenumber, a transient the search loop normalizes
+       * (pos--) before any vector access. There is no rows[piecenumber]
+       * entry, so write an inert dummy pair for that slot; the restore
+       * loop parses it for alignment and ignores it.
+       */
+      const unsigned int r = (j < piecenumber) ? rows[j] : 0;
+      const unsigned int c = (j < piecenumber) ? columns[j] : 0;
+      str << "(" << r << " " << c << ")";
 
       if (j < pos) str << " ";
     }
