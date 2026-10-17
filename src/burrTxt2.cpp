@@ -307,7 +307,7 @@ static int solve(int argv, char* args[]) {
             cout << "You have to start from the beginning, sorry\n";
             break;
           case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-            cout << "The saved search was running on several cores when it was stopped.\n";
+            cout << "The saved search was stopped before it had any search state to save.\n";
             cout << "That can not be continued, so it has been reset -- please start it again\n";
             break;
           case assembler_c::ERR_PUZZLE_UNHANDABLE:

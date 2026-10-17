@@ -3711,32 +3711,19 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
 
   unsigned int pos = 0;
 
-  /* Accepted payloads: v0.7.1 ("2.0", no leading flag), 0.8.0 ("2.1",
-   * flag plus stacks, with an appended parallel remainder when present) and
-   * current ("2.2": DLX tasks carry baseDepth, Huang seeds pivot bits and
-   * rest start, and there is no signature list). Anything else is refused
-   * rather than silently misparsed: a flagless rows vector read as a flag
-   * wipes the stored solutions, and an unknown layout would lose its
-   * remainder.
+  /* Only the current version resumes: a paused search saved by another
+   * BurrTools version is refused (the found assemblies stay, the search
+   * starts over -- see the README, "Pausing a search and continuing
+   * later"). That keeps a single
+   * reader and no legacy resume paths.
    */
-  bool is22 = version != nullptr && strcmp(version, ASSEMBLER_VERSION) == 0;
-  bool is21 = version != nullptr && strcmp(version, "2.1") == 0;
-  bool isLegacy = version != nullptr && strcmp(version, "2.0") == 0;
-  if (!is22 && !is21 && !isLegacy)
+  if (version == nullptr || strcmp(version, ASSEMBLER_VERSION) != 0)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   /* leading flag written by save(): 1 indicates an interrupted search */
   unsigned int interrupted = 0;
-  if (is22 || is21) {
-    pos += getInt(string+pos, &interrupted);
-    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  }
-
-  // An interrupted 2.1 remainder re-searches its in-flight tasks whole and
-  // relied on the signature list to suppress the repeats; without it a
-  // resume would re-report them, so such saves are refused.
-  if (is21 && interrupted != 0)
-    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  pos += getInt(string+pos, &interrupted);
+  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -3744,88 +3731,70 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   pos += stringToVector(string+pos, column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
   pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, finished_b);
+  pos += stringToVector(string+pos, finished_b);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  // A parallel remainder follows the stacks when present (appended by
-  // save()): task type, then the tasks. Older payloads end
-  // here, modulo whitespace.
-  unsigned int restoredPtype = 0;
-  while (pos < len && (string[pos] == ' ' || string[pos] == '\t' ||
-                       string[pos] == '\n' || string[pos] == '\r'))
-    pos++;
-  if (pos < len) {
-    unsigned int ptype = 0;
-    pos += getInt(string+pos, &ptype);
-    if (ptype > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  // The parallel remainder follows the stacks: task type (always written by
+  // save(), 0 = none), then the tasks. Parse into locals first: a syntax
+  // failure must not leave partial tasks behind.
+  unsigned int ptype = 0;
+  pos += getInt(string+pos, &ptype);
+  if (ptype > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (ptype != 0 && pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-    if (is21 && ptype != 0) {
-      // Any 2.1 payload carrying tasks was interrupted, refuse.
-      return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  std::vector<SubtreeTask_1> newTasks;
+  std::vector<HuangSeed> newPrefixes;
+  if (ptype == 1) {
+    unsigned int count = 0;
+    pos += getInt(string+pos, &count);
+    if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int i = 0; i < count; i++) {
+      SubtreeTask_1 t;
+      pos += stringToVector(string+pos, t.task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      pos += stringToVector(string+pos, t.next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      pos += stringToVector(string+pos, t.column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      pos += stringToVector(string+pos, t.rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      pos += stringToVector(string+pos, t.hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      unsigned int baseDepth = 0;
+      pos += getInt(string+pos, &baseDepth);               if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      t.baseDepth = baseDepth;
+      newTasks.push_back(std::move(t));
     }
-
-    if (ptype != 0 && pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-
-    if (is22) {
-      // Parse into locals first: a syntax failure must not leave partial
-      // tasks behind.
-      std::vector<SubtreeTask_1> newTasks;
-      std::vector<HuangSeed> newPrefixes;
-      if (ptype == 1) {
-        unsigned int count = 0;
-        pos += getInt(string+pos, &count);
-        if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        for (unsigned int i = 0; i < count; i++) {
-          SubtreeTask_1 t;
-          pos += stringToVector(string+pos, t.task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          pos += stringToVector(string+pos, t.next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          pos += stringToVector(string+pos, t.column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          pos += stringToVector(string+pos, t.rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          pos += stringToVector(string+pos, t.hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          unsigned int baseDepth = 0;
-          pos += getInt(string+pos, &baseDepth);               if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          t.baseDepth = baseDepth;
-          newTasks.push_back(std::move(t));
-        }
-      } else if (ptype == 2) {
-        unsigned int count = 0;
-        pos += getInt(string+pos, &count);
-        if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        for (unsigned int i = 0; i < count; i++) {
-          // prefix, pivot-kind bits (one per step), rest start (see
-          // HuangSeed); an empty prefix is the whole search, kept
-          HuangSeed seed;
-          pos += stringToVector(string+pos, seed.prefix);      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          std::vector<unsigned int> pivots;
-          pos += stringToVector(string+pos, pivots);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          for (unsigned int b : pivots) {
-            if (b > 1) return ERR_CAN_NOT_RESTORE_SYNTAX;
-            seed.pivotShape.push_back(static_cast<uint8_t>(b));
-          }
-          unsigned int restSkip = 0;
-          pos += getInt(string+pos, &restSkip);                if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
-          seed.restSkip = restSkip;
-          newPrefixes.push_back(std::move(seed));
-        }
+  } else if (ptype == 2) {
+    unsigned int count = 0;
+    pos += getInt(string+pos, &count);
+    if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int i = 0; i < count; i++) {
+      // prefix, pivot-kind bits (one per step), rest start (see
+      // HuangSeed); an empty prefix is the whole search, kept
+      HuangSeed seed;
+      pos += stringToVector(string+pos, seed.prefix);      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      std::vector<unsigned int> pivots;
+      pos += stringToVector(string+pos, pivots);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      for (unsigned int b : pivots) {
+        if (b > 1) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        seed.pivotShape.push_back(static_cast<uint8_t>(b));
       }
-
-      if (interrupted && ptype == 0)
-        return ERR_CAN_NOT_RESTORE_INTERRUPTED;
-
-      // Commit the remainder: a parallel continue resumes from these while
-      // the base stacks above (root-normalized on save) restore as no-op.
-      parallelTasks = std::move(newTasks);
-      pendingHuangPrefixes = std::move(newPrefixes);
-      restoredPtype = ptype;
-      if (ptype != 0) {
-        totalTasks.store(parallelTasks.size() + pendingHuangPrefixes.size(),
-                         std::memory_order_relaxed);
-        completedTasks.store(0, std::memory_order_relaxed);
-        parallelInterrupted = false;
-      }
+      unsigned int restSkip = 0;
+      pos += getInt(string+pos, &restSkip);                if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      seed.restSkip = restSkip;
+      newPrefixes.push_back(std::move(seed));
     }
-  } else {
-    if (interrupted) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+  }
+
+  if (interrupted && ptype == 0)
+    return ERR_CAN_NOT_RESTORE_INTERRUPTED;
+
+  // Commit the remainder: a parallel continue resumes from these while
+  // the base stacks above (root-normalized on save) restore as no-op.
+  parallelTasks = std::move(newTasks);
+  pendingHuangPrefixes = std::move(newPrefixes);
+  const unsigned int restoredPtype = ptype;
+  if (ptype != 0) {
+    totalTasks.store(parallelTasks.size() + pendingHuangPrefixes.size(),
+                     std::memory_order_relaxed);
+    completedTasks.store(0, std::memory_order_relaxed);
+    parallelInterrupted = false;
   }
 
   // now we need to restore the matrix to the right state

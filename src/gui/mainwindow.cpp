@@ -3557,7 +3557,7 @@ void mainWindow_c::update(void) {
                    "You have to start from the beginning, sorry");
         break;
       case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-        fl_message("The saved search was running on several cores when it was stopped.\n"
+        fl_message("The saved search was stopped before it had any search state to save.\n"
                    "It can not be continued, so it has been reset -- please start it again.");
         break;
       case assembler_c::ERR_CAN_NOT_START:

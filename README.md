@@ -52,6 +52,22 @@ Note that Control-clicking the app and choosing **Open** — the usual advice
 for unsigned apps — does not get past this particular message, and no longer
 bypasses Gatekeeper at all as of macOS 15 Sequoia.
 
+## Pausing a search and continuing later
+
+You can stop a running search and save the puzzle; opening the file again
+and pressing Continue picks the search up where it stopped, without
+repeating anything it already reported.
+
+This only works with the same BurrTools version that paused the search.
+A paused search saved by a different (for example an older) version cannot
+be continued: BurrTools reports that the saved search state cannot be
+restored. The assemblies found so far stay visible, but the search has to
+be started again from the beginning, which discards them and finds them
+again. Finish long searches with the version that
+started them, or plan to restart them after an upgrade. Puzzle files
+themselves, and completed searches with their solutions, load in every
+version as before.
+
 BurrTools was written by Andreas Röver, small patches provided by
 several authors. Original README below.
 
