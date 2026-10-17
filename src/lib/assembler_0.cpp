@@ -2708,8 +2708,10 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
        * stored. The restore loop below only covers p < piecenumber.
        */
       unsigned int r = 0, c = 0;
-      spos += getInt(string+spos, &r);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &c);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &r);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &c);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       if (i < piecenumber) {
         rows[i] = r;
         columns[i] = c;
@@ -2840,11 +2842,10 @@ void assembler_0_c::save(xmlWriter_c & xml) const
     {
       /* rows/columns hold one entry per placed piece (indices below
        * piecenumber). A stop that lands with everything placed leaves
-       * pos == piecenumber -- a transient the search loop normalizes
-       * (pos--) before any vector access, but save() reads rows[pos]
-       * right here. The restore loop ignores slot number piecenumber
-       * (it only covers p < piecenumber), so write an inert dummy pair
-       * instead of reading out of bounds.
+       * pos == piecenumber, a transient the search loop normalizes
+       * (pos--) before any vector access. There is no rows[piecenumber]
+       * entry, so write an inert dummy pair for that slot; the restore
+       * loop parses it for alignment and ignores it.
        */
       const unsigned int r = (j < piecenumber) ? rows[j] : 0;
       const unsigned int c = (j < piecenumber) ? columns[j] : 0;

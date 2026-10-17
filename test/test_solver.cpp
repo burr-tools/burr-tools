@@ -2593,14 +2593,13 @@ TEST_CASE("parallel progress state does not leak into a serial resume",
 
 /* Serial save on an all-placed stop (assembler_0).
  *
- * Stopping inside the callback of an all-placed solution can leave
- * pos == piecenumber. rows/columns hold no entry for that transient, but
- * save() used to read rows[pos] anyway (heap OOB, aborting under
- * _GLIBCXX_ASSERTIONS) and setPosition wrote the phantom pair past the
- * vectors' end. DraculasDentalDesaster's first assembly lands the stop
- * there deterministically on the forced-serial path (1 thread, DLX): save,
- * restore and continue must yield the exact union with no crash. Verified
- * to abort in save() without the guard.
+ * Stopping inside the callback of an all-placed solution leaves
+ * pos == piecenumber, one past the last rows/columns entry; save and
+ * restore must round-trip that position. DraculasDentalDesaster's first
+ * assembly lands the stop there deterministically on the forced-serial
+ * path (1 thread, DLX) -- asserted on the saved position, so the test
+ * cannot pass without reaching the boundary. Save, restore and continue
+ * must yield the exact union.
  */
 TEST_CASE("serial save on an all-placed stop restores exact-once",
           "[assembler][resume][save]") {
@@ -2637,6 +2636,14 @@ TEST_CASE("serial save on an all-placed stop restores exact-once",
     xmlWriter_c xml(str);
     assm.save(xml);
     state = str.str();
+  }
+  {
+    // payload: interrupted flag, pos, iterations, (row col) pairs, ...
+    std::istringstream in(extractAssemblerContent(state));
+    unsigned int interrupted = 1, pos = 0;
+    REQUIRE(in >> interrupted >> pos);
+    CHECK(interrupted == 0);
+    REQUIRE(pos == problem->getNumberOfPieces());
   }
 
   RecordingAssemblerCallback cb2;
