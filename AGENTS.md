@@ -143,6 +143,8 @@ Caveats: snapshots from different machines are not comparable (absolute times de
 
 Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:
 
+The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) apply to fresh runs only: a resumed search keeps the engine that saved its remainder, because the remainder's tasks are only valid for that engine.
+
 | Environment Variable | Effect | Purpose |
 | :--- | :--- | :--- |
 | `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
