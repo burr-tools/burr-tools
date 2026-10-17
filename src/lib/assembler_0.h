@@ -255,8 +255,8 @@ private:
    * singleton tasks plus one cursor for the rest instead of one task per
    * row. Bounds the queue (and with it RAM, save size and parse time) at
    * ~K per split regardless of column breadth, while keeping refinement
-   * fine enough for load balance. Columns at or below K enumerate exactly
-   * as before -- thin puzzles behave byte-identically. K is kSplitFanout
+   * fine enough for load balance. A column with at most K rows yields one
+   * task per row. K is kSplitFanout
    * unless BURRTOOLS_SPLIT_FANOUT overrides it (see split_fanout.h); read
    * at the start of every parallel run, before any worker exists.
    */

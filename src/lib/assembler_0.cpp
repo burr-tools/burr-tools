@@ -2096,8 +2096,8 @@ public:
     if (s) {
       /* Enumerate the column's rows, skipping the cursor's share on rest
        * tasks. At most splitFanout units leave here: singletons plus, when
-       * rows remain, one cursor for the rest. Thin columns (at most K rows)
-       * enumerate exactly as before -- same tasks, same shares, same order.
+       * rows remain, one cursor for the rest. A column with at most K rows
+       * yields exactly one task per row.
        */
       unsigned int r = down(c);
       for (unsigned int i = 0; i < skip && r != c; i++)
@@ -2117,8 +2117,8 @@ public:
         return children;
       }
       if (!task.hasCursor() && rows.size() < 2 && exhausted) {
-        // Single live child, plain task: splitting is pointless (as
-        // before); the worker searches the task itself. A cursor in the
+        // Single live child, plain task: splitting is pointless; the
+        // worker searches the task itself. A cursor in the
         // same shape must still emit its one row -- dropping it would lose
         // the subtree -- so cursors never take this path.
         unwind();
@@ -3270,14 +3270,8 @@ void assembler_0_c::save(xmlWriter_c & xml) const
    * position above; signatures are always written when non-empty.
    */
   str << " " << parallelTasks.size() << " ";
-  size_t maxPrefix = 0;
-  size_t restTasks = 0;
   for (const auto &t : parallelTasks) {
     str << t.prefix.size() << " ";
-    if (t.prefix.size() > maxPrefix)
-      maxPrefix = t.prefix.size();
-    if (t.hasCursor())
-      restTasks++;
     for (const auto &step : t.prefix)
       str << step.col << " " << step.row << " ";
     // Per-task share, round-trip exact (float max_digits10), so a reload
@@ -3295,14 +3289,6 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   str << sigs.size() << " ";
   for (uint64_t s : sigs)
     str << s << " ";
-
-  /* Remainder census for save-size diagnosis: task count vs the generation
-   * target (max(16, 16*workers)) exposes runtime split fan-out; maxPrefix
-   * and the cursor rests describe its shape. One line on stderr per save;
-   * saves only happen on pause, so this is not hot-path noise.
-   */
-  fprintf(stderr, "[assembler_0] save: interrupted=%d tasks=%zu maxPrefix=%zu rests=%zu\n",
-      parallelInterrupted ? 1 : 0, parallelTasks.size(), maxPrefix, restTasks);
 
   xml.endTag("assembler");
 }

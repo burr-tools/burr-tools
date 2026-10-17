@@ -3196,25 +3196,43 @@ TEST_CASE("assembler_1 pool write-back resumes exact-once",
   CHECK(resumed == baseline);
 }
 
-/* A missed solution on an exhausted task must survive the stop.
- *
- * A solution is "missed" when the stop lands between its discovery and its
- * delivery (handleSolution sees the token under callbackMutex and declines).
- * The task's search may still exhaust right after -- trivially so for a
- * single-leaf task (prefix == the solution's full path), whose territory
- * is nothing but that leaf. The missed path must then be re-emitted, not
- * counted complete with the task: divide drops searched regions, so
- * nothing else holds it.
- *
- * Setup: two different full-depth solution paths, restored as two
- * single-leaf DLX tasks into a 2-worker pool. The callback holds
- * callbackMutex for a while and then stops, so the other worker's
- * solution blocks on the mutex and is declined as missed. Any other
- * interleaving (the second worker popping after the stop, so its task
- * stays queued) satisfies the same union, so the test cannot flake red --
- * only the loss makes it fail. Distinct leaves keep the expected union
- * free of repeats.
- */
+/* Number of saved A1-DLX pool tasks whose written-back frontier is in
+ * state 4 (see the test below). Payload (format 2.2): interrupted flag,
+ * seven serial-stack vectors, ptype, then for ptype 1 the task count and
+ * per task five stack vectors (task_stack first) plus baseDepth; a vector
+ * is its length followed by its entries. */
+static unsigned int a1DlxTopFourTasks(const std::string & state) {
+  std::istringstream in(extractAssemblerContent(state));
+  auto readVector = [&in]() {
+    size_t n = 0;
+    in >> n;
+    std::vector<unsigned int> v(n);
+    for (auto & x : v)
+      in >> x;
+    return v;
+  };
+  unsigned int interrupted = 0, ptype = 0;
+  in >> interrupted;
+  for (int i = 0; i < 7; i++)
+    readVector();
+  in >> ptype;
+  if (!in || ptype != 1)
+    return 0;
+  size_t count = 0;
+  in >> count;
+  unsigned int topFour = 0;
+  for (size_t t = 0; t < count && in; t++) {
+    const std::vector<unsigned int> taskStack = readVector();
+    for (int i = 0; i < 4; i++)
+      readVector();
+    unsigned int baseDepth = 0;
+    in >> baseDepth;
+    if (!taskStack.empty() && taskStack.back() == 4)
+      topFour++;
+  }
+  return topFour;
+}
+
 /* A1-DLX write-back on a frontier in state 4.
  *
  * Case 6 of the A1 walk hides the row it just finished into its level's
@@ -3248,9 +3266,12 @@ TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
   }
   REQUIRE(baseline.size() == 588);
 
-  // Where the stop lands depends on the schedule; these two reached a
-  // top-4 stop in every observed run without the fix.
-  for (unsigned int threads : {4u}) {
+  // Where the stop lands depends on the 4-thread schedule; these stop
+  // points land on top-4 frontiers (counted below, so the test cannot pass
+  // without reaching the case it covers).
+  const unsigned int threads = 4;
+  unsigned int topFour = 0;
+  {
     for (unsigned int stopAfter : {50u, 300u}) {
       INFO("threads " << threads << ", stop after " << stopAfter);
       RecordingAssemblerCallback cb1, cb2;
@@ -3270,6 +3291,7 @@ TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
         assm.save(xml);
         state = str.str();
       }
+      topFour += a1DlxTopFourTasks(state);
       {
         assembler_1_c restored(*problem);
         restored.setNumThreads(threads);
@@ -3285,8 +3307,28 @@ TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
       CHECK(resumed == baseline);
     }
   }
+  CHECK(topFour > 0);
 }
 
+/* A missed solution on an exhausted task must survive the stop.
+ *
+ * A solution is "missed" when the stop lands between its discovery and its
+ * delivery (handleSolution sees the token under callbackMutex and declines).
+ * The task's search may still exhaust right after -- trivially so for a
+ * single-leaf task (prefix == the solution's full path), whose territory
+ * is nothing but that leaf. The missed path must then be re-emitted, not
+ * counted complete with the task: divide drops searched regions, so
+ * nothing else holds it.
+ *
+ * Setup: two different full-depth solution paths, restored as two
+ * single-leaf DLX tasks into a 2-worker pool. The callback holds
+ * callbackMutex for a while and then stops, so the other worker's
+ * solution blocks on the mutex and is declined as missed. Any other
+ * interleaving (the second worker popping after the stop, so its task
+ * stays queued) satisfies the same union, so the test cannot flake red --
+ * only the loss makes it fail. Distinct leaves keep the expected union
+ * free of repeats.
+ */
 TEST_CASE("a missed solution on an exhausted task survives the stop",
           "[assembler][resume][save]") {
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
