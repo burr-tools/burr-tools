@@ -24,8 +24,8 @@
 /**
  * Fan-out cap K for dividing one search level into tasks: a level with
  * more remaining branches than K yields K singleton tasks plus one rest
- * task for the others. Used by assembler_0's runtime splitter and its
- * stop-time remainders; it bounds the queue and the saved
+ * task for the others. Used by assembler_0's runtime splitter and by the
+ * stop-time remainders of every engine; it bounds the queue and the saved
  * remainder at O(depth x K) per task. Any K >= 1 is exact -- K trades
  * remainder size against how finely a resume can balance its work.
  *

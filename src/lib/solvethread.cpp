@@ -133,8 +133,8 @@ void solveThread_c::run(void){
 
     // Re-submit assemblies salvaged by an earlier stop (see
     // disassemblerPool_c::requestStop): found but never disassembled, and
-    // suppressed by the assembler's dedup on re-search, so without this
-    // they would be lost on pause/continue. First in, so order stays stable.
+    // never found again (a resume holds only unexplored territory), so
+    // without this they would be lost on pause/continue. First in, so order stays stable.
     if (disasm_pool && !stopPressed) {
       for (auto &stashed : puzzle.takeStashedAssemblies())
         disasm_pool->submit(std::move(stashed));

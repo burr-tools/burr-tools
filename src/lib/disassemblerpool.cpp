@@ -426,8 +426,9 @@ void disassemblerPool_c::requestStop() {
   // instead of draining the backlog. In-flight jobs run to completion and
   // already-filed results are still delivered by the merger. The caller
   // moves the salvage to the problem after finish(), which re-submits it on
-  // the next run -- without that, the assembler's emitted-signatures dedup
-  // would suppress the dropped assemblies forever on pause/continue.
+  // the next run -- without that the dropped assemblies would be lost on
+  // pause/continue: the assembler's resume never re-walks the territory
+  // they were found in.
   // Collect the discarded sequence numbers first: they were assigned at
   // submit time, so the merger would wait for their results forever unless
   // told to skip them (see dropped_).
