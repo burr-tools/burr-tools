@@ -1,40 +1,61 @@
-From 8d07301a5b4fa6df4c93838ac683e45c2ca3e28a Mon Sep 17 00:00:00 2001
+From 75c92988dd4a6975f94998d9f28a8cbd865234fd Mon Sep 17 00:00:00 2001
 From: Bram Cohen <bram@chia.net>
-Date: Sun, 11 Oct 2026 17:31:36 -0700
-Subject: [PATCH] Break exact ties in Boolean3 with one consistent perturbation
+Date: Fri, 16 Oct 2026 19:14:21 -0700
+Subject: [PATCH] Break ties in Boolean3 with one consistent perturbation
 
-Exact ties between P and Q were each broken by their own rule: vertex
-normals for x, the edge's face normals for y, face normals for z. Those
-rules don't describe one perturbed configuration, and where the
-tiebreak itself came out exactly zero (common with axis-aligned or
-grid-aligned input) every predicate silently answered "no". Unions of
-convex pieces with exactly coplanar faces, as in a Minkowski sum, could
-then come out with a zero-volume flap of inverted triangles depending
-on the order of the operands.
+Boolean3 decides a tie between P and Q (two values within TieTol) by a
+direction per check: vertex normals for x, the sum of an edge's face
+normals for y, face normals for z. These don't describe one perturbed
+configuration, and where the direction is exactly 0, which a face normal
+component of 0 makes common in axis-aligned and grid-aligned input, the
+check answers the same both ways. The checks then contradict each other.
+Batch unions of convex pieces with coplanar faces (the sweep of a voxel
+shape's faces by a cube, a Minkowski sum) are left with zero-volume flaps
+of overlapping triangles, depending on how the normals in memory happen
+to round.
 
-Now every tie is decided as it would come out in a single perturbed
-configuration: each vertex moves along a displacement (offsetting all
-of its face planes alike where it has at most three, so flat faces stay
-flat and coincident faces stay tied), P moves once more by a smaller
-amount so that it is the outer one where faces coincide, and then P is
-translated along +x, +y and +z. A tie is the sign of a 2D cross product
-or a 3x3 determinant of vertex differences, evaluated term by term in
-order of significance; terms within rounding error are taken as zero.
+Every tie is now decided as it would come out in a single perturbed
+configuration:
 
-Ties in degenerate projections (an edge perpendicular to x, edges
-parallel in projection, a face parallel to z) keep the earlier rules.
+1. Each vertex moves by an infinitesimal along a displacement, outward
+   for Q and for P when expanding, inward for P otherwise. Where a vertex
+   touches at most three distinct face planes, the displacement moves all
+   of them outward by the same distance, so flat faces stay flat and
+   faces of P and Q that coincide stay tied. Elsewhere it is the vertex
+   normal.
+2. P moves once more by a smaller infinitesimal, so that where P's and
+   Q's faces coincide, P's is the outer one on every side.
+3. P is translated along +x, then +y, then +z by successively smaller
+   infinitesimals, which settles anything left.
 
-Adds Boolean.CoplanarUnionOrder. Boolean.Simplify's RemoveDegenerates
-count changes from 36 to 34 triangles; both are the same valid box.
+At a tie, the y, edge-edge and vertex-face comparisons are signs of a 2D
+cross product or a 3x3 determinant of vertex differences divided by
+another: polynomials of degree at most 3 in those infinitesimals, whose
+sign is that of the most significant nonzero coefficient, computed lazily.
+Where the divisor is exactly 0 (an edge perpendicular to x, edges parallel
+in projection, a face parallel to z), its sign is taken from the
+perturbation as well; the earlier per-edge or per-face rule remains only
+where the perturbation leaves it 0 too.
+
+Shadows is no longer used and is removed.
+
+Tests: CoplanarBatchUnion and CollinearEdgesBatchUnion compare a batch
+union of swept face pieces with the same union taken one piece at a time;
+the first fails on master, the second with the per-edge rule for edges
+parallel in projection. CubeUnionProp and MeshGLRoundTrip go back to 18
+verts / 32 tris: their coplanar faces come from different meshes, so the
+corner of the upper one stays a vertex of the seam. Simplify's
+RemoveDegenerates count is 34.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- src/boolean3.cpp      | 409 ++++++++++++++++++++++++++++++++++++------
- test/boolean_test.cpp |  77 +++++++-
- 2 files changed, 432 insertions(+), 54 deletions(-)
+ src/boolean3.cpp      | 423 ++++++++++++++++++++++++++++++++++++------
+ src/shared.h          |  10 -
+ test/boolean_test.cpp | 130 ++++++++++++-
+ 3 files changed, 494 insertions(+), 69 deletions(-)
 
 diff --git a/src/boolean3.cpp b/src/boolean3.cpp
-index 2723d46..8ec9a85 100644
+index 0fa03eea..81b465b5 100644
 --- a/src/boolean3.cpp
 +++ b/src/boolean3.cpp
 @@ -14,8 +14,10 @@
@@ -48,7 +69,7 @@ index 2723d46..8ec9a85 100644
  
  #include "disjoint_sets.h"
  #include "parallel.h"
-@@ -50,42 +52,333 @@ inline void LoadFaceEdges(const Halfedges& halfedges, int tri,
+@@ -63,43 +65,346 @@ inline void LoadFaceEdges(const Halfedges& halfedges, int tri,
    }
  }
  
@@ -61,7 +82,9 @@ index 2723d46..8ec9a85 100644
 +// before it. Every comparison between P and Q is decided as it would come out
 +// in that perturbed configuration, so all of them agree with one another.
 +//
-+// The comparisons at an exact tie are signs of 2D cross products and 3x3
++// Two values within the tie tolerance (TieTol) are a tie: they are taken as
++// equal, and the comparison is decided by the perturbation alone. The
++// comparisons at a tie are signs of 2D cross products and 3x3
 +// determinants of vertex differences, so polynomials of degree at most 3 in
 +// (eps, g, tx, ty, tz). Their sign is that of the most significant nonzero
 +// coefficient: the fewest tz first, then ty, tx, g, then eps. Coefficients
@@ -134,6 +157,13 @@ index 2723d46..8ec9a85 100644
 +
 +inline int Sign(double c, double bound) {
 +  return std::abs(c) <= kNoise * bound ? 0 : c > 0 ? 1 : -1;
++}
++
++// The sign of the most significant nonconstant term of component k of a, or 0.
++inline int LeadSign1(const SymVec& a, int k) {
++  for (int v = 1; v < kVars; ++v)
++    if (const int s = Sign(a.t[v][k], a.mag[v])) return s;
++  return 0;
 +}
 +
 +// The sign of the most significant nonconstant term of Cross2(a, b), or 0.
@@ -246,7 +276,7 @@ index 2723d46..8ec9a85 100644
 +#define BOOLEAN3_TIE(x) (x)
 +#endif
 +
-+// P before Q in x, at an exact tie: by P minus Q along eps, then along g
++// P before Q in x, at a tie: by P minus Q along eps, then along g
 +// (P's own displacement), each taken as zero within the displacements'
 +// rounding error like every other term; then +x translation of P decides,
 +// putting P after Q.
@@ -261,13 +291,14 @@ index 2723d46..8ec9a85 100644
 +}
 +
 +template <bool expandP>
-+inline bool Before(double pX, double qX, Disp dP, int p, Disp dQ, int q) {
-+  if (!BOOLEAN3_TIE(pX == qX)) return pX < qX;
++inline bool Before(double pX, double qX, Disp dP, int p, Disp dQ, int q,
++                   double tol) {
++  if (!BOOLEAN3_TIE(std::abs(pX - qX) <= tol)) return pX < qX;
 +  return BeforeAtTie<expandP>(dP[p], dQ[q]);
 +}
 +
-+// Whether P is below Q in y where vertex a0 of A meets edge b1 of B at an
-+// exact tie.
++// Whether P is below Q in y where vertex a0 of A meets edge b1 of B, at a
++// tie.
  template <bool expandP, bool forward>
 -inline std::pair<int, vec2> Shadow01(const int a0, const int b1, const int b1s,
 -                                     const int b1e, const Manifold::Impl& inA,
@@ -277,21 +308,21 @@ index 2723d46..8ec9a85 100644
 +                                const Manifold::Impl& inB, Disp dA, Disp dB) {
 +  const vec3 s = inB.vertPos_[b1s];
 +  const vec3 e = inB.vertPos_[b1e];
-+  if (e.x == s.x) {
-+    // An edge perpendicular to x: kept on the earlier, per-edge rule.
-+    const int b1pair = inB.halfedge_.Pair(b1);
-+    const double dir =
-+        inB.faceNormal_[b1 / 3].y + inB.faceNormal_[b1pair / 3].y;
-+    return (forward ? -dir : withSign(expandP, dir)) < 0;
-+  }
 +  // a.y - (the edge's y at a.x) = Cross2(e - s, a - s) / (e.x - s.x);
 +  // P minus Q is that forward and its negation backward
 +  const SymVec sa = SymVert(inA, dA, a0, forward, expandP);
 +  const SymVec ss = SymVert(inB, dB, b1s, !forward, expandP);
 +  const SymVec se = SymVert(inB, dB, b1e, !forward, expandP);
-+  return LeadSign2(se - ss, sa - ss) * (e.x > s.x ? 1 : -1) *
-+             (forward ? 1 : -1) <
-+         0;
++  // e.x - s.x, or for an edge perpendicular to x, as the perturbation turns it
++  const int dx = e.x > s.x ? 1 : e.x < s.x ? -1 : LeadSign1(se - ss, 0);
++  if (dx == 0) {
++    // Perpendicular to x even perturbed: the earlier, per-edge rule.
++    const int b1pair = inB.halfedge_.Pair(b1);
++    const double dir =
++        inB.faceNormal_[b1 / 3].y + inB.faceNormal_[b1pair / 3].y;
++    return (forward ? -dir : withSign(expandP, dir)) < 0;
++  }
++  return LeadSign2(se - ss, sa - ss) * dx * (forward ? 1 : -1) < 0;
 +}
 +
 +template <bool expandP, bool forward>
@@ -306,29 +337,30 @@ index 2723d46..8ec9a85 100644
 -  const double a0xp = inA.vertNormal_[a0].x;
 -  const double b1sxp = inB.vertNormal_[b1s].x;
 -  const double b1exp = inB.vertNormal_[b1e].x;
--  int s01 = forward ? Shadows(a0x, b1ex, withSign(expandP, a0xp) - b1exp) -
--                          Shadows(a0x, b1sx, withSign(expandP, a0xp) - b1sxp)
--                    : Shadows(b1sx, a0x, withSign(expandP, b1sxp) - a0xp) -
--                          Shadows(b1ex, a0x, withSign(expandP, b1exp) - a0xp);
-+  int s01 = forward ? Before<expandP>(a0x, b1ex, dA, a0, dB, b1e) -
-+                          Before<expandP>(a0x, b1sx, dA, a0, dB, b1s)
-+                    : Before<expandP>(b1sx, a0x, dB, b1s, dA, a0) -
-+                          Before<expandP>(b1ex, a0x, dB, b1e, dA, a0);
+   const double tol = TieTol(inA, inB);
+-  int s01 = forward
+-                ? Shadows(a0x, b1ex, withSign(expandP, a0xp) - b1exp, tol) -
+-                      Shadows(a0x, b1sx, withSign(expandP, a0xp) - b1sxp, tol)
+-                : Shadows(b1sx, a0x, withSign(expandP, b1sxp) - a0xp, tol) -
+-                      Shadows(b1ex, a0x, withSign(expandP, b1exp) - a0xp, tol);
++  int s01 = forward ? Before<expandP>(a0x, b1ex, dA, a0, dB, b1e, tol) -
++                          Before<expandP>(a0x, b1sx, dA, a0, dB, b1s, tol)
++                    : Before<expandP>(b1sx, a0x, dB, b1s, dA, a0, tol) -
++                          Before<expandP>(b1ex, a0x, dB, b1e, dA, a0, tol);
    vec2 yz01(NAN);
  
    if (s01 != 0) {
-     yz01 =
-         Interpolate(inB.vertPos_[b1s], inB.vertPos_[b1e], inA.vertPos_[a0].x);
+     yz01 = Interpolate(inB.vertPos_[b1s], inB.vertPos_[b1e], a0x, tol);
 -    const int b1pair = inB.halfedge_.Pair(b1);
 -    const double dir =
 -        inB.faceNormal_[b1 / 3].y + inB.faceNormal_[b1pair / 3].y;
 -    if (forward) {
--      if (!Shadows(inA.vertPos_[a0].y, yz01[0], -dir)) s01 = 0;
+-      if (!Shadows(inA.vertPos_[a0].y, yz01[0], -dir, tol)) s01 = 0;
 -    } else {
--      if (!Shadows(yz01[0], inA.vertPos_[a0].y, withSign(expandP, dir)))
+-      if (!Shadows(yz01[0], inA.vertPos_[a0].y, withSign(expandP, dir), tol))
 -        s01 = 0;
 +    const double ay = inA.vertPos_[a0].y;
-+    if (!BOOLEAN3_TIE(ay == yz01[0])) {
++    if (!BOOLEAN3_TIE(std::abs(ay - yz01[0]) <= tol)) {
 +      if (forward ? !(ay < yz01[0]) : !(yz01[0] < ay)) s01 = 0;
 +    } else if (!BelowAtTie01<expandP, forward>(a0, b1, b1s, b1e, inA, inB, dA,
 +                                               dB)) {
@@ -338,8 +370,7 @@ index 2723d46..8ec9a85 100644
    return std::make_pair(s01, yz01);
  }
  
-+// Whether edge p1 of P is below edge q1 of Q where they cross, at an exact
-+// tie.
++// Whether edge p1 of P is below edge q1 of Q where they cross, at a tie.
 +template <bool expandP>
 +BOOLEAN3_COLD bool BelowAtTie11(int p1, int p1s, int p1e, int q1, int q1s,
 +                                int q1e, const Manifold::Impl& inP,
@@ -347,8 +378,16 @@ index 2723d46..8ec9a85 100644
 +  const vec3 p0 = inP.vertPos_[p1s], q0 = inQ.vertPos_[q1s];
 +  const vec3 dp = inP.vertPos_[p1e] - p0, dq = inQ.vertPos_[q1e] - q0;
 +  const double cross = dp.x * dq.y - dp.y * dq.x;
-+  if (cross == 0) {
-+    // Edges parallel in projection: kept on the earlier, per-edge rule.
++  // zP - zQ at the crossing = -Det3(dp, dq, q0 - p0) / Cross2(dp, dq)
++  const SymVec sp0 = SymVert(inP, dP, p1s, true, expandP);
++  const SymVec sq0 = SymVert(inQ, dQ, q1s, false, expandP);
++  const SymVec sdp = SymVert(inP, dP, p1e, true, expandP) - sp0;
++  const SymVec sdq = SymVert(inQ, dQ, q1e, false, expandP) - sq0;
++  // Cross2(dp, dq), or for edges parallel in projection, as the perturbation
++  // turns them
++  const int c = cross > 0 ? 1 : cross < 0 ? -1 : LeadSign2(sdp, sdq);
++  if (c == 0) {
++    // Parallel in projection even perturbed: the earlier, per-edge rule.
 +    const int p1pair = inP.halfedge_.Pair(p1);
 +    const double dirP =
 +        inP.faceNormal_[p1 / 3].z + inP.faceNormal_[p1pair / 3].z;
@@ -357,16 +396,11 @@ index 2723d46..8ec9a85 100644
 +        inQ.faceNormal_[q1 / 3].z + inQ.faceNormal_[q1pair / 3].z;
 +    return withSign(expandP, dirP) - dirQ < 0;
 +  }
-+  // zP - zQ at the crossing = -Det3(dp, dq, q0 - p0) / Cross2(dp, dq)
-+  const SymVec sp0 = SymVert(inP, dP, p1s, true, expandP);
-+  const SymVec sq0 = SymVert(inQ, dQ, q1s, false, expandP);
-+  const SymVec sdp = SymVert(inP, dP, p1e, true, expandP) - sp0;
-+  const SymVec sdq = SymVert(inQ, dQ, q1e, false, expandP) - sq0;
-+  return -LeadSign3(sdp, sdq, sq0 - sp0) * (cross > 0 ? 1 : -1) < 0;
++  return -LeadSign3(sdp, sdq, sq0 - sp0) * c < 0;
 +}
 +
-+// Whether P is below Q in z where vertex a0 of A meets face b2 of B, at an
-+// exact tie.
++// Whether P is below Q in z where vertex a0 of A meets face b2 of B, at a
++// tie.
 +template <bool expandP, bool forward>
 +BOOLEAN3_COLD bool BelowAtTie02(int a0, int b2, const Manifold::Impl& inA,
 +                                const Manifold::Impl& inB, Disp dA, Disp dB) {
@@ -376,19 +410,20 @@ index 2723d46..8ec9a85 100644
 +  const vec3 cb = inB.vertPos_[vc] - inB.vertPos_[vb];
 +  const vec3 db = inB.vertPos_[vd] - inB.vertPos_[vb];
 +  const double nz = cb.x * db.y - cb.y * db.x;
-+  if (nz == 0) {
-+    // A face parallel to z: kept on the earlier, per-face rule.
-+    const double nBz = inB.faceNormal_[b2].z;
-+    return (forward ? -nBz : withSign(expandP, nBz)) < 0;
-+  }
 +  // a.z - (the face's z at a) = Det3(c - b, d - b, a - b) / n.z;
 +  // P minus Q is that forward and its negation backward
 +  const SymVec sa = SymVert(inA, dA, a0, forward, expandP);
 +  const SymVec sb = SymVert(inB, dB, vb, !forward, expandP);
 +  const SymVec scb = SymVert(inB, dB, vc, !forward, expandP) - sb;
 +  const SymVec sdb = SymVert(inB, dB, vd, !forward, expandP) - sb;
-+  return LeadSign3(scb, sdb, sa - sb) * (nz > 0 ? 1 : -1) * (forward ? 1 : -1) <
-+         0;
++  // n.z, or for a face parallel to z, as the perturbation turns it
++  const int n = nz > 0 ? 1 : nz < 0 ? -1 : LeadSign2(scb, sdb);
++  if (n == 0) {
++    // Parallel to z even perturbed: the earlier, per-face rule.
++    const double nBz = inB.faceNormal_[b2].z;
++    return (forward ? -nBz : withSign(expandP, nBz)) < 0;
++  }
++  return LeadSign3(scb, sdb, sa - sb) * n * (forward ? 1 : -1) < 0;
 +}
 +
  template <bool expandP>
@@ -400,7 +435,7 @@ index 2723d46..8ec9a85 100644
  
    std::pair<int, vec4> operator()(int p1, int p1s, int p1e, int q1, int q1s,
                                    int q1e) {
-@@ -103,7 +396,7 @@ struct Kernel11 {
+@@ -117,7 +422,7 @@ struct Kernel11 {
      const int p0[2] = {p1s, p1e};
      for (int i : {0, 1}) {
        const auto [s01, yz01] =
@@ -409,7 +444,7 @@ index 2723d46..8ec9a85 100644
        // If the value is NaN, then these do not overlap.
        if (std::isfinite(yz01[0])) {
          s11 += s01 * (i == 0 ? -1 : 1);
-@@ -119,7 +412,7 @@ struct Kernel11 {
+@@ -133,7 +438,7 @@ struct Kernel11 {
      const int q0[2] = {q1s, q1e};
      for (int i : {0, 1}) {
        const auto [s10, yz10] =
@@ -418,10 +453,10 @@ index 2723d46..8ec9a85 100644
        // If the value is NaN, then these do not overlap.
        if (std::isfinite(yz10[0])) {
          s11 += s10 * (i == 0 ? -1 : 1);
-@@ -137,14 +430,12 @@ struct Kernel11 {
-     } else {
+@@ -152,15 +457,12 @@ struct Kernel11 {
        DEBUG_ASSERT(k == 2, logicErr, "Boolean manifold error: s11");
-       xyzz11 = Intersect(pRL[0], pRL[1], qRL[0], qRL[1]);
+       const double tol = TieTol(inP, inQ);
+       xyzz11 = Intersect(pRL[0], pRL[1], qRL[0], qRL[1], tol);
 -
 -      const int p1pair = inP.halfedge_.Pair(p1);
 -      const double dirP =
@@ -429,17 +464,17 @@ index 2723d46..8ec9a85 100644
 -      const int q1pair = inQ.halfedge_.Pair(q1);
 -      const double dirQ =
 -          inQ.faceNormal_[q1 / 3].z + inQ.faceNormal_[q1pair / 3].z;
--      if (!Shadows(xyzz11.z, xyzz11.w, withSign(expandP, dirP) - dirQ)) s11 = 0;
-+      if (!BOOLEAN3_TIE(xyzz11.z == xyzz11.w)) {
+-      if (!Shadows(xyzz11.z, xyzz11.w, withSign(expandP, dirP) - dirQ, tol))
++      if (!BOOLEAN3_TIE(std::abs(xyzz11.z - xyzz11.w) <= tol)) {
 +        if (!(xyzz11.z < xyzz11.w)) s11 = 0;
 +      } else if (!BelowAtTie11<expandP>(p1, p1s, p1e, q1, q1s, q1e, inP, inQ,
 +                                        dP, dQ)) {
-+        s11 = 0;
+         s11 = 0;
 +      }
      }
  
      return std::make_pair(s11, xyzz11);
-@@ -155,6 +446,8 @@ template <bool expandP, bool forward>
+@@ -171,6 +473,8 @@ template <bool expandP, bool forward>
  struct Kernel02 {
    const Manifold::Impl& inA;
    const Manifold::Impl& inB;
@@ -448,7 +483,7 @@ index 2723d46..8ec9a85 100644
  
    std::pair<int, double> operator()(int a0, int b2) {
      FaceEdge edgeB[3];
-@@ -175,7 +468,7 @@ struct Kernel02 {
+@@ -191,7 +495,7 @@ struct Kernel02 {
  
      for (const int i : {0, 1, 2}) {
        const auto syz01 = Shadow01<expandP, forward>(
@@ -457,23 +492,24 @@ index 2723d46..8ec9a85 100644
        const int s01 = syz01.first;
        const vec2 yz01 = syz01.second;
        // If the value is NaN, then these do not overlap.
-@@ -194,11 +487,10 @@ struct Kernel02 {
-       DEBUG_ASSERT(k == 2, logicErr, "Boolean manifold error: s02");
+@@ -211,12 +515,10 @@ struct Kernel02 {
        vec3 vertPosA = inA.vertPos_[a0];
-       z02 = Interpolate(yzzRL[0], yzzRL[1], vertPosA.y)[1];
+       const double tol = TieTol(inA, inB);
+       z02 = Interpolate(yzzRL[0], yzzRL[1], vertPosA.y, tol)[1];
 -      if (forward) {
--        if (!Shadows(vertPosA.z, z02, -inB.faceNormal_[b2].z)) s02 = 0;
+-        if (!Shadows(vertPosA.z, z02, -inB.faceNormal_[b2].z, tol)) s02 = 0;
 -      } else {
--        if (!Shadows(z02, vertPosA.z, withSign(expandP, inB.faceNormal_[b2].z)))
+-        if (!Shadows(z02, vertPosA.z, withSign(expandP, inB.faceNormal_[b2].z),
+-                     tol))
 -          s02 = 0;
-+      if (!BOOLEAN3_TIE(vertPosA.z == z02)) {
++      if (!BOOLEAN3_TIE(std::abs(vertPosA.z - z02) <= tol)) {
 +        if (forward ? !(vertPosA.z < z02) : !(z02 < vertPosA.z)) s02 = 0;
 +      } else if (!BelowAtTie02<expandP, forward>(a0, b2, inA, inB, dA, dB)) {
 +        s02 = 0;
        }
      }
      return std::make_pair(s02, z02);
-@@ -336,7 +628,7 @@ struct Kernel12Recorder {
+@@ -356,7 +658,7 @@ struct Kernel12Recorder {
  
  template <bool expandP, bool forward>
  Intersections Intersect12_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
@@ -482,7 +518,7 @@ index 2723d46..8ec9a85 100644
    ZoneScoped;
    // Invariant: every ctx-passing parallel op is followed by IsCancelled to
    // keep partial output from feeding unconditional downstream consumers.
-@@ -344,8 +636,8 @@ Intersections Intersect12_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -364,8 +666,8 @@ Intersections Intersect12_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
    const Manifold::Impl& a = forward ? inP : inQ;
    const Manifold::Impl& b = forward ? inQ : inP;
  
@@ -493,7 +529,7 @@ index 2723d46..8ec9a85 100644
  
    Kernel12<expandP, forward> k12{a, b, k02, k11};
    Kernel12Recorder<expandP, forward> recorder{k12, {}};
-@@ -377,16 +669,17 @@ Intersections Intersect12_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -400,16 +702,17 @@ Intersections Intersect12_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
  
  template <bool forward>
  Intersections Intersect12(const Manifold::Impl& inP, const Manifold::Impl& inQ,
@@ -515,7 +551,7 @@ index 2723d46..8ec9a85 100644
                      ExecutionContext::Impl* ctx) {
    ZoneScoped;
    // a: 0 (vert), b: 2 (face)
-@@ -436,7 +729,7 @@ Vec<int> Winding03_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -459,7 +762,7 @@ Vec<int> Winding03_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
    for (size_t c : components) verts.push_back(static_cast<int>(c));
  
    Vec<int> w03(a.NumVert(), 0);
@@ -524,7 +560,7 @@ index 2723d46..8ec9a85 100644
    auto recorderf = [&](int i, int b) {
      const auto [s02, z02] = k02(verts[i], b);
      // note that i is distinct on each thread, and verts contains unique
-@@ -460,12 +753,12 @@ Vec<int> Winding03_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -484,12 +787,12 @@ Vec<int> Winding03_(const Manifold::Impl& inP, const Manifold::Impl& inQ,
  
  template <bool forward>
  Vec<int> Winding03(const Manifold::Impl& inP, const Manifold::Impl& inQ,
@@ -541,7 +577,7 @@ index 2723d46..8ec9a85 100644
  }
  }  // namespace
  
-@@ -500,18 +793,23 @@ Boolean3::Boolean3(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -526,18 +829,23 @@ Boolean3::Boolean3(const Manifold::Impl& inP, const Manifold::Impl& inQ,
    intersect12P.Start();
  #endif
  
@@ -567,7 +603,7 @@ index 2723d46..8ec9a85 100644
  #if defined(MANIFOLD_DEBUG) || defined(MANIFOLD_TIMING)
    intersect12Q.Stop();
  #endif
-@@ -527,13 +825,15 @@ Boolean3::Boolean3(const Manifold::Impl& inP, const Manifold::Impl& inQ,
+@@ -553,13 +861,15 @@ Boolean3::Boolean3(const Manifold::Impl& inP, const Manifold::Impl& inQ,
    winding03P.Start();
  #endif
    if (IsCancelled(ctx_)) return;
@@ -585,17 +621,17 @@ index 2723d46..8ec9a85 100644
    // No trailing check: Winding03_ already returns empty on cancel and
    // Boolean3::Result re-checks on entry.
  
-@@ -576,7 +876,8 @@ Vec<int> Manifold::Impl::PointWinding(VecView<const vec3> points) const {
-   // point. f returns vec3 → collider uses DoesOverlap(vec3), which is
-   // XY-projected, so all faces with XY overlap are returned regardless of Z
-   // (correct for +Z winding).
+@@ -603,7 +913,8 @@ Vec<int> Manifold::Impl::PointWinding(VecView<const vec3> points) const {
+   // forward=true: project along +Z to count signed face crossings above each
+   // point. The query box spans all Z and is widened by epsilon_ in XY,
+   // so all faces with XY overlap within tolerance are returned regardless of Z.
 -  Kernel02<false, true> k02{pointImpl, *this};
 +  Kernel02<false, true> k02{pointImpl, *this, pointImpl.vertNormal_.data(),
 +                            vertNormal_.data()};
    auto recorderf = [&](int localIdx, int tri) {
      const auto [s02, z02] = k02(localIdx, tri);
      if (std::isfinite(z02)) winding[query2input[localIdx]] += s02;
-@@ -620,8 +921,10 @@ std::vector<RayHit> Manifold::Impl::RayCast(vec3 origin, vec3 endpoint) const {
+@@ -650,8 +961,10 @@ std::vector<RayHit> Manifold::Impl::RayCast(vec3 origin, vec3 endpoint) const {
    // expandP=false with zero vertNormal means the ray-side perturbation is
    // zero. forward=true means we project along +Z for the lower-dimensional
    // kernel cascade (Shadow01 → Kernel02 → Kernel11 → Kernel12).
@@ -608,11 +644,63 @@ index 2723d46..8ec9a85 100644
    Kernel12<false, true> k12{rayImpl, *this, k02, k11};
  
    // Use the component with largest magnitude for stable t computation.
+diff --git a/src/shared.h b/src/shared.h
+index 7f355949..00670742 100644
+--- a/src/shared.h
++++ b/src/shared.h
+@@ -119,16 +119,6 @@ inline vec4 Intersect(const vec3& aL, const vec3& aR, vec3 bL, vec3 bR,
+   return xyzz;
+ }
+ 
+-/**
+- * `p < q` with symbolic perturbation: when `p == q` exactly, `dir < 0`
+- * acts as the tiebreaker. Used to give consistent strict-ordering answers
+- * regardless of which side of an FP equality we land on. Values within tol are
+- * treated as equal.
+- */
+-inline bool Shadows(double p, double q, double dir, double tol) {
+-  return p + (dir > 0 ? 1 : -1) * tol < q;
+-}
+-
+ /**
+  * The long edge and short edge vectors start from the same point. Returns true
+  * if they are colinear within epsilon.
 diff --git a/test/boolean_test.cpp b/test/boolean_test.cpp
-index 948aa90..f850306 100644
+index 36b17675..1a768c60 100644
 --- a/test/boolean_test.cpp
 +++ b/test/boolean_test.cpp
-@@ -252,7 +252,7 @@ TEST(Boolean, Simplify) {
+@@ -75,8 +75,10 @@ TEST(Boolean, MeshGLRoundTrip) {
+ 
+   Manifold result = cube + cube.Translate({1, 1, 0});
+ 
++  // The coplanar tops (and bottoms) come from different meshes, so the corner
++  // of the upper one inside the other's outline stays a vertex of the seam.
+   ASSERT_LT(result.OriginalID(), 0);
+-  ExpectMeshes(result, {{16, 28}});
++  ExpectMeshes(result, {{18, 32}});
+   RelatedGL(result, {original});
+ 
+   MeshGL inGL = result.TriID2FaceID().GetMeshGL();
+@@ -84,7 +86,7 @@ TEST(Boolean, MeshGLRoundTrip) {
+   const Manifold result2(inGL);
+ 
+   ASSERT_LT(result2.OriginalID(), 0);
+-  ExpectMeshes(result2, {{16, 28}});
++  ExpectMeshes(result2, {{18, 32}});
+   RelatedGL(result2, {original});
+ 
+   const MeshGL outGL = result2.GetMeshGL();
+@@ -231,7 +233,8 @@ TEST(Boolean, CubeUnion) {
+ TEST(Boolean, CubeUnionProp) {
+   Manifold cube = WithPositionColors(Manifold::Cube());
+   Manifold result = cube + cube.Translate({0.5, 0.5, 0});
+-  EXPECT_EQ(result.NumVert(), 16);
++  // as in MeshGLRoundTrip: a corner on the seam of the coplanar faces
++  EXPECT_EQ(result.NumVert(), 18);
+   if (options.exportModels) WriteTestOBJ("cubeUnionProp.obj", result);
+ }
+ 
+@@ -253,7 +256,7 @@ TEST(Boolean, Simplify) {
    resultGL.faceID.clear();
    Manifold result2(resultGL);
    EXPECT_EQ(result2.NumTri(), nStarting);
@@ -621,83 +709,127 @@ index 948aa90..f850306 100644
    EXPECT_EQ(result2.Simplify().NumTri(), 12);
  }
  
-@@ -1056,6 +1056,81 @@ TEST(Boolean, BatchBoolean) {
+@@ -1104,6 +1107,125 @@ TEST(Boolean, BatchBoolean) {
    EXPECT_FLOAT_EQ(subtract.SurfaceArea(), 14904.597);
  }
  
-+// Unions of convex pieces with exactly coplanar faces, like a Minkowski sum
-+// of a voxel shape, used to leave a zero-volume flap of inverted triangles on
-+// one of those faces, depending on the order of the operands: the symbolic
-+// perturbation broke ties inconsistently. A flap adds surface area.
-+TEST(Boolean, CoplanarUnionOrder) {
-+  // the corners of each convex piece, as x, y, z triples
-+  const std::vector<int> sizesA = {13, 14, 12, 13, 13, 13, 14};
-+  const std::vector<double> cornersA = {
-+      -45, -45, 705,  -45, -45, 795,  -45, 45,  705,  45,  -45, 705,
-+      45,  -45, 795,  45,  45,  705,  -45, 330, 1170, -45, 420, 1080,
-+      -45, 420, 1170, 420, 330, 1080, 420, 330, 1170, 420, 420, 1080,
-+      420, 420, 1170, -45, 705, -45,  45,  705, -45,  -45, 705, 795,
-+      330, 705, 1170, -45, 795, -45,  45,  795, -45,  -45, 795, 795,
-+      330, 795, 1170, 420, 705, 1170, 795, 705, 705,  795, 705, 795,
-+      420, 795, 1170, 795, 795, 705,  795, 795, 795,  -45, 330, 330,
-+      -45, 330, 420,  -45, 705, -45,  -45, 795, -45,  -45, 705, 795,
-+      -45, 795, 795,  45,  330, 330,  45,  330, 420,  45,  705, -45,
-+      45,  795, -45,  45,  705, 795,  45,  795, 795,  330, -45, 1080,
-+      330, -45, 1170, 420, -45, 1170, 330, 420, 1080, 330, 420, 1170,
-+      420, 420, 1080, 420, 420, 1170, 705, -45, 705,  705, 45,  705,
-+      795, -45, 705,  795, -45, 795,  795, 45,  705,  795, 45,  795,
-+      -45, 330, 330,  -45, 330, 420,  -45, 420, 420,  -45, 705, -45,
-+      -45, 795, -45,  -45, 795, 45,   45,  705, -45,  45,  795, -45,
-+      45,  795, 45,   420, 330, 330,  420, 330, 420,  420, 420, 330,
-+      420, 420, 420,  -45, 330, 1080, -45, 330, 1170, -45, 420, 1170,
-+      -45, 705, 705,  -45, 795, 705,  -45, 795, 795,  45,  705, 705,
-+      45,  795, 705,  45,  795, 795,  420, 330, 1080, 420, 330, 1170,
-+      420, 420, 1080, 420, 420, 1170, -45, -45, -45,  -45, 45,  -45,
-+      -45, -45, 795,  -45, 330, 1170, -45, 420, 1170, -45, 795, 705,
-+      -45, 795, 795,  45,  -45, -45,  45,  45,  -45,  45,  -45, 795,
-+      45,  330, 1170, 45,  420, 1170, 45,  795, 705,  45,  795, 795};
-+  const std::vector<int> sizesB = {13, 13, 13, 12, 13, 13};
-+  const std::vector<double> cornersB = {
-+      -45, -45, -45,  -45, -45, 45,   -45, 45,  -45,  -45, 45,  45,
-+      45,  -45, -45,  45,  -45, 45,   330, 420, -45,  420, 330, -45,
-+      420, 420, -45,  330, 330, 420,  330, 420, 420,  420, 330, 420,
-+      420, 420, 420,  -45, -45, 705,  -45, -45, 795,  -45, 45,  705,
-+      -45, 45,  795,  45,  -45, 705,  45,  45,  705,  330, -45, 1170,
-+      420, -45, 1080, 420, -45, 1170, 330, 420, 1080, 330, 420, 1170,
-+      420, 420, 1080, 420, 420, 1170, -45, 705, 705,  -45, 705, 795,
-+      -45, 795, 705,  -45, 795, 795,  45,  705, 705,  45,  795, 705,
-+      330, 330, 1080, 330, 330, 1170, 420, 330, 1080, 420, 330, 1170,
-+      330, 795, 1170, 420, 795, 1080, 420, 795, 1170, -45, -45, -45,
-+      -45, 45,  -45,  -45, -45, 45,   -45, 45,  45,   330, 420, -45,
-+      330, 420, 45,   795, -45, -45,  795, 45,  -45,  795, -45, 45,
-+      795, 45,  45,   420, 420, -45,  420, 420, 45,   330, 330, 1080,
-+      330, 330, 1170, 330, 420, 1080, 330, 420, 1170, 795, 330, 1080,
-+      795, 330, 1170, 795, 420, 1170, 705, 705, 705,  705, 795, 705,
-+      705, 795, 795,  795, 705, 705,  795, 795, 705,  795, 795, 795,
-+      -45, 705, -45,  -45, 705, 45,   -45, 795, -45,  -45, 795, 45,
-+      45,  705, -45,  45,  795, -45,  705, -45, 705,  705, -45, 795,
-+      795, -45, 705,  795, -45, 795,  705, 795, 795,  795, 795, 705,
-+      795, 795, 795};
-+  auto pieces = [](const std::vector<int>& sizes,
-+                   const std::vector<double>& corners) {
-+    std::vector<Manifold> out;
-+    size_t i = 0;
-+    for (const int size : sizes) {
-+      std::vector<vec3> points;
-+      for (int k = 0; k < size; ++k, i += 3)
-+        points.push_back({corners[i], corners[i + 1], corners[i + 2]});
-+      out.push_back(Manifold::Hull(points));
-+    }
-+    return out;
++namespace {
++// Convex face pieces, as lists of x, y, z corners, swept by a cube of the
++// given half-size (a Minkowski sum of a voxel shape's faces, which is full of
++// exactly coplanar faces): their union in one batch must come out as the
++// union taken one piece at a time.
++void ExpectSweptPiecesUnion(const std::vector<std::vector<double>>& pieces,
++                            double size) {
++  std::vector<Manifold> hulls;
++  for (const auto& corners : pieces) {
++    std::vector<vec3> points;
++    for (size_t i = 0; i < corners.size(); i += 3)
++      for (const int x : {-1, 1})
++        for (const int y : {-1, 1})
++          for (const int z : {-1, 1})
++            points.push_back(vec3(corners[i], corners[i + 1], corners[i + 2]) +
++                             vec3(x, y, z) * size);
++    hulls.push_back(Manifold::Hull(points));
++  }
++  const Manifold batch = Manifold::BatchBoolean(hulls, OpType::Add);
++  Manifold oneByOne = hulls[0];
++  for (size_t i = 1; i < hulls.size(); ++i) oneByOne += hulls[i];
++  EXPECT_NEAR(batch.Volume(), oneByOne.Volume(), 1e-9 * oneByOne.Volume());
++  EXPECT_NEAR(batch.SurfaceArea(), oneByOne.SurfaceArea(),
++              1e-9 * oneByOne.SurfaceArea());
++}
++}  // namespace
++
++// Where a face normal component was exactly zero, the earlier tie-break
++// directions, which follow the normals, could decide a tie both ways, and
++// BatchBoolean's unions left a zero-volume flap of overlapping triangles.
++TEST(Boolean, CoplanarBatchUnion) {
++  const std::vector<std::vector<double>> pieces = {
++      {8390772, 25172316, 41953860, 8390772, 114489228, 131270772, 97707684,
++       114489228, 131270772},
++      {8390772, 25172316, 41953860, 97707684, 114489228, 131270772, 8390772,
++       25172316, 220587684},
++      {97707684, 131270772, 131270772, 106098456, 139661544, 122880000, 8390772,
++       237369228, 220587684},
++      {8390772, 237369228, 220587684, 8390772, 25172316, 220587684, 97707684,
++       114489228, 131270772, 97707684, 131270772, 131270772},
++      {16781544, 245760000, 16781544, 106098456, 139661544, 122880000, 97707684,
++       131270772, 131270772, 8390772, 131270772, 131270772, 8390772, 245760000,
++       16781544},
++      {106098456, 139661544, 122880000, 139661544, 139661544, 122880000,
++       237369228, 245760000, 228978456, 8390772, 245760000, 228978456, 8390772,
++       237369228, 220587684},
 +  };
-+  const Manifold unionA =
-+      Manifold::BatchBoolean(pieces(sizesA, cornersA), OpType::Add);
-+  const Manifold unionB =
-+      Manifold::BatchBoolean(pieces(sizesB, cornersB), OpType::Add);
-+  const Manifold ab = unionA + unionB;
-+  const Manifold ba = unionB + unionA;
-+  EXPECT_NEAR(ab.Volume(), ba.Volume(), 1e-3);
-+  EXPECT_NEAR(ab.SurfaceArea(), ba.SurfaceArea(), 1e-3);
++  ExpectSweptPiecesUnion(pieces, 2457600);
++}
++
++// Edges of P and Q on one line, with the same faces either side, are parallel
++// in projection, where a tie was decided by the old rule from the faces'
++// normals: equal, so by their rounding or not at all. BatchBoolean's unions
++// left a zero-volume flap.
++TEST(Boolean, CollinearEdgesBatchUnion) {
++  const std::vector<std::vector<double>> pieces = {
++      {73728000, 201523200, 22118400, 137625600, 137625600, 86016000, 231014400,
++       208896000, 14745600, 73728000, 208896000, 14745600},
++      {122880000, 108134400, 144998400, 137625600, 108134400, 159744000,
++       208896000, 36864000, 231014400, 208896000, 14745600, 231014400,
++       122880000, 14745600, 144998400},
++      {346521600, 122880000, 122880000, 346521600, 14745600,  122880000,
++       260505600, 14745600,  36864000,  231014400, 44236800,  7372800,
++       231014400, 201523200, 7372800,   245760000, 216268800, 22118400,
++       253132800, 216268800, 29491200},
++      {14745600, 36864000, 231014400, 14745600, 44236800, 238387200, 7372800,
++       44236800, 231014400},
++      {7372800, 201523200, 231014400, 14745600, 201523200, 238387200, 14745600,
++       208896000, 231014400},
++      {108134400, 115507200, 231014400, 108134400, 108134400, 238387200,
++       137625600, 108134400, 238387200, 137625600, 115507200, 231014400},
++      {137625600, 115507200, 231014400, 137625600, 108134400, 238387200,
++       245760000, 216268800, 238387200, 245760000, 223641600, 231014400},
++      {152371200, 238387200, 122880000, 231014400, 238387200, 201523200,
++       231014400, 238387200, 44236800},
++      {7372800, 44236800, 231014400, 7372800, 201523200, 231014400, 7372800,
++       122880000, 152371200},
++      {253132800, 208896000, 238387200, 253132800, 201523200, 245760000,
++       260505600, 208896000, 231014400},
++      {260505600, 208896000, 231014400, 245760000, 223641600, 231014400,
++       245760000, 216268800, 238387200, 253132800, 208896000, 238387200},
++      {144998400, 231014400, 122880000, 144998400, 122880000, 122880000,
++       242073600, 219955200, 219955200, 231014400, 231014400, 208896000},
++      {108134400, 115507200, 231014400, 137625600, 115507200, 231014400,
++       137625600, 115507200, 167116800, 122880000, 115507200, 152371200,
++       108134400, 115507200, 167116800},
++      {231014400, 231014400, 36864000, 144998400, 231014400, 122880000,
++       152371200, 238387200, 122880000, 231014400, 238387200, 44236800},
++      {231014400, 231014400, 208896000, 242073600, 219955200, 219955200,
++       245760000, 223641600, 216268800, 231014400, 238387200, 201523200},
++      {122880000, 115507200, 152371200, 122880000, 108134400, 144998400,
++       108134400, 108134400, 159744000, 110592000, 113049600, 162201600},
++      {152371200, 238387200, 122880000, 144998400, 231014400, 122880000,
++       231014400, 231014400, 208896000, 231014400, 238387200, 201523200},
++      {14745600, 208896000, 231014400, 14745600, 122880000, 144998400, 7372800,
++       122880000, 152371200, 7372800, 201523200, 231014400},
++      {245760000, 216268800, 22118400, 245760000, 223641600, 29491200,
++       253132800, 216268800, 29491200},
++      {122880000, 115507200, 152371200, 137625600, 115507200, 167116800,
++       135168000, 113049600, 162201600},
++      {137625600, 108134400, 159744000, 122880000, 108134400, 144998400,
++       122880000, 115507200, 152371200, 135168000, 113049600, 162201600},
++      {148684800, 119193600, 148684800, 137625600, 108134400, 159744000,
++       135168000, 113049600, 162201600, 144998400, 122880000, 152371200},
++      {245760000, 223641600, 216268800, 245760000, 223641600, 231014400,
++       260505600, 208896000, 231014400, 346521600, 122880000, 122880000},
++      {346521600, 122880000, 122880000, 260505600, 208896000, 231014400,
++       260505600, 208896000, 260505600, 339148800, 130252800, 339148800,
++       346521600, 122880000, 339148800},
++      {93388800, 122880000, 144998400, 14745600, 122880000, 144998400, 14745600,
++       208896000, 231014400, 93388800, 130252800, 152371200},
++      {14745600, 122880000, 144998400, 14745600, 36864000, 231014400, 7372800,
++       44236800, 231014400, 7372800, 122880000, 152371200},
++      {245760000, 223641600, 231014400, 245760000, 223641600, 216268800,
++       242073600, 219955200, 219955200},
++  };
++  ExpectSweptPiecesUnion(pieces, 7372800);
 +}
 +
  // Regression for #1672: a sub-tree shared between two trees must survive when
