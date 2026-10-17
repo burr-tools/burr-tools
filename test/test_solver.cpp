@@ -2069,41 +2069,38 @@ TEST_CASE("Saved interrupted search XML size is bounded and independent of solut
   }
 }
 
-TEST_CASE("Legacy interrupted search saves are refused on restore",
+/* A paused search saved by another BurrTools version does not resume: the
+ * assemblers read only their current format (README "Pausing and
+ * resuming"), so older payloads -- interrupted or not -- are refused with
+ * ERR_CAN_NOT_RESTORE_VERSION, which keeps the found assemblies and starts
+ * the search over. Payloads below are minimal valid shapes of the old
+ * formats; their content must not matter.
+ */
+TEST_CASE("Search state saved by another version is refused on restore",
           "[assembler][resume][save]") {
   auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
-  // assembler_0: interrupted 1.6 payload refused
   {
     assembler_0_c assm(*problem);
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-    // Payload with interrupted=1, taskCount=1
-    const char * interrupted16 = "1 0 0 (0 0) 1";
-    CHECK(assm.setPosition(interrupted16, "1.6") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
-
-    // Uninterrupted 1.6 payload accepted
-    const char * uninterrupted16 = "0 0 0 (0 0) 0";
-    CHECK(assm.setPosition(uninterrupted16, "1.6") == assembler_c::ERR_NONE);
+    CHECK(assm.setPosition("1 0 0 (0 0) 1", "1.6") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    CHECK(assm.setPosition("0 0 0 (0 0) 0", "1.6") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    CHECK(assm.setPosition("0 0 0 (0 0) 0", nullptr) == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    // the current format still loads
+    CHECK(assm.setPosition("0 0 0 0 (0 0) 0 0", "1.7") == assembler_c::ERR_NONE);
   }
 
-  // assembler_1: interrupted 2.1 payload refused
   {
     assembler_1_c assm(*problem);
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-    // Payload with interrupted=1
-    const char * interrupted21 = "1 0 0 0 0 0 0 0 0";
-    CHECK(assm.setPosition(interrupted21, "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
-
-    // Payload with interrupted=0 but ptype=1 (DLX tasks)
-    const char * ptype21 = "0 0 0 0 0 0 0 0 1";
-    CHECK(assm.setPosition(ptype21, "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
-
-    // Uninterrupted 2.1 payload accepted
-    const char * uninterrupted21 = "0 0 0 0 0 0 0 0 0";
-    CHECK(assm.setPosition(uninterrupted21, "2.1") == assembler_c::ERR_NONE);
+    CHECK(assm.setPosition("1 0 0 0 0 0 0 0 0", "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 0", "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    CHECK(assm.setPosition("0 0 0 0 0 0 0", "2.0") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+    // the current format still loads
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 0", "2.2") == assembler_c::ERR_NONE);
   }
 }
 
@@ -4278,13 +4275,13 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
      * configured. Restoring a saved position is how a resume actually reaches
      * the assembler: the GUI writes it into the puzzle file on pause and
      * setPosition() rebuilds the partial DLX stack from it.
-     * "0 1 0 (0 0)(0 0) 0 0 0" is the interrupted flag clear, pos=1,
+     * "0 0 1 0 (0 0)(0 0) 0 0" is the interrupted flag clear, engine none, pos=1,
      * 0 iterations and two empty (row column) pairs -- the smallest string
-     * that leaves pos non-zero without covering anything -- plus an empty
-     * 1.6 remainder (zero tasks, zero completed share, zero signatures).
+     * that leaves pos non-zero without covering anything -- plus no engine
+     * and an empty remainder (zero tasks, zero completed share).
      */
     assm.setNumThreads(4);
-    REQUIRE(assm.setPosition("0 1 0 (0 0)(0 0) 0 0 0", "1.6") == assembler_c::ERR_NONE);
+    REQUIRE(assm.setPosition("0 0 1 0 (0 0)(0 0) 0 0", "1.7") == assembler_c::ERR_NONE);
     CHECK(assm.getRunThreads() == 1);
   }
 
