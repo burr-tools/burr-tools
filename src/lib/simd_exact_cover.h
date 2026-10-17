@@ -251,6 +251,24 @@ public:
   };
 
   /**
+   * Split on demand (see split_fanout.h): polled from inside the search
+   * every `interval` nodes; when wanted() says a sibling is waiting, the
+   * search cuts the shallowest frame that still has untried branches and
+   * hands them over with give() as one rest (nodes = the path down to that
+   * frame, restSkip = the frame's first untried index, > 0 always). The
+   * frame then ends after its current branch. `fraction` is the
+   * structural estimate of the piece's share of this subtree
+   * (product of 1/branching above it x remaining/branching at it).
+   */
+  struct DonationSink {
+    virtual ~DonationSink() = default;
+    virtual bool wanted() = 0;
+    virtual void give(const std::vector<unsigned int> &nodes, uint32_t restSkip,
+                      double fraction) = 0;
+    uint64_t interval = 256;
+  };
+
+  /**
    * Search the subtree below the placed prefix. With a non-null remainder,
    * a stop leaves the unexplored part of the subtree in it (see
    * SubtreeRemainder). start > 0 resumes a rest piece: the root frame's
@@ -262,7 +280,8 @@ public:
     std::stop_token stop,
     std::atomic<uint64_t> &iterations,
     SubtreeRemainder *remainder = nullptr,
-    size_t start = 0
+    size_t start = 0,
+    DonationSink *donor = nullptr
   ) const = 0;
 
   virtual unsigned int getNumRows() const = 0;
@@ -312,7 +331,8 @@ public:
     std::stop_token stop,
     std::atomic<uint64_t> &iterations,
     SubtreeRemainder *remainder = nullptr,
-    size_t start = 0
+    size_t start = 0,
+    DonationSink *donor = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
@@ -345,7 +365,22 @@ private:
     // Stop-path sink (see SubtreeRemainder); null unless solveSubtree was
     // given one. Never touched per node.
     SubtreeRemainder *trace = nullptr;
+    // Donation (see DonationSink); null unless solveSubtree was given one.
+    // Per frame at depth d (live while its branch loop runs): the branch
+    // column, its candidate count, the first untried index and the loop
+    // end -- a donation lowers frame_end to cut the frame.
+    DonationSink *donor = nullptr;
+    uint64_t next_donate_poll = 0;
+    unsigned int root_depth = 0;
+    std::vector<unsigned int> frame_col;
+    std::vector<uint32_t> frame_count;
+    std::vector<size_t> frame_next;
+    std::vector<size_t> frame_end;
   };
+
+  /* Donate the shallowest frame's untried branches (see DonationSink);
+   * depth is the node being entered, so frames root..depth-1 are live. */
+  void donateFrame(unsigned int depth, SearchContext &ctx) const;
 
   // Publish visited-but-unpublished nodes to the shared counter. Exact:
   // every node is published exactly once (batches of 256 plus remainders).
@@ -378,7 +413,7 @@ private:
   /* Stop path of the frame at depth: record its untouched branches (from
    * index next) into ctx.trace. */
   void recordFrame(unsigned int depth, unsigned int best_col, size_t next,
-                   SearchContext &ctx) const;
+                   size_t end, SearchContext &ctx) const;
 
   void filterRows(
     const std::vector<uint32_t> &src,

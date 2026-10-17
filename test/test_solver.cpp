@@ -3650,6 +3650,7 @@ TEST_CASE("donated work is searched exactly once",
   struct Case { bool dlx; unsigned int threads; const char * every; };
   const Case cases[] = {
     {true, 2, "1"}, {true, 4, "2"}, {true, 4, "7"},
+    {false, 1, "1"}, {false, 1, "7"}, {false, 4, "3"},
   };
   for (const auto & c : cases) {
     INFO((c.dlx ? "DLX" : "SIMD") << ", " << c.threads << " threads, every " << c.every);
