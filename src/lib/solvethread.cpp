@@ -191,8 +191,8 @@ void solveThread_c::run(void){
        * the blend approach 1 without any of the remaining work being done.
        *
        * release: assemble() has returned, so every submit() it made is
-       * complete; workOutstanding() acquires this store and so reads the
-       * pool's final submitted count.
+       * complete; getProgress() and workOutstanding() acquire this store and
+       * so read the pool's final submitted count.
        */
       assemblyEndNs.store(steadyNowNs(), std::memory_order_release);
 
@@ -570,7 +570,12 @@ float solveThread_c::getProgress(void) const {
     if (!a)
       return reportedProgress.load(std::memory_order_relaxed);
 
-    const long long end = assemblyEndNs.load(std::memory_order_relaxed);
+    /* acquire, pairing with the release store run() makes when assemble()
+     * returns: once assembly reads as ended, the pool's submitted count read
+     * below is final, so a drained pool cannot be mistaken for a finished
+     * solve with a late submit still unseen
+     */
+    const long long end = assemblyEndNs.load(std::memory_order_acquire);
 
     progressModel_c::Input in;
     in.assemblyFraction = a->getFinished();
