@@ -3918,7 +3918,19 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
    */
   bool samplesInRange = false;
   bool samplesMonotone = false;
-  bool underRunningCap = false;
+  /* Samples at runningCap taken while the solve still had counted work to
+   * do. The bar may legitimately sit at the cap once that work is done: the
+   * worker then still joins the pool's workers and merger and delivers the
+   * results before it reports ACT_FINISHED, and on a loaded machine the
+   * sampler sees that span as several samples. So "the last sample before
+   * ACT_FINISHED is under the cap" does not hold; what the latch breaks, and
+   * what is asserted, is that the cap is never reported while work remains.
+   * That needs no honest value to reach the cap early, and on this puzzle
+   * none comes close: over 140 runs, idle and with the machine twice
+   * oversubscribed, the highest value reported with work outstanding was
+   * 0.9896 -- ten times further from 1 than the cap is.
+   */
+  size_t capWhileOutstanding = 0;
   bool barMoved = false;
 
   auto produce = [&]() {
@@ -3934,13 +3946,19 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
     REQUIRE(thread.getProgress() == 0.0f);
 
     samples.clear();
+    capWhileOutstanding = 0;
     REQUIRE(thread.start());
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
     while (!thread.stopped() &&
            thread.currentAction() != solveThread_c::ACT_ASSERT &&
            std::chrono::steady_clock::now() < deadline) {
-      samples.push_back(thread.getProgress());
+      const float p = thread.getProgress();
+      /* read after the sample: workOutstanding() never goes back to true, so
+       * true here means the work was outstanding when p was reported */
+      if (p >= solveThread_c::runningCap && thread.workOutstanding())
+        capWhileOutstanding++;
+      samples.push_back(p);
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
@@ -3967,7 +3985,6 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
       top++;
     plateau = 100.0 * static_cast<double>(top) / static_cast<double>(samples.size());
 
-    underRunningCap = samples.back() < solveThread_c::runningCap;
     barMoved = *std::max_element(samples.begin(), samples.end()) > samples.front();
 
     finishedAtOne = (thread.getProgress() == 1.0f) && (thread.getProgress() == 1.0f);
@@ -3987,10 +4004,11 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
        << " last: " << samples.back());
   INFO("top plateau " << plateau << "% of " << samples.size()
        << " samples, at " << samples.back());
+  INFO(capWhileOutstanding << " samples at the running cap with work outstanding");
 
   CHECK(samplesInRange);
   CHECK(samplesMonotone);
-  CHECK(underRunningCap);
+  CHECK(capWhileOutstanding == 0);
   CHECK(barMoved);
 
   CHECK(plateau < plateauThreshold);
