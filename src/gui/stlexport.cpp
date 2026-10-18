@@ -19,303 +19,27 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "stlexport.h"
-#include "filechooser.h"
-
-#include "../tools/homedir.h"
-#include <filesystem>
-#include <stdlib.h>
 
 #include "BlockList.h"
-#include "view3dgroup.h"
 #include "blocklistgroup.h"
-#include "voxelframe.h"
-#include "buttongroup.h"
 
 #include "../lib/puzzle.h"
-#include "../lib/gridtype.h"
-#include "../lib/bt_assert.h"
 #include "../lib/voxel.h"
 
+#include "../halfedge/polyhedron.h"
 #include "../halfedge/volume.h"
-
-
-#include "../tools/fileexists.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-#define GL_SILENCE_DEPRECATION 1
-#include <FL/Fl.H>
 #include <FL/fl_ask.H>
-#include <FL/Fl_File_Chooser.H>
-
 #pragma GCC diagnostic pop
 
+static void cb_ShapeSelect_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_NewPreviewSubject(); }
 
-// a simple class (structure) containing some information for each input field
-class inputField_c
-{
-  public:
+stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : stlExportDialog_c(p, puzzleFile, "Export STL") {
 
-    stlExporter_c::parameterTypes type;
-    Fl_Widget * w;
-};
-
-
-static void cb_stlExportAbort_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Abort(); }
-
-void stlExport_c::cb_Abort(void) {
-  hide();
-}
-
-static void cb_stlExportExport_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Export(); }
-
-void stlExport_c::cb_Export(void) {
-
-  exportSTL(ShapeSelect->getSelection());
-
-}
-
-static void updateParameters(stlExporter_c * stl, const std::vector<std::unique_ptr<inputField_c>> & params)
-{
-  for (unsigned int i = 0; i < stl->numParameters(); i++)
-  {
-    switch (params[i]->type)
-    {
-      case stlExporter_c::PAR_TYP_DOUBLE:
-      case stlExporter_c::PAR_TYP_POS_DOUBLE:
-        stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
-        break;
-      case stlExporter_c::PAR_TYP_POS_INTEGER:
-        stl->setParameter(i, atoi(static_cast<LFl_Int_Input*>(params[i]->w)->value()));
-        break;
-      case stlExporter_c::PAR_TYP_SWITCH:
-        stl->setParameter(i, static_cast<LFl_Check_Button*>(params[i]->w)->value());
-        break;
-      default:
-        bt_assert(0);
-    }
-  }
-}
-
-static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
-void stlExport_c::cb_Update3DView(void)
-{
-  updateParameters(stl.get(), params);
-
-  Polyhedron * p = 0;
-  try
-  {
-    p = stl->getMesh(*puzzle->getShape(ShapeSelect->getSelection()));
-  }
-  catch (stlException_c e)
-  {
-    /* nothing to show: the preview must not keep the last mesh */
-    view3D->getView()->showNothing();
-    fl_message("%s",e.comment);
-    return;
-  }
-  catch (...)
-  {
-    view3D->getView()->showNothing();
-    fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
-    return;
-  }
-
-  if (p)
-  {
-    view3D->getView()->showMesh(p);
-    char txt[100];
-    snprintf(txt, 99, "Volume: %1.1f cubic-units\n", volume(*p));
-    status->copy_label(txt);
-  }
-  else
-  {
-    view3D->getView()->showNothing();
-    status->label("");
-  }
-
-}
-
-static void cb_stlFileChooser_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_FileChooser(); }
-void stlExport_c::cb_FileChooser(void)
-{
-  char curFile[500];
-  snprintf(curFile, 500, "%s/%s", Pname->value(), Fname->value());
-
-  const char * f = fileChooser("Choose STL File to write", "STL", "*.stl", curFile, true);
-
-  if (f)
-  {
-    const char * div = strrchr(f, '/');
-
-    if (div)
-    {
-      Fname->value(div+1);
-
-      int i = 0;
-      while (true)
-      {
-        curFile[i] = f[i];
-        i++;
-        if (f[i] == 0) break;
-        if (i >= 499) break;
-        if (div == f+i) break;
-      }
-
-      curFile[i] = 0;
-
-      Pname->value(curFile);
-    }
-
-  }
-
-
-}
-
-static void cb_stlExportViewUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DViewParams(); }
-void stlExport_c::cb_Update3DViewParams(void)
-{
-  switch (mode->getSelected())
-  {
-    case 0: view3D->getView()->setInsideVisible(false); break;
-    case 1: view3D->getView()->setInsideVisible(true); break;
-    default: break;
-  }
-}
-
-stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Double_Window(true), puzzle(p), exportDir(std::filesystem::path(puzzleFile).parent_path().string()) {
-
-  /* The path field starts at the folder the puzzle was loaded from, which is
-   * where the user almost always wants the mesh. An unsaved puzzle has no
-   * folder, so the home directory stands in: it exists and is writable,
-   * neither of which holds for the working directory -- an application
-   * launched from a macOS bundle or a Windows shortcut is given "/".
-   *
-   * homedir() ends in a separator, so it goes through parent_path() as well,
-   * leaving both branches in the same shape.
-   */
-  if (exportDir.empty())
-    exportDir = std::filesystem::path(homedir()).parent_path().string();
-
-  label("Export STL");
-
-  stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
-  bt_assert(stl);
-
-  LFl_Frame *fr;
-
-  {
-    fr = new LFl_Frame(0, 0, 1, 1);
-
-    (new LFl_Box("File name", 0, 0))->stretchLeft();
-    (new LFl_Box("Path", 0, 1))->stretchLeft();
-
-    (new LFl_Box(1, 0))->setMinimumSize(5, 0);
-    (new LFl_Box(3, 0))->setMinimumSize(5, 0);
-
-    Fname = new LFl_Input(2, 0, 1, 1);
-    Fname->value("test");
-    Fname->weight(1, 0);
-    Fname->setMinimumSize(50, 0);
-    Pname = new LFl_Input(2, 1, 1, 1);
-    Pname->value(exportDir.c_str());
-    Pname->weight(1, 0);
-    Pname->setMinimumSize(50, 0);
-
-    Fl_Button * Btn_Dir = new LFl_Button("...", 3, 0, 2, 2);
-    Btn_Dir->callback(cb_stlFileChooser_stub, this);
-
-    Binary = new LFl_Check_Button("Binary STL", 0, 2, 3, 1);
-    if (stl->getBinaryMode())
-      Binary->value(1);
-    else
-      Binary->value(0);
-
-    fr->end();
-  }
-
-  {
-    fr = new LFl_Frame(0, 1, 1, 1);
-
-    for (unsigned int i = 0; i < stl->numParameters(); i++)
-    {
-      auto inp = std::make_unique<inputField_c>();
-
-      inp->type = stl->getParameterType(i);
-
-      switch (inp->type)
-      {
-        case stlExporter_c::PAR_TYP_DOUBLE:
-          {
-            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
-            (new LFl_Box(1, i))->setMinimumSize(5, 0);
-            LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-            char val[10];
-            snprintf(val, 10, "%2.2f", stl->getParameter(i));
-            in->value(val);
-            in->weight(1, 0);
-
-            inp->w = in;
-          }
-          break;
-
-        case stlExporter_c::PAR_TYP_POS_DOUBLE:
-          {
-            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
-            (new LFl_Box(1, i))->setMinimumSize(5, 0);
-            LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-
-            char val[10];
-            snprintf(val, 10, "%2.2f", stl->getParameter(i));
-            in->value(val);
-            in->weight(1, 0);
-
-            inp->w = in;
-          }
-          break;
-
-        case stlExporter_c::PAR_TYP_POS_INTEGER:
-          {
-            (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
-            (new LFl_Box(1, i))->setMinimumSize(5, 0);
-            LFl_Int_Input * in = new LFl_Int_Input(2, i, 1, 1);
-
-            char val[10];
-            snprintf(val, 10, "%i", (int)stl->getParameter(i));
-            in->value(val);
-            in->weight(1, 0);
-
-            inp->w = in;
-          }
-          break;
-
-        case stlExporter_c::PAR_TYP_SWITCH:
-          {
-            LFl_Check_Button * in = new LFl_Check_Button(stl->getParameterName(i), 0, i, 3, 1);
-
-            if (stl->getParameter(i))
-              in->value(1);
-            else
-              in->value(0);
-
-            in->weight(1, 0);
-
-            inp->w = in;
-          }
-          break;
-
-        default:
-          bt_assert(0);
-      }
-
-      inp->w->callback(cb_stlExport3DUpdate_stub, this);
-      inp->w->tooltip(stl->getParameterTooltip(i));
-
-      params.push_back(std::move(inp));
-    }
-
-    fr->end();
-  }
+  addOutputFrame(0, "test");
+  addParameterFrame(1);
 
   {
     ShapeSelect = new PieceSelector(0, 0, 20, 20, puzzle);
@@ -323,103 +47,39 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
     ShapeSelect->setSelection(0);
 
     LBlockListGroup_c * gr = new LBlockListGroup_c(0, 2, 1, 1, ShapeSelect);
-    gr->callback(cb_stlExport3DUpdate_stub, this);
+    gr->callback(cb_ShapeSelect_stub, this);
     gr->setMinimumSize(200, 100);
     gr->stretch();
     gr->weight(0, 1);
   }
 
-  {
-    fr = new LFl_Frame(0, 3, 1, 1);
-
-    layouter_c * l = new layouter_c(0, 0, 1, 1);
-    l->pitch(5);
-
-    BtnStart = new LFl_Button("Export STL", 0, 0);
-    BtnStart->callback(cb_stlExportExport_stub, this);
-
-    (new LFl_Box(0, 1))->setMinimumSize(0, 5);
-
-    BtnAbbort = new LFl_Button("Abort", 0, 2);
-    BtnAbbort->callback(cb_stlExportAbort_stub, this);
-
-    fr->end();
-  }
-
-  {
-    layouter_c * l = new layouter_c(0, 4, 2, 1);
-
-    status = new LFl_Box(0, 0, 1, 1);
-    status->box(FL_UP_BOX);
-    status->weight(1, 0);
-    status->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-
-    mode = new ButtonGroup_c(1, 0, 1, 1);
-
-    Fl_Button * b;
-
-    b = mode->addButton();
-    b->image(pm.get(ViewModeNormal_xpm));
-    b->tooltip(" Display STL ebject normally ");
-
-    b = mode->addButton();
-    b->image(pm.get(ViewModeInsides_xpm));
-    b->tooltip(" Display the insides of the STL object ");
-
-    mode->callback(cb_stlExportViewUpdate_stub, this);
-
-    l->end();
-  }
-
-  view3D = new LView3dGroup(1, 0, 1, 4);
-  view3D->setMinimumSize(400, 400);
-  view3D->weight(1, 0);
-  /* the preview shows the exporter's own mesh: plain faces, whatever
-   * style the main window is in (the edge-line style would draw a line
-   * along every bevel boundary) */
-  view3D->getView()->setRenderStyle(voxelFrame_c::styleVoxel);
-  cb_Update3DView();
+  addButtons(3);
+  addStatusAndPreview(4);
 
   set_modal();
 }
 
-void stlExport_c::exportSTL(int shape)
+std::unique_ptr<Polyhedron> stlExport_c::previewMesh(std::string & text)
 {
-  char name[1000];
+  std::unique_ptr<Polyhedron> p = mesh(*puzzle->getShape(ShapeSelect->getSelection()));
 
-  voxel_c *v = puzzle->getShape(shape);
-
-  updateParameters(stl.get(), params);
-
-  stl->setBinaryMode(Binary->value() != 0);
-
-  if (Pname->value() && Pname->value()[0] && Pname->value()[strlen(Pname->value())-1] != '/') {
-      snprintf(name, 1000, "%s/%s", Pname->value(), Fname->value());
-  } else {
-      snprintf(name, 1000, "%s%s", Pname->value(), Fname->value());
-  }
-
-  // no need to ask when the file is the one the user picked in a native
-  // save dialog, that dialog already asked
-  if (fileExists(name) && !fileChooserConfirmedOverwrite(name))
-  {
-    if (fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0) == 0)
-    {
-      return;
-    }
-  }
-
-  try {
-    stl->write(name, *v);
-  }
-
-  catch (stlException_c e) {
-    fl_message("%s",e.comment);
-  }
-  catch (...)
-  {
-    fl_message("The generated mesh is faulty in some way, try to tweak the parameter");
-  }
+  char txt[100];
+  snprintf(txt, sizeof txt, "Volume: %1.1f cubic-units", volume(*p));
+  text = txt;
+  return p;
 }
 
-stlExport_c::~stlExport_c(void) = default;
+void stlExport_c::cb_Export(void) {
+
+  applyParameters();
+
+  const std::string fname = outputFile();
+  if (fname.empty()) {
+    fl_message("Please enter a file name.");
+    return;
+  }
+
+  if (!mayWrite(fname)) return;
+
+  write(fname, { puzzle->getShape(ShapeSelect->getSelection()) });
+}

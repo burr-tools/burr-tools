@@ -38,6 +38,8 @@ class LView3dGroup : public Fl_Group, public layoutable_c {
   Fl_Callback * zoomChangeCb = nullptr;
   void * zoomChangeUser = nullptr;
 
+  void setSliderFollowingContent(double v);
+
 public:
 
   static const double defaultZoom;
@@ -62,6 +64,9 @@ public:
 
   // zooms out (or in) just enough that everything currently shown fits in view
   void fitToContent(void);
+
+  // multiplies the view distance by factor (> 1 zooms out)
+  void scaleZoom(double factor);
 
   static void zoomAnimCbStub(void * u, double sz);
 
