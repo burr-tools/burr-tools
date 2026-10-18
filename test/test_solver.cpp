@@ -3922,13 +3922,13 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
    * do. The bar may legitimately sit at the cap once that work is done: the
    * worker then still joins the pool's workers and merger and delivers the
    * results before it reports ACT_FINISHED, and on a loaded machine the
-   * sampler sees that span as several samples. So "the last sample before
-   * ACT_FINISHED is under the cap" does not hold; what the latch breaks, and
-   * what is asserted, is that the cap is never reported while work remains.
-   * That needs no honest value to reach the cap early, and on this puzzle
-   * none comes close: over 140 runs, idle and with the machine twice
-   * oversubscribed, the highest value reported with work outstanding was
-   * 0.9896 -- ten times further from 1 than the cap is.
+   * sampler sees that span as several samples, any of which may be the last.
+   * What the latch breaks, and what is asserted, is that the cap is never
+   * reported while work remains. That relies on no honest value reaching the
+   * cap while work remains, and on this puzzle none comes close: over 140
+   * runs, idle and with the machine twice oversubscribed, the highest value
+   * reported with work outstanding was 0.9896 -- ten times further from 1
+   * than the cap is.
    */
   size_t capWhileOutstanding = 0;
   bool barMoved = false;

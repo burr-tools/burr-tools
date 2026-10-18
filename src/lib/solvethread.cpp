@@ -188,9 +188,13 @@ void solveThread_c::run(void){
 
       /* freeze the assembly cost: from here on the machine is draining the
        * disassembly queue, and charging that time to assembly too would make
-       * the blend approach 1 without any of the remaining work being done
+       * the blend approach 1 without any of the remaining work being done.
+       *
+       * release: assemble() has returned, so every submit() it made is
+       * complete; workOutstanding() acquires this store and so reads the
+       * pool's final submitted count.
        */
-      assemblyEndNs.store(steadyNowNs(), std::memory_order_relaxed);
+      assemblyEndNs.store(steadyNowNs(), std::memory_order_release);
 
       bool assembliesStashed = false;
 

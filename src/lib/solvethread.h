@@ -406,18 +406,23 @@ public:
 
   /* true while work the solve has counted is still to be done: assembly has
    * not returned, or the pool holds a submitted disassembly it has not
-   * completed. Once false, the inputs getProgress() blends are final and it
-   * reports runningCap until ACT_FINISHED, however long the worker then
+   * completed. Once false, the inputs getProgress() blends are final, so its
+   * value stops moving until the thread stops, however long the worker then
    * spends joining the pool and delivering results; that span is scheduling,
-   * not solve progress.
+   * not solve progress. After a complete search the value it holds is
+   * runningCap. A stop can still end the run in ACT_PAUSING instead of
+   * ACT_FINISHED, and a stop before assemble() runs leaves this true for a
+   * thread that will do no more work.
    *
-   * Never true again once it has gone false, so a caller that reads it after
-   * getProgress() and sees true knows the work was outstanding when that
-   * value was reported. Exposed so tests can tell a bar that reached the cap
-   * because the work is done from one that is pinned there.
+   * Never true again once it has gone false within a run, so a caller that
+   * reads it after getProgress() and sees true knows the work was outstanding
+   * when that value was reported. The acquire pairs with the release store
+   * run() makes when assemble() returns, so the submitted count read here is
+   * final. Exposed so tests can tell a bar that reached the cap because the
+   * work is done from one that is pinned there.
    */
   bool workOutstanding(void) const {
-    if (!assemblyEndNs.load(std::memory_order_relaxed))
+    if (!assemblyEndNs.load(std::memory_order_acquire))
       return true;
     return disasm_pool &&
            disasm_pool->completedCount() < disasm_pool->submittedCount();
