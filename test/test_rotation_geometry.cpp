@@ -1,11 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "lib/bt_assert.h"
 #include "lib/gridtype.h"
 #include "lib/rotationgeometry.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <numbers>
@@ -307,4 +309,86 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
   CHECK(compared > 500);
   CHECK(clear > 100);
   CHECK(blocked > 100);
+}
+
+TEST_CASE("a model without play is rejected", "[rotations]") {
+  CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(quarterTurnTable_c({ 0, 0 }, 2), assert_exception);
+}
+
+TEST_CASE("the quarter-turn table decides like the path checker", "[rotations]") {
+
+  /* pairs collide independently along a fixed motion, so per-cube lookups
+   * must reproduce the whole-scene verdict exactly */
+  for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 } }) {
+    quarterTurnTable_c table(model, 4);
+    std::mt19937 rng(42);
+    int clear = 0, blocked = 0;
+
+    for (int it = 0; it < 3000; it++) {
+      std::vector<cell_t> moving, stat;
+      randomScene(rng, moving, stat);
+      unsigned int axis = rng() % 3, sense = rng() % 2;
+      /* centre pivots have even, corner pivots odd doubled coordinates */
+      int parity = rng() % 2;
+      int phx = 2 * (int)(rng() % 5) - parity;
+      int phy = 2 * (int)(rng() % 5) - parity;
+      int phz = 2 * (int)(rng() % 5) - parity;
+
+      planarScene_c scene(moving, stat, axis, phx, phy, phz, model);
+      bool expected = scene.certifyQuarterTurn(sense) != PATH_CLEAR;
+
+      INFO("iteration " << it << " play " << model.play << " rounding " << model.rounding);
+      CHECK(table.blocked(moving, stat, axis, phx, phy, phz, sense) == expected);
+      clear += !expected;
+      blocked += expected;
+    }
+
+    CHECK(clear > 300);
+    CHECK(blocked > 300);
+  }
+}
+
+/* Size and build cost of the quarter-turn table for a few models, the
+ * numbers quoted in design/2026-10-19-rotation-moves.md. Run with
+ *   ./build/test_burrtools "[rotations-table-stats]" */
+TEST_CASE("quarter-turn table statistics", "[.][rotations-table-stats]") {
+
+  for (int radius : { 6, 10 })
+    for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 }, model_t{ 0.01, 0 } }) {
+      auto start = std::chrono::steady_clock::now();
+      quarterTurnTable_c table(model, radius);
+      double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+
+      size_t entries = 0, largest = 0;
+      for (int du = -2 * radius; du <= 2 * radius; du++)
+        for (int dv = -2 * radius; dv <= 2 * radius; dv++)
+          if (!((du ^ dv) & 1)) {
+            size_t n = table.blockers(du, dv, 0).size() + table.blockers(du, dv, 1).size();
+            entries += n;
+            largest = std::max(largest, table.blockers(du, dv, 0).size());
+          }
+
+      WARN("radius " << radius << " play " << model.play << " rounding " << model.rounding
+           << ": built in " << ms << " ms, " << entries << " blocking entries, at most "
+           << largest << " per moving cube and sense");
+    }
+}
+
+TEST_CASE("quarter-turn table entries of both senses are mirror images", "[rotations]") {
+
+  /* mirroring v maps a +90° turn onto a -90° turn, and squares onto squares */
+  quarterTurnTable_c table({ 0.081, 0 }, 3);
+  for (int du = -6; du <= 6; du++)
+    for (int dv = -6; dv <= 6; dv++) {
+      if ((du ^ dv) & 1)
+        continue;
+      const auto & minusEntry = table.blockers(du, dv, 1);
+      std::set<std::pair<int, int>> minus(minusEntry.begin(), minusEntry.end());
+      std::set<std::pair<int, int>> mirrored;
+      for (auto [su, sv] : table.blockers(du, -dv, 0))
+        mirrored.insert({ su, -sv });
+      INFO("offset " << du << "," << dv);
+      CHECK(minus == mirrored);
+    }
 }
