@@ -118,51 +118,121 @@ namespace rotationGeometry {
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
   };
 
+  /** A motion of the moving group: the piecewise linear curve through these
+   *  poses, starting at the identity pose and ending at a quarter turn. */
+  typedef std::vector<pose_t> path_t;
+
+  /** Kinds of rotation path, see rotationTables_c. */
+  enum pathKind_e {
+    PATH_PURE,    ///< plain quarter turn about the pivot
+    PATH_WIGGLE,  ///< quarter turn with an offset amount·sin(πt) along a direction
+    PATH_SLIDE    ///< shift by amount along a direction, quarter turn, shift back
+  };
+
+  /** Names one path of a family; the path follows from it, see makePath. */
+  struct pathSpec_t {
+    pathKind_e kind;
+    unsigned int sense;   ///< 0 = +90°, 1 = -90°, as in quarterTurn
+    int dirU, dirV;       ///< one of the 8 compass directions, in-plane, unused for PATH_PURE
+    double amount;        ///< shift distance in cells, unused for PATH_PURE
+  };
+
+  /** The waypoints of a path. Wiggles are polylines of WIGGLE_SEGMENTS
+   *  segments; the polyline, not the sine, is the motion that is checked. */
+  path_t makePath(const pathSpec_t & spec);
+
+  constexpr int WIGGLE_SEGMENTS = 16;
+
   /**
-   * Lookup table for pure quarter turns, filled once per model by the
-   * certified checker.
+   * Lookup table for one fixed path, filled by the certified checker.
    *
    * Along a fixed motion every (moving, static) cube pair collides or not
-   * independently of all other cubes, so a quarter turn is blocked iff some
-   * moving cube has a static cube of its layer in its table entry. The table
-   * is therefore exactly as precise as planarScene_c, at the cost of a
-   * lookup per cube. It does not cover motions that are searched for
-   * (rotation combined with translation): those depend on all cubes at once.
+   * independently of all other cubes, so the path is blocked iff some moving
+   * cube has a static cube of its layer in its table entry. The table is
+   * therefore exactly as precise as planarScene_c, at the cost of a lookup
+   * per cube. Motions that are searched for, rather than fixed in advance,
+   * cannot be tabulated: they depend on all cubes at once.
    *
    * Offsets are in-plane, in doubled cell units, relative to the pivot, in
    * the frames of planarScene_c: both even for a pivot at a cube centre,
    * both odd for one at a cube corner. Mixed parity (pivot on an edge
    * midpoint) cannot map the lattice onto itself by a quarter turn.
    */
-  class quarterTurnTable_c {
+  class pathTable_c {
 
     public:
 
       /** Covers moving cubes up to radius cells from the pivot along u and v. */
-      quarterTurnTable_c(const model_t & model, int radius);
+      pathTable_c(const model_t & model, int radius, const pathSpec_t & spec);
 
       int getRadius(void) const { return radius; }
+      const pathSpec_t & getSpec(void) const { return spec; }
 
       /** True if the table has an entry for this moving cube offset. */
       bool covers(int du, int dv) const;
 
       /** Offsets of the static cubes that block the moving cube at (du, dv). */
-      const std::vector<std::pair<int, int>> & blockers(int du, int dv, unsigned int sense) const;
+      const std::vector<std::pair<int, int>> & blockers(int du, int dv) const;
 
-      /** The quarter turn of `moving` about the pivot (doubled cell-index
-       *  units) among `stat`, decided by table lookups. */
+      /** The path of `moving` about the pivot (doubled cell-index units)
+       *  among `stat`, decided by table lookups. */
       bool blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
-                   unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
+                   unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const;
+
+      /** The table of this path turned by +90° about the pivot, i.e. with its
+       *  shift direction turned. Turning the whole scene commutes with the
+       *  motion, so no checker calls are needed. */
+      pathTable_c turned(void) const;
+
+      /** The table of this path mirrored at the u axis: the other sense, with
+       *  the shift direction mirrored. */
+      pathTable_c mirrored(void) const;
+
+    private:
+
+      pathTable_c(int radius, const pathSpec_t & spec);
+
+      int radius;
+      int width;   // 4 * radius + 1 doubled offsets per in-plane axis
+      pathSpec_t spec;
+
+      /* [(du + 2 radius) * width + dv + 2 radius] */
+      std::vector<std::vector<std::pair<int, int>>> table;
+
+      unsigned int index(int du, int dv) const;
+
+      friend class rotationTables_c;
+  };
+
+  /**
+   * The family of fixed rotation paths a rotation move may use, one
+   * pathTable_c each, ordered by how much the move disturbs: the pure turn
+   * first, then per amount (ascending) the 8 wiggles and the 8 slides.
+   *
+   * Only the +90° tables for the directions (1,0) and (1,1) are computed
+   * with the checker, all others are turned and mirrored copies.
+   */
+  class rotationTables_c {
+
+    public:
+
+      rotationTables_c(const model_t & model, int radius, const std::vector<double> & amounts);
+
+      int getRadius(void) const { return radius; }
+
+      /** Number of paths per sense. */
+      unsigned int size(void) const { return (unsigned int)tables[0].size(); }
+
+      const pathTable_c & table(unsigned int sense, unsigned int idx) const;
+
+      /** Index of the first clear path of this sense, -1 if all are blocked. */
+      int firstClear(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                     unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
 
     private:
 
       int radius;
-      int width;   // 4 * radius + 1 doubled offsets per in-plane axis
-
-      /* [sense][(du + 2 radius) * width + dv + 2 radius] */
-      std::vector<std::vector<std::pair<int, int>>> table[2];
-
-      unsigned int index(int du, int dv) const;
+      std::vector<pathTable_c> tables[2];
   };
 }
 
