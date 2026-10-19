@@ -13,6 +13,7 @@
 #include <numbers>
 #include <random>
 #include <set>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -313,19 +314,38 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
 
 TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0, 0 }), assert_exception);
-  CHECK_THROWS_AS(quarterTurnTable_c({ 0, 0 }, 2), assert_exception);
+  CHECK_THROWS_AS(pathTable_c({ 0, 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
 }
 
-TEST_CASE("the quarter-turn table decides like the path checker", "[rotations]") {
+TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice pose", "[rotations]") {
+  for (pathKind_e kind : { PATH_PURE, PATH_WIGGLE, PATH_SLIDE })
+    for (unsigned int sense = 0; sense < 2; sense++) {
+      path_t path = makePath({ kind, sense, -1, 1, 0.3 });
+      CHECK(path.front().theta == 0);
+      CHECK(path.front().du == 0);
+      CHECK(path.front().dv == 0);
+      CHECK(path.back().theta == ((sense == 0) ? QUARTER : -QUARTER));
+      CHECK(path.back().du == 0);
+      CHECK(path.back().dv == 0);
+    }
+  CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, 0, 0, 0.3 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_WIGGLE, 0, 1, 0, 0 }), assert_exception);
+}
 
-  /* pairs collide independently along a fixed motion, so per-cube lookups
-   * must reproduce the whole-scene verdict exactly */
-  for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 } }) {
-    quarterTurnTable_c table(model, 4);
+TEST_CASE("the rotation tables decide every path like the path checker", "[rotations]") {
+
+  /* Pairs collide independently along a fixed path, so per-cube lookups must
+   * reproduce the whole-scene verdict of every path exactly, including the
+   * tables that are turned and mirrored copies rather than computed. */
+  struct setup_t { model_t model; int scenes; };
+  for (setup_t setup : { setup_t{ { 0.081, 0 }, 300 }, setup_t{ { 0.02, 0.05 }, 150 } }) {
+    rotationTables_c tables(setup.model, 4, { 0.15, 0.3 });
+    REQUIRE(tables.size() == 1 + 2 * 2 * 8);
+
     std::mt19937 rng(42);
-    int clear = 0, blocked = 0;
+    int pureBlocked = 0, rescued = 0;
 
-    for (int it = 0; it < 3000; it++) {
+    for (int it = 0; it < setup.scenes; it++) {
       std::vector<cell_t> moving, stat;
       randomScene(rng, moving, stat);
       unsigned int axis = rng() % 3, sense = rng() % 2;
@@ -335,60 +355,158 @@ TEST_CASE("the quarter-turn table decides like the path checker", "[rotations]")
       int phy = 2 * (int)(rng() % 5) - parity;
       int phz = 2 * (int)(rng() % 5) - parity;
 
-      planarScene_c scene(moving, stat, axis, phx, phy, phz, model);
-      bool expected = scene.certifyQuarterTurn(sense) != PATH_CLEAR;
+      planarScene_c scene(moving, stat, axis, phx, phy, phz, setup.model);
+      int firstClear = -1;
+      for (unsigned int i = 0; i < tables.size(); i++) {
+        const pathTable_c & t = tables.table(sense, i);
+        REQUIRE(t.getSpec().sense == sense);
+        bool expected = scene.certifyPath(makePath(t.getSpec())) != PATH_CLEAR;
+        INFO("iteration " << it << " path " << i << " play " << setup.model.play);
+        CHECK(t.blocked(moving, stat, axis, phx, phy, phz) == expected);
+        if (!expected && firstClear < 0)
+          firstClear = (int)i;
+      }
+      CHECK(tables.firstClear(moving, stat, axis, phx, phy, phz, sense) == firstClear);
 
-      INFO("iteration " << it << " play " << model.play << " rounding " << model.rounding);
-      CHECK(table.blocked(moving, stat, axis, phx, phy, phz, sense) == expected);
-      clear += !expected;
-      blocked += expected;
+      pureBlocked += (firstClear != 0);
+      rescued += (firstClear > 0);
     }
 
-    CHECK(clear > 300);
-    CHECK(blocked > 300);
+    /* the scenes must include moves only a shifted path makes possible */
+    CHECK(pureBlocked > 30);
+    CHECK(rescued > 5);
   }
 }
 
-/* Size and build cost of the quarter-turn table for a few models, the
- * numbers quoted in design/2026-10-19-rotation-moves.md. Run with
- *   ./build/test_burrtools "[rotations-table-stats]" */
-TEST_CASE("quarter-turn table statistics", "[.][rotations-table-stats]") {
+TEST_CASE("turned and mirrored path tables equal directly computed ones", "[rotations]") {
 
-  for (int radius : { 6, 10 })
-    for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 }, model_t{ 0.01, 0 } }) {
-      auto start = std::chrono::steady_clock::now();
-      quarterTurnTable_c table(model, radius);
-      double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+  const model_t model = { 0.081, 0 };
+  rotationTables_c tables(model, 3, { 0.3 });
 
-      size_t entries = 0, largest = 0;
-      for (int du = -2 * radius; du <= 2 * radius; du++)
-        for (int dv = -2 * radius; dv <= 2 * radius; dv++)
-          if (!((du ^ dv) & 1)) {
-            size_t n = table.blockers(du, dv, 0).size() + table.blockers(du, dv, 1).size();
-            entries += n;
-            largest = std::max(largest, table.blockers(du, dv, 0).size());
-          }
-
-      WARN("radius " << radius << " play " << model.play << " rounding " << model.rounding
-           << ": built in " << ms << " ms, " << entries << " blocking entries, at most "
-           << largest << " per moving cube and sense");
+  for (unsigned int sense = 0; sense < 2; sense++)
+    for (unsigned int i = 1; i < tables.size(); i += 3) {
+      const pathTable_c & derived = tables.table(sense, i);
+      pathTable_c direct(model, 3, derived.getSpec());
+      INFO("sense " << sense << " path " << i);
+      for (int du = -6; du <= 6; du++)
+        for (int dv = -6; dv <= 6; dv++) {
+          if ((du ^ dv) & 1)
+            continue;
+          std::set<std::pair<int, int>> a(derived.blockers(du, dv).begin(), derived.blockers(du, dv).end());
+          std::set<std::pair<int, int>> b(direct.blockers(du, dv).begin(), direct.blockers(du, dv).end());
+          CHECK(a == b);
+        }
     }
 }
 
-TEST_CASE("quarter-turn table entries of both senses are mirror images", "[rotations]") {
+TEST_CASE("path tables find blockers of far-out cubes", "[rotations]") {
 
-  /* mirroring v maps a +90° turn onto a -90° turn, and squares onto squares */
-  quarterTurnTable_c table({ 0.081, 0 }, 3);
-  for (int du = -6; du <= 6; du++)
-    for (int dv = -6; dv <= 6; dv++) {
-      if ((du ^ dv) & 1)
+  /* A cube at offset (r, r) swings out to r·√2 along an axis, so the
+   * static cubes it can hit lie beyond the table's square of moving
+   * offsets. Compare the outermost entries with an unpruned brute force. */
+  const model_t model = { 0.081, 0 };
+  const int radius = 8;
+  for (pathSpec_t spec : { pathSpec_t{ PATH_PURE, 0, 0, 0, 0 }, pathSpec_t{ PATH_SLIDE, 1, -1, 1, 0.3 } }) {
+    pathTable_c table(model, radius, spec);
+    const path_t path = makePath(spec);
+    for (auto [du, dv] : { std::pair{ 16, 16 }, std::pair{ -15, 15 }, std::pair{ 16, -2 }, std::pair{ -16, -16 } }) {
+      int parity = du & 1;
+      const cell_t moving = { (du + parity) / 2, (dv + parity) / 2, 0 };
+      std::set<std::pair<int, int>> expected;
+      for (int sx = -16; sx <= 16; sx++)
+        for (int sy = -16; sy <= 16; sy++) {
+          int su = 2 * sx - parity, sv = 2 * sy - parity;
+          if (su == du && sv == dv)
+            continue;
+          planarScene_c scene({ moving }, { { sx, sy, 0 } }, 2, parity, parity, 0, model);
+          if (scene.certifyPath(path) != PATH_CLEAR)
+            expected.insert({ su, sv });
+        }
+      INFO("offset " << du << "," << dv << " kind " << spec.kind);
+      std::set<std::pair<int, int>> got(table.blockers(du, dv).begin(), table.blockers(du, dv).end());
+      CHECK(got == expected);
+    }
+  }
+}
+
+TEST_CASE("the rotation tables rescue a turn by shifting away from the blocker", "[rotations]") {
+
+  /* bar (0,0)-(1,0) turning +90° about the centre of (0,0) next to a static
+   * cube at (-1,0): the pure turn digs in, a path shifting along +u clears */
+  const std::vector<cell_t> bar = { { 0, 0, 0 }, { 1, 0, 0 } };
+  const std::vector<cell_t> stat = { { -1, 0, 0 } };
+  const model_t model = { 0.081, 0 };
+  rotationTables_c tables(model, 3, { 0.15, 0.3 });
+
+  int idx = tables.firstClear(bar, stat, 2, 0, 0, 0, 0);
+  REQUIRE(idx > 0);
+  const pathSpec_t & spec = tables.table(0, idx).getSpec();
+  CHECK(spec.dirU == 1);
+  planarScene_c scene(bar, stat, 2, 0, 0, 0, model);
+  CHECK(scene.certifyPath(makePath(spec)) == PATH_CLEAR);
+}
+
+/* Size and build cost of the rotation tables, and how many turns each kind
+ * of path makes possible that the pure turn cannot: the numbers quoted in
+ * design/2026-10-19-rotation-moves.md. Run with
+ *   ./build/test_burrtools "[rotations-table-stats]" */
+TEST_CASE("rotation table statistics", "[.][rotations-table-stats]") {
+
+  const std::vector<double> amounts = { 0.1, 0.2, 0.3, 0.4 };
+
+  for (int radius : { 6, 8 })
+    for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 }, model_t{ 0.01, 0 } }) {
+      auto start = std::chrono::steady_clock::now();
+      rotationTables_c tables(model, radius, amounts);
+      double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+
+      size_t pure = 0, all = 0;
+      for (unsigned int i = 0; i < tables.size(); i++)
+        for (int du = -2 * radius; du <= 2 * radius; du++)
+          for (int dv = -2 * radius; dv <= 2 * radius; dv++)
+            if (!((du ^ dv) & 1)) {
+              size_t n = tables.table(0, i).blockers(du, dv).size() + tables.table(1, i).blockers(du, dv).size();
+              all += n;
+              if (i == 0)
+                pure += n;
+            }
+
+      WARN("radius " << radius << " play " << model.play << " rounding " << model.rounding << ": "
+           << tables.size() << " paths per sense built in " << ms << " ms, " << pure
+           << " blocking entries for the pure turns, " << all << " for all paths");
+
+      if (radius != 6)
         continue;
-      const auto & minusEntry = table.blockers(du, dv, 1);
-      std::set<std::pair<int, int>> minus(minusEntry.begin(), minusEntry.end());
-      std::set<std::pair<int, int>> mirrored;
-      for (auto [su, sv] : table.blockers(du, -dv, 0))
-        mirrored.insert({ su, -sv });
-      INFO("offset " << du << "," << dv);
-      CHECK(minus == mirrored);
+
+      /* which first path rescues a turn the pure turn cannot make */
+      std::mt19937 rng(1);
+      int candidates = 0, pureClear = 0, rescued = 0;
+      std::vector<int> byKindAmount(2 * amounts.size(), 0);
+      for (int it = 0; it < 20000; it++) {
+        std::vector<cell_t> moving, stat;
+        randomScene(rng, moving, stat);
+        unsigned int axis = rng() % 3, sense = rng() % 2;
+        int parity = rng() % 2;
+        int phx = 2 * (int)(rng() % 5) - parity;
+        int phy = 2 * (int)(rng() % 5) - parity;
+        int phz = 2 * (int)(rng() % 5) - parity;
+        std::vector<cell_t> end;
+        if (!quarterTurnEnd(moving, stat, axis, sense, phx, phy, phz, end))
+          continue;
+        candidates++;
+        int idx = tables.firstClear(moving, stat, axis, phx, phy, phz, sense);
+        if (idx == 0)
+          pureClear++;
+        if (idx > 0) {
+          rescued++;
+          byKindAmount[(idx - 1) / 8]++;
+        }
+      }
+      std::string detail;
+      for (size_t a = 0; a < amounts.size(); a++)
+        detail += " amount " + std::to_string(amounts[a]).substr(0, 4) + ": wiggle " +
+                  std::to_string(byKindAmount[2 * a]) + ", slide " + std::to_string(byKindAmount[2 * a + 1]) + ";";
+      WARN("  " << candidates << " candidate turns with a free end pose, " << pureClear << " pure, "
+           << rescued << " only by a shifted path, first clear path by kind:" << detail);
     }
 }
