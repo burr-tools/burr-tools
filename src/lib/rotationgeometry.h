@@ -21,6 +21,7 @@
 #ifndef __ROTATION_GEOMETRY_H__
 #define __ROTATION_GEOMETRY_H__
 
+#include <utility>
 #include <vector>
 
 /**
@@ -52,7 +53,7 @@ namespace rotationGeometry {
   unsigned char quarterTurnTrans(unsigned int axis, unsigned int sense);
 
   struct model_t {
-    double play;      ///< gap between neighbouring cubes, cube side is 1 - play
+    double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
     double rounding;  ///< radius of the cube edges parallel to the rotation axis
   };
 
@@ -115,6 +116,53 @@ namespace rotationGeometry {
       double rho;
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
+  };
+
+  /**
+   * Lookup table for pure quarter turns, filled once per model by the
+   * certified checker.
+   *
+   * Along a fixed motion every (moving, static) cube pair collides or not
+   * independently of all other cubes, so a quarter turn is blocked iff some
+   * moving cube has a static cube of its layer in its table entry. The table
+   * is therefore exactly as precise as planarScene_c, at the cost of a
+   * lookup per cube. It does not cover motions that are searched for
+   * (rotation combined with translation): those depend on all cubes at once.
+   *
+   * Offsets are in-plane, in doubled cell units, relative to the pivot, in
+   * the frames of planarScene_c: both even for a pivot at a cube centre,
+   * both odd for one at a cube corner. Mixed parity (pivot on an edge
+   * midpoint) cannot map the lattice onto itself by a quarter turn.
+   */
+  class quarterTurnTable_c {
+
+    public:
+
+      /** Covers moving cubes up to radius cells from the pivot along u and v. */
+      quarterTurnTable_c(const model_t & model, int radius);
+
+      int getRadius(void) const { return radius; }
+
+      /** True if the table has an entry for this moving cube offset. */
+      bool covers(int du, int dv) const;
+
+      /** Offsets of the static cubes that block the moving cube at (du, dv). */
+      const std::vector<std::pair<int, int>> & blockers(int du, int dv, unsigned int sense) const;
+
+      /** The quarter turn of `moving` about the pivot (doubled cell-index
+       *  units) among `stat`, decided by table lookups. */
+      bool blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                   unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
+
+    private:
+
+      int radius;
+      int width;   // 4 * radius + 1 doubled offsets per in-plane axis
+
+      /* [sense][(du + 2 radius) * width + dv + 2 radius] */
+      std::vector<std::vector<std::pair<int, int>>> table[2];
+
+      unsigned int index(int du, int dv) const;
   };
 }
 

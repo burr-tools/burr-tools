@@ -27,6 +27,8 @@
 #include <limits>
 #include <map>
 #include <numbers>
+#include <set>
+#include <tuple>
 
 namespace rotationGeometry {
 
@@ -144,7 +146,12 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
   rho(0)
 {
   bt_assert(axis < 3);
-  bt_assert(model.play >= 0 && model.rounding >= 0 && half > 0);
+  /* Without play the cubes touch at the start pose, and a cube turning about
+   * a corner it shares with a diagonal neighbour touches it all the way: no
+   * finite check can prove that clear, it only subdivides towards
+   * MIN_DISPLACEMENT forever. Real pieces always have play. */
+  if (!(model.play > 0 && model.rounding >= 0 && half > 0))
+    bt_te("planarScene_c: needs play > 0, rounding >= 0 and a cube larger than its rounding");
 
   double pu, pv;
   inPlane(0.5 * pivotHx, 0.5 * pivotHy, 0.5 * pivotHz, axis, &pu, &pv);
@@ -254,6 +261,95 @@ verdict_e planarScene_c::certifyPath(const std::vector<pose_t> & waypoints) cons
 verdict_e planarScene_c::certifyQuarterTurn(unsigned int sense) const {
   const double angle = (sense == 0) ? std::numbers::pi / 2 : -std::numbers::pi / 2;
   return certifyPath({ { 0, 0, 0 }, { angle, 0, 0 } });
+}
+
+namespace {
+
+/* Doubled in-plane offset of a cell from a doubled pivot, same frames as inPlane. */
+void doubledOffset(const cell_t & c, unsigned int axis, int phx, int phy, int phz, int * u, int * v) {
+  int dx = 2 * c.x - phx, dy = 2 * c.y - phy, dz = 2 * c.z - phz;
+  if (axis == 0)      { *u = dy; *v = dz; }
+  else if (axis == 1) { *u = dz; *v = dx; }
+  else                { *u = dx; *v = dy; }
+}
+
+}
+
+quarterTurnTable_c::quarterTurnTable_c(const model_t & model, int r) :
+  radius(r),
+  width(4 * r + 1)
+{
+  if (r < 1)
+    bt_te("quarterTurnTable_c: radius must be at least 1");
+
+  /* a cube's corners stay within 1.5 cells of its centre path, so the static
+   * cubes that can be hit lie within two more cells */
+  const int reach = 2 * (r + 2);
+
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    table[sense].resize(width * width);
+
+    for (int du = -2 * r; du <= 2 * r; du++)
+      for (int dv = -2 * r; dv <= 2 * r; dv++) {
+        int parity = du & 1;
+        if ((dv & 1) != parity)
+          continue;
+
+        /* place the pivot at the origin's centre or corner in the Z frame,
+         * where (u, v) = (x, y); the cells follow from the doubled offsets */
+        const cell_t moving = { (du + parity) / 2, (dv + parity) / 2, 0 };
+        std::vector<std::pair<int, int>> & entry = table[sense][index(du, dv)];
+
+        for (int su = -reach + parity; su <= reach; su += 2)
+          for (int sv = -reach + parity; sv <= reach; sv += 2) {
+            if (su == du && sv == dv)
+              continue;
+            const cell_t stat = { (su + parity) / 2, (sv + parity) / 2, 0 };
+            planarScene_c scene({ moving }, { stat }, 2, parity, parity, 0, model);
+            if (scene.certifyQuarterTurn(sense) != PATH_CLEAR)
+              entry.push_back({ su, sv });
+          }
+      }
+  }
+}
+
+unsigned int quarterTurnTable_c::index(int du, int dv) const {
+  return (unsigned int)((du + 2 * radius) * width + dv + 2 * radius);
+}
+
+bool quarterTurnTable_c::covers(int du, int dv) const {
+  return du >= -2 * radius && du <= 2 * radius && dv >= -2 * radius && dv <= 2 * radius;
+}
+
+const std::vector<std::pair<int, int>> & quarterTurnTable_c::blockers(int du, int dv, unsigned int sense) const {
+  if (sense > 1 || !covers(du, dv) || ((du ^ dv) & 1))
+    bt_te("quarterTurnTable_c::blockers: offset outside the table or on an edge pivot");
+  return table[sense][index(du, dv)];
+}
+
+bool quarterTurnTable_c::blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                                 unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
+                                 unsigned int sense) const {
+
+  bt_assert(axis < 3);
+
+  std::set<std::tuple<int, int, int>> occupied;
+  for (const cell_t & c : stat) {
+    int u, v;
+    doubledOffset(c, axis, pivotHx, pivotHy, pivotHz, &u, &v);
+    occupied.insert({ (int)axial(c, axis), u, v });
+  }
+
+  for (const cell_t & c : moving) {
+    int u, v;
+    doubledOffset(c, axis, pivotHx, pivotHy, pivotHz, &u, &v);
+    int layer = (int)axial(c, axis);
+    for (const auto & [su, sv] : blockers(u, v, sense))
+      if (occupied.count({ layer, su, sv }))
+        return true;
+  }
+
+  return false;
 }
 
 }

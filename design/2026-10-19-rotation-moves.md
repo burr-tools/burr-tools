@@ -116,9 +116,11 @@ same-layer pair (moving, static) `signedDistance(core_m, core_s) ≥ 2r`.
 overlap when they intersect (this *is* the penetration depth for convex
 polygons), minimum vertex–edge distance otherwise.
 
-`g > 0` is required in practice: with `g = 0` the start pose already has
-cubes in face contact, and no finite-precision check can prove the first
-instant of a turn clear (the checker reports *undecided*).
+`g > 0` is required and enforced (`bt_te`): with `g = 0` the start pose
+already has cubes in face contact. A cube turning about a corner it shares
+with a diagonal neighbour touches it during the whole turn, so no finite
+check can prove it clear. The checker would subdivide down to its minimum
+step, which took 111 s for one table in a measurement.
 
 PR #50's implicit model is `g = 0.081, r = 0`. The defaults are to be
 calibrated against physically verified moves (see Validation); they are
@@ -143,6 +145,41 @@ This gives a **sound** verdict for any path — no tunnelling, no step-count
 constant. It is used by the generator, by the tests, by `burrTxt
 --verify-rotations`, and by the GUI's contact highlighting.
 
+### Lookup tables for fixed motions (`quarterTurnTable_c`)
+
+Along a *fixed* motion every (moving cube, static cube) pair collides or
+not independently of all other cubes: clearance is the minimum over
+pairs. So for a fixed motion the feasibility test needs no geometry at
+run time. A table keyed by the moving cube's in-plane offset from the
+pivot lists the static offsets that block it, and a turn is blocked iff a
+moving cube finds one of its blockers occupied in its own layer. Filled
+by the certified checker, the table is *exactly* as precise as the
+checker. It is not an approximation.
+
+* Keys: doubled in-plane offsets relative to the pivot, both even for a
+  pivot at a cube centre, both odd for one at a cube corner. Edge-midpoint
+  pivots cannot map the lattice onto itself by a quarter turn. One table
+  serves all three axes, because the in-plane frames are chosen so that
+  positive angles are right-handed for every axis.
+* One table per model `(g, r)`, built when the solver starts or cached.
+  Measured with `./build/test_burrtools "[rotations-table-stats]"` (dev
+  build): radius 6 → ~11k entries, ≤ 30 blockers per moving cube and
+  sense, ~0.1 s; radius 10 → ~47k entries, ≤ 46 blockers, ~0.5 s.
+* Tests: table verdict == checker verdict on random scenes for two models;
+  the −90° entries are exact mirror images of the +90° ones.
+* Run-time cost per candidate move: Σ blockers over the moving cubes,
+  ≤ 30 lookups per cube. This maps directly onto bitboards: OR the moving
+  cubes' shadow masks, AND with the occupancy of the other pieces. A
+  per-(shape, orientation, pivot offset, axis, sense) shadow cache, like
+  `movementCache_c`, removes even the OR.
+
+What tables cannot do: moves whose path is *searched for* (rotation
+combined with translation). There the path chosen depends on all cubes at
+once, so there is no pairwise decomposition. Options, in increasing cost:
+tabulate a fixed family of shimmy paths (one table each, exact for that
+family — PR #50's wiggle done right); run the planner only when every
+tabulated path is blocked; or both.
+
 ### Move generation: endpoints first, then paths
 
 For a moving group *M*, axis *a*, quarter-turn sense *s*, the end
@@ -154,8 +191,8 @@ generators.
 
 For each free endpoint, in order of cost:
 
-1. **Pure rotation** about its pivot — one certified-checker call. Covers
-   the large majority of real moves.
+1. **Pure rotation** about its pivot — `quarterTurnTable_c` lookups.
+   Covers the large majority of real moves.
 2. **Planner** (optional, setting): search configuration space
    `(θ, du, dv)` for any path. Lazy BFS/A* over a grid of cells of size
    `h × h × Δθ`. A cell is free if its centre configuration has clearance
@@ -233,7 +270,7 @@ stronger.
 * **Phase 1 (done)** — `src/lib/rotationgeometry.{h,cpp}`: layered cross
   sections, signed distance, pose, certified path checker;
   `test/test_rotation_geometry.cpp` with validation items 1 and the
-  orientation half of 2. Results:
+  orientation half of 2, and `quarterTurnTable_c` with its tests. Results:
   * the `ROT_*` symmetry ids of PR #50 *are* consistent with the vector
     quarter turns for all 24 orientations (one suspect ruled out);
   * the checker agrees with an independent dense oracle on random
