@@ -110,6 +110,7 @@ libburr_src = [
   'src/lib/print.cpp',
   'src/lib/ps3dloader.cpp',
   'src/lib/scadloader.cpp',
+  'src/lib/rotationgeometry.cpp',
   'src/lib/rotationrules.cpp',
   'src/lib/rotationmoves_0.cpp',
   'src/lib/rotationmoves_crowell.cpp',
@@ -391,7 +392,7 @@ executable('burrtools', gui_src,
 catch2_dep = dependency('catch2-with-main', fallback: ['catch2', 'catch2_with_main_dep'], default_options: ['tests=false'])
 
 test_burrtools = executable('test_burrtools',
-  ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp'],
+  ['test/test_solver.cpp', 'test/test_rotation_geometry.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp'],
   include_directories: inc,
   link_with: libburr_core,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep],
