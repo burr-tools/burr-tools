@@ -1235,15 +1235,17 @@ namespace {
 
 /* The groups that may turn, given for every piece the pieces that block it
  * on every path: unions of the closures of single pieces under "blocked
- * by", leaving out every closure that needs piece 0 (never turns) or a
- * piece outside covered. With very many distinct closures the pieces are
- * loose and only the single closures are returned. */
+ * by", leaving out every closure that needs a piece outside covered, and
+ * the group of all pieces (nothing moves relative to anything). With very
+ * many distinct closures the pieces are loose and only the single closures
+ * are returned. */
 std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn,
                                    bool * needsUncovered) {
 
   const uint32_t forbidden = ~covered;
+  const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
   std::vector<uint32_t> seeds;
-  for (unsigned int i = 1; i < pn; i++) {
+  for (unsigned int i = 0; i < pn; i++) {
     if (!(covered & (1u << i)))
       continue;
     uint32_t c = 1u << i, todo = c;
@@ -1255,20 +1257,21 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
       todo |= add;
     }
     if (!(c & forbidden)) {
-      seeds.push_back(c);
+      if (c != all)
+        seeds.push_back(c);
       continue;
     }
     /* Stopped at a piece beyond the tables' reach: if the closure does not
-     * need piece 0 either, the radius may have cost a turn. (The pieces out
-     * of reach contribute no blockers, so this can over-report.) */
-    while (todo && !(c & 1u)) {
+     * need every piece either, the radius may have cost a turn. (The pieces
+     * out of reach contribute no blockers, so this can over-report.) */
+    while (todo && c != all) {
       unsigned int j = std::countr_zero(todo);
       todo &= todo - 1;
       uint32_t add = blockers[j] & ~c;
       c |= add;
       todo |= add;
     }
-    if (!(c & 1u))
+    if (c != all)
       *needsUncovered = true;
   }
   std::sort(seeds.begin(), seeds.end());
@@ -1283,7 +1286,8 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
     for (size_t b = 0; b < seeds.size(); b++)
       if (sel & (1u << b))
         group |= seeds[b];
-    groups.push_back(group);
+    if (group != all)
+      groups.push_back(group);
   }
   std::sort(groups.begin(), groups.end());
   groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
@@ -1293,9 +1297,11 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
 }
 
 /* The node reached by turning the pieces of group about the doubled
- * in-plane pivot (pu, pv) along path number path of the family. */
+ * in-plane pivot (pu, pv) by a quarter in sense ^ inverse: along path
+ * number path of the family of sense, or, when inverse, while the other
+ * pieces follow that path relative to them. */
 void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, unsigned int sense,
-                                           int pu, int pv, int path) {
+                                           int pu, int pv, int path, bool inverse) {
 
   const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
   const unsigned int pn = pieces->size();
@@ -1303,27 +1309,38 @@ void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, un
   rotationGeometry::pivotOf(axis, pu, pv, &hx, &hy, &hz);
 
   disassemblerNode_c * n = new disassemblerNode_c(pn, searchnode,
-      disassemblerNode_c::ROTATION_DIR_BASE + 2 * axis + sense, path);
+      disassemblerNode_c::ROTATION_DIR_BASE + 4 * axis + 2 * (inverse ? 1 : 0) + sense, path);
+  const unsigned int turn = sense ^ (inverse ? 1 : 0);
   for (unsigned int i = 0; i < pn; i++) {
     int x = searchnode->getX(i), y = searchnode->getY(i), z = searchnode->getZ(i);
     unsigned char t = (unsigned char)searchnode->getTrans(i);
     if (group & (1u << i)) {
-      rotationGeometry::turnAbout(&x, &y, &z, hx, hy, hz, axis, sense);
-      t = sym->transAdd(t, rotationGeometry::quarterTurnTrans(axis, sense));
+      rotationGeometry::turnAbout(&x, &y, &z, hx, hy, hz, axis, turn);
+      t = sym->transAdd(t, rotationGeometry::quarterTurnTrans(axis, turn));
       /* the brick grid has all 24 orientations, so a turn always has one */
       bt_assert(t != TND);
+      /* states hold canonical orientations (see rotationContext_c) */
+      const rotationContext_c::canonical_t c = rotation->canonical((*pieces)[i], t);
+      x += c.dx;
+      y += c.dy;
+      z += c.dz;
+      t = c.trans;
     }
     n->set(i, x, y, z, t);
   }
-  n->setRotationPivot(pu, pv);
+  n->setRotation(pu, pv, group);
   rotationNodes.push_back(n);
 }
 
 /* Generate every rotation move of the search node.
  *
- * Groups: piece 0 never turns (turning a group with it is the same as
- * turning the rest the other way, and keeping it fixed keeps the states
- * canonical). Blocking is pairwise -- along a fixed path every cube pair
+ * Groups: any group but all pieces. Piece 0 stays in place in every state
+ * (which keeps the states canonical), so a group with piece 0 is recorded
+ * as the rest turning the other way, following the path inverted: the same
+ * relative motion. It still has to be searched as a group of its own,
+ * because the rest is generally not in the path family (a shift turns
+ * along with an inverted wiggle or slide) and pivots and reach are judged
+ * on the turning group's footprint. Blocking is pairwise -- along a fixed path every cube pair
  * collides or not on its own -- so, like Bill Cutler's movement matrices
  * for translations, for each axis, pivot and sense we know which pieces
  * block which on every path of the family (this includes landing on
@@ -1351,6 +1368,7 @@ void movementAnalysator_c::listRotations(void) {
 
   const rotationGeometry::rotationTables_c & tables = rotation->tables();
   const int reach = 2 * tables.getRadius();
+  const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
 
   std::vector<std::vector<cell_t>> world(pn);
   for (unsigned int i = 0; i < pn; i++)
@@ -1376,11 +1394,11 @@ void movementAnalysator_c::listRotations(void) {
         vmin[i] = std::min(vmin[i], v); vmax[i] = std::max(vmax[i], v);
       }
     }
-    /* pivots: within the footprint of the pieces that may turn */
-    const int pumin = *std::min_element(umin.begin() + 1, umin.end()) - 1;
-    const int pumax = *std::max_element(umax.begin() + 1, umax.end()) + 1;
-    const int pvmin = *std::min_element(vmin.begin() + 1, vmin.end()) - 1;
-    const int pvmax = *std::max_element(vmax.begin() + 1, vmax.end()) + 1;
+    /* pivots: within the footprint of the pieces */
+    const int pumin = *std::min_element(umin.begin(), umin.end()) - 1;
+    const int pumax = *std::max_element(umax.begin(), umax.end()) + 1;
+    const int pvmin = *std::min_element(vmin.begin(), vmin.end()) - 1;
+    const int pvmax = *std::max_element(vmax.begin(), vmax.end()) + 1;
 
     for (unsigned int sense = 0; sense < 2; sense++) {
 
@@ -1390,7 +1408,7 @@ void movementAnalysator_c::listRotations(void) {
         localPairs.clear();
         ownPairs.clear();
       }
-      for (unsigned int i = 1; i < pn; i++)
+      for (unsigned int i = 0; i < pn; i++)
         for (unsigned int j = 0; j < pn; j++)
           pairs[i * pn + j] = (i == j) ? nullptr : blockingPivots(i, j, axis, sense);
 
@@ -1404,13 +1422,13 @@ void movementAnalysator_c::listRotations(void) {
           /* pieces with cubes beyond the tables' radius cannot turn here:
            * skip, never guess */
           uint32_t covered = 0;
-          for (unsigned int i = 1; i < pn; i++)
+          for (unsigned int i = 0; i < pn; i++)
             if (umax[i] - pu <= reach && pu - umin[i] <= reach && vmax[i] - pv <= reach && pv - vmin[i] <= reach)
               covered |= 1u << i;
           if (!covered)
             continue;
 
-          for (unsigned int i = 1; i < pn; i++) {
+          for (unsigned int i = 0; i < pn; i++) {
             blockers[i] = 0;
             for (unsigned int j = 0; j < pn; j++)
               if (pairs[i * pn + j] && pairs[i * pn + j]->test(pu - hu[i], pv - hv[i]))
@@ -1464,7 +1482,14 @@ void movementAnalysator_c::listRotations(void) {
             if (path < 0)
               continue;
 
-            addRotationNode(group, axis, sense, pu, pv, path);
+            if (!(group & 1u))
+              addRotationNode(group, axis, sense, pu, pv, path, false);
+            else if (tables.table(sense, path).getSpec().kind == rotationGeometry::PATH_PURE) {
+              /* the inverse of a pure turn is the pure turn the other way */
+              bt_assert(tables.table(sense ^ 1, 0).getSpec().kind == rotationGeometry::PATH_PURE);
+              addRotationNode(all & ~group, axis, sense ^ 1, pu, pv, 0, false);
+            } else
+              addRotationNode(all & ~group, axis, sense, pu, pv, path, true);
           }
         }
     }
