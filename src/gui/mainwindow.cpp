@@ -72,6 +72,7 @@
 #include "../lib/disassembler_0.h"
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
+#include "../lib/rotationtables.h"
 #include "../lib/assembly.h"
 #include "../lib/converter.h"
 #include "../lib/millable.h"
@@ -1111,8 +1112,16 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
+  if (RotationMoves->value() != 0) par |= solveThread_c::PAR_ROTATION_MOVES;
 
+  /* with rotation moves the solver builds its rotation tables first */
+  if (par & solveThread_c::PAR_ROTATION_MOVES) {
+    fl_cursor(FL_CURSOR_WAIT);
+    Fl::flush();
+  }
   assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, config.numThreads());
+  if (par & solveThread_c::PAR_ROTATION_MOVES)
+    fl_cursor(FL_CURSOR_DEFAULT);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1356,6 +1365,17 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   updateInterface();
 }
 
+std::shared_ptr<const rotationGeometry::rotationTables_c> mainWindow_c::rotationTablesForGui(const problem_c & pr) {
+  if (!RotationMoves->value())
+    return nullptr;
+  /* building the tables takes a moment the first time */
+  fl_cursor(FL_CURSOR_WAIT);
+  Fl::flush();
+  auto tables = rotationTablesFor(pr, defaultRotationSettings());
+  fl_cursor(FL_CURSOR_DEFAULT);
+  return tables;
+}
+
 static void cb_AddDisasm_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AddDisasm(); }
 void mainWindow_c::cb_AddDisasm(void) {
   unsigned int prob = solutionProblem->getSelection();
@@ -1375,7 +1395,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationTablesForGui(*pr));
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
@@ -1405,7 +1425,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   puzzleHistory->markModified();
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationTablesForGui(*pr));
 
   auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -3216,6 +3236,14 @@ void mainWindow_c::updateInterface(void) {
         SolveDisasm->value(0);
       }
 
+      /* rotation moves exist for cube grids only */
+      if (ggt->getGridType()->getType() == gridType_c::GT_BRICKS)
+        RotationMoves->activate();
+      else {
+        RotationMoves->deactivate();
+        RotationMoves->value(0);
+      }
+
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE &&
           !assmThread &&
           solutionProblem->getSelection() < puzzle->getNumberOfProblems() &&
@@ -4146,6 +4174,10 @@ void mainWindow_c::CreateSolveTab(void) {
     KeepRotations = new LFl_Check_Button("Keep Rotated Solutions", 1, 2, 1, 1);
     KeepRotations->tooltip(" Don't remove solutions that are rotations of other solutions ");
     KeepRotations->clear_visible_focus();
+
+    RotationMoves = new LFl_Check_Button("Rotation Moves", 0, 3, 1, 1);
+    RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only) ");
+    RotationMoves->clear_visible_focus();
 
     o->end();
 
