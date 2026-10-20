@@ -20,7 +20,9 @@
  */
 #include "puzzle.h"
 
+#include "disassembly.h"
 #include "problem.h"
+#include "solution.h"
 #include "voxel.h"
 
 #include "../tools/xml.h"
@@ -187,10 +189,36 @@ void puzzle_c::getColor(unsigned int idx, unsigned char * r, unsigned char * g, 
   *b = (colors[idx] >> 16) & 0xFF;
 }
 
+namespace {
+
+bool hasRotationData(const separation_c * s)
+{
+  if (!s)
+    return false;
+  for (unsigned int i = 0; i <= s->getMoves(); i++)
+    if (s->getState(i)->hasTrans() || s->getState(i)->getRotation())
+      return true;
+  return hasRotationData(s->getLeft()) || hasRotationData(s->getRemoved());
+}
+
+bool hasRotationData(const problem_c & pr)
+{
+  for (unsigned int i = 0; i < pr.getNumberOfSavedSolutions(); i++)
+    if (hasRotationData(pr.getSavedSolution(i)->getDisassembly()))
+      return true;
+  return false;
+}
+
+}
+
 void puzzle_c::save(xmlWriter_c & xml) const
 {
+  bool v3 = false;
+  for (const auto & pr : problems)
+    v3 = v3 || hasRotationData(*pr);
+
   xml.newTag("puzzle");
-  xml.newAttrib("version", "2");
+  xml.newAttrib("version", v3 ? "3" : "2");
 
   gt->save(xml);
 
@@ -261,8 +289,8 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
   unsigned int version = atoi(versionStr.c_str());
 
-  if ((version != 1) && (version != 2))
-    pars.exception("can only load files of version 1 and 2");
+  if ((version < 1) || (version > 3))
+    pars.exception("can only load files of version 1 to 3");
 
   gt.reset();
   commentPopup = false;

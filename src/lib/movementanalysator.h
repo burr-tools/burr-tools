@@ -30,6 +30,9 @@ class disassemblerNode_c;
 class movementCache_c;
 class assembly_c;
 class countingNodeHash;
+class voxel_c;
+
+#include "rotationgeometry.h"
 
 /**
  * this class is can do analysis of movements within a puzzle.
@@ -128,14 +131,46 @@ class movementAnalysator_c {
 
     stats_s stats;
 
+    /**
+     * Tables for rotation moves, shared read-only with all other
+     * disassemblers of the solve. Empty when rotation moves are off, in
+     * which case no rotation code runs at all.
+     */
+    std::shared_ptr<const rotationGeometry::rotationTables_c> rotations;
+
+    /* Rotation phase of find() (state 3), only entered with tables: all
+     * rotation moves of the search node are generated at once on entry and
+     * then handed out one per call. */
+    const problem_c * rotationProblem = nullptr;
+    std::vector<const voxel_c *> pieceVoxels;          ///< shape of every piece
+    /* cells of piece p in orientation t relative to its hotspot, built lazily */
+    std::vector<std::vector<std::vector<rotationGeometry::cell_t>>> hotspotCells;
+    std::vector<disassemblerNode_c *> rotationNodes;
+    size_t nextRotation = 0;
+    bool rotationsListed = false;
+
+    /* Groups of turning pieces are enumerated exhaustively, 2^(n-1) - 1 per
+     * node; beyond this many pieces in a (sub)problem no rotation moves are
+     * generated until a smarter group enumeration exists. */
+    static constexpr unsigned int MAX_ROTATION_PIECES = 16;
+
+    const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int piece, unsigned int trans);
+    void listRotations(void);
+    void clearRotations(void);
+
   public:
 
     /**
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
-     * many positions
+     * many positions. Rotation moves are considered iff rotationTables is
+     * given (see rotationTablesFor).
      */
-    movementAnalysator_c(const problem_c & puz);
+    movementAnalysator_c(const problem_c & puz,
+                         std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr);
+
+    /** The rotation tables in use, nullptr when rotation moves are off. */
+    const rotationGeometry::rotationTables_c * getRotationTables(void) const { return rotations.get(); }
     ~movementAnalysator_c(void);
 
     /* you use either the 2 functions below, or completeFind
