@@ -193,7 +193,7 @@ const aaa_t & aaa(void) {
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
     r.withoutRotations = disassembler_0_c(problem).disassemble(r.assemblies[0].get());
-    r.withRotations = disassembler_0_c(problem, rotationTablesFor(problem, defaultRotationSettings()))
+    r.withRotations = disassembler_0_c(problem, rotationContextFor(problem, defaultRotationSettings()))
                         .disassemble(r.assemblies[0].get());
     return r;
   }();
@@ -448,9 +448,9 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
 void checkAgainstBruteForce(const problem_c & problem, const assembly_c * assembly, unsigned int maxNodes,
                             bool expectRotations) {
 
-  auto tables = rotationTablesFor(problem, defaultRotationSettings());
-  REQUIRE(tables != nullptr);
-  movementAnalysator_c analysator(problem, tables);
+  auto context = rotationContextFor(problem, defaultRotationSettings());
+  REQUIRE(context != nullptr);
+  movementAnalysator_c analysator(problem, context);
 
   std::vector<unsigned int> pieces;
   for (unsigned int i = 0; i < assembly->placementCount(); i++)
@@ -469,7 +469,7 @@ void checkAgainstBruteForce(const problem_c & problem, const assembly_c * assemb
       if (n->isRotation())
         generated.insert(configOf(n));
     }
-    std::set<config_t> brute = bruteRotations(problem, *tables, nodes[at]);
+    std::set<config_t> brute = bruteRotations(problem, context->tables(), nodes[at]);
     rotationsSeen += brute.size();
 
     INFO("search state " << at);
@@ -552,13 +552,13 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto tables = rotationTablesFor(problem, { { 0.081 }, { 0.2 } });
-  REQUIRE(tables != nullptr);
+  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
     INFO("rotation moves " << rotations);
     std::unique_ptr<separation_c> da =
-      disassembler_0_c(problem, rotations ? tables : nullptr).disassemble(assemblies[0].get());
+      disassembler_0_c(problem, rotations ? context : nullptr).disassemble(assemblies[0].get());
     REQUIRE(da != nullptr);
     CHECK(da->sumRotations() == 0);
     CHECK_FALSE(da->getState(0)->hasTrans());
@@ -569,5 +569,26 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
       da->save(xml);
     }
     CHECK(out.str().find("<dt>") == std::string::npos);
+  }
+}
+
+TEST_CASE("rotation moves between identical pieces in different orientations", "[rotations][disasm]") {
+
+  /* AlPackino has several copies of a piece: pairing two of them in
+   * different orientations once read the cubes of one from a cache entry
+   * that looking up the other had moved */
+  auto puzzle = puzzle_c::load("examples/AlPackino.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+
+  const rotationSettings_t settings = defaultRotationSettings();
+  std::unique_ptr<separation_c> da =
+    disassembler_0_c(problem, rotationContextFor(problem, settings)).disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  if (da->sumRotations() > 0) {
+    replay_c replay(problem, settings.model);
+    replay.check(*da);
   }
 }
