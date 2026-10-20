@@ -344,12 +344,12 @@ add_project_link_arguments(link_args,
 
 # Manifold (https://github.com/elalish/manifold): the boolean / Minkowski
 # engine behind the chamfered STL export of the non-cube grids. Built from
-# the wrap as a static library, without its 2D cross-section part (which
-# would pull in Clipper2), its tests or its parallel backend.
+# the wrap as a static library, without its tests, its C bindings or its
+# parallel backend.
 cmake_mf = import('cmake')
 manifold_opts = cmake_mf.subproject_options()
 manifold_opts.add_cmake_defines({
-  'MANIFOLD_CROSS_SECTION': 'OFF',
+  'MANIFOLD_CBIND': 'OFF',
   'MANIFOLD_TEST': 'OFF',
   'MANIFOLD_PAR': 'OFF',
   'MANIFOLD_PYBIND': 'OFF',

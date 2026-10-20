@@ -1,8 +1,14 @@
-[wrap-file]
-directory = manifold-3.5.2
-source_url = https://github.com/elalish/manifold/archive/refs/tags/v3.5.2.tar.gz
-source_filename = manifold-3.5.2.tar.gz
-source_hash = 35cb5e0d78882f461ec39b17d8f09c2aceca761356f3ce948e3f3908289b8f2e
+# Manifold master at the merge of elalish/manifold#1887 (tie decisions in
+# Boolean3 contradicted each other where a direction was exactly 0 and left
+# flaps of overlapping triangles on coplanar unions). It also has #1898 (the
+# broad phase reached less far than tie decisions), our earlier fixes #1884,
+# #1885 and #1886, and #1877's tie tolerance; v3.5.4 has none of these. Back to
+# a release tarball once one includes them.
+[wrap-git]
+directory = manifold-58b581c
+url = https://github.com/elalish/manifold.git
+revision = 58b581c60dc71839ed477f27f8de837cc7d4561b
+depth = 1
 method = cmake
 
 [provide]
