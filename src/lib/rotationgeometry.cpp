@@ -30,6 +30,9 @@
 #include <numbers>
 #include <set>
 #include <tuple>
+#include <atomic>
+#include <optional>
+#include <thread>
 
 namespace rotationGeometry {
 
@@ -475,14 +478,39 @@ pathTable_c pathTable_c::mirrored(void) const {
 rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<double> & amounts) :
   radius(r)
 {
-  tables[0].push_back(pathTable_c(model, r, { PATH_PURE, 0, 0, 0, 0 }));
-
+  /* the tables computed with the checker: the pure turn and, per amount
+   * and kind, directions (1,0) and (1,1); they are independent, so they
+   * are built in parallel */
+  std::vector<pathSpec_t> specs = { { PATH_PURE, 0, 0, 0, 0 } };
   for (double amount : amounts)
     for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE }) {
+      specs.push_back({ kind, 0, 1, 0, amount });
+      specs.push_back({ kind, 0, 1, 1, amount });
+    }
+
+  std::vector<std::optional<pathTable_c>> built(specs.size());
+  {
+    std::atomic<size_t> next{0};
+    auto work = [&]() {
+      for (size_t i; (i = next++) < specs.size(); )
+        built[i].emplace(model, r, specs[i]);
+    };
+    const unsigned int threads = std::max(1u, std::min<unsigned int>(std::thread::hardware_concurrency(), specs.size()));
+    std::vector<std::jthread> pool;
+    for (unsigned int t = 1; t < threads; t++)
+      pool.emplace_back(work);
+    work();
+  }
+
+  tables[0].push_back(std::move(*built[0]));
+
+  size_t base = 1;
+  for (size_t a = 0; a < amounts.size(); a++)
+    for (int kind = 0; kind < 2; kind++, base += 2) {
       /* the 8 compass directions counter-clockwise from (1,0) alternate
        * between turned copies of (1,0) and of (1,1) */
-      pathTable_c axisDir(model, r, { kind, 0, 1, 0, amount });
-      pathTable_c diagonal(model, r, { kind, 0, 1, 1, amount });
+      pathTable_c axisDir = std::move(*built[base]);
+      pathTable_c diagonal = std::move(*built[base + 1]);
       for (int k = 0; k < 4; k++) {
         tables[0].push_back(axisDir);
         tables[0].push_back(diagonal);
