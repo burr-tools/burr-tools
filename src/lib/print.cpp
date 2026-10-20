@@ -21,6 +21,7 @@
 #include "print.h"
 
 #include "voxel.h"
+#include "gridtype.h"
 #include "puzzle.h"
 #include "problem.h"
 #include "disassembly.h"
@@ -93,11 +94,45 @@ void print(const puzzle_c * p) {
   }
 }
 
-static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<voxel_c>> & pieces, int sx, int sy, int sz, const std::vector<unsigned int> & pieceNum) {
+/* one line describing the rotation move that leads into state i */
+static void printRotation(const separation_c * s, unsigned int i, const std::vector<unsigned int> & pieceNum) {
+
+  const stateRotation_t * r = s->getState(i)->getRotation();
+  const state_c * prev = s->getState(i - 1);
+  const state_c * st = s->getState(i);
+  static const char axes[] = "XYZ";
+  static const char * kinds[] = { "pure turn", "wiggle", "slide" };
+
+  printf(" turn");
+  for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
+    if (prev->hasTrans() && prev->getTrans(pc) != st->getTrans(pc))
+      printf(" %c", 'a' + pieceNum[pc]);
+  printf(" by %c90 degrees about %c through in-plane pivot (%g, %g), %s",
+         r->path.sense == 0 ? '+' : '-', axes[r->axis], 0.5 * r->pivotU, 0.5 * r->pivotV, kinds[r->path.kind]);
+  if (r->path.kind != rotationGeometry::PATH_PURE)
+    printf(" (%d, %d) by %g", r->path.dirU, r->path.dirV, r->path.amount);
+  printf("\n");
+}
+
+static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<voxel_c>> & pieces,
+                      const std::vector<std::unique_ptr<voxel_c>> & basePieces, const gridType_c * gt,
+                      int sx, int sy, int sz, const std::vector<unsigned int> & pieceNum) {
 
   for (unsigned int i = 0; i <= s->getMoves(); i++) {
 
     const state_c * st = s->getState(i);
+
+    if (st->getRotation())
+      printRotation(s, i, pieceNum);
+
+    /* with rotation moves every state carries the piece orientations */
+    std::vector<std::unique_ptr<voxel_c>> turned;
+    if (st->hasTrans())
+      for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++) {
+        turned.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(basePieces[pieceNum[pc]].get())));
+        bt_assert2(turned.back()->transform(st->getTrans(pc)));
+      }
+    const std::vector<std::unique_ptr<voxel_c>> & shapes = st->hasTrans() ? turned : pieces;
 
     for (int z = -sz/2; z < sz+sz/2; z++) {
       printf(" +");
@@ -114,9 +149,9 @@ static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<
           char c = ' ';
 
           for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
-            if (pieces[pc]->isFilled2(x - (st->getX(pc) - pieces[pc]->getHx()),
-                                      y - (st->getY(pc) - pieces[pc]->getHy()),
-                                      z - (st->getZ(pc) - pieces[pc]->getHz()))) {
+            if (shapes[pc]->isFilled2(x - (st->getX(pc) - shapes[pc]->getHx()),
+                                      y - (st->getY(pc) - shapes[pc]->getHy()),
+                                      z - (st->getZ(pc) - shapes[pc]->getHz()))) {
               c = 'a' + pieceNum[pc];
               break;
             }
@@ -148,7 +183,7 @@ static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<
       if (s->getState(s->getMoves())->pieceRemoved(i))
         pieceNum2.push_back(pieceNum[i]);
 
-    print_rec(s->getRemoved(), pieces, sx, sy, sz, pieceNum2);
+    print_rec(s->getRemoved(), pieces, basePieces, gt, sx, sy, sz, pieceNum2);
   }
   if (s->getLeft()) {
 
@@ -158,7 +193,7 @@ static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<
       if (!(s->getState(s->getMoves())->pieceRemoved(i)))
         pieceNum2.push_back(pieceNum[i]);
 
-    print_rec(s->getLeft(), pieces, sx, sy, sz, pieceNum2);
+    print_rec(s->getLeft(), pieces, basePieces, gt, sx, sy, sz, pieceNum2);
   }
 }
 
@@ -169,14 +204,17 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
   const voxel_c * res = getResultShape(*p);
 
   std::vector<std::unique_ptr<voxel_c>> pieces(a->placementCount());
+  std::vector<std::unique_ptr<voxel_c>> basePieces(a->placementCount());
+  const gridType_c * gt = p->getPuzzle().getGridType();
 
   unsigned int pc = 0;
 
   for (unsigned int i = 0; i < p->getNumberOfParts(); i++)
     for (unsigned int j = 0; j < p->getPartMaximum(i); j++) {
 
-      pieces[pc] = std::unique_ptr<voxel_c>(p->getPuzzle().getGridType()->getVoxel(p->getPartShape(i)));
+      pieces[pc] = std::unique_ptr<voxel_c>(gt->getVoxel(p->getPartShape(i)));
       bt_assert2(pieces[pc]->transform(a->getTransformation(pc)));
+      basePieces[pc] = std::unique_ptr<voxel_c>(gt->getVoxel(p->getPartShape(i)));
       pc++;
     }
 
@@ -184,7 +222,7 @@ void print(const separation_c * s, const assembly_c * a, const problem_c * p) {
   for (unsigned int i = 0; i < a->placementCount(); i++)
     pieceNum[i] = i;
 
-  print_rec(s, pieces, res->getX(), res->getY(), res->getZ(), pieceNum);
+  print_rec(s, pieces, basePieces, gt, res->getX(), res->getY(), res->getZ(), pieceNum);
 }
 
 void print(const assembly_c * a, const problem_c * p) {

@@ -51,6 +51,15 @@ bool rotationMoves;
 
 std::unique_ptr<disassembler_c> d;
 
+/* the level line, with the number of rotation moves when there are any */
+static void printLevel(const std::string & level, const separation_c * da) {
+  unsigned int rotations = da->sumRotations();
+  if (rotations)
+    printf("level: %s, %u rotation%s\n", level.c_str(), rotations, rotations == 1 ? "" : "s");
+  else
+    printf("level: %s\n", level.c_str());
+}
+
 /* the rotation tables for -R, nullptr without it: then no rotation code runs */
 static std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables(const problem_c & problem) {
   if (!rotationMoves)
@@ -85,7 +94,7 @@ public:
 
             if (!quiet || allProblems)
             {
-              printf("level: %s\n", da->movesText().c_str());
+              printLevel(da->movesText(), da.get());
             }
 
             if (printDisassemble)
@@ -395,7 +404,7 @@ int main(int argv, char* args[]) {
               print(problem->getSavedSolution(sol)->getAssembly(), problem);
 
             if (!quiet)
-              printf("level: %u\n", da->getMoves());
+              printLevel(std::to_string(da->getMoves()), da.get());
 
             if (printDisassemble)
               print(da.get(), problem->getSavedSolution(sol)->getAssembly(),problem);
