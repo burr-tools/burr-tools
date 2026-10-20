@@ -78,13 +78,14 @@ double axial(const cell_t & c, unsigned int axis) {
   return (axis == 0) ? c.x : ((axis == 1) ? c.y : c.z);
 }
 
-double segmentPointDistance(double px, double py,
-                            double ax, double ay, double bx, double by) {
+/* squared distance of point p from segment a-b */
+double segmentPointDistance2(double px, double py,
+                             double ax, double ay, double bx, double by) {
   double dx = bx - ax, dy = by - ay;
   double t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy);
   t = std::clamp(t, 0.0, 1.0);
   double ex = ax + t * dx - px, ey = ay + t * dy - py;
-  return std::sqrt(ex * ex + ey * ey);
+  return ex * ex + ey * ey;
 }
 
 /* Signed distance between the axis-aligned square at (su, sv) and the square
@@ -126,14 +127,14 @@ double squareSignedDistance(double su, double sv, double mu, double mv,
   if (!apart)
     return -depth;
 
-  double dist = std::numeric_limits<double>::max();
+  double dist2 = std::numeric_limits<double>::max();
   for (int i = 0; i < 4; i++)
     for (int j = 0; j < 4; j++) {
       int j2 = (j + 1) & 3;
-      dist = std::min(dist, segmentPointDistance(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]));
-      dist = std::min(dist, segmentPointDistance(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
+      dist2 = std::min(dist2, segmentPointDistance2(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]));
+      dist2 = std::min(dist2, segmentPointDistance2(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
     }
-  return dist;
+  return std::sqrt(dist2);
 }
 
 /* Below this point displacement a segment that is neither proven clear nor
@@ -201,8 +202,10 @@ double planarScene_c::clearance(const pose_t & p) const {
       double mv = m.u * s + m.v * c + p.dv;
       for (const square_t & st : l.stat) {
         double du = mu - st.u, dv = mv - st.v;
-        /* the squares' circumcircles bound the signed distance from below */
-        if (std::sqrt(du * du + dv * dv) - reach - 2 * rounding >= best)
+        /* the squares' circumcircles bound the signed distance from below:
+         * skip when sqrt(d2) - reach - 2 rounding >= best, without the root */
+        const double bound = best + reach + 2 * rounding;
+        if (bound >= 0 && du * du + dv * dv >= bound * bound)
           continue;
         best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half) - 2 * rounding);
       }
@@ -323,26 +326,25 @@ void doubledOffset(const cell_t & c, unsigned int axis, int phx, int phy, int ph
   else                { *u = dx; *v = dy; }
 }
 
-/* Distance of point (pu, pv) from the arc that (mu, mv) sweeps when turned
- * by `angle` about the origin. */
-double arcDistance(double pu, double pv, double mu, double mv, double angle) {
-  const double r = std::hypot(mu, mv);
-  const double rp = std::hypot(pu, pv);
+/* Distance of point (pu, pv) from the arc that (mu, mv) sweeps in a quarter
+ * turn about the origin, counter-clockwise if positive. Free of
+ * trigonometry, as it runs for every candidate of every table entry: the
+ * arc ends at m turned by 90 degrees, and as the swept sector spans less than
+ * 180 degrees, p lies in it iff it is on the inner side of both rays. */
+double quarterArcDistance(double pu, double pv, double mu, double mv, bool positive) {
+  const double eu = positive ? -mv : mv, ev = positive ? mu : -mu;
+  const double r = std::sqrt(mu * mu + mv * mv);
+  const double rp2 = pu * pu + pv * pv;
   if (r == 0)
-    return rp;
+    return std::sqrt(rp2);
 
-  /* angle of p measured from m in the turning direction, in [0, 2π) */
-  double rel = std::atan2(pv, pu) - std::atan2(mv, mu);
-  if (angle < 0)
-    rel = -rel;
-  rel = std::fmod(rel + 4 * std::numbers::pi, 2 * std::numbers::pi);
+  const double turn = positive ? 1 : -1;
+  if (rp2 > 0 && turn * (mu * pv - mv * pu) >= 0 && turn * (pu * ev - pv * eu) >= 0)
+    return std::fabs(std::sqrt(rp2) - r);
 
-  if (rp > 0 && rel <= std::fabs(angle))
-    return std::fabs(rp - r);
-
-  double eu = mu * std::cos(angle) - mv * std::sin(angle);
-  double ev = mu * std::sin(angle) + mv * std::cos(angle);
-  return std::min(std::hypot(pu - mu, pv - mv), std::hypot(pu - eu, pv - ev));
+  const double toStart = (pu - mu) * (pu - mu) + (pv - mv) * (pv - mv);
+  const double toEnd = (pu - eu) * (pu - eu) + (pv - ev) * (pv - ev);
+  return std::sqrt(std::min(toStart, toEnd));
 }
 
 typedef std::set<std::tuple<int, int, int>> occupancy_t;
@@ -415,7 +417,7 @@ pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
         for (int sv = -reach + parity; sv <= reach; sv += 2) {
           if (su == du && sv == dv)
             continue;
-          if (arcDistance(0.5 * su, 0.5 * sv, 0.5 * du, 0.5 * dv, angle) > hitRange)
+          if (quarterArcDistance(0.5 * su, 0.5 * sv, 0.5 * du, 0.5 * dv, angle > 0) > hitRange)
             continue;
           const cell_t stat = { (su + parity) / 2, (sv + parity) / 2, 0 };
           planarScene_c scene({ moving }, { stat }, 2, parity, parity, 0, model);
@@ -539,6 +541,32 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
       blockedByAll[sense][e] = std::move(common);
     }
   }
+
+  /* the inverse: static cube relative to moving cube -> moving cube offsets */
+  const int w = 4 * r + 1;
+  for (unsigned int sense = 0; sense < 2; sense++)
+    for (int e = 0; e < w * w; e++)
+      for (const auto & [su, sv] : blockedByAll[sense][e])
+        inverseReach = std::max({ inverseReach, std::abs(su - (e / w - 2 * r)), std::abs(sv - (e % w - 2 * r)) });
+  const int iw = 2 * inverseReach + 1;
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    inverse[sense].resize((size_t)iw * iw);
+    for (int e = 0; e < w * w; e++) {
+      const int du = e / w - 2 * r, dv = e % w - 2 * r;
+      for (const auto & [su, sv] : blockedByAll[sense][e])
+        inverse[sense][(size_t)(su - du + inverseReach) * iw + (sv - dv + inverseReach)].push_back({ du, dv });
+    }
+  }
+}
+
+const std::vector<std::pair<int, int>> rotationTables_c::none;
+
+const std::vector<std::pair<int, int>> & rotationTables_c::pivotsBlockedAt(unsigned int sense, int du, int dv) const {
+  if (sense > 1)
+    bt_te("rotationTables_c::pivotsBlockedAt: sense must be 0 or 1");
+  if (std::abs(du) > inverseReach || std::abs(dv) > inverseReach)
+    return none;
+  return inverse[sense][(size_t)(du + inverseReach) * (2 * inverseReach + 1) + (dv + inverseReach)];
 }
 
 const pathTable_c & rotationTables_c::table(unsigned int sense, unsigned int idx) const {

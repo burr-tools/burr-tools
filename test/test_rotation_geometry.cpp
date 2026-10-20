@@ -378,6 +378,33 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
   }
 }
 
+TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotations]") {
+
+  const int radius = 3;
+  rotationTables_c tables({ 0.081, 0 }, radius, { 0.2 });
+
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    /* every forward entry appears in the inverse ... */
+    std::set<std::tuple<int, int, int, int>> forward;
+    for (int du = -2 * radius; du <= 2 * radius; du++)
+      for (int dv = -2 * radius; dv <= 2 * radius; dv++) {
+        if ((du ^ dv) & 1)
+          continue;
+        for (auto [su, sv] : tables.blockedOnAllPaths(sense, du, dv)) {
+          forward.insert({ du, dv, su, sv });
+          const auto & inv = tables.pivotsBlockedAt(sense, su - du, sv - dv);
+          INFO("sense " << sense << " moving " << du << "," << dv << " static " << su << "," << sv);
+          CHECK(std::find(inv.begin(), inv.end(), std::pair<int, int>(du, dv)) != inv.end());
+        }
+      }
+    /* ... and the inverse holds nothing else */
+    for (int ddu = -8 * radius; ddu <= 8 * radius; ddu++)
+      for (int ddv = -8 * radius; ddv <= 8 * radius; ddv++)
+        for (auto [du, dv] : tables.pivotsBlockedAt(sense, ddu, ddv))
+          CHECK(forward.count({ du, dv, du + ddu, dv + ddv }) == 1);
+  }
+}
+
 TEST_CASE("turned and mirrored path tables equal directly computed ones", "[rotations]") {
 
   const model_t model = { 0.081, 0 };

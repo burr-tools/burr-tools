@@ -24,6 +24,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <unordered_map>
 
 class problem_c;
 class disassemblerNode_c;
@@ -142,19 +143,50 @@ class movementAnalysator_c {
      * rotation moves of the search node are generated at once on entry and
      * then handed out one per call. */
     const problem_c * rotationProblem = nullptr;
-    std::vector<const voxel_c *> pieceVoxels;          ///< shape of every piece
-    /* cells of piece p in orientation t relative to its hotspot, built lazily */
+    std::vector<const voxel_c *> partVoxels;      ///< shape of every part
+    std::vector<unsigned int> piecePart;          ///< part of every piece
+    /* cells of part p in orientation t relative to its hotspot, built lazily */
     std::vector<std::vector<std::vector<rotationGeometry::cell_t>>> hotspotCells;
     std::vector<disassemblerNode_c *> rotationNodes;
     size_t nextRotation = 0;
     bool rotationsListed = false;
 
-    /* Groups of turning pieces are enumerated exhaustively, 2^(n-1) - 1 per
-     * node; beyond this many pieces in a (sub)problem no rotation moves are
-     * generated until a smarter group enumeration exists. */
-    static constexpr unsigned int MAX_ROTATION_PIECES = 16;
+    /* Pieces of a (sub)problem are bitmask bits; beyond this many no
+     * rotation moves are generated. */
+    static constexpr unsigned int MAX_ROTATION_PIECES = 32;
 
-    const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int piece, unsigned int trans);
+    /* entries of the pair cache before it is cleared */
+    static constexpr size_t MAX_PAIR_CACHE = 1u << 20;
+
+    /* The pivots, relative to piece i's hotspot (doubled in-plane units),
+     * at which piece j blocks piece i on every path of the family. That
+     * depends only on the two parts, their orientations and their relative
+     * position, which recur from search state to search state, so it is
+     * cached per analysator (one per worker, no locking). */
+    struct pivotSet_t {
+      int u0 = 0, v0 = 0, width = 0, height = 0;
+      std::vector<uint64_t> bits;
+      bool test(int u, int v) const {
+        u -= u0;
+        v -= v0;
+        if (u < 0 || v < 0 || u >= width || v >= height)
+          return false;
+        const size_t b = (size_t)u * height + v;
+        return (bits[b >> 6] >> (b & 63)) & 1;
+      }
+    };
+    struct pairKey_t {
+      uint64_t a, b;
+      bool operator==(const pairKey_t &) const = default;
+    };
+    struct pairKeyHash_t {
+      size_t operator()(const pairKey_t & k) const { return k.a * 0x9E3779B97F4A7C15ull ^ (k.b + (k.a >> 29)); }
+    };
+    /* a null entry: j never blocks i */
+    std::unordered_map<pairKey_t, std::unique_ptr<pivotSet_t>, pairKeyHash_t> pairPivots;
+
+    const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int part, unsigned int trans);
+    const pivotSet_t * blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     void listRotations(void);
     void clearRotations(void);
 

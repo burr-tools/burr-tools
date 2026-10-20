@@ -261,6 +261,12 @@ namespace rotationGeometry {
        *  must turn together; see movementAnalysator_c::listRotations. */
       const std::vector<std::pair<int, int>> & blockedOnAllPaths(unsigned int sense, int du, int dv) const;
 
+      /** The inverse of blockedOnAllPaths: for a static cube at doubled
+       *  offset (du, dv) from a moving cube, every offset of that moving cube
+       *  from the pivot at which the static cube blocks it on every path.
+       *  Lets a caller find all such pivots of a cube pair at once. */
+      const std::vector<std::pair<int, int>> & pivotsBlockedAt(unsigned int sense, int du, int dv) const;
+
       /** Same against a prepared occupancy, for callers that try many
        *  pivots, axes and senses against the same static cubes. */
       int firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
@@ -276,6 +282,12 @@ namespace rotationGeometry {
        * tables, which is the common case in a dense puzzle. Indexed like
        * pathTable_c entries. */
       std::vector<std::vector<std::pair<int, int>>> blockedByAll[2];
+
+      /* pivotsBlockedAt, indexed by (du + inverseReach) * (2 inverseReach + 1)
+       * + dv + inverseReach; empty outside */
+      int inverseReach = 0;
+      std::vector<std::vector<std::pair<int, int>>> inverse[2];
+      static const std::vector<std::pair<int, int>> none;
   };
 }
 
