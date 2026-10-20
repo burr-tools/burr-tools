@@ -384,7 +384,7 @@ libburr_core = static_library('burr_core',
   dependencies: [thread_dep, zlib_dep, manifold_dep],
 )
 
-executable('burrTxt', ['src/burrTxt.cpp'],
+burrtxt_exe = executable('burrTxt', ['src/burrTxt.cpp'],
   include_directories: inc,
   link_with: libburr_core,
   link_args: legacy_link_args,
@@ -581,6 +581,13 @@ if not meson.is_cross_build()
   test('burrtxt2_cli_smoke',
     find_program('python3'),
     args: [meson.project_source_root() / 'test/cli_smoke.py', burrtxt2_exe, meson.project_source_root()],
+    suite: 'fast',
+    timeout: 300,
+    workdir: meson.project_source_root(),
+  )
+  test('burrtxt_cli_smoke',
+    find_program('python3'),
+    args: [meson.project_source_root() / 'test/cli_smoke_burrtxt.py', burrtxt_exe, meson.project_source_root()],
     suite: 'fast',
     timeout: 300,
     workdir: meson.project_source_root(),
