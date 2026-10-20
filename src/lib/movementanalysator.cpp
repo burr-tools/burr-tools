@@ -571,10 +571,12 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
 
   if (rotations) {
     rotationProblem = &problem;
-    for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
+    for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
+      partVoxels.push_back(problem.getPartShape(i));
       for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
-        pieceVoxels.push_back(problem.getPartShape(i));
-    hotspotCells.resize(pieceVoxels.size());
+        piecePart.push_back(i);
+    }
+    hotspotCells.resize(partVoxels.size());
   }
 }
 
@@ -1028,18 +1030,18 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
  * ------------------------------------------------------------------------ */
 
 const std::vector<rotationGeometry::cell_t> &
-movementAnalysator_c::cellsAroundHotspot(unsigned int piece, unsigned int trans) {
+movementAnalysator_c::cellsAroundHotspot(unsigned int part, unsigned int trans) {
 
-  bt_assert(piece < hotspotCells.size());
+  bt_assert(part < hotspotCells.size());
 
-  std::vector<std::vector<rotationGeometry::cell_t>> & byTrans = hotspotCells[piece];
+  std::vector<std::vector<rotationGeometry::cell_t>> & byTrans = hotspotCells[part];
   if (byTrans.size() <= trans)
     byTrans.resize(trans + 1);
 
   /* a piece has at least one cube, so empty means not computed yet */
   std::vector<rotationGeometry::cell_t> & cells = byTrans[trans];
   if (cells.empty()) {
-    std::unique_ptr<voxel_c> v(rotationProblem->getPuzzle().getGridType()->getVoxel(*pieceVoxels[piece]));
+    std::unique_ptr<voxel_c> v(rotationProblem->getPuzzle().getGridType()->getVoxel(*partVoxels[part]));
     bt_assert2(v->transform(trans));
     for (unsigned int z = 0; z < v->getZ(); z++)
       for (unsigned int y = 0; y < v->getY(); y++)
@@ -1062,10 +1064,6 @@ void movementAnalysator_c::clearRotations(void) {
 
 namespace {
 
-typedef std::tuple<int, int, int> cellKey_t;
-
-cellKey_t key(const rotationGeometry::cell_t & c) { return { c.x, c.y, c.z }; }
-
 /* doubled 3D pivot for an in-plane doubled pivot (u, v); the axial
  * coordinate does not matter for a turn about that axis */
 void pivot3D(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
@@ -1074,11 +1072,15 @@ void pivot3D(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
   else                { *hx = u; *hy = v; *hz = 0; }
 }
 
-/* in-plane doubled coordinates of a cell centre, frames as rotationGeometry */
-void inPlane2(const rotationGeometry::cell_t & c, unsigned int axis, int * u, int * v) {
-  if (axis == 0)      { *u = 2 * c.y; *v = 2 * c.z; }
-  else if (axis == 1) { *u = 2 * c.z; *v = 2 * c.x; }
-  else                { *u = 2 * c.x; *v = 2 * c.y; }
+/* in-plane doubled coordinates of a point, frames as rotationGeometry */
+void inPlane2(int x, int y, int z, unsigned int axis, int * u, int * v) {
+  if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
+  else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
+  else                { *u = 2 * x; *v = 2 * y; }
+}
+
+int axialOf(int x, int y, int z, unsigned int axis) {
+  return (axis == 0) ? x : ((axis == 1) ? y : z);
 }
 
 /* turn a point given by integer coordinates by a quarter turn about a doubled pivot */
@@ -1092,6 +1094,116 @@ void turnPoint(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int a
   *z = (hz + dz) / 2;
 }
 
+/* The cells of all pieces of a search node and which piece owns which cell,
+ * as a dense map over their bounding box. */
+class ownerMap_c {
+
+  public:
+
+    ownerMap_c(const std::vector<std::vector<rotationGeometry::cell_t>> & world) {
+      bool first = true;
+      for (const auto & cells : world)
+        for (const rotationGeometry::cell_t & c : cells) {
+          if (first) {
+            x0 = x1 = c.x; y0 = y1 = c.y; z0 = z1 = c.z;
+            first = false;
+          }
+          x0 = std::min(x0, c.x); x1 = std::max(x1, c.x);
+          y0 = std::min(y0, c.y); y1 = std::max(y1, c.y);
+          z0 = std::min(z0, c.z); z1 = std::max(z1, c.z);
+        }
+      sx = x1 - x0 + 1;
+      sy = y1 - y0 + 1;
+      owner.assign((size_t)sx * sy * (z1 - z0 + 1), -1);
+      for (size_t i = 0; i < world.size(); i++)
+        for (const rotationGeometry::cell_t & c : world[i])
+          owner[((size_t)(c.z - z0) * sy + (c.y - y0)) * sx + (c.x - x0)] = (int8_t)i;
+    }
+
+    /** the piece at the cell, -1 for none */
+    int operator()(int x, int y, int z) const {
+      if (x < x0 || y < y0 || z < z0 || x > x1 || y > y1 || z > z1)
+        return -1;
+      return owner[((size_t)(z - z0) * sy + (y - y0)) * sx + (x - x0)];
+    }
+
+  private:
+
+    int x0 = 0, y0 = 0, z0 = 0, x1 = 0, y1 = 0, z1 = 0, sx = 0, sy = 0;
+    std::vector<int8_t> owner;
+};
+
+}
+
+/* The pivots at which piece j blocks piece i on every path, relative to i's
+ * hotspot. Blocking is pairwise between cubes: a static cube s blocks a
+ * moving cube m at pivot P iff s - P is in blockedOnAllPaths(m - P), i.e.
+ * iff m - P is in pivotsBlockedAt(s - m). So the set is the union, over the
+ * cube pairs in a common layer, of m - pivotsBlockedAt(s - m). */
+const movementAnalysator_c::pivotSet_t *
+movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense) {
+
+  const unsigned int partI = piecePart[(*pieces)[i]], partJ = piecePart[(*pieces)[j]];
+  const unsigned int transI = searchnode->getTrans(i), transJ = searchnode->getTrans(j);
+  const int dx = searchnode->getX(j) - searchnode->getX(i);
+  const int dy = searchnode->getY(j) - searchnode->getY(i);
+  const int dz = searchnode->getZ(j) - searchnode->getZ(i);
+
+  /* parts get 24 bits each, orientations 8, offsets 16 */
+  const pairKey_t key = {
+    ((uint64_t)partI << 40) | ((uint64_t)partJ << 16) | (transI << 8) | transJ,
+    ((uint64_t)(uint16_t)dx << 32) | ((uint64_t)(uint16_t)dy << 16) | (uint16_t)dz |
+      ((uint64_t)axis << 48) | ((uint64_t)sense << 50)
+  };
+
+  auto found = pairPivots.find(key);
+  if (found != pairPivots.end())
+    return found->second.get();
+
+  /* a cache, so keep it bounded */
+  if (pairPivots.size() >= MAX_PAIR_CACHE)
+    pairPivots.clear();
+
+  const std::vector<rotationGeometry::cell_t> & ci = cellsAroundHotspot(partI, transI);
+  const std::vector<rotationGeometry::cell_t> & cj = cellsAroundHotspot(partJ, transJ);
+  const int reach = 2 * rotations->getRadius();
+
+  std::unique_ptr<pivotSet_t> set;
+  for (const rotationGeometry::cell_t & m : ci) {
+    int mu, mv;
+    inPlane2(m.x, m.y, m.z, axis, &mu, &mv);
+    const int layer = axialOf(m.x, m.y, m.z, axis);
+
+    for (const rotationGeometry::cell_t & c : cj) {
+      if (axialOf(c.x + dx, c.y + dy, c.z + dz, axis) != layer)
+        continue;
+      int su, sv;
+      inPlane2(c.x + dx, c.y + dy, c.z + dz, axis, &su, &sv);
+
+      for (const auto & [ou, ov] : rotations->pivotsBlockedAt(sense, su - mu, sv - mv)) {
+        if (!set) {
+          /* every pivot of i lies within its footprint widened by the reach */
+          int umin = INT_MAX, umax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN;
+          for (const rotationGeometry::cell_t & k : ci) {
+            int u, v;
+            inPlane2(k.x, k.y, k.z, axis, &u, &v);
+            umin = std::min(umin, u); umax = std::max(umax, u);
+            vmin = std::min(vmin, v); vmax = std::max(vmax, v);
+          }
+          set = std::make_unique<pivotSet_t>();
+          set->u0 = umin - reach;
+          set->v0 = vmin - reach;
+          set->width = umax - umin + 2 * reach + 1;
+          set->height = vmax - vmin + 2 * reach + 1;
+          set->bits.assign(((size_t)set->width * set->height + 63) / 64, 0);
+        }
+        const size_t b = (size_t)(mu - ou - set->u0) * set->height + (mv - ov - set->v0);
+        set->bits[b >> 6] |= uint64_t(1) << (b & 63);
+      }
+    }
+  }
+
+  return (pairPivots[key] = std::move(set)).get();
 }
 
 /* Generate every rotation move of the search node.
@@ -1100,153 +1212,106 @@ void turnPoint(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int a
  * turning the rest the other way, and keeping it fixed keeps the states
  * canonical). Blocking is pairwise -- along a fixed path every cube pair
  * collides or not on its own -- so, like Bill Cutler's movement matrices
- * for translations, for each axis, pivot and sense we compute which pieces
+ * for translations, for each axis, pivot and sense we know which pieces
  * block which on every path of the family (this includes landing on
- * another piece). A group can only turn if it contains every piece that
- * blocks one of its members, i.e. if it is closed under that relation, and
- * every closed group is a union of closures of single pieces. So instead of
- * trying all 2^(n-1) groups only unions of closures are tried, and only
- * they are checked path by path against the tables. That yields exactly
- * the moves the exhaustive enumeration yields: a group that can turn on
- * some path is closed under "blocks on every path".
+ * another piece; see blockingPivots). A group can only turn if it contains
+ * every piece that blocks one of its members, i.e. if it is closed under
+ * that relation, and every closed group is a union of closures of single
+ * pieces. So only unions of closures are checked path by path against the
+ * tables. That yields exactly the moves of an exhaustive enumeration: a
+ * group that can turn on some path is closed under "blocks on every path".
  *
  * Pivots: cube centres and cube corners within the turning group's
- * footprint, as before; edge midpoints cannot map the lattice onto itself. */
+ * footprint; edge midpoints cannot map the lattice onto itself. */
 void movementAnalysator_c::listRotations(void) {
 
   using rotationGeometry::cell_t;
 
   const unsigned int pn = pieces->size();
 
-  /* groups are bitmasks over the pieces */
   if (pn < 2 || pn > MAX_ROTATION_PIECES)
     return;
 
   const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
   const int reach = 2 * rotations->getRadius();
 
-  /* the cubes of every piece and which piece occupies which cell */
   std::vector<std::vector<cell_t>> world(pn);
-  std::vector<std::set<cellKey_t>> pieceCells(pn);
-  std::vector<cell_t> all;
   for (unsigned int i = 0; i < pn; i++)
-    for (const cell_t & c : cellsAroundHotspot((*pieces)[i], searchnode->getTrans(i))) {
-      cell_t w = { searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z };
-      world[i].push_back(w);
-      pieceCells[i].insert(key(w));
-      all.push_back(w);
-    }
-
-  int x0 = all[0].x, y0 = all[0].y, z0 = all[0].z, x1 = x0, y1 = y0, z1 = z0;
-  for (const cell_t & c : all) {
-    x0 = std::min(x0, c.x); x1 = std::max(x1, c.x);
-    y0 = std::min(y0, c.y); y1 = std::max(y1, c.y);
-    z0 = std::min(z0, c.z); z1 = std::max(z1, c.z);
-  }
-  const int sx = x1 - x0 + 1, sy = y1 - y0 + 1, sz = z1 - z0 + 1;
-  std::vector<int8_t> owner((size_t)sx * sy * sz, -1);
-  for (unsigned int i = 0; i < pn; i++)
-    for (const cell_t & c : world[i])
-      owner[((size_t)(c.z - z0) * sy + (c.y - y0)) * sx + (c.x - x0)] = (int8_t)i;
-  auto ownerAt = [&](int x, int y, int z) -> int {
-    if (x < x0 || y < y0 || z < z0 || x > x1 || y > y1 || z > z1)
-      return -1;
-    return owner[((size_t)(z - z0) * sy + (y - y0)) * sx + (x - x0)];
-  };
+    for (const cell_t & c : cellsAroundHotspot(piecePart[(*pieces)[i]], searchnode->getTrans(i)))
+      world[i].push_back({ searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z });
+  const ownerMap_c ownerAt(world);
 
   std::vector<cell_t> moving, stat;
   std::vector<unsigned int> owners;
-  std::vector<uint32_t> blockers(pn);
+  std::vector<uint32_t> blockers(pn), seeds;
+  std::vector<const pivotSet_t *> pairs(pn * pn);
   std::set<uint32_t> tried;
 
   for (unsigned int axis = 0; axis < 3; axis++) {
 
-    /* in-plane doubled footprint of every piece and of all of them */
-    std::vector<int> pumin(pn, INT_MAX), pumax(pn, INT_MIN), pvmin(pn, INT_MAX), pvmax(pn, INT_MIN);
-    for (unsigned int i = 0; i < pn; i++)
+    /* in-plane doubled footprint and hotspot of every piece */
+    std::vector<int> umin(pn, INT_MAX), umax(pn, INT_MIN), vmin(pn, INT_MAX), vmax(pn, INT_MIN), hu(pn), hv(pn);
+    for (unsigned int i = 0; i < pn; i++) {
+      inPlane2(searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i), axis, &hu[i], &hv[i]);
       for (const cell_t & c : world[i]) {
         int u, v;
-        inPlane2(c, axis, &u, &v);
-        pumin[i] = std::min(pumin[i], u); pumax[i] = std::max(pumax[i], u);
-        pvmin[i] = std::min(pvmin[i], v); pvmax[i] = std::max(pvmax[i], v);
+        inPlane2(c.x, c.y, c.z, axis, &u, &v);
+        umin[i] = std::min(umin[i], u); umax[i] = std::max(umax[i], u);
+        vmin[i] = std::min(vmin[i], v); vmax[i] = std::max(vmax[i], v);
       }
-    const int umin = *std::min_element(pumin.begin() + 1, pumin.end());
-    const int umax = *std::max_element(pumax.begin() + 1, pumax.end());
-    const int vmin = *std::min_element(pvmin.begin() + 1, pvmin.end());
-    const int vmax = *std::max_element(pvmax.begin() + 1, pvmax.end());
+    }
+    /* pivots: within the footprint of the pieces that may turn */
+    const int pumin = *std::min_element(umin.begin() + 1, umin.end()) - 1;
+    const int pumax = *std::max_element(umax.begin() + 1, umax.end()) + 1;
+    const int pvmin = *std::min_element(vmin.begin() + 1, vmin.end()) - 1;
+    const int pvmax = *std::max_element(vmax.begin() + 1, vmax.end()) + 1;
 
-    for (int pu = umin - 1; pu <= umax + 1; pu++)
-      for (int pv = vmin - 1; pv <= vmax + 1; pv++) {
+    for (unsigned int sense = 0; sense < 2; sense++) {
 
-        /* edge-midpoint pivots cannot map the lattice onto itself */
-        if ((pu ^ pv) & 1)
-          continue;
+      for (unsigned int i = 1; i < pn; i++)
+        for (unsigned int j = 0; j < pn; j++)
+          pairs[i * pn + j] = (i == j) ? nullptr : blockingPivots(i, j, axis, sense);
 
-        int hx, hy, hz;
-        pivot3D(axis, pu, pv, &hx, &hy, &hz);
+      for (int pu = pumin; pu <= pumax; pu++)
+        for (int pv = pvmin; pv <= pvmax; pv++) {
 
-        /* pieces with cubes beyond the tables' radius cannot turn here:
-         * skip, never guess */
-        uint32_t covered = 0;
-        for (unsigned int i = 1; i < pn; i++)
-          if (pumax[i] - pu <= reach && pu - pumin[i] <= reach && pvmax[i] - pv <= reach && pv - pvmin[i] <= reach)
-            covered |= 1u << i;
-        if (!covered)
-          continue;
+          /* edge-midpoint pivots cannot map the lattice onto itself */
+          if ((pu ^ pv) & 1)
+            continue;
 
-        for (unsigned int sense = 0; sense < 2; sense++) {
+          /* pieces with cubes beyond the tables' radius cannot turn here:
+           * skip, never guess */
+          uint32_t covered = 0;
+          for (unsigned int i = 1; i < pn; i++)
+            if (umax[i] - pu <= reach && pu - umin[i] <= reach && vmax[i] - pv <= reach && pv - vmin[i] <= reach)
+              covered |= 1u << i;
+          if (!covered)
+            continue;
 
-          /* Which pieces block a piece on every path, computed lazily: a
-           * closure is useless as soon as it needs piece 0 (never turns) or
-           * an uncovered piece, so a piece blocked by one of those is marked
-           * dead at the first such blocker and its other blockers are never
-           * looked up. In a dense puzzle that is most pieces. */
-          const uint32_t DEAD = ~uint32_t(0);
-          const uint32_t forbidden = ~covered;   // includes piece 0
-          uint32_t known = 0;
-          auto blockersOf = [&](unsigned int i) -> uint32_t {
-            if (known & (1u << i))
-              return blockers[i];
-            known |= 1u << i;
+          for (unsigned int i = 1; i < pn; i++) {
             blockers[i] = 0;
-            for (const cell_t & c : world[i]) {
-              int u, v;
-              inPlane2(c, axis, &u, &v);
-              const int layer = (axis == 0) ? c.x : ((axis == 1) ? c.y : c.z);
-              for (const auto & [su, sv] : rotations->blockedOnAllPaths(sense, u - pu, v - pv)) {
-                const int bu = (pu + su) / 2, bv = (pv + sv) / 2;
-                int j;
-                if (axis == 0)      j = ownerAt(layer, bu, bv);
-                else if (axis == 1) j = ownerAt(bv, layer, bu);
-                else                j = ownerAt(bu, bv, layer);
-                if (j < 0 || (unsigned int)j == i)
-                  continue;
-                if (forbidden & (1u << j))
-                  return blockers[i] = DEAD;
+            for (unsigned int j = 0; j < pn; j++)
+              if (pairs[i * pn + j] && pairs[i * pn + j]->test(pu - hu[i], pv - hv[i]))
                 blockers[i] |= 1u << j;
-              }
-            }
-            return blockers[i];
-          };
+          }
 
           /* closure of every piece that may turn: itself and, transitively,
-           * all pieces that block a member */
-          std::vector<uint32_t> seeds;
+           * every piece that blocks a member; useless once it needs piece 0
+           * (never turns) or an uncovered piece */
+          const uint32_t forbidden = ~covered;
+          seeds.clear();
           for (unsigned int i = 1; i < pn; i++) {
             if (!(covered & (1u << i)))
               continue;
             uint32_t c = 1u << i, todo = c;
-            bool dead = false;
-            while (todo && !dead) {
+            while (todo && !(c & forbidden)) {
               unsigned int j = std::countr_zero(todo);
               todo &= todo - 1;
-              uint32_t b = blockersOf(j);
-              dead = (b == DEAD);
-              uint32_t add = b & ~c;
+              uint32_t add = blockers[j] & ~c;
               c |= add;
               todo |= add;
             }
-            if (!dead)
+            if (!(c & forbidden))
               seeds.push_back(c);
           }
           std::sort(seeds.begin(), seeds.end());
@@ -1254,9 +1319,11 @@ void movementAnalysator_c::listRotations(void) {
           if (seeds.empty())
             continue;
 
-          /* every union of closures is closed; beyond MAX_ROTATION_PIECES
-           * distinct closures the puzzle is loose enough that the pieces can
-           * hardly be interlocked, and only the single closures are tried */
+          int hx, hy, hz;
+          pivot3D(axis, pu, pv, &hx, &hy, &hz);
+
+          /* every union of closures is closed; with very many distinct
+           * closures the pieces are loose and only single ones are tried */
           tried.clear();
           const size_t k = seeds.size();
           const bool unions = k <= 16;
@@ -1277,8 +1344,8 @@ void movementAnalysator_c::listRotations(void) {
             int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
             for (unsigned int i = 0; i < pn; i++)
               if (group & (1u << i)) {
-                gumin = std::min(gumin, pumin[i]); gumax = std::max(gumax, pumax[i]);
-                gvmin = std::min(gvmin, pvmin[i]); gvmax = std::max(gvmax, pvmax[i]);
+                gumin = std::min(gumin, umin[i]); gumax = std::max(gumax, umax[i]);
+                gvmin = std::min(gvmin, vmin[i]); gvmax = std::max(gvmax, vmax[i]);
               }
             if (pu < gumin - 1 || pu > gumax + 1 || pv < gvmin - 1 || pv > gvmax + 1)
               continue;
@@ -1299,7 +1366,7 @@ void movementAnalysator_c::listRotations(void) {
             for (size_t m = 0; m < moving.size() && unchanged; m++) {
               cell_t e = moving[m];
               turnPoint(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
-              unchanged = pieceCells[owners[m]].count(key(e)) > 0;
+              unchanged = ownerAt(e.x, e.y, e.z) == (int)owners[m];
             }
             if (unchanged)
               continue;
@@ -1331,6 +1398,6 @@ void movementAnalysator_c::listRotations(void) {
             rotationNodes.push_back(n);
           }
         }
-      }
+    }
   }
 }
