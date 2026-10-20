@@ -143,6 +143,11 @@ namespace rotationGeometry {
 
   constexpr int WIGGLE_SEGMENTS = 16;
 
+  /** The pose at parameter t in [0, 1] along a path, its segments taking
+   *  equal parameter time. Every pose lies on the polyline the checker
+   *  certified, so animating with it shows exactly the checked motion. */
+  pose_t poseAt(const path_t & path, double t);
+
   /**
    * Lookup table for one fixed path, filled by the certified checker.
    *

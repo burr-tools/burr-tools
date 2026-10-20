@@ -373,8 +373,21 @@ stronger.
     every step independently (no overlaps, turned pieces land on their
     start cells turned about the pivot, path re-certified by the checker
     directly) and after a save/load round trip.
-* **Phase 2, GUI** — `makePath` drives the animation: orientation per
-  state, and the moving pieces follow the recorded path.
+* **Phase 2, GUI (done)** — `poseAt(makePath(spec), t)` drives the
+  animation, so the GUI shows exactly the certified polyline:
+  * `piecePositions_c` gained `getTrans` (orientation per step) and
+    `getTurn` (angle, axis, world pivot, shift while a piece turns);
+    `disasmToMoves_c` fills them from the states' `dt`/`rotation`, with the
+    pivot moved by the same display offset as its subtree.
+  * `voxelFrame_c` swaps a piece's mesh when its orientation changes and
+    draws a turning piece with `T(P + d) · R(θ) · T(−P)` on top of its
+    placement.
+  * Solver panel: "Rotation Moves" (cube grids only) sets
+    `PAR_ROTATION_MOVES` and is used by the add-disassembly buttons; a wait
+    cursor covers the table build, which still runs on the UI thread.
+  * Test: for every animated rotation the drawn cube centres at the start
+    and end of the turn coincide with the recorded states (no jump);
+    checked visually on the X display with AAA_most_rotations.
 * **Phase 3** — configuration-space planner for shimmy moves; path
   recording with waypoints; contact highlighting; `--verify-rotations`.
 * **Phase 4** — calibration with grssam's physical cases; benchmark
