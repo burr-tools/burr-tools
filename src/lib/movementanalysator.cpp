@@ -574,8 +574,11 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
       for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
         piecePart.push_back(i);
     }
-    hotspotCells.resize(partVoxels.size());
-    planeCellCache.resize(partVoxels.size());
+    /* sized for every orientation up front: callers hold references to
+     * entries of several orientations at once, a later resize would move them */
+    const unsigned int orientations = problem.getPuzzle().getGridType()->getSymmetries()->getNumTransformationsMirror();
+    hotspotCells.assign(partVoxels.size(), std::vector<std::vector<rotationGeometry::cell_t>>(orientations));
+    planeCellCache.assign(partVoxels.size(), std::vector<planeCells_t>(3 * orientations));
   }
 }
 
@@ -1034,8 +1037,7 @@ movementAnalysator_c::cellsAroundHotspot(unsigned int part, unsigned int trans) 
   bt_assert(part < hotspotCells.size());
 
   std::vector<std::vector<rotationGeometry::cell_t>> & byTrans = hotspotCells[part];
-  if (byTrans.size() <= trans)
-    byTrans.resize(trans + 1);
+  bt_assert(trans < byTrans.size());
 
   /* a piece has at least one cube, so empty means not computed yet */
   std::vector<rotationGeometry::cell_t> & cells = byTrans[trans];
@@ -1214,8 +1216,7 @@ const movementAnalysator_c::planeCells_t &
 movementAnalysator_c::planeCells(unsigned int part, unsigned int trans, unsigned int axis) {
 
   std::vector<planeCells_t> & byTrans = planeCellCache[part];
-  if (byTrans.size() <= 3 * trans + axis)
-    byTrans.resize(3 * trans + 3);
+  bt_assert(3 * trans + axis < byTrans.size());
 
   planeCells_t & pc = byTrans[3 * trans + axis];
   if (pc.cubes.empty()) {
