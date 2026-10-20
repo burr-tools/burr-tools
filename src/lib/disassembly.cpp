@@ -26,6 +26,8 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <sstream>
+#include <stdexcept>
 
 /* template function to get space separated integer values
  * from a string and enter these into an iterator
@@ -143,7 +145,81 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
   }
   xml.endTag("dz");
 
+  if (!dt.empty())
+  {
+    xml.newTag("dt");
+    std::ostream & str = xml.addContent();
+    for (unsigned int ii = 0; ii < piecenumber; ii++)
+    {
+      str << (unsigned int)dt[ii];
+      if (ii < piecenumber-1)
+        str << " ";
+    }
+    xml.endTag("dt");
+  }
+
+  if (rotation)
+  {
+    static const char * kinds[] = { "pure", "wiggle", "slide" };
+    xml.newTag("rotation");
+    xml.newAttrib("axis", rotation->axis);
+    xml.newAttrib("pu", rotation->pivotU);
+    xml.newAttrib("pv", rotation->pivotV);
+    xml.newAttrib("path", kinds[rotation->path.kind]);
+    xml.newAttrib("sense", rotation->path.sense);
+    if (rotation->path.kind != rotationGeometry::PATH_PURE)
+    {
+      xml.newAttrib("du", rotation->path.dirU);
+      xml.newAttrib("dv", rotation->path.dirV);
+      std::ostringstream amount;
+      amount << rotation->path.amount;
+      xml.newAttrib("amount", amount.str());
+    }
+    xml.endTag("rotation");
+  }
+
   xml.endTag("state");
+}
+
+namespace {
+
+stateRotation_t loadRotation(xmlParser_c & pars)
+{
+  stateRotation_t r = {};
+  try
+  {
+    r.axis = std::stoul(pars.getAttributeValue("axis"));
+    r.pivotU = std::stoi(pars.getAttributeValue("pu"));
+    r.pivotV = std::stoi(pars.getAttributeValue("pv"));
+    r.path.sense = std::stoul(pars.getAttributeValue("sense"));
+    std::string kind = pars.getAttributeValue("path");
+    if (kind == "pure")
+      r.path.kind = rotationGeometry::PATH_PURE;
+    else if (kind == "wiggle" || kind == "slide")
+    {
+      r.path.kind = (kind == "wiggle") ? rotationGeometry::PATH_WIGGLE : rotationGeometry::PATH_SLIDE;
+      r.path.dirU = std::stoi(pars.getAttributeValue("du"));
+      r.path.dirV = std::stoi(pars.getAttributeValue("dv"));
+      r.path.amount = std::stod(pars.getAttributeValue("amount"));
+    }
+    else
+      pars.exception("unknown rotation path kind");
+  }
+  catch (const std::logic_error &)
+  {
+    /* stoi and friends on a missing or malformed attribute */
+    pars.exception("rotation needs numeric axis, pu, pv, sense (and du, dv, amount for shifted paths)");
+  }
+
+  if (r.axis > 2 || r.path.sense > 1 ||
+      std::abs(r.path.dirU) > 1 || std::abs(r.path.dirV) > 1 ||
+      (r.path.kind != rotationGeometry::PATH_PURE &&
+       ((r.path.dirU == 0 && r.path.dirV == 0) || !(r.path.amount > 0))))
+    pars.exception("rotation with an invalid axis, sense or path");
+
+  return r;
+}
+
 }
 
 state_c::state_c(xmlParser_c & pars, unsigned int pn)
@@ -187,6 +263,22 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
       pars.require(xmlParser_c::END_TAG, "dz");
       has_dz = true;
     }
+    else if (pars.getName() == "dt")
+    {
+      std::vector<unsigned int> t(pn);
+      pars.next();
+      getNumbers(pars.getText(), t.begin(), t.end(), false);
+      pars.next();
+      pars.require(xmlParser_c::END_TAG, "dt");
+      dt.assign(t.begin(), t.end());
+    }
+    else if (pars.getName() == "rotation")
+    {
+      rotation = loadRotation(pars);
+      pars.skipSubTree();
+    }
+    else
+      pars.skipSubTree();
   } while (true);
 
   if (!has_dx || !has_dy || !has_dz)
@@ -196,7 +288,7 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 }
 
 state_c::state_c(const state_c * cpy, unsigned int pn)
-  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz)
+  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz), dt(cpy->dt), rotation(cpy->rotation)
 {
   (void)pn;
   bt_assert(dx.size() == pn && dy.size() == pn && dz.size() == pn);
@@ -214,6 +306,13 @@ void state_c::set(unsigned int piece, int x, int y, int z) {
   dx[piece] = x;
   dy[piece] = y;
   dz[piece] = z;
+}
+
+void state_c::setTrans(unsigned int piece, unsigned int trans) {
+  bt_assert(piece < dx.size() && trans < 256);
+  if (dt.empty())
+    dt.resize(dx.size(), 0);
+  dt[piece] = (unsigned char)trans;
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {
@@ -391,6 +490,19 @@ unsigned int separation_c::sumMoves(void) const {
     erg += removed->sumMoves();
   if (left)
     erg += left->sumMoves();
+
+  return erg;
+}
+
+unsigned int separation_c::sumRotations(void) const {
+  unsigned int erg = 0;
+  for (const auto & s : states)
+    if (s->getRotation())
+      erg++;
+  if (removed)
+    erg += removed->sumRotations();
+  if (left)
+    erg += left->sumRotations();
 
   return erg;
 }
