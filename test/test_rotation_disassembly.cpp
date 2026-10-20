@@ -656,7 +656,7 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
   REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
@@ -786,7 +786,7 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
   REQUIRE(context != nullptr);
   const unsigned int orientations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 
