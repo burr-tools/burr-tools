@@ -140,6 +140,14 @@ private:
    */
   unsigned int waylength;
 
+  /**
+   * The pieces (bits by index) that turn in the rotation move leading to
+   * this node; only meaningful when isRotation(). Fills what was alignment
+   * padding at the end, so the node does not grow; groups are limited to 32
+   * pieces anyway.
+   */
+  uint32_t rotGroup = 0;
+
 public:
 
   /**
@@ -337,10 +345,14 @@ public:
   int getRotationPivotU(void) const { return rotPivotU; }
   int getRotationPivotV(void) const { return rotPivotV; }
 
-  void setRotationPivot(int u, int v) {
+  uint32_t getRotationGroup(void) const { return rotGroup; }
+
+  /** the in-plane pivot and the turning pieces of the rotation move */
+  void setRotation(int u, int v, uint32_t group) {
     bt_assert(abs(u) <= maxMove && abs(v) <= maxMove);
     rotPivotU = (int16_t)u;
     rotPivotV = (int16_t)v;
+    rotGroup = group;
   }
 
  private:

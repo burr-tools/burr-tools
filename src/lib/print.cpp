@@ -98,15 +98,12 @@ void print(const puzzle_c * p) {
 static void printRotation(const separation_c * s, unsigned int i, const std::vector<unsigned int> & pieceNum) {
 
   const stateRotation_t * r = s->getState(i)->getRotation();
-  const state_c * prev = s->getState(i - 1);
-  const state_c * st = s->getState(i);
   static const char axes[] = "XYZ";
   static const char * kinds[] = { "pure turn", "wiggle", "slide" };
 
   printf(" turn");
-  for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
-    if (prev->hasTrans() && prev->getTrans(pc) != st->getTrans(pc))
-      printf(" %c", 'a' + pieceNum[pc]);
+  for (unsigned int pc : r->pieces)
+    printf(" %c", 'a' + pieceNum[pc]);
   printf(" by %c90 degrees about %c through in-plane pivot (%g, %g), %s",
          r->path.sense == 0 ? '+' : '-', axes[r->axis], 0.5 * r->pivotU, 0.5 * r->pivotV, kinds[r->path.kind]);
   if (r->path.kind != rotationGeometry::PATH_PURE)

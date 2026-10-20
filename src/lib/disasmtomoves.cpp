@@ -69,8 +69,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
       /* a piece in a rotation move stays at its start state and follows the
        * recorded path on top of it; the next integer step loads its end
        * state, which is exactly where the path ends */
-      turning[i] = info2[i].rotation && info[i].trans >= 0 && info2[i].trans >= 0 &&
-                   info[i].trans != info2[i].trans;
+      turning[i] = info2[i].rotation && info[i].trans >= 0;
       if (turning[i]) {
         const stateRotation_t * r = info2[i].rotation;
         rotationGeometry::pose_t pose = rotationGeometry::poseAt(rotationGeometry::makePath(r->path), frac);
@@ -318,7 +317,9 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       array[4*tree->getPieceName(i)+2] += cz+s->getZ(i);
       array[4*tree->getPieceName(i)+3] += 1;
       if (info && s->hasTrans())
-        info[tree->getPieceName(i)] = { (int)s->getTrans(i), step > 0 ? s->getRotation() : nullptr, cx, cy, cz };
+        info[tree->getPieceName(i)] = { (int)s->getTrans(i),
+                                        (step > 0 && s->getRotation() && s->getRotation()->turns(i)) ? s->getRotation() : nullptr,
+                                        cx, cy, cz };
     }
 
   int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, 0, center_active, 0, 0, 0) : 0;

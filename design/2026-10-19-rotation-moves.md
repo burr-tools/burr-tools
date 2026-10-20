@@ -362,7 +362,7 @@ stronger.
     node stays 48 bytes.
   * `state_c`: piece orientations (`<dt>`) in every state of a disassembly
     made with rotation moves, and the rotation leading into a state
-    (`<rotation axis pu pv path sense [du dv amount]/>`); nothing new is
+    (`<rotation axis pu pv path sense pieces [du dv amount]/>`); nothing new is
     written without rotation moves. The state loader now skips unknown
     tags instead of misparsing them.
   * `burrTxt -R`: `level: 2.4, 2 rotations`; `-p` names the turning
@@ -439,12 +439,20 @@ ideally be done:
 * **Duplicated shape transform:** `movementAnalysator_c::cellsAroundHotspot`
   transforms shapes itself because `movementCache_c::getTransformedShape`
   is private.
-* **Symmetric pieces:** a turn that maps a symmetric piece onto a
-  translated copy of itself yields a node with a different `trans` than
-  the equivalent translation, so the search can visit the same physical
-  state twice. Normalising needs the start node and the recorded states to
-  agree on canonical orientations and hotspot positions, i.e. a change of
-  the state representation, not just of the generator.
+* **Fixed:** symmetric pieces. A turn that maps a symmetric piece onto a
+  translated copy of itself used to yield a node with another `trans` than
+  the equivalent translation, so the search could visit the same physical
+  state twice. `rotationContext_c::canonical` maps every orientation to the
+  smallest one with the same cells (colours included) and the hotspot shift
+  that keeps them in place; the start node and every turned piece are
+  stored that way. Because a turn no longer necessarily changes a piece's
+  `trans`, `<rotation>` lists its turning pieces (`pieces="0 2"`) and the
+  animation, `-p` and the replay test use that list. When a disassembly
+  uses no turn, the canonical shift is undone and orientations are dropped,
+  so it still saves exactly like one without rotation moves. Neutral on the
+  corpus (same results, same time within noise): the assembler already
+  places most pieces in their smallest orientation, and turns of symmetric
+  pieces onto themselves are rare there.
 * **Fixed (crash):** the per-part caches of in-plane cubes grew lazily, so
   pairing two copies of a part in different orientations could move the
   first one's cubes while they were read (AlPackino and CubeInCage with
