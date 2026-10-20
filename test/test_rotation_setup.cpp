@@ -16,7 +16,7 @@
 namespace {
 
 /* pure turns only keep the table builds in these tests short */
-const rotationSettings_t SMALL = { { 0.081 }, {} };
+const rotationSettings_t SMALL = { { 0.081, 0 }, {} };
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   auto p = puzzle_c::load(path);
@@ -47,7 +47,7 @@ std::shared_ptr<rotationContext_c> pelikanContext(void) {
 TEST_CASE("rotation tables are shared per settings and freed with their last user", "[rotations]") {
 
   /* settings of its own, so tables other tests keep alive do not interfere */
-  const rotationSettings_t settings = { { 0.07 }, {} };
+  const rotationSettings_t settings = { { 0.07, 0 }, {} };
 
   auto a = sharedRotationTables(settings, 3);
   REQUIRE(a != nullptr);
@@ -62,7 +62,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
   auto c = sharedRotationTables(settings, 4);
   CHECK(c != a);
   CHECK(c->getRadius() == 4);
-  auto d = sharedRotationTables({ { 0.05 }, {} }, 3);
+  auto d = sharedRotationTables({ { 0.05, 0 }, {} }, 3);
   CHECK(d != a);
 
   /* the cache does not keep tables alive: no singleton lifetime */

@@ -96,31 +96,57 @@ double segmentPointDistance2(double px, double py,
 }
 
 /* Signed distance between the axis-aligned square at (su, sv) and the square
- * at (mu, mv) turned by theta, both with half side h: their distance when
- * apart, minus the penetration depth when overlapping. For convex polygons
- * the separating axis test over all edge normals yields the exact
- * penetration depth. */
+ * at (mu, mv) turned by theta, both with half side h and their corners cut
+ * at 45° by k (an octagon, a square when k is 0): their distance when apart,
+ * minus the penetration depth when overlapping. For convex polygons the
+ * separating axis test over all edge normals yields the exact penetration
+ * depth. */
 double squareSignedDistance(double su, double sv, double mu, double mv,
-                            double c, double s, double h) {
+                            double c, double s, double h, double k) {
 
-  double sp[4][2], mp[4][2];
+  /* corners counter-clockwise, two per corner of the square when cut */
   static const int sg[4][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+  double loc[8][2];
+  int n = 0;
   for (int i = 0; i < 4; i++) {
-    sp[i][0] = su + h * sg[i][0];
-    sp[i][1] = sv + h * sg[i][1];
-    mp[i][0] = mu + h * (sg[i][0] * c - sg[i][1] * s);
-    mp[i][1] = mv + h * (sg[i][0] * s + sg[i][1] * c);
+    const double x = h * sg[i][0], y = h * sg[i][1];
+    if (k > 0) {
+      /* entering the corner along the previous edge, leaving along the next */
+      const bool horizontalIn = (sg[i][0] != sg[i][1]);
+      loc[n][0] = horizontalIn ? x - sg[i][0] * k : x;
+      loc[n][1] = horizontalIn ? y : y - sg[i][1] * k;
+      n++;
+      loc[n][0] = horizontalIn ? x : x - sg[i][0] * k;
+      loc[n][1] = horizontalIn ? y - sg[i][1] * k : y;
+      n++;
+    } else {
+      loc[n][0] = x;
+      loc[n][1] = y;
+      n++;
+    }
   }
 
-  const double normals[4][2] = { { 1, 0 }, { 0, 1 }, { c, s }, { -s, c } };
+  double sp[8][2], mp[8][2];
+  for (int i = 0; i < n; i++) {
+    sp[i][0] = su + loc[i][0];
+    sp[i][1] = sv + loc[i][1];
+    mp[i][0] = mu + loc[i][0] * c - loc[i][1] * s;
+    mp[i][1] = mv + loc[i][0] * s + loc[i][1] * c;
+  }
+
+  /* edge normals of both polygons; opposite edges share one */
+  const double r = std::numbers::sqrt2 / 2;
+  const double normals[8][2] = { { 1, 0 }, { 0, 1 }, { c, s }, { -s, c },
+                                 { r, r }, { r, -r }, { r * (c - s), r * (s + c) }, { r * (c + s), r * (s - c) } };
+  const int nn = (k > 0) ? 8 : 4;
   double depth = std::numeric_limits<double>::max();
   bool apart = false;
-  for (int k = 0; k < 4 && !apart; k++) {
+  for (int j = 0; j < nn && !apart; j++) {
     double smin = std::numeric_limits<double>::max(), smax = -smin;
     double mmin = smin, mmax = -smin;
-    for (int i = 0; i < 4; i++) {
-      double ds = sp[i][0] * normals[k][0] + sp[i][1] * normals[k][1];
-      double dm = mp[i][0] * normals[k][0] + mp[i][1] * normals[k][1];
+    for (int i = 0; i < n; i++) {
+      double ds = sp[i][0] * normals[j][0] + sp[i][1] * normals[j][1];
+      double dm = mp[i][0] * normals[j][0] + mp[i][1] * normals[j][1];
       smin = std::min(smin, ds); smax = std::max(smax, ds);
       mmin = std::min(mmin, dm); mmax = std::max(mmax, dm);
     }
@@ -135,9 +161,9 @@ double squareSignedDistance(double su, double sv, double mu, double mv,
     return -depth;
 
   double dist2 = std::numeric_limits<double>::max();
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++) {
-      int j2 = (j + 1) & 3;
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < n; j++) {
+      int j2 = (j + 1) % n;
       dist2 = std::min(dist2, segmentPointDistance2(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]));
       dist2 = std::min(dist2, segmentPointDistance2(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
     }
@@ -154,6 +180,7 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
                              unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
                              const model_t & model) :
   half(0.5 * (1.0 - model.play)),
+  chamfer(model.chamfer),
   rho(0)
 {
   bt_assert(axis < 3);
@@ -161,8 +188,8 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
    * a corner it shares with a diagonal neighbour touches it all the way: no
    * finite check can prove that clear, it only subdivides towards
    * MIN_DISPLACEMENT forever. Real pieces always have play. */
-  if (!(model.play > 0 && half > 0))
-    bt_te("planarScene_c: needs 0 < play < 1");
+  if (!(model.play > 0 && model.chamfer >= 0 && half > 0 && model.chamfer < half))
+    bt_te("planarScene_c: needs play > 0, chamfer >= 0 and a cube larger than its chamfer");
 
   double pu, pv;
   inPlane(0.5 * pivotHx, 0.5 * pivotHy, 0.5 * pivotHz, axis, &pu, &pv);
@@ -213,7 +240,7 @@ double planarScene_c::clearance(const pose_t & p) const {
         const double bound = best + reach;
         if (bound >= 0 && du * du + dv * dv >= bound * bound)
           continue;
-        best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half));
+        best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer));
       }
     }
 

@@ -35,21 +35,30 @@ std::set<std::tuple<int, int, int>> cellsAroundHotspot(const voxel_c & v) {
   return out;
 }
 
-/* Independent overlap oracle for the tests: two squares of half side h
- * overlap iff a vertex of one lies strictly inside the other or two edges
- * cross properly. Deliberately a different algorithm than the separating
- * axis / signed distance code under test. */
+/* Independent overlap oracle for the tests: two convex polygons (squares of
+ * half side h, their corners cut at 45° by k) overlap iff a vertex of one
+ * lies strictly inside the other or two edges cross properly. Deliberately a
+ * different algorithm than the separating axis / signed distance code under
+ * test. */
 struct quad_t {
-  double p[4][2];
+  int n = 0;
+  double p[8][2];
 };
 
-quad_t makeQuad(double cu, double cv, double theta, double h) {
-  static const int sg[4][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+quad_t makeQuad(double cu, double cv, double theta, double h, double k = 0) {
+  /* the outline counter-clockwise */
+  std::vector<std::pair<double, double>> local;
+  if (k > 0)
+    local = { { -h + k, -h }, { h - k, -h }, { h, -h + k }, { h, h - k },
+              { h - k, h }, { -h + k, h }, { -h, h - k }, { -h, -h + k } };
+  else
+    local = { { -h, -h }, { h, -h }, { h, h }, { -h, h } };
   quad_t q;
   double c = std::cos(theta), s = std::sin(theta);
-  for (int i = 0; i < 4; i++) {
-    q.p[i][0] = cu + h * (sg[i][0] * c - sg[i][1] * s);
-    q.p[i][1] = cv + h * (sg[i][0] * s + sg[i][1] * c);
+  for (auto [x, y] : local) {
+    q.p[q.n][0] = cu + x * c - y * s;
+    q.p[q.n][1] = cv + x * s + y * c;
+    q.n++;
   }
   return q;
 }
@@ -59,20 +68,23 @@ double cross(const double * o, const double * a, const double * b) {
 }
 
 bool strictlyInside(const quad_t & q, const double * pt) {
-  for (int i = 0; i < 4; i++)
-    if (cross(q.p[i], q.p[(i + 1) & 3], pt) <= 1e-9)
+  for (int i = 0; i < q.n; i++)
+    if (cross(q.p[i], q.p[(i + 1) % q.n], pt) <= 1e-9)
       return false;
   return true;
 }
 
 bool quadsOverlap(const quad_t & a, const quad_t & b) {
-  for (int i = 0; i < 4; i++)
-    if (strictlyInside(a, b.p[i]) || strictlyInside(b, a.p[i]))
+  for (int i = 0; i < b.n; i++)
+    if (strictlyInside(a, b.p[i]))
       return true;
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++) {
-      const double * a0 = a.p[i], * a1 = a.p[(i + 1) & 3];
-      const double * b0 = b.p[j], * b1 = b.p[(j + 1) & 3];
+  for (int i = 0; i < a.n; i++)
+    if (strictlyInside(b, a.p[i]))
+      return true;
+  for (int i = 0; i < a.n; i++)
+    for (int j = 0; j < b.n; j++) {
+      const double * a0 = a.p[i], * a1 = a.p[(i + 1) % a.n];
+      const double * b0 = b.p[j], * b1 = b.p[(j + 1) % b.n];
       double d1 = cross(a0, a1, b0), d2 = cross(a0, a1, b1);
       double d3 = cross(b0, b1, a0), d4 = cross(b0, b1, a1);
       if (((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) &&
@@ -86,7 +98,7 @@ bool quadsOverlap(const quad_t & a, const quad_t & b) {
  * and pivot use the same in-plane frames as rotationGeometry. */
 bool oracleCollides(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                     unsigned int axis, int phx, int phy, int phz, double play,
-                    const std::vector<pose_t> & path, int stepsPerSegment) {
+                    const std::vector<pose_t> & path, int stepsPerSegment, double chamfer = 0) {
   auto uv = [axis](double x, double y, double z, double * u, double * v) {
     if (axis == 0)      { *u = y; *v = z; }
     else if (axis == 1) { *u = z; *v = x; }
@@ -111,13 +123,13 @@ bool oracleCollides(const std::vector<cell_t> & moving, const std::vector<cell_t
         mu -= pu; mv -= pv;
         double ru = mu * std::cos(th) - mv * std::sin(th) + pu + du;
         double rv = mu * std::sin(th) + mv * std::cos(th) + pv + dv;
-        quad_t mq = makeQuad(ru, rv, th, h);
+        quad_t mq = makeQuad(ru, rv, th, h, chamfer);
         for (const cell_t & s : stat) {
           if (layer(s) != layer(m))
             continue;
           double su, sv;
           uv(s.x, s.y, s.z, &su, &sv);
-          if (quadsOverlap(mq, makeQuad(su, sv, 0, h)))
+          if (quadsOverlap(mq, makeQuad(su, sv, 0, h, chamfer)))
             return true;
         }
       }
@@ -211,12 +223,36 @@ TEST_CASE("quarterTurnTrans rotates shapes like quarterTurn rotates vectors", "[
       }
 }
 
+TEST_CASE("a cube spinning next to a face neighbour needs beveled edges", "[rotations]") {
+
+  /* Beveled at 45° by k, the cube of half side h reaches farthest at the
+   * bevel's end points, sqrt(h² + (h - k)²) from its centre, and the
+   * neighbour's face is flat at 1 - h. So the spin is possible iff
+   * k >= h - sqrt((1 - h)² - h²). */
+  const std::vector<cell_t> moving = { { 0, 0, 0 } };
+  const std::vector<cell_t> stat = { { 1, 0, 0 } };
+  const double play = 0.081;
+  const double h = 0.5 * (1 - play);
+  const double kmin = h - std::sqrt((1 - h) * (1 - h) - h * h);
+
+  for (unsigned int axis : { 1u, 2u })
+    for (unsigned int sense = 0; sense < 2; sense++) {
+      planarScene_c almost(moving, stat, axis, 0, 0, 0, { play, kmin - 0.01 });
+      CHECK(almost.certifyQuarterTurn(sense) == PATH_BLOCKED);
+      planarScene_c beveled(moving, stat, axis, 0, 0, 0, { play, kmin + 0.01 });
+      CHECK(beveled.certifyQuarterTurn(sense) == PATH_CLEAR);
+    }
+
+  /* a bevel as large as the half cube is rejected */
+  CHECK_THROWS(planarScene_c(moving, stat, 2, 0, 0, 0, { play, h }));
+}
+
 TEST_CASE("a bar sweeps only the quarter it turns through", "[rotations]") {
 
   /* bar (0,0)-(1,0) turns about the centre of (0,0) around Z: +90° sweeps
    * the +x/+y quadrant, -90° the +x/-y quadrant */
   const std::vector<cell_t> bar = { { 0, 0, 0 }, { 1, 0, 0 } };
-  const model_t model = { 0.081 };
+  const model_t model = { 0.081, 0 };
 
   planarScene_c blockedAbove(bar, { { 1, 1, 0 } }, 2, 0, 0, 0, model);
   CHECK(blockedAbove.certifyQuarterTurn(0) == PATH_BLOCKED);
@@ -233,7 +269,7 @@ TEST_CASE("a shimmy path clears what the pure rotation cannot", "[rotations]") {
    * (-1,0): the spinning pivot cube's corner digs into it. Sliding the bar
    * away from it by a quarter cube first, turning, and sliding back clears. */
   const std::vector<cell_t> bar = { { 0, 0, 0 }, { 1, 0, 0 } };
-  planarScene_c scene(bar, { { -1, 0, 0 } }, 2, 0, 0, 0, { 0.081 });
+  planarScene_c scene(bar, { { -1, 0, 0 } }, 2, 0, 0, 0, { 0.081, 0 });
 
   CHECK(scene.certifyQuarterTurn(0) == PATH_BLOCKED);
   CHECK(scene.certifyPath({ { 0, 0, 0 }, { 0, 0.25, 0 }, { QUARTER, 0.25, 0 }, { QUARTER, 0, 0 } }) == PATH_CLEAR);
@@ -263,7 +299,7 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
     }
     path.push_back({ angle, 0, 0 });
 
-    planarScene_c scene(moving, stat, axis, phx, phy, phz, { play });
+    planarScene_c scene(moving, stat, axis, phx, phy, phz, { play, 0 });
     verdict_e v = scene.certifyPath(path);
     bool collides = oracleCollides(moving, stat, axis, phx, phy, phz, play, path, 3000);
 
@@ -286,6 +322,50 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
   CHECK(blocked > 100);
 }
 
+TEST_CASE("the path checker agrees with a dense independent oracle on beveled cubes", "[rotations]") {
+
+  /* a 3D print: little play, beveled edges; and a heavily beveled model */
+  for (auto [play, chamfer] : { std::pair{ 0.011, 0.054 }, std::pair{ 0.03, 0.15 } }) {
+    std::mt19937 rng(20261021);
+    std::uniform_real_distribution<double> shift(-0.3, 0.3);
+
+    int clear = 0, blocked = 0, compared = 0;
+    for (int it = 0; it < 800; it++) {
+      std::vector<cell_t> moving, stat;
+      randomScene(rng, moving, stat);
+      unsigned int axis = rng() % 3, sense = rng() % 2;
+      int phx = (int)(rng() % 9) - 1, phy = (int)(rng() % 9) - 1, phz = (int)(rng() % 9) - 1;
+      std::vector<cell_t> end;
+      if (!quarterTurnEnd(moving, stat, axis, sense, phx, phy, phz, end))
+        continue;
+
+      double angle = (sense == 0) ? QUARTER : -QUARTER;
+      std::vector<pose_t> path = { { 0, 0, 0 } };
+      if (rng() % 2)
+        path.push_back({ angle / 2, shift(rng), shift(rng) });
+      path.push_back({ angle, 0, 0 });
+
+      planarScene_c scene(moving, stat, axis, phx, phy, phz, { play, chamfer });
+      verdict_e v = scene.certifyPath(path);
+      bool collides = oracleCollides(moving, stat, axis, phx, phy, phz, play, path, 3000, chamfer);
+
+      INFO("iteration " << it << " play " << play << " chamfer " << chamfer);
+      if (collides)
+        CHECK(v != PATH_CLEAR);
+      if (v == PATH_BLOCKED)
+        CHECK(collides);
+
+      compared++;
+      clear += (v == PATH_CLEAR);
+      blocked += (v == PATH_BLOCKED);
+    }
+
+    CHECK(compared > 250);
+    CHECK(clear > 50);
+    CHECK(blocked > 50);
+  }
+}
+
 TEST_CASE("inversePose undoes a pose", "[rotations]") {
 
   /* a pose maps x to R(theta)(x - P) + P + d, P the pivot (origin here) */
@@ -306,8 +386,8 @@ TEST_CASE("inversePose undoes a pose", "[rotations]") {
 }
 
 TEST_CASE("a model without play is rejected", "[rotations]") {
-  CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0 }), assert_exception);
-  CHECK_THROWS_AS(pathTable_c({ 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(pathTable_c({ 0, 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
 }
 
 TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice pose", "[rotations]") {
@@ -331,7 +411,8 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
    * reproduce the whole-scene verdict of every path exactly, including the
    * tables that are turned and mirrored copies rather than computed. */
   struct setup_t { model_t model; int scenes; };
-  for (setup_t setup : { setup_t{ { 0.081 }, 300 }, setup_t{ { 0.02 }, 150 } }) {
+  for (setup_t setup : { setup_t{ { 0.081, 0 }, 300 }, setup_t{ { 0.02, 0.05 }, 150 },
+                         setup_t{ { 0.011, 0.054 }, 150 } }) {
     rotationTables_c tables(setup.model, 4, { 0.15, 0.3 });
     REQUIRE(tables.size() == 1 + 2 * 2 * 8);
 
@@ -374,7 +455,7 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
 TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotations]") {
 
   const int radius = 3;
-  rotationTables_c tables({ 0.081 }, radius, { 0.2 });
+  rotationTables_c tables({ 0.081, 0 }, radius, { 0.2 });
 
   for (unsigned int sense = 0; sense < 2; sense++) {
     /* every forward entry appears in the inverse ... */
@@ -400,7 +481,7 @@ TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotat
 
 TEST_CASE("turned and mirrored path tables equal directly computed ones", "[rotations]") {
 
-  const model_t model = { 0.081 };
+  const model_t model = { 0.081, 0 };
   rotationTables_c tables(model, 3, { 0.3 });
 
   for (unsigned int sense = 0; sense < 2; sense++)
@@ -424,7 +505,7 @@ TEST_CASE("path tables find blockers of far-out cubes", "[rotations]") {
   /* A cube at offset (r, r) swings out to r·√2 along an axis, so the
    * static cubes it can hit lie beyond the table's square of moving
    * offsets. Compare the outermost entries with an unpruned brute force. */
-  const model_t model = { 0.081 };
+  const model_t model = { 0.081, 0 };
   const int radius = 8;
   for (pathSpec_t spec : { pathSpec_t{ PATH_PURE, 0, 0, 0, 0 }, pathSpec_t{ PATH_SLIDE, 1, -1, 1, 0.3 } }) {
     pathTable_c table(model, radius, spec);
@@ -455,7 +536,7 @@ TEST_CASE("the rotation tables rescue a turn by shifting away from the blocker",
    * cube at (-1,0): the pure turn digs in, a path shifting along +u clears */
   const std::vector<cell_t> bar = { { 0, 0, 0 }, { 1, 0, 0 } };
   const std::vector<cell_t> stat = { { -1, 0, 0 } };
-  const model_t model = { 0.081 };
+  const model_t model = { 0.081, 0 };
   rotationTables_c tables(model, 3, { 0.15, 0.3 });
 
   int idx = tables.firstClear(bar, stat, 2, 0, 0, 0, 0);
@@ -475,7 +556,7 @@ TEST_CASE("rotation table statistics", "[.][rotations-table-stats]") {
   const std::vector<double> amounts = { 0.1, 0.2, 0.3, 0.4 };
 
   for (int radius : { 6, 8 })
-    for (model_t model : { model_t{ 0.081 }, model_t{ 0.02 }, model_t{ 0.01 } }) {
+    for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 }, model_t{ 0.01, 0 } }) {
       auto start = std::chrono::steady_clock::now();
       rotationTables_c tables(model, radius, amounts);
       double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -491,7 +572,7 @@ TEST_CASE("rotation table statistics", "[.][rotations-table-stats]") {
                 pure += n;
             }
 
-      WARN("radius " << radius << " play " << model.play << ": "
+      WARN("radius " << radius << " play " << model.play << " bevel " << model.chamfer << ": "
            << tables.size() << " paths per sense built in " << ms << " ms, " << pure
            << " blocking entries for the pure turns, " << all << " for all paths");
 
