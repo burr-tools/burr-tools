@@ -147,8 +147,9 @@ class replay_c {
         std::vector<cell_t> before = cells(s, k - 1, pc);
         std::vector<cell_t> after = cells(s, k, pc);
 
-        if (st->getTrans(pc) == prev->getTrans(pc)) {
+        if (!r->turns(pc)) {
           /* not turning: stays exactly where it is */
+          CHECK(st->getTrans(pc) == prev->getTrans(pc));
           CHECK(keys(after) == keys(before));
           stat.insert(stat.end(), before.begin(), before.end());
           continue;
@@ -159,7 +160,7 @@ class replay_c {
         std::vector<cell_t> expected;
         for (cell_t c : before) {
           int dx = 2 * c.x - hx, dy = 2 * c.y - hy, dz = 2 * c.z - hz;
-          quarterTurn(&dx, &dy, &dz, r->axis, r->path.sense);
+          quarterTurn(&dx, &dy, &dz, r->axis, r->turnSense());
           REQUIRE((hx + dx) % 2 == 0);
           REQUIRE((hy + dy) % 2 == 0);
           REQUIRE((hz + dz) % 2 == 0);
@@ -171,8 +172,9 @@ class replay_c {
       CHECK(turned > 0);
 
       /* the recorded path is collision-free, decided by the checker itself
-       * rather than through the tables the solver used */
-      planarScene_c scene(moving, stat, r->axis, hx, hy, hz, model);
+       * rather than through the tables the solver used; inverted, the other
+       * pieces followed it */
+      planarScene_c scene(r->inverse ? stat : moving, r->inverse ? moving : stat, r->axis, hx, hy, hz, model);
       CHECK(scene.certifyPath(makePath(r->path)) == PATH_CLEAR);
     }
 };
@@ -200,6 +202,12 @@ const aaa_t & aaa(void) {
   return result;
 }
 
+}
+
+TEST_CASE("rotation moves do not grow the search node", "[rotations][disasm]") {
+  /* pivot and turning group live in what was alignment padding */
+  if (sizeof(void *) == 8)
+    CHECK(sizeof(disassemblerNode_c) == 48);
 }
 
 TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations][disasm]") {
@@ -354,9 +362,11 @@ config_t configOf(const disassemblerNode_c * n) {
   return c;
 }
 
-/* Every rotation move of a node by brute force: all groups without piece 0,
+/* Every rotation move of a node by brute force: all groups but the whole,
  * all centre and corner pivots in the group's footprint, both senses about
- * all axes, end pose free and not a no-op, some path of the family clear. */
+ * all axes, end pose free and not a no-op, some path of the family clear.
+ * Piece 0 stays in place: a group with it ends as the rest turned the other
+ * way. */
 std::set<config_t> bruteRotations(const problem_c & problem, const rotationTables_c & tables,
                                   const disassemblerNode_c * node) {
   const gridType_c * gt = problem.getPuzzle().getGridType();
@@ -387,7 +397,7 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
 
   std::set<config_t> out;
   const int reach = 2 * tables.getRadius();
-  for (uint32_t group = 2; group < (1u << pn); group += 2)
+  for (uint32_t group = 1; group + 1 < (1u << pn); group++)
     for (unsigned int axis = 0; axis < 3; axis++) {
       std::vector<cell_t> moving, stat;
       std::vector<unsigned int> owner;
@@ -432,11 +442,12 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
             if (blocked || unchanged || tables.firstClear(moving, stat, axis, hx, hy, hz, sense) < 0)
               continue;
             config_t c = configOf(node);
+            const bool withFirst = group & 1u;
             for (unsigned int i = 0; i < pn; i++)
-              if (group & (1u << i)) {
-                turn(c[i][0], c[i][1], c[i][2], hx, hy, hz, axis, sense);
+              if (bool(group & (1u << i)) != withFirst) {
+                turn(c[i][0], c[i][1], c[i][2], hx, hy, hz, axis, sense ^ (withFirst ? 1 : 0));
                 c[i][3] = problem.getPuzzle().getGridType()->getSymmetries()->transAdd(
-                    (unsigned char)c[i][3], quarterTurnTrans(axis, sense));
+                    (unsigned char)c[i][3], quarterTurnTrans(axis, sense ^ (withFirst ? 1 : 0)));
               }
             out.insert(c);
           }
@@ -591,4 +602,122 @@ TEST_CASE("rotation moves between identical pieces in different orientations", "
     replay_c replay(problem, settings.model);
     replay.check(*da);
   }
+}
+
+/* the cells piece p occupies in an assembly */
+static std::set<std::tuple<int, int, int>> placedCells(const problem_c & problem, unsigned int p, const assembly_c & a) {
+  std::unique_ptr<voxel_c> v(problem.getPuzzle().getGridType()->getVoxel(*problem.getPartShape(problem.getPartIdToPieceId(p))));
+  bt_assert2(v->transform(a.getTransformation(p)));
+  std::set<std::tuple<int, int, int>> cells;
+  for (unsigned int z = 0; z < v->getZ(); z++)
+    for (unsigned int y = 0; y < v->getY(); y++)
+      for (unsigned int x = 0; x < v->getX(); x++)
+        if (v->isFilled(x, y, z))
+          cells.insert({ a.getX(p) + (int)x - v->getHx(), a.getY(p) + (int)y - v->getHy(), a.getZ(p) + (int)z - v->getHz() });
+  return cells;
+}
+
+TEST_CASE("pieces placed in a symmetric orientation come back in it when no rotation is used", "[rotations][disasm]") {
+
+  /* the bar of the test above, with every piece placed in another
+   * orientation that has the same cells: the search holds them in their
+   * canonical orientations, the result must not show it */
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const unsigned int result = puzzle->addShape(3, 1, 1);
+  const unsigned int cube = puzzle->addShape(1, 1, 1);
+  const unsigned int domino = puzzle->addShape(2, 1, 1);
+  for (unsigned int x = 0; x < 3; x++)
+    puzzle->getShape(result)->set(x, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(cube)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(domino)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(domino)->set(1, 0, 0, voxel_c::VX_FILLED);
+  problem_c & problem = *puzzle->getProblem(puzzle->addProblem());
+  problem.setResultId(result);
+  problem.setShapeMaximum(cube, 1);
+  problem.setShapeMaximum(domino, 1);
+
+  auto assemblies = assembleAll(problem);
+  REQUIRE_FALSE(assemblies.empty());
+  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  REQUIRE(context != nullptr);
+  const unsigned int orientations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
+
+  for (const auto & a : assemblies) {
+
+    /* the last other orientation of each piece with the same cells */
+    assembly_c turned(puzzle->getGridType());
+    bool reoriented = false;
+    for (unsigned int p = 0; p < a->placementCount(); p++) {
+      const rotationContext_c::canonical_t ca = context->canonical(p, a->getTransformation(p));
+      unsigned int t = a->getTransformation(p);
+      rotationContext_c::canonical_t ct = ca;
+      for (unsigned int u = 0; u < orientations; u++) {
+        const rotationContext_c::canonical_t cu = context->canonical(p, u);
+        if (u != a->getTransformation(p) && cu.trans == ca.trans) {
+          t = u;
+          ct = cu;
+        }
+      }
+      reoriented |= t != a->getTransformation(p);
+      /* same cells: the hotspot moves by the difference of the offsets */
+      turned.addPlacement(t, a->getX(p) + ca.dx - ct.dx, a->getY(p) + ca.dy - ct.dy, a->getZ(p) + ca.dz - ct.dz);
+    }
+    REQUIRE(reoriented);
+    for (unsigned int p = 0; p < a->placementCount(); p++)
+      REQUIRE(placedCells(problem, p, turned) == placedCells(problem, p, *a));
+
+    std::string saved[2];
+    for (bool rotations : { false, true }) {
+      INFO("rotation moves " << rotations);
+      std::unique_ptr<separation_c> da =
+        disassembler_0_c(problem, rotations ? context : nullptr).disassemble(&turned);
+      REQUIRE(da != nullptr);
+      CHECK(da->sumRotations() == 0);
+      CHECK_FALSE(da->getState(0)->hasTrans());
+
+      std::ostringstream out;
+      {
+        xmlWriter_c xml(out);
+        da->save(xml);
+      }
+      saved[rotations] = out.str();
+    }
+    CHECK(saved[1] == saved[0]);
+  }
+}
+
+TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations][disasm][stress]") {
+
+  /* Piece 0 stays in place in every search state, so a group with it turns
+   * as the rest turning the other way. That rest is generally not in the
+   * path family (an inverted wiggle or slide turns its shift along), and
+   * its footprint decides pivots and reach: searched only as the rest,
+   * PelikanBurr came apart in 5, 6 or 7 turns depending on the piece order. */
+  std::set<std::pair<std::string, unsigned int>> results;
+  const unsigned int parts = puzzle_c::load("examples/PelikanBurr.xmpuzzle")->getProblem(0)->getNumberOfParts();
+  for (unsigned int first = 0; first < parts; first++) {
+    auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(puzzle != nullptr);
+    problem_c & problem = *puzzle->getProblem(0);
+    /* exchangeParts swaps neighbours: bubble the part to the front */
+    for (unsigned int j = first; j > 0; j--)
+      problem.exchangeParts(j - 1, j);
+    auto context = rotationContextFor(problem, defaultRotationSettings());
+    REQUIRE(context != nullptr);
+
+    unsigned int solved = 0;
+    for (const auto & a : assembleAll(problem)) {
+      /* the assembly that comes apart with translations alone */
+      if (!disassembler_0_c(problem).disassemble(a.get()))
+        continue;
+      std::unique_ptr<separation_c> da = disassembler_0_c(problem, context).disassemble(a.get());
+      REQUIRE(da != nullptr);
+      results.insert({ da->movesText(), da->sumRotations() });
+      solved++;
+    }
+    CHECK(solved == 1);
+  }
+  for (const auto & [level, turns] : results)
+    UNSCOPED_INFO("level " << level << ", " << turns << " turns");
+  CHECK(results.size() == 1);
 }

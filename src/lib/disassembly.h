@@ -28,6 +28,7 @@
 #include "bt_assert.h"
 #include "rotationgeometry.h"
 
+#include <algorithm>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -98,6 +99,26 @@ struct stateRotation_t {
   unsigned int axis;                ///< 0 = X, 1 = Y, 2 = Z
   int pivotU, pivotV;               ///< in-plane pivot, doubled cell units, rotationGeometry frames
   rotationGeometry::pathSpec_t path;
+  /** the turning pieces, as indices into the separation's pieces; a
+   *  turn need not change a piece's orientation id (symmetric pieces) */
+  std::vector<unsigned int> pieces;
+  /** the other pieces of the separation follow the path, relative to the
+   *  turning ones (a move that turned a group with the separation's first
+   *  piece, which stays in place) */
+  bool inverse = false;
+
+  bool turns(unsigned int piece) const {
+    return std::find(pieces.begin(), pieces.end(), piece) != pieces.end();
+  }
+
+  /** the quarter turn the turning pieces make, sense as in quarterTurn */
+  unsigned int turnSense(void) const { return path.sense ^ (inverse ? 1 : 0); }
+
+  /** the pose of the turning pieces at time t of the move */
+  rotationGeometry::pose_t poseAt(double t) const {
+    rotationGeometry::pose_t p = rotationGeometry::poseAt(rotationGeometry::makePath(path), t);
+    return inverse ? rotationGeometry::inversePose(p) : p;
+  }
 };
 
 /**
@@ -309,6 +330,9 @@ public:
   /** drop the orientations of all states of the tree; only valid when it
    *  contains no rotation, so every piece keeps its assembly orientation */
   void clearTrans(void);
+
+  /** move the piece with this name by (dx, dy, dz) in every state of the tree */
+  void shiftPiece(unsigned int name, int dx, int dy, int dz);
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);

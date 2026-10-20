@@ -286,6 +286,25 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
   CHECK(blocked > 100);
 }
 
+TEST_CASE("inversePose undoes a pose", "[rotations]") {
+
+  /* a pose maps x to R(theta)(x - P) + P + d, P the pivot (origin here) */
+  auto apply = [](const pose_t & p, double u, double v) {
+    const double c = std::cos(p.theta), s = std::sin(p.theta);
+    return std::pair{ c * u - s * v + p.du, s * u + c * v + p.dv };
+  };
+  std::mt19937 rng(7);
+  std::uniform_real_distribution<double> r(-2, 2);
+  for (int it = 0; it < 100; it++) {
+    const pose_t p = { r(rng), r(rng), r(rng) };
+    const double u = r(rng), v = r(rng);
+    auto [mu, mv] = apply(p, u, v);
+    auto [bu, bv] = apply(inversePose(p), mu, mv);
+    CHECK(std::fabs(bu - u) < 1e-12);
+    CHECK(std::fabs(bv - v) < 1e-12);
+  }
+}
+
 TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0 }), assert_exception);
   CHECK_THROWS_AS(pathTable_c({ 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);

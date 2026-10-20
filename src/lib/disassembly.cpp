@@ -167,6 +167,14 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     xml.newAttrib("pv", rotation->pivotV);
     xml.newAttrib("path", kinds[rotation->path.kind]);
     xml.newAttrib("sense", rotation->path.sense);
+    if (rotation->inverse)
+      xml.newAttrib("inverse", 1);
+    {
+      std::ostringstream pcs;
+      for (size_t i = 0; i < rotation->pieces.size(); i++)
+        pcs << (i ? " " : "") << rotation->pieces[i];
+      xml.newAttrib("pieces", pcs.str());
+    }
     if (rotation->path.kind != rotationGeometry::PATH_PURE)
     {
       xml.newAttrib("du", rotation->path.dirU);
@@ -192,6 +200,13 @@ stateRotation_t loadRotation(xmlParser_c & pars)
     r.pivotU = std::stoi(pars.getAttributeValue("pu"));
     r.pivotV = std::stoi(pars.getAttributeValue("pv"));
     r.path.sense = std::stoul(pars.getAttributeValue("sense"));
+    r.inverse = pars.getAttributeValue("inverse") == "1";
+    {
+      std::istringstream pcs(pars.getAttributeValue("pieces"));
+      unsigned int p;
+      while (pcs >> p)
+        r.pieces.push_back(p);
+    }
     std::string kind = pars.getAttributeValue("path");
     if (kind == "pure")
       r.path.kind = rotationGeometry::PATH_PURE;
@@ -275,6 +290,11 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
     else if (pars.getName() == "rotation")
     {
       rotation = loadRotation(pars);
+      if (rotation->pieces.empty())
+        pars.exception("rotation without turning pieces");
+      for (unsigned int p : rotation->pieces)
+        if (p >= pn)
+          pars.exception("rotation turns a piece that does not exist");
       pars.skipSubTree();
     }
     else
@@ -502,6 +522,17 @@ void separation_c::clearTrans(void) {
     removed->clearTrans();
   if (left)
     left->clearTrans();
+}
+
+void separation_c::shiftPiece(unsigned int name, int dx, int dy, int dz) {
+  for (unsigned int i = 0; i < pieces.size(); i++)
+    if (pieces[i] == name)
+      for (auto & st : states)
+        st->set(i, st->getX(i) + dx, st->getY(i) + dy, st->getZ(i) + dz);
+  if (removed)
+    removed->shiftPiece(name, dx, dy, dz);
+  if (left)
+    left->shiftPiece(name, dx, dy, dz);
 }
 
 unsigned int separation_c::sumRotations(void) const {
