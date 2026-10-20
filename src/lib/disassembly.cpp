@@ -168,6 +168,19 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     xml.newAttrib("pv", rotation->pivotV);
     xml.newAttrib("path", kinds[rotation->path.kind]);
     xml.newAttrib("angle", std::string(rotation->path.sense == 0 ? "90" : "-90"));
+    {
+      /* the file names the pieces that follow the path. Inverted, those are
+       * the others, which include piece 0: a reader tells an inverted turn
+       * by piece 0 being among them. */
+      std::vector<unsigned int> group;
+      for (unsigned int k = 0; k < piecenumber; k++)
+        if (!pieceRemoved(k) && rotation->turns(k) != rotation->inverse)
+          group.push_back(k);
+      std::ostringstream pcs;
+      for (size_t i = 0; i < group.size(); i++)
+        pcs << (i ? " " : "") << group[i];
+      xml.newAttrib("pieces", pcs.str());
+    }
     if (rotation->path.kind != rotationGeometry::PATH_PURE)
     {
       xml.newAttrib("du", rotation->path.dirU);
@@ -197,6 +210,12 @@ stateRotation_t loadRotation(xmlParser_c & pars)
     /* degrees about the axis, right-handed: 90 or -90 (sense 0 or 1) */
     const std::string angle = pars.getAttributeValue("angle");
     r.path.sense = (angle == "90") ? 0 : (angle == "-90") ? 1 : 2;
+    {
+      std::istringstream pcs(pars.getAttributeValue("pieces"));
+      unsigned int p;
+      while (pcs >> p)
+        r.pieces.push_back(p);
+    }
     std::string kind = pars.getAttributeValue("path");
     if (kind == "pure")
       r.path.kind = rotationGeometry::PATH_PURE;
@@ -280,6 +299,11 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
     else if (pars.getName() == "rotation")
     {
       rotation = loadRotation(pars);
+      if (rotation->pieces.empty())
+        pars.exception("rotation without turning pieces");
+      for (unsigned int p : rotation->pieces)
+        if (p >= pn)
+          pars.exception("rotation turns a piece that does not exist");
       pars.skipSubTree();
     }
     else
@@ -288,6 +312,19 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 
   if (!has_dx || !has_dy || !has_dz)
     pars.exception("disassembly state needs dx, dy and dz subnode");
+
+  /* the listed pieces follow the path; piece 0 stays in place in every
+   * state, so when it is among them the others turned instead */
+  if (rotation && std::find(rotation->pieces.begin(), rotation->pieces.end(), 0u) != rotation->pieces.end()) {
+    std::vector<unsigned int> others;
+    for (unsigned int k = 0; k < pn; k++)
+      if (!pieceRemoved(k) && std::find(rotation->pieces.begin(), rotation->pieces.end(), k) == rotation->pieces.end())
+        others.push_back(k);
+    if (others.empty())
+      pars.exception("rotation turns every piece");
+    rotation->pieces = others;
+    rotation->inverse = true;
+  }
 
   pars.require(xmlParser_c::END_TAG, "state");
 }
@@ -507,6 +544,17 @@ void separation_c::clearTrans(void) {
     removed->clearTrans();
   if (left)
     left->clearTrans();
+}
+
+void separation_c::shiftPiece(unsigned int name, int dx, int dy, int dz) {
+  for (unsigned int i = 0; i < pieces.size(); i++)
+    if (pieces[i] == name)
+      for (auto & st : states)
+        st->set(i, st->getX(i) + dx, st->getY(i) + dy, st->getZ(i) + dz);
+  if (removed)
+    removed->shiftPiece(name, dx, dy, dz);
+  if (left)
+    left->shiftPiece(name, dx, dy, dz);
 }
 
 unsigned int separation_c::sumRotations(void) const {
