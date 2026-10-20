@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <numbers>
@@ -492,6 +493,24 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
 
   for (const pathTable_c & t : tables[0])
     tables[1].push_back(t.mirrored());
+
+  /* blockers common to every path, the quick reject in firstClear */
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    const size_t entries = tables[sense][0].table.size();
+    blockedByAll[sense].resize(entries);
+    for (size_t e = 0; e < entries; e++) {
+      std::vector<std::pair<int, int>> common = tables[sense][0].table[e];
+      std::sort(common.begin(), common.end());
+      for (size_t i = 1; i < tables[sense].size() && !common.empty(); i++) {
+        std::vector<std::pair<int, int>> other = tables[sense][i].table[e];
+        std::sort(other.begin(), other.end());
+        std::vector<std::pair<int, int>> both;
+        std::set_intersection(common.begin(), common.end(), other.begin(), other.end(), std::back_inserter(both));
+        common.swap(both);
+      }
+      blockedByAll[sense][e] = std::move(common);
+    }
+  }
 }
 
 const pathTable_c & rotationTables_c::table(unsigned int sense, unsigned int idx) const {
@@ -500,19 +519,84 @@ const pathTable_c & rotationTables_c::table(unsigned int sense, unsigned int idx
   return tables[sense][idx];
 }
 
+const std::vector<std::pair<int, int>> & rotationTables_c::blockedOnAllPaths(unsigned int sense, int du, int dv) const {
+  const pathTable_c & first = tables[sense > 1 ? 0 : sense][0];
+  if (sense > 1 || !first.covers(du, dv) || ((du ^ dv) & 1))
+    bt_te("rotationTables_c::blockedOnAllPaths: offset outside the tables or on an edge pivot");
+  return blockedByAll[sense][first.index(du, dv)];
+}
+
+occupancy_c::occupancy_c(const std::vector<cell_t> & cells) {
+  if (cells.empty())
+    return;
+  int x1 = cells[0].x, y1 = cells[0].y, z1 = cells[0].z;
+  x0 = x1; y0 = y1; z0 = z1;
+  for (const cell_t & c : cells) {
+    x0 = std::min(x0, c.x); x1 = std::max(x1, c.x);
+    y0 = std::min(y0, c.y); y1 = std::max(y1, c.y);
+    z0 = std::min(z0, c.z); z1 = std::max(z1, c.z);
+  }
+  sx = x1 - x0 + 1;
+  sy = y1 - y0 + 1;
+  sz = z1 - z0 + 1;
+  bits.assign((size_t)sx * sy * sz, false);
+  for (const cell_t & c : cells)
+    bits[((size_t)(c.z - z0) * sy + (c.y - y0)) * sx + (c.x - x0)] = true;
+}
+
 int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                                  unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
                                  unsigned int sense) const {
-  if (sense > 1)
-    bt_te("rotationTables_c::firstClear: sense must be 0 or 1");
+  return firstClear(moving, occupancy_c(stat), axis, pivotHx, pivotHy, pivotHz, sense);
+}
 
-  std::vector<std::tuple<int, int, int>> mv;
-  occupancy_t occupied;
-  sceneOffsets(moving, stat, axis, pivotHx, pivotHy, pivotHz, &mv, &occupied);
+int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
+                                 unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
+                                 unsigned int sense) const {
+  if (sense > 1 || axis > 2)
+    bt_te("rotationTables_c::firstClear: sense must be 0 or 1, axis 0 to 2");
 
-  for (size_t i = 0; i < tables[sense].size(); i++)
-    if (!tableBlocked(tables[sense][i], mv, occupied))
+  const pathTable_c & first = tables[sense][0];
+
+  /* in-plane doubled pivot and each moving cube's table entry */
+  int pu, pv;
+  doubledOffset({ 0, 0, 0 }, axis, -pivotHx, -pivotHy, -pivotHz, &pu, &pv);
+
+  struct movingCube_t { int layer; unsigned int entry; };
+  std::vector<movingCube_t> cubes;
+  cubes.reserve(moving.size());
+  for (const cell_t & c : moving) {
+    int u, v;
+    doubledOffset(c, axis, pivotHx, pivotHy, pivotHz, &u, &v);
+    if (!first.covers(u, v) || ((u ^ v) & 1))
+      bt_te("rotationTables_c::firstClear: cube outside the tables or edge pivot");
+    cubes.push_back({ (int)axial(c, axis), first.index(u, v) });
+  }
+
+  /* static cube at doubled offset (su, sv) from the pivot, in the layer */
+  auto occupied = [&](int layer, int su, int sv) {
+    const int u = (pu + su) / 2, v = (pv + sv) / 2;
+    if (axis == 0)      return stat(layer, u, v);
+    else if (axis == 1) return stat(v, layer, u);
+    else                return stat(u, v, layer);
+  };
+
+  for (const movingCube_t & m : cubes)
+    for (const auto & [su, sv] : blockedByAll[sense][m.entry])
+      if (occupied(m.layer, su, sv))
+        return -1;
+
+  for (size_t i = 0; i < tables[sense].size(); i++) {
+    bool blocked = false;
+    for (size_t k = 0; k < cubes.size() && !blocked; k++)
+      for (const auto & [su, sv] : tables[sense][i].table[cubes[k].entry])
+        if (occupied(cubes[k].layer, su, sv)) {
+          blocked = true;
+          break;
+        }
+    if (!blocked)
       return (int)i;
+  }
   return -1;
 }
 
