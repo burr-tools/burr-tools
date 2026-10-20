@@ -575,6 +575,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
         piecePart.push_back(i);
     }
     hotspotCells.resize(partVoxels.size());
+    planeCellCache.resize(partVoxels.size());
   }
 }
 
@@ -1132,46 +1133,83 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
   if (pairPivots.size() >= MAX_PAIR_CACHE)
     pairPivots.clear();
 
-  const std::vector<rotationGeometry::cell_t> & ci = cellsAroundHotspot(partI, transI);
-  const std::vector<rotationGeometry::cell_t> & cj = cellsAroundHotspot(partJ, transJ);
+  const planeCells_t & pi = planeCells(partI, transI, axis);
+  const planeCells_t & pj = planeCells(partJ, transJ, axis);
   const int reach = 2 * rotations->getRadius();
 
+  /* j's cubes are offset by the hotspots' difference */
+  int du, dv;
+  rotationGeometry::inPlaneDoubled(dx, dy, dz, axis, &du, &dv);
+  const int da = rotationGeometry::axialCoordinate(dx, dy, dz, axis);
+
+  /* Only pivots within the tables' reach of every cube of i matter: at any
+   * other pivot i cannot turn at all. A piece wider than that never turns. */
+  const int qu0 = pi.umax - reach, qu1 = pi.umin + reach;
+  const int qv0 = pi.vmax - reach, qv1 = pi.vmin + reach;
+  if (qu0 > qu1 || qv0 > qv1)
+    return (pairPivots[key] = nullptr).get();
+
   std::unique_ptr<pivotSet_t> set;
-  for (const rotationGeometry::cell_t & m : ci) {
-    int mu, mv;
-    rotationGeometry::inPlaneDoubled(m.x, m.y, m.z, axis, &mu, &mv);
-    const int layer = rotationGeometry::axialCoordinate(m.x, m.y, m.z, axis);
 
-    for (const rotationGeometry::cell_t & c : cj) {
-      if (rotationGeometry::axialCoordinate(c.x + dx, c.y + dy, c.z + dz, axis) != layer)
-        continue;
-      int su, sv;
-      rotationGeometry::inPlaneDoubled(c.x + dx, c.y + dy, c.z + dz, axis, &su, &sv);
+  /* pair up the cubes layer by layer; both lists are sorted by layer */
+  auto mi = pi.cubes.begin(), mj = pj.cubes.begin();
+  while (mi != pi.cubes.end() && mj != pj.cubes.end()) {
+    if (mi->layer < mj->layer + da) { ++mi; continue; }
+    if (mj->layer + da < mi->layer) { ++mj; continue; }
 
-      for (const auto & [ou, ov] : rotations->pivotsBlockedAt(sense, su - mu, sv - mv)) {
-        if (!set) {
-          /* every pivot of i lies within its footprint widened by the reach */
-          int umin = INT_MAX, umax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN;
-          for (const rotationGeometry::cell_t & k : ci) {
-            int u, v;
-            rotationGeometry::inPlaneDoubled(k.x, k.y, k.z, axis, &u, &v);
-            umin = std::min(umin, u); umax = std::max(umax, u);
-            vmin = std::min(vmin, v); vmax = std::max(vmax, v);
+    const int layer = mi->layer;
+    auto ei = mi, ej = mj;
+    while (ei != pi.cubes.end() && ei->layer == layer) ++ei;
+    while (ej != pj.cubes.end() && ej->layer + da == layer) ++ej;
+
+    for (auto m = mi; m != ei; ++m)
+      for (auto c = mj; c != ej; ++c)
+        for (const auto & [ou, ov] : rotations->pivotsBlockedAt(sense, c->u + du - m->u, c->v + dv - m->v)) {
+          const int qu = m->u - ou, qv = m->v - ov;
+          if (qu < qu0 || qu > qu1 || qv < qv0 || qv > qv1)
+            continue;
+          if (!set) {
+            set = std::make_unique<pivotSet_t>();
+            set->u0 = qu0;
+            set->v0 = qv0;
+            set->width = qu1 - qu0 + 1;
+            set->height = qv1 - qv0 + 1;
+            set->bits.assign(((size_t)set->width * set->height + 63) / 64, 0);
           }
-          set = std::make_unique<pivotSet_t>();
-          set->u0 = umin - reach;
-          set->v0 = vmin - reach;
-          set->width = umax - umin + 2 * reach + 1;
-          set->height = vmax - vmin + 2 * reach + 1;
-          set->bits.assign(((size_t)set->width * set->height + 63) / 64, 0);
+          const size_t b = (size_t)(qu - qu0) * set->height + (qv - qv0);
+          set->bits[b >> 6] |= uint64_t(1) << (b & 63);
         }
-        const size_t b = (size_t)(mu - ou - set->u0) * set->height + (mv - ov - set->v0);
-        set->bits[b >> 6] |= uint64_t(1) << (b & 63);
-      }
-    }
+
+    mi = ei;
+    mj = ej;
   }
 
   return (pairPivots[key] = std::move(set)).get();
+}
+
+const movementAnalysator_c::planeCells_t &
+movementAnalysator_c::planeCells(unsigned int part, unsigned int trans, unsigned int axis) {
+
+  std::vector<planeCells_t> & byTrans = planeCellCache[part];
+  if (byTrans.size() <= 3 * trans + axis)
+    byTrans.resize(3 * trans + 3);
+
+  planeCells_t & pc = byTrans[3 * trans + axis];
+  if (pc.cubes.empty()) {
+    pc.umin = pc.vmin = INT_MAX;
+    pc.umax = pc.vmax = INT_MIN;
+    for (const rotationGeometry::cell_t & c : cellsAroundHotspot(part, trans)) {
+      planeCells_t::cube_t q;
+      q.layer = rotationGeometry::axialCoordinate(c.x, c.y, c.z, axis);
+      rotationGeometry::inPlaneDoubled(c.x, c.y, c.z, axis, &q.u, &q.v);
+      pc.umin = std::min(pc.umin, q.u); pc.umax = std::max(pc.umax, q.u);
+      pc.vmin = std::min(pc.vmin, q.v); pc.vmax = std::max(pc.vmax, q.v);
+      pc.cubes.push_back(q);
+    }
+    std::stable_sort(pc.cubes.begin(), pc.cubes.end());
+  }
+
+  return pc;
 }
 
 namespace {

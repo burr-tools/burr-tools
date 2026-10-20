@@ -55,14 +55,24 @@ namespace rotationGeometry {
   /** Doubled in-plane coordinates of a point for a turn about axis (cube
    *  centres at even values): X -> (y, z), Y -> (z, x), Z -> (x, y), so a
    *  positive angle is right-handed for every axis. */
-  void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v);
+  inline void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v) {
+    if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
+    else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
+    else                { *u = 2 * x; *v = 2 * y; }
+  }
 
   /** The coordinate of a point along axis. */
-  int axialCoordinate(int x, int y, int z, unsigned int axis);
+  inline int axialCoordinate(int x, int y, int z, unsigned int axis) {
+    return (axis == 0) ? x : ((axis == 1) ? y : z);
+  }
 
   /** The doubled 3D pivot for a doubled in-plane pivot (u, v); its axial
    *  coordinate, 0, does not matter for a turn about axis. */
-  void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz);
+  inline void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
+    if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
+    else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
+    else                { *hx = u; *hy = v; *hz = 0; }
+  }
 
   /** Turn a lattice point a quarter turn about a doubled pivot at a cube
    *  centre or corner (both map the lattice onto itself). */

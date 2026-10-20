@@ -185,7 +185,22 @@ class movementAnalysator_c {
     /* a null entry: j never blocks i */
     std::unordered_map<pairKey_t, std::unique_ptr<pivotSet_t>, pairKeyHash_t> pairPivots;
 
+    /* the cubes of a part in an orientation in the in-plane frame of an
+     * axis, relative to the hotspot and sorted by layer, with their
+     * footprint: what blockingPivots pairs up on a cache miss */
+    struct planeCells_t {
+      struct cube_t {
+        int layer, u, v;
+        bool operator<(const cube_t & o) const { return layer < o.layer; }
+      };
+      std::vector<cube_t> cubes;
+      int umin = 0, umax = 0, vmin = 0, vmax = 0;
+    };
+    /* [part][trans * 3 + axis], built lazily */
+    std::vector<std::vector<planeCells_t>> planeCellCache;
+
     const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int part, unsigned int trans);
+    const planeCells_t & planeCells(unsigned int part, unsigned int trans, unsigned int axis);
     const pivotSet_t * blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     void listRotations(void);
     void addRotationNode(uint32_t group, unsigned int axis, unsigned int sense, int pu, int pv, int path);
