@@ -109,6 +109,8 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
    */
   separation_c * erg = 0;
 
+  const rotationGeometry::rotationTables_c * rotations = analyse->getRotationTables();
+
   /* count the pieces in both parts */
   int part1 = 0, part2 = 0;
 
@@ -168,7 +170,19 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
 
         } else
           s->set(i, st2->getX(i), st2->getY(i), st2->getZ(i));
+
+        /* with rotation moves pieces may have turned, so every state
+         * records the orientations; removed pieces keep their last one */
+        if (rotations)
+          s->setTrans(i, st2->is_piece_removed(i) ? st2->getComefrom()->getTrans(i) : st2->getTrans(i));
       }
+
+      if (st2->isRotation()) {
+        bt_assert(rotations);
+        s->setRotation({ st2->getRotationAxis(), st2->getRotationPivotU(), st2->getRotationPivotV(),
+                         rotations->table(st2->getRotationSense(), st2->getRotationPath()).getSpec() });
+      }
+
       erg->addstate(std::move(s));
 
       st2 = st2->getComefrom();

@@ -347,14 +347,34 @@ stronger.
     `rotationRules_c` against its *own* model (`g = 0.081, r = 0`):
     of 7512 allowed moves, 619 (8.2%) need the unrecorded wiggle and
     7 are impossible even with it (sampling tunnelling).
-* **Phase 2** — port from PR #50 what is worth keeping (the
-  `movementAnalysator_c` phase, rotation edges and orientation in
-  `disassemblerNode_c`, `state_c` rotation data, the GUI tumble), with a
-  new generator (endpoints + pure rotation via checker),
-  canonical states, single code path; record the move; `rotationPose` drives
-  the GUI. Remove `rotationRules_c` heuristics that the differential test
-  shows are not implied by geometry; keep sound ones only as prefilters
-  (test: prefilter rejects ⇒ checker rejects).
+* **Phase 2, solver (done)** — written fresh on master instead of
+  porting PR #50's generators; none of `rotationRules_c` was needed:
+  * `movementAnalysator_c::find` state 3 (only with tables): every group
+    without piece 0 (canonical states, no duplicate "turn the rest"
+    moves; groups enumerated up to `MAX_ROTATION_PIECES` = 16 pieces), centre
+    and corner pivots in the group's footprint, both senses about all
+    axes, end pose free and not a no-op, first clear path of the family.
+    The path family is closed under reversal (slides reverse into slides
+    of the other sense, wiggles into wiggles), so every rotation edge is
+    undirected, which the three-front breadth-first search relies on.
+  * `disassemblerNode_c`: rotation in `dir ≥ ROTATION_DIR_BASE` (axis,
+    sense), `amount` = path index, in-plane pivot in former padding — the
+    node stays 48 bytes.
+  * `state_c`: piece orientations (`<dt>`) in every state of a disassembly
+    made with rotation moves, and the rotation leading into a state
+    (`<rotation axis pu pv path sense [du dv amount]/>`); nothing new is
+    written without rotation moves. The state loader now skips unknown
+    tags instead of misparsing them.
+  * `burrTxt -R`: `level: 2.4, 2 rotations`; `-p` names the turning
+    pieces, axis, pivot and path and draws pieces in their orientations.
+  * `AAA_most_rotations.xmpuzzle` (from PR #50, with its saved solution in
+    PR #50's format removed): no disassembly without rotations; with them
+    level 2.4 with 2 rotations, both needing a wiggle. Its test replays
+    every step independently (no overlaps, turned pieces land on their
+    start cells turned about the pivot, path re-certified by the checker
+    directly) and after a save/load round trip.
+* **Phase 2, GUI** — `makePath` drives the animation: orientation per
+  state, and the moving pieces follow the recorded path.
 * **Phase 3** — configuration-space planner for shimmy moves; path
   recording with waypoints; contact highlighting; `--verify-rotations`.
 * **Phase 4** — calibration with grssam's physical cases; benchmark
