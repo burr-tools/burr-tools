@@ -290,6 +290,24 @@ path_t makePath(const pathSpec_t & spec) {
   return path;
 }
 
+pose_t poseAt(const path_t & path, double t) {
+
+  bt_assert(!path.empty());
+  if (path.size() == 1 || t <= 0)
+    return path.front();
+  if (t >= 1)
+    return path.back();
+
+  const double segments = (double)(path.size() - 1);
+  const size_t seg = std::min((size_t)(t * segments), path.size() - 2);
+  const double local = t * segments - (double)seg;
+  const pose_t & a = path[seg];
+  const pose_t & b = path[seg + 1];
+  return { a.theta + local * (b.theta - a.theta),
+           a.du + local * (b.du - a.du),
+           a.dv + local * (b.dv - a.dv) };
+}
+
 namespace {
 
 /* Doubled in-plane offset of a cell from a doubled pivot, same frames as inPlane. */
