@@ -10,6 +10,7 @@
 #include "lib/rotationtables.h"
 #include "lib/solvethread.h"
 
+#include <future>
 #include <memory>
 
 namespace {
@@ -34,6 +35,11 @@ problem_c & pelikan(void) {
 std::shared_ptr<const rotationGeometry::rotationTables_c> pelikanTables(void) {
   static auto tables = rotationTablesFor(pelikan(), SMALL);
   return tables;
+}
+
+std::shared_ptr<rotationContext_c> pelikanContext(void) {
+  static auto context = rotationContextFor(pelikan(), SMALL);
+  return context;
 }
 
 }
@@ -78,29 +84,75 @@ TEST_CASE("rotation tables exist only for cube grids", "[rotations]") {
   CHECK(rotationTablesFor(*hex->getProblem(0), SMALL) == nullptr);
 }
 
-TEST_CASE("rotation tables reach the disassemblers only when requested", "[rotations]") {
+TEST_CASE("a rotation context exists only for cube grids and shares the tables", "[rotations]") {
+
+  auto context = pelikanContext();
+  REQUIRE(context != nullptr);
+  CHECK(&context->tables() == pelikanTables().get());
+
+  /* built in the background: the same tables once they are there */
+  auto background = rotationContextFor(pelikan(), SMALL, true);
+  REQUIRE(background != nullptr);
+  CHECK(&background->tables() == pelikanTables().get());
+
+  auto hex = loadPuzzle("examples/HexSticks.xmpuzzle");
+  CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
+}
+
+TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {
+
+  rotationContext_c context(pelikan(), std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
+  const rotationPairKey_t key = { 1, 2 }, other = { 1, 3 };
+
+  const rotationPivotSet_t * found = nullptr;
+  CHECK_FALSE(context.lookup(key, &found));
+
+  auto first = std::make_unique<rotationPivotSet_t>();
+  const rotationPivotSet_t * firstRaw = first.get();
+  CHECK(context.store(key, first) == firstRaw);
+  CHECK(first == nullptr);   // taken over by the cache
+
+  /* a second worker that computed the same pair gets the first set back */
+  auto second = std::make_unique<rotationPivotSet_t>();
+  CHECK(context.store(key, second) == firstRaw);
+  CHECK(context.lookup(key, &found));
+  CHECK(found == firstRaw);
+
+  /* "never blocks" is cached too */
+  std::unique_ptr<rotationPivotSet_t> none;
+  CHECK(context.store(other, none) == nullptr);
+  found = firstRaw;
+  CHECK(context.lookup(other, &found));
+  CHECK(found == nullptr);
+
+  CHECK(context.getSkipped() == 0);
+  context.noteSkipped(rotationContext_c::SKIP_RADIUS);
+  CHECK(context.getSkipped() == rotationContext_c::SKIP_RADIUS);
+}
+
+TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rotations]") {
 
   problem_c & problem = pelikan();
-  auto tables = pelikanTables();
-  REQUIRE(tables != nullptr);
+  auto context = pelikanContext();
+  REQUIRE(context != nullptr);
 
   SECTION("single disassembler") {
     CHECK_FALSE(disassembler_0_c(problem).rotationMoves());
-    CHECK(disassembler_0_c(problem, tables).rotationMoves());
+    CHECK(disassembler_0_c(problem, context).rotationMoves());
   }
 
   SECTION("disassembler pool") {
     auto ignore = [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {};
     for (unsigned int threads : { 1u, 2u }) {
       disassemblerPool_c off(problem, threads, ignore);
-      CHECK(off.getRotationTables() == nullptr);
-      disassemblerPool_c on(problem, threads, ignore, tables);
-      CHECK(on.getRotationTables() == tables.get());
+      CHECK(off.getRotationContext() == nullptr);
+      disassemblerPool_c on(problem, threads, ignore, context);
+      CHECK(on.getRotationContext() == context.get());
     }
   }
 
   SECTION("solver") {
-    /* while `tables` is alive the solver reuses it instead of building */
+    /* while the tables are alive the solver reuses them instead of building */
     solveThread_c plain(problem, solveThread_c::PAR_DISASSM, 2, SMALL);
     CHECK_FALSE(plain.rotationMoves());
 

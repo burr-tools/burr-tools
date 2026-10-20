@@ -26,6 +26,7 @@
 #include "voxel.h"
 
 #include <algorithm>
+#include <chrono>
 #include <mutex>
 
 using rotationGeometry::rotationTables_c;
@@ -35,8 +36,13 @@ rotationSettings_t defaultRotationSettings(void) {
 }
 
 int rotationRadiusFor(const problem_c & problem) {
-  const voxel_c * result = getResultShape(problem);
-  return (int)std::max({ result->getX(), result->getY(), result->getZ() }) + 1;
+  auto extent = [](const voxel_c * v) {
+    return (int)std::max({ v->boundX2() - v->boundX1(), v->boundY2() - v->boundY1(), v->boundZ2() - v->boundZ1() }) + 1;
+  };
+  int largest = extent(getResultShape(problem));
+  for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
+    largest = std::max(largest, extent(problem.getPartShape(i)));
+  return largest + 1;
 }
 
 namespace {
@@ -51,17 +57,45 @@ bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
   return a.model.play == b.model.play && a.amounts == b.amounts;
 }
 
+typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_t;
+
+/* The tables shared between solvers, and the background builds no context
+ * waits for any more. Dropping the last reference to a std::async future
+ * blocks until its build is done, which could be the GUI thread stopping a
+ * solve right after starting it; such futures are kept here instead. They
+ * are declared after the cache, so at exit they are destroyed first and a
+ * build still running finishes while the cache it writes to exists. */
+struct shared_t {
+  std::mutex mutex;
+  std::vector<cacheEntry_t> cache;
+  std::mutex parkedMutex;
+  std::vector<tableFuture_t> parked;
+};
+
+shared_t & shared(void) {
+  static shared_t s;
+  return s;
+}
+
+void park(tableFuture_t f) {
+  if (!f.valid() || f.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+    return;
+  shared_t & s = shared();
+  std::lock_guard<std::mutex> lock(s.parkedMutex);
+  std::erase_if(s.parked, [](const tableFuture_t & p) { return p.wait_for(std::chrono::seconds(0)) == std::future_status::ready; });
+  s.parked.push_back(std::move(f));
+}
+
 }
 
 std::shared_ptr<const rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius) {
 
-  static std::mutex mutex;
-  static std::vector<cacheEntry_t> cache;
+  std::vector<cacheEntry_t> & cache = shared().cache;
 
   /* Building under the lock keeps two solvers from building the same
    * tables twice; requests for other settings wait, which is rare. */
-  std::lock_guard<std::mutex> lock(mutex);
+  std::lock_guard<std::mutex> lock(shared().mutex);
 
   std::erase_if(cache, [](const cacheEntry_t & e) { return e.tables.expired(); });
 
@@ -82,4 +116,55 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
     return nullptr;
 
   return sharedRotationTables(settings, rotationRadiusFor(problem));
+}
+
+rotationContext_c::rotationContext_c(const problem_c & p,
+                                     std::shared_future<std::shared_ptr<const rotationTables_c>> tables) :
+  problem(p),
+  tableFuture(std::move(tables))
+{
+}
+
+rotationContext_c::~rotationContext_c() {
+  park(std::move(tableFuture));
+}
+
+bool rotationContext_c::lookup(const rotationPairKey_t & key, const rotationPivotSet_t ** set) {
+  shard_t & sh = shards[rotationPairKeyHash_t()(key) % SHARDS];
+  std::lock_guard<std::mutex> lock(sh.mutex);
+  auto it = sh.sets.find(key);
+  if (it == sh.sets.end())
+    return false;
+  *set = it->second.get();
+  return true;
+}
+
+const rotationPivotSet_t * rotationContext_c::store(const rotationPairKey_t & key, std::unique_ptr<rotationPivotSet_t> & set) {
+  shard_t & sh = shards[rotationPairKeyHash_t()(key) % SHARDS];
+  std::lock_guard<std::mutex> lock(sh.mutex);
+  auto it = sh.sets.find(key);
+  if (it != sh.sets.end())
+    return it->second.get();
+  if (entries.load(std::memory_order_relaxed) >= MAX_ENTRIES)
+    return set.get();
+  entries.fetch_add(1, std::memory_order_relaxed);
+  return (sh.sets[key] = std::move(set)).get();
+}
+
+std::shared_ptr<rotationContext_c>
+rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background) {
+
+  if (problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
+    return nullptr;
+
+  const int radius = rotationRadiusFor(problem);
+  std::shared_future<std::shared_ptr<const rotationTables_c>> tables;
+  if (background)
+    tables = std::async(std::launch::async, [settings, radius] { return sharedRotationTables(settings, radius); }).share();
+  else {
+    std::promise<std::shared_ptr<const rotationTables_c>> ready;
+    ready.set_value(sharedRotationTables(settings, radius));
+    tables = ready.get_future().share();
+  }
+  return std::make_shared<rotationContext_c>(problem, std::move(tables));
 }
