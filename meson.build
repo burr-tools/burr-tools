@@ -525,6 +525,13 @@ if not meson.is_cross_build()
     timeout: 300,
     workdir: meson.project_source_root(),
   )
+  test('puzzlecad2xmpuzzle',
+    find_program('python3'),
+    args: [meson.project_source_root() / 'test/test_puzzlecad2xmpuzzle.py', meson.project_source_root(), burrtxt_exe],
+    suite: 'fast',
+    timeout: 120,
+    workdir: meson.project_source_root(),
+  )
   test('burrtxt_cli_smoke',
     find_program('python3'),
     args: [meson.project_source_root() / 'test/cli_smoke_burrtxt.py', burrtxt_exe, meson.project_source_root()],
