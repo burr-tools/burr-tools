@@ -62,14 +62,25 @@ static void printLevel(const std::string & level, const separation_c * da) {
     printf("level: %s\n", level.c_str());
 }
 
-/* the rotation tables for -R, nullptr without it: then no rotation code runs */
-static std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables(const problem_c & problem) {
+/* the rotation context for -R, nullptr without it: then no rotation code runs */
+static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
   if (!rotationMoves)
     return nullptr;
-  auto tables = rotationTablesFor(problem, defaultRotationSettings());
-  if (!tables)
+  auto context = rotationContextFor(problem, defaultRotationSettings());
+  if (!context)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
-  return tables;
+  return context;
+}
+
+/* say so when limits made the search skip rotation moves */
+static void reportSkippedRotations(const rotationContext_c * context) {
+  if (!context)
+    return;
+  if (context->getSkipped() & rotationContext_c::SKIP_RADIUS)
+    cerr << "note: rotation moves of groups wider than the rotation tables (radius "
+         << context->tables().getRadius() << ") may have been missed\n";
+  if (context->getSkipped() & rotationContext_c::SKIP_PIECES)
+    cerr << "note: rotation moves were not considered in (sub)problems of more than 32 pieces\n";
 }
 
 class asm_cb : public assembler_cb {
@@ -103,7 +114,7 @@ public:
               print(da.get(), a.get(), puzzle);
           }
         },
-        rotationTables(*p)
+        rotationContext(*p)
       );
     }
   }
@@ -391,6 +402,8 @@ int main(int argv, char* args[]) {
 
       assm->assemble(&a);
       a.finish();
+      if (a.pool)
+        reportSkippedRotations(a.pool->getRotationContext());
 
       cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << assm->getIterations() << " iterations ";
 
@@ -403,7 +416,8 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      d = std::make_unique<disassembler_0_c>(*problem, rotationTables(*problem));
+      auto context = rotationContext(*problem);
+      d = std::make_unique<disassembler_0_c>(*problem, context);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
@@ -425,6 +439,7 @@ int main(int argv, char* args[]) {
       }
 
       d.reset();
+      reportSkippedRotations(context.get());
     }
   }
 

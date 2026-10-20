@@ -23,7 +23,12 @@
 
 #include "rotationgeometry.h"
 
+#include <atomic>
+#include <cstdint>
+#include <future>
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 class problem_c;
@@ -46,8 +51,10 @@ struct rotationSettings_t {
  *  better defaults, and shift amounts 0.1 to 0.4. */
 rotationSettings_t defaultRotationSettings(void);
 
-/** Table radius large enough for every rotation move of this problem:
- *  the largest dimension of its result shape plus one. */
+/** Table radius for a problem: the largest filled extent of its result and
+ *  of its pieces, plus one. That covers every turn of a single piece and of
+ *  every group that stays within the assembled shape; turns of groups
+ *  spread wider are skipped, and reported (rotationContext_c::getSkipped). */
 int rotationRadiusFor(const problem_c & problem);
 
 /**
@@ -66,5 +73,99 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
 /** Same, with an explicit radius; for callers without a problem and tests. */
 std::shared_ptr<const rotationGeometry::rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius);
+
+/**
+ * The pivots, relative to a piece's hotspot in doubled in-plane units, at
+ * which another piece blocks it on every path; a bitmap over a box.
+ */
+struct rotationPivotSet_t {
+  int u0 = 0, v0 = 0, width = 0, height = 0;
+  std::vector<uint64_t> bits;
+  bool test(int u, int v) const {
+    u -= u0;
+    v -= v0;
+    if (u < 0 || v < 0 || u >= width || v >= height)
+      return false;
+    const size_t b = (size_t)u * height + v;
+    return (bits[b >> 6] >> (b & 63)) & 1;
+  }
+};
+
+/** What a rotationPivotSet_t depends on: both parts, their orientations,
+ *  their relative position, the axis and the sense. */
+struct rotationPairKey_t {
+  uint64_t a, b;
+  bool operator==(const rotationPairKey_t &) const = default;
+};
+
+struct rotationPairKeyHash_t {
+  size_t operator()(const rotationPairKey_t & k) const { return k.a * 0x9E3779B97F4A7C15ull ^ (k.b + (k.a >> 29)); }
+};
+
+/**
+ * Everything the disassemblers of one solve share for rotation moves of one
+ * problem: the tables (possibly still being built in the background), the
+ * cache of blocking pivots per piece pair, and which limits made the search
+ * skip turns. Thread-safe; one per problem and solve, handed to every
+ * disassembler; none at all when rotation moves are off.
+ */
+class rotationContext_c {
+
+  public:
+
+    rotationContext_c(const problem_c & problem,
+                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables);
+
+    const problem_c & getProblem(void) const { return problem; }
+
+    /** The tables; waits for them if they are still being built. */
+    const rotationGeometry::rotationTables_c & tables(void) const { return *tableFuture.get(); }
+
+    /** Cached blocking pivots of a pair: true and the set (nullptr: never
+     *  blocks) if known. */
+    bool lookup(const rotationPairKey_t & key, const rotationPivotSet_t ** set);
+
+    /** Publish a computed set. Returns the cached set (another worker may
+     *  have been first); when the cache is full the set stays with the
+     *  caller, who must then keep it alive, and set.get() is returned. */
+    const rotationPivotSet_t * store(const rotationPairKey_t & key, std::unique_ptr<rotationPivotSet_t> & set);
+
+    /** Limits that made the search skip turns, a bit set of skip_e. */
+    enum skip_e {
+      SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
+      SKIP_PIECES = 2    ///< a (sub)problem had more pieces than groups can address
+    };
+    void noteSkipped(skip_e s) { skipped.fetch_or(s, std::memory_order_relaxed); }
+    unsigned int getSkipped(void) const { return skipped.load(std::memory_order_relaxed); }
+
+    // no copying and assigning
+    rotationContext_c(const rotationContext_c &) = delete;
+    rotationContext_c & operator=(const rotationContext_c &) = delete;
+
+  private:
+
+    const problem_c & problem;
+    std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
+
+    static constexpr size_t SHARDS = 64;
+    static constexpr size_t MAX_ENTRIES = size_t(1) << 22;
+    struct shard_t {
+      std::mutex mutex;
+      std::unordered_map<rotationPairKey_t, std::unique_ptr<rotationPivotSet_t>, rotationPairKeyHash_t> sets;
+    };
+    shard_t shards[SHARDS];
+    std::atomic<size_t> entries{0};
+    std::atomic<unsigned int> skipped{0};
+};
+
+/**
+ * A rotation context for a problem, or nullptr when rotation moves are not
+ * possible for it (only cube grids with a valid result shape have them).
+ * With background set, the tables are built on another thread and the
+ * first disassembler that needs them waits; otherwise they are built (or
+ * taken from the cache) before returning.
+ */
+std::shared_ptr<rotationContext_c>
+rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false);
 
 #endif
