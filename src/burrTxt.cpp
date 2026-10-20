@@ -28,6 +28,7 @@
 #include "lib/disassemblerpool.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
+#include "lib/rotationtables.h"
 #include "lib/voxel.h"
 #include "lib/solution.h"
 #include "tools/xml.h"
@@ -46,8 +47,19 @@ bool allProblems;
 bool printDisassemble;
 bool printSolutions;
 bool quiet;
+bool rotationMoves;
 
 std::unique_ptr<disassembler_c> d;
+
+/* the rotation tables for -R, nullptr without it: then no rotation code runs */
+static std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables(const problem_c & problem) {
+  if (!rotationMoves)
+    return nullptr;
+  auto tables = rotationTablesFor(problem, defaultRotationSettings());
+  if (!tables)
+    cerr << "rotation moves are only available for cube grids, ignoring -R\n";
+  return tables;
+}
 
 class asm_cb : public assembler_cb {
 
@@ -79,7 +91,8 @@ public:
             if (printDisassemble)
               print(da.get(), a.get(), puzzle);
           }
-        }
+        },
+        rotationTables(*p)
       );
     }
   }
@@ -109,6 +122,7 @@ void usage(void) {
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
+  cout << "  -R    with -d or -x: also allow pieces to turn by 90 degrees (cube grids)\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -135,6 +149,7 @@ int main(int argv, char* args[]) {
   printDisassemble = false;
   printSolutions = false;
   quiet = false;
+  rotationMoves = false;
   bool assemble = true;
   unsigned int problem = 0;
   unsigned int firstProblem = 0;
@@ -165,6 +180,8 @@ int main(int argv, char* args[]) {
         printSolutions = true;
       else if (strcmp(args[i], "-r") == 0)
         reduce = true;
+      else if (strcmp(args[i], "-R") == 0)
+        rotationMoves = true;
       else if (strcmp(args[i], "-n") == 0)
         newline = false;
       else if (strcmp(args[i], "-x") == 0)
@@ -365,7 +382,7 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      d = std::make_unique<disassembler_0_c>(*problem);
+      d = std::make_unique<disassembler_0_c>(*problem, rotationTables(*problem));
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
