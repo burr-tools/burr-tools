@@ -32,6 +32,7 @@
 #include <vector>
 
 class problem_c;
+class disassemblerNode_c;
 
 /**
  * Solver-side setup of rotation moves: which physical model and which
@@ -133,6 +134,25 @@ class rotationContext_c {
      *  caller, who must then keep it alive, and set.get() is returned. */
     const rotationPivotSet_t * store(const rotationPairKey_t & key, std::unique_ptr<rotationPivotSet_t> & set);
 
+    /**
+     * Canonical orientations. A piece with symmetries occupies the same
+     * cells (colours included) in several orientations; a turn can then
+     * reach a state that equals one reached by translations but carries
+     * another orientation id, and the search would visit it twice. So every
+     * piece of a search state is stored in the smallest orientation with
+     * the same cells, its hotspot moved by `dx, dy, dz` to keep them in
+     * place.
+     */
+    struct canonical_t {
+      unsigned char trans;
+      int dx, dy, dz;
+    };
+    canonical_t canonical(unsigned int piece, unsigned int trans) const;
+
+    /** Bring every piece of the node into its canonical orientation;
+     *  `pieces` names the node's pieces. True if something changed. */
+    bool canonicalize(disassemblerNode_c * node, const std::vector<unsigned int> & pieces) const;
+
     /** Limits that made the search skip turns, a bit set of skip_e. */
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
@@ -149,6 +169,10 @@ class rotationContext_c {
 
     const problem_c & problem;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
+
+    /* [part][trans], and the part of every piece */
+    std::vector<std::vector<canonical_t>> canonicalOf;
+    std::vector<unsigned int> piecePart;
 
     static constexpr size_t SHARDS = 64;
     static constexpr size_t MAX_ENTRIES = size_t(1) << 22;
