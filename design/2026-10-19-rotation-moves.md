@@ -418,10 +418,10 @@ ideally be done:
   table build and the closure search: DraculasDentalDesaster with `-R`
   went from not finishing in 10 minutes to 7.5 s wall / 45 s CPU on 8
   threads (0.05 s without rotations), peak RSS 153 MB (11 MB without).
-  Remaining cost: walking the inverse lists on cache misses. Next steps
-  if needed: one cache shared by all workers (today each of 8 builds its
-  own), and a table radius from the largest group extent instead of the
-  result shape, which shortens the lists.
+  Remaining cost: walking the inverse lists on cache misses. Since then
+  (`rotationContext_c`): one pair cache shared by all workers and a table
+  radius from the filled extents of result and pieces, 7.5 -> 5.5 s wall,
+  45 -> 28 s CPU.
 * **Fixed:** `<dt>` orientations are dropped from a disassembly found with
   rotation moves that uses none, so it saves exactly like one without.
 * **Fixed:** frame conventions (in-plane coordinates, pivots, quarter turns
@@ -457,12 +457,13 @@ ideally be done:
   pairing two copies of a part in different orientations could move the
   first one's cubes while they were read (AlPackino and CubeInCage with
   `-R` crashed). They are sized for every orientation up front.
-* **Silent limits:** cubes beyond the table radius (largest result
-  dimension + 1) and subproblems with more than 32 pieces skip rotations
-  without telling the user.
-* **GUI:** the tables are built on the UI thread (wait cursor); build them
-  in the solver thread. `entryBounds()` ignores a turning piece (fit-to-view
-  during an animation only).
+* **Fixed:** limits are no longer silent: groups wider than the tables and
+  (sub)problems of more than 32 pieces are recorded in `rotationContext_c`;
+  burrTxt prints a note and the GUI says "finished, turns may be missing".
+* **Fixed:** the tables are built in the background by the solver, the
+  first worker that needs them waits; the GUI no longer blocks.
+* **GUI:** `entryBounds()` ignores a turning piece (fit-to-view during an
+  animation only).
 
 Open questions: default `r`/`g` (needs physical data); whether half turns
 are wanted as single moves; whether rotation-move solutions should report
