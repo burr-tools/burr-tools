@@ -394,6 +394,53 @@ stronger.
   (`just bench` corpus with rotations on) and the `BURRTOOLS_NO_ROT_PLANNER`
   A/B toggle.
 
+## Review of the implementation (2026-10-20)
+
+Things shaped by the code they were fitted into, and how they would
+ideally be done:
+
+* **Fixed:** `firstClear` took vectors and built a `std::set` per call —
+  an API designed before the solver used it; the solver now builds one
+  `occupancy_c` bitmap per group, and a precomputed blocked-on-every-path
+  set rejects most candidates without walking the family.
+* **Fixed:** groups were enumerated exhaustively (2^(n−1) per pivot), a
+  habit carried over from PR #50. Groups are now unions of closures of the
+  pairwise "blocks on every path" relation, Cutler-style; a test compares
+  against the exhaustive search.
+* **Fixed (pre-existing bug found on the way):** `print_rec` drew
+  sub-separations with shapes indexed by the wrong piece number.
+* **Still open, performance.** DraculasDentalDesaster with `-R`: 0.7 s →
+  70 ms per search node, versus ~0.05 ms for translations. Of 83 assemblies
+  that do not come apart every reachable state is visited, so the run still
+  does not finish in minutes. The remaining cost is the blocking relation,
+  recomputed for every axis × pivot × sense in every node. The fix that
+  fits BurrTools' architecture is a pair cache like `movementCache_c`:
+  whether piece j blocks piece i depends only on their shapes,
+  orientations, relative position and the pivot relative to i, and those
+  repeat across search states. Bitboards for the relation are a second
+  step.
+* **Node encoding:** rotations reuse `dir`/`amount` and padding of
+  `disassemblerNode_c` to avoid growing every node. Implicit; an explicit
+  move tag would be clearer if the node layout is revisited.
+* **Duplicated shape cache:** `movementAnalysator_c::cellsAroundHotspot`
+  rebuilds transformed shapes because `movementCache_c::getTransformedShape`
+  is private; it should be exposed and shared.
+* **Orientations recorded too eagerly:** with rotation tables every state
+  gets `<dt>`, even in disassemblies without a rotation. Recording only
+  when the tree contains one would keep those files unchanged.
+* **Symmetric pieces:** a turn that maps a symmetric piece onto a
+  translated copy of itself yields a node with a different `trans` than
+  the equivalent translation, so the search visits the same physical
+  state twice. Normalise `trans` by the shape's symmetry group.
+* **Silent limits:** cubes beyond the table radius (largest result
+  dimension + 1) and subproblems with more than `MAX_ROTATION_PIECES`
+  pieces skip rotations without telling the user. The radius should grow
+  on demand (or come from the largest group extent), and the piece cap can
+  go to 32/64 now that groups come from closures.
+* **GUI:** the tables are built on the UI thread (wait cursor); build them
+  in the solver thread. `entryBounds()` ignores a turning piece (fit-to-view
+  during an animation only).
+
 Open questions: default `r`/`g` (needs physical data); whether half turns
 are wanted as single moves; whether rotation-move solutions should report
 the minimum play they need.
