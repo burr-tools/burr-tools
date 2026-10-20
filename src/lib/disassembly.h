@@ -28,6 +28,7 @@
 #include "bt_assert.h"
 #include "rotationgeometry.h"
 
+#include <algorithm>
 #include <deque>
 #include <memory>
 #include <optional>
@@ -98,6 +99,13 @@ struct stateRotation_t {
   unsigned int axis;                ///< 0 = X, 1 = Y, 2 = Z
   int pivotU, pivotV;               ///< in-plane pivot, doubled cell units, rotationGeometry frames
   rotationGeometry::pathSpec_t path;
+  /** the turning pieces, as indices into the separation's pieces; a
+   *  turn need not change a piece's orientation id (symmetric pieces) */
+  std::vector<unsigned int> pieces;
+
+  bool turns(unsigned int piece) const {
+    return std::find(pieces.begin(), pieces.end(), piece) != pieces.end();
+  }
 };
 
 /**
@@ -309,6 +317,9 @@ public:
   /** drop the orientations of all states of the tree; only valid when it
    *  contains no rotation, so every piece keeps its assembly orientation */
   void clearTrans(void);
+
+  /** move the piece with this name by (dx, dy, dz) in every state of the tree */
+  void shiftPiece(unsigned int name, int dx, int dy, int dz);
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);

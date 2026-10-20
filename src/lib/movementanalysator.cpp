@@ -1317,10 +1317,16 @@ void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, un
       t = sym->transAdd(t, rotationGeometry::quarterTurnTrans(axis, sense));
       /* the brick grid has all 24 orientations, so a turn always has one */
       bt_assert(t != TND);
+      /* states hold canonical orientations (see rotationContext_c) */
+      const rotationContext_c::canonical_t c = rotation->canonical((*pieces)[i], t);
+      x += c.dx;
+      y += c.dy;
+      z += c.dz;
+      t = c.trans;
     }
     n->set(i, x, y, z, t);
   }
-  n->setRotationPivot(pu, pv);
+  n->setRotation(pu, pv, group);
   rotationNodes.push_back(n);
 }
 
