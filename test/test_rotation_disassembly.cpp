@@ -18,13 +18,16 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <climits>
 #include <cmath>
+#include <future>
 #include <map>
 #include <numbers>
 #include <memory>
 #include <set>
 #include <sstream>
+#include <thread>
 #include <tuple>
 #include <vector>
 
@@ -193,7 +196,7 @@ const aaa_t & aaa(void) {
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
     r.withoutRotations = disassembler_0_c(problem).disassemble(r.assemblies[0].get());
-    r.withRotations = disassembler_0_c(problem, rotationTablesFor(problem, defaultRotationSettings()))
+    r.withRotations = disassembler_0_c(problem, rotationContextFor(problem, defaultRotationSettings()))
                         .disassemble(r.assemblies[0].get());
     return r;
   }();
@@ -448,9 +451,9 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
 void checkAgainstBruteForce(const problem_c & problem, const assembly_c * assembly, unsigned int maxNodes,
                             bool expectRotations) {
 
-  auto tables = rotationTablesFor(problem, defaultRotationSettings());
-  REQUIRE(tables != nullptr);
-  movementAnalysator_c analysator(problem, tables);
+  auto context = rotationContextFor(problem, defaultRotationSettings());
+  REQUIRE(context != nullptr);
+  movementAnalysator_c analysator(problem, context);
 
   std::vector<unsigned int> pieces;
   for (unsigned int i = 0; i < assembly->placementCount(); i++)
@@ -469,7 +472,7 @@ void checkAgainstBruteForce(const problem_c & problem, const assembly_c * assemb
       if (n->isRotation())
         generated.insert(configOf(n));
     }
-    std::set<config_t> brute = bruteRotations(problem, *tables, nodes[at]);
+    std::set<config_t> brute = bruteRotations(problem, context->tables(), nodes[at]);
     rotationsSeen += brute.size();
 
     INFO("search state " << at);
@@ -552,13 +555,13 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto tables = rotationTablesFor(problem, { { 0.081 }, { 0.2 } });
-  REQUIRE(tables != nullptr);
+  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
     INFO("rotation moves " << rotations);
     std::unique_ptr<separation_c> da =
-      disassembler_0_c(problem, rotations ? tables : nullptr).disassemble(assemblies[0].get());
+      disassembler_0_c(problem, rotations ? context : nullptr).disassemble(assemblies[0].get());
     REQUIRE(da != nullptr);
     CHECK(da->sumRotations() == 0);
     CHECK_FALSE(da->getState(0)->hasTrans());
@@ -569,5 +572,68 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
       da->save(xml);
     }
     CHECK(out.str().find("<dt>") == std::string::npos);
+  }
+}
+
+TEST_CASE("dropping a rotation context does not wait for its tables", "[rotations][disasm]") {
+
+  /* A stop right after a start drops the context while its tables are
+   * still being built; that must not block (the GUI thread does it). The
+   * build here is a std::async task held at a gate that opens only after
+   * the drop. Dropping the last reference to such a future blocks until
+   * its task ends, so a context that waited for (or dropped) its tables
+   * would not return from the reset until the gate opens: it never passes
+   * by the machine's speed. The reset runs on a thread of its own, so
+   * that such a fault fails the case (after a generous 60 s, for a reset
+   * that takes microseconds) instead of hanging it. */
+  auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  const problem_c & problem = *puzzle->getProblem(0);
+
+  std::promise<void> gate, done;
+  std::future<void> finished = done.get_future();
+  auto context = std::make_shared<rotationContext_c>(problem,
+    std::async(std::launch::async, [open = gate.get_future(), done = std::move(done)]() mutable {
+      open.wait();
+      done.set_value();
+      return std::shared_ptr<const rotationGeometry::rotationTables_c>();
+    }).share());
+
+  std::promise<void> reset;
+  std::future<void> returned = reset.get_future();
+  std::thread dropper([&context, &reset] {
+    context.reset();
+    reset.set_value();
+  });
+  const bool dropped = returned.wait_for(std::chrono::seconds(60)) == std::future_status::ready;
+  /* the build is still held at the gate */
+  const bool held = finished.wait_for(std::chrono::seconds(0)) == std::future_status::timeout;
+
+  gate.set_value();
+  dropper.join();
+  finished.wait();
+  if (!dropped)
+    FAIL("dropping the rotation context waited for its table build: no return within 60 s while the build was held");
+  CHECK(held);
+}
+
+TEST_CASE("rotation moves between identical pieces in different orientations", "[rotations][disasm]") {
+
+  /* AlPackino has several copies of a piece: pairing two of them in
+   * different orientations once read the cubes of one from a cache entry
+   * that looking up the other had moved */
+  auto puzzle = puzzle_c::load("examples/AlPackino.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+
+  const rotationSettings_t settings = defaultRotationSettings();
+  std::unique_ptr<separation_c> da =
+    disassembler_0_c(problem, rotationContextFor(problem, settings)).disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  if (da->sumRotations() > 0) {
+    replay_c replay(problem, settings.model);
+    replay.check(*da);
   }
 }
