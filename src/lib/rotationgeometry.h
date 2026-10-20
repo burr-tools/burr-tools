@@ -146,6 +146,11 @@ namespace rotationGeometry {
 
   constexpr int WIGGLE_SEGMENTS = 16;
 
+  /** The pose at parameter t in [0, 1] along a path, its segments taking
+   *  equal parameter time. Every pose lies on the polyline the checker
+   *  certified, so animating with it shows exactly the checked motion. */
+  pose_t poseAt(const path_t & path, double t);
+
   /** Apply one of the 8 dihedral symmetries of the square (low 2 bits: +90°
    *  quarter turns; bit 2: mirror across the u axis after turning). */
   inline std::pair<int, int> applyOffsetTransform(unsigned char xform, int u, int v) {
