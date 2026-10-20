@@ -21,6 +21,7 @@
 #ifndef __ROTATION_GEOMETRY_H__
 #define __ROTATION_GEOMETRY_H__
 
+#include <cmath>
 #include <utility>
 #include <vector>
 
@@ -142,6 +143,14 @@ namespace rotationGeometry {
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
   };
+
+  /** The pose that undoes p: the motion of the static pieces relative to
+   *  the moving ones. */
+  inline pose_t inversePose(const pose_t & p) {
+    /* x -> R(x - P) + P + d inverts to y -> R'(y - P) + P - R' d, R' = R(-theta) */
+    const double c = std::cos(p.theta), s = std::sin(p.theta);
+    return { -p.theta, -(c * p.du + s * p.dv), -(-s * p.du + c * p.dv) };
+  }
 
   /** A motion of the moving group: the piecewise linear curve through these
    *  poses, starting at the identity pose and ending at a quarter turn. */

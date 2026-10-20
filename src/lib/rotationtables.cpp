@@ -20,14 +20,20 @@
  */
 #include "rotationtables.h"
 
+#include "disassemblernode.h"
 #include "gridtype.h"
 #include "problem.h"
 #include "puzzle.h"
+#include "symmetries.h"
 #include "voxel.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <climits>
+#include <map>
 #include <mutex>
+#include <tuple>
 
 using rotationGeometry::rotationTables_c;
 
@@ -123,10 +129,74 @@ rotationContext_c::rotationContext_c(const problem_c & p,
   problem(p),
   tableFuture(std::move(tables))
 {
+  const gridType_c * gt = problem.getPuzzle().getGridType();
+  const unsigned int orientations = gt->getSymmetries()->getNumTransformations();
+
+  for (unsigned int part = 0; part < problem.getNumberOfParts(); part++) {
+
+    for (unsigned int j = 0; j < problem.getPartMaximum(part); j++)
+      piecePart.push_back(part);
+
+    /* every orientation's cells (and colours) relative to their lowest
+     * corner, and that corner relative to the hotspot */
+    typedef std::vector<std::tuple<int, int, int, unsigned int>> form_t;
+    std::map<form_t, unsigned int> first;
+    std::vector<canonical_t> & canon = canonicalOf.emplace_back(orientations);
+    std::vector<std::array<int, 3>> corner(orientations);
+
+    for (unsigned int t = 0; t < orientations; t++) {
+      std::unique_ptr<voxel_c> v(gt->getVoxel(*problem.getPartShape(part)));
+      bt_assert2(v->transform(t));
+      form_t form;
+      int mx = INT_MAX, my = INT_MAX, mz = INT_MAX;
+      for (unsigned int z = 0; z < v->getZ(); z++)
+        for (unsigned int y = 0; y < v->getY(); y++)
+          for (unsigned int x = 0; x < v->getX(); x++)
+            if (v->isFilled(x, y, z)) {
+              const int cx = (int)x - v->getHx(), cy = (int)y - v->getHy(), cz = (int)z - v->getHz();
+              mx = std::min(mx, cx); my = std::min(my, cy); mz = std::min(mz, cz);
+              form.push_back({ cx, cy, cz, v->getColor(x, y, z) });
+            }
+      for (auto & [x, y, z, c] : form) {
+        x -= mx; y -= my; z -= mz;
+      }
+      std::sort(form.begin(), form.end());
+      corner[t] = { mx, my, mz };
+
+      /* the first orientation with this form is the canonical one; the
+       * hotspot moves by the difference of the corners */
+      auto [it, inserted] = first.insert({ form, t });
+      const unsigned int c = it->second;
+      canon[t] = { (unsigned char)c, corner[t][0] - corner[c][0], corner[t][1] - corner[c][1], corner[t][2] - corner[c][2] };
+    }
+  }
 }
 
 rotationContext_c::~rotationContext_c() {
   park(std::move(tableFuture));
+}
+
+rotationContext_c::canonical_t rotationContext_c::canonical(unsigned int piece, unsigned int trans) const {
+  bt_assert(piece < piecePart.size());
+  const std::vector<canonical_t> & canon = canonicalOf[piecePart[piece]];
+  /* mirrored placements keep their orientation */
+  if (trans >= canon.size())
+    return { (unsigned char)trans, 0, 0, 0 };
+  return canon[trans];
+}
+
+bool rotationContext_c::canonicalize(disassemblerNode_c * node, const std::vector<unsigned int> & pieces) const {
+  bool changed = false;
+  for (unsigned int i = 0; i < node->getPiecenumber(); i++) {
+    if (node->is_piece_removed(i))
+      continue;
+    const canonical_t c = canonical(pieces[i], node->getTrans(i));
+    if (c.trans == node->getTrans(i))
+      continue;
+    node->set(i, node->getX(i) + c.dx, node->getY(i) + c.dy, node->getZ(i) + c.dz, c.trans);
+    changed = true;
+  }
+  return changed;
 }
 
 bool rotationContext_c::lookup(const rotationPairKey_t & key, const rotationPivotSet_t ** set) {
