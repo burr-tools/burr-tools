@@ -132,7 +132,11 @@ static void print_rec(const separation_c * s, const std::vector<std::unique_ptr<
         turned.push_back(std::unique_ptr<voxel_c>(gt->getVoxel(basePieces[pieceNum[pc]].get())));
         bt_assert2(turned.back()->transform(st->getTrans(pc)));
       }
-    const std::vector<std::unique_ptr<voxel_c>> & shapes = st->hasTrans() ? turned : pieces;
+    /* shapes by the separation's own piece index; `pieces` is indexed by
+     * the puzzle's piece number, which differs inside sub-separations */
+    std::vector<const voxel_c *> shapes(s->getPieceNumber());
+    for (unsigned int pc = 0; pc < s->getPieceNumber(); pc++)
+      shapes[pc] = st->hasTrans() ? turned[pc].get() : pieces[pieceNum[pc]].get();
 
     for (int z = -sz/2; z < sz+sz/2; z++) {
       printf(" +");
