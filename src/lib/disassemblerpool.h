@@ -27,6 +27,8 @@ class problem_c;
 class disassembler_0_c;
 class ThreadBudget;
 
+namespace rotationGeometry { class rotationTables_c; }
+
 #include <vector>
 #include <thread>
 #include <stop_token>
@@ -54,11 +56,17 @@ class disassemblerPool_c {
 public:
   using ResultCallback = std::function<void(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s)>;
 
+  /** rotationTables: rotation moves are considered iff given; every worker's
+   *  disassembler shares the same read-only tables. */
   disassemblerPool_c(
     const problem_c & puzzle,
     unsigned int num_threads,
-    ResultCallback on_result
+    ResultCallback on_result,
+    std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr
   );
+
+  /** The rotation tables the workers use, nullptr when rotation moves are off. */
+  const rotationGeometry::rotationTables_c * getRotationTables() const { return rotationTables.get(); }
 
   ~disassemblerPool_c();
 
@@ -132,6 +140,8 @@ private:
   const problem_c & puzzle;
   unsigned int num_threads;
   ResultCallback on_result;
+  /* immutable, read concurrently by all workers */
+  std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables;
 
   std::atomic<bool> aborted{false};
   std::atomic<bool> finished{false};
