@@ -22,15 +22,20 @@
 
 #include "disassembly.h"
 #include "disassemblernode.h"
+#include "rotationgeometry.h"
 
 #include <algorithm>
+#include <numbers>
 
 disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsigned int max)
   : tree(tr ? std::make_unique<separation_c>(tr) : nullptr),
     size(sz),
     moves(max * 4, 0.0f),
     mv(max, false),
-    maxPieceName(max) {
+    maxPieceName(max),
+    trans(max, -1),
+    turning(max, false),
+    turns(max) {
 }
 
 disasmToMoves_c::~disasmToMoves_c() = default;
@@ -52,11 +57,46 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
   if (tree) {
 
     /* get the 2 possible positions between we have to interpolate */
-    doRecursive(tree.get(), s  , moves.data(), center_active, 0, 0, 0);
-    doRecursive(tree.get(), s+1, moves2.data(), center_active, 0, 0, 0);
+    std::vector<pieceInfo_t> info(maxPieceName), info2(maxPieceName);
+    doRecursive(tree.get(), s  , moves.data(), info.data(), center_active, 0, 0, 0);
+    doRecursive(tree.get(), s+1, moves2.data(), info2.data(), center_active, 0, 0, 0);
 
     // interpolate and check, which piece moves right now
     for (unsigned int i = 0; i < maxPieceName; i++) {
+
+      trans[i] = info[i].trans;
+
+      /* a piece in a rotation move stays at its start state and follows the
+       * recorded path on top of it; the next integer step loads its end
+       * state, which is exactly where the path ends */
+      turning[i] = info2[i].rotation && info[i].trans >= 0 && info2[i].trans >= 0 &&
+                   info[i].trans != info2[i].trans;
+      if (turning[i]) {
+        const stateRotation_t * r = info2[i].rotation;
+        rotationGeometry::pose_t pose = rotationGeometry::poseAt(rotationGeometry::makePath(r->path), frac);
+
+        /* in-plane frames as rotationGeometry: X -> (y, z), Y -> (z, x),
+         * Z -> (x, y); cube (x, y, z) is drawn from x to x+1, so a pivot of
+         * doubled coordinate h lies at h/2 + 1/2 */
+        static const int uAxis[3] = { 1, 2, 0 };
+        static const int vAxis[3] = { 2, 0, 1 };
+        turn_t & t = turns[i];
+        t.angle = (float)(pose.theta * 180 / std::numbers::pi);
+        t.axis = r->axis;
+        const float offset[3] = { (float)info2[i].cx, (float)info2[i].cy, (float)info2[i].cz };
+        for (int k = 0; k < 3; k++) {
+          t.pivot[k] = offset[k];
+          t.shift[k] = 0;
+        }
+        t.pivot[uAxis[r->axis]] += 0.5f * r->pivotU + 0.5f;
+        t.pivot[vAxis[r->axis]] += 0.5f * r->pivotV + 0.5f;
+        t.shift[uAxis[r->axis]] = (float)pose.du;
+        t.shift[vAxis[r->axis]] = (float)pose.dv;
+
+        mv[i] = true;
+        continue;
+      }
+
       mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]));
       moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
       moves[4*i+1] = (1-frac)*moves[4*i+1] + frac*moves2[4*i+1];
@@ -91,6 +131,17 @@ bool disasmToMoves_c::moving(unsigned int piece) {
   bt_assert(piece < maxPieceName);
   return mv[piece];
 }
+int disasmToMoves_c::getTrans(unsigned int piece) {
+  bt_assert(piece < maxPieceName);
+  return trans[piece];
+}
+bool disasmToMoves_c::getTurn(unsigned int piece, turn_t * turn) {
+  bt_assert(piece < maxPieceName);
+  if (!turning[piece])
+    return false;
+  *turn = turns[piece];
+  return true;
+}
 
 static int mabs(int a) {
   if (a > 0)
@@ -117,7 +168,8 @@ static int mmax(int a, int b) {
  *                values are multiplied by this value and then the 2 end points are added
  *    cx, cy, cz are the centre to display the current tree
  */
-int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, bool center_active, int cx, int cy, int cz) {
+int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * array, pieceInfo_t * info,
+                                 bool center_active, int cx, int cy, int cz) {
 
   bt_assert(tree);
 
@@ -181,12 +233,12 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
        * otherwise we place the removed part somewhere out of the way
        */
       if (center_active)
-        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active,
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, info, center_active,
             tree->getState(tree->getMoves()-1)->getX(pc) + cx - tree->getRemoved()->getState(0)->getX(0),
             tree->getState(tree->getMoves()-1)->getY(pc) + cy - tree->getRemoved()->getState(0)->getY(0),
             tree->getState(tree->getMoves()-1)->getZ(pc) + cz - tree->getRemoved()->getState(0)->getZ(0));
       else
-        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, center_active, cx+dx, cy+dy, cz+dz);
+        steps = doRecursive(tree->getRemoved(), step - (int)tree->getMoves(), array, info, center_active, cx+dx, cy+dy, cz+dz);
 
     } else {
 
@@ -200,6 +252,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
             array[4*tree->getPieceName(p)+1] += dy+cy+((mabs(s->getY(p))<10000)?(s->getY(p)):(s2->getY(p)));
             array[4*tree->getPieceName(p)+2] += dz+cz+((mabs(s->getZ(p))<10000)?(s->getZ(p)):(s2->getZ(p)));
             array[4*tree->getPieceName(p)+3] += 0;
+            if (info && s2->hasTrans())
+              info[tree->getPieceName(p)] = { (int)s2->getTrans(p), nullptr, dx+cx, dy+cy, dz+cz };
           }
 
       steps = 0;
@@ -215,9 +269,9 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
        * if we don't use the center_active option, the left over part stays in the middle
        */
       if (center_active && (step - (int)tree->getMoves() < steps) && (tree->getRemoved()))
-        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx-dx, cy-dy, cz-dz);
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, info, center_active, cx-dx, cy-dy, cz-dz);
       else
-        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, center_active, cx, cy, cz);
+        steps2 = doRecursive(tree->getLeft(), step - (int)tree->getMoves() - steps, array, info, center_active, cx, cy, cz);
 
       /* if the steps tell us that we are currently animating the removed part
        * and there actually _is_ a removed animation, we hide all
@@ -239,6 +293,8 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
             array[4*tree->getPieceName(p)+1] += cy+s->getY(p);
             array[4*tree->getPieceName(p)+2] += cz+s->getZ(p);
             array[4*tree->getPieceName(p)+3] += 0;
+            if (info && s->hasTrans())
+              info[tree->getPieceName(p)] = { (int)s->getTrans(p), nullptr, cx, cy, cz };
           }
 
       steps2 = 0;
@@ -261,10 +317,12 @@ int disasmToMoves_c::doRecursive(const separation_c * tree, int step, float * ar
       array[4*tree->getPieceName(i)+1] += cy+s->getY(i);
       array[4*tree->getPieceName(i)+2] += cz+s->getZ(i);
       array[4*tree->getPieceName(i)+3] += 1;
+      if (info && s->hasTrans())
+        info[tree->getPieceName(i)] = { (int)s->getTrans(i), step > 0 ? s->getRotation() : nullptr, cx, cy, cz };
     }
 
-  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, center_active, 0, 0, 0) : 0;
-  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, center_active, 0, 0, 0) : 0;
+  int steps  = tree->getRemoved() ? doRecursive(tree->getRemoved(), step - tree->getMoves()        , 0, 0, center_active, 0, 0, 0) : 0;
+  int steps2 = tree->getLeft()    ? doRecursive(tree->getLeft()   , step - tree->getMoves() - steps, 0, 0, center_active, 0, 0, 0) : 0;
 
   return tree->getMoves() + steps + steps2;
 }
