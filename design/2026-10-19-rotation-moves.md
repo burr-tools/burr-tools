@@ -445,6 +445,10 @@ ideally be done:
   state twice. Normalising needs the start node and the recorded states to
   agree on canonical orientations and hotspot positions, i.e. a change of
   the state representation, not just of the generator.
+* **Fixed (crash):** the per-part caches of in-plane cubes grew lazily, so
+  pairing two copies of a part in different orientations could move the
+  first one's cubes while they were read (AlPackino and CubeInCage with
+  `-R` crashed). They are sized for every orientation up front.
 * **Silent limits:** cubes beyond the table radius (largest result
   dimension + 1) and subproblems with more than 32 pieces skip rotations
   without telling the user.
