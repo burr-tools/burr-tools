@@ -26,9 +26,11 @@
  */
 
 #include "bt_assert.h"
+#include "rotationgeometry.h"
 
 #include <deque>
 #include <memory>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -87,6 +89,18 @@ class disassembly_c
 
 
 /**
+ * The rotation move that leads into a state (see
+ * design/2026-10-19-rotation-moves.md): the pieces whose orientation
+ * differs from the previous state turn about the axis through the pivot
+ * along the path. Everything needed to replay the exact checked motion.
+ */
+struct stateRotation_t {
+  unsigned int axis;                ///< 0 = X, 1 = Y, 2 = Z
+  int pivotU, pivotV;               ///< in-plane pivot, doubled cell units, rotationGeometry frames
+  rotationGeometry::pathSpec_t path;
+};
+
+/**
  * defines one step in the separation process.
  * one state of relative piece positions on your way
  */
@@ -98,6 +112,11 @@ class state_c {
   std::vector<int> dy;
   /** contains the z positions of all the pieces that are handled */
   std::vector<int> dz;
+  /** orientations of all pieces, only in disassemblies made with rotation
+   *  moves; empty means every piece keeps its orientation from the assembly */
+  std::vector<unsigned char> dt;
+  /** the rotation move leading into this state, if it is one */
+  std::optional<stateRotation_t> rotation;
 
 public:
 
@@ -136,6 +155,20 @@ public:
     bt_assert(i < dz.size());
     return dz[i];
   }
+
+  /** true if the state records piece orientations (rotation moves) */
+  bool hasTrans(void) const { return !dt.empty(); }
+  /** the orientation of piece i, only valid when hasTrans() */
+  unsigned int getTrans(unsigned int i) const {
+    bt_assert(i < dt.size());
+    return dt[i];
+  }
+  /** record the orientation of piece i; the first call sizes the table */
+  void setTrans(unsigned int piece, unsigned int trans);
+
+  /** the rotation move leading into this state, nullptr for translations */
+  const stateRotation_t * getRotation(void) const { return rotation ? &*rotation : nullptr; }
+  void setRotation(const stateRotation_t & r) { rotation = r; }
 
   /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
@@ -267,6 +300,9 @@ public:
   virtual unsigned int getNumSequences(void) const override;
   virtual unsigned int sumMoves(void) const override;
   virtual std::string movesText(void) const override;
+
+  /** number of rotation moves in the whole tree, part of sumMoves */
+  unsigned int sumRotations(void) const;
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
