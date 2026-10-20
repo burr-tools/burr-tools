@@ -165,6 +165,8 @@ public:
   }
   /** record the orientation of piece i; the first call sizes the table */
   void setTrans(unsigned int piece, unsigned int trans);
+  /** forget the orientations: every piece keeps the one from the assembly */
+  void clearTrans(void) { dt.clear(); }
 
   /** the rotation move leading into this state, nullptr for translations */
   const stateRotation_t * getRotation(void) const { return rotation ? &*rotation : nullptr; }
@@ -303,6 +305,10 @@ public:
 
   /** number of rotation moves in the whole tree, part of sumMoves */
   unsigned int sumRotations(void) const;
+
+  /** drop the orientations of all states of the tree; only valid when it
+   *  contains no rotation, so every piece keeps its assembly orientation */
+  void clearTrans(void);
 
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
