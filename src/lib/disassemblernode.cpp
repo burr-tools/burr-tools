@@ -89,6 +89,8 @@ void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   memcpy(dat, n->dat, 4*piecenumber*sizeof(int16_t));
   dir = n->dir;
   amount = n->amount;
+  rotPivotU = n->rotPivotU;
+  rotPivotV = n->rotPivotV;
   waylength = n->waylength;
 
   if (comefrom && comefrom->decRefCount())
