@@ -1,20 +1,15 @@
-# Manifold master plus fixes we have upstream as pull requests, one patch
-# each in packagefiles/manifold/ (delete a patch once its PR is in the
-# revision below; back to a release tarball once all are released):
-#   elalish/manifold#1887  tie decisions in Boolean3 contradicted each other
-#                          where a direction was exactly 0 and left flaps of
-#                          overlapping triangles on coplanar unions
-# Master rather than v3.5.x: it has our merged fixes #1884 (SplitQuad loop),
-# #1885 (uninitialized halfedge pair) and #1886 (Hull dropping faces), and
-# #1877's tie tolerance, which #1887 builds on; v3.5.4 still returns wrong,
-# order-dependent unions on exact convex inputs (elalish/manifold#1883).
+# Manifold master at the merge of elalish/manifold#1887 (tie decisions in
+# Boolean3 contradicted each other where a direction was exactly 0 and left
+# flaps of overlapping triangles on coplanar unions). It also has #1898 (the
+# broad phase reached less far than tie decisions), our earlier fixes #1884,
+# #1885 and #1886, and #1877's tie tolerance; v3.5.4 has none of these. Back to
+# a release tarball once one includes them.
 [wrap-git]
-directory = manifold-7aa3f48
+directory = manifold-58b581c
 url = https://github.com/elalish/manifold.git
-revision = 7aa3f48609a89be1ff77860b02f1c7e7e5021882
+revision = 58b581c60dc71839ed477f27f8de837cc7d4561b
 depth = 1
 method = cmake
-diff_files = manifold/1887-consistent-perturbation.patch
 
 [provide]
 manifold = manifold_dep
