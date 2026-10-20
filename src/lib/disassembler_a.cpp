@@ -29,7 +29,7 @@
 #include "disassembly.h"
 
 disassembler_a_c::disassembler_a_c(const problem_c & puz,
-                                   std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables) :
+                                   std::shared_ptr<rotationContext_c> rotationContext) :
   disassembler_c(), puzzle(puz), groups(std::make_unique<grouping_c>()) {
 
   /* Initialise the grouping class */
@@ -46,7 +46,7 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz,
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = std::make_unique<movementAnalysator_c>(puzzle, std::move(rotationTables));
+  analyse = std::make_unique<movementAnalysator_c>(puzzle, std::move(rotationContext));
 }
 
 disassembler_a_c::~disassembler_a_c() = default;
@@ -109,7 +109,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
    */
   separation_c * erg = 0;
 
-  const rotationGeometry::rotationTables_c * rotations = analyse->getRotationTables();
+  rotationContext_c * rotation = analyse->getRotationContext();
 
   /* count the pieces in both parts */
   int part1 = 0, part2 = 0;
@@ -173,14 +173,14 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
 
         /* with rotation moves pieces may have turned, so every state
          * records the orientations; removed pieces keep their last one */
-        if (rotations)
+        if (rotation)
           s->setTrans(i, st2->is_piece_removed(i) ? st2->getComefrom()->getTrans(i) : st2->getTrans(i));
       }
 
       if (st2->isRotation()) {
-        bt_assert(rotations);
+        bt_assert(rotation);
         s->setRotation({ st2->getRotationAxis(), st2->getRotationPivotU(), st2->getRotationPivotV(),
-                         rotations->table(st2->getRotationSense(), st2->getRotationPath()).getSpec() });
+                         rotation->tables().table(st2->getRotationSense(), st2->getRotationPath()).getSpec() });
       }
 
       erg->addstate(std::move(s));
@@ -271,7 +271,7 @@ std::unique_ptr<separation_c> disassembler_a_c::disassemble(const assembly_c * a
 
   /* states record orientations because pieces may turn; when none did,
    * drop them, so the disassembly is the same as one without rotations */
-  if (s && analyse->getRotationTables() && s->sumRotations() == 0)
+  if (s && analyse->getRotationContext() && s->sumRotations() == 0)
     s->clearTrans();
 
   return std::unique_ptr<separation_c>(s);
