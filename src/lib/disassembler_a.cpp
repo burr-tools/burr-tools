@@ -28,7 +28,8 @@
 #include "assembly.h"
 #include "disassembly.h"
 
-disassembler_a_c::disassembler_a_c(const problem_c & puz) :
+disassembler_a_c::disassembler_a_c(const problem_c & puz,
+                                   std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables) :
   disassembler_c(), puzzle(puz), groups(std::make_unique<grouping_c>()) {
 
   /* Initialise the grouping class */
@@ -45,7 +46,7 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz) :
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = std::make_unique<movementAnalysator_c>(puzzle);
+  analyse = std::make_unique<movementAnalysator_c>(puzzle, std::move(rotationTables));
 }
 
 disassembler_a_c::~disassembler_a_c() = default;

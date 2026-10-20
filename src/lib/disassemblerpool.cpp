@@ -34,10 +34,12 @@
 disassemblerPool_c::disassemblerPool_c(
   const problem_c & puz,
   unsigned int requested_threads,
-  ResultCallback cb
+  ResultCallback cb,
+  std::shared_ptr<const rotationGeometry::rotationTables_c> rotations
 ) : puzzle(puz),
     num_threads(requested_threads),
-    on_result(std::move(cb))
+    on_result(std::move(cb)),
+    rotationTables(std::move(rotations))
 {
   // Pre-warm lazy caches on the constructor thread before any worker threads start.
   // gridType_c::getSymmetries() lazily initializes a mutable pointer without internal locks.
@@ -47,7 +49,7 @@ disassemblerPool_c::disassemblerPool_c(
 
   if (std::getenv("BURRTOOLS_NO_DISASM_POOL") != nullptr) {
     is_inline = true;
-    inline_dis = std::make_unique<disassembler_0_c>(puzzle);
+    inline_dis = std::make_unique<disassembler_0_c>(puzzle, rotationTables);
     return;
   }
 
@@ -72,7 +74,7 @@ disassemblerPool_c::disassemblerPool_c(
 
   if (num_threads == 1) {
     is_inline = true;
-    inline_dis = std::make_unique<disassembler_0_c>(puzzle);
+    inline_dis = std::make_unique<disassembler_0_c>(puzzle, rotationTables);
     return;
   }
 
@@ -195,7 +197,7 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
 
 void disassemblerPool_c::worker_loop(std::stop_token st) {
   try {
-    disassembler_0_c dis(puzzle);
+    disassembler_0_c dis(puzzle, rotationTables);
 
     while (!st.stop_requested()) {
       Task task;

@@ -31,6 +31,8 @@ class movementCache_c;
 class assembly_c;
 class countingNodeHash;
 
+namespace rotationGeometry { class rotationTables_c; }
+
 /**
  * this class is can do analysis of movements within a puzzle.
  *
@@ -128,14 +130,26 @@ class movementAnalysator_c {
 
     stats_s stats;
 
+    /**
+     * Tables for rotation moves, shared read-only with all other
+     * disassemblers of the solve. Empty when rotation moves are off, in
+     * which case no rotation code runs at all.
+     */
+    std::shared_ptr<const rotationGeometry::rotationTables_c> rotations;
+
   public:
 
     /**
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
-     * many positions
+     * many positions. Rotation moves are considered iff rotationTables is
+     * given (see rotationTablesFor).
      */
-    movementAnalysator_c(const problem_c & puz);
+    movementAnalysator_c(const problem_c & puz,
+                         std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr);
+
+    /** The rotation tables in use, nullptr when rotation moves are off. */
+    const rotationGeometry::rotationTables_c * getRotationTables(void) const { return rotations.get(); }
     ~movementAnalysator_c(void);
 
     /* you use either the 2 functions below, or completeFind

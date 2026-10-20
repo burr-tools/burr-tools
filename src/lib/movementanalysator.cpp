@@ -534,7 +534,8 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
+movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
+                                           std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables) :
   cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
   movement(problem.getNumberOfPieces()),
@@ -545,7 +546,8 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
   prevFill(matrix.size(), 0),
   nodes(std::make_unique<countingNodeHash>()),
   nextstate(-1),
-  maxstep((unsigned int) -1) {
+  maxstep((unsigned int) -1),
+  rotations(std::move(rotationTables)) {
 
   /* we assert that there must be a cache, otherwise no disassembly
    * analysis is possible anyway and this should not

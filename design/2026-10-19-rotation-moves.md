@@ -217,6 +217,35 @@ What tables cannot do: moves whose path is *searched for*. The family is
 a deliberate choice of plausible hand motions; the planner below remains
 the fallback for anything else.
 
+### Solver integration (`rotationtables.{h,cpp}`)
+
+Rotation moves are optional and cost nothing when off:
+
+* `solveThread_c::PAR_ROTATION_MOVES` (with `PAR_DISASSM`) and
+  `burrTxt -R` switch them on. Without the flag no tables are requested,
+  every disassembler gets an empty pointer, and the (future) rotation
+  phase of `movementAnalysator_c::find` is skipped by one null check per
+  search node.
+* Tables are obtained in the solver's constructor, before any worker
+  thread exists, and then only read; workers share one
+  `shared_ptr<const rotationTables_c>` handed down
+  `disassemblerPool_c` → `disassembler_0_c` → `disassembler_a_c` →
+  `movementAnalysator_c`. No locks, no `call_once` on the hot path.
+* Not a singleton: `rotationTablesFor(problem, settings)` serves tables
+  from a cache of `weak_ptr`s keyed by the settings (model and shift
+  amounts). Concurrent and repeated solves share one build; the tables are
+  freed when the last solver releases them; a larger radius also serves
+  smaller requests. Different puzzles may use different models, and tests
+  can build small tables without fighting global state.
+* `rotationSettings_t` (model + amounts) is a solver argument, default
+  `defaultRotationSettings()`. The GUI will later take play and rounding
+  from the puzzle's physical description.
+* The radius comes from the problem: largest result-shape dimension + 1.
+  Only cube grids with a valid result get tables.
+* Cost when on: building the default family took ~1.8 s for PelikanBurr
+  in the dev build, paid once per settings while any solver holds them.
+  The GUI must not build on the UI thread once it offers the option.
+
 ### Move generation: endpoints first, then paths
 
 For a moving group *M*, axis *a*, quarter-turn sense *s*, the end
