@@ -35,7 +35,8 @@
  * exactly to 2D: per axial layer, moving squares against static squares.
  *
  * Physical model: every cube is an axis-aligned cube of side 1 - play,
- * centred in its grid cell, with sharp edges. play = 0.081 is the model the
+ * centred in its grid cell, whose edges parallel to the rotation axis are
+ * beveled at 45° by chamfer. play = 0.081, chamfer = 0 is the model the
  * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly.
  */
 namespace rotationGeometry {
@@ -81,6 +82,17 @@ namespace rotationGeometry {
 
   struct model_t {
     double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
+    /** 45° bevel of the cube edges parallel to the rotation axis: the length
+     *  cut off each adjacent face, so the bevel face is chamfer·√2 wide. A
+     *  puzzlecad $burr_bevel b on cubes of size s is b / (√2 s). Printed
+     *  cubes are beveled on all 12 edges; every cross-section of such a
+     *  cube lies inside the octagon checked here, so for separate cubes the
+     *  check is conservative. A printed piece is one body, though: the
+     *  gaps of width play between its own cubes are solid and its concave
+     *  edges filled, which the separate cubes checked here leave open. A
+     *  static corner passing such a joint can reach up to about play / 2
+     *  into the printed piece on a motion certified clear. */
+    double chamfer = 0;
   };
 
   /** Pose of the moving group: rotate by theta (radians, right-handed about
@@ -139,6 +151,7 @@ namespace rotationGeometry {
 
       std::vector<layer_t> layers;
       double half;     // half side of the cube
+      double chamfer;  // 45° cut of the square's corners
       double rho;
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
