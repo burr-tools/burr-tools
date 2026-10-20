@@ -183,7 +183,7 @@ class movementAnalysator_c {
     std::unique_ptr<rotationPivotSet_t> computeBlockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     const rotationPivotSet_t * blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     void listRotations(void);
-    void addRotationNode(uint32_t group, unsigned int axis, unsigned int sense, int pu, int pv, int path);
+    void addRotationNode(uint32_t group, unsigned int axis, unsigned int sense, int pu, int pv, int path, bool inverse);
     void clearRotations(void);
 
   public:

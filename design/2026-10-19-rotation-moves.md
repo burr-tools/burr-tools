@@ -286,11 +286,17 @@ quality measure ("this move needs 0.06 play").
 
 Never move the reference piece of a node (lowest index, as `hash()`
 already treats piece 0 as the frame). Rotating a group containing it is
-the same physical move as rotating the complement the other way, so only
-subsets without it are enumerated — this halves the subset loop and
-removes the duplicate states. Symmetric pieces: normalise `trans` to the
-shape's canonical orientation id so equal shapes compare equal (a
-separate, smaller change, measured on its own).
+the same physical move as rotating the complement the other way, so such a
+move is stored as the complement turning, with the path marked inverted
+(`<rotation inverse="1">`: the other pieces follow the path relative to
+the turning ones). Groups with piece 0 must still be searched as groups of
+their own: for a wiggle or slide the complement's motion has its shift
+turning along with it, which is not in the path family, and pivots and
+reach are judged on the turning group's footprint. (Searching only groups
+without piece 0, as first implemented, made the result depend on the piece
+order: PelikanBurr came apart in 5, 6 or 7 turns, FantasTIC not at all
+with its smallest piece first.) Symmetric pieces: normalise `trans` to the
+shape's canonical orientation id so equal shapes compare equal.
 
 One generator replaces both current ones. "Crowell mode", if it is still
 wanted, becomes a parameter preset (play, rounding, planner on/off), not a
@@ -465,6 +471,11 @@ ideally be done:
   pairing two copies of a part in different orientations could move the
   first one's cubes while they were read (AlPackino and CubeInCage with
   `-R` crashed). They are sized for every orientation up front.
+* **Fixed (completeness):** rotation moves no longer depend on the piece
+  order, see Canonical states. Cost: about 30% more time on
+  DraculasDentalDesaster with `-R`, twice as much on PelikanBurr; a pure
+  turn of a group with piece 0 could be skipped where the complement is
+  searched anyway.
 * **Fixed:** limits are no longer silent: groups wider than the tables and
   (sub)problems of more than 32 pieces are recorded in `rotationContext_c`;
   burrTxt prints a note and the GUI says "finished, turns may be missing".
