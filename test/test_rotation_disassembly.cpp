@@ -2,6 +2,7 @@
 
 #include "lib/assembler.h"
 #include "lib/assembly.h"
+#include "lib/disasmtomoves.h"
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
@@ -12,7 +13,11 @@
 #include "lib/voxel.h"
 #include "tools/xml.h"
 
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <map>
+#include <numbers>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -233,6 +238,105 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
     replay.check(back);
     CHECK(replay.rotations == da->sumRotations());
   }
+}
+
+namespace {
+
+/* Centres of a piece's cubes as the GUI draws them at the current step of
+ * the animation: cube (x, y, z) spans [x, x+1], a turning piece is turned
+ * about the pivot and shifted, exactly like voxelFrame_c's transform. */
+std::vector<std::array<double, 3>> drawnCentres(disasmToMoves_c & anim, const problem_c & problem,
+                                                const std::vector<const voxel_c *> & shapes, unsigned int p) {
+  std::unique_ptr<voxel_c> v(problem.getPuzzle().getGridType()->getVoxel(*shapes[p]));
+  REQUIRE(anim.getTrans(p) >= 0);
+  REQUIRE(v->transform(anim.getTrans(p)));
+
+  piecePositions_c::turn_t turn;
+  bool turning = anim.getTurn(p, &turn);
+  const double a = turning ? turn.angle * std::numbers::pi / 180 : 0;
+  const int u = (turning && turn.axis == 0) ? 1 : (turning && turn.axis == 1) ? 2 : 0;
+  const int w = (turning && turn.axis == 0) ? 2 : (turning && turn.axis == 1) ? 0 : 1;
+
+  std::vector<std::array<double, 3>> out;
+  for (unsigned int z = 0; z < v->getZ(); z++)
+    for (unsigned int y = 0; y < v->getY(); y++)
+      for (unsigned int x = 0; x < v->getX(); x++)
+        if (v->isFilled(x, y, z)) {
+          std::array<double, 3> c = { anim.getX(p) + (int)x - v->getHx() + 0.5,
+                                      anim.getY(p) + (int)y - v->getHy() + 0.5,
+                                      anim.getZ(p) + (int)z - v->getHz() + 0.5 };
+          if (turning) {
+            double du = c[u] - turn.pivot[u], dv = c[w] - turn.pivot[w];
+            c[u] = turn.pivot[u] + du * std::cos(a) - dv * std::sin(a) + turn.shift[u];
+            c[w] = turn.pivot[w] + du * std::sin(a) + dv * std::cos(a) + turn.shift[w];
+          }
+          out.push_back(c);
+        }
+  std::sort(out.begin(), out.end());
+  return out;
+}
+
+bool sameCentres(std::vector<std::array<double, 3>> a, std::vector<std::array<double, 3>> b) {
+  if (a.size() != b.size())
+    return false;
+  /* match each centre of a to a centre of b within a small tolerance */
+  for (const auto & c : a) {
+    auto it = std::find_if(b.begin(), b.end(), [&c](const std::array<double, 3> & d) {
+      return std::fabs(c[0] - d[0]) < 1e-3 && std::fabs(c[1] - d[1]) < 1e-3 && std::fabs(c[2] - d[2]) < 1e-3;
+    });
+    if (it == b.end())
+      return false;
+    b.erase(it);
+  }
+  return true;
+}
+
+}
+
+TEST_CASE("the animation of every rotation starts and ends on the recorded states", "[rotations][disasm]") {
+
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const separation_c * da = aaa().withRotations.get();
+  REQUIRE(da != nullptr);
+
+  std::vector<const voxel_c *> shapes;
+  for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
+    for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
+      shapes.push_back(problem.getPartShape(i));
+
+  disasmToMoves_c anim(da, 20, problem.getNumberOfPieces());
+
+  unsigned int turnSteps = 0;
+  for (unsigned int step = 0; step < da->sumMoves(); step++) {
+
+    anim.setStep(step + 0.5f);
+    std::vector<unsigned int> turning;
+    for (unsigned int p = 0; p < problem.getNumberOfPieces(); p++) {
+      piecePositions_c::turn_t t;
+      if (anim.getTurn(p, &t))
+        turning.push_back(p);
+    }
+    if (turning.empty())
+      continue;
+    turnSteps++;
+
+    for (unsigned int p : turning) {
+      INFO("step " << step << " piece " << p);
+
+      anim.setStep((float)step);
+      auto start = drawnCentres(anim, problem, shapes, p);
+      anim.setStep(step + 1.0f);
+      auto end = drawnCentres(anim, problem, shapes, p);
+
+      /* the turn starts where the piece is and ends where the next state has it */
+      anim.setStep(step + 1e-6f);
+      CHECK(sameCentres(drawnCentres(anim, problem, shapes, p), start));
+      anim.setStep(step + 1 - 1e-6f);
+      CHECK(sameCentres(drawnCentres(anim, problem, shapes, p), end));
+    }
+  }
+
+  CHECK(turnSteps == da->sumRotations());
 }
 
 TEST_CASE("disassemblies without rotation moves record no orientations", "[rotations][disasm]") {
