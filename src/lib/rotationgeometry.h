@@ -56,6 +56,32 @@ namespace rotationGeometry {
    *  vectors, to be combined with symmetries_c::transAdd(current, id). */
   unsigned char quarterTurnTrans(unsigned int axis, unsigned int sense);
 
+  /** Doubled in-plane coordinates of a point for a turn about axis (cube
+   *  centres at even values): X -> (y, z), Y -> (z, x), Z -> (x, y), so a
+   *  positive angle is right-handed for every axis. */
+  inline void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v) {
+    if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
+    else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
+    else                { *u = 2 * x; *v = 2 * y; }
+  }
+
+  /** The coordinate of a point along axis. */
+  inline int axialCoordinate(int x, int y, int z, unsigned int axis) {
+    return (axis == 0) ? x : ((axis == 1) ? y : z);
+  }
+
+  /** The doubled 3D pivot for a doubled in-plane pivot (u, v); its axial
+   *  coordinate, 0, does not matter for a turn about axis. */
+  inline void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
+    if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
+    else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
+    else                { *hx = u; *hy = v; *hz = 0; }
+  }
+
+  /** Turn a lattice point a quarter turn about a doubled pivot at a cube
+   *  centre or corner (both map the lattice onto itself). */
+  void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense);
+
   struct model_t {
     double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
   };
@@ -325,6 +351,27 @@ namespace rotationGeometry {
    * are computed and stored; all other directions and the -90° sense are
    * served as turned and mirrored views of those base tables.
    */
+  /** The cells occupied by static cubes, as a dense bitmap over their
+   *  bounding box: built once per group of turning pieces and then queried
+   *  for every pivot, axis, sense and path. */
+  class occupancy_c {
+
+    public:
+
+      explicit occupancy_c(const std::vector<cell_t> & cells);
+
+      bool operator()(int x, int y, int z) const {
+        if (x < x0 || y < y0 || z < z0 || x >= x0 + sx || y >= y0 + sy || z >= z0 + sz)
+          return false;
+        return bits[((size_t)(z - z0) * sy + (y - y0)) * sx + (x - x0)];
+      }
+
+    private:
+
+      int x0 = 0, y0 = 0, z0 = 0, sx = 0, sy = 0, sz = 0;
+      std::vector<bool> bits;
+  };
+
   class rotationTables_c {
 
     public:
@@ -345,6 +392,23 @@ namespace rotationGeometry {
       int firstClear(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                      unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
 
+      /** Static offsets that block the moving cube at doubled offset
+       *  (du, dv) on every path of the family, which includes landing on
+       *  its end cell. Blocking is pairwise, so this decides which pieces
+       *  must turn together; see movementAnalysator_c::listRotations. */
+      blockerRange_c blockedOnAllPaths(unsigned int sense, int du, int dv) const;
+
+      /** The inverse of blockedOnAllPaths: for a static cube at doubled
+       *  offset (du, dv) from a moving cube, every offset of that moving cube
+       *  from the pivot at which the static cube blocks it on every path.
+       *  Lets a caller find all such pivots of a cube pair at once. */
+      blockerRange_c pivotsBlockedAt(unsigned int sense, int du, int dv) const;
+
+      /** Same against a prepared occupancy, for callers that try many
+       *  pivots, axes and senses against the same static cubes. */
+      int firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
+                     unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
+
     private:
 
       struct pathEntry_t {
@@ -356,6 +420,17 @@ namespace rotationGeometry {
       int radius;
       std::vector<pathTable_c> baseTables;
       std::vector<pathEntry_t> paths[2];
+
+      /* Sense-0 blockers common to every path (same-parity CSR like pathTable_c);
+       * sense 1 is served by mirroring across the u axis (xform 4). */
+      std::vector<uint32_t> blockedByAllOffsets;
+      std::vector<std::pair<int16_t, int16_t>> blockedByAllEntries;
+
+      /* Sense-0 inverse of blockedByAll (even-only relative offsets (su-du, sv-dv)
+       * in [-inverseReach, inverseReach], CSR); sense 1 mirrors across u. */
+      int inverseReach = 0;
+      std::vector<uint32_t> inverseOffsets;
+      std::vector<std::pair<int16_t, int16_t>> inverseEntries;
   };
 }
 
