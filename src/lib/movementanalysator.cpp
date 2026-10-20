@@ -540,7 +540,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
 }
 
 movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
-                                           std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables) :
+                                           std::shared_ptr<rotationContext_c> rotationContext) :
   cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
   movement(problem.getNumberOfPieces()),
@@ -552,7 +552,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
   nodes(std::make_unique<countingNodeHash>()),
   nextstate(-1),
   maxstep((unsigned int) -1),
-  rotations(std::move(rotationTables)) {
+  rotation(std::move(rotationContext)) {
 
   /* we assert that there must be a cache, otherwise no disassembly
    * analysis is possible anyway and this should not
@@ -567,7 +567,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
       weights[pc++] = problem.getPartShape(i)->getWeight();
   }
 
-  if (rotations) {
+  if (rotation) {
     rotationProblem = &problem;
     for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
       partVoxels.push_back(problem.getPartShape(i));
@@ -890,7 +890,7 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
       case 3:
         // rotation moves, only when rotation tables were given; without
         // them this is the end of the search as it always was
-        if (!rotations)
+        if (!rotation)
           return 0;
 
         if (!rotationsListed) {
@@ -1109,7 +1109,7 @@ class ownerMap_c {
  * moving cube m at pivot P iff s - P is in blockedOnAllPaths(m - P), i.e.
  * iff m - P is in pivotsBlockedAt(s - m). So the set is the union, over the
  * cube pairs in a common layer, of m - pivotsBlockedAt(s - m). */
-const movementAnalysator_c::pivotSet_t *
+const rotationPivotSet_t *
 movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense) {
 
   const unsigned int partI = piecePart[(*pieces)[i]], partJ = piecePart[(*pieces)[j]];
@@ -1119,23 +1119,46 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
   const int dz = searchnode->getZ(j) - searchnode->getZ(i);
 
   /* parts get 24 bits each, orientations 8, offsets 16 */
-  const pairKey_t key = {
+  const rotationPairKey_t key = {
     ((uint64_t)partI << 40) | ((uint64_t)partJ << 16) | (transI << 8) | transJ,
     ((uint64_t)(uint16_t)dx << 32) | ((uint64_t)(uint16_t)dy << 16) | (uint16_t)dz |
       ((uint64_t)axis << 48) | ((uint64_t)sense << 50)
   };
 
-  auto found = pairPivots.find(key);
-  if (found != pairPivots.end())
-    return found->second.get();
+  auto found = localPairs.find(key);
+  if (found != localPairs.end())
+    return found->second;
 
-  /* a cache, so keep it bounded */
-  if (pairPivots.size() >= MAX_PAIR_CACHE)
-    pairPivots.clear();
+  if (localPairs.size() >= MAX_LOCAL_PAIRS) {
+    localPairs.clear();
+    ownPairs.clear();
+  }
+
+  const rotationPivotSet_t * shared;
+  if (rotation->lookup(key, &shared))
+    return localPairs[key] = shared;
+
+  std::unique_ptr<rotationPivotSet_t> set = computeBlockingPivots(i, j, axis, sense);
+  const rotationPivotSet_t * stored = rotation->store(key, set);
+  if (set)
+    ownPairs.push_back(std::move(set));   // the shared cache was full
+  return localPairs[key] = stored;
+}
+
+/* The computation behind blockingPivots, for a pair not in any cache. */
+std::unique_ptr<rotationPivotSet_t>
+movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense) {
+
+  const unsigned int partI = piecePart[(*pieces)[i]], partJ = piecePart[(*pieces)[j]];
+  const unsigned int transI = searchnode->getTrans(i), transJ = searchnode->getTrans(j);
+  const int dx = searchnode->getX(j) - searchnode->getX(i);
+  const int dy = searchnode->getY(j) - searchnode->getY(i);
+  const int dz = searchnode->getZ(j) - searchnode->getZ(i);
+  const rotationGeometry::rotationTables_c & tables = rotation->tables();
 
   const planeCells_t & pi = planeCells(partI, transI, axis);
   const planeCells_t & pj = planeCells(partJ, transJ, axis);
-  const int reach = 2 * rotations->getRadius();
+  const int reach = 2 * tables.getRadius();
 
   /* j's cubes are offset by the hotspots' difference */
   int du, dv;
@@ -1147,9 +1170,9 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
   const int qu0 = pi.umax - reach, qu1 = pi.umin + reach;
   const int qv0 = pi.vmax - reach, qv1 = pi.vmin + reach;
   if (qu0 > qu1 || qv0 > qv1)
-    return (pairPivots[key] = nullptr).get();
+    return nullptr;
 
-  std::unique_ptr<pivotSet_t> set;
+  std::unique_ptr<rotationPivotSet_t> set;
 
   /* pair up the cubes layer by layer; both lists are sorted by layer */
   auto mi = pi.cubes.begin(), mj = pj.cubes.begin();
@@ -1164,12 +1187,12 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
 
     for (auto m = mi; m != ei; ++m)
       for (auto c = mj; c != ej; ++c)
-        for (const auto & [ou, ov] : rotations->pivotsBlockedAt(sense, c->u + du - m->u, c->v + dv - m->v)) {
+        for (const auto & [ou, ov] : tables.pivotsBlockedAt(sense, c->u + du - m->u, c->v + dv - m->v)) {
           const int qu = m->u - ou, qv = m->v - ov;
           if (qu < qu0 || qu > qu1 || qv < qv0 || qv > qv1)
             continue;
           if (!set) {
-            set = std::make_unique<pivotSet_t>();
+            set = std::make_unique<rotationPivotSet_t>();
             set->u0 = qu0;
             set->v0 = qv0;
             set->width = qu1 - qu0 + 1;
@@ -1184,7 +1207,7 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
     mj = ej;
   }
 
-  return (pairPivots[key] = std::move(set)).get();
+  return set;
 }
 
 const movementAnalysator_c::planeCells_t &
@@ -1219,7 +1242,8 @@ namespace {
  * by", leaving out every closure that needs piece 0 (never turns) or a
  * piece outside covered. With very many distinct closures the pieces are
  * loose and only the single closures are returned. */
-std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn) {
+std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn,
+                                   bool * needsUncovered) {
 
   const uint32_t forbidden = ~covered;
   std::vector<uint32_t> seeds;
@@ -1234,8 +1258,22 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
       c |= add;
       todo |= add;
     }
-    if (!(c & forbidden))
+    if (!(c & forbidden)) {
       seeds.push_back(c);
+      continue;
+    }
+    /* Stopped at a piece beyond the tables' reach: if the closure does not
+     * need piece 0 either, the radius may have cost a turn. (The pieces out
+     * of reach contribute no blockers, so this can over-report.) */
+    while (todo && !(c & 1u)) {
+      unsigned int j = std::countr_zero(todo);
+      todo &= todo - 1;
+      uint32_t add = blockers[j] & ~c;
+      c |= add;
+      todo |= add;
+    }
+    if (!(c & 1u))
+      *needsUncovered = true;
   }
   std::sort(seeds.begin(), seeds.end());
   seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
@@ -1308,10 +1346,15 @@ void movementAnalysator_c::listRotations(void) {
 
   const unsigned int pn = pieces->size();
 
-  if (pn < 2 || pn > MAX_ROTATION_PIECES)
+  if (pn < 2)
     return;
+  if (pn > MAX_ROTATION_PIECES) {
+    rotation->noteSkipped(rotationContext_c::SKIP_PIECES);
+    return;
+  }
 
-  const int reach = 2 * rotations->getRadius();
+  const rotationGeometry::rotationTables_c & tables = rotation->tables();
+  const int reach = 2 * tables.getRadius();
 
   std::vector<std::vector<cell_t>> world(pn);
   for (unsigned int i = 0; i < pn; i++)
@@ -1322,7 +1365,7 @@ void movementAnalysator_c::listRotations(void) {
   std::vector<cell_t> moving, stat;
   std::vector<unsigned int> owners;
   std::vector<uint32_t> blockers(pn);
-  std::vector<const pivotSet_t *> pairs(pn * pn);
+  std::vector<const rotationPivotSet_t *> pairs(pn * pn);
 
   for (unsigned int axis = 0; axis < 3; axis++) {
 
@@ -1372,7 +1415,10 @@ void movementAnalysator_c::listRotations(void) {
                 blockers[i] |= 1u << j;
           }
 
-          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn);
+          bool needsUncovered = false;
+          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn, &needsUncovered);
+          if (needsUncovered)
+            rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
           if (groups.empty())
             continue;
 
@@ -1412,7 +1458,7 @@ void movementAnalysator_c::listRotations(void) {
             if (unchanged)
               continue;
 
-            int path = rotations->firstClear(moving, rotationGeometry::occupancy_c(stat), axis, hx, hy, hz, sense);
+            int path = tables.firstClear(moving, rotationGeometry::occupancy_c(stat), axis, hx, hy, hz, sense);
             if (path < 0)
               continue;
 

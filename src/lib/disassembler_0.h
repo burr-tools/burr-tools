@@ -54,8 +54,8 @@ private:
 public:
 
   disassembler_0_c(const problem_c & puz,
-                   std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr) :
-    disassembler_a_c(puz, std::move(rotationTables)) { }
+                   std::shared_ptr<rotationContext_c> rotationContext = nullptr) :
+    disassembler_a_c(puz, std::move(rotationContext)) { }
   ~disassembler_0_c() { }
 
 private:
