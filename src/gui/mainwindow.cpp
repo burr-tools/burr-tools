@@ -1114,14 +1114,8 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
   if (RotationMoves->value() != 0) par |= solveThread_c::PAR_ROTATION_MOVES;
 
-  /* with rotation moves the solver builds its rotation tables first */
-  if (par & solveThread_c::PAR_ROTATION_MOVES) {
-    fl_cursor(FL_CURSOR_WAIT);
-    Fl::flush();
-  }
+  /* with rotation moves the solver builds its tables in the background */
   assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, config.numThreads());
-  if (par & solveThread_c::PAR_ROTATION_MOVES)
-    fl_cursor(FL_CURSOR_DEFAULT);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1365,15 +1359,16 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   updateInterface();
 }
 
-std::shared_ptr<const rotationGeometry::rotationTables_c> mainWindow_c::rotationTablesForGui(const problem_c & pr) {
+std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(const problem_c & pr) {
   if (!RotationMoves->value())
     return nullptr;
-  /* building the tables takes a moment the first time */
+  /* the add-disassembly actions run here on the UI thread anyway; building
+   * the tables takes a moment the first time */
   fl_cursor(FL_CURSOR_WAIT);
   Fl::flush();
-  auto tables = rotationTablesFor(pr, defaultRotationSettings());
+  auto context = rotationContextFor(pr, defaultRotationSettings());
   fl_cursor(FL_CURSOR_DEFAULT);
-  return tables;
+  return context;
 }
 
 static void cb_AddDisasm_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AddDisasm(); }
@@ -1395,7 +1390,7 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationTablesForGui(*pr));
+  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationContextForGui(*pr));
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
@@ -1425,7 +1420,7 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   puzzleHistory->markModified();
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationTablesForGui(*pr));
+  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationContextForGui(*pr));
 
   auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -3406,7 +3401,8 @@ void mainWindow_c::updateInterface(void) {
         OutputActivity->value("pause");
         break;
       case solveThread_c::ACT_FINISHED:
-        OutputActivity->value("finished");
+        /* limits of the rotation tables made the search skip some turns */
+        OutputActivity->value(assmThread->rotationsSkipped() ? "finished, turns may be missing" : "finished");
         break;
       case solveThread_c::ACT_WAIT_TO_STOP:
         OutputActivity->value("please wait");
