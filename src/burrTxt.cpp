@@ -36,6 +36,7 @@
 #include "tools/envvars.h"
 #include "tools/cliargs.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <fstream>
@@ -50,6 +51,7 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 bool rotationMoves;
+rotationSettings_t rotationSettings = defaultRotationSettings();
 
 std::unique_ptr<disassembler_c> d;
 
@@ -66,7 +68,7 @@ static void printLevel(const std::string & level, const separation_c * da) {
 static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
   if (!rotationMoves)
     return nullptr;
-  auto context = rotationContextFor(problem, defaultRotationSettings());
+  auto context = rotationContextFor(problem, rotationSettings);
   if (!context)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
   return context;
@@ -148,6 +150,10 @@ void usage(bool full = false) {
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -R    with -d or -x: also allow pieces to turn by 90 degrees (cube grids)\n";
+  cout << "  -m play,rounding,bevel  physical model for -R, in cube sizes (default 0.081,0,0):\n";
+  cout << "        gap between cubes, radius of rounded edges, length a 45 degree bevel\n";
+  cout << "        cuts off each face (a puzzlecad $burr_bevel b on cubes of size s is\n";
+  cout << "        b / (1.414 s))\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -214,6 +220,17 @@ int main(int argv, char* args[]) {
         reduce = true;
       else if (strcmp(args[i], "-R") == 0)
         rotationMoves = true;
+      else if (strcmp(args[i], "-m") == 0) {
+        double play, rounding, chamfer;
+        char rest;
+        if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf,%lf%c", &play, &rounding, &chamfer, &rest) != 3 ||
+            !(play > 0 && play < 1 && rounding >= 0 && chamfer >= 0 && rounding + chamfer < 0.5 * (1 - play))) {
+          cout << "-m requires play,rounding,bevel with 0 < play < 1 and rounding + bevel below half a cube\n";
+          return 1;
+        }
+        rotationSettings.model = { play, rounding, chamfer };
+        i++;
+      }
       else if (strcmp(args[i], "-n") == 0)
         newline = false;
       else if (strcmp(args[i], "-x") == 0)
