@@ -197,6 +197,7 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 ### Rules for the TLA+ protocol specs (`spec/`)
 
 - The PlusCal models in `spec/` check protocol shape (token accounting, pop/finish pairing, quiescence, ordered merge) over all small-instance interleavings. They are the backstop for the defect class TSan cannot see (lost wakeups, hangs, token leaks).
-- Any PR touching `src/lib/thread_budget.h`, `src/lib/assembler_pool.h`, `src/lib/disassemblerpool.h`, `src/lib/assembler.h` or `src/lib/solvethread.h` must state "spec unaffected" or update the spec; `just spec-check` must pass.
+- Any PR touching `src/lib/thread_budget.h`, `src/lib/assembler_pool.h`, `src/lib/disassemblerpool.h`, `src/lib/assembler.h` or `src/lib/solvethread.h` must state "spec unaffected" or update the spec.
+- `just spec-check` reads only `spec/` (it translates and model-checks the `.tla`/`.cfg` files, never the C++), so run it only when something under `spec/` changed. Re-running it after a C++-only change re-proves the unchanged models and costs minutes for nothing.
 - Invariant names (`SPEC-BUDGET-1`, `SPEC-POOL-1`, …) are stable IDs quoted in both the spec and the `src/lib` comments. Rename on both sides or neither.
 - Never hand-edit the generated TLA+ translation in `spec/*.tla` — edit the `--algorithm` PlusCal and re-run `pcal.trans` via `just spec-check`.
