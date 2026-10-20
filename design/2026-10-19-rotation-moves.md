@@ -409,34 +409,45 @@ ideally be done:
   against the exhaustive search.
 * **Fixed (pre-existing bug found on the way):** `print_rec` drew
   sub-separations with shapes indexed by the wrong piece number.
-* **Still open, performance.** DraculasDentalDesaster with `-R`: 0.7 s →
-  70 ms per search node, versus ~0.05 ms for translations. Of 83 assemblies
-  that do not come apart every reachable state is visited, so the run still
-  does not finish in minutes. The remaining cost is the blocking relation,
-  recomputed for every axis × pivot × sense in every node. The fix that
-  fits BurrTools' architecture is a pair cache like `movementCache_c`:
-  whether piece j blocks piece i depends only on their shapes,
-  orientations, relative position and the pivot relative to i, and those
-  repeat across search states. Bitboards for the relation are a second
-  step.
+* **Fixed, performance:** a per-pair cache like `movementCache_c`. Whether
+  piece j blocks piece i on every path at a pivot depends only on their
+  parts, orientations, relative position and the pivot relative to i; each
+  analysator caches, per pair, a bitmap of those pivots (only pivots within
+  the tables' reach of all of i's cubes), filled from the inverse table
+  `pivotsBlockedAt`. Together with trig-free table building, a parallel
+  table build and the closure search: DraculasDentalDesaster with `-R`
+  went from not finishing in 10 minutes to 7.5 s wall / 45 s CPU on 8
+  threads (0.05 s without rotations), peak RSS 153 MB (11 MB without).
+  Remaining cost: walking the inverse lists on cache misses. Next steps
+  if needed: one cache shared by all workers (today each of 8 builds its
+  own), and a table radius from the largest group extent instead of the
+  result shape, which shortens the lists.
+* **Fixed:** `<dt>` orientations are dropped from a disassembly found with
+  rotation moves that uses none, so it saves exactly like one without.
+* **Fixed:** frame conventions (in-plane coordinates, pivots, quarter turns
+  of points) exist once, in `rotationGeometry`; the analysator caches shapes
+  per part and in-plane cubes per part, orientation and axis; the piece cap
+  is 32.
+* **Observation:** with rotation moves, the breadth-first search finds
+  shorter disassemblies that use turns once pieces are partly pulled out
+  (PelikanBurr: 3 rotations with pure turns only). Whether that is wanted
+  in solution rankings, or rotations should only be used when translations
+  fail, is a product decision.
 * **Node encoding:** rotations reuse `dir`/`amount` and padding of
   `disassemblerNode_c` to avoid growing every node. Implicit; an explicit
   move tag would be clearer if the node layout is revisited.
-* **Duplicated shape cache:** `movementAnalysator_c::cellsAroundHotspot`
-  rebuilds transformed shapes because `movementCache_c::getTransformedShape`
-  is private; it should be exposed and shared.
-* **Orientations recorded too eagerly:** with rotation tables every state
-  gets `<dt>`, even in disassemblies without a rotation. Recording only
-  when the tree contains one would keep those files unchanged.
+* **Duplicated shape transform:** `movementAnalysator_c::cellsAroundHotspot`
+  transforms shapes itself because `movementCache_c::getTransformedShape`
+  is private.
 * **Symmetric pieces:** a turn that maps a symmetric piece onto a
   translated copy of itself yields a node with a different `trans` than
-  the equivalent translation, so the search visits the same physical
-  state twice. Normalise `trans` by the shape's symmetry group.
+  the equivalent translation, so the search can visit the same physical
+  state twice. Normalising needs the start node and the recorded states to
+  agree on canonical orientations and hotspot positions, i.e. a change of
+  the state representation, not just of the generator.
 * **Silent limits:** cubes beyond the table radius (largest result
-  dimension + 1) and subproblems with more than `MAX_ROTATION_PIECES`
-  pieces skip rotations without telling the user. The radius should grow
-  on demand (or come from the largest group extent), and the piece cap can
-  go to 32/64 now that groups come from closures.
+  dimension + 1) and subproblems with more than 32 pieces skip rotations
+  without telling the user.
 * **GUI:** the tables are built on the UI thread (wait cursor); build them
   in the solver thread. `entryBounds()` ignores a turning piece (fit-to-view
   during an animation only).
