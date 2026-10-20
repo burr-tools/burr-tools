@@ -28,8 +28,6 @@
 #include <limits>
 #include <map>
 #include <numbers>
-#include <set>
-#include <tuple>
 #include <atomic>
 #include <optional>
 #include <thread>
@@ -62,6 +60,31 @@ unsigned char quarterTurnTrans(unsigned int axis, unsigned int sense) {
   };
   bt_assert(axis < 3 && sense < 2);
   return ids[axis][sense];
+}
+
+void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v) {
+  if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
+  else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
+  else                { *u = 2 * x; *v = 2 * y; }
+}
+
+int axialCoordinate(int x, int y, int z, unsigned int axis) {
+  return (axis == 0) ? x : ((axis == 1) ? y : z);
+}
+
+void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
+  if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
+  else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
+  else                { *hx = u; *hy = v; *hz = 0; }
+}
+
+void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense) {
+  int dx = 2 * *x - hx, dy = 2 * *y - hy, dz = 2 * *z - hz;
+  quarterTurn(&dx, &dy, &dz, axis, sense);
+  bt_assert(!((hx + dx) & 1) && !((hy + dy) & 1) && !((hz + dz) & 1));
+  *x = (hx + dx) / 2;
+  *y = (hy + dy) / 2;
+  *z = (hz + dz) / 2;
 }
 
 namespace {
@@ -347,32 +370,13 @@ double quarterArcDistance(double pu, double pv, double mu, double mv, bool posit
   return std::sqrt(std::min(toStart, toEnd));
 }
 
-typedef std::set<std::tuple<int, int, int>> occupancy_t;
-
-/* (layer, u, v) doubled offsets of the moving cubes and the static ones. */
-void sceneOffsets(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
-                  unsigned int axis, int phx, int phy, int phz,
-                  std::vector<std::tuple<int, int, int>> * mv, occupancy_t * occupied) {
-  bt_assert(axis < 3);
-  for (const cell_t & c : stat) {
-    int u, v;
-    doubledOffset(c, axis, phx, phy, phz, &u, &v);
-    occupied->insert({ (int)axial(c, axis), u, v });
-  }
-  for (const cell_t & c : moving) {
-    int u, v;
-    doubledOffset(c, axis, phx, phy, phz, &u, &v);
-    mv->push_back({ (int)axial(c, axis), u, v });
-  }
-}
-
-bool tableBlocked(const pathTable_c & t, const std::vector<std::tuple<int, int, int>> & moving,
-                  const occupancy_t & occupied) {
-  for (const auto & [layer, u, v] : moving)
-    for (const auto & [su, sv] : t.blockers(u, v))
-      if (occupied.count({ layer, su, sv }))
-        return true;
-  return false;
+/* Is the cell at doubled in-plane position (u2, v2), in the given layer,
+ * occupied? The doubled coordinates of a cell are even. */
+bool occupiedAt(const occupancy_c & stat, unsigned int axis, int layer, int u2, int v2) {
+  const int u = u2 / 2, v = v2 / 2;
+  if (axis == 0)      return stat(layer, u, v);
+  else if (axis == 1) return stat(v, layer, u);
+  else                return stat(u, v, layer);
 }
 
 }
@@ -443,10 +447,18 @@ const std::vector<std::pair<int, int>> & pathTable_c::blockers(int du, int dv) c
 
 bool pathTable_c::blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                           unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const {
-  std::vector<std::tuple<int, int, int>> mv;
-  occupancy_t occupied;
-  sceneOffsets(moving, stat, axis, pivotHx, pivotHy, pivotHz, &mv, &occupied);
-  return tableBlocked(*this, mv, occupied);
+  bt_assert(axis < 3);
+  const occupancy_c occupied(stat);
+  int pu, pv;
+  doubledOffset({ 0, 0, 0 }, axis, -pivotHx, -pivotHy, -pivotHz, &pu, &pv);
+  for (const cell_t & c : moving) {
+    int u, v;
+    doubledOffset(c, axis, pivotHx, pivotHy, pivotHz, &u, &v);
+    for (const auto & [su, sv] : blockers(u, v))
+      if (occupiedAt(occupied, axis, (int)axial(c, axis), pu + su, pv + sv))
+        return true;
+  }
+  return false;
 }
 
 pathTable_c pathTable_c::turned(void) const {
@@ -630,12 +642,7 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occup
   }
 
   /* static cube at doubled offset (su, sv) from the pivot, in the layer */
-  auto occupied = [&](int layer, int su, int sv) {
-    const int u = (pu + su) / 2, v = (pv + sv) / 2;
-    if (axis == 0)      return stat(layer, u, v);
-    else if (axis == 1) return stat(v, layer, u);
-    else                return stat(u, v, layer);
-  };
+  auto occupied = [&](int layer, int su, int sv) { return occupiedAt(stat, axis, layer, pu + su, pv + sv); };
 
   for (const movingCube_t & m : cubes)
     for (const auto & [su, sv] : blockedByAll[sense][m.entry])

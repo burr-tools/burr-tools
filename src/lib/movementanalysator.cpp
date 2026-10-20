@@ -34,8 +34,6 @@
 #include <algorithm>
 #include <climits>
 #include <memory>
-#include <set>
-#include <tuple>
 
 #include <string.h>
 #include <bit>
@@ -1064,36 +1062,6 @@ void movementAnalysator_c::clearRotations(void) {
 
 namespace {
 
-/* doubled 3D pivot for an in-plane doubled pivot (u, v); the axial
- * coordinate does not matter for a turn about that axis */
-void pivot3D(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
-  if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
-  else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
-  else                { *hx = u; *hy = v; *hz = 0; }
-}
-
-/* in-plane doubled coordinates of a point, frames as rotationGeometry */
-void inPlane2(int x, int y, int z, unsigned int axis, int * u, int * v) {
-  if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
-  else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
-  else                { *u = 2 * x; *v = 2 * y; }
-}
-
-int axialOf(int x, int y, int z, unsigned int axis) {
-  return (axis == 0) ? x : ((axis == 1) ? y : z);
-}
-
-/* turn a point given by integer coordinates by a quarter turn about a doubled pivot */
-void turnPoint(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense) {
-  int dx = 2 * *x - hx, dy = 2 * *y - hy, dz = 2 * *z - hz;
-  rotationGeometry::quarterTurn(&dx, &dy, &dz, axis, sense);
-  /* centre and corner pivots map the lattice onto itself */
-  bt_assert(!((hx + dx) & 1) && !((hy + dy) & 1) && !((hz + dz) & 1));
-  *x = (hx + dx) / 2;
-  *y = (hy + dy) / 2;
-  *z = (hz + dz) / 2;
-}
-
 /* The cells of all pieces of a search node and which piece owns which cell,
  * as a dense map over their bounding box. */
 class ownerMap_c {
@@ -1171,14 +1139,14 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
   std::unique_ptr<pivotSet_t> set;
   for (const rotationGeometry::cell_t & m : ci) {
     int mu, mv;
-    inPlane2(m.x, m.y, m.z, axis, &mu, &mv);
-    const int layer = axialOf(m.x, m.y, m.z, axis);
+    rotationGeometry::inPlaneDoubled(m.x, m.y, m.z, axis, &mu, &mv);
+    const int layer = rotationGeometry::axialCoordinate(m.x, m.y, m.z, axis);
 
     for (const rotationGeometry::cell_t & c : cj) {
-      if (axialOf(c.x + dx, c.y + dy, c.z + dz, axis) != layer)
+      if (rotationGeometry::axialCoordinate(c.x + dx, c.y + dy, c.z + dz, axis) != layer)
         continue;
       int su, sv;
-      inPlane2(c.x + dx, c.y + dy, c.z + dz, axis, &su, &sv);
+      rotationGeometry::inPlaneDoubled(c.x + dx, c.y + dy, c.z + dz, axis, &su, &sv);
 
       for (const auto & [ou, ov] : rotations->pivotsBlockedAt(sense, su - mu, sv - mv)) {
         if (!set) {
@@ -1186,7 +1154,7 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
           int umin = INT_MAX, umax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN;
           for (const rotationGeometry::cell_t & k : ci) {
             int u, v;
-            inPlane2(k.x, k.y, k.z, axis, &u, &v);
+            rotationGeometry::inPlaneDoubled(k.x, k.y, k.z, axis, &u, &v);
             umin = std::min(umin, u); umax = std::max(umax, u);
             vmin = std::min(vmin, v); vmax = std::max(vmax, v);
           }
@@ -1204,6 +1172,79 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
   }
 
   return (pairPivots[key] = std::move(set)).get();
+}
+
+namespace {
+
+/* The groups that may turn, given for every piece the pieces that block it
+ * on every path: unions of the closures of single pieces under "blocked
+ * by", leaving out every closure that needs piece 0 (never turns) or a
+ * piece outside covered. With very many distinct closures the pieces are
+ * loose and only the single closures are returned. */
+std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn) {
+
+  const uint32_t forbidden = ~covered;
+  std::vector<uint32_t> seeds;
+  for (unsigned int i = 1; i < pn; i++) {
+    if (!(covered & (1u << i)))
+      continue;
+    uint32_t c = 1u << i, todo = c;
+    while (todo && !(c & forbidden)) {
+      unsigned int j = std::countr_zero(todo);
+      todo &= todo - 1;
+      uint32_t add = blockers[j] & ~c;
+      c |= add;
+      todo |= add;
+    }
+    if (!(c & forbidden))
+      seeds.push_back(c);
+  }
+  std::sort(seeds.begin(), seeds.end());
+  seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
+
+  if (seeds.size() > 16)
+    return seeds;
+
+  std::vector<uint32_t> groups;
+  for (uint32_t sel = 1; sel < (1u << seeds.size()); sel++) {
+    uint32_t group = 0;
+    for (size_t b = 0; b < seeds.size(); b++)
+      if (sel & (1u << b))
+        group |= seeds[b];
+    groups.push_back(group);
+  }
+  std::sort(groups.begin(), groups.end());
+  groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
+  return groups;
+}
+
+}
+
+/* The node reached by turning the pieces of group about the doubled
+ * in-plane pivot (pu, pv) along path number path of the family. */
+void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, unsigned int sense,
+                                           int pu, int pv, int path) {
+
+  const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
+  const unsigned int pn = pieces->size();
+  int hx, hy, hz;
+  rotationGeometry::pivotOf(axis, pu, pv, &hx, &hy, &hz);
+
+  disassemblerNode_c * n = new disassemblerNode_c(pn, searchnode,
+      disassemblerNode_c::ROTATION_DIR_BASE + 2 * axis + sense, path);
+  for (unsigned int i = 0; i < pn; i++) {
+    int x = searchnode->getX(i), y = searchnode->getY(i), z = searchnode->getZ(i);
+    unsigned char t = (unsigned char)searchnode->getTrans(i);
+    if (group & (1u << i)) {
+      rotationGeometry::turnAbout(&x, &y, &z, hx, hy, hz, axis, sense);
+      t = sym->transAdd(t, rotationGeometry::quarterTurnTrans(axis, sense));
+      /* the brick grid has all 24 orientations, so a turn always has one */
+      bt_assert(t != TND);
+    }
+    n->set(i, x, y, z, t);
+  }
+  n->setRotationPivot(pu, pv);
+  rotationNodes.push_back(n);
 }
 
 /* Generate every rotation move of the search node.
@@ -1232,7 +1273,6 @@ void movementAnalysator_c::listRotations(void) {
   if (pn < 2 || pn > MAX_ROTATION_PIECES)
     return;
 
-  const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
   const int reach = 2 * rotations->getRadius();
 
   std::vector<std::vector<cell_t>> world(pn);
@@ -1243,19 +1283,18 @@ void movementAnalysator_c::listRotations(void) {
 
   std::vector<cell_t> moving, stat;
   std::vector<unsigned int> owners;
-  std::vector<uint32_t> blockers(pn), seeds;
+  std::vector<uint32_t> blockers(pn);
   std::vector<const pivotSet_t *> pairs(pn * pn);
-  std::set<uint32_t> tried;
 
   for (unsigned int axis = 0; axis < 3; axis++) {
 
     /* in-plane doubled footprint and hotspot of every piece */
     std::vector<int> umin(pn, INT_MAX), umax(pn, INT_MIN), vmin(pn, INT_MAX), vmax(pn, INT_MIN), hu(pn), hv(pn);
     for (unsigned int i = 0; i < pn; i++) {
-      inPlane2(searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i), axis, &hu[i], &hv[i]);
+      rotationGeometry::inPlaneDoubled(searchnode->getX(i), searchnode->getY(i), searchnode->getZ(i), axis, &hu[i], &hv[i]);
       for (const cell_t & c : world[i]) {
         int u, v;
-        inPlane2(c.x, c.y, c.z, axis, &u, &v);
+        rotationGeometry::inPlaneDoubled(c.x, c.y, c.z, axis, &u, &v);
         umin[i] = std::min(umin[i], u); umax[i] = std::max(umax[i], u);
         vmin[i] = std::min(vmin[i], v); vmax[i] = std::max(vmax[i], v);
       }
@@ -1295,50 +1334,14 @@ void movementAnalysator_c::listRotations(void) {
                 blockers[i] |= 1u << j;
           }
 
-          /* closure of every piece that may turn: itself and, transitively,
-           * every piece that blocks a member; useless once it needs piece 0
-           * (never turns) or an uncovered piece */
-          const uint32_t forbidden = ~covered;
-          seeds.clear();
-          for (unsigned int i = 1; i < pn; i++) {
-            if (!(covered & (1u << i)))
-              continue;
-            uint32_t c = 1u << i, todo = c;
-            while (todo && !(c & forbidden)) {
-              unsigned int j = std::countr_zero(todo);
-              todo &= todo - 1;
-              uint32_t add = blockers[j] & ~c;
-              c |= add;
-              todo |= add;
-            }
-            if (!(c & forbidden))
-              seeds.push_back(c);
-          }
-          std::sort(seeds.begin(), seeds.end());
-          seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
-          if (seeds.empty())
+          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn);
+          if (groups.empty())
             continue;
 
           int hx, hy, hz;
-          pivot3D(axis, pu, pv, &hx, &hy, &hz);
+          rotationGeometry::pivotOf(axis, pu, pv, &hx, &hy, &hz);
 
-          /* every union of closures is closed; with very many distinct
-           * closures the pieces are loose and only single ones are tried */
-          tried.clear();
-          const size_t k = seeds.size();
-          const bool unions = k <= 16;
-          const uint64_t combos = unions ? (uint64_t(1) << k) : (uint64_t)k + 1;
-          for (uint64_t sel = 1; sel < combos; sel++) {
-
-            uint32_t group = 0;
-            if (unions) {
-              for (size_t b = 0; b < k; b++)
-                if (sel & (uint64_t(1) << b))
-                  group |= seeds[b];
-            } else
-              group = seeds[sel - 1];
-            if (!tried.insert(group).second)
-              continue;
+          for (uint32_t group : groups) {
 
             /* the pivot lies in the group's footprint */
             int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
@@ -1365,7 +1368,7 @@ void movementAnalysator_c::listRotations(void) {
             bool unchanged = true;
             for (size_t m = 0; m < moving.size() && unchanged; m++) {
               cell_t e = moving[m];
-              turnPoint(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
+              rotationGeometry::turnAbout(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
               unchanged = ownerAt(e.x, e.y, e.z) == (int)owners[m];
             }
             if (unchanged)
@@ -1375,27 +1378,7 @@ void movementAnalysator_c::listRotations(void) {
             if (path < 0)
               continue;
 
-            disassemblerNode_c * n = new disassemblerNode_c(pn, searchnode,
-                disassemblerNode_c::ROTATION_DIR_BASE + 2 * axis + sense, path);
-            bool ok = true;
-            for (unsigned int i = 0; i < pn && ok; i++) {
-              int x = searchnode->getX(i), y = searchnode->getY(i), z = searchnode->getZ(i);
-              unsigned int t = searchnode->getTrans(i);
-              if (group & (1u << i)) {
-                turnPoint(&x, &y, &z, hx, hy, hz, axis, sense);
-                unsigned char t2 = sym->transAdd((unsigned char)t, rotationGeometry::quarterTurnTrans(axis, sense));
-                ok = (t2 != TND);
-                t = t2;
-              }
-              n->set(i, x, y, z, t);
-            }
-            if (!ok) {
-              if (n->decRefCount())
-                delete n;
-              continue;
-            }
-            n->setRotationPivot(pu, pv);
-            rotationNodes.push_back(n);
+            addRotationNode(group, axis, sense, pu, pv, path);
           }
         }
     }
