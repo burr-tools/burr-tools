@@ -62,22 +62,6 @@ unsigned char quarterTurnTrans(unsigned int axis, unsigned int sense) {
   return ids[axis][sense];
 }
 
-void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v) {
-  if (axis == 0)      { *u = 2 * y; *v = 2 * z; }
-  else if (axis == 1) { *u = 2 * z; *v = 2 * x; }
-  else                { *u = 2 * x; *v = 2 * y; }
-}
-
-int axialCoordinate(int x, int y, int z, unsigned int axis) {
-  return (axis == 0) ? x : ((axis == 1) ? y : z);
-}
-
-void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
-  if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
-  else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
-  else                { *hx = u; *hy = v; *hz = 0; }
-}
-
 void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense) {
   int dx = 2 * *x - hx, dy = 2 * *y - hy, dz = 2 * *z - hz;
   quarterTurn(&dx, &dy, &dz, axis, sense);
