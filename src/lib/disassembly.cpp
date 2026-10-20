@@ -494,6 +494,16 @@ unsigned int separation_c::sumMoves(void) const {
   return erg;
 }
 
+void separation_c::clearTrans(void) {
+  bt_assert(sumRotations() == 0);
+  for (auto & st : states)
+    st->clearTrans();
+  if (removed)
+    removed->clearTrans();
+  if (left)
+    left->clearTrans();
+}
+
 unsigned int separation_c::sumRotations(void) const {
   unsigned int erg = 0;
   for (const auto & s : states)

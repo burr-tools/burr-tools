@@ -188,6 +188,7 @@ class movementAnalysator_c {
     const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int part, unsigned int trans);
     const pivotSet_t * blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     void listRotations(void);
+    void addRotationNode(uint32_t group, unsigned int axis, unsigned int sense, int pu, int pv, int path);
     void clearRotations(void);
 
   public:

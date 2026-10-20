@@ -531,3 +531,43 @@ TEST_CASE("disassemblies without rotation moves record no orientations", "[rotat
     CHECK(out.str().find("<rotation") == std::string::npos);
   }
 }
+
+TEST_CASE("a disassembly that uses no rotation records no orientations, rotations allowed or not", "[rotations][disasm]") {
+
+  /* a 3x1x1 bar of a cube and a domino: the first move takes it apart, so
+   * no turn is part of the shortest disassembly */
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const unsigned int result = puzzle->addShape(3, 1, 1);
+  const unsigned int cube = puzzle->addShape(1, 1, 1);
+  const unsigned int domino = puzzle->addShape(2, 1, 1);
+  for (unsigned int x = 0; x < 3; x++)
+    puzzle->getShape(result)->set(x, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(cube)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(domino)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(domino)->set(1, 0, 0, voxel_c::VX_FILLED);
+  problem_c & problem = *puzzle->getProblem(puzzle->addProblem());
+  problem.setResultId(result);
+  problem.setShapeMaximum(cube, 1);
+  problem.setShapeMaximum(domino, 1);
+
+  auto assemblies = assembleAll(problem);
+  REQUIRE_FALSE(assemblies.empty());
+  auto tables = rotationTablesFor(problem, { { 0.081, 0 }, { 0.2 } });
+  REQUIRE(tables != nullptr);
+
+  for (bool rotations : { false, true }) {
+    INFO("rotation moves " << rotations);
+    std::unique_ptr<separation_c> da =
+      disassembler_0_c(problem, rotations ? tables : nullptr).disassemble(assemblies[0].get());
+    REQUIRE(da != nullptr);
+    CHECK(da->sumRotations() == 0);
+    CHECK_FALSE(da->getState(0)->hasTrans());
+
+    std::ostringstream out;
+    {
+      xmlWriter_c xml(out);
+      da->save(xml);
+    }
+    CHECK(out.str().find("<dt>") == std::string::npos);
+  }
+}

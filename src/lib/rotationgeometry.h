@@ -52,6 +52,22 @@ namespace rotationGeometry {
    *  vectors, to be combined with symmetries_c::transAdd(current, id). */
   unsigned char quarterTurnTrans(unsigned int axis, unsigned int sense);
 
+  /** Doubled in-plane coordinates of a point for a turn about axis (cube
+   *  centres at even values): X -> (y, z), Y -> (z, x), Z -> (x, y), so a
+   *  positive angle is right-handed for every axis. */
+  void inPlaneDoubled(int x, int y, int z, unsigned int axis, int * u, int * v);
+
+  /** The coordinate of a point along axis. */
+  int axialCoordinate(int x, int y, int z, unsigned int axis);
+
+  /** The doubled 3D pivot for a doubled in-plane pivot (u, v); its axial
+   *  coordinate, 0, does not matter for a turn about axis. */
+  void pivotOf(unsigned int axis, int u, int v, int * hx, int * hy, int * hz);
+
+  /** Turn a lattice point a quarter turn about a doubled pivot at a cube
+   *  centre or corner (both map the lattice onto itself). */
+  void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense);
+
   struct model_t {
     double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
     double rounding;  ///< radius of the cube edges parallel to the rotation axis
