@@ -105,9 +105,10 @@ static void printRotation(const separation_c * s, unsigned int i, const std::vec
   for (unsigned int pc : r->pieces)
     printf(" %c", 'a' + pieceNum[pc]);
   printf(" by %c90 degrees about %c through in-plane pivot (%g, %g), %s",
-         r->path.sense == 0 ? '+' : '-', axes[r->axis], 0.5 * r->pivotU, 0.5 * r->pivotV, kinds[r->path.kind]);
+         r->turnSense() == 0 ? '+' : '-', axes[r->axis], 0.5 * r->pivotU, 0.5 * r->pivotV, kinds[r->path.kind]);
   if (r->path.kind != rotationGeometry::PATH_PURE)
-    printf(" (%d, %d) by %g", r->path.dirU, r->path.dirV, r->path.amount);
+    printf(" (%d, %d) by %g%s", r->path.dirU, r->path.dirV, r->path.amount,
+           r->inverse ? ", made by the other pieces" : "");
   printf("\n");
 }
 

@@ -160,7 +160,7 @@ class replay_c {
         std::vector<cell_t> expected;
         for (cell_t c : before) {
           int dx = 2 * c.x - hx, dy = 2 * c.y - hy, dz = 2 * c.z - hz;
-          quarterTurn(&dx, &dy, &dz, r->axis, r->path.sense);
+          quarterTurn(&dx, &dy, &dz, r->axis, r->turnSense());
           REQUIRE((hx + dx) % 2 == 0);
           REQUIRE((hy + dy) % 2 == 0);
           REQUIRE((hz + dz) % 2 == 0);
@@ -172,8 +172,9 @@ class replay_c {
       CHECK(turned > 0);
 
       /* the recorded path is collision-free, decided by the checker itself
-       * rather than through the tables the solver used */
-      planarScene_c scene(moving, stat, r->axis, hx, hy, hz, model);
+       * rather than through the tables the solver used; inverted, the other
+       * pieces followed it */
+      planarScene_c scene(r->inverse ? stat : moving, r->inverse ? moving : stat, r->axis, hx, hy, hz, model);
       CHECK(scene.certifyPath(makePath(r->path)) == PATH_CLEAR);
     }
 };
@@ -361,9 +362,11 @@ config_t configOf(const disassemblerNode_c * n) {
   return c;
 }
 
-/* Every rotation move of a node by brute force: all groups without piece 0,
+/* Every rotation move of a node by brute force: all groups but the whole,
  * all centre and corner pivots in the group's footprint, both senses about
- * all axes, end pose free and not a no-op, some path of the family clear. */
+ * all axes, end pose free and not a no-op, some path of the family clear.
+ * Piece 0 stays in place: a group with it ends as the rest turned the other
+ * way. */
 std::set<config_t> bruteRotations(const problem_c & problem, const rotationTables_c & tables,
                                   const disassemblerNode_c * node) {
   const gridType_c * gt = problem.getPuzzle().getGridType();
@@ -394,7 +397,7 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
 
   std::set<config_t> out;
   const int reach = 2 * tables.getRadius();
-  for (uint32_t group = 2; group < (1u << pn); group += 2)
+  for (uint32_t group = 1; group + 1 < (1u << pn); group++)
     for (unsigned int axis = 0; axis < 3; axis++) {
       std::vector<cell_t> moving, stat;
       std::vector<unsigned int> owner;
@@ -439,11 +442,12 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationTable
             if (blocked || unchanged || tables.firstClear(moving, stat, axis, hx, hy, hz, sense) < 0)
               continue;
             config_t c = configOf(node);
+            const bool withFirst = group & 1u;
             for (unsigned int i = 0; i < pn; i++)
-              if (group & (1u << i)) {
-                turn(c[i][0], c[i][1], c[i][2], hx, hy, hz, axis, sense);
+              if (bool(group & (1u << i)) != withFirst) {
+                turn(c[i][0], c[i][1], c[i][2], hx, hy, hz, axis, sense ^ (withFirst ? 1 : 0));
                 c[i][3] = problem.getPuzzle().getGridType()->getSymmetries()->transAdd(
-                    (unsigned char)c[i][3], quarterTurnTrans(axis, sense));
+                    (unsigned char)c[i][3], quarterTurnTrans(axis, sense ^ (withFirst ? 1 : 0)));
               }
             out.insert(c);
           }
@@ -680,4 +684,40 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
     }
     CHECK(saved[1] == saved[0]);
   }
+}
+
+TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations][disasm][stress]") {
+
+  /* Piece 0 stays in place in every search state, so a group with it turns
+   * as the rest turning the other way. That rest is generally not in the
+   * path family (an inverted wiggle or slide turns its shift along), and
+   * its footprint decides pivots and reach: searched only as the rest,
+   * PelikanBurr came apart in 5, 6 or 7 turns depending on the piece order. */
+  std::set<std::pair<std::string, unsigned int>> results;
+  const unsigned int parts = puzzle_c::load("examples/PelikanBurr.xmpuzzle")->getProblem(0)->getNumberOfParts();
+  for (unsigned int first = 0; first < parts; first++) {
+    auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(puzzle != nullptr);
+    problem_c & problem = *puzzle->getProblem(0);
+    /* exchangeParts swaps neighbours: bubble the part to the front */
+    for (unsigned int j = first; j > 0; j--)
+      problem.exchangeParts(j - 1, j);
+    auto context = rotationContextFor(problem, defaultRotationSettings());
+    REQUIRE(context != nullptr);
+
+    unsigned int solved = 0;
+    for (const auto & a : assembleAll(problem)) {
+      /* the assembly that comes apart with translations alone */
+      if (!disassembler_0_c(problem).disassemble(a.get()))
+        continue;
+      std::unique_ptr<separation_c> da = disassembler_0_c(problem, context).disassemble(a.get());
+      REQUIRE(da != nullptr);
+      results.insert({ da->movesText(), da->sumRotations() });
+      solved++;
+    }
+    CHECK(solved == 1);
+  }
+  for (const auto & [level, turns] : results)
+    UNSCOPED_INFO("level " << level << ", " << turns << " turns");
+  CHECK(results.size() == 1);
 }

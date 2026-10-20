@@ -72,7 +72,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
       turning[i] = info2[i].rotation && info[i].trans >= 0;
       if (turning[i]) {
         const stateRotation_t * r = info2[i].rotation;
-        rotationGeometry::pose_t pose = rotationGeometry::poseAt(rotationGeometry::makePath(r->path), frac);
+        const rotationGeometry::pose_t pose = r->poseAt(frac);
 
         /* in-plane frames as rotationGeometry: X -> (y, z), Y -> (z, x),
          * Z -> (x, y); cube (x, y, z) is drawn from x to x+1, so a pivot of

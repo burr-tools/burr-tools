@@ -167,6 +167,8 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     xml.newAttrib("pv", rotation->pivotV);
     xml.newAttrib("path", kinds[rotation->path.kind]);
     xml.newAttrib("sense", rotation->path.sense);
+    if (rotation->inverse)
+      xml.newAttrib("inverse", 1);
     {
       std::ostringstream pcs;
       for (size_t i = 0; i < rotation->pieces.size(); i++)
@@ -198,6 +200,7 @@ stateRotation_t loadRotation(xmlParser_c & pars)
     r.pivotU = std::stoi(pars.getAttributeValue("pu"));
     r.pivotV = std::stoi(pars.getAttributeValue("pv"));
     r.path.sense = std::stoul(pars.getAttributeValue("sense"));
+    r.inverse = pars.getAttributeValue("inverse") == "1";
     {
       std::istringstream pcs(pars.getAttributeValue("pieces"));
       unsigned int p;
