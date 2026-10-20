@@ -59,7 +59,8 @@ struct cacheEntry_t {
 };
 
 bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
-  return a.model.play == b.model.play && a.model.rounding == b.model.rounding && a.amounts == b.amounts;
+  return a.model.play == b.model.play && a.model.rounding == b.model.rounding &&
+         a.model.chamfer == b.model.chamfer && a.amounts == b.amounts;
 }
 
 }

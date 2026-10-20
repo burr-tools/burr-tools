@@ -100,7 +100,7 @@ avoid the static squares of that layer. This is exact, not an
 approximation. Axial translation during the turn is excluded (it is
 composable from separate translation moves in all but contrived cases).
 
-### Physical model (explicit, two parameters)
+### Physical model (explicit parameters)
 
 Every cube is a real, slightly undersized object:
 
@@ -108,7 +108,15 @@ Every cube is a real, slightly undersized object:
   cell, so neighbouring cubes have a gap `g` (clearance of real pieces);
 * **edge rounding** `r` — the edges parallel to the rotation axis are
   rounded with radius `r` (a rounded square = core square of side
-  `1 − g − 2r` ⊕ disk `r`).
+  `1 − g − 2r` ⊕ disk `r`);
+* **bevel** `k` — those edges are cut at 45°, `k` off each adjacent face
+  (the core square becomes an octagon; added for 3D-printed pieces, whose
+  edges are beveled, not rounded). puzzlecad's `$burr_bevel` is the width
+  of the bevel face, so `k = $burr_bevel / (√2 · $burr_scale)`, and its
+  `$burr_inset` gives `g = 2 · $burr_inset / $burr_scale`. Every cube is
+  beveled, also where puzzlecad leaves an edge flat (between cubes of one
+  piece, and on concave edges), which makes the model slightly optimistic
+  there.
 
 There is no overlap tolerance: a configuration is valid iff for every
 same-layer pair (moving, static) `signedDistance(core_m, core_s) ≥ 2r`.

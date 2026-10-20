@@ -57,6 +57,19 @@ def main():
         check(label, rc == 0, f"exited {rc}\n{out}")
         check(label, "assemblies" in out, f"did not finish\n{out}")
 
+    # -m sets the physical model of rotation moves; nonsense is refused.
+    aaa = f"{source_root}/examples/AAA_most_rotations.xmpuzzle"
+    for model in ("0", "0.1,0.2", "0.1,0.3,0.3", "0.1,0,0.05x"):
+        label = f"burrTxt -m {model}"
+        rc, out = run(binary, ["-d", "-R", "-q", "-m", model], aaa, label)
+        if rc is not None:
+            check(label, rc == 1 and "-m requires" in out, f"was not refused (rc={rc})\n{out}")
+
+    label = "burrTxt -R with beveled cubes"
+    rc, out = run(binary, ["-d", "-R", "-q", "-m", "0.081,0,0.05"], aaa, label)
+    if rc is not None:
+        check(label, rc == 0 and "1 solutions" in out, f"exited {rc}\n{out}")
+
     for f in failures:
         print(f"FAILED  {f}")
 
