@@ -217,6 +217,27 @@ namespace rotationGeometry {
    * Only the +90° tables for the directions (1,0) and (1,1) are computed
    * with the checker, all others are turned and mirrored copies.
    */
+  /** The cells occupied by static cubes, as a dense bitmap over their
+   *  bounding box: built once per group of turning pieces and then queried
+   *  for every pivot, axis, sense and path. */
+  class occupancy_c {
+
+    public:
+
+      explicit occupancy_c(const std::vector<cell_t> & cells);
+
+      bool operator()(int x, int y, int z) const {
+        if (x < x0 || y < y0 || z < z0 || x >= x0 + sx || y >= y0 + sy || z >= z0 + sz)
+          return false;
+        return bits[((size_t)(z - z0) * sy + (y - y0)) * sx + (x - x0)];
+      }
+
+    private:
+
+      int x0 = 0, y0 = 0, z0 = 0, sx = 0, sy = 0, sz = 0;
+      std::vector<bool> bits;
+  };
+
   class rotationTables_c {
 
     public:
@@ -234,10 +255,27 @@ namespace rotationGeometry {
       int firstClear(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                      unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
 
+      /** Static offsets that block the moving cube at doubled offset
+       *  (du, dv) on every path of the family, which includes landing on
+       *  its end cell. Blocking is pairwise, so this decides which pieces
+       *  must turn together; see movementAnalysator_c::listRotations. */
+      const std::vector<std::pair<int, int>> & blockedOnAllPaths(unsigned int sense, int du, int dv) const;
+
+      /** Same against a prepared occupancy, for callers that try many
+       *  pivots, axes and senses against the same static cubes. */
+      int firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
+                     unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
+
     private:
 
       int radius;
       std::vector<pathTable_c> tables[2];
+
+      /* Per sense and moving offset, the static offsets that block every
+       * path of the family: one hit rejects the turn without walking all
+       * tables, which is the common case in a dense puzzle. Indexed like
+       * pathTable_c entries. */
+      std::vector<std::vector<std::pair<int, int>>> blockedByAll[2];
   };
 }
 

@@ -1094,94 +1094,217 @@ void turnPoint(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int a
 
 }
 
-/* Generate every rotation move of the search node: each group of pieces
- * without piece 0 (turning a group with it is the same as turning the rest
- * the other way, and keeping piece 0 fixed keeps the states canonical),
- * about every cube centre and cube corner within the group's footprint,
- * both senses about all three axes, along the first clear path of the
- * rotation tables' family. */
+/* Generate every rotation move of the search node.
+ *
+ * Groups: piece 0 never turns (turning a group with it is the same as
+ * turning the rest the other way, and keeping it fixed keeps the states
+ * canonical). Blocking is pairwise -- along a fixed path every cube pair
+ * collides or not on its own -- so, like Bill Cutler's movement matrices
+ * for translations, for each axis, pivot and sense we compute which pieces
+ * block which on every path of the family (this includes landing on
+ * another piece). A group can only turn if it contains every piece that
+ * blocks one of its members, i.e. if it is closed under that relation, and
+ * every closed group is a union of closures of single pieces. So instead of
+ * trying all 2^(n-1) groups only unions of closures are tried, and only
+ * they are checked path by path against the tables. That yields exactly
+ * the moves the exhaustive enumeration yields: a group that can turn on
+ * some path is closed under "blocks on every path".
+ *
+ * Pivots: cube centres and cube corners within the turning group's
+ * footprint, as before; edge midpoints cannot map the lattice onto itself. */
 void movementAnalysator_c::listRotations(void) {
 
   using rotationGeometry::cell_t;
 
   const unsigned int pn = pieces->size();
 
-  /* groups are enumerated as bitmasks over all pieces but piece 0 */
+  /* groups are bitmasks over the pieces */
   if (pn < 2 || pn > MAX_ROTATION_PIECES)
     return;
 
   const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
   const int reach = 2 * rotations->getRadius();
 
+  /* the cubes of every piece and which piece occupies which cell */
   std::vector<std::vector<cell_t>> world(pn);
   std::vector<std::set<cellKey_t>> pieceCells(pn);
+  std::vector<cell_t> all;
   for (unsigned int i = 0; i < pn; i++)
     for (const cell_t & c : cellsAroundHotspot((*pieces)[i], searchnode->getTrans(i))) {
       cell_t w = { searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z };
       world[i].push_back(w);
       pieceCells[i].insert(key(w));
+      all.push_back(w);
     }
 
-  std::vector<cell_t> moving, stat, end;
-  std::vector<unsigned int> owner;
-  std::set<cellKey_t> occupied;
+  int x0 = all[0].x, y0 = all[0].y, z0 = all[0].z, x1 = x0, y1 = y0, z1 = z0;
+  for (const cell_t & c : all) {
+    x0 = std::min(x0, c.x); x1 = std::max(x1, c.x);
+    y0 = std::min(y0, c.y); y1 = std::max(y1, c.y);
+    z0 = std::min(z0, c.z); z1 = std::max(z1, c.z);
+  }
+  const int sx = x1 - x0 + 1, sy = y1 - y0 + 1, sz = z1 - z0 + 1;
+  std::vector<int8_t> owner((size_t)sx * sy * sz, -1);
+  for (unsigned int i = 0; i < pn; i++)
+    for (const cell_t & c : world[i])
+      owner[((size_t)(c.z - z0) * sy + (c.y - y0)) * sx + (c.x - x0)] = (int8_t)i;
+  auto ownerAt = [&](int x, int y, int z) -> int {
+    if (x < x0 || y < y0 || z < z0 || x > x1 || y > y1 || z > z1)
+      return -1;
+    return owner[((size_t)(z - z0) * sy + (y - y0)) * sx + (x - x0)];
+  };
 
-  for (uint32_t mask = 2; mask < (1u << pn); mask += 2) {
+  std::vector<cell_t> moving, stat;
+  std::vector<unsigned int> owners;
+  std::vector<uint32_t> blockers(pn);
+  std::set<uint32_t> tried;
 
-    moving.clear();
-    owner.clear();
-    stat.clear();
-    occupied.clear();
+  for (unsigned int axis = 0; axis < 3; axis++) {
+
+    /* in-plane doubled footprint of every piece and of all of them */
+    std::vector<int> pumin(pn, INT_MAX), pumax(pn, INT_MIN), pvmin(pn, INT_MAX), pvmax(pn, INT_MIN);
     for (unsigned int i = 0; i < pn; i++)
-      for (const cell_t & c : world[i])
-        if (mask & (1u << i)) {
-          moving.push_back(c);
-          owner.push_back(i);
-        } else {
-          stat.push_back(c);
-          occupied.insert(key(c));
-        }
-
-    for (unsigned int axis = 0; axis < 3; axis++) {
-
-      int umin = INT_MAX, umax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN;
-      for (const cell_t & c : moving) {
+      for (const cell_t & c : world[i]) {
         int u, v;
         inPlane2(c, axis, &u, &v);
-        umin = std::min(umin, u); umax = std::max(umax, u);
-        vmin = std::min(vmin, v); vmax = std::max(vmax, v);
+        pumin[i] = std::min(pumin[i], u); pumax[i] = std::max(pumax[i], u);
+        pvmin[i] = std::min(pvmin[i], v); pvmax[i] = std::max(pvmax[i], v);
       }
+    const int umin = *std::min_element(pumin.begin() + 1, pumin.end());
+    const int umax = *std::max_element(pumax.begin() + 1, pumax.end());
+    const int vmin = *std::min_element(pvmin.begin() + 1, pvmin.end());
+    const int vmax = *std::max_element(pvmax.begin() + 1, pvmax.end());
 
-      for (int pu = umin - 1; pu <= umax + 1; pu++)
-        for (int pv = vmin - 1; pv <= vmax + 1; pv++) {
+    for (int pu = umin - 1; pu <= umax + 1; pu++)
+      for (int pv = vmin - 1; pv <= vmax + 1; pv++) {
 
-          /* edge-midpoint pivots cannot map the lattice onto itself */
-          if ((pu ^ pv) & 1)
-            continue;
+        /* edge-midpoint pivots cannot map the lattice onto itself */
+        if ((pu ^ pv) & 1)
+          continue;
 
-          /* cubes beyond the tables' radius: skip, never guess */
-          if (umax - pu > reach || pu - umin > reach || vmax - pv > reach || pv - vmin > reach)
-            continue;
+        int hx, hy, hz;
+        pivot3D(axis, pu, pv, &hx, &hy, &hz);
 
-          int hx, hy, hz;
-          pivot3D(axis, pu, pv, &hx, &hy, &hz);
+        /* pieces with cubes beyond the tables' radius cannot turn here:
+         * skip, never guess */
+        uint32_t covered = 0;
+        for (unsigned int i = 1; i < pn; i++)
+          if (pumax[i] - pu <= reach && pu - pumin[i] <= reach && pvmax[i] - pv <= reach && pv - pvmin[i] <= reach)
+            covered |= 1u << i;
+        if (!covered)
+          continue;
 
-          for (unsigned int sense = 0; sense < 2; sense++) {
+        for (unsigned int sense = 0; sense < 2; sense++) {
 
-            /* the end pose must be free and must change something */
-            end.clear();
-            bool blocked = false, unchanged = true;
-            for (size_t k = 0; k < moving.size() && !blocked; k++) {
-              cell_t e = moving[k];
-              turnPoint(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
-              blocked = occupied.count(key(e)) > 0;
-              unchanged = unchanged && pieceCells[owner[k]].count(key(e)) > 0;
-              end.push_back(e);
+          /* Which pieces block a piece on every path, computed lazily: a
+           * closure is useless as soon as it needs piece 0 (never turns) or
+           * an uncovered piece, so a piece blocked by one of those is marked
+           * dead at the first such blocker and its other blockers are never
+           * looked up. In a dense puzzle that is most pieces. */
+          const uint32_t DEAD = ~uint32_t(0);
+          const uint32_t forbidden = ~covered;   // includes piece 0
+          uint32_t known = 0;
+          auto blockersOf = [&](unsigned int i) -> uint32_t {
+            if (known & (1u << i))
+              return blockers[i];
+            known |= 1u << i;
+            blockers[i] = 0;
+            for (const cell_t & c : world[i]) {
+              int u, v;
+              inPlane2(c, axis, &u, &v);
+              const int layer = (axis == 0) ? c.x : ((axis == 1) ? c.y : c.z);
+              for (const auto & [su, sv] : rotations->blockedOnAllPaths(sense, u - pu, v - pv)) {
+                const int bu = (pu + su) / 2, bv = (pv + sv) / 2;
+                int j;
+                if (axis == 0)      j = ownerAt(layer, bu, bv);
+                else if (axis == 1) j = ownerAt(bv, layer, bu);
+                else                j = ownerAt(bu, bv, layer);
+                if (j < 0 || (unsigned int)j == i)
+                  continue;
+                if (forbidden & (1u << j))
+                  return blockers[i] = DEAD;
+                blockers[i] |= 1u << j;
+              }
             }
-            if (blocked || unchanged)
+            return blockers[i];
+          };
+
+          /* closure of every piece that may turn: itself and, transitively,
+           * all pieces that block a member */
+          std::vector<uint32_t> seeds;
+          for (unsigned int i = 1; i < pn; i++) {
+            if (!(covered & (1u << i)))
+              continue;
+            uint32_t c = 1u << i, todo = c;
+            bool dead = false;
+            while (todo && !dead) {
+              unsigned int j = std::countr_zero(todo);
+              todo &= todo - 1;
+              uint32_t b = blockersOf(j);
+              dead = (b == DEAD);
+              uint32_t add = b & ~c;
+              c |= add;
+              todo |= add;
+            }
+            if (!dead)
+              seeds.push_back(c);
+          }
+          std::sort(seeds.begin(), seeds.end());
+          seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
+          if (seeds.empty())
+            continue;
+
+          /* every union of closures is closed; beyond MAX_ROTATION_PIECES
+           * distinct closures the puzzle is loose enough that the pieces can
+           * hardly be interlocked, and only the single closures are tried */
+          tried.clear();
+          const size_t k = seeds.size();
+          const bool unions = k <= 16;
+          const uint64_t combos = unions ? (uint64_t(1) << k) : (uint64_t)k + 1;
+          for (uint64_t sel = 1; sel < combos; sel++) {
+
+            uint32_t group = 0;
+            if (unions) {
+              for (size_t b = 0; b < k; b++)
+                if (sel & (uint64_t(1) << b))
+                  group |= seeds[b];
+            } else
+              group = seeds[sel - 1];
+            if (!tried.insert(group).second)
               continue;
 
-            int path = rotations->firstClear(moving, stat, axis, hx, hy, hz, sense);
+            /* the pivot lies in the group's footprint */
+            int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
+            for (unsigned int i = 0; i < pn; i++)
+              if (group & (1u << i)) {
+                gumin = std::min(gumin, pumin[i]); gumax = std::max(gumax, pumax[i]);
+                gvmin = std::min(gvmin, pvmin[i]); gvmax = std::max(gvmax, pvmax[i]);
+              }
+            if (pu < gumin - 1 || pu > gumax + 1 || pv < gvmin - 1 || pv > gvmax + 1)
+              continue;
+
+            moving.clear();
+            owners.clear();
+            stat.clear();
+            for (unsigned int i = 0; i < pn; i++)
+              for (const cell_t & c : world[i])
+                if (group & (1u << i)) {
+                  moving.push_back(c);
+                  owners.push_back(i);
+                } else
+                  stat.push_back(c);
+
+            /* the end pose is free by closure; it must change something */
+            bool unchanged = true;
+            for (size_t m = 0; m < moving.size() && unchanged; m++) {
+              cell_t e = moving[m];
+              turnPoint(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
+              unchanged = pieceCells[owners[m]].count(key(e)) > 0;
+            }
+            if (unchanged)
+              continue;
+
+            int path = rotations->firstClear(moving, rotationGeometry::occupancy_c(stat), axis, hx, hy, hz, sense);
             if (path < 0)
               continue;
 
@@ -1191,7 +1314,7 @@ void movementAnalysator_c::listRotations(void) {
             for (unsigned int i = 0; i < pn && ok; i++) {
               int x = searchnode->getX(i), y = searchnode->getY(i), z = searchnode->getZ(i);
               unsigned int t = searchnode->getTrans(i);
-              if (mask & (1u << i)) {
+              if (group & (1u << i)) {
                 turnPoint(&x, &y, &z, hx, hy, hz, axis, sense);
                 unsigned char t2 = sym->transAdd((unsigned char)t, rotationGeometry::quarterTurnTrans(axis, sense));
                 ok = (t2 != TND);
@@ -1208,6 +1331,6 @@ void movementAnalysator_c::listRotations(void) {
             rotationNodes.push_back(n);
           }
         }
-    }
+      }
   }
 }
