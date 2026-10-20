@@ -269,6 +269,11 @@ std::unique_ptr<separation_c> disassembler_a_c::disassemble(const assembly_c * a
   if (start->decRefCount())
     delete start;
 
+  /* states record orientations because pieces may turn; when none did,
+   * drop them, so the disassembly is the same as one without rotations */
+  if (s && analyse->getRotationTables() && s->sumRotations() == 0)
+    s->clearTrans();
+
   return std::unique_ptr<separation_c>(s);
 }
 
