@@ -950,6 +950,74 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   }
 }
 
+/* The chained-stop protocol shared by the Huang and A0-SIMD cases below:
+ * stop after k1 assemblies, save, restore, stop after k2 more, save,
+ * restore, run to completion. The union of the phases must equal the
+ * uninterrupted baseline as a multiset. Callback stops with 4 workers leave
+ * the other workers mid-task, so every stop divides live frames. Thread
+ * races rule out remainder pins; union and finished == 1 hold under every
+ * schedule.
+ */
+template <class Assembler>
+static void checkChainedStopsExactOnce(problem_c & problem) {
+  std::multiset<std::string> baseline;
+  {
+    RecordingAssemblerCallback cb;
+    Assembler assm(problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    baseline = std::move(cb.fingerprints);
+  }
+  REQUIRE(baseline.size() > 3);
+  INFO("baseline: " << baseline.size());
+
+  /* One phase: restore (unless fresh), run until stopAfter assemblies
+   * (0 = to completion), save. */
+  auto phase = [&](const std::string & in, unsigned int stopAfter,
+                   RecordingAssemblerCallback & cb, bool & finished) {
+    Assembler assm(problem);
+    assm.setNumThreads(4);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    if (!in.empty()) {
+      std::string payload = extractAssemblerContent(in);
+      REQUIRE(assm.setPosition(payload.c_str(), assemblerVersionOf(in).c_str())
+              == assembler_c::ERR_NONE);
+    }
+    unsigned int seen = 0;
+    assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+      cb.assembly(std::move(a));
+      return stopAfter == 0 || ++seen < stopAfter;
+    });
+    finished = assm.getFinished() == 1.0f;
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    return str.str();
+  };
+
+  const size_t n = baseline.size();
+  const unsigned int stops[][2] = {
+    {1, 1},
+    {static_cast<unsigned int>(n / 3), static_cast<unsigned int>(n / 3)},
+    {static_cast<unsigned int>(n - 2), 1},
+  };
+  for (const auto & k : stops) {
+    INFO("stops: " << k[0] << ", " << k[1]);
+    RecordingAssemblerCallback cb1, cb2, cb3;
+    bool f1 = false, f2 = false, f3 = false;
+    std::string s1 = phase("", k[0], cb1, f1);
+    std::string s2 = f1 ? s1 : phase(s1, k[1], cb2, f2);
+    if (!f1 && !f2)
+      phase(s2, 0, cb3, f3);
+    CHECK((f1 || f2 || f3));
+    std::multiset<std::string> resumed = cb1.fingerprints;
+    resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+    resumed.insert(cb3.fingerprints.begin(), cb3.fingerprints.end());
+    CHECK(resumed == baseline);
+  }
+}
+
 /* Huang divide-at-stop: chained stops resume exact-once.
  *
  * A stopped Huang worker divides its task while search() unwinds (see
@@ -958,12 +1026,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
  * declined solution is kept as its own leaf. Resuming must therefore
  * report every assembly exactly once, however many stops land in between.
  *
- * Each case stops after k1 assemblies, saves, restores, stops again after
- * k2 more, saves, restores and runs to completion; the union of the three
- * phases must equal the uninterrupted baseline as a multiset. Callback
- * stops with 4 workers leave the other workers mid-task, so every stop
- * divides live frames. Thread races rule out remainder pins; union and
- * finished == 1 hold under every schedule. All four are assembler_1
+ * Chained stops (checkChainedStopsExactOnce) on four assembler_1
  * puzzles on the Huang path (the saves carry ptype 2 seeds); CubeInCage
  * has identical pieces, so shape pivots (and the monotonic filter the
  * seeds must replay) occur, and SolidSixPieceBurrs (25 parts) stops deep,
@@ -976,76 +1039,19 @@ TEST_CASE("Huang divided remainders resume exact-once across chained stops",
   // remaining branch leave a rest seed, so rests (and rests of rests across
   // the chained stops) occur on these small puzzles.
   ScopedEnv fanout("BURRTOOLS_SPLIT_FANOUT", "1");
-  struct Case { const char * path; unsigned int problem; };
-  const Case cases[] = {
-    {"examples/PiecesOfEight.xmpuzzle", 0},
-    {"examples/CubeInCage.xmpuzzle", 0},
-    {"examples/DemoPieceGenerator.xmpuzzle", 0},
-    {"examples/SolidSixPieceBurrs.xmpuzzle", 0},
+  const char * paths[] = {
+    "examples/PiecesOfEight.xmpuzzle",
+    "examples/CubeInCage.xmpuzzle",
+    "examples/DemoPieceGenerator.xmpuzzle",
+    "examples/SolidSixPieceBurrs.xmpuzzle",
   };
-  for (const auto & c : cases) {
-    INFO("puzzle: " << c.path << ":" << c.problem);
-    auto p = puzzle_c::load(c.path);
+  for (const char * path : paths) {
+    INFO("puzzle: " << path);
+    auto p = puzzle_c::load(path);
     REQUIRE(p != nullptr);
-    auto problem = p->getProblem(c.problem);
+    auto problem = p->getProblem(0);
     REQUIRE(problem != nullptr);
-
-    std::multiset<std::string> baseline;
-    {
-      RecordingAssemblerCallback cb;
-      assembler_1_c assm(*problem);
-      assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-      assm.assemble(&cb);
-      baseline = std::move(cb.fingerprints);
-    }
-    REQUIRE(baseline.size() > 3);
-    INFO("baseline: " << baseline.size());
-
-    /* One phase: restore (unless fresh), run until stopAfter assemblies
-     * (0 = to completion), save. */
-    auto phase = [&](const std::string & in, unsigned int stopAfter,
-                     RecordingAssemblerCallback & cb, bool & finished) {
-      assembler_1_c assm(*problem);
-      assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-      if (!in.empty()) {
-        std::string payload = extractAssemblerContent(in);
-        REQUIRE(assm.setPosition(payload.c_str(), assemblerVersionOf(in).c_str())
-                == assembler_c::ERR_NONE);
-      }
-      unsigned int seen = 0;
-      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
-        cb.assembly(std::move(a));
-        return stopAfter == 0 || ++seen < stopAfter;
-      });
-      finished = assm.getFinished() == 1.0f;
-      std::ostringstream str;
-      xmlWriter_c xml(str);
-      assm.save(xml);
-      return str.str();
-    };
-
-    const size_t n = baseline.size();
-    const unsigned int stops[][2] = {
-      {1, 1},
-      {static_cast<unsigned int>(n / 3), static_cast<unsigned int>(n / 3)},
-      {static_cast<unsigned int>(n - 2), 1},
-    };
-    for (const auto & k : stops) {
-      INFO("stops: " << k[0] << ", " << k[1]);
-      RecordingAssemblerCallback cb1, cb2, cb3;
-      bool f1 = false, f2 = false, f3 = false;
-      std::string s1 = phase("", k[0], cb1, f1);
-      std::string s2 = f1 ? s1 : phase(s1, k[1], cb2, f2);
-      if (!f1 && !f2)
-        phase(s2, 0, cb3, f3);
-      CHECK((f1 || f2 || f3));
-      std::multiset<std::string> resumed = cb1.fingerprints;
-      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
-      resumed.insert(cb3.fingerprints.begin(), cb3.fingerprints.end());
-      CHECK(resumed == baseline);
-    }
+    checkChainedStopsExactOnce<assembler_1_c>(*problem);
   }
 }
 
@@ -1054,10 +1060,9 @@ TEST_CASE("Huang divided remainders resume exact-once across chained stops",
  * The SIMD engine divides an interrupted task while its search unwinds
  * (see ISimdExactCover::SubtreeRemainder); the pieces come back as
  * ordinary DLX-step tasks, plus SIMD rests that index the frame's own
- * candidate order. Same three-phase protocol as the Huang case above:
- * stop after k1, save, restore, stop after k2, save, restore, finish; the
- * union must equal the uninterrupted baseline as a multiset. SIMD is the
- * default engine for these puzzles (no toggle set).
+ * candidate order. Same protocol as the Huang case above
+ * (checkChainedStopsExactOnce). SIMD is the default engine for these
+ * puzzles (no toggle set).
  */
 TEST_CASE("A0-SIMD divided remainders resume exact-once across chained stops",
           "[assembler][parallel][resume][simd][save]") {
@@ -1071,68 +1076,15 @@ TEST_CASE("A0-SIMD divided remainders resume exact-once across chained stops",
     REQUIRE(p != nullptr);
     auto problem = p->getProblem(0);
     REQUIRE(problem != nullptr);
-
-    std::multiset<std::string> baseline;
-    {
-      RecordingAssemblerCallback cb;
-      assembler_0_c assm(*problem);
-      assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-      assm.assemble(&cb);
-      baseline = std::move(cb.fingerprints);
-    }
-    REQUIRE(baseline.size() > 3);
-    INFO("baseline: " << baseline.size());
-
-    auto phase = [&](const std::string & in, unsigned int stopAfter,
-                     RecordingAssemblerCallback & cb, bool & finished) {
-      assembler_0_c assm(*problem);
-      assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
-      if (!in.empty()) {
-        std::string payload = extractAssemblerContent(in);
-        REQUIRE(assm.setPosition(payload.c_str(), assemblerVersionOf(in).c_str())
-                == assembler_c::ERR_NONE);
-      }
-      unsigned int seen = 0;
-      assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
-        cb.assembly(std::move(a));
-        return stopAfter == 0 || ++seen < stopAfter;
-      });
-      finished = assm.getFinished() == 1.0f;
-      std::ostringstream str;
-      xmlWriter_c xml(str);
-      assm.save(xml);
-      return str.str();
-    };
-
-    const size_t n = baseline.size();
-    const unsigned int stops[][2] = {
-      {1, 1},
-      {static_cast<unsigned int>(n / 3), static_cast<unsigned int>(n / 3)},
-      {static_cast<unsigned int>(n - 2), 1},
-    };
-    for (const auto & k : stops) {
-      INFO("stops: " << k[0] << ", " << k[1]);
-      RecordingAssemblerCallback cb1, cb2, cb3;
-      bool f1 = false, f2 = false, f3 = false;
-      std::string s1 = phase("", k[0], cb1, f1);
-      std::string s2 = f1 ? s1 : phase(s1, k[1], cb2, f2);
-      if (!f1 && !f2)
-        phase(s2, 0, cb3, f3);
-      CHECK((f1 || f2 || f3));
-      std::multiset<std::string> resumed = cb1.fingerprints;
-      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
-      resumed.insert(cb3.fingerprints.begin(), cb3.fingerprints.end());
-      CHECK(resumed == baseline);
-    }
+    checkChainedStopsExactOnce<assembler_0_c>(*problem);
   }
 }
 
 /* Serial continue after a parallel save (issue #118 review): the restored
- * remainder carries no serial stacks, so a single-threaded continue
- * re-searches from the root -- without the resumeDedup gate it would report
- * every phase-1 assembly a second time. Uses threads=1 on restore. */
+ * remainder carries no serial stacks, so a single-threaded continue that
+ * fell back to the serial search would re-search from the root and report
+ * every phase-1 assembly a second time; willRunParallel() keeps it on the
+ * remainder. Uses threads=1 on restore. */
 TEST_CASE("Serial continue after parallel save does not duplicate",
           "[assembler][parallel][resume][simd][save]") {
   auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle");
@@ -1264,11 +1216,12 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
 }
 
 /* Second save in the chain (issue #118 review): parallel stop, save,
- * reload, serial continue, stop, save again. The second save carries no
- * new tasks (serial entry cleared them) but the signatures of everything
- * reported so far; reloading it must still dedup instead of doubling.
- * Uses the reviewer's repro shape (CubeInCage, DLX-forced). */
-TEST_CASE("Second serial save in the chain still dedups on continue",
+ * reload, single-threaded continue, stop, save again. The restored
+ * remainder keeps the one-thread continue on the task pool, so the second
+ * save carries what is left of that remainder; reloading it must resume
+ * exact-once instead of doubling. Uses the reviewer's repro shape
+ * (CubeInCage, DLX-forced). */
+TEST_CASE("Second save in a single-threaded chain resumes exact-once",
           "[assembler][parallel][resume][save]") {
   auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
   REQUIRE(p != nullptr);
@@ -1317,7 +1270,7 @@ TEST_CASE("Second serial save in the chain still dedups on continue",
     state1 = saveState(assm);
   }
 
-  // Phase 2: reload, serial continue, stop after 3 more, save again.
+  // Phase 2: reload, single-threaded continue, stop after 3 more, save again.
   RecordingAssemblerCallback cb2;
   std::string state2;
   {
@@ -2101,6 +2054,138 @@ TEST_CASE("Search state saved by another version is refused on restore",
     CHECK(assm.setPosition("0 0 0 0 0 0 0", "2.0") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
     // the current format still loads
     CHECK(assm.setPosition("0 0 0 0 0 0 0 0 0", "2.2") == assembler_c::ERR_NONE);
+  }
+}
+
+/* A stop that lands after a resumed run has its remainder but before the
+ * pool is seeded (Stop pressed right after Continue) must keep that
+ * remainder. Discarding it, as is right for a freshly generated list that
+ * may be partial, made the next continue regenerate the whole search and
+ * report every assembly found before the first stop again. The pool-seed
+ * hook lands the stop in exactly that window, for all four engines; each
+ * run stops in-session first, then (on the hooked stop) saves and restores,
+ * so both the in-memory and the saved remainder are covered.
+ */
+TEST_CASE("a stop before the pool is seeded keeps a resumed remainder",
+          "[assembler][parallel][resume][save]") {
+  struct Case { const char * name; bool assembler0; bool noSimd; const char * path; };
+  const Case cases[] = {
+    {"A0-DLX", true, true, "examples/PelikanBurr.xmpuzzle"},
+    {"A0-SIMD", true, false, "examples/PelikanBurr.xmpuzzle"},
+    {"A1-DLX", false, true, "examples/PiecesOfEight.xmpuzzle"},
+    {"A1-Huang", false, false, "examples/PiecesOfEight.xmpuzzle"},
+  };
+  for (const auto & c : cases) {
+    INFO("engine: " << c.name);
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.noSimd ? "1" : nullptr);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+    auto make = [&]() {
+      std::unique_ptr<assembler_c> assm(c.assembler0
+        ? static_cast<assembler_c *>(new assembler_0_c(*problem))
+        : static_cast<assembler_c *>(new assembler_1_c(*problem)));
+      assm->setNumThreads(4);
+      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      return assm;
+    };
+
+    std::multiset<std::string> baseline;
+    {
+      RecordingAssemblerCallback cb;
+      auto assm = make();
+      assm->assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(baseline.size() > 3);
+    INFO("baseline: " << baseline.size());
+
+    RecordingAssemblerCallback cb;
+    std::string state;
+    {
+      auto assm = make();
+      const size_t k = baseline.size() / 2;
+      unsigned int seen = 0;
+      assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+        cb.assembly(std::move(a));
+        return ++seen < k;
+      });
+      REQUIRE(assm->getFinished() < 1.0f);
+
+      // Continue, stopped before the resumed remainder reaches the pool.
+      bool fired = false;
+      assembler_c * raw = assm.get();
+      assm->setPoolSeedHook([&] { fired = true; raw->stop(); });
+      assm->assemble(&cb);
+      assm->setPoolSeedHook(nullptr);
+      REQUIRE(fired);
+      CHECK(cb.fingerprints.size() == k);
+
+      std::ostringstream str;
+      xmlWriter_c xml(str);
+      assm->save(xml);
+      state = str.str();
+    }
+
+    auto restored = make();
+    std::string payload = extractAssemblerContent(state);
+    // CHECK, not REQUIRE: every engine's case reports on its own
+    const auto err = restored->setPosition(payload.c_str(), assemblerVersionOf(state).c_str());
+    CHECK(err == assembler_c::ERR_NONE);
+    if (err == assembler_c::ERR_NONE) {
+      restored->assemble(&cb);
+      CHECK(restored->getFinished() == 1.0f);
+      CHECK(cb.fingerprints == baseline);
+    }
+  }
+}
+
+/* Restore refuses remainders save() never writes: a task type with no
+ * tasks behind it (it would restore as a fresh search over the assemblies
+ * already found), an interrupted search without tasks, and Huang seeds that
+ * no longer replay on the matrix (their territory would be lost silently).
+ * An engine without tasks pins nothing: the next run is fresh.
+ */
+TEST_CASE("restore refuses remainders save() never writes",
+          "[assembler][resume][save]") {
+  auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  {
+    assembler_1_c assm(*problem);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    // interrupted flag, seven empty stacks, task type, count, tasks
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 1 0", "2.2") == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 2 0", "2.2") == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
+    CHECK(assm.setPosition("1 0 0 0 0 0 0 0 2 0", "2.2") == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
+    CHECK(assm.setPosition("1 0 0 0 0 0 0 0 0", "2.2") == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED);
+    // Huang seed: prefix, pivot bits, rest start. A node id that is not in
+    // the matrix does not replay; the empty prefix (whole search) does.
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 2 1 1 999999 1 0 0", "2.2")
+          == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
+    CHECK(assm.setPosition("0 0 0 0 0 0 0 0 2 1 0 0 0", "2.2") == assembler_c::ERR_NONE);
+  }
+
+  {
+    // interrupted flag, engine (2 = SIMD), pos, iterations, one (row col)
+    // pair, task count, completed share (PiecesOfEight has a piece range,
+    // which assembler_0 does not handle)
+    auto p0 = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(p0 != nullptr);
+    assembler_0_c assm(*p0->getProblem(0));
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.setPosition("0 2 0 0 (0 0) 0 0", "1.7") == assembler_c::ERR_NONE);
+    std::ostringstream str;
+    xmlWriter_c xml(str);
+    assm.save(xml);
+    std::istringstream payload(extractAssemblerContent(str.str()));
+    unsigned int interrupted = 9, engine = 9;
+    payload >> interrupted >> engine;
+    CHECK(interrupted == 0);
+    CHECK(engine == 0);
   }
 }
 

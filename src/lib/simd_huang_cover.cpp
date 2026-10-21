@@ -364,6 +364,12 @@ void SimdHuangCover<BitsetType>::solve(
 }
 
 template <typename BitsetType>
+bool SimdHuangCover<BitsetType>::seedReplays(const HuangSeed &seed) const {
+  SubtreeTask task;
+  return taskFromSeed(seed, task);
+}
+
+template <typename BitsetType>
 bool SimdHuangCover<BitsetType>::taskFromSeed(
   const HuangSeed &seed,
   SubtreeTask &task
@@ -675,13 +681,15 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::vector<SubtreeTask> tasks;
   if (resume_seeds != nullptr && !resume_seeds->empty()) {
     // Incremental continue: rebuild pool tasks by replaying the salvaged
-    // seeds instead of regenerating (and re-searching) everything. Seeds
-    // that no longer resolve are skipped defensively; that cannot happen
-    // for salvage from an identical matrix.
+    // seeds instead of regenerating (and re-searching) everything. Salvage
+    // from an identical matrix always replays, and restored seeds were
+    // checked by seedReplays() at load; a seed that fails here would be
+    // territory silently lost, so it is an error, not a skip.
     for (const auto &seed : *resume_seeds) {
       SubtreeTask t;
-      if (taskFromSeed(seed, t))
-        tasks.push_back(std::move(t));
+      if (!taskFromSeed(seed, t))
+        bt_te("SimdHuangCover::parallelSolve: resume seed does not replay");
+      tasks.push_back(std::move(t));
     }
   } else {
     unsigned int target_tasks = std::max(16u, num_workers * 4);
@@ -1052,22 +1060,17 @@ void SimdHuangCover<BitsetType>::recordFrame(
   // would still have taken. scratch_active_rows[depth] is intact: deeper
   // frames only write deeper levels.
   const auto &curr_active = ctx.scratch_active_rows[depth];
-  unsigned int emitted = 0;
-  for (size_t j = next; j < curr_active.size(); j++) {
-    const auto &cand = rows[curr_active[j]];
-    if (!coversPivot(cand, best_col) || !fitsBounds(cand, ctx))
-      continue;
-    if (emitted == trace.fanout) {
-      // Everything from here on as one rest: the frame resumes its loop at
-      // index j on the identically replayed state.
-      trace.addPiece(ctx.current_solution, static_cast<uint32_t>(j));
-      return;
-    }
-    std::vector<unsigned int> prefix = ctx.current_solution;
-    prefix.push_back(cand.node_id);
-    trace.addPiece(std::move(prefix));
-    emitted++;
-  }
+  SplitFanout::emitFrame(curr_active, next, curr_active.size(), trace.fanout,
+    [&](uint32_t r) { return coversPivot(rows[r], best_col) && fitsBounds(rows[r], ctx); },
+    [&](size_t j, bool rest) {
+      if (rest) {
+        trace.addPiece(ctx.current_solution, static_cast<uint32_t>(j));
+        return;
+      }
+      std::vector<unsigned int> prefix = ctx.current_solution;
+      prefix.push_back(rows[curr_active[j]].node_id);
+      trace.addPiece(std::move(prefix));
+    });
 }
 
 template <typename BitsetType>

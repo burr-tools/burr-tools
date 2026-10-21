@@ -1217,7 +1217,8 @@ TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
  * rests included.
  *
  * One required column (0) and 40 rows {0, i}: every row alone is a
- * solution, all 40 branch from the root frame -- wider than kRestFanout,
+ * solution, all 40 branch from the root frame -- wider than the default
+ * fan-out cap (SplitFanout::kDefault),
  * so a stop there emits 16 singletons plus one rest. Driving every piece
  * through solveSubtree with a callback that stops after each delivered
  * solution chains stops through rests of rests; the delivered solutions
