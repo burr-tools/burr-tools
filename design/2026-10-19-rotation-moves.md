@@ -214,7 +214,9 @@ and gives no shift early when a corner passes another corner. Powers of
 octagon rescued exactly the same turns as the square's, so the profile
 does not depend on the model. Amounts from the geometry (`h(√2−1)` and
 `(0.5+h)(√2−1)`, 0.190 and 0.397 at play 0.081) tie the 0.1–0.4 grid with
-puzzlecad cubes but lose with play 0.081 (1312 vs 1431), so the grid stays.
+puzzlecad cubes but lose with play 0.081 (1312 vs 1431), so a grid of
+amounts stays (since 2026-10-21 every 0.05 from 0.05 to 0.45, see the TIC
+corpus results).
 Adding 0.5 and 0.6 rescues a lot more (1633 / 1317); larger shifts are the
 main thing the family misses, together with shifts that change direction
 mid-turn (see the planner, phase 3).
@@ -283,7 +285,8 @@ Rotation moves are optional and cost nothing when off:
   smaller requests. Different puzzles may use different models, and tests
   can build small tables without fighting global state.
 * `rotationSettings_t` (model + amounts) is a solver argument, default
-  `defaultRotationSettings()`. The GUI will later take play and rounding
+  `defaultRotationSettings()`: play 0.081, sharp edges, amounts every 0.05
+  from 0.05 to 0.45 (145 paths per sense). The GUI will later take play and rounding
   from the puzzle's physical description.
 * The radius comes from the problem: largest result-shape dimension + 1.
   Only cube grids with a valid result get tables.
@@ -694,10 +697,42 @@ same disassemblies (65 paths / 449 paths): AAA_most_rotations 0.17 →
 0.10 s / 0.87 → 0.54 s, DraculasDentalDesaster 12.1 → 10.3 s /
 23.9 → 15.5 s, HolopTIC 0.24 → 0.15 s / 1.37 → 0.80 s.
 
+### Default amounts: every 0.05 (2026-10-21)
+
+With the path bitsets and the cheaper certification, the default amounts
+went from 0.1–0.4 (65 paths per sense) to every 0.05 from 0.05 to 0.45
+(145 paths). Nothing that came apart before stops coming apart:
+
+| | 0.1–0.4 | every 0.05 |
+|---|---|---|
+| Decoded TICs, default model | 17 / 21 | 19 / 21 (+ElfTIC, ThreeTIC) |
+| Decoded TICs, printed model | 5 / 21 | 10 / 21 (+LocomoTIC, LunaTIC, PackTIC_7, TwisTIC, tRIBe) |
+| Decoded TICs, mean smallest bevel at printed play | 0.109 | 0.088 |
+| Decoded TICs, mean smallest play (sharp) | 0.0563 | 0.0476 |
+| Crowell collection, default model | 276 / 319 | 280 / 319 (+ThreeTIC, ElfTIC, each twice) |
+| Crowell collection, all default runs | 107 s | 136 s |
+
+(The 107 s were measured before the two speed-ups, the 136 s after; 2.2×
+the paths now cost about 1.3× the time.) Every Crowell puzzle that either
+PR #50 engine takes apart now also comes apart in ours, except GemTIC,
+whose two disputed moves cannot be certified at play 0.081. Results in
+`rotation-study/results/tics_a05.json` and as `a05` in `crowell.jsonl`.
+
+The PelikanBurr piece-order test asserted one disassembly for every piece
+order. With 145 paths that no longer holds, and not because of the move
+generator: at equally short move sequences the search keeps the first it
+finds, which depends on the order, and the different end states then
+separate differently (e.g. the last three pieces in 2 or 3 moves). The
+test now checks what must hold: on AAA_most_rotations, a search state
+reached under several piece orders (by translations, compared in the
+original piece order) offers the same number of turns under each. It
+fails when groups with piece 0 are skipped, the bug it was written for.
+
 ### Open questions from the corpus
 
-* Default amounts: every 0.05 (2× time, recovers ThreeTIC) vs. the current
-  0.1–0.4, vs. a denser grid of shift vectors once checks are bitmasks.
+* A denser grid of shift vectors (all directions, not only the 8 compass
+  ones), now that a check barely depends on the number of paths; what
+  remains is the table build.
 * Why printed TICs fail under their own model: needs physically verified
   moves, ideally on one of the 16.
 * The configuration-space planner (phase 3) covers what no fixed family
