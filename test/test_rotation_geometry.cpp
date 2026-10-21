@@ -247,6 +247,27 @@ TEST_CASE("a cube spinning next to a face neighbour needs beveled edges", "[rota
   CHECK_THROWS(planarScene_c(moving, stat, 2, 0, 0, 0, { play, h }));
 }
 
+TEST_CASE("a wiggle away from a face neighbour follows the cube's bulge", "[rotations]") {
+
+  /* The cube of half side h spins about its own centre next to a neighbour
+   * at +u. Turned by θ it reaches h·(cos θ + sin θ) along u, so a wiggle of
+   * amount a along -u keeps it clear iff a·b(θ) >= h·(√2 - 1)·b(θ) - play
+   * for every θ, b the bulge profile of the wiggle with peak 1. That holds
+   * iff a >= h·(√2 - 1) - play: the cube's corner then glides along the
+   * neighbour's face, which is what the profile is built for. */
+  const std::vector<cell_t> moving = { { 0, 0, 0 } };
+  const std::vector<cell_t> stat = { { 1, 0, 0 } };
+  const double play = 0.081;
+  const double h = 0.5 * (1 - play);
+  const double amin = h * (std::sqrt(2.0) - 1) - play;
+
+  planarScene_c scene(moving, stat, 2, 0, 0, 0, { play, 0 });
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, -1, 0, amin - 0.005 })) == PATH_BLOCKED);
+    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, -1, 0, amin + 0.005 })) == PATH_CLEAR);
+  }
+}
+
 TEST_CASE("a bar sweeps only the quarter it turns through", "[rotations]") {
 
   /* bar (0,0)-(1,0) turns about the centre of (0,0) around Z: +90° sweeps
