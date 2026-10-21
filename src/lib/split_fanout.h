@@ -46,11 +46,12 @@ inline bool breadthFirstFromEnv() {
   return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
 }
 
-/* Donation (split on demand): a running assembler_0 DLX task hands the
- * unexplored rows of its shallowest open level to the pool whenever a
- * sibling is waiting for work, instead of tasks being split eagerly at pop
- * time. BURRTOOLS_NO_DONATE=1 restores the eager pop-time splitting (A/B
- * toggle). Read once per run. */
+/* Donation (split on demand): a running assembler_0 task, on the DLX and
+ * the SIMD workers alike, hands the unexplored part of its shallowest open
+ * level to the pool whenever a sibling is waiting for work, instead of
+ * tasks being split eagerly at pop time (see
+ * design/2026-10-17-split-on-demand.md). BURRTOOLS_NO_DONATE=1 restores the
+ * eager pop-time splitting on both (A/B toggle). Read once per run. */
 inline bool noDonateFromEnv() {
   return std::getenv("BURRTOOLS_NO_DONATE") != nullptr;
 }

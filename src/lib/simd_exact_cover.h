@@ -251,19 +251,22 @@ public:
   };
 
   /**
-   * Split on demand (see split_fanout.h): polled from inside the search
-   * every `interval` nodes; when wanted() says a sibling is waiting, the
-   * search cuts the shallowest frame that still has untried branches and
-   * hands them over with give() as one rest (nodes = the path down to that
-   * frame, restSkip = the frame's first untried index, > 0 always). The
-   * frame then ends after its current branch. `fraction` is the
-   * structural estimate of the piece's share of this subtree
-   * (product of 1/branching above it x remaining/branching at it).
+   * Split on demand (design/2026-10-17-split-on-demand.md): polled from
+   * inside the search every `interval` nodes; when wanted() says a sibling
+   * is waiting, the search finds the shallowest frame that still has
+   * untried branches and offers them to give() as one rest (nodes = the
+   * path down to that frame, restSkip = the frame's first untried index,
+   * > 0 always). give() returns whether it took them (it may lose the
+   * claim to another donor); if it did, the frame ends after its current
+   * branch. `fraction` is the structural estimate of the piece's share of
+   * this subtree (product of 1/branching above it x remaining/branching at
+   * it, where a rest's root frame branches only over the candidates it
+   * owns).
    */
   struct DonationSink {
     virtual ~DonationSink() = default;
     virtual bool wanted() = 0;
-    virtual void give(const std::vector<unsigned int> &nodes, uint32_t restSkip,
+    virtual bool give(const std::vector<unsigned int> &nodes, uint32_t restSkip,
                       double fraction) = 0;
     uint64_t interval = 256;
   };
@@ -367,11 +370,16 @@ private:
     SubtreeRemainder *trace = nullptr;
     // Donation (see DonationSink); null unless solveSubtree was given one.
     // Per frame at depth d (live while its branch loop runs): the branch
-    // column, its candidate count, the first untried index and the loop
-    // end -- a donation lowers frame_end to cut the frame.
+    // column, its candidate count (at the root, only those from `start`
+    // on), the first untried index and the loop end -- a donation lowers
+    // frame_end to cut the frame. A frame's untried range only shrinks, so
+    // once found closed it stays closed until the frame is re-registered:
+    // live frames shallower than donate_scan_from are known closed and are
+    // not rescanned.
     DonationSink *donor = nullptr;
     uint64_t next_donate_poll = 0;
     unsigned int root_depth = 0;
+    unsigned int donate_scan_from = 0;
     std::vector<unsigned int> frame_col;
     std::vector<uint32_t> frame_count;
     std::vector<size_t> frame_next;

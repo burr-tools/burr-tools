@@ -272,8 +272,9 @@ private:
   // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
   // (A/B toggle, see split_fanout.h); read with splitFanout
   bool splitBreadthFirst = false;
-  // donation (split on demand, DLX workers): on unless BURRTOOLS_NO_DONATE;
-  // donateEvery forces a donation every N nodes (tests). See split_fanout.h.
+  // donation (split on demand, DLX and SIMD workers): on unless
+  // BURRTOOLS_NO_DONATE; donateEvery forces a donation every N nodes
+  // (tests). See design/2026-10-17-split-on-demand.md.
   bool donate = true;
   unsigned long donateEvery = 0;
   // donations made since construction (diagnostics and tests)
@@ -385,6 +386,13 @@ private:
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth, float & prunedShare);
   void parallelMultiSearch(unsigned int workers);
+  /* The prefix of a SIMD piece below task (donated or left at a stop):
+   * nodes is its path of row nodes from the root. Steps inside the task's
+   * own prefix are kept verbatim, deeper ones get the DLX column of their
+   * node, so the piece is an ordinary task.
+   */
+  std::vector<PrefixStep> prefixFromNodes(const SubtreeTask & task,
+                                          const std::vector<unsigned int> & nodes) const;
 
   /* true when the next assemble() call will take the parallel path */
   bool willRunParallel(unsigned int threads) const;
@@ -463,7 +471,7 @@ public:
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
   /** Number of tasks running workers donated to idle siblings so far (see
-   * split_fanout.h); diagnostics only. */
+   * design/2026-10-17-split-on-demand.md); diagnostics only. */
   unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
