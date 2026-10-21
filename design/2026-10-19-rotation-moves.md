@@ -153,6 +153,40 @@ This gives a **sound** verdict for any path — no tunnelling, no step-count
 constant. It is used by the generator, by the tests, by `burrTxt
 --verify-rotations`, and by the GUI's contact highlighting.
 
+**Why sample and not intersect exactly.** Geometrically, a path is blocked
+iff a static square meets the area the moving squares sweep, the area
+bounded by their corners' trajectories. Computing that intersection
+exactly is not the better tool here:
+
+* Exact is easy only where a segment is a pure turn about a fixed point
+  (the pure turn, the turning part of a slide) or a pure shift: corners
+  move on circles, edges stay straight, and contacts are circle–line
+  events with closed forms. On a wiggle segment rotation and translation
+  change together, a corner follows `R(θ)·x + d₀ + θ·k`, and "corner
+  reaches a static edge" is `a·cos θ + b·sin θ + c·θ + e = 0`, which has no
+  closed form. Finding its roots without missing one between two brackets
+  needs a bound on how fast it changes: the Lipschitz bound the checker
+  already uses.
+* The sampling is certified, not hopeful like PR #50's 24 fixed angles: a
+  sample with clearance `c` proves everything within `c / L` clear, so
+  "clear" is a proof. The only loss is near tangency, where an interval
+  undecided below 10⁻⁷ cells counts as blocked; the error can only reject
+  a move, never accept a false one.
+* The contacts that matter are near-tangent (a corner gliding past a face
+  at the play), exactly where exact floating-point intersection tests are
+  fragile: tangent circles, parallel edges, corner on corner. Signed
+  distance has no special cases, and the bevel (an octagon) and the
+  rounding (minus `2r`) come for free.
+* One checker serves the whole-scene check, the tables, the tests and,
+  later, the planner's arbitrary paths, which cannot be special-cased.
+
+Exact circle–line events would work for the pure-turn and slide tables
+(same verdicts up to the 10⁻⁷ margin, exact contact angles, possibly a
+faster build), but the wiggle tables would still need the sampler, and the
+whole table build takes 0.2–0.5 s since the cheaper certification. A
+second geometry path is not worth it unless the build becomes the
+bottleneck again.
+
 ### Lookup tables for fixed paths (`pathTable_c`, `rotationTables_c`)
 
 Along a *fixed* motion every (moving cube, static cube) pair collides or
