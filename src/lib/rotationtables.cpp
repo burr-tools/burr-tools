@@ -37,7 +37,7 @@
 using rotationGeometry::rotationTables_c;
 
 rotationSettings_t defaultRotationSettings(void) {
-  return { { 0.081, 0 }, { 0.1, 0.2, 0.3, 0.4 } };
+  return { { 0.081, 0 }, { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 } };
 }
 
 int rotationRadiusFor(const problem_c & problem) {
