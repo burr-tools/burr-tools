@@ -598,11 +598,17 @@ comes apart, by a 6-step bisection.
 * PR #50's Crowell engine (60 s limit): 176 come apart, 8 time out. None of
   them fails in ours; ours takes apart 92 that it does not, plus 8 where it
   timed out.
-* PR #50's Classic engine (60 s limit), partial at 182 of 319 files: 129
-  come apart, 6 time out. The only puzzle it takes apart and ours does not
-  is Crowell's 4x4x4 ThreeTIC (twice, with its solution file); ours takes
-  apart 24 that it does not, plus 2 where it timed out.
-  *(Run in progress; to be updated when it completes.)*
+* PR #50's Classic engine (60 s limit): 199 come apart, 41 time out. Two
+  puzzles come apart there and not in ours, each twice (with its solution
+  file): Crowell's 4x4x4 ThreeTIC and 5x5x5 GemTIC. Ours takes apart 44
+  that it does not, plus 37 where it timed out. Either PR #50 engine: 230.
+* GemTIC is not a missed motion at the design model. PR #50 accepts 45
+  distinct rotations on it; 43 clear a path of our family, and the
+  remaining 2 cannot be certified at play 0.081 (the grid search finds a
+  route only through samples with essentially zero clearance), so PR #50's
+  24-step sampled check lets them through. From play 0.085 they are
+  possible, by motions outside the family; ours takes GemTIC apart from
+  play 0.101, and finer amounts do not change that.
 
 ### ThreeTIC: what the family misses
 
