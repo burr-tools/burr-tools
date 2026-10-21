@@ -272,6 +272,15 @@ private:
   // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
   // (A/B toggle, see split_fanout.h); read with splitFanout
   bool splitBreadthFirst = false;
+  // donation (split on demand, DLX and SIMD workers): a running task hands
+  // the untried part of its shallowest open level to the pool when a
+  // sibling waits (see assemblerWorker_c::donate). On unless
+  // BURRTOOLS_NO_DONATE; donateEvery forces a donation every N nodes
+  // (tests). Both read once per run (see split_fanout.h).
+  bool donate = true;
+  unsigned long donateEvery = 0;
+  // donations made since construction (diagnostics and tests)
+  std::atomic<unsigned long> donations{0};
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a
@@ -379,6 +388,13 @@ private:
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth, float & prunedShare);
   void parallelMultiSearch(unsigned int workers);
+  /* The prefix of a SIMD piece below task (donated or left at a stop):
+   * nodes is its path of row nodes from the root. Steps inside the task's
+   * own prefix are kept verbatim, deeper ones get the DLX column of their
+   * node, so the piece is an ordinary task.
+   */
+  std::vector<PrefixStep> prefixFromNodes(const SubtreeTask & task,
+                                          const std::vector<unsigned int> & nodes) const;
 
   /* true when the next assemble() call will take the parallel path */
   bool willRunParallel(unsigned int threads) const;
@@ -456,6 +472,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers handed to waiting siblings so far
+   * (split on demand); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
    * unvalidated value from the CLI or the python binding would otherwise

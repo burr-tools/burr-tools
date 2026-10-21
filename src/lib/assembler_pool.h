@@ -50,7 +50,9 @@
  *   NOT atomics, so the "queue empty && nobody active" quiescence predicate is
  *   evaluated atomically with the wait.
  * - Coordination happens only at task boundaries (pop / task_done / push).
- *   Nothing here runs inside the exact-cover node loop.
+ *   The only thing the exact-cover node loop touches is wants_work(), a
+ *   relaxed atomic flag; a worker that acts on it donates with an ordinary
+ *   push.
  * - Every successful pop_task() MUST be paired with exactly one finishTask(),
  *   even when the task body throws or the search aborts mid-task. The worker
  *   loops use try/catch for this. (task_done() alone is only correct when no
@@ -86,6 +88,7 @@ public:
     waiting_workers = 0;
     for (auto &t : initial_tasks)
       queue.push_back(std::move(t));
+    updateHunger();
   }
 
   /// Attach a shared budget (nullable). Must be called with no workers
@@ -107,12 +110,14 @@ public:
     while (true) {
       std::unique_lock<std::mutex> lock(mtx);
       waiting_workers++;
+      updateHunger();
       auto pred = [&] {
         return !queue.empty() || active_workers == 0 ||
                runStop.stop_requested() || st.stop_requested();
       };
       cv.wait(lock, st, pred);
       waiting_workers--;
+      updateHunger();
 
       if (runStop.stop_requested() || st.stop_requested()) {
         releaseBudget();
@@ -153,6 +158,7 @@ public:
       }
       out_task = std::move(queue.front());
       queue.pop_front();
+      updateHunger();
       active_workers++;
 #ifndef NDEBUG
       dbg_pops_.fetch_add(1, std::memory_order_relaxed);
@@ -210,6 +216,7 @@ public:
       for (auto &t : new_tasks)
         queue.push_back(std::move(t));
       accepted = new_tasks.size();
+      updateHunger();
     }
     if (accepted > 0)
       cv.notify_all();
@@ -234,6 +241,7 @@ public:
       queue.insert(queue.begin(), std::make_move_iterator(new_tasks.begin()),
                    std::make_move_iterator(new_tasks.end()));
       accepted = new_tasks.size();
+      updateHunger();
     }
     if (accepted > 0)
       cv.notify_all();
@@ -246,6 +254,30 @@ public:
   bool has_waiting_workers() const {
     std::lock_guard<std::mutex> lock(mtx);
     return waiting_workers > 0;
+  }
+
+  /// True while more workers wait for a task than the queue holds: the
+  /// "hungry" signal for donation (a running task hands part of its
+  /// unexplored territory to the pool, see assembler_0's donate()). A
+  /// relaxed load of a flag kept in step with the guarded counters, so
+  /// workers may poll it from inside the search loop without touching the
+  /// mutex. It is only a hint: a stale read costs at most one needless
+  /// donation or a few hundred nodes of delay, never correctness --
+  /// donated work is ordinary pool work either way.
+  bool wants_work() const {
+    return hungry_.load(std::memory_order_relaxed);
+  }
+
+  /// Take the hunger signal for one donation: true for exactly one caller
+  /// per raise, which then must push. Clearing the flag keeps the other
+  /// running workers from donating for the same waiter; the donor's
+  /// push_tasks() re-derives it, so a second waiter raises it again. Call
+  /// only once there is something to give -- a claim that is not followed
+  /// by a push leaves the waiter unannounced until the next pool event.
+  bool claim_work() {
+    bool expected = true;
+    return hungry_.compare_exchange_strong(expected, false,
+                                           std::memory_order_relaxed);
   }
 
   /// Number of queued (not yet popped) tasks. Lock-protected; task granularity.
@@ -287,10 +319,20 @@ public:
       rest.push_back(std::move(queue.front()));
       queue.pop_front();
     }
+    updateHunger();
     return rest;
   }
 
 private:
+  // Call with mtx held, after every change of waiting_workers or queue.
+  // Stores only on a change: workers poll the flag's cache line from the
+  // search loop, and every pop and push passes through here.
+  void updateHunger() {
+    const bool hungry = waiting_workers > queue.size();
+    if (hungry_.load(std::memory_order_relaxed) != hungry)
+      hungry_.store(hungry, std::memory_order_relaxed);
+  }
+
   void releaseBudget() {
     if (budget_ != nullptr)
       budget_->release(); // no-op unless this thread holds one
@@ -306,6 +348,10 @@ private:
   std::atomic<unsigned long> dbg_pops_{0};
   std::atomic<unsigned long> dbg_finishes_{0};
 #endif
+  // Mirror of waiting_workers > queue.size(), see wants_work(). Last and on
+  // its own cache line: the search loops poll it, and the mutex and
+  // counters above change on every pop and push.
+  alignas(64) std::atomic<bool> hungry_{false};
 };
 
 #endif // __ASSEMBLER_POOL_H__
