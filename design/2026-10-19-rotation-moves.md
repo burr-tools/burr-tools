@@ -246,13 +246,17 @@ Every kind and amount is the first rescuing path for some of them, so the
 default family keeps all four amounts. The random scenes are sparse; a
 corpus measurement on real puzzles (dense) should confirm the choice.
 
-Run-time cost per candidate move: Σ blockers over the moving cubes per
-path, ≤ 30–46 lookups per cube and path, paths tried in order until one
-is clear. This maps directly onto bitboards: OR the moving cubes' shadow
-masks, AND with the occupancy of the other pieces. A per-(shape,
-orientation, pivot offset, axis, sense, path) shadow cache, like
-`movementCache_c`, removes even the OR. Memory is ~8 bytes per entry
-(15 MB at radius 8), also a reason to move to bitmasks.
+Run-time cost per candidate move: `firstClear` first rejects the turn if
+a moving cube has an occupied blocker of every path. Otherwise, for each
+moving cube it walks the blockers of *some* path, each stored with the
+set of paths it blocks as a bitset (one bit per path, sorted most-blocking
+first), ORs the bitsets of the occupied ones, stops once every path is
+blocked, and returns the lowest path left clear. The cost is lookups over
+the union of the blocker lists plus `⌈paths/64⌉` words per hit, nearly
+independent of the number of paths. (Before 2026-10-21 it walked the
+tables path by path, about paths × cubes × blockers lookups for a blocked
+turn.) A per-(shape, orientation, pivot offset, axis, sense) cache of the
+OR, like `movementCache_c`, would remove even that; not done.
 
 What tables cannot do: moves whose path is *searched for*. The family is
 a deliberate choice of plausible hand motions; the planner below remains
@@ -637,12 +641,32 @@ Wall time, release build, with other jobs running (ratios only):
 | ThreeTIC (Crowell) | 0.16 s, apart: no | 0.33 s, yes | 0.95 s, yes |
 | HolopTIC (Crowell) | 0.26 s, no | 0.53 s, no | 2.4 s, yes |
 
-Time grows roughly with the number of paths: table building does, the
+Time grew roughly with the number of paths: table building does, the
 blocked-on-every-path pre-check rejects fewer candidates when the family
-is larger, and each remaining candidate walks more tables. Per-path shadow
-bitmasks cached per piece pair (see "Lookup tables") would make a check
-nearly independent of the family size, leaving only the one-time table
-build to grow.
+is larger, and each remaining candidate walked more tables.
+
+**Path bitsets (implemented 2026-10-21).** `firstClear` now ORs a bitset
+of blocked paths per occupied blocker instead of walking the tables (see
+"Lookup tables"). Same binaries otherwise, same disassemblies in every
+case, wall time old → new:
+
+| Puzzle | 65 paths | 145 paths | 449 paths |
+|---|---|---|---|
+| AAA_most_rotations (mostly table build) | 0.13 → 0.14 s | 0.27 → 0.29 s | 0.80 → 0.82 s |
+| PelikanBurr | 3.8 → 2.6 s | 6.4 → 3.1 s | 19.8 → 8.2 s |
+| DraculasDentalDesaster | 12.0 → 9.0 s | 12.6 → 12.2 s | 24.8 → 28.9 s |
+| ThreeTIC (Crowell) | 0.16 → 0.18 s | 0.36 → 0.42 s | 1.07 → 0.89 s |
+| HolopTIC (Crowell) | 0.22 → 0.24 s | 0.46 → 0.49 s | 2.04 → 1.31 s |
+
+The search part no longer scales with the family: PelikanBurr at 449
+paths costs 3.2× the 65-path time instead of 5.2×. What remains is the
+table build. A `perf` profile of DraculasDentalDesaster at 449 paths
+(large table radius) has about 70% of CPU samples in building the tables
+(`squareSignedDistance`, `pathTable_c`, `clearance`, `certifySegment`,
+`sincos`), 11.5% in the per-pair blocking cache
+(`computeBlockingPivots`) and 9.8% in `listRotations`; `firstClear` does
+not appear. Larger families therefore need a cheaper or cached table build
+(on disk, keyed by model, amounts and radius), not a faster check.
 
 ### Open questions from the corpus
 
