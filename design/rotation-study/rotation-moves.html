@@ -335,7 +335,8 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
   <section>
     <h2>Lookup tables: no geometry at solve time</h2>
     <div class="prose">
-      <p>Along a fixed path, each (moving cube, static cube) pair either collides or doesn't, regardless of every other cube. A path is blocked exactly when some moving cube collides with some static cube of its layer. So for each path, BurrTools precomputes a table: for every offset of a moving cube from the pivot, the list of static offsets that would block it. The table is filled by the certified checker, so it is exactly as precise as the checker. At solve time there is no trigonometry: a few dozen lookups per cube. The lists of all paths are merged, so each blocker carries one bit per path it blocks. The bits of the occupied blockers are ORed together, and the first path whose bit stays 0 is the move. A larger path family costs a few more 64-bit words, not a walk through more tables.</p>
+      <p>Along a fixed path, each (moving cube, static cube) pair either collides or doesn't, regardless of every other cube. A path is blocked exactly when some moving cube collides with some static cube of its layer. So for each path, BurrTools precomputes a table: for every offset of a moving cube from the pivot, the list of static offsets that would block it. The table is filled by the certified checker, so it is exactly as precise as the checker. Geometrically, a table entry is the set of static cells whose square meets the area the moving square sweeps along the path, the area bounded by its corners' trajectories. The code doesn't intersect those curves analytically, though. For each candidate cell it runs the checker on the single pair: it samples the signed distance along the path and proves the gaps between samples clear with the Lipschitz bound. The demo below draws the swept area so you can see what the checker decides.</p>
+      <p>At solve time there is no trigonometry: a few dozen lookups per cube. The lists of all paths are merged, so each blocker carries one bit per path it blocks. The bits of the occupied blockers are ORed together, and the first path whose bit stays 0 is the move. A larger path family costs a few more 64-bit words, not a walk through more tables.</p>
       <p>Only the +90° tables for the pure turn and for directions (1,0) and (1,1) are computed with the checker. The other six directions are turned copies, since turning the whole scene about the pivot commutes with the motion, and every −90° table is a mirrored copy. Tests compare these derived tables against directly computed ones. Offsets are doubled so they stay integers: both even for a pivot at a cube centre, both odd for one at a corner.</p>
     </div>
     <div class="bench">
@@ -343,7 +344,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
         <canvas id="tbl" class="stage" width="560" height="560" tabindex="0" aria-label="Table entry: click a moving cube offset to see the static cells that block it"></canvas>
         <div class="controls">
           <h3>One table entry</h3>
-          <p class="small" style="margin:0">Click a cell to place the moving cube at that offset from the pivot. The shaded cells are its blockers, i.e. the static positions that would make the path collide.</p>
+          <p class="small" style="margin:0">Click a cell to place the moving cube at that offset from the pivot. The blue band is the area the cube sweeps along the path, and the thin blue curves are the trajectories of its corners. Red cells are blockers: static positions whose square meets the swept area. For each one, the dashed red outline is the cube where it first touches that cell, and the dot is the contact point. Faint green outlines are cells near the path that the checker proved clear.</p>
           <div class="row">
             <span class="lbl">Pivot</span>
             <button id="tp-centre" aria-pressed="true">cube centre</button>
@@ -1106,7 +1107,7 @@ const G = (() => {
   function tblCompute() {
     const off = tbl.corner ? 0.5 : 0;
     const [mu, mv] = tbl.sel;
-    const shift = 0.4, range = Math.SQRT2 * (1 - tblModel.play) + shift + 1e-6;
+    const shift = AMOUNTS[AMOUNTS.length - 1], range = Math.SQRT2 * (1 - tblModel.play) + shift + 1e-6;
     const R0 = Math.hypot(mu, mv);
     const cands = [];
     for (let u = -5; u <= 5; u++) for (let v = -5; v <= 5; v++) {
@@ -1114,7 +1115,8 @@ const G = (() => {
       if (su === mu && sv === mv) continue;
       // distance from the pure arc (angles 0..±90°)
       let dmin = Infinity;
-      for (let i = 0; i <= 32; i++) { const a = (Math.PI / 2) * i / 32; for (const sg of [1, -1]) { const c = Math.cos(a * sg), s = Math.sin(a * sg); dmin = Math.min(dmin, Math.hypot(mu * c - mv * s - su, mu * s + mv * c - sv)); } }
+      // the family here is the +90° one, so only that arc
+      for (let i = 0; i <= 32; i++) { const a = (Math.PI / 2) * i / 32, c = Math.cos(a), s = Math.sin(a); dmin = Math.min(dmin, Math.hypot(mu * c - mv * s - su, mu * s + mv * c - sv)); }
       if (dmin <= range + 0.05) cands.push([su, sv]);
     }
     const paths = tbl.all ? tblFamily.map(sp => G.makePath(sp)) : [G.makePath(tblFamily[tbl.pathIdx])];
@@ -1122,32 +1124,106 @@ const G = (() => {
       const sc = G.scene([[mu, mv]], [st], [0, 0], tblModel);
       return paths.every(pth => G.certify(sc, pth) !== 'clear');
     });
+    tbl.clears = cands.filter(st => !tbl.blockers.includes(st));
     tbl.cands = cands.length;
+    // the path drawn: the selected one, or the pure turn for "blocked on every path"
+    tbl.path = G.makePath(tbl.all ? tblFamily[0] : tblFamily[tbl.pathIdx]);
+    // first contact of every blocker along the drawn path: the first pose of a
+    // dense scan where the two squares overlap, and a point of the overlap
+    tbl.contacts = [];
+    for (const st of tbl.blockers) {
+      const sc = G.scene([[mu, mv]], [st], [0, 0], tblModel);
+      for (let i = 0; i <= 600; i++) {
+        const pose = G.poseAt(tbl.path, i / 600);
+        if (G.clearance(sc, pose).cl < 0) { tbl.contacts.push({ st, t: i / 600, pose, pt: contactPoint([mu, mv], st, pose) }); break; }
+      }
+    }
     const dbl = `(${2 * mu}, ${2 * mv})`;
     document.getElementById('tbl-read').innerHTML =
       `moving offset <b>${dbl}</b> (doubled) · ${tbl.all ? 'all 145 paths' : specName(tblFamily[tbl.pathIdx])}<br>` +
-      `<b>${tbl.blockers.length}</b> blockers among ${tbl.cands} candidates within reach of the arc`;
-    drawTbl();
+      `<b>${tbl.blockers.length}</b> blockers among ${tbl.cands} candidates within reach of the arc` +
+      (tbl.all ? '<br>drawn: the swept area of the pure turn' : '') +
+      tbl.contacts.slice().sort((a, b) => a.t - b.t).slice(0, 6).map(c =>
+        `<br>(${2 * c.st[0]}, ${2 * c.st[1]}) first touched at θ ${Math.round(Math.abs(c.pose.theta) * 180 / Math.PI)}°`).join('') +
+      (tbl.contacts.length > 6 ? `<br>… and ${tbl.contacts.length - 6} more` : '');
+    buildTblLayer();
+    drawTbl(lastT.tbl);
   }
   const tblBounds = [-3.6, 3.6, -3.6, 3.6];
-  function drawTbl() {
-    const ctx = fitCanvas(tblCv), V = makeView(tblCv, tblBounds);
+  // a corner of one square inside the other at this pose, else the midpoint of the centres
+  function contactPoint(m, st, pose) {
+    const ol = cubeOutline(tblModel), c = Math.cos(pose.theta), s = Math.sin(pose.theta);
+    const mc = place(m, [0, 0], pose);
+    const mp = ol.map(([x, y]) => [mc[0] + x * c - y * s, mc[1] + x * s + y * c]);
+    const sp = ol.map(([x, y]) => [st[0] + x, st[1] + y]);
+    const inside = (q, poly) => poly.every((a, i) => { const b = poly[(i + 1) % poly.length]; return (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]) >= -1e-9; });
+    return mp.find(q => inside(q, sp)) || sp.find(q => inside(q, mp)) || [(mc[0] + st[0]) / 2, (mc[1] + st[1]) / 2];
+  }
+  // everything but the moving cube, drawn once per selection, theme or size
+  const tblLayer = document.createElement('canvas');
+  function buildTblLayer() {
+    fitCanvas(tblCv);
+    tblLayer.width = tblCv.width; tblLayer.height = tblCv.height;
+    const ctx = tblLayer.getContext('2d'), V = makeView(tblLayer, tblBounds);
     drawGrid(ctx, V, tblBounds);
-    const off = tbl.corner ? 0.5 : 0;
-    const outline = cubeOutline(tblModel);
-    // selectable moving offsets
+    const outline = cubeOutline(tblModel), [mu, mv] = tbl.sel, pth = tbl.path;
     for (const [a, b] of tblOffsets()) {
       ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
       ctx.strokeRect(V.X(a - 0.5) + 2, V.Y(b + 0.5) + 2, V.s - 4, V.s - 4);
     }
+    // candidates the checker proved clear, and the blockers
+    for (const [u, v] of tbl.clears) drawCube(ctx, V, u, v, 0, outline, null, C.ok, 1);
     for (const [u, v] of tbl.blockers) drawCube(ctx, V, u, v, 0, outline, C['hit-soft'], C.hit, 1.2);
-    const [mu, mv] = tbl.sel;
-    const pth = G.makePath(tbl.all ? tblFamily[0] : tblFamily[tbl.pathIdx]);
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.moving; ctx.lineWidth = 1.3; ctx.beginPath();
+    // swept area: the union of the square over the path, filled once, then laid on translucently
+    const sweep = document.createElement('canvas');
+    sweep.width = tblLayer.width; sweep.height = tblLayer.height;
+    const sx = sweep.getContext('2d');
+    for (let i = 0; i <= 120; i++) {
+      const pose = G.poseAt(pth, i / 120), [a, b] = place([mu, mv], [0, 0], pose);
+      drawCube(sx, V, a, b, pose.theta, outline, C.moving, null);
+    }
+    ctx.globalAlpha = 0.16; ctx.drawImage(sweep, 0, 0); ctx.globalAlpha = 1;
+    // the trajectory of every corner of the square
+    ctx.strokeStyle = C.moving; ctx.lineWidth = 1.2;
+    for (const [x, y] of outline) {
+      ctx.beginPath();
+      for (let i = 0; i <= 200; i++) {
+        const pose = G.poseAt(pth, i / 200), [a, b] = place([mu, mv], [0, 0], pose);
+        const c = Math.cos(pose.theta), s = Math.sin(pose.theta);
+        const px = V.X(a + x * c - y * s), py = V.Y(b + x * s + y * c);
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+    }
+    // centre path, end pose
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1.3; ctx.beginPath();
     for (let i = 0; i <= 60; i++) { const [a, b] = place([mu, mv], [0, 0], G.poseAt(pth, i / 60)); i ? ctx.lineTo(V.X(a), V.Y(b)) : ctx.moveTo(V.X(a), V.Y(b)); }
     ctx.stroke(); ctx.setLineDash([]);
-    drawCube(ctx, V, mu, mv, 0, outline, C['moving-fill'], C.moving, 2);
+    const end = pth[pth.length - 1], [ea, eb] = place([mu, mv], [0, 0], end);
+    drawCube(ctx, V, ea, eb, end.theta, outline, null, C.ghost, 1);
+    // first contacts: the square where it first meets each blocker, and the contact point
+    for (const k of tbl.contacts) {
+      const [a, b] = place([mu, mv], [0, 0], k.pose);
+      ctx.setLineDash([3, 3]);
+      drawCube(ctx, V, a, b, k.pose.theta, outline, null, C.hit, 1);
+      ctx.setLineDash([]);
+      ctx.fillStyle = C.hit; ctx.beginPath(); ctx.arc(V.X(k.pt[0]), V.Y(k.pt[1]), Math.max(3, V.s * 0.05), 0, 2 * Math.PI); ctx.fill();
+    }
     drawPivot(ctx, V, [0, 0]);
+  }
+  function drawTbl(t) {
+    if (!tbl.path) return;
+    const ctx = fitCanvas(tblCv);
+    if (tblLayer.width !== tblCv.width || tblLayer.height !== tblCv.height) buildTblLayer();
+    ctx.drawImage(tblLayer, 0, 0);
+    const V = makeView(tblCv, tblBounds), outline = cubeOutline(tblModel), [mu, mv] = tbl.sel;
+    const pose = G.poseAt(tbl.path, t), [a, b] = place([mu, mv], [0, 0], pose);
+    // blockers the square overlaps right now
+    for (const st of tbl.blockers) {
+      if (G.clearance(G.scene([[mu, mv]], [st], [0, 0], tblModel), pose).cl < 0)
+        drawCube(ctx, V, st[0], st[1], 0, outline, C.hit, C.hit, 1.5);
+    }
+    drawCube(ctx, V, a, b, pose.theta, outline, C['moving-fill'], C.moving, 2);
   }
   // centre pivot: integer offsets up to TR, corner pivot: half-integer offsets up to TR - 1/2
   function tblOffsets() {
@@ -1203,11 +1279,14 @@ const G = (() => {
   }
 
   /* ---------- animation loop ---------- */
-  const lastT = { trio: 0.55, spin: 0.5 };
+  const lastT = { trio: 0.55, spin: 0.5, tbl: 0.5 };
+  let tblVisible = true;
+  if ('IntersectionObserver' in window)
+    new IntersectionObserver(es => { tblVisible = es[0].isIntersecting; }).observe(tblCv);
   spinUpdate(); labRecompute(); tblCompute();
   lab.t = reduceMotion ? 0.5 : 0; if (!lab.playing) playBtn.textContent = 'Play';
   drawTrio(lastT.trio); drawLayers(); drawSpin(lastT.spin); drawLab();
-  redraws.push(() => { drawTrio(lastT.trio); drawLayers(); drawSpin(lastT.spin); drawLab(); drawTbl(); });
+  redraws.push(() => { drawTrio(lastT.trio); drawLayers(); drawSpin(lastT.spin); drawLab(); buildTblLayer(); drawTbl(lastT.tbl); });
   window.addEventListener('resize', () => redraws.forEach(f => f()));
 
   // phase: 0..1 turn, hold, back
@@ -1217,6 +1296,7 @@ const G = (() => {
     if (!reduceMotion) {
       lastT.trio = cycle(ms, 5200); drawTrio(lastT.trio);
       lastT.spin = cycle(ms, 4200); drawSpin(lastT.spin);
+      if (tblVisible) { lastT.tbl = cycle(ms, 6000); drawTbl(lastT.tbl); }
     }
     if (lab.playing) {
       if (prev != null) lab.t += (ms - prev) / 3200;
