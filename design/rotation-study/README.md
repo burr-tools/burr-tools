@@ -44,6 +44,7 @@ The binaries compared were release builds (`just build-release`) of:
 * `bulge`: ef635dae, wiggles along the cube bulge (the current default);
 * `bulge6`: ef635dae with amounts 0.1–0.6 in `defaultRotationSettings()`;
 * `a9`, `a28`: amounts every 0.05 up to 0.45, every 0.0125 up to 0.35 (timing only);
+* `bits`, `cheap`: b993004f (path bitsets) and fc63edd0 (cheaper certification), with the same amount variants (timing only);
 * PR #50: `rotations-pr50` at 42b96188.
 
 ## Results (`results/`)
@@ -55,7 +56,8 @@ The binaries compared were release builds (`just build-release`) of:
 | `pr50_tics.txt` | PR #50 Classic and Crowell engine on the decoded TICs (300 s limit). |
 | `crowell.jsonl` | Per Crowell puzzle and binary: default run and `minPlay` (6-step bisection in [0.002, 0.2]). |
 | `pr50crowellR.jsonl`, `pr50crowellC.jsonl` | PR #50 engines on the Crowell collection (60 s limit; `solved: null` is a timeout). |
-| `threetic_pr50_accepted.txt.gz` | The 1000 distinct rotations PR #50's Classic engine accepted on Crowell's 4x4x4 ThreeTIC (`ROTJSON` lines). |
+| `threetic_pr50_accepted.txt.gz`, `gemtic_pr50_accepted.txt.gz` | The distinct rotations PR #50's Classic engine accepted on Crowell's 4x4x4 ThreeTIC (1000) and 5x5x5 GemTIC (45), as `ROTJSON` lines. |
+| `audits.txt` | Output of `audit.js` / `audit2.js` on those dumps. |
 | `random-scenes/*.out` | Raw output of the random-scene runs (`prof*`: profiles, `am_*`: amounts, `p3_*`: planner3). |
 
 Caveats: the random scenes are single-layer 2D and not puzzles; the grid
