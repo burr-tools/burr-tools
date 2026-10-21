@@ -2555,10 +2555,9 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   //
   // Cursors always split: they have no whole to search. Beyond that, by
   // default nothing splits at pop -- running tasks split themselves when
-  // siblings starve (donation, see assemblerWorker_c::donate and
-  // design/2026-10-17-split-on-demand.md). Only with BURRTOOLS_NO_DONATE
-  // do the eager heuristics below decide, with two independent triggers,
-  // either of which suffices:
+  // siblings starve (donation, see assemblerWorker_c::donate). Only with
+  // BURRTOOLS_NO_DONATE do the eager heuristics below decide, with two
+  // independent triggers, either of which suffices:
   // - Shallow prefix (depth < 3): such a task can hold an enormous subtree,
   //   and splitting it is always worth it -- by the time siblings starve on
   //   it, it is already running and unsplittable (see the concurrency

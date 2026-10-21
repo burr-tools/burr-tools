@@ -251,8 +251,8 @@ public:
   };
 
   /**
-   * Split on demand (design/2026-10-17-split-on-demand.md): polled from
-   * inside the search every `interval` nodes; when wanted() says a sibling
+   * Split on demand (a running task gives untried work to waiting
+   * siblings, see split_fanout.h): polled from inside the search every `interval` nodes; when wanted() says a sibling
    * is waiting, the search finds the shallowest frame that still has
    * untried branches and offers them to give() as one rest (nodes = the
    * path down to that frame, restSkip = the frame's first untried index,
