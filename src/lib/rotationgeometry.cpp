@@ -321,13 +321,21 @@ path_t makePath(const pathSpec_t & spec) {
   if (spec.kind == PATH_SLIDE)
     return { { 0, 0, 0 }, { 0, su, sv }, { end, su, sv }, { end, 0, 0 } };
 
+  /* The shift follows the bulge of a square turning about its centre: its
+   * extent along an axis grows by cos θ + sin θ - 1 (in half sides), 0 at
+   * both ends and largest at 45°. With amount equal to a cube's own bulge
+   * the cube's leading face stays on the plane it started on, i.e. its
+   * corner glides along the neighbour it rubs against. The profile is
+   * symmetric in t and 1 - t, so a reversed wiggle is a wiggle of the
+   * other sense. */
   path_t path;
   for (int k = 0; k <= WIGGLE_SEGMENTS; k++) {
     double t = (double)k / WIGGLE_SEGMENTS;
-    double w = std::sin(std::numbers::pi * t);
+    double th = 0.5 * std::numbers::pi * t;
+    double w = (std::cos(th) + std::sin(th) - 1) / (std::numbers::sqrt2 - 1);
     path.push_back({ end * t, w * su, w * sv });
   }
-  /* exactly back on the lattice, sin(π) is not quite 0 */
+  /* exactly back on the lattice, cos(π/2) is not quite 0 */
   path.back() = { end, 0, 0 };
   return path;
 }

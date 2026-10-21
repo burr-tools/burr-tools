@@ -182,9 +182,42 @@ paths, one table each, exact for exactly the motion that is recorded and
 animated.
 
 * `PATH_PURE`: the quarter turn about the pivot.
-* `PATH_WIGGLE`: the turn with an offset `a·sin(πt)` along a compass
-  direction, a polyline of 16 segments (the polyline *is* the motion).
+* `PATH_WIGGLE`: the turn with an offset `a·b(θ)` along a compass
+  direction, `b(θ) = (cos θ + sin θ − 1)/(√2 − 1)`, a polyline of 16
+  segments (the polyline *is* the motion).
 * `PATH_SLIDE`: shift by `a`, turn about the shifted pivot, shift back.
+
+*Why this wiggle profile.* A square of half side `h` turning about its
+centre reaches `h·(cos θ + sin θ)` along an axis, so its leading face
+advances by `h·(√2 − 1)·b(θ)`. The same shape, scaled by `0.5 + h`, holds
+for a cube touching a corner pivot. A tight turn keeps the turning piece in
+contact with a static one, with the play only separating them at the start
+and end. Shifting by the bulge does that: a cube's corner glides along the
+plane its face started on (closed-form test: spinning beside a face
+neighbour clears iff `a ≥ h(√2 − 1) − g`). PR #50's `sin 2θ` approximates
+`b` (within 0.043) but lags it everywhere except at 0°, 45° and 90°, which
+is where the gap is tightest. On random 2D candidates (pure turn blocked,
+8 directions × amounts 0.1–0.4, 10,000 scenes per model) the bulge
+rescued every turn the sine did, and more:
+
+| profile | play 0.081, sharp | puzzlecad (0.0126, bevel 0.0317) |
+|---|---|---|
+| `sin(πt)` (before) | 1373 | 970 |
+| bulge `b(θ)` | 1416 | 1173 |
+| contact, `max(0, (a+g)·b − g)` | 1315 | 1171 |
+| `b^0.85` / `b^1.2` (other seeds) | 1386 / 1433 vs 1478 | 1235 / 904 vs 1216 |
+
+Holding contact with the neighbour itself (the clipped profile) is too
+tight for a fixed family: it has no slack when the amount does not match,
+and gives no shift early when a corner passes another corner. Powers of
+`b` do not beat it consistently. A bulge computed from the beveled
+octagon rescued exactly the same turns as the square's, so the profile
+does not depend on the model. Amounts from the geometry (`h(√2−1)` and
+`(0.5+h)(√2−1)`, 0.190 and 0.397 at play 0.081) tie the 0.1–0.4 grid with
+puzzlecad cubes but lose with play 0.081 (1312 vs 1431), so the grid stays.
+Adding 0.5 and 0.6 rescues a lot more (1633 / 1317); larger shifts are the
+main thing the family misses, together with shifts that change direction
+mid-turn (see the planner, phase 3).
 
 `rotationTables_c` orders them by disturbance: the pure turn, then per
 amount `a` (ascending) the 8 wiggles and the 8 slides.
