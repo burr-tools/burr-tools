@@ -268,6 +268,18 @@ public:
     return hungry_.load(std::memory_order_relaxed);
   }
 
+  /// Take the hunger signal for one donation: true for exactly one caller
+  /// per raise, which then must push. Clearing the flag keeps the other
+  /// running workers from donating for the same waiter; the donor's
+  /// push_tasks() re-derives it, so a second waiter raises it again. Call
+  /// only once there is something to give -- a claim that is not followed
+  /// by a push leaves the waiter unannounced until the next pool event.
+  bool claim_work() {
+    bool expected = true;
+    return hungry_.compare_exchange_strong(expected, false,
+                                           std::memory_order_relaxed);
+  }
+
   /// Number of queued (not yet popped) tasks. Lock-protected; task granularity.
   size_t queued() const {
     std::lock_guard<std::mutex> lock(mtx);
@@ -313,8 +325,12 @@ public:
 
 private:
   // Call with mtx held, after every change of waiting_workers or queue.
+  // Stores only on a change: workers poll the flag's cache line from the
+  // search loop, and every pop and push passes through here.
   void updateHunger() {
-    hungry_.store(waiting_workers > queue.size(), std::memory_order_relaxed);
+    const bool hungry = waiting_workers > queue.size();
+    if (hungry_.load(std::memory_order_relaxed) != hungry)
+      hungry_.store(hungry, std::memory_order_relaxed);
   }
 
   void releaseBudget() {
@@ -327,12 +343,15 @@ private:
   std::deque<TaskType> queue;
   unsigned int active_workers{0};  // guarded by mtx (see class comment)
   unsigned int waiting_workers{0}; // guarded by mtx (see class comment)
-  std::atomic<bool> hungry_{false}; // mirror of waiting_workers > queue.size(), see wants_work()
   ThreadBudget *budget_{nullptr};  // Set via setBudget() before workers start; null = uncapped (checked per pop).
 #ifndef NDEBUG
   std::atomic<unsigned long> dbg_pops_{0};
   std::atomic<unsigned long> dbg_finishes_{0};
 #endif
+  // Mirror of waiting_workers > queue.size(), see wants_work(). Last and on
+  // its own cache line: the search loops poll it, and the mutex and
+  // counters above change on every pop and push.
+  alignas(64) std::atomic<bool> hungry_{false};
 };
 
 #endif // __ASSEMBLER_POOL_H__
