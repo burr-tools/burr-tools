@@ -90,8 +90,8 @@ public:
    * being disassembled, so stop returns promptly instead of draining the
    * backlog. The caller moves the salvage to the problem after finish(),
    * which re-submits it on the next run -- required for pause/continue
-   * correctness, because the assembler's emitted-signatures dedup would
-   * otherwise suppress the dropped assemblies forever. Teardown still
+   * correctness, because the assembler never finds them again: its resume
+   * holds only territory it had not searched yet. Teardown still
    * completes via finish()/abort().
    */
   void requestStop();

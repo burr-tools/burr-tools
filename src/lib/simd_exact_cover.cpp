@@ -249,7 +249,9 @@ void SimdExactCover<BitsetType>::solveSubtree(
   const std::vector<unsigned int> &prefix_node_ids,
   SolutionCallback callback,
   std::stop_token stop,
-  std::atomic<uint64_t> &iterations
+  std::atomic<uint64_t> &iterations,
+  SubtreeRemainder *remainder,
+  size_t start
 ) const {
   if (rows.empty() || active_column_list.empty())
     return;
@@ -289,8 +291,15 @@ void SimdExactCover<BitsetType>::solveSubtree(
     filterRows(ctx.scratch_active_rows[d], row.mask, next_active);
   }
 
+  // A conflicting prefix has an empty subtree: nothing remains either way.
   if (!conflict) {
-    search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations);
+    if (remainder != nullptr) {
+      remainder->rootDepth = static_cast<unsigned int>(prefix_node_ids.size());
+      remainder->rootRestSkip = static_cast<uint32_t>(start);
+      ctx.trace = remainder;
+    }
+    search(prefix_node_ids.size(), occupied, ctx, callback, stop, iterations, start);
+    ctx.trace = nullptr;
   }
 
   flushIterations(ctx, iterations);
@@ -303,10 +312,18 @@ void SimdExactCover<BitsetType>::search(
   SearchContext &ctx,
   SolutionCallback &callback,
   const std::stop_token &stop,
-  std::atomic<uint64_t> &iterations
+  std::atomic<uint64_t> &iterations,
+  size_t start
 ) const {
-  if (stop.stop_requested())
+  if (stop.stop_requested()) {
+    // Never explored: the whole node is remainder (see SubtreeRemainder).
+    if (ctx.trace != nullptr)
+      ctx.trace->addPiece(
+          std::vector<unsigned int>(ctx.current_solution.begin(),
+                                    ctx.current_solution.begin() + depth),
+          depth == ctx.trace->rootDepth ? ctx.trace->rootRestSkip : 0);
     return;
+  }
 
   ctx.local_iterations++;
   // Batched publish (DLX-worker idiom): at most one relaxed add per 256
@@ -378,7 +395,8 @@ void SimdExactCover<BitsetType>::search(
     return;
 
   // Branch on all candidate rows covering best_col
-  for (uint32_t r_idx : curr_active) {
+  for (size_t i = start; i < curr_active.size(); i++) {
+    const uint32_t r_idx = curr_active[i];
     const auto &candidate_row = rows[r_idx];
     if (!candidate_row.mask.test(best_col))
       continue;
@@ -394,9 +412,40 @@ void SimdExactCover<BitsetType>::search(
 
     search(depth + 1, occupied | candidate_row.mask, ctx, callback, stop, iterations);
 
-    if (stop.stop_requested())
+    if (stop.stop_requested()) {
+      // This branch is done (the child returned); the ones after it are
+      // untouched. Stop path only: nothing here runs per node.
+      if (ctx.trace != nullptr)
+        recordFrame(depth, best_col, i + 1, ctx);
       return;
+    }
   }
+}
+
+template <typename BitsetType>
+void SimdExactCover<BitsetType>::recordFrame(
+  unsigned int depth,
+  unsigned int best_col,
+  size_t next,
+  SearchContext &ctx
+) const {
+  // scratch_active_rows[depth] is intact (deeper frames only write deeper
+  // levels), and the branch filter depends on nothing else, so this picks
+  // exactly the branches the loop would still have taken.
+  const auto &curr_active = ctx.scratch_active_rows[depth];
+  const std::vector<unsigned int> path(ctx.current_solution.begin(),
+                                       ctx.current_solution.begin() + depth);
+  SplitFanout::emitFrame(curr_active, next, curr_active.size(), ctx.trace->fanout,
+    [&](uint32_t r) { return rows[r].mask.test(best_col); },
+    [&](size_t j, bool rest) {
+      if (rest) {
+        ctx.trace->addPiece(path, static_cast<uint32_t>(j));
+        return;
+      }
+      std::vector<unsigned int> nodes = path;
+      nodes.push_back(rows[curr_active[j]].node_id);
+      ctx.trace->addPiece(std::move(nodes));
+    });
 }
 
 template class SimdExactCover<SimdBitset256>;
