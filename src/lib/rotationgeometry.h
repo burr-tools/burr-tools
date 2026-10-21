@@ -163,7 +163,7 @@ namespace rotationGeometry {
   /** Kinds of rotation path, see rotationTables_c. */
   enum pathKind_e {
     PATH_PURE,    ///< plain quarter turn about the pivot
-    PATH_WIGGLE,  ///< quarter turn with an offset amount·sin(πt) along a direction
+    PATH_WIGGLE,  ///< quarter turn with an offset amount·(cos θ + sin θ - 1)/(√2 - 1) along a direction
     PATH_SLIDE    ///< shift by amount along a direction, quarter turn, shift back
   };
 
@@ -176,7 +176,8 @@ namespace rotationGeometry {
   };
 
   /** The waypoints of a path. Wiggles are polylines of WIGGLE_SEGMENTS
-   *  segments; the polyline, not the sine, is the motion that is checked. */
+   *  segments; the polyline, not the smooth profile, is the motion that is
+   *  checked. */
   path_t makePath(const pathSpec_t & spec);
 
   constexpr int WIGGLE_SEGMENTS = 16;
