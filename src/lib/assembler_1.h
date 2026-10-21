@@ -135,6 +135,13 @@ private:
 
   friend class assemblerWorker_1;
 
+  /* grants test/test_solver.cpp read access to totalTasks/completedTasks,
+   * to assert that donations and stops conserve progress units directly
+   * (getFinished() reports 1 for any completed search, whatever the
+   * counters say).
+   */
+  friend struct Assembler1UnitsTestAccess;
+
   std::vector<SubtreeTask_1> parallelTasks;
 
   /* getFinished() has two progress sources and this picks between them: the
