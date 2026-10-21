@@ -319,7 +319,11 @@ second code path.
 ## Validation
 
 1. **Checker unit tests**: hand-built cases (cube spinning next to a
-   face-neighbour collides unless `r ≥ (√2−1)/2`; L-tromino about its
+   face-neighbour collides unless its edges are cut back far enough: with
+   cube side `a = 1 − g` and half side `h = a/2`, a rounding
+   `r ≥ (a/√2 − (1 − h))/(√2 − 1)` (0.264 at `g = 0.081`, 0.5 at `g = 0`)
+   or a 45° bevel `k ≥ h − √((1 − h)² − h²)` (0.175 at `g = 0.081`, a bevel
+   face of 0.247 cells); L-tromino about its
    corner; known clear/blocked cases), plus random paths cross-checked
    against an *independent* dense-sampling oracle written separately in the
    test (different algorithm: vertex-in-polygon and edge crossing, not
