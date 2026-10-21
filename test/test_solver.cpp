@@ -2948,6 +2948,14 @@ struct SubtreeTaskShareTestAccess {
     for (const auto & task : tasks) sum += task.share;
     return sum;
   }
+
+  /* The summed share of every finished task (plus the pruned share). It
+   * survives completion, unlike getFinished(), which reports 1 from the
+   * completion flag alone: after a full run it is 1 exactly when every
+   * split, divide and donation conserved share. */
+  static double completedShare(const assembler_0_c & assm) {
+    return assm.completedShare.load(std::memory_order_relaxed);
+  }
 };
 
 /* DiagonalCube.xmpuzzle was picked by probing every assembler_0_c-compatible
@@ -3626,7 +3634,9 @@ TEST_CASE("divided DLX remainders resume exact-once",
  * donations at all. Every run -- uninterrupted, and stopped + restored --
  * must reproduce the serial baseline as a multiset (a donated region
  * searched twice shows up as duplicates, one searched by nobody as
- * losses) and end at progress 1.
+ * losses), and the finished tasks' shares must add back up to 1 (a
+ * donation that leaks or double-counts share misses it; getFinished()
+ * cannot tell, it reports 1 for any completed search).
  */
 TEST_CASE("donated work is searched exactly once",
           "[assembler][resume][save][parallel]") {
@@ -3664,7 +3674,8 @@ TEST_CASE("donated work is searched exactly once",
       REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       CHECK(assm.getDonations() > 0);
-      CHECK(assm.getFinished() == 1.0f);
+      CHECK(SubtreeTaskShareTestAccess::completedShare(assm)
+            == Catch::Approx(1.0).margin(1e-4));
       CHECK(cb.fingerprints == baseline);
     }
 
@@ -3695,7 +3706,8 @@ TEST_CASE("donated work is searched exactly once",
         REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
                 == assembler_c::ERR_NONE);
         restored.assemble(&cb2);
-        CHECK(restored.getFinished() == 1.0f);
+        CHECK(SubtreeTaskShareTestAccess::completedShare(restored)
+              == Catch::Approx(1.0).margin(1e-4));
       }
       std::multiset<std::string> resumed = cb1.fingerprints;
       resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());

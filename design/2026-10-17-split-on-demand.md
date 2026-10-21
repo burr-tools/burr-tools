@@ -22,11 +22,19 @@ search that still has untried alternatives, and stops before those
 alternatives itself.
 
 - The pool keeps a relaxed atomic flag, `wants_work()`: more workers wait
-  than tasks are queued. It is updated under the pool mutex on every
-  change of the waiting count or the queue (`assembler_pool.h`).
+  than tasks are queued. It is re-derived under the pool mutex on every
+  change of the waiting count or the queue (`assembler_pool.h`), but
+  stored only when its value changes, and it sits on its own cache line,
+  so pops and pushes do not keep invalidating the line the workers poll.
 - Busy workers poll that flag every 128 (DLX) or 256 (SIMD) nodes, a
   relaxed load next to the iteration flush that already happens at that
   rate. Benchmarks show no measurable cost (section 6).
+- A worker that sees the flag and has something to give first claims it
+  (`claim_work()`, a CAS from true to false), and only the winner donates.
+  Without the claim, every busy worker whose poll lands before the first
+  push would donate for the same waiter. The donor's push re-derives the
+  flag, so a second waiter raises it again. A worker claims only once it
+  has found an open level, so a claim is always followed by a push.
 - A donation is an ordinary `push_tasks`. Nothing in the pool protocol
   changes: the spec already models pushes by active workers, so the
   TLA+ model is unaffected.
@@ -81,6 +89,17 @@ Rests already exist for divide-at-stop. They re-derive the frame's
 active-row list identically from the replayed prefix, so the index names
 the same branch. The stop path (`recordFrame`) only records branches
 below the loop end, so donated branches are not recorded twice.
+
+A rest's root frame owns only the candidates from its restSkip on, and
+its share stands for those, so the registry counts only those there.
+Counting all of them would credit every donated piece too small a share.
+
+Finding the open frame scans the candidate masks of each frame's untried
+range. A frame's untried range only shrinks while it lives, so a frame
+found closed stays closed until it is re-registered. The context keeps
+the depth above which all live frames are known closed and starts the
+scan there. Without it, a long tail with hungry siblings and nothing left
+to give would rescan every live frame at every poll.
 
 Donated rests are searched, never split at pop. When they become large
 they donate in turn, so they need no special case.

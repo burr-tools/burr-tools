@@ -35,6 +35,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <climits>
 #include <iomanip>
 #include <limits>
 #include <unordered_map>
@@ -1583,6 +1584,44 @@ public:
     }
   }
 
+  /* Cursor naming, shared by every producer of cursor tasks (donate,
+   * divideRemainder, splitPrefix's rest) and by splitPrefix, which consumes
+   * them: cursorSkip counts rows from the column head, on resume state
+   * rebuilt identically from the prefix, and skips through the row it
+   * names. Producers and consumer must count the same way, or rows are
+   * lost or searched twice.
+   *
+   * Index of row r below the column head of col; UINT_MAX when r is not
+   * linked in col.
+   */
+  unsigned int rowIndexInColumn(unsigned int col, unsigned int r) const {
+    unsigned int m = 0;
+    for (unsigned int x = down(col); x != col; x = down(x), m++)
+      if (x == r)
+        return m;
+    return UINT_MAX;
+  }
+
+  /* The row of col a cursor with this skip resumes at (see
+   * rowIndexInColumn); col itself when the cursor is exhausted. */
+  unsigned int rowAtIndex(unsigned int col, unsigned int skip) const {
+    unsigned int r = down(col);
+    for (unsigned int i = 0; i < skip && r != col; i++)
+      r = down(r);
+    return r;
+  }
+
+  /* task's prefix extended by the live placements at levels
+   * prefix..d-1: the above-path of level d, which every piece carved out
+   * of level d (cursor, singleton) starts from. */
+  std::vector<assembler_0_c::PrefixStep> abovePathPrefix(
+      const assembler_0_c::SubtreeTask & task, unsigned int d) const {
+    std::vector<assembler_0_c::PrefixStep> prefix = task.prefix;
+    for (unsigned int k = static_cast<unsigned int>(task.prefix.size()); k < d; k++)
+      prefix.push_back({columns[k], rows[k]});
+    return prefix;
+  }
+
   /* Split on demand: hand the unexplored rows of the shallowest open level
    * of the running task to the pool, as one cursor task.
    *
@@ -1617,8 +1656,12 @@ public:
    * dip while the piece is queued), and the donor's in-flight term stays
    * below its reduced share, so the handoff at finish never over-reports.
    * A placed level's colCount is stable while it is placed (see above),
-   * so the estimate and the later walks agree. Returns false when no
-   * level is open.
+   * so the estimate and the later walks agree.
+   *
+   * Unless forced (tests), the donor first claims the pool's hunger signal,
+   * so one waiter draws one donation, not one from every busy worker that
+   * polls before the first push lands. Returns false when no level is open
+   * or another donor won the claim.
    */
   bool donate(assembler_0_c::SubtreeTask & task, float rootShare) {
     const unsigned int prefixDepth = static_cast<unsigned int>(task.prefix.size());
@@ -1633,19 +1676,16 @@ public:
         return false;
       const unsigned int n = colCount[col];
       if (!cut[d] && down(cur) != col) {
-        unsigned int m = 0;
-        for (unsigned int r = down(col); r != cur; r = down(r))
-          m++;
+        if (!donateForced && !donatePool->claim_work())
+          return false;
         unsigned int remaining = 0;
         for (unsigned int r = down(cur); r != col; r = down(r))
           remaining++;
 
         assembler_0_c::SubtreeTask piece;
-        piece.prefix = task.prefix;
-        for (unsigned int k = prefixDepth; k < d; k++)
-          piece.prefix.push_back({columns[k], rows[k]});
+        piece.prefix = abovePathPrefix(task, d);
         piece.cursorCol = col;
-        piece.cursorSkip = m + 1;
+        piece.cursorSkip = rowIndexInColumn(col, cur) + 1;
         // Exact arithmetic keeps the estimate below what the donor holds
         // (earlier donations were the shallower levels' later rows); the
         // clamp only absorbs float rounding.
@@ -1984,9 +2024,7 @@ public:
     if (topCovered + 1 == pos) {
       // Continue task over the full live path.
       assembler_0_c::SubtreeTask cont;
-      cont.prefix = task.prefix;
-      for (unsigned int k = prefixDepth; k <= topCovered; k++)
-        cont.prefix.push_back({columns[k], rows[k]});
+      cont.prefix = abovePathPrefix(task, topCovered + 1);
       out.push_back(std::move(cont));
     }
     // Unwind deepest-first: when level d is enumerated, all levels below
@@ -2017,18 +2055,14 @@ public:
       // Index of the current row from the column head, then up to K
       // following rows; anything beyond becomes one cursor rest (same
       // K-singletons-plus-rest rule as splitPrefix).
-      unsigned int m = 0;
-      unsigned int r = down(col);
-      while (r != col && r != cur) {
-        r = down(r);
-        m++;
-      }
+      const unsigned int m = rowIndexInColumn(col, cur);
       // The current row is always linked in its own column (see above).
-      bt_assert(r == cur);
-      if (r != cur) {
+      bt_assert(m != UINT_MAX);
+      if (m == UINT_MAX) {
         requeueWhole = true;
         return {};
       }
+      unsigned int r = cur;
       // A cut level's later rows were donated (see donate()): already
       // someone else's, so only the current path's pieces remain here.
       std::vector<unsigned int> following;
@@ -2036,21 +2070,16 @@ public:
         for (r = down(r); r != col && following.size() < parent.splitFanout; r = down(r))
           following.push_back(r);
       const bool exhaustedLevel = cut[d] || (r == col);
-      auto emitPiece = [&](unsigned int altRow) {
+      const auto above = abovePathPrefix(task, d);
+      for (unsigned int alt : following) {
         assembler_0_c::SubtreeTask piece;
-        piece.prefix = task.prefix;
-        for (unsigned int k = prefixDepth; k < d; k++)
-          piece.prefix.push_back({columns[k], rows[k]});
-        piece.prefix.push_back({col, altRow});
+        piece.prefix = above;
+        piece.prefix.push_back({col, alt});
         out.push_back(std::move(piece));
-      };
-      for (unsigned int alt : following)
-        emitPiece(alt);
+      }
       if (!exhaustedLevel) {
         assembler_0_c::SubtreeTask rest;
-        rest.prefix = task.prefix;
-        for (unsigned int k = prefixDepth; k < d; k++)
-          rest.prefix.push_back({columns[k], rows[k]});
+        rest.prefix = above;
         rest.cursorCol = col;
         // Skip through the current row and the emitted singletons
         // (absolute indices 0..m+s), counted from the column head on
@@ -2219,9 +2248,7 @@ public:
        * rows remain, one cursor for the rest. A column with at most K rows
        * yields exactly one task per row.
        */
-      unsigned int r = down(c);
-      for (unsigned int i = 0; i < skip && r != c; i++)
-        r = down(r);
+      unsigned int r = rowAtIndex(c, skip);
       std::vector<unsigned int> rows;
       while (r != c && rows.size() < parent.splitFanout) {
         rows.push_back(r);
@@ -2273,6 +2300,20 @@ public:
     return children;
   }
 };
+
+std::vector<assembler_0_c::PrefixStep> assembler_0_c::prefixFromNodes(
+    const SubtreeTask & task, const std::vector<unsigned int> & nodes) const {
+  bt_assert(nodes.size() >= task.prefix.size());
+  std::vector<PrefixStep> prefix;
+  prefix.reserve(nodes.size());
+  for (size_t k = 0; k < nodes.size(); k++) {
+    if (k < task.prefix.size())
+      prefix.push_back(task.prefix[k]);
+    else
+      prefix.push_back({colCount[nodes[k]], nodes[k]});
+  }
+  return prefix;
+}
 
 void assembler_0_c::generateSubtreeTasks(
     std::vector<SubtreeTask> & tasks,
@@ -2508,15 +2549,16 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   std::exception_ptr workerException = nullptr;
   std::mutex exceptionMutex;
 
-  // Pop-time split decision -- only with BURRTOOLS_NO_DONATE: by default
-  // running tasks donate on demand instead and a pop splits only cursors
-  // (see assemblerWorker_c::donate and
-  // design/2026-10-17-split-on-demand.md). Evaluated at task granularity
-  // (the two locked reads cost
-  // nothing against a millisecond-scale task; splitPrefix itself is
-  // microseconds on the worker-local scratch copy).
+  // Pop-time split decision, evaluated at task granularity (the two locked
+  // reads cost nothing against a millisecond-scale task; splitPrefix
+  // itself is microseconds on the worker-local scratch copy).
   //
-  // Two independent triggers, either suffices:
+  // Cursors always split: they have no whole to search. Beyond that, by
+  // default nothing splits at pop -- running tasks split themselves when
+  // siblings starve (donation, see assemblerWorker_c::donate and
+  // design/2026-10-17-split-on-demand.md). Only with BURRTOOLS_NO_DONATE
+  // do the eager heuristics below decide, with two independent triggers,
+  // either of which suffices:
   // - Shallow prefix (depth < 3): such a task can hold an enormous subtree,
   //   and splitting it is always worth it -- by the time siblings starve on
   //   it, it is already running and unsplittable (see the concurrency
@@ -2534,6 +2576,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     // exhausted) wherever they are popped.
     if (task.hasCursor())
       return true;
+    if (donate)
+      return false;
     // SIMD rests index the SIMD frame's own order: searched, never split.
     if (task.restSkip > 0)
       return false;
@@ -2631,8 +2675,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         SubtreeTask task;
         while (pool.pop_task(task, runTok, st)) {
           try {
-            // With donation only cursors split at pop (see the DLX loop).
-            if (donate ? task.hasCursor() : shouldSplit(task)) {
+            if (shouldSplit(task)) {
               auto children = splitter.splitPrefix(task);
               if (!children.empty()) {
                 task = std::move(children.front());
@@ -2681,15 +2724,13 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                 interval = every > 0 ? every : 256;
               }
               bool wanted() override { return forced || pool.wants_work(); }
-              void give(const std::vector<unsigned int> & nodes, uint32_t restSkip,
+              bool give(const std::vector<unsigned int> & nodes, uint32_t restSkip,
                         double fraction) override {
+                // one donation per waiter (see assemblerWorker_c::donate)
+                if (!forced && !pool.claim_work())
+                  return false;
                 SubtreeTask piece;
-                for (size_t k = 0; k < nodes.size(); k++) {
-                  if (k < task.prefix.size())
-                    piece.prefix.push_back(task.prefix[k]);
-                  else
-                    piece.prefix.push_back({self.colCount[nodes[k]], nodes[k]});
-                }
+                piece.prefix = self.prefixFromNodes(task, nodes);
                 piece.restSkip = restSkip;
                 piece.share = std::min(static_cast<float>(fraction * rootShare), task.share);
                 task.share -= piece.share;
@@ -2698,6 +2739,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                 std::vector<SubtreeTask> one;
                 one.push_back(std::move(piece));
                 pool.push_tasks(std::move(one));
+                return true;
               }
             } sink(*this, pool, task, donateEvery);
             // Remainder of this task if the stop interrupts it (see
@@ -2733,22 +2775,15 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               // Interrupted: the pieces partition the task's unexplored
               // territory (searched regions dropped, solutions delivered),
               // so the task's unit transfers to them and resume re-walks
-              // nothing. Prefix steps inside the task's own prefix are kept
-              // verbatim; deeper ones get the DLX column of their node, so
-              // the pieces are ordinary tasks (splittable, unless rests).
+              // nothing. The pieces are ordinary tasks (see
+              // prefixFromNodes; splittable, unless rests).
               std::vector<SubtreeTask> pieces;
               pieces.reserve(remainder.pieces.size());
               const float unitShare =
                   task.share / static_cast<float>(remainder.pieces.size());
               for (const auto &rp : remainder.pieces) {
                 SubtreeTask piece;
-                bt_assert(rp.nodes.size() >= task.prefix.size());
-                for (size_t k = 0; k < rp.nodes.size(); k++) {
-                  if (k < task.prefix.size())
-                    piece.prefix.push_back(task.prefix[k]);
-                  else
-                    piece.prefix.push_back({colCount[rp.nodes[k]], rp.nodes[k]});
-                }
+                piece.prefix = prefixFromNodes(task, rp.nodes);
                 piece.restSkip = rp.restSkip;
                 piece.share = unitShare;
                 pieces.push_back(std::move(piece));
@@ -2799,10 +2834,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
         SubtreeTask task;
         while (pool.pop_task(task, runTok, st)) {
           try {
-            // With donation, running tasks split themselves when siblings
-            // starve (see assemblerWorker_c::donate), so a pop only splits
-            // what cannot be searched: cursors.
-            if (donate ? task.hasCursor() : shouldSplit(task)) {
+            if (shouldSplit(task)) {
               auto children = worker.splitPrefix(task);
               if (!children.empty()) {
                 task = std::move(children.front());

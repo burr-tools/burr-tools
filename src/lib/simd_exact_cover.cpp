@@ -303,6 +303,7 @@ void SimdExactCover<BitsetType>::solveSubtree(
       const size_t frames = ctx.scratch_active_rows.size();
       ctx.donor = donor;
       ctx.root_depth = static_cast<unsigned int>(prefix_node_ids.size());
+      ctx.donate_scan_from = ctx.root_depth;
       ctx.next_donate_poll = donor->interval;
       ctx.frame_col.assign(frames, 0);
       ctx.frame_count.assign(frames, 0);
@@ -416,10 +417,18 @@ void SimdExactCover<BitsetType>::search(
   // from a deeper node can cut it (see donateFrame).
   size_t end = curr_active.size();
   if (ctx.donor != nullptr) {
+    // A rest (start > 0, root frame only) owns only the candidates from
+    // start on, and its share stands for those: count them, once per task.
+    unsigned int owned = min_count;
+    for (size_t j = 0; j < start; j++)
+      if (rows[curr_active[j]].mask.test(best_col))
+        owned--;
     ctx.frame_col[depth] = best_col;
-    ctx.frame_count[depth] = min_count;
+    ctx.frame_count[depth] = owned;
     ctx.frame_next[depth] = start;
     ctx.frame_end[depth] = end;
+    if (depth < ctx.donate_scan_from)
+      ctx.donate_scan_from = depth;
   }
   for (size_t i = start; i < end; i++) {
     const uint32_t r_idx = curr_active[i];
@@ -460,7 +469,14 @@ void SimdExactCover<BitsetType>::donateFrame(unsigned int depth,
   // Frames within two levels of the bottom are not worth the handoff.
   double weight = 1.0;
   const unsigned int last = num_pieces > 2 ? num_pieces - 2 : 0;
-  for (unsigned int d = ctx.root_depth; d < depth && d < last; d++) {
+  const unsigned int bottom = std::min(depth, last);
+  for (unsigned int d = ctx.root_depth; d < bottom; d++) {
+    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
+    if (d < ctx.donate_scan_from) {
+      // known closed (see SearchContext): only its weight matters
+      weight /= count;
+      continue;
+    }
     const auto &active = ctx.scratch_active_rows[d];
     const unsigned int col = ctx.frame_col[d];
     const size_t next = ctx.frame_next[d];
@@ -469,20 +485,23 @@ void SimdExactCover<BitsetType>::donateFrame(unsigned int depth,
     for (size_t j = next; j < end; j++)
       if (rows[active[j]].mask.test(col))
         remaining++;
-    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
     if (remaining > 0) {
       // scratch_active_rows[d] is intact (deeper frames write deeper
       // levels only) and re-derives identically from the replayed path,
       // so index `next` names the same branch on resume (as for rests).
       const std::vector<unsigned int> path(ctx.current_solution.begin(),
                                            ctx.current_solution.begin() + d);
-      ctx.frame_end[d] = next;
-      ctx.donor->give(path, static_cast<uint32_t>(next),
-                      weight * remaining / count);
+      ctx.donate_scan_from = d;
+      if (ctx.donor->give(path, static_cast<uint32_t>(next),
+                          weight * remaining / count)) {
+        ctx.frame_end[d] = next;
+        ctx.donate_scan_from = d + 1;
+      }
       return;
     }
     weight /= count;
   }
+  ctx.donate_scan_from = std::max(ctx.donate_scan_from, bottom);
 }
 
 template <typename BitsetType>
