@@ -435,22 +435,17 @@ void SimdExactCover<BitsetType>::recordFrame(
   const auto &curr_active = ctx.scratch_active_rows[depth];
   const std::vector<unsigned int> path(ctx.current_solution.begin(),
                                        ctx.current_solution.begin() + depth);
-  unsigned int emitted = 0;
-  for (size_t j = next; j < curr_active.size(); j++) {
-    const auto &cand = rows[curr_active[j]];
-    if (!cand.mask.test(best_col))
-      continue;
-    if (emitted == ctx.trace->fanout) {
-      // Everything from here on as one rest: the frame resumes its loop at
-      // index j on the identically replayed state.
-      ctx.trace->addPiece(path, static_cast<uint32_t>(j));
-      return;
-    }
-    std::vector<unsigned int> nodes = path;
-    nodes.push_back(cand.node_id);
-    ctx.trace->addPiece(std::move(nodes));
-    emitted++;
-  }
+  SplitFanout::emitFrame(curr_active, next, curr_active.size(), ctx.trace->fanout,
+    [&](uint32_t r) { return rows[r].mask.test(best_col); },
+    [&](size_t j, bool rest) {
+      if (rest) {
+        ctx.trace->addPiece(path, static_cast<uint32_t>(j));
+        return;
+      }
+      std::vector<unsigned int> nodes = path;
+      nodes.push_back(rows[curr_active[j]].node_id);
+      ctx.trace->addPiece(std::move(nodes));
+    });
 }
 
 template class SimdExactCover<SimdBitset256>;

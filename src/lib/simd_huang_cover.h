@@ -153,6 +153,11 @@ public:
       runStop, iterations, total_tasks, completed_tasks, budget, resume_seeds, salvaged_seeds);
   }
 
+  // true when parallelSolve() can resume from this seed: its prefix still
+  // places on this matrix (see taskFromSeed). Lets a restore refuse seeds
+  // that would otherwise be lost territory.
+  virtual bool seedReplays(const HuangSeed &seed) const = 0;
+
   virtual unsigned int getNumRows() const = 0;
   virtual unsigned int getNumColumns() const = 0;
   virtual unsigned int getNumShapes() const = 0;
@@ -245,6 +250,7 @@ public:
     std::vector<HuangSeed> *salvaged_seeds = nullptr
   ) const override;
 
+  bool seedReplays(const HuangSeed &seed) const override;
   unsigned int getNumRows() const override { return rows.size(); }
   unsigned int getNumColumns() const override { return num_columns; }
   unsigned int getNumShapes() const override { return num_shapes; }

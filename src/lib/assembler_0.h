@@ -342,7 +342,9 @@ private:
    * middle of -- which a stop divides into exact continuation tasks (DLX:
    * divideRemainder, SIMD: SubtreeRemainder) holding only unexplored
    * territory. Since format 1.7 all of that is persisted, so a stopped
-   * parallel search reloads as resumable; older payloads and task-less stops are refused.
+   * parallel search reloads as resumable. A task-less stop is refused with
+   * ERR_CAN_NOT_RESTORE_INTERRUPTED; state saved by any other version is
+   * refused earlier, with ERR_CAN_NOT_RESTORE_VERSION.
    */
   bool parallelInterrupted = false;
 
