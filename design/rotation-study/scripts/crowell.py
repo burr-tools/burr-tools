@@ -50,7 +50,8 @@ with open(OUT, "a") as out:
             if (name, p) in done:
                 continue
             r = {"bin": name, "puzzle": p, "default": run(binary, p, "0.081,0,0")}
-            r["minPlay"] = None if r["default"]["solved"] is None else \
+            # NO_BISECT=1: only the default-model run
+            r["minPlay"] = None if r["default"]["solved"] is None or os.environ.get("NO_BISECT") else \
                 bisect(lambda x: run(binary, p, f"{x:.5f},0,0", 60)["solved"], 0.002, 0.2)
             out.write(json.dumps(r) + "\n")
             out.flush()

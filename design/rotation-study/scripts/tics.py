@@ -49,4 +49,5 @@ for name, binary in BINS.items():
         r["minBevel"] = bisect(lambda x: run(binary, p, f"{play},0,{x:.5f}")["solved"], 0.0, 0.4)
         res.setdefault(p, {})[name] = r
         print(name, p, json.dumps(r), flush=True)
-json.dump(res, open(os.path.join(RESULTS, "tics.json"), "w"), indent=1)
+# OUT overrides the result file
+json.dump(res, open(os.environ.get("OUT", os.path.join(RESULTS, "tics.json")), "w"), indent=1)
