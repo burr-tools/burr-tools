@@ -148,7 +148,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
     <div class="meta">
       <span>switch <b>burrTxt -R</b> · GUI <b>Rotation Moves</b></span>
       <span>model <b>burrTxt -m play,rounding,bevel</b></span>
-      <span>default <b>play 0.081 · sharp edges</b></span>
+      <span>default <b>play 0.081 · sharp edges · shifts 0.05–0.45</b></span>
       <span>code <b>src/lib/rotationgeometry.*</b></span>
     </div>
   </header>
@@ -169,19 +169,19 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
       <div class="kind">
         <canvas id="k-wiggle" width="300" height="300" aria-label="Animation: the piece turns while drifting sideways and back"></canvas>
         <div>
-          <h3>Wiggle <span class="tag">8 directions × 4 amounts</span></h3>
+          <h3>Wiggle <span class="tag">8 directions × 9 amounts</span></h3>
           <p>Turns while drifting along one compass direction by <code>a·b(θ)</code>, where <code>b(θ) = (cos θ + sin θ − 1)/(√2 − 1)</code> is the bulge of a turning cube. The drift is 0 at both ends and largest at 45°. Stored as a 16-segment polyline, and that polyline is the motion that gets checked.</p>
         </div>
       </div>
       <div class="kind">
         <canvas id="k-slide" width="300" height="300" aria-label="Animation: the piece shifts, turns, then shifts back"></canvas>
         <div>
-          <h3>Slide <span class="tag">8 directions × 4 amounts</span></h3>
+          <h3>Slide <span class="tag">8 directions × 9 amounts</span></h3>
           <p>Shifts by <code>a</code>, turns about the shifted pivot, then shifts back. Three straight segments.</p>
         </div>
       </div>
     </div>
-    <p class="small" style="margin-top:10px">The animations exaggerate the shift to 0.4 cells; the dashed curve traces the group's centre. The default amounts are 0.1, 0.2, 0.3 and 0.4 cells.</p>
+    <p class="small" style="margin-top:10px">The animations exaggerate the shift to 0.4 cells; the dashed curve traces the group's centre. The default amounts are every 0.05 cells from 0.05 to 0.45.</p>
 
     <div class="cover">
       <div>
@@ -190,7 +190,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
           <li>Any group of whole pieces turning together, up to 32 pieces per (sub)problem.</li>
           <li>All three axes, both senses (+90° and −90°).</li>
           <li>Pivots at cube centres and cube corners, inside the turning group's footprint or up to half a cell beyond it.</li>
-          <li>65 paths per sense: the pure turn, then for each amount 0.1 … 0.4 the 8 wiggles and the 8 slides. The search tries them in this order and records the first clear one.</li>
+          <li>145 paths per sense: the pure turn, then for each amount 0.05, 0.10, … 0.45 the 8 wiggles and the 8 slides. The search tries them in this order and records the first clear one.</li>
           <li>Cube grids only. Tables are sized from the puzzle's extents.</li>
         </ul>
       </div>
@@ -199,7 +199,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
         <ul>
           <li>Half turns as one move. A 180° turn is found only if it splits into two quarter turns with a free pose in between.</li>
           <li>Moving along the axis during the turn.</li>
-          <li>Arbitrary "shimmy" paths outside the 65-path family. A configuration-space planner is planned (phase 3).</li>
+          <li>Shifts in directions other than the 8 compass directions, or shifts that change direction during the turn. Real puzzles need them: on Crowell's ThreeTIC, 66 of the moves the original code accepts need such a path. A configuration-space planner is planned (phase 3).</li>
           <li>Pivots on edge midpoints: a quarter turn about them leaves cubes off the grid.</li>
           <li>Groups wider than the tables. These are skipped, never guessed, and the result says "turns may be missing".</li>
         </ul>
@@ -289,6 +289,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
     <div class="formula">L = |Δd| + ρ · |Δθ|        ρ = largest distance of a moving cube corner from the pivot</div>
     <div class="prose">
       <p>Distance between sets changes by at most as much as the points move. So if the clearance at the middle of an interval of width <code>2δ</code> is at least <code>L·δ</code>, the group cannot reach a static cube anywhere in that interval: the interval is proven clear. A negative clearance at a sample proves a collision. Anything else gets split in half and checked again. A segment still undecided once the motion it covers drops below 10⁻⁷ cells is treated as blocked. The result is sound: no tunnelling through corners, and no step-count constant.</p>
+      <p>Two shortcuts save work without changing any verdict. Each cube contains its inscribed circle and lies inside its circumscribed circle, so most cube pairs are settled by their centre distance alone: centres closer than twice the inner radius overlap, and centres far enough apart are clear by the needed margin. Only pairs in between get the exact polygon distance. And a sample with a positive clearance <code>c</code> always proves a band of <code>c / L</code> on each side of it clear, even when that doesn't cover its whole interval, so only the parts outside the band are split further. Together they halve the time it takes to build the tables.</p>
     </div>
 
     <div class="bench" id="lab">
@@ -325,7 +326,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
         <span><span class="sw" style="background:var(--hit)"></span>sample with overlap</span>
       </div>
       <div class="family">
-        <div class="lbl" style="margin-bottom:6px">The 65 paths of this sense, in search order. Click one to show it.</div>
+        <div class="lbl" style="margin-bottom:6px">The 145 paths of this sense, in search order. Click one to show it.</div>
         <div class="family-inner" id="family"></div>
       </div>
     </div>
@@ -334,7 +335,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
   <section>
     <h2>Lookup tables: no geometry at solve time</h2>
     <div class="prose">
-      <p>Along a fixed path, each (moving cube, static cube) pair either collides or doesn't, regardless of every other cube. A path is blocked exactly when some moving cube collides with some static cube of its layer. So for each path, BurrTools precomputes a table: for every offset of a moving cube from the pivot, the list of static offsets that would block it. The table is filled by the certified checker, so it is exactly as precise as the checker. At solve time, a turn costs a few dozen lookups per cube, with no trigonometry.</p>
+      <p>Along a fixed path, each (moving cube, static cube) pair either collides or doesn't, regardless of every other cube. A path is blocked exactly when some moving cube collides with some static cube of its layer. So for each path, BurrTools precomputes a table: for every offset of a moving cube from the pivot, the list of static offsets that would block it. The table is filled by the certified checker, so it is exactly as precise as the checker. At solve time there is no trigonometry: a few dozen lookups per cube. The lists of all paths are merged, so each blocker carries one bit per path it blocks. The bits of the occupied blockers are ORed together, and the first path whose bit stays 0 is the move. A larger path family costs a few more 64-bit words, not a walk through more tables.</p>
       <p>Only the +90° tables for the pure turn and for directions (1,0) and (1,1) are computed with the checker. The other six directions are turned copies, since turning the whole scene about the pivot commutes with the motion, and every −90° table is a mirrored copy. Tests compare these derived tables against directly computed ones. Offsets are doubled so they stay integers: both even for a pivot at a cube centre, both odd for one at a corner.</p>
     </div>
     <div class="bench">
@@ -356,7 +357,7 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
             <button id="tbl-all" aria-pressed="false">Blocked on every path</button>
           </div>
           <div class="readout" id="tbl-read"></div>
-          <p class="small" style="margin:0">"Blocked on every path" is the intersection over all 65 tables. It includes the cube's own end cell. The solver uses this set to decide which pieces must turn together.</p>
+          <p class="small" style="margin:0">"Blocked on every path" is the intersection over all 145 tables. It includes the cube's own end cell. The solver uses this set to decide which pieces must turn together.</p>
         </div>
       </div>
     </div>
@@ -372,12 +373,59 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
       <li><div><b>For each pivot</b><p>Centre and corner pivots in the pieces' footprint (mixed parity is skipped). Pieces with cubes beyond the table radius cannot turn there; the context notes the skip.</p></div></li>
       <li><div><b>Groups by closure</b><p>If <i>j</i> blocks <i>i</i> on every path, they must turn together. The candidate groups are the unions of closures of this relation, Cutler-style, instead of all 2ⁿ subsets. A test compares the result against exhaustive enumeration.</p></div></li>
       <li><div><b>End pose</b><p>Closure already guarantees that the end cells are free. The turn must also change something, since turning a piece onto its own cells is not a move.</p></div></li>
-      <li><div><b>First clear path</b><p><code>firstClear</code> walks the 65 tables against one occupancy bitmap of the static pieces. A precomputed blocked-on-every-path set rejects most candidates before any table walk.</p></div></li>
+      <li><div><b>First clear path</b><p><code>firstClear</code> checks the turning cubes against one occupancy bitmap of the static pieces. A blocker that blocks every path rejects the turn at once. Every other blocker carries a bitset of the paths it blocks: the occupied ones are ORed together, and the first path whose bit stays 0 is the answer. So the cost hardly depends on how many paths there are.</p></div></li>
       <li><div><b>Canonical state</b><p>Piece 0 is the reference frame and never moves. A group containing it is stored as the complement turning instead: the other sense for a pure turn, or the same path marked <code>inverse</code> for wiggles and slides. Symmetric pieces are normalised to their smallest orientation with the same cells, so the same physical state is not visited twice.</p></div></li>
     </ol>
     <div class="prose" style="margin-top:16px">
       <p>The path family is closed under reversal: a +90° wiggle run backwards is a −90° wiggle in the same direction, and the same holds for slides. So every rotation edge in the search graph is undirected, which the three-front breadth-first search relies on. A move records the path index, and the GUI animates <code>poseAt(makePath(spec), t)</code>, the same function the checker sampled. What you see is what was checked.</p>
     </div>
+  </section>
+
+  <section>
+    <h2>Results on real puzzles</h2>
+    <div class="prose">
+      <p>The model the original code used, cubes shrunk by 0.0405 on each side, is our default of play 0.081 with sharp edges. Andrew Crowell's TICs were designed and checked with that model, so it is the fair comparison. Two collections were used. The 21 decoded TICs and RIBs have puzzlecad sources, so each also has the model it was actually printed with: play about 0.011 and a bevel of 0.054–0.071. Crowell's own collection has 319 files: TICs in 4×4×4 and 5×5×5, ARC cubes, RIBs and RIPs.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Taken apart</th><th>Before (sine wiggle, amounts 0.1–0.4)</th><th>Now (bulge wiggle, amounts every 0.05)</th></tr></thead>
+        <tbody>
+          <tr><td>Decoded TICs, design model</td><td class="num">17 / 21</td><td class="num">19 / 21</td></tr>
+          <tr><td>Decoded TICs, printed model</td><td class="num">3 / 21</td><td class="num">10 / 21</td></tr>
+          <tr><td>Decoded TICs, mean bevel needed at the printed play</td><td class="num">0.122</td><td class="num">0.088</td></tr>
+          <tr><td>Crowell's collection, design model</td><td class="num">276 / 319</td><td class="num">280 / 319</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose" style="margin-top:14px">
+      <p><b>Against the original code.</b> PR #50's two rotation engines take apart 230 of the 319 files between them, against our 280. Every puzzle either of them takes apart now comes apart here too, with one exception: GemTIC. On GemTIC the original code accepts two moves that our exact checker cannot prove clear at play 0.081, because they have essentially no clearance; its 24-step sampled check lets them through. From play 0.085 those moves are real.</p>
+      <p><b>What a fixed path family misses.</b> On Crowell's ThreeTIC the original code accepted 1000 distinct rotations, and every one of them is physically possible. 848 clear one of the old 65 paths. For the other 152, a search over all small shifts found a certified motion: typically the group moves by about (0.25, −0.20) during the first quarter of the turn, holds that, and moves back. That is why the amounts are now every 0.05. A denser grid of shift directions catches 86 of the 152. The rest change direction during the turn, and only a planner will find those.</p>
+      <p><b>Printed pieces.</b> 11 of the 21 printed TICs still don't come apart under their own printed model, although they do in reality. They need a bevel of about 0.09 where 0.054 was printed. Real pieces flex and wear, the model only knows the small printed play at face contacts, and some moves need paths the family doesn't have. Separating these causes needs moves checked on physical copies.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Performance</h2>
+    <div class="prose">
+      <p>The cost of rotation moves splits into building the tables once per solve and checking candidate turns during the search. Two changes cut both:</p>
+      <ul>
+        <li><b>Path bitsets.</b> <code>firstClear</code> ORs one bitset per occupied blocker instead of trying the paths one by one.</li>
+        <li><b>Cheaper certification.</b> The circle bounds and the reused clearance band described above.</li>
+      </ul>
+      <p>Together they made the denser default affordable: the whole Crowell collection with 145 paths takes 136 s, against 107 s with 65 paths before. Release build, wall time, the same disassemblies throughout:</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Puzzle</th><th>65 paths, before → now</th><th>449 paths, before → now</th></tr></thead>
+        <tbody>
+          <tr><td>PelikanBurr</td><td class="num">3.8 → 2.1 s</td><td class="num">19.8 → 5.7 s</td></tr>
+          <tr><td>DraculasDentalDesaster</td><td class="num">12.0 → 10.3 s</td><td class="num">24.8 → 15.5 s</td></tr>
+          <tr><td>HolopTIC (Crowell)</td><td class="num">0.22 → 0.15 s</td><td class="num">2.04 → 0.80 s</td></tr>
+          <tr><td>AAA_most_rotations (table build only)</td><td class="num">0.13 → 0.10 s</td><td class="num">0.80 → 0.54 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small" style="margin-top:8px">Checking candidates no longer shows up in profiles. What remains is building the tables, which still grows with the number of computed paths.</p>
   </section>
 
   <section>
@@ -390,6 +438,9 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
           <tr><td>Independent oracle</td><td>On random scenes and paths, the checker is never clear where a separately written dense sampler (point-in-polygon and edge crossings, not signed distance) sees an overlap.</td></tr>
           <tr><td>Orientation conventions</td><td>For all 24 orientations × 3 axes × 2 senses, the stored symmetry id and the rotated cells agree.</td></tr>
           <tr><td>Tables</td><td>Turned and mirrored tables equal directly computed ones. The outermost entries of a radius-8 table equal an unpruned brute force.</td></tr>
+          <tr><td>Bitset lookup</td><td>On random scenes with 145 paths (three 64-bit words), <code>firstClear</code> returns exactly the path a walk through the tables one by one returns.</td></tr>
+          <tr><td>Piece order</td><td>A search state reached under different piece orders offers the same number of turns under each. The test fails if turning groups that contain piece 0 are skipped, which was a real bug.</td></tr>
+          <tr><td>Wiggle profile</td><td>A cube spinning beside a face neighbour, wiggling away from it, clears exactly when the amount reaches <code>h(√2 − 1) − g</code>, the cube's own bulge minus the play.</td></tr>
           <tr><td>Replay</td><td><code>AAA_most_rotations</code> (level 2.4 with 2 turns, both needing a wiggle): every step is replayed independently and re-certified, including after a save/load round trip.</td></tr>
         </tbody>
       </table>
@@ -424,13 +475,16 @@ footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule);
         <li>Default play and bevel: these need moves verified on physical copies (Clutch 4 and others) to calibrate against.</li>
         <li>With turns allowed, the breadth-first search finds shorter disassemblies that use them once pieces are partly out (PelikanBurr: 3 turns). Should turns rank equal to slides, or count only when translations fail?</li>
         <li>Should half turns be single moves? Should results report the minimum play a move needs?</li>
-        <li>Cost: building the default tables takes about 1.8 s for PelikanBurr (dev build). DraculasDentalDesaster with <code>-R</code> takes 5.5 s wall, against 0.05 s without turns.</li>
+        <li>Why 11 printed TICs don't come apart under their printed model: flex and wear, the face-contact gap, or missing paths. This needs moves verified on physical pieces.</li>
+        <li>Paths that change shift direction during the turn: the configuration-space planner (phase 3), or a denser grid of shift directions, now that checking barely depends on the number of paths. Building the tables is what still grows.</li>
+        <li>Cost: with the 145-path default, DraculasDentalDesaster with <code>-R</code> takes about 10 s wall on a 4-core machine, against 0.05 s without turns. Most of it is building the tables.</li>
       </ul>
     </div>
   </section>
 
   <footer>
-    Geometry on this page is a direct port of <code>planarScene_c</code>, <code>makePath</code> and the family order in <code>rotationTables_c</code> (src/lib/rotationgeometry.cpp). Scenes are drawn in the plane of the turn, with u to the right and v up. Example scenes were found by random search with the ported checker and reduced to the cubes that matter.
+    Geometry on this page is a direct port of <code>planarScene_c</code>, <code>makePath</code> and the family order in <code>rotationTables_c</code> (src/lib/rotationgeometry.cpp). Scenes are drawn in the plane of the turn, with u to the right and v up. Example scenes were found by random search with the ported checker and reduced to the cubes that matter.<br>
+    State as of 2026-10-21: branch <code>rotations</code> at <code>bb4ac90f</code>. Scripts, raw results and the full write-up are in <code>design/rotation-study/</code> and <code>design/2026-10-19-rotation-moves.md</code>.
   </footer>
 </div>
 
@@ -503,7 +557,10 @@ const G = (() => {
     const st = stat.map(([u, v]) => [u - pivot[0], v - pivot[1]]);
     let rho = 0;
     for (const [u, v] of m) rho = Math.max(rho, Math.hypot(u, v) + half * SQ2);
-    return { m, st, half, rounding: model.rounding, chamfer: model.chamfer || 0, rho };
+    const k = model.chamfer || 0, r = model.rounding;
+    // in- and circumradius of a cube: centres closer than 2·inR overlap, clearance >= dist - 2·outR
+    const inR = Math.min(half, (2 * half - k) / SQ2) + r, outR = Math.hypot(half, half - k) + r;
+    return { m, st, half, rounding: r, chamfer: k, rho, inR, outR };
   }
 
   // returns {cl, mi, si}: clearance and the closest pair
@@ -521,7 +578,29 @@ const G = (() => {
     return { cl: best, mi, si };
   }
 
-  // certified checker; log collects {t0,t1,state} over global path parameter
+  // the decision a sample needs, as in planarScene_c::classify: -1 overlap,
+  // 1 every pair at least margin apart, 0 otherwise (cl = clearance then);
+  // circle bounds settle most pairs without the exact distance
+  function classify(sc, p, margin) {
+    const c = Math.cos(p.theta), s = Math.sin(p.theta);
+    const inner = 2 * sc.inR, outer = 2 * sc.outR + margin;
+    let best = margin;
+    for (const [u, v] of sc.m) {
+      const mu = u * c - v * s + p.du, mv = u * s + v * c + p.dv;
+      for (const [su, sv] of sc.st) {
+        const d = Math.hypot(mu - su, mv - sv);
+        if (d < inner) return { c: -1 };
+        if (d >= outer) continue;
+        const cl = sqSD(su, sv, mu, mv, c, s, sc.half, sc.chamfer) - 2 * sc.rounding;
+        if (cl < 0) return { c: -1 };
+        best = Math.min(best, cl);
+      }
+    }
+    return { c: best < margin ? 0 : 1, cl: best };
+  }
+
+  // certified checker, as planarScene_c::certifySegment; log collects
+  // {t0,t1,tm,state} over the global path parameter
   function certify(sc, path, log) {
     let verdict = 'clear';
     const nseg = path.length - 1;
@@ -533,13 +612,15 @@ const G = (() => {
         const [s0, s1] = todo.pop();
         const sm = 0.5 * (s0 + s1);
         const p = { theta: a.theta + sm * (b.theta - a.theta), du: a.du + sm * (b.du - a.du), dv: a.dv + sm * (b.dv - a.dv) };
-        const cl = clearance(sc, p).cl;
-        const g0 = (k + s0) / nseg, g1 = (k + s1) / nseg, gm = (k + sm) / nseg;
-        if (cl < 0) { log && log.push({ t0: g0, t1: g1, tm: gm, state: 'hit' }); return 'blocked'; }
-        if (cl >= 0.5 * (s1 - s0) * L) { log && log.push({ t0: g0, t1: g1, tm: gm, state: 'ok' }); continue; }
+        const r = classify(sc, p, 0.5 * (s1 - s0) * L);
+        const g = s => (k + s) / nseg;
+        if (r.c < 0) { log && log.push({ t0: g(s0), t1: g(s1), tm: g(sm), state: 'hit' }); return 'blocked'; }
+        if (r.c > 0) { log && log.push({ t0: g(s0), t1: g(s1), tm: g(sm), state: 'ok' }); continue; }
         if ((s1 - s0) * L < MIN_DISPLACEMENT) { verdict = 'undecided'; continue; }
-        log && log.push({ t0: g0, t1: g1, tm: gm, state: 'split' });
-        todo.push([s0, sm]); todo.push([sm, s1]);
+        // the clearance still proves sm ± cl/L clear: split only what lies outside
+        const w = r.cl / L;
+        if (log) { log.push({ t0: g(sm - w), t1: g(sm + w), tm: g(sm), state: 'ok' }); log.push({ t0: g(s0), t1: g(s1), tm: g(sm), state: 'split' }); }
+        todo.push([s0, sm - w]); todo.push([sm + w, s1]);
       }
     }
     return verdict;
@@ -820,15 +901,15 @@ const G = (() => {
     pure: { label: 'Pure turn clear', mv: [[0,0],[1,0],[2,0],[1,1]], st: [[2,2],[-1,0],[3,-1],[0,2],[3,2],[-2,1],[3,0],[3,-2]], pv: [1, 0],
       note: 'A T-shaped group turns about the centre of its middle cube. The pure turn clears all eight static cubes.' },
     wiggle: { label: 'Needs a wiggle', mv: [[0,0],[1,0],[1,1]], st: [[1,2],[3,1],[-2,3],[1,3],[-1,2],[-2,-2],[4,3]], pv: [1, 1],
-      note: 'The pure turn clips the cube above the pivot. Drifting 0.2 cells away from it during the turn gets past.' },
+      note: 'The pure turn clips the cube above the pivot. Drifting 0.15 cells away from it during the turn gets past.' },
     slide: { label: 'Needs a slide', mv: [[0,0],[1,0],[0,1]], st: [[1,1],[-1,-2],[-2,2],[-2,-2],[4,2],[4,3],[1,-2]], pv: [1, 1],
       note: 'Turning about a cube that is in the way only works after stepping 0.2 cells down, turning about the shifted pivot, and stepping back.' },
     none: { label: 'Blocked on every path', mv: [[0,0],[1,0],[2,0],[1,1]], st: [[2,1],[-1,-2],[-2,-2],[0,-2],[4,0],[-2,1],[-2,2]], pv: [0, 1],
-      note: 'The end cells are free, but no path of the family gets there: all 65 are blocked.' },
+      note: 'The end cells are free, but no path of the family gets there: all 145 are blocked.' },
     spin: { label: 'Face-neighbour spin', mv: [[0,0]], st: [[1,0]], pv: [0, 0],
-      note: 'The pure turn (path #0) is blocked with sharp edges and needs a bevel above 0.175. The family still finds a move: a bulge wiggle away from the neighbour, here the 0.2 one, lets the corner glide along the neighbour\'s face.' }
+      note: 'The pure turn (path #0) is blocked with sharp edges and needs a bevel above 0.175. The family still finds a move: a bulge wiggle straight away from the neighbour, here the 0.15 one, lets the corner glide along the neighbour\'s face.' }
   };
-  const AMOUNTS = [0.1, 0.2, 0.3, 0.4];
+  const AMOUNTS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45];
   const lab = { preset: 'wiggle', sense: 0, sel: -1, verdicts: [], first: -1, log: [], playing: !reduceMotion, t: 0 };
   const labCv = document.getElementById('lab-stage'), plotCv = document.getElementById('lab-plot');
   const labPlay = document.getElementById('lab-play'), labK = document.getElementById('lab-k'), labT = document.getElementById('lab-t');
@@ -892,7 +973,7 @@ const G = (() => {
     const evals = lab.log.length;
     document.getElementById('lab-read').innerHTML =
       `first clear path <b>${lab.first >= 0 ? '#' + lab.first + ' ' + specName(lab.family[lab.first]) : 'none'}</b><br>` +
-      `${nClear} of 65 paths clear · end cells ${endFree ? '<b>free</b>' : '<b>occupied</b>'}<br>` +
+      `${nClear} of 145 paths clear · end cells ${endFree ? '<b>free</b>' : '<b>occupied</b>'}<br>` +
       `checker: <b>${evals}</b> clearance evaluations for the shown path · ρ = ${lab.sc.rho.toFixed(3)}`;
     renderFamily();
     drawLab(); drawPlot();
@@ -1044,7 +1125,7 @@ const G = (() => {
     tbl.cands = cands.length;
     const dbl = `(${2 * mu}, ${2 * mv})`;
     document.getElementById('tbl-read').innerHTML =
-      `moving offset <b>${dbl}</b> (doubled) · ${tbl.all ? 'all 65 paths' : specName(tblFamily[tbl.pathIdx])}<br>` +
+      `moving offset <b>${dbl}</b> (doubled) · ${tbl.all ? 'all 145 paths' : specName(tblFamily[tbl.pathIdx])}<br>` +
       `<b>${tbl.blockers.length}</b> blockers among ${tbl.cands} candidates within reach of the arc`;
     drawTbl();
   }
