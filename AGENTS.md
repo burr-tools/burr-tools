@@ -86,7 +86,10 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 5. **Third-Party Boundaries:**
    - Never edit files inside `subprojects/` or `src/lua/`.
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
-6. **Quality Verification:**
+6. **Compatibility is only between released versions:**
+   - "Released" means a tagged version (`v0.8.0`, ...), not whatever is on `master`. File formats, saved search state (assembler `ASSEMBLER_VERSION`s), CLI behaviour and APIs only need to stay compatible with what a release shipped. Changing a format introduced after the last release needs no version bump, no reader for the intermediate layout and no migration; bump only when the released format changes. Check with `git show <tag>:<file>` which version a release actually carried.
+   - Saved *search state* is stricter still: a paused search resumes only with the version that saved it (README, "Pausing a search and continuing later").
+7. **Quality Verification:**
    - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
    - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
    - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
@@ -142,7 +145,7 @@ The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) app
 | `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
 | `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
 | `BURRTOOLS_SPLIT_BREADTH_FIRST=1` | Queues assembler_0's dynamically split child tasks at the back of the pool (breadth-first order) instead of the front (depth-first, the default). | A/B the depth-first order: queue/remainder size (breadth-first grows towards every node of the split depth on wide puzzles) and long-tail wall time. |
-| `BURRTOOLS_NO_DONATE=1` | Disables split on demand in assembler_0 (DLX and SIMD workers): running tasks no longer hand their shallowest open level to waiting siblings, and the eager pop-time splitting (shallow prefixes, starving siblings) comes back. See `design/2026-10-17-split-on-demand.md`. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
+| `BURRTOOLS_NO_DONATE=1` | Disables split on demand in every engine: running tasks no longer hand their shallowest open level to waiting siblings. assembler_0 falls back to its eager pop-time splitting (shallow prefixes, starving siblings); assembler_1's tasks then run as seeded. See `design/2026-10-17-split-on-demand.md`. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
 | `BURRTOOLS_DONATE_EVERY=N` | Tests only: additionally donate every N search nodes whether or not a sibling is waiting, so donation paths run deterministically, even single-threaded. | Exercise the donation/cut/divide interplay on small puzzles. |
 
 ### Running an Interleaved A/B Benchmark

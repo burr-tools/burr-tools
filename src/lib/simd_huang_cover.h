@@ -55,8 +55,14 @@ struct HuangSeed {
   std::vector<unsigned int> prefix;
   std::vector<uint8_t> pivotShape;
   uint32_t restSkip = 0;
+  // progress units (see TaskUnits); a seed read from a file is a whole
+  // task. Bookkeeping only, not part of the territory, so equality ignores
+  // it.
+  size_t units = TaskUnits::kWhole;
 
-  bool operator==(const HuangSeed & o) const = default;
+  bool operator==(const HuangSeed & o) const {
+    return prefix == o.prefix && pivotShape == o.pivotShape && restSkip == o.restSkip;
+  }
 };
 
 /**
@@ -130,7 +136,8 @@ public:
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
     const std::vector<HuangSeed> *resume_seeds = nullptr,
-    std::vector<HuangSeed> *salvaged_seeds = nullptr
+    std::vector<HuangSeed> *salvaged_seeds = nullptr,
+    std::atomic<unsigned long> *donations = nullptr
   ) const = 0;
 
   void parallelSolve(
@@ -142,7 +149,8 @@ public:
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
     const std::vector<HuangSeed> *resume_seeds = nullptr,
-    std::vector<HuangSeed> *salvaged_seeds = nullptr
+    std::vector<HuangSeed> *salvaged_seeds = nullptr,
+    std::atomic<unsigned long> *donations = nullptr
   ) const {
     parallelSolve(
       num_workers,
@@ -150,7 +158,8 @@ public:
         consumed = true;
         return cb(s);
       },
-      runStop, iterations, total_tasks, completed_tasks, budget, resume_seeds, salvaged_seeds);
+      runStop, iterations, total_tasks, completed_tasks, budget, resume_seeds, salvaged_seeds,
+      donations);
   }
 
   // true when parallelSolve() can resume from this seed: its prefix still
@@ -247,7 +256,8 @@ public:
     std::atomic<size_t> &completed_tasks,
     ThreadBudget *budget = nullptr,
     const std::vector<HuangSeed> *resume_seeds = nullptr,
-    std::vector<HuangSeed> *salvaged_seeds = nullptr
+    std::vector<HuangSeed> *salvaged_seeds = nullptr,
+    std::atomic<unsigned long> *donations = nullptr
   ) const override;
 
   bool seedReplays(const HuangSeed &seed) const override;
@@ -287,6 +297,7 @@ private:
   [[maybe_unused]] bool use_neon = false;
 
   struct StopTrace;
+  struct Donor;
 
   struct SearchContext {
     BitsetType placed_voxels;
@@ -302,7 +313,29 @@ private:
     // interrupted task (see StopTrace); null elsewhere. Only touched on
     // the stop path, never per node.
     StopTrace *trace = nullptr;
+    // Split on demand (see donateFrame); null unless the worker attached a
+    // donor. Per frame at depth d (live while its branch loop runs): the
+    // pivot column, its candidate count (at the root, only those from
+    // `start` on), the first untried index and the loop end -- a donation
+    // lowers frame_end to cut the frame. A frame's untried range only
+    // shrinks, so once found closed it stays closed until the frame is
+    // re-registered: live frames shallower than donate_scan_from are known
+    // closed and are not rescanned.
+    Donor *donor = nullptr;
+    uint64_t next_donate_poll = 0;
+    unsigned int root_depth = 0;
+    unsigned int donate_scan_from = 0;
+    std::vector<unsigned int> frame_col;
+    std::vector<uint32_t> frame_count;
+    std::vector<size_t> frame_next;
+    std::vector<size_t> frame_end;
   };
+
+  /* Hand the shallowest live frame's untried branches to the pool as a
+   * rest seed and end that frame after its current branch (see the
+   * SimdExactCover counterpart). depth is the node being entered, so
+   * frames root..depth-1 are live. */
+  void donateFrame(unsigned int depth, SearchContext &ctx) const;
 
   /* Remainder of an interrupted task, collected while search() unwinds
    * after a stop. Every frame on the stack returns through a stop check
@@ -406,12 +439,15 @@ private:
     // pivot kind per prefix step and rest start, as in HuangSeed
     std::vector<uint8_t> pivot_shape;
     uint32_t rest_skip = 0;
+    // progress units this task carries (see TaskUnits)
+    size_t units = TaskUnits::kWhole;
 
     HuangSeed seed() const {
       HuangSeed s;
       s.prefix = ctx.current_solution;
       s.pivotShape = pivot_shape;
       s.restSkip = rest_skip;
+      s.units = units;
       return s;
     }
   };
@@ -463,7 +499,7 @@ private:
   /* Stop path of the frame at depth: record its pivot kind and its
    * untouched branches (from index next) into ctx.trace. */
   void recordFrame(unsigned int depth, unsigned int best_col, size_t next,
-                   SearchContext &ctx) const;
+                   size_t end, SearchContext &ctx) const;
 
   // Recursive hot path: the token is borrowed, not copied (see
   // SimdExactCover::search for why).
