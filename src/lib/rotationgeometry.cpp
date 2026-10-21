@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cmath>
 #include <exception>
 #include <iterator>
@@ -198,7 +199,11 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
                              const model_t & model) :
   half(0.5 * (1.0 - model.play)),
   chamfer(model.chamfer),
-  rho(0)
+  rho(0),
+  /* the octagon's inner radius is the smaller distance to an axis face or
+   * a bevel face, its outer radius that of a bevel end point */
+  inRadius(std::min(half, (2 * half - model.chamfer) / std::numbers::sqrt2)),
+  outRadius(std::hypot(half, half - model.chamfer))
 {
   if (axis > 2)
     bt_te("planarScene_c: axis must be 0 to 2");
@@ -265,6 +270,41 @@ double planarScene_c::clearance(const pose_t & p) const {
   return best;
 }
 
+int planarScene_c::classify(const pose_t & p, double margin, double * clOut) const {
+
+  const double c = std::cos(p.theta);
+  const double s = std::sin(p.theta);
+  /* Each cube contains its in-circle and lies in its circumcircle, so
+   * centres closer than 2·inRadius overlap, and centres at least
+   * 2·outRadius + margin apart are at least margin apart. */
+  const double inner = 2 * inRadius;
+  const double outer = 2 * outRadius + margin;
+
+  /* pairs skipped below are at least margin apart, so when some pair is
+   * closer, the smallest computed clearance is the clearance */
+  double best = margin;
+  for (const layer_t & l : layers)
+    for (const square_t & m : l.moving) {
+      double mu = m.u * c - m.v * s + p.du;
+      double mv = m.u * s + m.v * c + p.dv;
+      for (const square_t & st : l.stat) {
+        double du = mu - st.u, dv = mv - st.v;
+        double d2 = du * du + dv * dv;
+        if (d2 < inner * inner)
+          return -1;
+        if (d2 >= outer * outer)
+          continue;
+        double cl = squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer);
+        if (cl < 0)
+          return -1;
+        best = std::min(best, cl);
+      }
+    }
+
+  *clOut = best;
+  return (best < margin) ? 0 : 1;
+}
+
 bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const {
 
   /* No point of the moving group moves further than `lipschitz` over the
@@ -281,20 +321,24 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
     pose_t p = { a.theta + sm * (b.theta - a.theta),
                  a.du + sm * (b.du - a.du),
                  a.dv + sm * (b.dv - a.dv) };
-    double cl = clearance(p);
+    double cl;
+    int c = classify(p, 0.5 * (s1 - s0) * lipschitz, &cl);
 
-    if (cl < 0) {
+    if (c < 0) {
       *v = PATH_BLOCKED;
       return false;
     }
-    if (cl >= 0.5 * (s1 - s0) * lipschitz)
+    if (c > 0)
       continue;
     if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT || sm == s0 || sm == s1) {
       *v = PATH_UNDECIDED;
       return false;
     }
-    todo.push_back({ s0, sm });
-    todo.push_back({ sm, s1 });
+    /* the clearance still proves sm ± cl / lipschitz clear: split only
+     * what lies outside */
+    const double w = cl / lipschitz;
+    todo.push_back({ s0, sm - w });
+    todo.push_back({ sm + w, s1 });
   }
 
   return true;
@@ -629,42 +673,58 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
     paths[1].push_back({ e.baseIdx, xf, transformSpec(baseTables[e.baseIdx].getSpec(), xf) });
   }
 
-  /* sense-0 blockers common to every path, the quick reject in firstClear;
-   * sense 1 is its mirror across the u axis */
+  /* sense-0 blockers: those blocking every path go into blockedByAll,
+   * partial blockers go into pairOffset/pairBits (most-blocking first);
+   * sense 1 mirrors across the u axis */
   const int evenW = 2 * r + 1;
   const int oddW = 2 * r;
   const size_t numSlots = (size_t)evenW * evenW + (size_t)oddW * oddW;
+  const size_t numPaths = paths[0].size();
+  words = (unsigned int)((numPaths + 63) / 64);
   blockedByAllOffsets.resize(numSlots + 1);
+  pairStart.assign(numSlots + 1, 0);
 
-  std::vector<std::pair<int, int>> common, other, both;
-  auto fillCommon = [&](size_t s, int du, int dv) {
+  auto fillSlotData = [&](size_t s, int du, int dv) {
     blockedByAllOffsets[s] = (uint32_t)blockedByAllEntries.size();
-    const auto r0 = table(0, 0).blockers(du, dv);
-    common.assign(r0.begin(), r0.end());
-    std::sort(common.begin(), common.end());
-    for (size_t i = 1; i < paths[0].size() && !common.empty(); i++) {
-      const auto ri = table(0, (unsigned int)i).blockers(du, dv);
-      other.assign(ri.begin(), ri.end());
-      std::sort(other.begin(), other.end());
-      both.clear();
-      std::set_intersection(common.begin(), common.end(), other.begin(), other.end(), std::back_inserter(both));
-      common.swap(both);
+    std::map<std::pair<int16_t, int16_t>, std::vector<uint64_t>> byOff;
+    for (size_t i = 0; i < numPaths; i++)
+      for (const auto & [su, sv] : table(0, (unsigned int)i).blockers(du, dv)) {
+        std::vector<uint64_t> & b = byOff[{ (int16_t)su, (int16_t)sv }];
+        if (b.empty())
+          b.assign(words, 0);
+        b[i / 64] |= uint64_t(1) << (i % 64);
+      }
+    std::vector<std::pair<size_t, std::pair<int16_t, int16_t>>> partial;
+    for (const auto & [off, b] : byOff) {
+      size_t count = 0;
+      for (uint64_t w : b)
+        count += (size_t)std::popcount(w);
+      if (count == numPaths) {
+        blockedByAllEntries.push_back(off);
+        inverseReach = std::max({ inverseReach, std::abs((int)off.first - du), std::abs((int)off.second - dv) });
+      } else
+        partial.push_back({ count, off });
     }
-    for (const auto & [su, sv] : common) {
-      blockedByAllEntries.push_back({ (int16_t)su, (int16_t)sv });
-      inverseReach = std::max({ inverseReach, std::abs(su - du), std::abs(sv - dv) });
+    std::stable_sort(partial.begin(), partial.end(), [](const auto & a, const auto & b) { return a.first > b.first; });
+    for (const auto & p : partial) {
+      pairOffset.push_back(p.second);
+      const std::vector<uint64_t> & b = byOff[p.second];
+      pairBits.insert(pairBits.end(), b.begin(), b.end());
     }
+    pairStart[s + 1] = (uint32_t)pairOffset.size();
   };
 
   size_t s = 0;
   for (int eu = 0; eu < evenW; eu++)
     for (int ev = 0; ev < evenW; ev++)
-      fillCommon(s++, 2 * eu - 2 * r, 2 * ev - 2 * r);
+      fillSlotData(s++, 2 * eu - 2 * r, 2 * ev - 2 * r);
   for (int ou = 0; ou < oddW; ou++)
     for (int ov = 0; ov < oddW; ov++)
-      fillCommon(s++, 2 * ou - 2 * r + 1, 2 * ov - 2 * r + 1);
+      fillSlotData(s++, 2 * ou - 2 * r + 1, 2 * ov - 2 * r + 1);
   blockedByAllOffsets[numSlots] = (uint32_t)blockedByAllEntries.size();
   blockedByAllEntries.shrink_to_fit();
+  pairOffset.shrink_to_fit();
+  pairBits.shrink_to_fit();
 
   /* the inverse for sense 0: static cube relative to moving cube -> moving
    * cube offsets; (su-du, sv-dv) are always even, so index only even offsets */

@@ -160,8 +160,16 @@ namespace rotationGeometry {
       double half;     // half side of the cube
       double chamfer;  // 45° cut of the square's corners
       double rho;
+      double inRadius;   // of a cube: centres closer than twice this overlap
+      double outRadius;  // of a cube: clearance >= centre distance - 2·outRadius
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
+      /** The decision certifySegment needs at pose p, using the exact
+       *  clearance only where the cubes' in- and circumcircles do not settle
+       *  it: -1 if a pair overlaps, 1 if every pair is at least margin
+       *  apart, 0 otherwise. The same decision as comparing clearance(p)
+       *  with 0 and margin. For 0, *cl is clearance(p). */
+      int classify(const pose_t & p, double margin, double * cl) const;
   };
 
   /** The pose that undoes p: the motion of the static pieces relative to
@@ -485,22 +493,43 @@ namespace rotationGeometry {
               return -1;
         }
 
-        for (size_t i = 0; i < paths[sense].size(); i++) {
-          const pathEntry_t & e = paths[sense][i];
-          const pathTable_c & base = baseTables[e.baseIdx];
-          const unsigned char inv = inverseOffsetTransform(e.xform);
-          bool blocked = false;
-          for (size_t k = 0; k < n && !blocked; k++) {
-            auto [bu, bv] = applyOffsetTransform(inv, cubes[k].u, cubes[k].v);
-            for (const auto & [su, sv] : base.blockersTransformed(bu, bv, e.xform))
-              if (occupied(cubes[k].layer, su, sv)) {
-                blocked = true;
-                break;
-              }
+        /* OR the paths every occupied blocker blocks; the first path left over
+         * is the first clear one. Sense 1 mirrors (u, v) -> (u, -v) into sense 0. */
+        const size_t numPaths = paths[sense].size();
+        const uint64_t lastWord = (numPaths % 64) ? (uint64_t(1) << (numPaths % 64)) - 1 : ~uint64_t(0);
+        uint64_t local[8];
+        std::vector<uint64_t> heap;
+        uint64_t * blocked = local;
+        if (words > 8) {
+          heap.assign(words, 0);
+          blocked = heap.data();
+        } else
+          std::fill(local, local + words, 0);
+        auto allBlocked = [&]() {
+          for (unsigned int w = 0; w + 1 < words; w++)
+            if (blocked[w] != ~uint64_t(0))
+              return false;
+          return (blocked[words - 1] & lastWord) == lastWord;
+        };
+
+        for (size_t k = 0; k < n; k++) {
+          const unsigned int s = first.slot(cubes[k].u, sense ? -cubes[k].v : cubes[k].v);
+          for (uint32_t j = pairStart[s]; j < pairStart[s + 1]; j++) {
+            const auto & off = pairOffset[j];
+            const int su = off.first, sv = sense ? -off.second : off.second;
+            if (!occupied(cubes[k].layer, su, sv))
+              continue;
+            const uint64_t * b = &pairBits[(size_t)j * words];
+            for (unsigned int w = 0; w < words; w++)
+              blocked[w] |= b[w];
+            if (allBlocked())
+              return -1;
           }
-          if (!blocked)
-            return (int)i;
         }
+
+        for (size_t i = 0; i < numPaths; i++)
+          if (!((blocked[i / 64] >> (i % 64)) & 1))
+            return (int)i;
         return -1;
       }
 
@@ -520,6 +549,13 @@ namespace rotationGeometry {
        * sense 1 is served by mirroring across the u axis (xform 4). */
       std::vector<uint32_t> blockedByAllOffsets;
       std::vector<std::pair<int16_t, int16_t>> blockedByAllEntries;
+
+      /* Sense-0 partial blockers (blocking some but not all paths), same-parity
+       * CSR indexed like pathTable_c, most-blocking first; sense 1 mirrors v. */
+      unsigned int words = 0;
+      std::vector<uint32_t> pairStart;
+      std::vector<std::pair<int16_t, int16_t>> pairOffset;
+      std::vector<uint64_t> pairBits;
 
       /* Sense-0 inverse of blockedByAll (even-only relative offsets (su-du, sv-dv)
        * in [-inverseReach, inverseReach], CSR); sense 1 mirrors across u. */
