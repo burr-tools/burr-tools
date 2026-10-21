@@ -3716,10 +3716,22 @@ TEST_CASE("donated work is searched exactly once",
   }
 }
 
+struct Assembler1UnitsTestAccess {
+  /* After a finished run every unit the run started with is completed:
+   * donations and stops only move units between tasks. */
+  static bool unitsConserved(const assembler_1_c & assm) {
+    const size_t total = assm.totalTasks.load(std::memory_order_relaxed);
+    return total > 0 && assm.completedTasks.load(std::memory_order_relaxed) == total;
+  }
+};
+
 /* Split on demand in assembler_1 (Huang, and A1-DLX with the DLX engine
  * forced). Same shape as "donated work is searched exactly once": forced
  * donations, every run -- uninterrupted, and stopped + restored -- must
- * reproduce the baseline as a multiset and finish at progress 1.
+ * reproduce the baseline as a multiset, and the completed progress units
+ * must equal the total (a donation that leaks or double-counts units
+ * misses it; getFinished() cannot tell, it reports 1 for any completed
+ * search).
  * CubeInCage has identical pieces, so donated seeds must carry the pivot
  * bits that make their replay apply the monotonic shape filter;
  * SolidSixPieceBurrs has a range column and stops deep.
@@ -3765,7 +3777,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       CHECK(assm.getDonations() > 0);
-      CHECK(assm.getFinished() == 1.0f);
+      CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
       CHECK(cb.fingerprints == baseline);
     }
 
@@ -3795,7 +3807,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
         REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
                 == assembler_c::ERR_NONE);
         restored.assemble(&cb2);
-        CHECK(restored.getFinished() == 1.0f);
+        CHECK(Assembler1UnitsTestAccess::unitsConserved(restored));
       }
       std::multiset<std::string> resumed = cb1.fingerprints;
       resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());

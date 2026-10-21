@@ -217,7 +217,14 @@ replays the seed into a pool task.
 - **Units.** The piece's units are the structural estimate (product of
   1/branching above the frame, times remaining/branching at it) of the
   donor's units at pop, clamped by `TaskUnits::give`. Huang publishes no
-  in-flight fraction, so nothing else depends on the estimate.
+  in-flight fraction, so nothing else depends on the estimate. The
+  branching is the pivot's candidate count (`col_counts`), not the MRV
+  metric, which weighs shape pivots by their remaining need. A rest's root
+  frame counts only the candidates from its restSkip on, as in
+  `SimdExactCover`.
+- **Claim and scan.** As in `SimdExactCover`: the donor claims the pool's
+  hunger flag only once it has a piece, and frames found closed are not
+  rescanned until they re-register.
 
 ## 10. A1-DLX
 
@@ -255,12 +262,15 @@ and case 6 moves on to the next row.
   (forced), CubeInCage (identical pieces), PiecesOfEight and
   SolidSixPieceBurrs (range), 1 to 4 threads, forced donation every 1 to
   61 nodes. Uninterrupted runs and stopped + restored runs must equal the
-  baseline as a multiset and finish at progress 1, and donations must
-  occur. Mutation checks:
-  - Huang: dropping the cut (runaway duplication), or recording stop
-    branches past the loop end, fails it.
-  - A1-DLX: dropping the cut, not writing the cuts back, or keeping
-    deeper frames' hidden-row segments in the piece fails it.
+  baseline as a multiset, the completed units must equal the total, and
+  donations must occur. `getFinished()` cannot stand in for the unit
+  check: it reports 1 for any completed search. Mutation checks:
+  - Huang: dropping the cut (runaway duplication), recording stop
+    branches past the loop end, or not taking the donated units off the
+    donor fails it.
+  - A1-DLX: dropping the cut, not writing the cuts back, keeping deeper
+    frames' hidden-row segments in the piece, or not taking the donated
+    units off the donor fails it.
 - The solver suite passes with forced donation (every 1/7/200 on the
   default engines, every 1/9/300 with DLX forced). The failures it shows
   are exactly those without donation, i.e. env-forced mismatches.

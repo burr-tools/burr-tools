@@ -2723,6 +2723,10 @@ public:
    * slot (done x units at pop) never exceeds the units it still holds, and
    * the handoff at finish never over-reports. A share too small for one
    * unit, or a donor that cannot spare one, is not donated (TaskUnits).
+   *
+   * Unless forced (tests), the donor claims the pool's hunger signal before
+   * it gives, so one waiter draws one donation, not one from every busy
+   * worker that polls before the first push lands.
    */
   void donate() {
     const size_t top = task_stack.size() - 1;
@@ -2746,6 +2750,10 @@ public:
           tracker.remainingAt(level) * static_cast<double>(rootUnits));
       if (units < 1 || curTask->units < units + 1)
         continue;  // too small to carry a unit, or nothing to spare (TaskUnits)
+      // one donor per waiter: the pool's hunger flag goes to whoever claims
+      // it first, and only once there is something to give
+      if (!donateForced && !donatePool->claim_work())
+        return;
 
       assembler_1_c::SubtreeTask_1 piece;
       piece.task_stack.assign(task_stack.begin(), task_stack.begin() + i + 1);
