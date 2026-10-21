@@ -1,0 +1,1150 @@
+<title>BurrTools Rotation Moves</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of prose with full-width "bench" panels where the
+   live geometry runs; cubes drawn on squared paper, the moving group in ink blue. */
+:root {
+  --paper: #f3f5f2;
+  --sheet: #ffffff;
+  --ink: #1b2227;
+  --ink-2: #4d5a62;
+  --rule: #d5dcd7;
+  --grid: #e3e8e4;
+  --static: #5d6a70;
+  --static-fill: #c9d1cd;
+  --moving: #2047c8;
+  --moving-fill: #b9c8f7;
+  --ghost: #8aa0e8;
+  --ok: #1f8a5b;
+  --ok-soft: #cfeadb;
+  --hit: #c8322b;
+  --hit-soft: #f6d3d0;
+  --split: #b7791f;
+  --split-soft: #f3e2c1;
+  --pivot: #c8322b;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121619; --sheet: #1a1f23; --ink: #e4e9e6; --ink-2: #9ba8ae; --rule: #2f383d; --grid: #232a2e;
+    --static: #9aa7ac; --static-fill: #3c464b; --moving: #8ea6ff; --moving-fill: #2a3b78; --ghost: #5d72bd;
+    --ok: #4cc28c; --ok-soft: #173a2a; --hit: #ff6d63; --hit-soft: #4a1f1c; --split: #e0a64a; --split-soft: #43341a; --pivot: #ff6d63;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121619; --sheet: #1a1f23; --ink: #e4e9e6; --ink-2: #9ba8ae; --rule: #2f383d; --grid: #232a2e;
+  --static: #9aa7ac; --static-fill: #3c464b; --moving: #8ea6ff; --moving-fill: #2a3b78; --ghost: #5d72bd;
+  --ok: #4cc28c; --ok-soft: #173a2a; --hit: #ff6d63; --hit-soft: #4a1f1c; --split: #e0a64a; --split-soft: #43341a; --pivot: #ff6d63;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.12; margin: 0; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 800; font-stretch: 112%; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.45rem, 3vw, 1.9rem); font-weight: 700; font-stretch: 108%; margin-top: 64px; margin-bottom: 12px; }
+h3 { font-size: 1.08rem; font-weight: 700; font-stretch: 100%; }
+p { margin: 0 0 14px; }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 14px; }
+.lede { font-size: 1.15rem; color: var(--ink-2); max-width: 62ch; margin-top: 18px; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+code { background: var(--grid); padding: 1px 5px; border-radius: 3px; }
+a { color: var(--moving); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 22px; font-family: var(--mono); font-size: 0.8rem; color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 500; }
+
+/* path kind trio */
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+.kind { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; min-width: 0; }
+.kind canvas { width: 100%; aspect-ratio: 1 / 1; display: block; max-width: 100%; }
+.kind h3 { margin-top: 10px; }
+.kind p { font-size: 0.92rem; color: var(--ink-2); margin: 6px 0 0; }
+.tag { display: inline-block; font-family: var(--mono); font-size: 0.72rem; padding: 1px 7px; border-radius: 99px; background: var(--grid); color: var(--ink-2); margin-left: 6px; vertical-align: 2px; }
+
+.cover { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 18px; }
+.cover ul { margin: 6px 0 0; padding-left: 20px; }
+.cover li { margin-bottom: 6px; }
+.cover h3 { display: flex; align-items: center; gap: 8px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+
+/* bench panels */
+.bench { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 18px; margin-top: 20px; }
+.bench-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; }
+.bench canvas { display: block; width: 100%; max-width: 100%; }
+.stage { aspect-ratio: 1 / 1; border-radius: 4px; }
+.controls { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+label.lbl, .lbl { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+button, select { font: inherit; font-size: 0.9rem; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 5px; padding: 6px 11px; cursor: pointer; }
+button:hover, select:hover { border-color: var(--ink-2); }
+button[aria-pressed="true"] { background: var(--moving); border-color: var(--moving); color: var(--sheet); }
+button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--moving); outline-offset: 2px; }
+input[type="range"] { width: 100%; accent-color: var(--moving); }
+.slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; }
+.slider output { font-family: var(--mono); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.slider input { grid-column: 1 / -1; }
+.verdict { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pill { font-family: var(--mono); font-size: 0.8rem; font-weight: 500; padding: 3px 10px; border-radius: 99px; }
+.pill.clear { background: var(--ok-soft); color: var(--ok); }
+.pill.blocked { background: var(--hit-soft); color: var(--hit); }
+.pill.undecided { background: var(--split-soft); color: var(--split); }
+.small { font-size: 0.86rem; color: var(--ink-2); }
+.readout { font-family: var(--mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; color: var(--ink-2); line-height: 1.5; }
+.readout b { color: var(--ink); font-weight: 500; }
+.plot { height: 170px; margin-top: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--ink-2); margin-top: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 8px; border-radius: 2px; display: inline-block; }
+
+/* family strip */
+.family { margin-top: 16px; overflow-x: auto; }
+.family-inner { display: grid; grid-template-columns: auto repeat(16, minmax(18px, 1fr)); gap: 3px; align-items: center; min-width: 460px; }
+.family-inner .h { font-family: var(--mono); font-size: 0.68rem; color: var(--ink-2); text-align: center; }
+.family-inner .rl { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2); padding-right: 6px; white-space: nowrap; }
+.fcell { height: 22px; border-radius: 3px; border: 1px solid transparent; padding: 0; cursor: pointer; }
+.fcell.clear { background: var(--ok-soft); border-color: var(--ok); }
+.fcell.blocked { background: var(--hit-soft); }
+.fcell.undecided { background: var(--split-soft); }
+.fcell.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.fcell.first::after { content: "1st"; font-family: var(--mono); font-size: 0.6rem; color: var(--ok); }
+.purecell { grid-column: span 16; height: 22px; }
+
+/* steps */
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 12px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; }
+.steps li::before { content: counter(s); font-family: var(--display); font-weight: 800; font-stretch: 112%; font-size: 1.3rem; color: var(--moving); line-height: 1.2; }
+.steps li p { margin: 4px 0 0; font-size: 0.94rem; color: var(--ink-2); }
+
+.formula { font-family: var(--mono); font-size: 0.9rem; background: var(--sheet); border: 1px solid var(--rule); border-left: 3px solid var(--moving); padding: 10px 14px; margin: 12px 0 16px; overflow-x: auto; white-space: pre; border-radius: 0 4px 4px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2); font-weight: 500; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tablewrap { overflow-x: auto; margin-top: 12px; }
+.note { border: 1px solid var(--split); background: var(--split-soft); border-radius: 6px; padding: 12px 14px; margin-top: 18px; font-size: 0.94rem; }
+.note b { color: var(--ink); }
+footer { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 0.85rem; color: var(--ink-2); }
+
+@media (max-width: 760px) {
+  .trio { grid-template-columns: minmax(0, 1fr); }
+  .kind { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .kind h3 { margin-top: 0; }
+  .cover, .bench-grid { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">BurrTools · branch <span class="mono">rotations</span> · design/2026-10-19-rotation-moves.md</div>
+    <h1>Rotation moves in the disassembler</h1>
+    <p class="lede">With rotation moves on, the disassembler may turn a group of pieces by 90° as one step, alongside the usual straight slides. This page shows which turns are covered and how BurrTools proves that a turn is physically possible. The animations below run a port of the solver's own geometry code, so every verdict you see is computed, not drawn.</p>
+    <div class="meta">
+      <span>switch <b>burrTxt -R</b> · GUI <b>Rotation Moves</b></span>
+      <span>model <b>burrTxt -m play,rounding,bevel</b></span>
+      <span>default <b>play 0.081 · sharp edges</b></span>
+      <span>code <b>src/lib/rotationgeometry.*</b></span>
+    </div>
+  </header>
+
+  <section>
+    <h2>What a rotation move is</h2>
+    <div class="prose">
+      <p>A rotation move turns one group of pieces a quarter turn (±90°) about an axis parallel to X, Y or Z. All other pieces stay where they are. The axis passes through a cube centre or a cube corner, because only those two kinds of pivot map the grid onto itself after a quarter turn. While the group turns, it may also shift a little sideways, in the plane of the turn. That gives three kinds of path:</p>
+    </div>
+    <div class="trio">
+      <div class="kind">
+        <canvas id="k-pure" width="300" height="300" aria-label="Animation: an L-shaped piece turning 90 degrees about a pivot"></canvas>
+        <div>
+          <h3>Pure turn <span class="tag">1 path</span></h3>
+          <p>A plain quarter turn about the pivot. The large majority of moves need nothing more.</p>
+        </div>
+      </div>
+      <div class="kind">
+        <canvas id="k-wiggle" width="300" height="300" aria-label="Animation: the piece turns while drifting sideways and back"></canvas>
+        <div>
+          <h3>Wiggle <span class="tag">8 directions × 4 amounts</span></h3>
+          <p>Turns while drifting along one compass direction by <code>a·b(θ)</code>, where <code>b(θ) = (cos θ + sin θ − 1)/(√2 − 1)</code> is the bulge of a turning cube. The drift is 0 at both ends and largest at 45°. Stored as a 16-segment polyline, and that polyline is the motion that gets checked.</p>
+        </div>
+      </div>
+      <div class="kind">
+        <canvas id="k-slide" width="300" height="300" aria-label="Animation: the piece shifts, turns, then shifts back"></canvas>
+        <div>
+          <h3>Slide <span class="tag">8 directions × 4 amounts</span></h3>
+          <p>Shifts by <code>a</code>, turns about the shifted pivot, then shifts back. Three straight segments.</p>
+        </div>
+      </div>
+    </div>
+    <p class="small" style="margin-top:10px">The animations exaggerate the shift to 0.4 cells; the dashed curve traces the group's centre. The default amounts are 0.1, 0.2, 0.3 and 0.4 cells.</p>
+
+    <div class="cover">
+      <div>
+        <h3><span class="dot" style="background:var(--ok)"></span>Covered</h3>
+        <ul>
+          <li>Any group of whole pieces turning together, up to 32 pieces per (sub)problem.</li>
+          <li>All three axes, both senses (+90° and −90°).</li>
+          <li>Pivots at cube centres and cube corners, inside the turning group's footprint or up to half a cell beyond it.</li>
+          <li>65 paths per sense: the pure turn, then for each amount 0.1 … 0.4 the 8 wiggles and the 8 slides. The search tries them in this order and records the first clear one.</li>
+          <li>Cube grids only. Tables are sized from the puzzle's extents.</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="dot" style="background:var(--hit)"></span>Not covered (yet)</h3>
+        <ul>
+          <li>Half turns as one move. A 180° turn is found only if it splits into two quarter turns with a free pose in between.</li>
+          <li>Moving along the axis during the turn.</li>
+          <li>Arbitrary "shimmy" paths outside the 65-path family. A configuration-space planner is planned (phase 3).</li>
+          <li>Pivots on edge midpoints: a quarter turn about them leaves cubes off the grid.</li>
+          <li>Groups wider than the tables. These are skipped, never guessed, and the result says "turns may be missing".</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>From 3D to flat layers</h2>
+    <div class="prose">
+      <p>A turn about an axis-parallel line, combined with a shift perpendicular to that line, keeps every cube in its own layer along the axis. Cubes in different layers can at most touch across a face plane. They can never overlap. So the 3D question splits exactly into independent 2D questions, one per layer: do the moving squares of this layer stay clear of the static squares of the same layer? This is not an approximation. Static cubes in layers without moving cubes are dropped up front.</p>
+    </div>
+    <div class="bench">
+      <canvas id="layers" width="1000" height="360" style="aspect-ratio: 1000 / 360" aria-label="Exploded view: a 3D arrangement split into two layers along the turning axis"></canvas>
+      <p class="small" style="margin:10px 0 0">Exploded along the Z axis: each layer is checked on its own. Blue cubes turn, grey cubes stand still. In the code, X maps to the plane (y, z), Y to (z, x) and Z to (x, y), so a positive angle is right-handed about every axis.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The physical cube</h2>
+    <div class="prose">
+      <p>Real pieces are a little undersized and their edges are cut, which is exactly what makes some turns possible. The model has explicit parameters, reported with every result instead of hidden in constants:</p>
+      <ul>
+        <li><b>Play <code>g</code></b>: each cube has side <code>1 − g</code> and sits centred in its cell, leaving a gap <code>g</code> between neighbours. It must be greater than 0. Without play, a cube turning about a corner it shares with a diagonal neighbour touches it for the whole turn, and no finite check can prove that clear.</li>
+        <li><b>45° bevel <code>k</code></b>: the edges parallel to the axis are cut off at 45°, removing <code>k</code> from each adjacent face, so the bevel face is <code>k·√2</code> wide. This matches 3D-printed pieces: puzzlecad's <code>$burr_bevel</code> is the width of that face (each face is set back by <code>bevel/√2</code>), so <code>k = $burr_bevel / (√2 · $burr_scale)</code> and <code>g = 2 · $burr_inset / $burr_scale</code>.</li>
+        <li><b>Rounding <code>r</code></b>: optionally, a rounding radius on the same edges. It defaults to 0 and is there for pieces that really are rounded. Printed pieces use the bevel.</li>
+      </ul>
+      <p>The default is play 0.081 with sharp edges, the model PR #50's code assumed implicitly, until there are physically verified moves to calibrate against. The model is slightly optimistic in one respect: every cube edge gets beveled, including edges that puzzlecad leaves flat (between cubes of one piece, and concave edges).</p>
+    </div>
+    <div class="bench">
+      <div class="bench-grid">
+        <canvas id="spin" class="stage" width="560" height="560" aria-label="A cube spinning beside a face neighbour, coloured by collision"></canvas>
+        <div class="controls">
+          <div>
+            <h3>Spinning beside a face neighbour</h3>
+            <p class="small" style="margin-top:6px">A single cube turns next to a static neighbour. As a <b>pure turn</b> about its own centre, sharp corners hit the neighbour. The bevel has to grow until the farthest point of the cube, a bevel end at distance <code>√(h² + (h−k)²)</code>, stays inside the neighbour's face at <code>1 − h</code> (with <code>h = (1 − g)/2</code>). As a <b>bulge wiggle</b> away from the neighbour, the cube's corner glides along the neighbour's face instead. That works even with sharp edges, once the shift reaches the cube's own bulge minus the play, <code>h(√2 − 1) − g</code>.</p>
+          </div>
+          <div class="slider"><label class="lbl" for="sp-play">Play g</label><output id="sp-play-o"></output><input id="sp-play" type="range" min="0.01" max="0.2" step="0.001" value="0.081"></div>
+          <div class="slider"><label class="lbl" for="sp-k">Bevel k (cut per face)</label><output id="sp-k-o"></output><input id="sp-k" type="range" min="0" max="0.3" step="0.001" value="0"></div>
+          <div class="row">
+            <span class="lbl">Path</span>
+            <button id="sp-pure" aria-pressed="true">pure turn</button>
+            <button id="sp-wig" aria-pressed="false">bulge wiggle away</button>
+          </div>
+          <div class="slider" id="sp-a-row" hidden><label class="lbl" for="sp-a">Wiggle amount a</label><output id="sp-a-o"></output><input id="sp-a" type="range" min="0.01" max="0.4" step="0.001" value="0.2"></div>
+          <div class="verdict"><span class="lbl">Checker</span><span id="sp-verdict" class="pill"></span></div>
+          <div class="readout" id="sp-read"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why the wiggle has this shape</h2>
+    <div class="prose">
+      <p>A tight turn keeps the turning piece in contact with a static one the whole time; the play only separates them at the start and at the end. Take a cube of half side <code>h</code> turning about its centre. Its extent along an axis is <code>h·(cos θ + sin θ)</code>, so its leading face advances by <code>h·(√2 − 1)·b(θ)</code>. A cube touching a corner pivot advances by the same shape, scaled by <code>0.5 + h</code>. If the wiggle shifts the group away by exactly that amount, the cube's corner glides along the plane its face started on, and it never pushes into the neighbour.</p>
+      <p>PR #50 used <code>sin 2θ</code>, which approximates <code>b</code> to within 0.043. But it lags <code>b</code> everywhere except at 0°, 45° and 90°, and the lag is largest early and late in the turn, where the play is tightest. With almost no play, as on printed pieces, that lag becomes a collision.</p>
+    </div>
+    <div class="bench">
+      <div class="bench-grid">
+        <canvas id="profile" class="stage" style="aspect-ratio: 4 / 3" width="560" height="420" aria-label="The bulge profile against the sine profile over the turn"></canvas>
+        <div class="controls">
+          <h3>Rescued turns, by profile</h3>
+          <p class="small" style="margin:0">10,000 random 2D candidates per model where the pure turn is blocked, 8 directions × amounts 0.1–0.4, checked with the certified checker.</p>
+          <div class="tablewrap" style="margin-top:0">
+            <table>
+              <thead><tr><th>Profile</th><th>play 0.081</th><th>puzzlecad</th></tr></thead>
+              <tbody>
+                <tr><td><code>sin(πt)</code>, before</td><td class="num">1373</td><td class="num">970</td></tr>
+                <tr><td><b>bulge <code>b(θ)</code>, now</b></td><td class="num"><b>1416</b></td><td class="num"><b>1173</b></td></tr>
+                <tr><td>holding contact with the neighbour</td><td class="num">1315</td><td class="num">1171</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small" style="margin:0">The bulge rescued every turn the sine did. Holding contact with the neighbour itself, by also using up the play, is too tight for a fixed family: it fails whenever the amount doesn't match exactly, and it gives no shift early on, when a corner passes another corner. Puzzlecad cubes: play 0.0126, bevel 0.0317.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Proving a path clear</h2>
+    <div class="prose">
+      <p>Every path is a polyline in configuration space <code>(θ, du, dv)</code>. A moving point <code>p</code> goes to <code>R(θ)(p − P) + P + d</code>, where <code>P</code> is the pivot. The checker decides each segment with one measurement: the <b>clearance</b>, the signed distance between the closest pair of same-layer (moving, static) cubes. When two convex polygons are apart, that is their distance (the minimum vertex-to-edge distance). When they overlap, it is minus the penetration depth (the smallest overlap over all edge normals, by the separating axis test). Rounding subtracts <code>2r</code>.</p>
+      <p>Within a segment, no point of the group moves more than</p>
+    </div>
+    <div class="formula">L = |Δd| + ρ · |Δθ|        ρ = largest distance of a moving cube corner from the pivot</div>
+    <div class="prose">
+      <p>Distance between sets changes by at most as much as the points move. So if the clearance at the middle of an interval of width <code>2δ</code> is at least <code>L·δ</code>, the group cannot reach a static cube anywhere in that interval: the interval is proven clear. A negative clearance at a sample proves a collision. Anything else gets split in half and checked again. A segment still undecided once the motion it covers drops below 10⁻⁷ cells is treated as blocked. The result is sound: no tunnelling through corners, and no step-count constant.</p>
+    </div>
+
+    <div class="bench" id="lab">
+      <div class="bench-grid">
+        <div style="min-width:0">
+          <canvas id="lab-stage" class="stage" width="640" height="640" aria-label="The test scene: moving group, static cubes, pivot and current pose"></canvas>
+        </div>
+        <div class="controls">
+          <div>
+            <span class="lbl">Scene</span>
+            <div class="row" id="presets" style="margin-top:6px"></div>
+            <p class="small" id="preset-note" style="margin:8px 0 0"></p>
+          </div>
+          <div class="row">
+            <span class="lbl">Sense</span>
+            <button id="sense0" aria-pressed="true">+90°</button>
+            <button id="sense1" aria-pressed="false">−90°</button>
+          </div>
+          <div class="slider"><label class="lbl" for="lab-play">Play g</label><output id="lab-play-o"></output><input id="lab-play" type="range" min="0.02" max="0.2" step="0.001" value="0.081"></div>
+          <div class="slider"><label class="lbl" for="lab-k">Bevel k</label><output id="lab-k-o"></output><input id="lab-k" type="range" min="0" max="0.25" step="0.001" value="0"></div>
+          <div class="verdict"><span class="lbl">Shown path</span><span id="lab-path" class="mono" style="font-size:.85rem"></span><span id="lab-verdict" class="pill"></span></div>
+          <div class="row">
+            <button id="lab-play-btn" aria-pressed="false">Pause</button>
+            <input id="lab-t" type="range" min="0" max="1000" value="0" aria-label="Position along the path" style="flex:1; min-width:120px">
+          </div>
+          <div class="readout" id="lab-read"></div>
+        </div>
+      </div>
+      <canvas id="lab-plot" class="plot" width="1040" height="170" aria-label="Clearance along the path and the checker's intervals"></canvas>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--ink)"></span>clearance along the path (cells)</span>
+        <span><span class="sw" style="background:var(--ok)"></span>interval proven clear</span>
+        <span><span class="sw" style="background:var(--split)"></span>sample that forced a split</span>
+        <span><span class="sw" style="background:var(--hit)"></span>sample with overlap</span>
+      </div>
+      <div class="family">
+        <div class="lbl" style="margin-bottom:6px">The 65 paths of this sense, in search order. Click one to show it.</div>
+        <div class="family-inner" id="family"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lookup tables: no geometry at solve time</h2>
+    <div class="prose">
+      <p>Along a fixed path, each (moving cube, static cube) pair either collides or doesn't, regardless of every other cube. A path is blocked exactly when some moving cube collides with some static cube of its layer. So for each path, BurrTools precomputes a table: for every offset of a moving cube from the pivot, the list of static offsets that would block it. The table is filled by the certified checker, so it is exactly as precise as the checker. At solve time, a turn costs a few dozen lookups per cube, with no trigonometry.</p>
+      <p>Only the +90° tables for the pure turn and for directions (1,0) and (1,1) are computed with the checker. The other six directions are turned copies, since turning the whole scene about the pivot commutes with the motion, and every −90° table is a mirrored copy. Tests compare these derived tables against directly computed ones. Offsets are doubled so they stay integers: both even for a pivot at a cube centre, both odd for one at a corner.</p>
+    </div>
+    <div class="bench">
+      <div class="bench-grid">
+        <canvas id="tbl" class="stage" width="560" height="560" tabindex="0" aria-label="Table entry: click a moving cube offset to see the static cells that block it"></canvas>
+        <div class="controls">
+          <h3>One table entry</h3>
+          <p class="small" style="margin:0">Click a cell to place the moving cube at that offset from the pivot. The shaded cells are its blockers, i.e. the static positions that would make the path collide.</p>
+          <div class="row">
+            <span class="lbl">Pivot</span>
+            <button id="tp-centre" aria-pressed="true">cube centre</button>
+            <button id="tp-corner" aria-pressed="false">cube corner</button>
+          </div>
+          <div class="row">
+            <span class="lbl">Path</span>
+            <select id="tbl-path" aria-label="Path for the table"></select>
+          </div>
+          <div class="row">
+            <button id="tbl-all" aria-pressed="false">Blocked on every path</button>
+          </div>
+          <div class="readout" id="tbl-read"></div>
+          <p class="small" style="margin:0">"Blocked on every path" is the intersection over all 65 tables. It includes the cube's own end cell. The solver uses this set to decide which pieces must turn together.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How the solver finds turns</h2>
+    <div class="prose">
+      <p>Rotation moves are a third phase in <code>movementAnalysator_c::find</code>, after the translation moves. It runs only when the tables exist, so with the option off the cost is one null check per search node. For every node:</p>
+    </div>
+    <ol class="steps">
+      <li><div><b>For each axis and sense</b><p>Project every piece onto the plane of the turn, and fetch from a shared cache the pivots at which piece <i>j</i> blocks piece <i>i</i> on every path. That depends only on the two pieces' shapes, orientations and relative position, so all worker threads share one cache.</p></div></li>
+      <li><div><b>For each pivot</b><p>Centre and corner pivots in the pieces' footprint (mixed parity is skipped). Pieces with cubes beyond the table radius cannot turn there; the context notes the skip.</p></div></li>
+      <li><div><b>Groups by closure</b><p>If <i>j</i> blocks <i>i</i> on every path, they must turn together. The candidate groups are the unions of closures of this relation, Cutler-style, instead of all 2ⁿ subsets. A test compares the result against exhaustive enumeration.</p></div></li>
+      <li><div><b>End pose</b><p>Closure already guarantees that the end cells are free. The turn must also change something, since turning a piece onto its own cells is not a move.</p></div></li>
+      <li><div><b>First clear path</b><p><code>firstClear</code> walks the 65 tables against one occupancy bitmap of the static pieces. A precomputed blocked-on-every-path set rejects most candidates before any table walk.</p></div></li>
+      <li><div><b>Canonical state</b><p>Piece 0 is the reference frame and never moves. A group containing it is stored as the complement turning instead: the other sense for a pure turn, or the same path marked <code>inverse</code> for wiggles and slides. Symmetric pieces are normalised to their smallest orientation with the same cells, so the same physical state is not visited twice.</p></div></li>
+    </ol>
+    <div class="prose" style="margin-top:16px">
+      <p>The path family is closed under reversal: a +90° wiggle run backwards is a −90° wiggle in the same direction, and the same holds for slides. So every rotation edge in the search graph is undirected, which the three-front breadth-first search relies on. A move records the path index, and the GUI animates <code>poseAt(makePath(spec), t)</code>, the same function the checker sampled. What you see is what was checked.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Validation and verified math</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Check</th><th>What it establishes</th></tr></thead>
+        <tbody>
+          <tr><td>Hand-built cases</td><td>A cube spinning beside a face neighbour, a bar sweeping only its quarter, L-trominoes about their corners. Thresholds match closed-form values within ±0.01.</td></tr>
+          <tr><td>Independent oracle</td><td>On random scenes and paths, the checker is never clear where a separately written dense sampler (point-in-polygon and edge crossings, not signed distance) sees an overlap.</td></tr>
+          <tr><td>Orientation conventions</td><td>For all 24 orientations × 3 axes × 2 senses, the stored symmetry id and the rotated cells agree.</td></tr>
+          <tr><td>Tables</td><td>Turned and mirrored tables equal directly computed ones. The outermost entries of a radius-8 table equal an unpruned brute force.</td></tr>
+          <tr><td>Replay</td><td><code>AAA_most_rotations</code> (level 2.4 with 2 turns, both needing a wiggle): every step is replayed independently and re-certified, including after a save/load round trip.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Threshold, play 0.081</th><th>Formula</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Spin beside a face neighbour, 45° bevel</td><td class="mono">k ≥ h − √((1−h)² − h²)</td><td class="num" id="thr-k"></td></tr>
+          <tr><td>Same, as puzzlecad bevel face width</td><td class="mono">k·√2</td><td class="num" id="thr-kw"></td></tr>
+          <tr><td>Same, rounded edges</td><td class="mono">r ≥ (a/√2 − (1−h)) / (√2 − 1)</td><td class="num" id="thr-r"></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Math review while writing this page.</b> I re-derived the code's geometry and found it correct:
+      <ul style="margin:6px 0 0; padding-left:20px">
+        <li>the Lipschitz bound;</li>
+        <li>the separating-axis normals of the turned octagon;</li>
+        <li>the hit range used to fill the tables, <code>√2·(1−g) + shift</code>;</li>
+        <li>the reversal closure of the path family;</li>
+        <li>the conversion from puzzlecad, checked against puzzlecad's source.</li>
+      </ul>
+      The one error was in the design doc: it claimed the face-neighbour spin needs rounding <code>r ≥ (√2−1)/2 ≈ 0.207</code>. That is wrong at any play; it is 0.264 at play 0.081 and 0.5 at play 0. The code's test already used the correct formula. The doc is fixed in commit <code>f5b8a74e</code>.
+    </div>
+  </section>
+
+  <section>
+    <h2>Open questions</h2>
+    <div class="prose">
+      <ul>
+        <li>Default play and bevel: these need moves verified on physical copies (Clutch 4 and others) to calibrate against.</li>
+        <li>With turns allowed, the breadth-first search finds shorter disassemblies that use them once pieces are partly out (PelikanBurr: 3 turns). Should turns rank equal to slides, or count only when translations fail?</li>
+        <li>Should half turns be single moves? Should results report the minimum play a move needs?</li>
+        <li>Cost: building the default tables takes about 1.8 s for PelikanBurr (dev build). DraculasDentalDesaster with <code>-R</code> takes 5.5 s wall, against 0.05 s without turns.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Geometry on this page is a direct port of <code>planarScene_c</code>, <code>makePath</code> and the family order in <code>rotationTables_c</code> (src/lib/rotationgeometry.cpp). Scenes are drawn in the plane of the turn, with u to the right and v up. Example scenes were found by random search with the ported checker and reduced to the cubes that matter.
+  </footer>
+</div>
+
+<script>
+// Port of src/lib/rotationgeometry.cpp (planar part): signed distance,
+// clearance, certified path checker, path family.
+const G = (() => {
+  const SQ2 = Math.SQRT2;
+  const MIN_DISPLACEMENT = 1e-7;
+
+  function corners(h, k) {
+    const sg = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+    const out = [];
+    for (const [a, b] of sg) {
+      const x = h * a, y = h * b;
+      if (k > 0) {
+        const hin = a !== b;
+        out.push(hin ? [x - a * k, y] : [x, y - b * k]);
+        out.push(hin ? [x, y - b * k] : [x - a * k, y]);
+      } else out.push([x, y]);
+    }
+    return out;
+  }
+
+  function segPt2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const qx = ax + t * dx - px, qy = ay + t * dy - py;
+    return qx * qx + qy * qy;
+  }
+
+  // signed distance between static core at (su,sv) and moving core at (mu,mv) turned by (c,s)
+  function sqSD(su, sv, mu, mv, c, s, h, k) {
+    const loc = corners(h, k);
+    const sp = loc.map(([x, y]) => [su + x, sv + y]);
+    const mp = loc.map(([x, y]) => [mu + x * c - y * s, mv + x * s + y * c]);
+    const r = SQ2 / 2;
+    const normals = [[1, 0], [0, 1], [c, s], [-s, c], [r, r], [r, -r], [r * (c - s), r * (s + c)], [r * (c + s), r * (s - c)]];
+    const nn = k > 0 ? 8 : 4;
+    let depth = Infinity, apart = false;
+    for (let j = 0; j < nn && !apart; j++) {
+      let smin = Infinity, smax = -Infinity, mmin = Infinity, mmax = -Infinity;
+      for (let i = 0; i < sp.length; i++) {
+        const ds = sp[i][0] * normals[j][0] + sp[i][1] * normals[j][1];
+        const dm = mp[i][0] * normals[j][0] + mp[i][1] * normals[j][1];
+        smin = Math.min(smin, ds); smax = Math.max(smax, ds);
+        mmin = Math.min(mmin, dm); mmax = Math.max(mmax, dm);
+      }
+      const ov = Math.min(smax, mmax) - Math.max(smin, mmin);
+      if (ov <= 0) apart = true; else depth = Math.min(depth, ov);
+    }
+    if (!apart) return -depth;
+    let d2 = Infinity;
+    const n = sp.length;
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const j2 = (j + 1) % n;
+        d2 = Math.min(d2, segPt2(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]));
+        d2 = Math.min(d2, segPt2(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
+      }
+    return Math.sqrt(d2);
+  }
+
+  // scene: single layer; moving/stat are [u,v] cell centres, pivot [pu,pv] in cell units
+  function scene(moving, stat, pivot, model) {
+    const half = 0.5 * (1 - model.play) - model.rounding;
+    const m = moving.map(([u, v]) => [u - pivot[0], v - pivot[1]]);
+    const st = stat.map(([u, v]) => [u - pivot[0], v - pivot[1]]);
+    let rho = 0;
+    for (const [u, v] of m) rho = Math.max(rho, Math.hypot(u, v) + half * SQ2);
+    return { m, st, half, rounding: model.rounding, chamfer: model.chamfer || 0, rho };
+  }
+
+  // returns {cl, mi, si}: clearance and the closest pair
+  function clearance(sc, p) {
+    const c = Math.cos(p.theta), s = Math.sin(p.theta);
+    let best = Infinity, mi = -1, si = -1;
+    sc.m.forEach(([u, v], a) => {
+      const mu = u * c - v * s + p.du, mv = u * s + v * c + p.dv;
+      sc.st.forEach(([su, sv], b) => {
+        if (Math.hypot(mu - su, mv - sv) > 2 * SQ2 * sc.half + 2 * sc.rounding + best + 1e-9) return;
+        const d = sqSD(su, sv, mu, mv, c, s, sc.half, sc.chamfer) - 2 * sc.rounding;
+        if (d < best) { best = d; mi = a; si = b; }
+      });
+    });
+    return { cl: best, mi, si };
+  }
+
+  // certified checker; log collects {t0,t1,state} over global path parameter
+  function certify(sc, path, log) {
+    let verdict = 'clear';
+    const nseg = path.length - 1;
+    for (let k = 0; k < nseg; k++) {
+      const a = path[k], b = path[k + 1];
+      const L = Math.hypot(b.du - a.du, b.dv - a.dv) + sc.rho * Math.abs(b.theta - a.theta);
+      const todo = [[0, 1]];
+      while (todo.length) {
+        const [s0, s1] = todo.pop();
+        const sm = 0.5 * (s0 + s1);
+        const p = { theta: a.theta + sm * (b.theta - a.theta), du: a.du + sm * (b.du - a.du), dv: a.dv + sm * (b.dv - a.dv) };
+        const cl = clearance(sc, p).cl;
+        const g0 = (k + s0) / nseg, g1 = (k + s1) / nseg, gm = (k + sm) / nseg;
+        if (cl < 0) { log && log.push({ t0: g0, t1: g1, tm: gm, state: 'hit' }); return 'blocked'; }
+        if (cl >= 0.5 * (s1 - s0) * L) { log && log.push({ t0: g0, t1: g1, tm: gm, state: 'ok' }); continue; }
+        if ((s1 - s0) * L < MIN_DISPLACEMENT) { verdict = 'undecided'; continue; }
+        log && log.push({ t0: g0, t1: g1, tm: gm, state: 'split' });
+        todo.push([s0, sm]); todo.push([sm, s1]);
+      }
+    }
+    return verdict;
+  }
+
+  const WIGGLE_SEGMENTS = 16;
+  function makePath(spec) {
+    const end = spec.sense === 0 ? Math.PI / 2 : -Math.PI / 2;
+    if (spec.kind === 'pure') return [{ theta: 0, du: 0, dv: 0 }, { theta: end, du: 0, dv: 0 }];
+    const len = Math.hypot(spec.dir[0], spec.dir[1]);
+    const su = spec.amount * spec.dir[0] / len, sv = spec.amount * spec.dir[1] / len;
+    if (spec.kind === 'slide')
+      return [{ theta: 0, du: 0, dv: 0 }, { theta: 0, du: su, dv: sv }, { theta: end, du: su, dv: sv }, { theta: end, du: 0, dv: 0 }];
+    const path = [];
+    for (let k = 0; k <= WIGGLE_SEGMENTS; k++) {
+      const t = k / WIGGLE_SEGMENTS, th = Math.PI / 2 * t, w = (Math.cos(th) + Math.sin(th) - 1) / (Math.SQRT2 - 1);
+      path.push({ theta: end * t, du: w * su, dv: w * sv });
+    }
+    path[path.length - 1] = { theta: end, du: 0, dv: 0 };
+    return path;
+  }
+
+  function poseAt(path, t) {
+    if (t <= 0) return path[0];
+    if (t >= 1) return path[path.length - 1];
+    const n = path.length - 1;
+    const seg = Math.min(Math.floor(t * n), n - 1);
+    const l = t * n - seg, a = path[seg], b = path[seg + 1];
+    return { theta: a.theta + l * (b.theta - a.theta), du: a.du + l * (b.du - a.du), dv: a.dv + l * (b.dv - a.dv) };
+  }
+
+  // compass directions counter-clockwise from (1,0)
+  const DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  function family(sense, amounts) {
+    const f = [{ kind: 'pure', sense }];
+    for (const a of amounts)
+      for (const kind of ['wiggle', 'slide'])
+        for (const d of DIRS) {
+          // the -90° tables are mirrored at the u axis
+          const dir = sense === 0 ? d : [d[0], -d[1]];
+          f.push({ kind, sense, dir, amount: a });
+        }
+    return f;
+  }
+
+  return { sqSD, scene, clearance, certify, makePath, poseAt, family, DIRS };
+})();
+
+
+(() => {
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let C = {};
+  function readTokens() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['paper','sheet','ink','ink-2','rule','grid','static','static-fill','moving','moving-fill','ghost','ok','ok-soft','hit','hit-soft','split','split-soft','pivot'])
+      C[k] = cs.getPropertyValue('--' + k).trim();
+  }
+  readTokens();
+  const redraws = [];
+  const themeChanged = () => { readTokens(); redraws.forEach(f => f()); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', themeChanged);
+  new MutationObserver(themeChanged).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  /* ---------- drawing helpers ---------- */
+  function fitCanvas(cv) {
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    return cv.getContext('2d');
+  }
+  // view: world (u,v) -> canvas px
+  function makeView(cv, bounds) {
+    const [u0, u1, v0, v1] = bounds;
+    const s = Math.min(cv.width / (u1 - u0), cv.height / (v1 - v0));
+    const ox = (cv.width - s * (u1 - u0)) / 2, oy = (cv.height - s * (v1 - v0)) / 2;
+    return { s, X: u => ox + (u - u0) * s, Y: v => cv.height - oy - (v - v0) * s, inv: (x, y) => [u0 + (x - ox) / s, v0 + (cv.height - oy - y) / s] };
+  }
+  function cubeOutline(model) {
+    const h = 0.5 * (1 - model.play) - (model.rounding || 0);
+    const k = model.chamfer || 0;
+    const pts = [];
+    for (const [a, b] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const x = h * a, y = h * b;
+      if (k > 0) {
+        const hin = a !== b;
+        pts.push(hin ? [x - a * k, y] : [x, y - b * k]);
+        pts.push(hin ? [x, y - b * k] : [x - a * k, y]);
+      } else pts.push([x, y]);
+    }
+    return pts;
+  }
+  function drawCube(ctx, V, cu, cv_, theta, outline, fill, stroke, lw) {
+    const c = Math.cos(theta), s = Math.sin(theta);
+    ctx.beginPath();
+    outline.forEach(([x, y], i) => {
+      const px = V.X(cu + x * c - y * s), py = V.Y(cv_ + x * s + y * c);
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    });
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.5; ctx.stroke(); }
+  }
+  function drawGrid(ctx, V, bounds) {
+    const [u0, u1, v0, v1] = bounds;
+    ctx.fillStyle = C.sheet; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let u = Math.ceil(u0 - 0.5) + 0.5; u <= u1; u++) { ctx.moveTo(V.X(u), V.Y(v0)); ctx.lineTo(V.X(u), V.Y(v1)); }
+    for (let v = Math.ceil(v0 - 0.5) + 0.5; v <= v1; v++) { ctx.moveTo(V.X(u0), V.Y(v)); ctx.lineTo(V.X(u1), V.Y(v)); }
+    ctx.stroke();
+  }
+  function drawPivot(ctx, V, p) {
+    const x = V.X(p[0]), y = V.Y(p[1]), r = Math.max(5, V.s * 0.09);
+    ctx.strokeStyle = C.pivot; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - r * 1.6, y); ctx.lineTo(x + r * 1.6, y); ctx.moveTo(x, y - r * 1.6); ctx.lineTo(x, y + r * 1.6); ctx.stroke();
+  }
+  // world position of moving cube centre (relative to pivot m) at pose p
+  const place = (m, pv, p) => {
+    const c = Math.cos(p.theta), s = Math.sin(p.theta);
+    return [pv[0] + m[0] * c - m[1] * s + p.du, pv[1] + m[0] * s + m[1] * c + p.dv];
+  };
+  const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+  /* ---------- 1. path-kind trio ---------- */
+  const trioShape = [[0, 0], [1, 0], [0, 1]];
+  const trioPivot = [0.5, 0.5];
+  const trioModel = { play: 0.081, rounding: 0, chamfer: 0 };
+  const trioSpecs = {
+    'k-pure': { kind: 'pure', sense: 0 },
+    'k-wiggle': { kind: 'wiggle', sense: 0, dir: [1, -1], amount: 0.4 },
+    'k-slide': { kind: 'slide', sense: 0, dir: [1, -1], amount: 0.4 }
+  };
+  const trio = Object.entries(trioSpecs).map(([id, spec]) => {
+    const cv = document.getElementById(id);
+    const path = G.makePath(spec);
+    const m = trioShape.map(([u, v]) => [u - trioPivot[0], v - trioPivot[1]]);
+    const cen = [m.reduce((a, q) => a + q[0], 0) / m.length, m.reduce((a, q) => a + q[1], 0) / m.length];
+    const trace = [];
+    for (let i = 0; i <= 120; i++) trace.push(place(cen, trioPivot, G.poseAt(path, i / 120)));
+    return { cv, path, m, trace };
+  });
+  const trioBounds = [-1.6, 2.1, -1.1, 2.6];
+  function drawTrio(t) {
+    const outline = cubeOutline(trioModel);
+    for (const k of trio) {
+      const ctx = fitCanvas(k.cv), V = makeView(k.cv, trioBounds);
+      drawGrid(ctx, V, trioBounds);
+      // ghost start and end
+      const end = k.path[k.path.length - 1];
+      for (const q of k.m) {
+        const [a, b] = place(q, trioPivot, end);
+        drawCube(ctx, V, a, b, end.theta, outline, null, C.ghost, 1);
+      }
+      ctx.setLineDash([4, 4]); ctx.strokeStyle = C.ink2 || C['ink-2']; ctx.lineWidth = 1.5;
+      ctx.beginPath(); k.trace.forEach(([a, b], i) => i ? ctx.lineTo(V.X(a), V.Y(b)) : ctx.moveTo(V.X(a), V.Y(b))); ctx.stroke(); ctx.setLineDash([]);
+      const p = G.poseAt(k.path, t);
+      for (const q of k.m) {
+        const [a, b] = place(q, trioPivot, p);
+        drawCube(ctx, V, a, b, p.theta, outline, C['moving-fill'], C.moving, 2);
+      }
+      drawPivot(ctx, V, [trioPivot[0] + p.du, trioPivot[1] + p.dv]);
+    }
+  }
+
+  /* ---------- 2. exploded layers (oblique projection) ---------- */
+  const layerCv = document.getElementById('layers');
+  function drawLayers() {
+    const ctx = fitCanvas(layerCv), W = layerCv.width, H = layerCv.height;
+    ctx.fillStyle = C.sheet; ctx.fillRect(0, 0, W, H);
+    const s = Math.min(W / 13.5, H / 6.2);
+    const proj = (x, y, z) => [W * 0.08 + (x + 0.55 * y) * s + z * 0, H * 0.86 - (0.42 * y * s) - z * s * 1.85];
+    // two layers: z=0 bottom, z=1 top (exploded); moving group (blue) in both layers
+    const layers = [
+      { z: 0, moving: [[2, 1], [3, 1], [2, 2]], stat: [[4, 1], [1, 1], [4, 2], [1, 3]] },
+      { z: 1, moving: [[2, 1], [3, 1]], stat: [[2, 3], [4, 0], [1, 2]] }
+    ];
+    const face = (pts, fill, stroke) => { ctx.beginPath(); pts.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 1.2; ctx.stroke(); };
+    const off = [0, 7.0];
+    layers.forEach((L, li) => {
+      const ox = off[li];
+      // plate
+      const z = L.z;
+      face([proj(ox - 0.3, -0.3, z), proj(ox + 5.8, -0.3, z), proj(ox + 5.8, 4.6, z), proj(ox - 0.3, 4.6, z)], C.paper, C.rule);
+      const cubes = L.stat.map(c => [c, false]).concat(L.moving.map(c => [c, true]));
+      cubes.sort((a, b) => (b[0][1] - a[0][1]) || (a[0][0] - b[0][0]));
+      for (const [[x, y], mv] of cubes) {
+        const X = ox + x, f = mv ? C['moving-fill'] : C['static-fill'], st = mv ? C.moving : C.static;
+        const h = 0.6;
+        // top face
+        const zz = z + h / 1.85 * 0.9;
+        face([proj(X, y, zz), proj(X + 0.92, y, zz), proj(X + 0.92, y + 0.92, zz), proj(X, y + 0.92, zz)], f, st);
+        // front face
+        face([proj(X, y, z), proj(X + 0.92, y, z), proj(X + 0.92, y, zz), proj(X, y, zz)], f, st);
+        // side face
+        face([proj(X + 0.92, y, z), proj(X + 0.92, y + 0.92, z), proj(X + 0.92, y + 0.92, zz), proj(X + 0.92, y, zz)], f, st);
+      }
+      ctx.fillStyle = C['ink-2']; ctx.font = `${Math.round(s * 0.26)}px monospace`;
+      const [lx, ly] = proj(ox - 0.3, -0.3, z);
+      ctx.fillText(li === 0 ? 'layer z = 0' : 'layer z = 1', lx + s * 0.2, ly + s * 0.45);
+    });
+    // turn axis through each layer's pivot
+    ctx.strokeStyle = C.pivot; ctx.fillStyle = C.pivot; ctx.lineWidth = 2;
+    layers.forEach((L, li) => {
+      const ox = off[li];
+      const [a, b] = proj(ox + 2.95, 1.95, L.z), [c, d] = proj(ox + 2.95, 1.95, L.z + 0.75);
+      ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(c, d - 8); ctx.lineTo(c - 6, d + 4); ctx.lineTo(c + 6, d + 4); ctx.closePath(); ctx.fill();
+      ctx.font = `${Math.round(s * 0.24)}px sans-serif`;
+      ctx.fillText('axis Z', c + 8, d + 4);
+    });
+  }
+
+  /* ---------- 3. face-neighbour spin ---------- */
+  const spinCv = document.getElementById('spin');
+  const spPlay = document.getElementById('sp-play'), spK = document.getElementById('sp-k'), spA = document.getElementById('sp-a');
+  let spinWiggle = false;
+  let spinState = null;
+  function spinUpdate() {
+    const play = +spPlay.value, h = 0.5 * (1 - play);
+    let k = Math.min(+spK.value, h - 0.005);
+    const model = { play, rounding: 0, chamfer: k };
+    const sc = G.scene([[0, 0]], [[1, 0]], [0, 0], model);
+    const amount = +spA.value;
+    const path = spinWiggle ? G.makePath({ kind: 'wiggle', sense: 0, dir: [-1, 0], amount }) : G.makePath({ kind: 'pure', sense: 0 });
+    const verdict = G.certify(sc, path);
+    const kmin = h - Math.sqrt((1 - h) * (1 - h) - h * h);
+    // smallest clear wiggle amount at this model, by bisection with the checker
+    const okA = a => G.certify(sc, G.makePath({ kind: 'wiggle', sense: 0, dir: [-1, 0], amount: a })) === 'clear';
+    let lo = 0.0005, hi = 0.45;
+    if (okA(lo)) hi = lo; else for (let i = 0; i < 24; i++) { const m = 0.5 * (lo + hi); if (okA(m)) hi = m; else lo = m; }
+    document.getElementById('sp-a-o').textContent = amount.toFixed(3);
+    document.getElementById('sp-play-o').textContent = play.toFixed(3);
+    document.getElementById('sp-k-o').textContent = k.toFixed(3) + '  (face ' + (k * Math.SQRT2).toFixed(3) + ')';
+    const vEl = document.getElementById('sp-verdict');
+    vEl.textContent = verdict; vEl.className = 'pill ' + verdict;
+    const reach = Math.hypot(h, h - k);
+    document.getElementById('sp-read').innerHTML =
+      `farthest point <b>${reach.toFixed(4)}</b> · neighbour face <b>${(1 - h).toFixed(4)}</b><br>` +
+      `pure turn needs a bevel <b>k ≥ ${kmin.toFixed(4)}</b> (bevel face ${(kmin * Math.SQRT2).toFixed(4)} cells)<br>` +
+      `bulge wiggle away needs <b>a ≥ ${hi.toFixed(4)}</b> at this play and bevel (sharp: h(√2−1) − g = ${(h * (Math.SQRT2 - 1) - play).toFixed(4)})`;
+    spinState = { model, sc, verdict, path };
+  }
+  function drawSpin(t) {
+    if (!spinState) return;
+    const ctx = fitCanvas(spinCv), b = [-1.2, 1.9, -1.55, 1.55], V = makeView(spinCv, b);
+    drawGrid(ctx, V, b);
+    const outline = cubeOutline(spinState.model);
+    drawCube(ctx, V, 1, 0, 0, outline, C['static-fill'], C.static, 1.5);
+    const pose = G.poseAt(spinState.path, t), theta = pose.theta;
+    const cl = G.clearance(spinState.sc, pose).cl;
+    const hit = cl < 0;
+    // swept circle
+    const h = 0.5 * (1 - spinState.model.play), k = spinState.model.chamfer;
+    ctx.setLineDash([5, 5]); ctx.strokeStyle = C['ink-2']; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(V.X(0), V.Y(0), Math.hypot(h, h - k) * V.s, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+    drawCube(ctx, V, pose.du, pose.dv, theta, outline, hit ? C['hit-soft'] : C['moving-fill'], hit ? C.hit : C.moving, 2);
+    drawPivot(ctx, V, [pose.du, pose.dv]);
+    ctx.fillStyle = hit ? C.hit : C['ink-2']; ctx.font = `${Math.round(V.s * 0.11)}px monospace`;
+    ctx.fillText(`θ ${(theta * 180 / Math.PI).toFixed(0).padStart(2)}°  clearance ${cl.toFixed(3)}`, V.X(-1.1), V.Y(-1.42));
+  }
+  spPlay.addEventListener('input', () => { spinUpdate(); drawSpin(lastT.spin); });
+  spA.addEventListener('input', () => { spinUpdate(); drawSpin(lastT.spin); });
+  const setSpinPath = w => {
+    spinWiggle = w;
+    document.getElementById('sp-pure').setAttribute('aria-pressed', !w);
+    document.getElementById('sp-wig').setAttribute('aria-pressed', w);
+    document.getElementById('sp-a-row').hidden = !w;
+    spinUpdate(); drawSpin(lastT.spin);
+  };
+  document.getElementById('sp-pure').addEventListener('click', () => setSpinPath(false));
+  document.getElementById('sp-wig').addEventListener('click', () => setSpinPath(true));
+  spK.addEventListener('input', () => { spinUpdate(); drawSpin(lastT.spin); });
+
+  /* ---------- 4. lab ---------- */
+  const PRESETS = {
+    pure: { label: 'Pure turn clear', mv: [[0,0],[1,0],[2,0],[1,1]], st: [[2,2],[-1,0],[3,-1],[0,2],[3,2],[-2,1],[3,0],[3,-2]], pv: [1, 0],
+      note: 'A T-shaped group turns about the centre of its middle cube. The pure turn clears all eight static cubes.' },
+    wiggle: { label: 'Needs a wiggle', mv: [[0,0],[1,0],[1,1]], st: [[1,2],[3,1],[-2,3],[1,3],[-1,2],[-2,-2],[4,3]], pv: [1, 1],
+      note: 'The pure turn clips the cube above the pivot. Drifting 0.2 cells away from it during the turn gets past.' },
+    slide: { label: 'Needs a slide', mv: [[0,0],[1,0],[0,1]], st: [[1,1],[-1,-2],[-2,2],[-2,-2],[4,2],[4,3],[1,-2]], pv: [1, 1],
+      note: 'Turning about a cube that is in the way only works after stepping 0.2 cells down, turning about the shifted pivot, and stepping back.' },
+    none: { label: 'Blocked on every path', mv: [[0,0],[1,0],[2,0],[1,1]], st: [[2,1],[-1,-2],[-2,-2],[0,-2],[4,0],[-2,1],[-2,2]], pv: [0, 1],
+      note: 'The end cells are free, but no path of the family gets there: all 65 are blocked.' },
+    spin: { label: 'Face-neighbour spin', mv: [[0,0]], st: [[1,0]], pv: [0, 0],
+      note: 'The pure turn (path #0) is blocked with sharp edges and needs a bevel above 0.175. The family still finds a move: a bulge wiggle away from the neighbour, here the 0.2 one, lets the corner glide along the neighbour\'s face.' }
+  };
+  const AMOUNTS = [0.1, 0.2, 0.3, 0.4];
+  const lab = { preset: 'wiggle', sense: 0, sel: -1, verdicts: [], first: -1, log: [], playing: !reduceMotion, t: 0 };
+  const labCv = document.getElementById('lab-stage'), plotCv = document.getElementById('lab-plot');
+  const labPlay = document.getElementById('lab-play'), labK = document.getElementById('lab-k'), labT = document.getElementById('lab-t');
+  const playBtn = document.getElementById('lab-play-btn');
+  const famEl = document.getElementById('family');
+
+  const presetsEl = document.getElementById('presets');
+  for (const [key, p] of Object.entries(PRESETS)) {
+    const b = document.createElement('button');
+    b.textContent = p.label; b.dataset.key = key; b.setAttribute('aria-pressed', key === lab.preset);
+    b.addEventListener('click', () => { lab.preset = key; lab.sel = -1; presetsEl.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.key === key)); labRecompute(); });
+    presetsEl.appendChild(b);
+  }
+  function setSense(s) { lab.sense = s; lab.sel = -1; document.getElementById('sense0').setAttribute('aria-pressed', s === 0); document.getElementById('sense1').setAttribute('aria-pressed', s === 1); labRecompute(); }
+  document.getElementById('sense0').addEventListener('click', () => setSense(0));
+  document.getElementById('sense1').addEventListener('click', () => setSense(1));
+  labPlay.addEventListener('input', () => labRecompute());
+  labK.addEventListener('input', () => labRecompute());
+  playBtn.addEventListener('click', () => { lab.playing = !lab.playing; playBtn.textContent = lab.playing ? 'Pause' : 'Play'; });
+  labT.addEventListener('input', () => { lab.playing = false; playBtn.textContent = 'Play'; lab.t = labT.value / 1000; drawLab(); });
+
+  function specName(sp) {
+    const sg = sp.sense === 0 ? '+90°' : '−90°';
+    if (sp.kind === 'pure') return `pure ${sg}`;
+    return `${sp.kind} ${sg} · dir (${sp.dir[0]},${sp.dir[1]}) · ${sp.amount}`;
+  }
+  function labModel() {
+    const play = +labPlay.value, h = 0.5 * (1 - play);
+    return { play, rounding: 0, chamfer: Math.min(+labK.value, h - 0.005) };
+  }
+  function labRecompute() {
+    const P = PRESETS[lab.preset], model = labModel();
+    document.getElementById('lab-play-o').textContent = model.play.toFixed(3);
+    document.getElementById('lab-k-o').textContent = model.chamfer.toFixed(3);
+    document.getElementById('preset-note').textContent = P.note;
+    lab.model = model;
+    lab.sc = G.scene(P.mv, P.st, P.pv, model);
+    lab.family = G.family(lab.sense, AMOUNTS);
+    lab.verdicts = lab.family.map(sp => G.certify(lab.sc, G.makePath(sp)));
+    lab.first = lab.verdicts.indexOf('clear');
+    const idx = lab.sel >= 0 ? lab.sel : (lab.first >= 0 ? lab.first : 0);
+    lab.cur = idx;
+    lab.spec = lab.family[idx];
+    lab.path = G.makePath(lab.spec);
+    lab.log = [];
+    lab.verdict = G.certify(lab.sc, lab.path, lab.log);
+    // dense clearance curve for display
+    lab.curve = [];
+    for (let i = 0; i <= 360; i++) lab.curve.push(G.clearance(lab.sc, G.poseAt(lab.path, i / 360)).cl);
+    // end-cell check (lattice end pose free)
+    const occ = new Set(P.st.map(c => c.join(',')));
+    const endFree = P.mv.every(([u, v]) => {
+      const du = u - P.pv[0], dv = v - P.pv[1];
+      const e = lab.sense === 0 ? [P.pv[0] - dv, P.pv[1] + du] : [P.pv[0] + dv, P.pv[1] - du];
+      return !occ.has(e.map(x => Math.round(x)).join(','));
+    });
+    lab.endFree = endFree;
+    document.getElementById('lab-path').textContent = specName(lab.spec);
+    const vEl = document.getElementById('lab-verdict'); vEl.textContent = lab.verdict; vEl.className = 'pill ' + lab.verdict;
+    const nClear = lab.verdicts.filter(v => v === 'clear').length;
+    const evals = lab.log.length;
+    document.getElementById('lab-read').innerHTML =
+      `first clear path <b>${lab.first >= 0 ? '#' + lab.first + ' ' + specName(lab.family[lab.first]) : 'none'}</b><br>` +
+      `${nClear} of 65 paths clear · end cells ${endFree ? '<b>free</b>' : '<b>occupied</b>'}<br>` +
+      `checker: <b>${evals}</b> clearance evaluations for the shown path · ρ = ${lab.sc.rho.toFixed(3)}`;
+    renderFamily();
+    drawLab(); drawPlot();
+  }
+  function renderFamily() {
+    famEl.innerHTML = '';
+    const head = document.createElement('div'); head.className = 'rl'; famEl.appendChild(head);
+    const names = ['→','↗','↑','↖','←','↙','↓','↘'];
+    for (const kind of ['wiggle', 'slide']) for (let d = 0; d < 8; d++) {
+      const h = document.createElement('div'); h.className = 'h';
+      const dir = G.DIRS[d]; const real = lab.sense === 0 ? dir : [dir[0], -dir[1]];
+      h.textContent = names[G.DIRS.findIndex(q => q[0] === real[0] && q[1] === real[1])];
+      h.title = `${kind} direction (${real[0]},${real[1]})`;
+      if (kind === 'wiggle' && d === 0) h.style.borderLeft = '0';
+      famEl.appendChild(h);
+      if (kind === 'wiggle' && d === 7) { /* wiggle headers end */ }
+    }
+    // headers are 16 cells: 8 wiggle + 8 slide; reuse for each amount row
+    const addCell = (i, cls) => {
+      const b = document.createElement('button');
+      b.className = 'fcell ' + lab.verdicts[i] + (i === lab.cur ? ' sel' : '') + (i === lab.first ? ' first' : '') + (cls ? ' ' + cls : '');
+      b.title = `#${i} ${specName(lab.family[i])}: ${lab.verdicts[i]}`;
+      b.setAttribute('aria-label', b.title);
+      b.addEventListener('click', () => { lab.sel = i; labRecompute(); });
+      famEl.appendChild(b);
+    };
+    const rl = t => { const d = document.createElement('div'); d.className = 'rl'; d.textContent = t; famEl.appendChild(d); };
+    rl('#0 pure'); addCell(0, 'purecell');
+    AMOUNTS.forEach((a, ai) => {
+      rl(`a = ${a}`);
+      for (let j = 0; j < 16; j++) addCell(1 + ai * 16 + j);
+    });
+    const foot = document.createElement('div'); foot.className = 'rl'; famEl.appendChild(foot);
+    const w = document.createElement('div'); w.className = 'h'; w.style.gridColumn = 'span 8'; w.textContent = 'wiggles'; famEl.appendChild(w);
+    const s = document.createElement('div'); s.className = 'h'; s.style.gridColumn = 'span 8'; s.textContent = 'slides'; famEl.appendChild(s);
+  }
+  const labBounds = [-2.7, 4.7, -2.7, 4.2];
+  function drawLab() {
+    if (!lab.sc) return;
+    const P = PRESETS[lab.preset];
+    const ctx = fitCanvas(labCv);
+    const b = lab.preset === 'spin' ? [-1.7, 2.2, -1.9, 1.9] : labBounds;
+    const V = makeView(labCv, b);
+    drawGrid(ctx, V, b);
+    const outline = cubeOutline(lab.model);
+    const p = G.poseAt(lab.path, lab.t);
+    const near = G.clearance(lab.sc, p);
+    P.st.forEach(([u, v], i) => drawCube(ctx, V, u, v, 0, outline, i === near.si && near.cl < 0 ? C['hit-soft'] : C['static-fill'], i === near.si && near.cl < 0 ? C.hit : C.static, 1.5));
+    const end = lab.path[lab.path.length - 1];
+    lab.sc.m.forEach(q => { const [a, c] = place(q, P.pv, end); drawCube(ctx, V, a, c, end.theta, outline, null, C.ghost, 1); });
+    // centre trace
+    const cen = [lab.sc.m.reduce((a, q) => a + q[0], 0) / lab.sc.m.length, lab.sc.m.reduce((a, q) => a + q[1], 0) / lab.sc.m.length];
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C['ink-2']; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let i = 0; i <= 100; i++) { const [a, c] = place(cen, P.pv, G.poseAt(lab.path, i / 100)); i ? ctx.lineTo(V.X(a), V.Y(c)) : ctx.moveTo(V.X(a), V.Y(c)); }
+    ctx.stroke(); ctx.setLineDash([]);
+    const hit = near.cl < 0;
+    lab.sc.m.forEach((q, i) => {
+      const [a, c] = place(q, P.pv, p);
+      const bad = hit && i === near.mi;
+      drawCube(ctx, V, a, c, p.theta, outline, bad ? C['hit-soft'] : C['moving-fill'], bad ? C.hit : C.moving, 2);
+    });
+    drawPivot(ctx, V, [P.pv[0] + p.du, P.pv[1] + p.dv]);
+    ctx.fillStyle = hit ? C.hit : C['ink-2']; ctx.font = `${Math.max(11, Math.round(V.s * 0.2))}px monospace`;
+    ctx.fillText(`t ${lab.t.toFixed(2)}  θ ${(p.theta * 180 / Math.PI).toFixed(0)}°  clearance ${near.cl === Infinity ? '∞' : near.cl.toFixed(3)}`, 10, labCv.height - 10);
+    labT.value = Math.round(lab.t * 1000);
+    drawPlot();
+  }
+  function drawPlot() {
+    if (!lab.curve) return;
+    const ctx = fitCanvas(plotCv), W = plotCv.width, H = plotCv.height;
+    ctx.fillStyle = C.sheet; ctx.fillRect(0, 0, W, H);
+    const dpr = W / plotCv.getBoundingClientRect().width;
+    const padL = 44 * dpr, padR = 10 * dpr, padT = 10 * dpr, band = 16 * dpr, padB = 24 * dpr + band;
+    const finite = lab.curve.filter(Number.isFinite);
+    const hiRaw = finite.length ? Math.max(...finite) : 1;
+    const lo = Math.min(-0.2, ...finite), hi = Math.max(0.4, Math.min(hiRaw, 1.2));
+    const X = t => padL + t * (W - padL - padR), Y = c => padT + (hi - Math.max(lo, Math.min(hi, c))) / (hi - lo) * (H - padT - padB);
+    ctx.font = `${11 * dpr}px monospace`; ctx.fillStyle = C['ink-2']; ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+    const step = (hi - lo) > 0.8 ? 0.2 : 0.1;
+    for (let c = Math.ceil(lo / step) * step; c <= hi + 1e-9; c += step) {
+      ctx.beginPath(); ctx.moveTo(padL, Y(c)); ctx.lineTo(W - padR, Y(c)); ctx.stroke();
+      ctx.fillText(c.toFixed(1), 4 * dpr, Y(c) + 4 * dpr);
+    }
+    ctx.strokeStyle = C.hit; ctx.lineWidth = 1.2 * dpr; ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(W - padR, Y(0)); ctx.stroke();
+    // negative region
+    ctx.fillStyle = C['hit-soft']; ctx.globalAlpha = 0.6; ctx.fillRect(padL, Y(0), W - padL - padR, Y(lo) - Y(0)); ctx.globalAlpha = 1;
+    // curve
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 2 * dpr; ctx.beginPath();
+    lab.curve.forEach((c, i) => { const x = X(i / 360), y = Y(Number.isFinite(c) ? c : hi); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke();
+    // certifier band
+    const by = H - padB + 6 * dpr;
+    for (const e of lab.log) {
+      if (e.state === 'ok') { ctx.fillStyle = C.ok; ctx.fillRect(X(e.t0), by, Math.max(1, X(e.t1) - X(e.t0) - 1), band - 4 * dpr); }
+    }
+    for (const e of lab.log) {
+      if (e.state === 'ok') continue;
+      ctx.fillStyle = e.state === 'hit' ? C.hit : C.split;
+      const r = (e.state === 'hit' ? 4 : 2.2) * dpr;
+      const c = G.clearance(lab.sc, G.poseAt(lab.path, e.tm)).cl;
+      ctx.beginPath(); ctx.arc(X(e.tm), Y(Number.isFinite(c) ? c : hi), r, 0, 2 * Math.PI); ctx.fill();
+    }
+    ctx.fillStyle = C['ink-2'];
+    ctx.fillText('t = 0', padL, H - 4 * dpr);
+    const lbl = 't = 1'; ctx.fillText(lbl, W - padR - ctx.measureText(lbl).width, H - 4 * dpr);
+    // cursor
+    ctx.strokeStyle = C.moving; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.moveTo(X(lab.t), padT); ctx.lineTo(X(lab.t), H - padB + band + 2 * dpr); ctx.stroke();
+  }
+
+  /* ---------- 5. table entry ---------- */
+  const tblCv = document.getElementById('tbl');
+  const tbl = { corner: false, all: false, pathIdx: 0, sel: [2, 0], blockers: [] };
+  const tblModel = { play: 0.081, rounding: 0, chamfer: 0 };
+  const tblFamily = G.family(0, AMOUNTS);
+  const tblSel = document.getElementById('tbl-path');
+  tblFamily.forEach((sp, i) => { const o = document.createElement('option'); o.value = i; o.textContent = `#${i} ${specName(sp)}`; tblSel.appendChild(o); });
+  tblSel.addEventListener('change', () => { tbl.pathIdx = +tblSel.value; tblCompute(); });
+  document.getElementById('tp-centre').addEventListener('click', () => setPivotKind(false));
+  document.getElementById('tp-corner').addEventListener('click', () => setPivotKind(true));
+  const allBtn = document.getElementById('tbl-all');
+  allBtn.addEventListener('click', () => { tbl.all = !tbl.all; allBtn.setAttribute('aria-pressed', tbl.all); tblSel.disabled = tbl.all; tblCompute(); });
+  function setPivotKind(corner) {
+    tbl.corner = corner;
+    document.getElementById('tp-centre').setAttribute('aria-pressed', !corner);
+    document.getElementById('tp-corner').setAttribute('aria-pressed', corner);
+    tbl.sel = corner ? [1.5, 0.5] : [2, 0];
+    tblCompute();
+  }
+  const TR = 2; // moving offsets up to 2 cells from the pivot
+  function tblCompute() {
+    const off = tbl.corner ? 0.5 : 0;
+    const [mu, mv] = tbl.sel;
+    const shift = 0.4, range = Math.SQRT2 * (1 - tblModel.play) + shift + 1e-6;
+    const R0 = Math.hypot(mu, mv);
+    const cands = [];
+    for (let u = -5; u <= 5; u++) for (let v = -5; v <= 5; v++) {
+      const su = u + off, sv = v + off;
+      if (su === mu && sv === mv) continue;
+      // distance from the pure arc (angles 0..±90°)
+      let dmin = Infinity;
+      for (let i = 0; i <= 32; i++) { const a = (Math.PI / 2) * i / 32; for (const sg of [1, -1]) { const c = Math.cos(a * sg), s = Math.sin(a * sg); dmin = Math.min(dmin, Math.hypot(mu * c - mv * s - su, mu * s + mv * c - sv)); } }
+      if (dmin <= range + 0.05) cands.push([su, sv]);
+    }
+    const paths = tbl.all ? tblFamily.map(sp => G.makePath(sp)) : [G.makePath(tblFamily[tbl.pathIdx])];
+    tbl.blockers = cands.filter(st => {
+      const sc = G.scene([[mu, mv]], [st], [0, 0], tblModel);
+      return paths.every(pth => G.certify(sc, pth) !== 'clear');
+    });
+    tbl.cands = cands.length;
+    const dbl = `(${2 * mu}, ${2 * mv})`;
+    document.getElementById('tbl-read').innerHTML =
+      `moving offset <b>${dbl}</b> (doubled) · ${tbl.all ? 'all 65 paths' : specName(tblFamily[tbl.pathIdx])}<br>` +
+      `<b>${tbl.blockers.length}</b> blockers among ${tbl.cands} candidates within reach of the arc`;
+    drawTbl();
+  }
+  const tblBounds = [-3.6, 3.6, -3.6, 3.6];
+  function drawTbl() {
+    const ctx = fitCanvas(tblCv), V = makeView(tblCv, tblBounds);
+    drawGrid(ctx, V, tblBounds);
+    const off = tbl.corner ? 0.5 : 0;
+    const outline = cubeOutline(tblModel);
+    // selectable moving offsets
+    for (const [a, b] of tblOffsets()) {
+      ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+      ctx.strokeRect(V.X(a - 0.5) + 2, V.Y(b + 0.5) + 2, V.s - 4, V.s - 4);
+    }
+    for (const [u, v] of tbl.blockers) drawCube(ctx, V, u, v, 0, outline, C['hit-soft'], C.hit, 1.2);
+    const [mu, mv] = tbl.sel;
+    const pth = G.makePath(tbl.all ? tblFamily[0] : tblFamily[tbl.pathIdx]);
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = C.moving; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let i = 0; i <= 60; i++) { const [a, b] = place([mu, mv], [0, 0], G.poseAt(pth, i / 60)); i ? ctx.lineTo(V.X(a), V.Y(b)) : ctx.moveTo(V.X(a), V.Y(b)); }
+    ctx.stroke(); ctx.setLineDash([]);
+    drawCube(ctx, V, mu, mv, 0, outline, C['moving-fill'], C.moving, 2);
+    drawPivot(ctx, V, [0, 0]);
+  }
+  // centre pivot: integer offsets up to TR, corner pivot: half-integer offsets up to TR - 1/2
+  function tblOffsets() {
+    const out = [], lim = tbl.corner ? TR - 0.5 : TR;
+    for (let a = -lim; a <= lim; a++) for (let b = -lim; b <= lim; b++) if (a || b) out.push([a, b]);
+    return out;
+  }
+  function tblPick(u, v) {
+    let best = null, bd = Infinity;
+    for (const [a, b] of tblOffsets()) { const d = Math.hypot(a - u, b - v); if (d < bd) { bd = d; best = [a, b]; } }
+    if (best) { tbl.sel = best; tblCompute(); }
+  }
+  tblCv.addEventListener('click', ev => {
+    const r = tblCv.getBoundingClientRect();
+    const V = makeView(tblCv, tblBounds);
+    tblPick(...V.inv((ev.clientX - r.left) * tblCv.width / r.width, (ev.clientY - r.top) * tblCv.height / r.height));
+  });
+  tblCv.addEventListener('keydown', ev => {
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[ev.key];
+    if (!d) return;
+    ev.preventDefault();
+    let [a, b] = [tbl.sel[0] + d[0], tbl.sel[1] + d[1]];
+    if (a === 0 && b === 0) { a += d[0]; b += d[1]; }
+    tblPick(a, b);
+  });
+
+  /* wiggle profile plot */
+  const profCv = document.getElementById('profile');
+  function drawProfile() {
+    const ctx = fitCanvas(profCv), W = profCv.width, H = profCv.height;
+    const dpr = W / profCv.getBoundingClientRect().width;
+    ctx.fillStyle = C.sheet; ctx.fillRect(0, 0, W, H);
+    const pl = 40 * dpr, pr = 12 * dpr, pt = 14 * dpr, pb = 30 * dpr;
+    const X = d => pl + d / 90 * (W - pl - pr), Y = w => pt + (1.05 - w) / 1.1 * (H - pt - pb);
+    ctx.font = `${11 * dpr}px monospace`; ctx.strokeStyle = C.grid; ctx.fillStyle = C['ink-2']; ctx.lineWidth = 1;
+    for (const w of [0, 0.25, 0.5, 0.75, 1]) { ctx.beginPath(); ctx.moveTo(pl, Y(w)); ctx.lineTo(W - pr, Y(w)); ctx.stroke(); ctx.fillText(w.toFixed(2), 4 * dpr, Y(w) + 4 * dpr); }
+    for (const d of [0, 45, 90]) { ctx.fillText(d + '°', X(d) - 8 * dpr, H - 8 * dpr); }
+    const curve = (f, col, dash) => { ctx.setLineDash(dash); ctx.strokeStyle = col; ctx.lineWidth = 2.2 * dpr; ctx.beginPath(); for (let i = 0; i <= 180; i++) { const th = Math.PI / 2 * i / 180; const x = X(i / 2), y = Y(f(th)); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); ctx.setLineDash([]); };
+    curve(th => Math.sin(2 * th), C['ink-2'], [6 * dpr, 5 * dpr]);
+    curve(th => (Math.cos(th) + Math.sin(th) - 1) / (Math.SQRT2 - 1), C.moving, []);
+    ctx.fillStyle = C.moving; ctx.fillText('bulge b(θ)', X(8), Y(0.86));
+    ctx.fillStyle = C['ink-2']; ctx.fillText('sin 2θ', X(14), Y(0.5));
+  }
+  drawProfile(); redraws.push(drawProfile);
+
+  /* thresholds table */
+  {
+    const g = 0.081, h = 0.5 * (1 - g), a = 1 - g;
+    const kmin = h - Math.sqrt((1 - h) ** 2 - h * h);
+    document.getElementById('thr-k').textContent = kmin.toFixed(3) + ' cells';
+    document.getElementById('thr-kw').textContent = (kmin * Math.SQRT2).toFixed(3) + ' cells';
+    document.getElementById('thr-r').textContent = ((a / Math.SQRT2 - (1 - h)) / (Math.SQRT2 - 1)).toFixed(3) + ' cells';
+  }
+
+  /* ---------- animation loop ---------- */
+  const lastT = { trio: 0.55, spin: 0.5 };
+  spinUpdate(); labRecompute(); tblCompute();
+  lab.t = reduceMotion ? 0.5 : 0; if (!lab.playing) playBtn.textContent = 'Play';
+  drawTrio(lastT.trio); drawLayers(); drawSpin(lastT.spin); drawLab();
+  redraws.push(() => { drawTrio(lastT.trio); drawLayers(); drawSpin(lastT.spin); drawLab(); drawTbl(); });
+  window.addEventListener('resize', () => redraws.forEach(f => f()));
+
+  // phase: 0..1 turn, hold, back
+  const cycle = (ms, period) => { const x = (ms % period) / period; return x < 0.4 ? ease(x / 0.4) : x < 0.5 ? 1 : x < 0.9 ? 1 - ease((x - 0.5) / 0.4) : 0; };
+  let prev = null;
+  function frame(ms) {
+    if (!reduceMotion) {
+      lastT.trio = cycle(ms, 5200); drawTrio(lastT.trio);
+      lastT.spin = cycle(ms, 4200); drawSpin(lastT.spin);
+    }
+    if (lab.playing) {
+      if (prev != null) lab.t += (ms - prev) / 3200;
+      if (lab.t > 1.25) lab.t = 0;
+      const shown = lab.t; lab.t = Math.min(1, shown); drawLab(); lab.t = shown;
+    }
+    prev = ms;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>

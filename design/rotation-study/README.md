@@ -1,0 +1,65 @@
+# Rotation-move study (2026-10-21)
+
+Scripts, raw results and the explainer page behind the "Wiggle profile" and
+"TIC corpus" sections of [`../2026-10-19-rotation-moves.md`](../2026-10-19-rotation-moves.md).
+The findings are summarised there; this directory is the evidence.
+
+## Explainer page
+
+[`rotation-moves.html`](rotation-moves.html): which rotations the solver
+covers and how a path is certified, with live demos running a JavaScript
+port of the geometry. Open it in a browser (it loads only Google Fonts).
+
+## Puzzles
+
+The puzzles are not in the repository (`puzzles/` is gitignored). The
+scripts look for them in `puzzles/` next to the repository root, or in
+`$PUZZLES`:
+
+* `TICs/decoded/*.xmpuzzle`: 21 TICs and RIBs with puzzlecad sources
+  (`TICs/*.scad`). Their printed model (`results/tic_models.txt`) comes from
+  `scripts/puzzlecad2xmpuzzle.py`.
+* `BTFiles/Andrew Crowell/`: Andrew Crowell's collection, 319 files
+  (146 4x4x4 TICs, 98 5x5x5 TICs, 45 ARCparent cubes, 20 RIBs, 10 RIPs;
+  some puzzles twice, as `X` and `X_SolutionFile`).
+
+## Scripts (`scripts/`)
+
+| Script | What it does |
+|---|---|
+| `geom.js` | Port of `rotationgeometry.cpp` (planar part): signed distance, clearance, certified checker, `makePath`, the family order. Used by every JS script. |
+| `planner3.js <seed> <n>` | Random 2D candidates: which turns the 65-path family finds, and which a grid search over (θ, du, dv) finds instead (certified), minus those reachable by a one-cell slide plus a family turn. |
+| `shapes.js`, `profiles.js`, `profiles2.js`, `profiles3.js <seed> <n> sharp\|pcad` | Wiggle profile comparisons: sine, bulge, contact, clipped, powers of the bulge, square vs octagon bulge. |
+| `amounts.js <seed> <n> sharp\|pcad` | Amount sets for the bulge wiggle: 0.1–0.4 grid, geometric amounts, up to 0.6. |
+| `audit.js <ROTJSON file> [play]` | Re-checks rotations PR #50 accepted (dumped with `BT_ROT_JSON=1`, branch `rotations-pr50`) with the certified checker over all layers: our family, larger amounts, or a grid search. |
+| `audit2.js <ROTJSON file> [play] [step]` | For the rotations our family misses: does a dense grid of shift vectors rescue them (slide, bulge wiggle, ramp-hold-ramp)? |
+| `tics.py name=burrTxt ...` | Decoded TICs: default model, printed model, bisection of the smallest play (sharp) and smallest bevel (at printed play). Writes `results/tics.json`. |
+| `crowell.py name=burrTxt ...` | Crowell collection: default model and bisection of the smallest play. Appends to `results/crowell.jsonl`, resumable. |
+| `pr50crowell.py -R\|-C` | PR #50's Classic (`-R`) or Crowell (`-C`) engine on the Crowell collection, 60 s per puzzle; needs `BURRTXT_PR50` (burrTxt from `rotations-pr50`). |
+| `run.sh <burrTxt> <outdir>` | Example puzzles with `-R` under both models, for a before/after diff. |
+
+The binaries compared were release builds (`just build-release`) of:
+
+* `sine`: `rotations` at f5b8a74e, wiggles `a·sin(πt)`;
+* `bulge`: ef635dae, wiggles along the cube bulge (the current default);
+* `bulge6`: ef635dae with amounts 0.1–0.6 in `defaultRotationSettings()`;
+* `a9`, `a28`: amounts every 0.05 up to 0.45, every 0.0125 up to 0.35 (timing only);
+* PR #50: `rotations-pr50` at 42b96188.
+
+## Results (`results/`)
+
+| File | Content |
+|---|---|
+| `tic_models.txt` | Printed model per decoded TIC (`play,rounding,bevel`). |
+| `tics.json` | Per decoded TIC and binary: default and printed run (solved, level, rotations, time), `minPlay`, `minBevel`. |
+| `pr50_tics.txt` | PR #50 Classic and Crowell engine on the decoded TICs (300 s limit). |
+| `crowell.jsonl` | Per Crowell puzzle and binary: default run and `minPlay` (6-step bisection in [0.002, 0.2]). |
+| `pr50crowellR.jsonl`, `pr50crowellC.jsonl` | PR #50 engines on the Crowell collection (60 s limit; `solved: null` is a timeout). |
+| `threetic_pr50_accepted.txt.gz` | The 1000 distinct rotations PR #50's Classic engine accepted on Crowell's 4x4x4 ThreeTIC (`ROTJSON` lines). |
+| `random-scenes/*.out` | Raw output of the random-scene runs (`prof*`: profiles, `am_*`: amounts, `p3_*`: planner3). |
+
+Caveats: the random scenes are single-layer 2D and not puzzles; the grid
+search is resolution-limited (1.5°, 0.025 cells), so "no motion found" is
+not a proof; `minPlay` / `minBevel` bisections assume monotonicity, which a
+fixed path family does not guarantee; timings were taken on a 4-core VM with
+other jobs running and are only good for ratios.

@@ -351,8 +351,10 @@ second code path.
 
 ## Validation
 
-1. **Checker unit tests**: hand-built cases (cube spinning next to a
-   face-neighbour collides unless its edges are cut back far enough: with
+1. **Checker unit tests**: hand-built cases (cube spinning in place, as a
+   pure turn, next to a face-neighbour collides unless its edges are cut
+   back far enough, while a bulge wiggle away from the neighbour clears
+   with sharp edges once `a ≥ h(√2 − 1) − g`; for the pure turn, with
    cube side `a = 1 − g` and half side `h = a/2`, a rounding
    `r ≥ (a/√2 − (1 − h))/(√2 − 1)` (0.264 at `g = 0.081`, 0.5 at `g = 0`)
    or a 45° bevel `k ≥ h − √((1 − h)² − h²)` (0.175 at `g = 0.081`, a bevel
@@ -524,3 +526,129 @@ ideally be done:
 Open questions: default `r`/`g` (needs physical data); whether half turns
 are wanted as single moves; whether rotation-move solutions should report
 the minimum play they need.
+
+## TIC corpus results (2026-10-21)
+
+Scripts, raw data and the explainer page are in
+[`rotation-study/`](rotation-study/README.md). The puzzles themselves are
+not in the repository (`puzzles/` is gitignored):
+
+* `puzzles/TICs/decoded`: 21 TICs and RIBs with puzzlecad sources, so each
+  has a printed model (play 0.009–0.025, bevel 0.054–0.071, from
+  `scripts/puzzlecad2xmpuzzle.py`). These were printed and come apart
+  physically.
+* `puzzles/BTFiles/Andrew Crowell`: Crowell's collection, 319 files (146
+  4x4x4 TICs, 98 5x5x5 TICs, 45 ARCparent cubes, 20 RIBs, 10 RIPs; some
+  twice as `X` / `X_SolutionFile`). No printed models.
+
+PR #50's `0.0405`-per-side shrink is play 0.081 with sharp edges, our
+default model, so the TICs were designed and checked under the default
+model. That makes it the like-for-like comparison.
+
+### Decoded TICs (21)
+
+| | `sin` wiggle | bulge wiggle | bulge, amounts to 0.6 |
+|---|---|---|---|
+| Come apart, default model | 17 | 17 | 17 |
+| Come apart, printed model | 3 | 5 | 5 |
+| Mean smallest bevel at printed play | 0.122 | 0.109 | 0.107 |
+| Mean smallest play, sharp | 0.0569 | 0.0563 | 0.0560 |
+
+The bulge newly takes PedanTIC and StarTIC_2 apart under their printed
+models, and lowers the bevel needed on 13 TICs (typically 0.117 → 0.097).
+It needs slightly more on CagedCube_1 (0.181 → 0.197), HypnoTIC and
+scRIBble: a fixed path family is not monotone in the profile.
+
+PR #50 on the same files (300 s limit): Classic engine 14, Crowell engine
+7, either 15. Ours takes apart all 15 plus CagedCube_1 and FantasTIC.
+ElfTIC, HypnoTIC, ThreeTIC and TriumviraTIC come apart in neither; ours
+needs play 0.083–0.101 for them.
+
+**Printed models:** 16 of 21 printed TICs still do not come apart under
+their own model. They typically need a bevel of about 0.097 at their play
+of about 0.011, against the 0.054 printed. Possible reasons, not yet
+separated: real pieces flex and wear; the bevel model has only the printed
+play at face contacts (a pure spin beside a face neighbour would need a
+0.39 bevel at play 0.0108); and missing motions (see ThreeTIC below).
+
+### Crowell collection (319)
+
+Default model; `minPlay` is the smallest play (sharp) at which a puzzle
+comes apart, by a 6-step bisection.
+
+| Group | `sin` | bulge | bulge, amounts to 0.6 |
+|---|---|---|---|
+| 4x4x4 TICs | 125 / 146 | 125 / 146 | 125 / 146 |
+| 5x5x5 TICs | 82 / 98 | 82 / 98 | 86 / 98 |
+| ARCparent cubes | 43 / 45 | 43 / 45 | 43 / 45 |
+| RIBs | 20 / 20 | 20 / 20 | 20 / 20 |
+| RIPs | 6 / 10 | 6 / 10 | 6 / 10 |
+| **Total** | **276** | **276** | **280** |
+| Default runs, total time | 111 s | 107 s | 209 s |
+
+* Bulge vs `sin`: the same puzzles come apart. `minPlay` is lower on 49
+  puzzles and higher on 26 (313 comparable).
+* Amounts 0.5 and 0.6 add TritanIC_2 and HolopTIC (5x5x5) and lower
+  `minPlay` on 23 puzzles, never raising it. They cost a median 1.65× the
+  run time (90th percentile 2.5×, worst 3.85×; 12.6 s → 48.6 s).
+* PR #50's Crowell engine (60 s limit): 176 come apart, 8 time out. None of
+  them fails in ours; ours takes apart 92 that it does not, plus 8 where it
+  timed out.
+* PR #50's Classic engine (60 s limit), partial at 182 of 319 files: 129
+  come apart, 6 time out. The only puzzle it takes apart and ours does not
+  is Crowell's 4x4x4 ThreeTIC (twice, with its solution file); ours takes
+  apart 24 that it does not, plus 2 where it timed out.
+  *(Run in progress; to be updated when it completes.)*
+
+### ThreeTIC: what the family misses
+
+PR #50's Classic engine accepted 1000 distinct rotations while searching
+Crowell's ThreeTIC (`BT_ROT_JSON` dump, branch `rotations-pr50`). Each was
+re-checked with the certified checker over all its layers, at play 0.081
+with sharp edges:
+
+| | Rotations |
+|---|---|
+| A path of our 65-path family clears it | 848 |
+| Only amounts 0.5–0.8 clear it | 0 |
+| Some other motion is clear (grid search, certified) | 152 |
+| …of which a 0.05-step grid of shift vectors catches (wiggle or ramp-hold-ramp) | 86 |
+| …of which only the search finds a motion | 66 |
+| No motion found (PR #50 wrong) | 0 |
+
+So PR #50 does not accept impossible moves here: our family samples shift
+directions and amounts too coarsely. A typical missing path shifts by about
+(0.25, −0.20), 39° off the axis and 0.32 long, during the first 25° of the
+turn, holds it until about 81°, then returns. The nearest family paths
+shift along exact diagonals ((0.21, −0.21) at 0.3, (0.28, −0.28) at 0.4).
+Finer amounts alone already help: with amounts every 0.05 (0.05–0.45, still
+8 compass directions, 145 paths) ThreeTIC comes apart (level 7.9, 5
+rotations), and HolopTIC with amounts every 0.0125 (449 paths).
+
+### What more paths cost
+
+Wall time, release build, with other jobs running (ratios only):
+
+| Puzzle | 65 paths | 145 paths | 449 paths |
+|---|---|---|---|
+| AAA_most_rotations (mostly table build) | 0.16 s | 0.32 s | 0.92 s |
+| PelikanBurr | 4.2 s | 7.5 s | 26.3 s |
+| DraculasDentalDesaster | 14.2 s | 13.7 s | 27.7 s |
+| ThreeTIC (Crowell) | 0.16 s, apart: no | 0.33 s, yes | 0.95 s, yes |
+| HolopTIC (Crowell) | 0.26 s, no | 0.53 s, no | 2.4 s, yes |
+
+Time grows roughly with the number of paths: table building does, the
+blocked-on-every-path pre-check rejects fewer candidates when the family
+is larger, and each remaining candidate walks more tables. Per-path shadow
+bitmasks cached per piece pair (see "Lookup tables") would make a check
+nearly independent of the family size, leaving only the one-time table
+build to grow.
+
+### Open questions from the corpus
+
+* Default amounts: every 0.05 (2× time, recovers ThreeTIC) vs. the current
+  0.1–0.4, vs. a denser grid of shift vectors once checks are bitmasks.
+* Why printed TICs fail under their own model: needs physically verified
+  moves, ideally on one of the 16.
+* The configuration-space planner (phase 3) covers what no fixed family
+  reaches (66 of ThreeTIC's 152, the direction-changing paths).
