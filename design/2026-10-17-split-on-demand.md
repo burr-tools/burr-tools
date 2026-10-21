@@ -160,9 +160,12 @@ prefix-depth guess, with no cost where it does not help.
 - "donated work is searched exactly once" (`test_solver.cpp`): line
   puzzle, DLX and SIMD, 1 to 4 threads, forced donation every 1 to 7
   nodes. Each run, both uninterrupted and stopped + restored, must equal
-  the serial baseline as a multiset and finish at progress 1. Mutation
-  checks: dropping the DLX cut, or recording SIMD stop branches past the
-  loop end, both fail it.
+  the serial baseline as a multiset, and the finished tasks' shares
+  (`completedShare`) must add up to 1. `getFinished()` cannot stand in for
+  the share check: it reports 1 for any completed search. Mutation checks:
+  dropping the DLX cut, recording SIMD stop branches past the loop end,
+  or not taking a donated piece's share off the donor (DLX or SIMD) all
+  fail it.
 - The whole solver suite also passes with `BURRTOOLS_DONATE_EVERY` set to
   1, 5 and 300.
 - "chunked splitting ..." pins the pop-time splitter, so it runs with
