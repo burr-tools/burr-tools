@@ -19,6 +19,7 @@
 #ifndef __SPLIT_FANOUT_H__
 #define __SPLIT_FANOUT_H__
 
+#include <cstddef>
 #include <cstdlib>
 
 /**
@@ -55,6 +56,32 @@ inline unsigned int fromEnv() {
   return kDefault;
 }
 
+
+/* Divide one frame's untried branches into stop-time remainder pieces:
+ * of the indices next..end-1 of the frame's active-row list that `takes`
+ * accepts, the first `fanout` become singletons, emit(j, false), and the
+ * next one starts a single rest, emit(j, true), that stands for every
+ * branch from index j to the END OF THE LIST (a rest resumes the frame's
+ * loop at j on the identically replayed state). So `end` may only be below
+ * the list size when nothing past it is this frame's to record. Disjoint
+ * and complete by construction; shared by the SIMD engines so the rest
+ * indexing cannot drift between them.
+ */
+template <class Rows, class Takes, class Emit>
+void emitFrame(const Rows & active, size_t next, size_t end, unsigned int fanout,
+               Takes takes, Emit emit) {
+  unsigned int emitted = 0;
+  for (size_t j = next; j < end; j++) {
+    if (!takes(active[j]))
+      continue;
+    if (emitted == fanout) {
+      emit(j, true);
+      return;
+    }
+    emit(j, false);
+    emitted++;
+  }
+}
 } // namespace SplitFanout
 
 #endif // __SPLIT_FANOUT_H__

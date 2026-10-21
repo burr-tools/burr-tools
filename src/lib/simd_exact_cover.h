@@ -250,9 +250,6 @@ public:
     }
   };
 
-  /* Default for SubtreeRemainder::fanout (the shared fan-out cap). */
-  static constexpr unsigned int kRestFanout = SplitFanout::kDefault;
-
   /**
    * Search the subtree below the placed prefix. With a non-null remainder,
    * a stop leaves the unexplored part of the subtree in it (see
