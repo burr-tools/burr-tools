@@ -183,7 +183,12 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
   half(0.5 * (1.0 - model.play) - model.rounding),
   rounding(model.rounding),
   chamfer(model.chamfer),
-  rho(0)
+  rho(0),
+  /* the core octagon's inner radius is the smaller distance to an axis
+   * face or a bevel face, its outer radius that of a bevel end point; the
+   * rounding adds to both */
+  inRadius(std::min(half, (2 * half - model.chamfer) / std::numbers::sqrt2) + model.rounding),
+  outRadius(std::hypot(half, half - model.chamfer) + model.rounding)
 {
   bt_assert(axis < 3);
   /* Without play the cubes touch at the start pose, and a cube turning about
@@ -249,6 +254,41 @@ double planarScene_c::clearance(const pose_t & p) const {
   return best;
 }
 
+int planarScene_c::classify(const pose_t & p, double margin, double * clOut) const {
+
+  const double c = std::cos(p.theta);
+  const double s = std::sin(p.theta);
+  /* Each cube contains its in-circle and lies in its circumcircle, so
+   * centres closer than 2·inRadius overlap, and centres at least
+   * 2·outRadius + margin apart are at least margin apart. */
+  const double inner = 2 * inRadius;
+  const double outer = 2 * outRadius + margin;
+
+  /* pairs skipped below are at least margin apart, so when some pair is
+   * closer, the smallest computed clearance is the clearance */
+  double best = margin;
+  for (const layer_t & l : layers)
+    for (const square_t & m : l.moving) {
+      double mu = m.u * c - m.v * s + p.du;
+      double mv = m.u * s + m.v * c + p.dv;
+      for (const square_t & st : l.stat) {
+        double du = mu - st.u, dv = mv - st.v;
+        double d2 = du * du + dv * dv;
+        if (d2 < inner * inner)
+          return -1;
+        if (d2 >= outer * outer)
+          continue;
+        double cl = squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer) - 2 * rounding;
+        if (cl < 0)
+          return -1;
+        best = std::min(best, cl);
+      }
+    }
+
+  *clOut = best;
+  return (best < margin) ? 0 : 1;
+}
+
 bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const {
 
   /* No point of the moving group moves further than `lipschitz` over the
@@ -265,20 +305,24 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
     pose_t p = { a.theta + sm * (b.theta - a.theta),
                  a.du + sm * (b.du - a.du),
                  a.dv + sm * (b.dv - a.dv) };
-    double cl = clearance(p);
+    double cl;
+    int c = classify(p, 0.5 * (s1 - s0) * lipschitz, &cl);
 
-    if (cl < 0) {
+    if (c < 0) {
       *v = PATH_BLOCKED;
       return false;
     }
-    if (cl >= 0.5 * (s1 - s0) * lipschitz)
+    if (c > 0)
       continue;
     if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT) {
       *v = PATH_UNDECIDED;
       continue;
     }
-    todo.push_back({ s0, sm });
-    todo.push_back({ sm, s1 });
+    /* the clearance still proves sm ± cl / lipschitz clear: split only
+     * what lies outside */
+    const double w = cl / lipschitz;
+    todo.push_back({ s0, sm - w });
+    todo.push_back({ sm + w, s1 });
   }
 
   return true;

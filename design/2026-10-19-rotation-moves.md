@@ -665,8 +665,28 @@ table build. A `perf` profile of DraculasDentalDesaster at 449 paths
 (`squareSignedDistance`, `pathTable_c`, `clearance`, `certifySegment`,
 `sincos`), 11.5% in the per-pair blocking cache
 (`computeBlockingPivots`) and 9.8% in `listRotations`; `firstClear` does
-not appear. Larger families therefore need a cheaper or cached table build
-(on disk, keyed by model, amounts and radius), not a faster check.
+not appear. Larger families therefore need a cheaper table build, not a
+faster check.
+
+**Cheaper certification (2026-10-21).** Two changes to `certifySegment`,
+which the table build spends its time in, leave every verdict as it was
+(the table entry counts of `[rotations-table-stats]` are unchanged for all
+six configurations):
+
+* Circle bounds before the exact distance. A cube contains its in-circle
+  and lies inside its circumcircle, so centres closer than twice the
+  in-radius overlap and centres at least twice the circumradius plus the
+  required margin apart are clear by that margin. Only pairs in between
+  get the exact polygon distance (`classify`).
+* Reuse the clearance of an undecided sample. A sample with clearance `c`
+  proves `s ± c/L` clear even when that does not cover its interval, so
+  only the parts outside are subdivided, instead of both halves.
+
+Table build at radius 6 / 8 (65 paths per sense, three models):
+0.34–0.40 s → 0.16–0.20 s and 0.72–0.88 s → 0.38–0.50 s. Whole runs,
+same disassemblies (65 paths / 449 paths): AAA_most_rotations 0.17 →
+0.10 s / 0.87 → 0.54 s, DraculasDentalDesaster 12.1 → 10.3 s /
+23.9 → 15.5 s, HolopTIC 0.24 → 0.15 s / 1.37 → 0.80 s.
 
 ### Open questions from the corpus
 
