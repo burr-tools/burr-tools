@@ -25,6 +25,7 @@
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
+#include "lib/disassembler_factory.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/voxel.h"
@@ -46,6 +47,8 @@
 using namespace std;
 
 bool disassemble;
+static bool rotLocal = false;
+static solverType_e rotType = SOLVER_CLASSIC;
 bool allProblems;
 bool printDisassemble;
 bool printSolutions;
@@ -310,7 +313,11 @@ int main(int argv, char* args[]) {
 
     case 0:
 
-      if (strcmp(args[i], "--json") == 0) {
+      if (strcmp(args[i], "-R") == 0) {
+        rotLocal = true;
+      } else if (strcmp(args[i], "-C") == 0) {
+        rotLocal = true; rotType = SOLVER_CROWELL;
+      } else if (strcmp(args[i], "--json") == 0) {
         jsonOutput = true;
         disassemble = true;
         quiet = true;
@@ -537,7 +544,7 @@ int main(int argv, char* args[]) {
 
       d.reset();
       if (disassemble)
-        d = std::make_unique<disassembler_0_c>(*problem);
+        d = createDisassembler(*problem, rotLocal, rotType);
 
       assm->assemble(&a);
 
@@ -561,7 +568,7 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      d = std::make_unique<disassembler_0_c>(*problem);
+      d = createDisassembler(*problem, rotLocal, rotType);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 

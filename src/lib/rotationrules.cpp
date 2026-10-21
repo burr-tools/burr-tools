@@ -18,6 +18,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+#include <string>
 #include "rotationrules.h"
 
 #include <cmath>
@@ -696,6 +697,18 @@ bool rotationRules_c::allowRotation(const std::vector<cell_t> & occupied,
     return false;
   }
 
+  if (getenv("BT_ROT_JSON")) {
+    std::string j = "{\"p\":[" + std::to_string(pivot.hx) + "," + std::to_string(pivot.hy) + "," + std::to_string(pivot.hz) +
+                    "],\"a\":" + std::to_string(axis) + ",\"s\":" + std::to_string(sense);
+    auto cells = [&](const char * k, const std::vector<cell_t> & v) {
+      j += std::string(",\"") + k + "\":[";
+      for (size_t i = 0; i < v.size(); i++)
+        j += (i ? ",[" : "[") + std::to_string(v[i].x) + "," + std::to_string(v[i].y) + "," + std::to_string(v[i].z) + "]";
+      j += "]";
+    };
+    cells("m", startCells); cells("e", endCells); cells("o", occupied);
+    fprintf(stderr, "ROTJSON %s}\n", j.c_str());
+  }
   if (getenv("BT_ROT_DEBUG"))
     fprintf(stderr,
             "ROT_ALLOW pivot=(%.1f,%.1f,%.1f) axis=%u sense=%u\n",
