@@ -272,9 +272,11 @@ private:
   // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
   // (A/B toggle, see split_fanout.h); read with splitFanout
   bool splitBreadthFirst = false;
-  // donation (split on demand, DLX and SIMD workers): on unless
+  // donation (split on demand, DLX and SIMD workers): a running task hands
+  // the untried part of its shallowest open level to the pool when a
+  // sibling waits (see assemblerWorker_c::donate). On unless
   // BURRTOOLS_NO_DONATE; donateEvery forces a donation every N nodes
-  // (tests). See design/2026-10-17-split-on-demand.md.
+  // (tests). Both read once per run (see split_fanout.h).
   bool donate = true;
   unsigned long donateEvery = 0;
   // donations made since construction (diagnostics and tests)
@@ -470,8 +472,8 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
-  /** Number of tasks running workers donated to idle siblings so far (see
-   * design/2026-10-17-split-on-demand.md); diagnostics only. */
+  /** Number of tasks running workers handed to waiting siblings so far
+   * (split on demand); diagnostics only. */
   unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
