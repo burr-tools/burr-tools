@@ -22,6 +22,7 @@
 #define __ROTATION_GEOMETRY_H__
 
 #include <cmath>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -325,6 +326,17 @@ namespace rotationGeometry {
        * tables, which is the common case in a dense puzzle. Indexed like
        * pathTable_c entries. */
       std::vector<std::vector<std::pair<int, int>>> blockedByAll[2];
+      /* Per sense and moving offset (indexed like pathTable_c entries), the
+       * static offsets that block some but not every path, each with the
+       * paths it blocks as a bitset of `words` 64-bit words, the most
+       * blocking first. firstClear ORs the bitsets of the occupied offsets
+       * instead of walking the tables one by one, so its cost hardly depends
+       * on the number of paths. Entry e owns the pairs from pairStart[e] to
+       * pairStart[e + 1]. */
+      unsigned int words = 0;
+      std::vector<uint32_t> pairStart[2];
+      std::vector<std::pair<int, int>> pairOffset[2];
+      std::vector<uint64_t> pairBits[2];
 
       /* pivotsBlockedAt, indexed by (du + inverseReach) * (2 inverseReach + 1)
        * + dv + inverseReach; empty outside */

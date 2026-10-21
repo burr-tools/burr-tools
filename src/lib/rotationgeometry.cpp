@@ -23,6 +23,7 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -573,6 +574,39 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
     }
   }
 
+  /* the other blockers with the set of paths each blocks, for firstClear */
+  const size_t n = tables[0].size();
+  words = (unsigned int)((n + 63) / 64);
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    const size_t entries = tables[sense][0].table.size();
+    pairStart[sense].assign(entries + 1, 0);
+    for (size_t e = 0; e < entries; e++) {
+      std::map<std::pair<int, int>, std::vector<uint64_t>> paths;
+      for (size_t i = 0; i < n; i++)
+        for (const auto & off : tables[sense][i].table[e]) {
+          std::vector<uint64_t> & b = paths[off];
+          if (b.empty())
+            b.assign(words, 0);
+          b[i / 64] |= uint64_t(1) << (i % 64);
+        }
+      std::vector<std::pair<size_t, std::pair<int, int>>> partial;
+      for (const auto & [off, b] : paths) {
+        size_t count = 0;
+        for (uint64_t w : b)
+          count += (size_t)std::popcount(w);
+        if (count < n)
+          partial.push_back({ count, off });
+      }
+      std::stable_sort(partial.begin(), partial.end(), [](const auto & a, const auto & b) { return a.first > b.first; });
+      for (const auto & p : partial) {
+        pairOffset[sense].push_back(p.second);
+        const std::vector<uint64_t> & b = paths[p.second];
+        pairBits[sense].insert(pairBits[sense].end(), b.begin(), b.end());
+      }
+      pairStart[sense][e + 1] = (uint32_t)pairOffset[sense].size();
+    }
+  }
+
   /* the inverse: static cube relative to moving cube -> moving cube offsets */
   const int w = 4 * r + 1;
   for (unsigned int sense = 0; sense < 2; sense++)
@@ -668,17 +702,40 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occup
       if (occupied(m.layer, su, sv))
         return -1;
 
-  for (size_t i = 0; i < tables[sense].size(); i++) {
-    bool blocked = false;
-    for (size_t k = 0; k < cubes.size() && !blocked; k++)
-      for (const auto & [su, sv] : tables[sense][i].table[cubes[k].entry])
-        if (occupied(cubes[k].layer, su, sv)) {
-          blocked = true;
-          break;
-        }
-    if (!blocked)
+  /* OR the paths every occupied blocker blocks; the first path left over
+   * is the first clear one */
+  const size_t n = tables[sense].size();
+  const uint64_t lastWord = (n % 64) ? (uint64_t(1) << (n % 64)) - 1 : ~uint64_t(0);
+  uint64_t local[8];
+  std::vector<uint64_t> heap;
+  uint64_t * blocked = local;
+  if (words > 8) {
+    heap.assign(words, 0);
+    blocked = heap.data();
+  } else
+    std::fill(local, local + words, 0);
+  auto allBlocked = [&]() {
+    for (unsigned int w = 0; w + 1 < words; w++)
+      if (blocked[w] != ~uint64_t(0))
+        return false;
+    return (blocked[words - 1] & lastWord) == lastWord;
+  };
+
+  for (const movingCube_t & m : cubes)
+    for (uint32_t j = pairStart[sense][m.entry]; j < pairStart[sense][m.entry + 1]; j++) {
+      const auto & [su, sv] = pairOffset[sense][j];
+      if (!occupied(m.layer, su, sv))
+        continue;
+      const uint64_t * b = &pairBits[sense][(size_t)j * words];
+      for (unsigned int w = 0; w < words; w++)
+        blocked[w] |= b[w];
+      if (allBlocked())
+        return -1;
+    }
+
+  for (size_t i = 0; i < n; i++)
+    if (!((blocked[i / 64] >> (i % 64)) & 1))
       return (int)i;
-  }
   return -1;
 }
 
