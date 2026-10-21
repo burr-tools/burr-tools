@@ -315,11 +315,16 @@ private:
     StopTrace *trace = nullptr;
     // Split on demand (see donateFrame); null unless the worker attached a
     // donor. Per frame at depth d (live while its branch loop runs): the
-    // pivot column, its candidate count, the first untried index and the
-    // loop end -- a donation lowers frame_end to cut the frame.
+    // pivot column, its candidate count (at the root, only those from
+    // `start` on), the first untried index and the loop end -- a donation
+    // lowers frame_end to cut the frame. A frame's untried range only
+    // shrinks, so once found closed it stays closed until the frame is
+    // re-registered: live frames shallower than donate_scan_from are known
+    // closed and are not rescanned.
     Donor *donor = nullptr;
     uint64_t next_donate_poll = 0;
     unsigned int root_depth = 0;
+    unsigned int donate_scan_from = 0;
     std::vector<unsigned int> frame_col;
     std::vector<uint32_t> frame_count;
     std::vector<size_t> frame_next;

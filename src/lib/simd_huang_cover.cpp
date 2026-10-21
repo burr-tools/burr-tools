@@ -763,6 +763,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
             const size_t frames = t.ctx.scratch_active_rows.size();
             t.ctx.donor = &donor;
             t.ctx.root_depth = t.depth;
+            t.ctx.donate_scan_from = t.depth;
             t.ctx.next_donate_poll = t.ctx.local_iterations + donor.interval;
             t.ctx.frame_col.assign(frames, 0);
             t.ctx.frame_count.assign(frames, 0);
@@ -1036,10 +1037,21 @@ void SimdHuangCover<BitsetType>::search(
   // so a donation from a deeper node can cut it (see donateFrame).
   size_t end = curr_active.size();
   if (ctx.donor != nullptr) {
+    // The branching is the pivot's candidate count, col_counts (a weight
+    // sum for the range column, an estimate either way); min_metric weighs
+    // shape pivots by their remaining need, so it is no count. A rest (start > 0, root frame only)
+    // owns only the candidates from start on, and its units stand for
+    // those: count them, once per task.
+    unsigned int owned = ctx.col_counts[best_col];
+    for (size_t j = 0; j < start && owned > 0; j++)
+      if (coversPivot(rows[curr_active[j]], best_col))
+        owned--;
     ctx.frame_col[depth] = best_col;
-    ctx.frame_count[depth] = min_metric;
+    ctx.frame_count[depth] = owned;
     ctx.frame_next[depth] = start;
     ctx.frame_end[depth] = end;
+    if (depth < ctx.donate_scan_from)
+      ctx.donate_scan_from = depth;
   }
   for (size_t i = start; i < end; i++) {
     const uint32_t r_idx = curr_active[i];
@@ -1115,7 +1127,13 @@ void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
   double weight = 1.0;
   for (unsigned int d = ctx.root_depth; d < depth; d++) {
     if (d + 2 >= bottom)
-      return;
+      break;
+    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
+    if (d < ctx.donate_scan_from) {
+      // known closed (see SearchContext): only its weight matters
+      weight /= count;
+      continue;
+    }
     const auto &active = ctx.scratch_active_rows[d];
     const unsigned int col = ctx.frame_col[d];
     const size_t next = ctx.frame_next[d];
@@ -1129,8 +1147,9 @@ void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
     for (size_t j = next; j < end; j++)
       if (coversPivot(rows[active[j]], col))
         remaining++;
-    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
     if (remaining > 0) {
+      // the frame stays open unless the donation below goes through
+      ctx.donate_scan_from = d;
       // scratch_active_rows[d] re-derives identically from the replayed
       // path, so index `next` names the same branch on resume (as for
       // stop-time rests); frame k chose step k, so its pivot kind is the
@@ -1151,7 +1170,12 @@ void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
       SubtreeTask piece;
       if (!taskFromSeed(seed, piece))
         return;
+      // one donor per waiter: the pool's hunger flag goes to whoever claims
+      // it first, and only once there is something to give
+      if (!donor.forced && !donor.pool->claim_work())
+        return;
       ctx.frame_end[d] = next;
+      ctx.donate_scan_from = d + 1;
       donor.task->units -= units;
       if (donor.count != nullptr)
         donor.count->fetch_add(1, std::memory_order_relaxed);
@@ -1162,6 +1186,9 @@ void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
     }
     weight /= count;
   }
+  // every live frame above the donation floor is closed
+  ctx.donate_scan_from = std::max(ctx.donate_scan_from,
+                                  std::min(depth, bottom > 2 ? bottom - 2 : 0u));
 }
 
 template <typename BitsetType>
