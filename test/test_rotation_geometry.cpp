@@ -473,6 +473,41 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
   }
 }
 
+TEST_CASE("firstClear over path bitsets equals walking the tables one by one", "[rotations]") {
+
+  /* 145 paths per sense, three 64-bit words: firstClear ORs per-blocker
+   * path sets instead of walking the tables, which must not change the
+   * first clear path. */
+  rotationTables_c tables({ 0.081, 0 }, 4, { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 });
+  REQUIRE(tables.size() == 1 + 9 * 2 * 8);
+
+  std::mt19937 rng(7);
+  int clear = 0, rescued = 0, blocked = 0;
+  for (int it = 0; it < 400; it++) {
+    std::vector<cell_t> moving, stat;
+    randomScene(rng, moving, stat);
+    unsigned int axis = rng() % 3, sense = rng() % 2;
+    int parity = rng() % 2;
+    int phx = 2 * (int)(rng() % 5) - parity;
+    int phy = 2 * (int)(rng() % 5) - parity;
+    int phz = 2 * (int)(rng() % 5) - parity;
+
+    int expected = -1;
+    for (unsigned int i = 0; i < tables.size() && expected < 0; i++)
+      if (!tables.table(sense, i).blocked(moving, stat, axis, phx, phy, phz))
+        expected = (int)i;
+    INFO("iteration " << it);
+    CHECK(tables.firstClear(moving, stat, axis, phx, phy, phz, sense) == expected);
+    clear += (expected == 0);
+    rescued += (expected > 64);
+    blocked += (expected < 0);
+  }
+  /* answers from every word of the bitsets, and blocked scenes */
+  CHECK(clear > 20);
+  CHECK(rescued > 5);
+  CHECK(blocked > 20);
+}
+
 TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotations]") {
 
   const int radius = 3;
