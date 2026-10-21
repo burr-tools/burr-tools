@@ -149,8 +149,16 @@ namespace rotationGeometry {
       double rounding;
       double chamfer;  // 45° cut of the core square's corners
       double rho;
+      double inRadius;   // of a cube: centres closer than twice this overlap
+      double outRadius;  // of a cube: clearance >= centre distance - 2·outRadius
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
+      /** The decision certifySegment needs at pose p, using the exact
+       *  clearance only where the cubes' in- and circumcircles do not settle
+       *  it: -1 if a pair overlaps, 1 if every pair is at least margin
+       *  apart, 0 otherwise. The same decision as comparing clearance(p)
+       *  with 0 and margin. For 0, *cl is clearance(p). */
+      int classify(const pose_t & p, double margin, double * cl) const;
   };
 
   /** The pose that undoes p: the motion of the static pieces relative to
