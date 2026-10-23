@@ -44,12 +44,24 @@ namespace {
     return fi.dir().filePath(base + QLatin1String(suffix));
   }
 
+  /* By path, not QFileInfo's ==: that compares the canonical paths, which
+   * are empty for files not there yet -- a scratch settings file before its
+   * first save would be the user's own. */
+  bool samePath(const QString & a, const QString & b) {
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    const Qt::CaseSensitivity cs = Qt::CaseInsensitive;
+#else
+    const Qt::CaseSensitivity cs = Qt::CaseSensitive;
+#endif
+    return QFileInfo(a).absoluteFilePath().compare(QFileInfo(b).absoluteFilePath(), cs) == 0;
+  }
+
   /* the user's own settings: `name` in the user's cache folder; another
    * settings file: beside it */
   QString cacheFile(const QString & settingsFile, const char * name, const char * suffix) {
     if (settingsFile.isEmpty())
       return QString();
-    if (QFileInfo(settingsFile) != QFileInfo(SettingsController::defaultFile()))
+    if (!samePath(settingsFile, SettingsController::defaultFile()))
       return besideSettings(settingsFile, suffix);
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     if (dir.isEmpty())

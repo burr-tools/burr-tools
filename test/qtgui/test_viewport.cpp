@@ -1437,7 +1437,8 @@ void TestPipelineCache::theFilesLiveBesideTheSettings() {
   QCOMPARE(PipelineCache::windowFile(dir + QStringLiteral("/.burrtools-qt.rc")), dir + QStringLiteral("/.burrtools-qt.pipelines"));
   QCOMPARE(PipelineCache::offscreenFile(dir + QStringLiteral("/.burrtools-qt.rc")),
            dir + QStringLiteral("/.burrtools-qt.offscreen.pipelines"));
-  // a scratch settings file (BURRTOOLS_QT_SETTINGS) takes its caches along
+  // a scratch settings file (BURRTOOLS_QT_SETTINGS) takes its caches along,
+  // also before it exists (none of these paths do, nor need the user's)
   QCOMPARE(PipelineCache::windowFile(QStringLiteral("/tmp/run/s.rc")), QStringLiteral("/tmp/run/s.pipelines"));
   QVERIFY(PipelineCache::windowFile(QString()).isEmpty());
 
