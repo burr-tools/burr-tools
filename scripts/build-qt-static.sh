@@ -32,12 +32,42 @@ if [ ! -x "$QMAKE" ]; then
 fi
 
 # meson finds the static Qt through its qmake, named in a native file; the
-# file stays in the build directory, as meson reads it again whenever it
-# regenerates the build
+# files stay in the build directory, as meson reads them again whenever it
+# regenerates the build.
+#
+# The qmake is run with a qt.conf of the package's real layout: MSYS2's
+# qt6-static 6.12 reports <prefix>/include, <prefix>/qml, <prefix>/plugins
+# and bin for the tools, where the package has include/qt6 and
+# share/qt6/{qml,plugins,bin} (6.11's qmake reported those)
+WRAPPER="$BUILD/qmake-static.bat"
+NATIVE="$BUILD/qt-static.ini"
+# configured with another qmake (an earlier version of this script): anew
+if [ -f "$BUILD/build.ninja" ] && ! grep -qF "qmake-static.bat" "$NATIVE" 2>/dev/null; then
+  rm -rf "${BUILD:?}"
+fi
+mkdir -p "$BUILD"
+# absolute: meson runs the qmake from the build directory and its own
+BUILD_ABS="$(cd "$BUILD" && pwd)"
+WRAPPER="$BUILD_ABS/qmake-static.bat"
+STATIC="$(cygpath -m "$PREFIX/qt6-static")"
+QTCONF="$BUILD_ABS/qt-static.conf"
+cat > "$QTCONF" <<EOF
+[Paths]
+Prefix=$STATIC
+Headers=include/qt6
+LibraryExecutables=share/qt6/bin
+Plugins=share/qt6/plugins
+QmlImports=share/qt6/qml
+ArchData=share/qt6
+Data=share/qt6
+Translations=share/qt6/translations
+HostPrefix=$STATIC
+HostLibraryExecutables=share/qt6/bin
+HostData=share/qt6
+EOF
+printf '@"%s" -qtconf "%s" %%*\r\n' "$(cygpath -w "$QMAKE")" "$(cygpath -w "$QTCONF")" > "$WRAPPER"
+printf "[binaries]\nqmake = '%s'\n" "$(cygpath -m "$WRAPPER")" > "$NATIVE"
 if [ ! -f "$BUILD/build.ninja" ]; then
-  mkdir -p "$BUILD"
-  NATIVE="$BUILD/qt-static.ini"
-  printf "[binaries]\nqmake = '%s'\n" "$(cygpath -m "$QMAKE")" > "$NATIVE"
   meson setup "$BUILD" --buildtype=release -Db_ndebug=true -Dpython=disabled \
     -Dqt_gui=enabled -Dqt_static=true --native-file "$(cygpath -m "$NATIVE")"
 fi
