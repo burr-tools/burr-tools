@@ -41,7 +41,9 @@ class stlExporter_c;
  *
  * As in legacy, every parameter change rebuilds the preview, a mesh that
  * cannot be made empties it and says why, and the dialog stays open after
- * an export so more shapes can follow.
+ * an export so more shapes can follow. A document replaced while it is
+ * open (a file opened from the Finder) or an undo is followed: a puzzle of
+ * another grid gets that grid's exporter, and the shape stays in range.
  */
 class StlExportController : public SceneController {
   Q_OBJECT
@@ -49,7 +51,8 @@ class StlExportController : public SceneController {
   QML_UNCREATABLE("owned by App")
 
   /* how many parameters the exporter has; changes only when the dialog
-   * opens or closes, so the fields stay put while values change */
+   * opens or closes or the puzzle's grid changes, so the fields stay put
+   * while values change */
   Q_PROPERTY(int parameterCount READ parameterCount NOTIFY parametersChanged FINAL)
   /* bumps whenever a parameter value changes */
   Q_PROPERTY(int revision READ revision NOTIFY valuesChanged FINAL)
@@ -122,10 +125,14 @@ signals:
 private:
 
   void rebuild(void);
+  void makeExporter(void);
+  void documentChanged(void);
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
   std::unique_ptr<stlExporter_c> m_stl;
+  int m_gridType = -1;             // the grid m_stl was made for
+  bool m_open = false;             // between begin() and end()
   int m_shape = 0;
   int m_revision = 0;
   bool m_binary = true;

@@ -56,6 +56,10 @@ StlExportController::StlExportController(SettingsController * settings, Document
                                          QObject * parent) :
   SceneController(settings, parent), m_doc(doc), m_shapes(shapes)
 {
+  // a document opened from the Finder, or an undo, while the dialog is up:
+  // the grid and the shape chosen may no longer be the puzzle's
+  connect(doc, &DocumentController::documentReplaced, this, &StlExportController::documentChanged);
+  connect(doc, &DocumentController::historyApplied, this, &StlExportController::documentChanged);
 }
 
 StlExportController::~StlExportController() = default;
@@ -91,9 +95,8 @@ void StlExportController::begin(void) {
   // the 3D view's projection: Display > Projection changes it without a
   // settings signal (view state, not a preference)
   readSettings();
-  m_stl.reset(m_doc->session().puzzle().getGridType()->getStlExporter());
-  if (m_stl)
-    m_binary = m_stl->getBinaryMode();
+  m_open = true;
+  makeExporter();
   m_insides = false;
   const int n = int(m_doc->session().puzzle().getNumberOfShapes());
   m_shape = std::clamp(m_shapes->selected(), 0, std::max(0, n - 1));
@@ -106,7 +109,34 @@ void StlExportController::begin(void) {
   rebuild();
 }
 
+/* the exporter of the puzzle's grid, with its default parameters */
+void StlExportController::makeExporter(void) {
+  const gridType_c * g = m_doc->session().puzzle().getGridType();
+  m_stl.reset(g->getStlExporter());
+  m_gridType = int(g->getType());
+  if (m_stl)
+    m_binary = m_stl->getBinaryMode();
+}
+
+void StlExportController::documentChanged(void) {
+  if (!m_open)
+    return;
+  const puzzle_c & p = m_doc->session().puzzle();
+  // another grid takes another exporter; the same keeps its parameters
+  if (int(p.getGridType()->getType()) != m_gridType) {
+    makeExporter();
+    m_revision++;
+    emit parametersChanged();
+    emit valuesChanged();
+    emit optionsChanged();
+  }
+  m_shape = std::clamp(m_shape, 0, std::max(0, int(p.getNumberOfShapes()) - 1));
+  emit shapeChanged();      // also the folder and the name suggested
+  rebuild();
+}
+
 void StlExportController::end(void) {
+  m_open = false;
   m_stl.reset();
   m_mesh.reset();
   m_meshRevision++;

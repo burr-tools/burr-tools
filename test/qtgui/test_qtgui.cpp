@@ -2286,6 +2286,37 @@ private slots:
     QVERIFY(s->error().isEmpty());
   }
 
+  /* a document replaced while the dialog is up (an open from the Finder):
+   * the shape stays in range, and another grid gets its own exporter */
+  void theDialogFollowsAReplacedDocument() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    StlExportController * s = f.app->stl();
+    s->begin();
+    s->setShape(2);
+    s->setParameter(0, 7.5);
+    QVERIFY(s->hasMesh());
+
+    QSignalSpy count(s, &StlExportController::parametersChanged);
+    d->newDocument(gridType_c::GT_BRICKS);           // no shapes, the same grid
+    QCOMPARE(s->shape(), 0);
+    QVERIFY(!s->hasMesh());
+    QCOMPARE(count.count(), 0);
+    QCOMPARE(s->parameter(0).value(QStringLiteral("value")).toDouble(), 7.5);   // kept
+    QVERIFY(!s->exportTo(QUrl::fromLocalFile(f.file("x.stl"))));
+
+    d->newDocument(gridType_c::GT_SPHERES);
+    QCOMPARE(count.count(), 1);
+    QCOMPARE(s->parameterCount(), 8);     // the sphere exporter's
+    s->end();
+
+    // a closed dialog does not follow
+    d->newDocument(gridType_c::GT_BRICKS);
+    QCOMPARE(s->parameterCount(), 0);
+  }
+
   void anUnwritableFileSaysSo() {
     Fixture f;
     f.make();
