@@ -120,18 +120,71 @@ TEST_CASE("a save replaces the file whole, and a failed one leaves the old file 
   REQUIRE(d.save());                                   // over the existing file
   CHECK_FALSE(std::filesystem::exists(t.path / "keep.xmpuzzle.tmp"));
 
-  // the copy cannot be written (a directory where it would go): the save
-  // fails, and the file on disk is still the last good one
-  std::filesystem::create_directory(t.path / "keep.xmpuzzle.tmp");
+  // the file cannot be written: the save fails, and the file on disk is
+  // still the last good one
+  std::filesystem::permissions(file, std::filesystem::perms::owner_write | std::filesystem::perms::group_write |
+                               std::filesystem::perms::others_write, std::filesystem::perm_options::remove);
+  if (std::ofstream(file, std::ios::app).is_open()) {
+    std::filesystem::permissions(file, std::filesystem::perms::owner_write, std::filesystem::perm_options::add);
+    SKIP("a read-only file is still writable here (running as root)");
+  }
   d.puzzle().getShape(0)->setName("lost");
   d.record(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
   CHECK_FALSE(d.save());
   CHECK(d.isModified());
+  CHECK_FALSE(std::filesystem::exists(t.path / "keep.xmpuzzle.tmp"));
   DocumentSession e;
   REQUIRE(e.load(file).ok);
   CHECK(e.puzzle().getShape(0)->getName() == "changed");
   CHECK(std::filesystem::file_size(file) > size / 2);
+  // so that the folder can be removed (Windows)
+  std::filesystem::permissions(file, std::filesystem::perms::owner_write, std::filesystem::perm_options::add);
 }
+
+TEST_CASE("a save where no copy fits beside the file goes by the temporary folder", "[ui][document]") {
+  TempDir t;
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  const std::filesystem::path file = t.path / "keep.xmpuzzle";
+  REQUIRE(d.saveAs(file));
+
+  // a directory where the copy would go, as good as a folder that cannot
+  // be written to, on every system and for every user
+  std::filesystem::create_directory(t.path / "keep.xmpuzzle.tmp");
+  d.puzzle().getShape(0)->setName("changed");
+  d.record(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  REQUIRE(d.save());
+  CHECK_FALSE(d.isModified());
+  CHECK(std::filesystem::is_directory(t.path / "keep.xmpuzzle.tmp"));    // left alone
+  DocumentSession e;
+  REQUIRE(e.load(file).ok);
+  CHECK(e.puzzle().getShape(0)->getName() == "changed");
+}
+
+#ifndef _WIN32
+TEST_CASE("a save writes into the file: a link to it and its permissions stay", "[ui][document]") {
+  TempDir t;
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  std::filesystem::create_directory(t.path / "real");
+  const std::filesystem::path real = t.path / "real" / "p.xmpuzzle";
+  const std::filesystem::path link = t.path / "link.xmpuzzle";
+  REQUIRE(d.saveAs(real));
+  std::filesystem::create_symlink(real, link);
+  const auto mode = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+                    std::filesystem::perms::group_read;                  // 0640
+  std::filesystem::permissions(real, mode);
+
+  REQUIRE(d.load(link).ok);
+  d.setComment("through the link");
+  REQUIRE(d.save());
+  CHECK(std::filesystem::is_symlink(link));
+  CHECK((std::filesystem::status(real).permissions() & std::filesystem::perms::all) == mode);
+  DocumentSession e;
+  REQUIRE(e.load(real).ok);
+  CHECK(e.puzzle().getComment() == "through the link");
+}
+#endif
 
 TEST_CASE("withPuzzleExtension leaves a correct name alone", "[ui][document]") {
   CHECK(DocumentSession::withPuzzleExtension("a/b.xmpuzzle") == std::filesystem::path("a/b.xmpuzzle"));

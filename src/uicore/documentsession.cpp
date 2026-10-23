@@ -30,6 +30,8 @@
 #include "../tools/xml.h"
 
 #include <fstream>
+#include <random>
+#include <string>
 
 namespace btui {
 
@@ -145,15 +147,17 @@ namespace btui {
    * unwritable path -- which is why legacy cb_Save reports such a save as a
    * success.
    *
-   * Written beside the file and renamed over it, as the settings are: a
-   * save that fails part way (a full disk, an error thrown while writing)
+   * Written to a copy first, beside the file or, in a folder that cannot be
+   * written to, in the system's temporary folder, and then copied over the
+   * file: a save that fails while writing (a full disk, an error thrown)
    * leaves the previous file as it was, where writing in place had already
-   * truncated it. The partial copy is removed.
+   * truncated it. Copied, not renamed over it, so the file stays the same
+   * file: a symbolic link to it still points to it, and its permissions,
+   * owner, ACLs and other hard links are kept. The copy is removed, unless
+   * copying it over failed part way: then it is the only complete one.
    */
   static bool writePuzzle(const puzzle_c & p, const std::filesystem::path & file) {
-    std::filesystem::path tmp = file;
-    tmp += ".tmp";
-    // the partial copy goes on every way out but the rename
+    // the copy goes on every way out but a copy over the file that failed
     class Discard {
     public:
       explicit Discard(const std::filesystem::path & f) : file(f) {}
@@ -167,22 +171,48 @@ namespace btui {
       bool keep = false;
     private:
       const std::filesystem::path & file;
-    } discard(tmp);
-    {
-      ogzstream ostr(tmp.string().c_str());
-      if (!ostr.rdbuf()->is_open())
+    };
+    // named once it is open, so that a file in the way is not removed; and
+    // the stream, declared after, is closed before the copy is removed
+    std::filesystem::path tmp;
+    Discard discard(tmp);
+    std::filesystem::path beside = file;
+    beside += ".tmp";
+    auto ostr = std::make_unique<ogzstream>(beside.string().c_str());
+    if (ostr->rdbuf()->is_open()) {
+      tmp = beside;
+    } else {
+      std::error_code ec;
+      std::random_device rd;
+      const std::filesystem::path other = std::filesystem::temp_directory_path(ec) /
+          (file.filename().string() + "." + std::to_string(rd()) + ".tmp");
+      if (ec)
         return false;
-      xmlWriter_c xml(ostr);
-      p.save(xml);
-      ostr.close();
-      if (!ostr)
+      ostr = std::make_unique<ogzstream>(other.string().c_str());
+      if (!ostr->rdbuf()->is_open())
         return false;
+      tmp = other;
     }
-    std::error_code ec;
-    std::filesystem::rename(tmp, file, ec);       // replaces the old file
-    if (ec)
+    {
+      xmlWriter_c xml(*ostr);
+      p.save(xml);
+      ostr->close();
+      if (!*ostr)
+        return false;
+      ostr.reset();
+    }
+    std::ifstream in(tmp, std::ios::binary);
+    if (!in)
       return false;
-    discard.keep = true;
+    std::ofstream out(file, std::ios::binary | std::ios::trunc);
+    if (!out)
+      return false;                                // the file is untouched
+    out << in.rdbuf();
+    out.close();
+    if (!out || in.bad()) {
+      discard.keep = true;
+      return false;
+    }
     return true;
   }
 
