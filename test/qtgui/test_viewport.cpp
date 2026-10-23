@@ -37,6 +37,7 @@
 
 #include <QCoreApplication>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QImage>
 #include <QPainter>
 #include <QFile>
@@ -1406,6 +1407,14 @@ void TestPipelineCache::theFilesLiveBesideTheSettings() {
   // a scratch settings file (BURRTOOLS_QT_SETTINGS) takes its caches along
   QCOMPARE(PipelineCache::windowFile(QStringLiteral("/tmp/run/s.rc")), QStringLiteral("/tmp/run/s.pipelines"));
   QVERIFY(PipelineCache::windowFile(QString()).isEmpty());
+
+  // the user's own settings: the cache folder, not the settings folder
+  // (Documents on Windows, which often syncs)
+  const QString cache = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+  const QString user = SettingsController::defaultFile();
+  QCOMPARE(QFileInfo(PipelineCache::windowFile(user)).absolutePath(), QFileInfo(cache + QStringLiteral("/x")).absolutePath());
+  QVERIFY(PipelineCache::offscreenFile(user) != PipelineCache::windowFile(user));
+  QVERIFY(QFileInfo(PipelineCache::offscreenFile(user)).absolutePath() != QFileInfo(user).absolutePath());
 
   // the App's settings decide: the tests' App is on a scratch file, never the user's
   AppFixture f;

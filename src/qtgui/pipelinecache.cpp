@@ -20,12 +20,15 @@
  */
 #include "pipelinecache.h"
 
+#include "settingscontroller.h"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QQuickGraphicsConfiguration>
 #include <QQuickWindow>
 #include <QSaveFile>
+#include <QStandardPaths>
 
 namespace {
 
@@ -40,21 +43,40 @@ namespace {
       base.truncate(dot);
     return fi.dir().filePath(base + QLatin1String(suffix));
   }
+
+  /* the user's own settings: `name` in the user's cache folder; another
+   * settings file: beside it */
+  QString cacheFile(const QString & settingsFile, const char * name, const char * suffix) {
+    if (settingsFile.isEmpty())
+      return QString();
+    if (QFileInfo(settingsFile) != QFileInfo(SettingsController::defaultFile()))
+      return besideSettings(settingsFile, suffix);
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    if (dir.isEmpty())
+      return QString();
+    return QDir(dir).filePath(QLatin1String(name));
+  }
+
+  /* the cache folder is not there before the first cache */
+  void makeFolder(const QString & file) {
+    QDir().mkpath(QFileInfo(file).absolutePath());
+  }
 }
 
 namespace PipelineCache {
 
   QString windowFile(const QString & settingsFile) {
-    return besideSettings(settingsFile, ".pipelines");
+    return cacheFile(settingsFile, "window.pipelines", ".pipelines");
   }
 
   QString offscreenFile(const QString & settingsFile) {
-    return besideSettings(settingsFile, ".offscreen.pipelines");
+    return cacheFile(settingsFile, "offscreen.pipelines", ".offscreen.pipelines");
   }
 
   void configureWindow(QQuickWindow * window, const QString & file) {
     if (!window || file.isEmpty())
       return;
+    makeFolder(file);
     QQuickGraphicsConfiguration config = window->graphicsConfiguration();
     config.setPipelineCacheSaveFile(file);
     // a missing file is not even opened: Qt would mention that it is missing
@@ -75,6 +97,7 @@ namespace PipelineCache {
   bool write(const QString & file, const QByteArray & data) {
     if (file.isEmpty() || data.isEmpty())
       return false;
+    makeFolder(file);
     QSaveFile f(file);
     if (!f.open(QIODevice::WriteOnly))
       return false;

@@ -32,16 +32,19 @@ class QQuickWindow;
  * of the main window and of the image export's offscreen renderer, kept
  * between runs so the second start skips compiling them.
  *
- * They live next to the settings file -- for ".burrtools-qt.rc",
- * ".burrtools-qt.pipelines" and ".burrtools-qt.offscreen.pipelines" -- so
- * a run on a scratch settings file (BURRTOOLS_QT_SETTINGS, the tests) never
- * touches the user's caches. A cache made by another driver, Qt version or
+ * For the user's own settings file they live in the user's cache folder
+ * (QStandardPaths::CacheLocation), not beside it: they are machine- and
+ * driver-specific, and the settings folder is Documents on Windows, often
+ * synced. A scratch settings file (BURRTOOLS_QT_SETTINGS, the tests) takes
+ * them along -- for "s.rc", "s.pipelines" and "s.offscreen.pipelines" --
+ * so such a run never touches the user's caches. A cache made by another driver, Qt version or
  * graphics API is refused by QRhi and simply rebuilt; a missing or broken
  * file is the same as none.
  */
 namespace PipelineCache {
 
-  /* the main window's and the offscreen renderer's cache for a settings file */
+  /* the main window's and the offscreen renderer's cache for a settings
+   * file (empty for none) */
   QString windowFile(const QString & settingsFile);
   QString offscreenFile(const QString & settingsFile);
 

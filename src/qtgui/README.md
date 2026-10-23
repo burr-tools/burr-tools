@@ -237,9 +237,10 @@ export and the render tests through `OffscreenRenderer`.
   previews and the exported pictures alike (`SceneController::applyStyle`).
 - **Meshes** come from `uicore/scenemesh` — the library's own voxel geometry
   for every grid type (cubes, prisms, spheres, both tetrahedral grids).
-- **Pipeline cache.** Compiled pipelines are kept between runs next to the
-  settings file (`.burrtools-qt.pipelines`; the image export's
-  `.burrtools-qt.offscreen.pipelines`), so a second start skips compiling
+- **Pipeline cache.** Compiled pipelines are kept between runs in the
+  user's cache folder (`QStandardPaths::CacheLocation`: `window.pipelines`;
+  the image export's `offscreen.pipelines`), or beside a scratch settings
+  file (`BURRTOOLS_QT_SETTINGS`), so a second start skips compiling
   them. A missing, broken or foreign cache is ignored without a word.
 - **View cube** (`ViewCubeItem`, `uicore/viewcube`): faces, edges and
   corners to snap to, 90° steps, roll, Home, in the main view's projection.
