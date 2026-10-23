@@ -337,7 +337,9 @@ int main(int argv, char* args[]) {
       case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
       case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
       case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-        /* all other errors should not occur */
+      case assembler_c::ERR_CAN_NOT_START:
+        /* all other errors should not occur (CAN_NOT_START is rejected at
+         * run/setAssembler level, never by matrix creation) */
         printf("Oops internal error\n");
         return 0;
       }

@@ -101,6 +101,14 @@ private:
     std::vector<unsigned int> column_stack;
     std::vector<unsigned int> rows;
     std::vector<unsigned int> hidden_rows;
+    /* Root depth of the task's territory: the stack size the search must
+     * pop below to finish. Write-back overwrites the five stacks with the
+     * live (deeper) frontier, so the root would be lost without this --
+     * and resuming with the live size as base exits early, abandoning the
+     * ancestor levels' remaining alternatives. Set at generation, never
+     * touched by write-back.
+     */
+    unsigned int baseDepth = 0;
   };
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
@@ -111,7 +119,6 @@ private:
   bool willRunParallel(unsigned int threads) const;
 
   bool canUseSimd(void) const;
-  void simdSearch(void);
   std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
 
   friend class assemblerWorker_1;
@@ -194,27 +201,17 @@ private:
    * resume (issue #111): interrupted in-flight tasks plus the pool
    * remainder, filled by parallelSolve on stop. The next assemble() feeds
    * them back as seeds instead of regenerating everything. Persisted by
-   * save() (format 2.2) for cross-session resume, like parallelTasks.
+   * save() for cross-session resume, like parallelTasks.
    */
   std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing. save() records
    * the flag; setPosition() refuses reloads that carry it WITHOUT task
-   * data (format 2.1 and serial-SIMD stops), but resumes reloads whose
-   * pool remainder was persisted alongside it (format 2.2).
+   * data (format 2.1 task-less stops), but resumes reloads whose
+   * pool remainder was persisted alongside it.
    */
   bool parallelInterrupted = false;
-
-  /* set when simdSearch() ran to completion.
-   *
-   * The SIMD search keeps its position inside the solver, so next_row_stack /
-   * task_stack -- what the progress estimate below is derived from -- never
-   * move. Completion therefore needs its own flag: "idle and iterations > 0"
-   * also holds after setPosition() restores a saved state, and between two
-   * assemble() calls, before any search has run.
-   */
-  std::atomic<bool> simdCompleted{false};
 
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;

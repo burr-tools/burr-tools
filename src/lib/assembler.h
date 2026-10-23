@@ -39,6 +39,26 @@ class problem_c;
 class xmlWriter_c;
 class ThreadBudget;
 
+/* Whether a stopped parallel run with a drained remainder must complete
+ * instead of interrupting: a stop that lands after the pool fully drained
+ * (every task counted, nothing left queued) means the search genuinely
+ * finished. Saving that empty remainder as interrupted would make a
+ * continue regenerate and re-search everything from scratch, or refuse the
+ * restore.
+ *
+ * Shared by all three drain sites (assembler_0 DLX/SIMD, assembler_1 DLX,
+ * assembler_1 Huang) so the condition cannot silently diverge between
+ * engines; its truth table is unit-tested directly.
+ *
+ * Note this is protocol-shape neutral (task requeue/drain/finish pairing
+ * is unchanged), so spec/ needs no update for it.
+ */
+inline bool drainedPoolComplete(bool stopped, size_t drainedTasks,
+                                size_t totalTasks, size_t completedTasks) {
+  return stopped && drainedTasks == 0 && totalTasks > 0 &&
+         completedTasks >= totalTasks;
+}
+
 /**
  * Helper for the assembler preparation step: enumerates all placements of a
  * rotated piece inside the result shape.
@@ -139,6 +159,7 @@ public:
     ERR_CAN_NOT_RESTORE_VERSION, ///< happens on restore, when the versions of the saved information mismatches
     ERR_CAN_NOT_RESTORE_SYNTAX,  ///< happens on restore, when the information seems wrong
     ERR_CAN_NOT_RESTORE_INTERRUPTED, ///< happens on restore, when the saved search was a parallel one that got interrupted and is therefore not resumable
+    ERR_CAN_NOT_START,           ///< happens when solving is started on a problem that is not startable (already solved or invalidated); reset it first
     ERR_PUZZLE_UNHANDABLE        ///< the puzzle contains definitions that can not be (like ranges, multipieces, ...)
   } errState;
 
@@ -151,6 +172,7 @@ public:
       case ERR_CAN_NOT_RESTORE_VERSION: return "Impossible to restore saved state: internal format changed";
       case ERR_CAN_NOT_RESTORE_SYNTAX: return "Impossible to restore saved state: corrupt data";
       case ERR_CAN_NOT_RESTORE_INTERRUPTED: return "The saved search was running on several cores when it was stopped, which can not be continued; it has been reset and must be started again";
+      case ERR_CAN_NOT_START: return "The problem can not be started in its current state; reset it and start again";
       case ERR_PUZZLE_UNHANDABLE: return "Puzzle contains unhandable definitions";
       default: return "Unknown error";
     }
@@ -259,6 +281,14 @@ public:
   /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
 
+  /** Test hook: called on the assembling thread once a parallel run's
+   * workers have joined, right before the run decides between "complete"
+   * and "interrupted" (see drainedPoolComplete). Lets a test land a stop
+   * exactly after the pool drained -- the one landing no timing-based stop
+   * hits reliably. Null (the default) does nothing.
+   */
+  void setPoolDrainedHook(std::function<void()> hook) { poolDrainedHook = std::move(hook); }
+
   /**
    * sets the position of the assembly process, so that it continues exactly
    * where it stood, when getPosition was called
@@ -343,6 +373,13 @@ public:
   std::atomic<size_t> totalTasks{0};
   std::atomic<size_t> completedTasks{0};
 
+  // see setPoolDrainedHook()
+  std::function<void()> poolDrainedHook;
+  void runPoolDrainedHook() {
+    if (poolDrainedHook)
+      poolDrainedHook();
+  }
+
   /* One cancellation contract for all engines.
    *
    * A stop_source refreshed at every run entry (assemble()/debug_step()).
@@ -376,7 +413,8 @@ public:
   mutable std::mutex callbackMutex;
 
   /* worker count actually used: numThreads, else BURRTOOLS_THREADS, else the
-   * hardware concurrency -- every path clamped to MAX_THREADS
+   * hardware concurrency -- every path clamped to MAX_THREADS, and every path
+   * yields at least 1 (a zero setting means "auto", never "no workers")
    */
   unsigned int getEffectiveThreads(void) const;
 

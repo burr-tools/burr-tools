@@ -9,8 +9,12 @@
 #include "lib/puzzle.h"
 #include "lib/solution.h"
 #include "lib/voxel.h"
+#include "tools/xml.h"
 
+#include <functional>
 #include <memory>
+#include <sstream>
+#include <string>
 #include <vector>
 
 using namespace bttest;
@@ -591,4 +595,74 @@ TEST_CASE("problem: setShapeMaximum of zero deletes the solutions that used the 
   const assembly_c * a = f.problem->getSavedSolution(0)->getAssembly();
   REQUIRE(a->placementCount() == 1);
   REQUIRE(a->getX(0) == 21);
+}
+
+/* ------------------------------------------------------------------ */
+/* loading saved solve state                                           */
+/* ------------------------------------------------------------------ */
+
+namespace {
+
+/* Save the fixture's puzzle, apply `edit` to the XML text, reload it. */
+std::unique_ptr<puzzle_c> reloadEdited(const puzzle_c & puzzle,
+                                       const std::function<void(std::string &)> & edit) {
+  std::ostringstream saved;
+  {
+    xmlWriter_c xml(saved);
+    puzzle.save(xml);
+  }
+  std::string text = saved.str();
+  edit(text);
+  std::istringstream in(text);
+  xmlParser_c pars(in);
+  return std::make_unique<puzzle_c>(pars);
+}
+
+void replaceOnce(std::string & text, const std::string & from, const std::string & to) {
+  const size_t at = text.find(from);
+  REQUIRE(at != std::string::npos);
+  REQUIRE(text.find(from, at + 1) == std::string::npos);
+  text.replace(at, from.size(), to);
+}
+
+} // namespace
+
+TEST_CASE("problem: a saved solve state outside the enum loads as UNKNOWN",
+          "[problem][lifecycle]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  REQUIRE(f.problem->getSolveState() == SS_SOLVING);
+
+  for (const char * bad : {"7", "-3", "4"}) {
+    INFO("state=" << bad);
+    auto p = reloadEdited(*f.puzzle, [&](std::string & text) {
+      replaceOnce(text, "state=\"1\"", std::string("state=\"") + bad + "\"");
+    });
+    problem_c * pr = p->getProblem(0);
+    CHECK(pr->getSolveState() == SS_UNKNOWN);
+    CHECK_FALSE(pr->canStartSolving());
+  }
+}
+
+/* Lifecycle T2c: a saved assembler state the assembler refuses to decode
+ * (here: another version) is dropped, the problem stays SS_SOLVING with its
+ * results viewable, and canStartSolving() goes false, so nothing (the GUI's
+ * Continue button included) offers to resume it again. */
+TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
+          "[problem][lifecycle]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  auto p = reloadEdited(*f.puzzle, [&](std::string & text) {
+    const size_t tag = text.find("<assembler version=\"");
+    REQUIRE(tag != std::string::npos);
+    const size_t start = tag + std::string("<assembler version=\"").size();
+    const size_t end = text.find('"', start);
+    text.replace(start, end - start, "0.0");
+  });
+  problem_c * pr = p->getProblem(0);
+  REQUIRE(pr->getSolveState() == SS_SOLVING);
+  REQUIRE(pr->canStartSolving());
+
+  CHECK(pr->setAssembler(std::make_unique<assembler_0_c>(*pr))
+        == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
+  CHECK(pr->getSolveState() == SS_SOLVING);
+  CHECK_FALSE(pr->canStartSolving());
 }

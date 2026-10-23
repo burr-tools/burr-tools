@@ -44,6 +44,32 @@ void solveThread_c::run(void){
 
   try {
 
+    /* Lifecycle enforcement (LIFECYCLE-4): reject unstartable problems here,
+     * at worker entry, so every outcome stays a terminal action for polling
+     * frontends. This sits above both the assembler-reuse branch and the
+     * fresh setAssembler() path.
+     *
+     * Rejection reports ACT_ERROR with ERR_CAN_NOT_START and leaves the
+     * problem untouched for the next attempt; every frontend already
+     * handles the ERROR state.
+     *
+     * TOCTOU note: this check and setAssembler()'s own preconditions below
+     * overlap deliberately, with different failure modes. This gate is the
+     * usage-error path (solved/invalidated problem, no reset yet): it is
+     * non-destructive. setAssembler()'s bt_te() throws are unreachable
+     * defense-in-depth against programming errors -- a state change between
+     * this check and that call -- and end in ACT_ASSERT with a full reset,
+     * which is only acceptable because that interleaving cannot happen
+     * through the GUI (buttons are disabled mid-run) or burrTxt2 (gated on
+     * canStartSolving() before start()). Do not "simplify" one away.
+     */
+    if (!puzzle.canStartSolving()) {
+      errState = assembler_c::ERR_CAN_NOT_START;
+      errParam = static_cast<int>(puzzle.getSolveState());
+      action = solveThread_c::ACT_ERROR;
+      return;
+    }
+
     /* local pointer for this thread's own use; the shared member `assm` is
      * only written (published) here and read by the GUI thread
      */
@@ -158,12 +184,19 @@ void solveThread_c::run(void){
 
       action = solveThread_c::ACT_ASSEMBLING;
       a->assemble(this);
+      assemblyPhaseEnded();
 
       /* freeze the assembly cost: from here on the machine is draining the
        * disassembly queue, and charging that time to assembly too would make
-       * the blend approach 1 without any of the remaining work being done
+       * the blend approach 1 without any of the remaining work being done.
+       *
+       * release: assemble() has returned, so every submit() it made is
+       * complete; getProgress() and workOutstanding() acquire this store and
+       * so read the pool's final submitted count.
        */
-      assemblyEndNs.store(steadyNowNs(), std::memory_order_relaxed);
+      assemblyEndNs.store(steadyNowNs(), std::memory_order_release);
+
+      bool assembliesStashed = false;
 
       if (disasm_pool) {
         if (!stopPressed)
@@ -172,12 +205,21 @@ void solveThread_c::run(void){
         // Move anything the pool salvaged (stop with a full queue, or
         // submits rejected after stop) to the problem for the next run.
         // Normally empty; finish() already delivered everything filed.
-        puzzle.stashAssemblies(disasm_pool->takeSalvaged());
+        auto salvaged = disasm_pool->takeSalvaged();
+        assembliesStashed = !salvaged.empty();
+        puzzle.stashAssemblies(std::move(salvaged));
       }
 
       puzzle.addTime(time(0)-startTime);
 
-      if (a->getFinished() >= 1) {
+      /* A complete search is not a complete solve while stashed assemblies
+       * are still waiting for disassembly: a stop that lands after the
+       * search ends but before the pool drains leaves exactly that. Such a
+       * run pauses, so the next start() re-submits the stash; finishing it
+       * would mark the problem solved with those assemblies uncounted, and
+       * a solved problem is never continued.
+       */
+      if (a->getFinished() >= 1 && !assembliesStashed) {
         action = solveThread_c::ACT_FINISHED;
         puzzle.finishedSolving();
       } else
@@ -433,6 +475,14 @@ void solveThread_c::stop(void) {
 
 bool solveThread_c::start(bool stop_after_prep) {
 
+  /* Lifecycle enforcement (LIFECYCLE-4): restarting an already-started
+   * object is a programming error, so it throws via bt_te(). The bool return
+   * stays reserved for thread-creation failure, which the GUI already reports.
+   * Unstartable problems are rejected worker-side at run() entry; see there.
+   */
+  if (running.load(std::memory_order_acquire) || worker_thread.joinable())
+    bt_te("solveThread_c::start: thread already started, use one object per run");
+
   stopPressed = false;
   return_after_prep = stop_after_prep;
   startTime = time(0);
@@ -520,7 +570,12 @@ float solveThread_c::getProgress(void) const {
     if (!a)
       return reportedProgress.load(std::memory_order_relaxed);
 
-    const long long end = assemblyEndNs.load(std::memory_order_relaxed);
+    /* acquire, pairing with the release store run() makes when assemble()
+     * returns: once assembly reads as ended, the pool's submitted count read
+     * below is final, so a drained pool cannot be mistaken for a finished
+     * solve with a late submit still unseen
+     */
+    const long long end = assemblyEndNs.load(std::memory_order_acquire);
 
     progressModel_c::Input in;
     in.assemblyFraction = a->getFinished();

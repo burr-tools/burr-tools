@@ -71,6 +71,26 @@ class problem_c;
  * - No pool-level stop flag may refuse push_tasks: the resume depends on
  *   requeue pushes staying accepted, which is why AssemblyTaskPool has no
  *   requestStop()/abort() -- stop arrives via the run and jthread tokens.
+ *
+ * Lifecycle invariants (LIFECYCLE-n). These are the canonical definitions;
+ * tests and comments cite the IDs, the design doc repeats them with
+ * enforcement pointers.
+ *
+ * - LIFECYCLE-1: ACT_FINISHED implies SS_SOLVED with a complete search
+ *   (getFinished() >= 1) and an empty stash. A complete search with salvaged
+ *   assemblies outstanding ends ACT_PAUSING instead, so the next start()
+ *   re-submits them first.
+ * - LIFECYCLE-2: ACT_PAUSING implies SS_SOLVING with the assembler present;
+ *   the run is resumable.
+ * - LIFECYCLE-3: stop() is total and idempotent: accepted in every action,
+ *   effective only while preparing, reducing, assembling or disassembling.
+ * - LIFECYCLE-4: start() requires a fresh object (one object per run); a
+ *   problem that canStartSolving() denies fails the run with
+ *   ACT_ERROR/ERR_CAN_NOT_START, leaving the problem untouched.
+ * - LIFECYCLE-5: every found assembly is enqueued, salvaged or delivered,
+ *   never lost; the stash is re-submitted first on the next run.
+ * - LIFECYCLE-6: takeSalvaged() runs only after finish(); pool drain only
+ *   after the workers have joined (see the ordering rules above).
  */
 class solveThread_c : public assembler_cb {
 
@@ -280,8 +300,20 @@ private:
   // helper to stop without virtual dispatch in destructor
   void stopInternal(void);
 
-  // the call-back
+protected:
+
+  // the call-back; may be called from several assembler threads at once
   bool assembly(std::unique_ptr<assembly_c> a) override;
+
+  /* Called on the worker thread once assemble() has returned and before the
+   * disassembly pool is drained. The default does nothing. It exists so a
+   * test can act in that window, which no poll from outside the worker can
+   * hit reliably: a subclass overriding it must join the worker in its own
+   * destructor, before its part of the object is torn down.
+   */
+  virtual void assemblyPhaseEnded(void) {}
+
+private:
 
   // Shared thread budget for the search (null when uncapped).
   ThreadBudget *threadBudget() override { return threadBudget_.get(); }
@@ -291,7 +323,12 @@ private:
 public:
 
   // let the thread start
-  // returns true, if everything went well, false otherwise
+  // returns true, if everything went well, false on thread-creation failure.
+  // Throws assert_exception (all build modes) when started on an
+  // already-started object: one object per run. An unstartable problem is
+  // rejected worker-side at run() entry instead (run ends in ACT_ERROR with
+  // ERR_CAN_NOT_START, leaving the problem untouched), so polling frontends
+  // keep working.
   bool start(bool stop_after_prep = false);
 
   /* Whole-solve progress in [0,1] for the GUI's bar and its time estimate.
@@ -365,6 +402,30 @@ public:
    */
   float getAssemblyBaseFraction(void) const {
     return assemblyBaseFraction.load(std::memory_order_relaxed);
+  }
+
+  /* true while work the solve has counted is still to be done: assembly has
+   * not returned, or the pool holds a submitted disassembly it has not
+   * completed. Once false, the inputs getProgress() blends are final, so its
+   * value stops moving until the thread stops, however long the worker then
+   * spends joining the pool and delivering results; that span is scheduling,
+   * not solve progress. After a complete search the value it holds is
+   * runningCap. A stop can still end the run in ACT_PAUSING instead of
+   * ACT_FINISHED, and a stop before assemble() runs leaves this true for a
+   * thread that will do no more work.
+   *
+   * Never true again once it has gone false within a run, so a caller that
+   * reads it after getProgress() and sees true knows the work was outstanding
+   * when that value was reported. The acquire pairs with the release store
+   * run() makes when assemble() returns, so the submitted count read here is
+   * final. Exposed so tests can tell a bar that reached the cap because the
+   * work is done from one that is pinned there.
+   */
+  bool workOutstanding(void) const {
+    if (!assemblyEndNs.load(std::memory_order_acquire))
+      return true;
+    return disasm_pool &&
+           disasm_pool->completedCount() < disasm_pool->submittedCount();
   }
 
   // try to stop the thread at the next possible position

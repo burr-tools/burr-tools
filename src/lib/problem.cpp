@@ -225,9 +225,20 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   if (str.length())
     maxHoles = atoi(str.c_str());
 
+  /* A hand-edited or corrupt file can claim any integer here, including
+   * values outside the enum. The range check runs on the int, before the
+   * cast: casting an out-of-range value to the unscoped enum is undefined,
+   * and the compiler may then fold the check away. Fail closed to UNKNOWN
+   * (never startable without a reset): mapping garbage to UNSOLVED would
+   * leave UNSOLVED with the file's nonzero counters, which the fresh
+   * setAssembler() path must reject, turning a bad file into an assert
+   * instead of a clean "reset first" rejection from canStartSolving().
+   */
   str = pars.getAttributeValue("state");
-  if (str.length())
-    solveState = (solveState_e)atoi(str.c_str());
+  if (str.length()) {
+    const int st = atoi(str.c_str());
+    solveState = (st >= SS_UNSOLVED && st <= SS_UNKNOWN) ? (solveState_e)st : SS_UNKNOWN;
+  }
 
   if (solveState != SS_UNSOLVED)
   {
@@ -918,12 +929,17 @@ std::vector<std::unique_ptr<assembly_c>> problem_c::takeStashedAssemblies(void) 
 
 assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
   if (assemblerState.length()) {
-    bt_assert(solveState == SS_SOLVING);
+    /* Resume path (LIFECYCLE-4): the problem must already be solving.
+     * Undecodable state below stays a recoverable error return instead.
+     */
+    if (solveState != SS_SOLVING)
+      bt_te("problem_c::setAssembler: saved assembler state requires SS_SOLVING");
 
     // if we have some assembler position data, try to load that
     assembler_c::errState err = a->setPosition(assemblerState.c_str(), assemblerVersion.c_str());
 
-    // when we could not load, return with error and reset to unsolved
+    // when we could not load, return with error; see the branches below
+    // for what happens to the saved state in each case
     if (err != assembler_c::ERR_NONE) {
 
       /* A parallel search that was interrupted saves no usable resume point.
@@ -939,7 +955,19 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
         return err;
       }
 
-      solveState = SS_UNSOLVED;
+      /* Any other decode failure (version/syntax) also leaves no resumable
+       * search behind, so the saved resume bytes are dropped. Unlike the
+       * INTERRUPTED branch above the partial results stay viewable: the
+       * state is deliberately left at SS_SOLVING, not UNSOLVED.
+       * canStartSolving() then goes false (no assembler, no saved state),
+       * so a retry is rejected up front with ERR_CAN_NOT_START instead of
+       * failing here again -- and the problem is never left UNSOLVED with
+       * nonzero counters and stale resume data, a combination the fresh
+       * setAssembler() path below must reject. The next Start resets via
+       * removeAllSolutions() and solves from scratch.
+       */
+      assemblerState = "";
+      assemblerVersion = "";
       return err;
     }
 
@@ -948,11 +976,15 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
 
   } else {
 
-    bt_assert(solveState == SS_UNSOLVED);
+    /* Fresh path (LIFECYCLE-4): the problem must be unsolved with zero
+     * counters before a new assembler is installed.
+     */
+    if (solveState != SS_UNSOLVED)
+      bt_te("problem_c::setAssembler: fresh assembler requires SS_UNSOLVED");
 
     // if no data is available for assembler restoration reset counters
-    bt_assert(numAssemblies == 0);
-    bt_assert(numSolutions == 0);
+    if (numAssemblies.load() != 0 || numSolutions.load() != 0)
+      bt_te("problem_c::setAssembler: fresh solve requires zero counters");
 
     solveState = SS_SOLVING;
   }

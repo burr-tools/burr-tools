@@ -545,6 +545,17 @@ jobs:
         WINEDEBUG: -all
       run: meson test -C build-win --suite fast --suite slow --print-errorlogs
 
+    # Full meson test log on failure (see Linux job comment): meson cuts a
+    # failing test's output to its last 100 lines in the job log, which
+    # hides the Catch2 assertion -- and this job runs under Wine on a small
+    # runner, where timing-dependent failures are hardest to reproduce.
+    - name: Upload test log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: burrtools-testlog-windows
+        path: build-win/meson-logs/testlog.txt
+
     - name: Strip binaries
       run: x86_64-w64-mingw32-strip build-win/burrtools.exe build-win/burrTxt.exe build-win/burrTxt2.exe
     

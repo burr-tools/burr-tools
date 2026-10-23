@@ -45,7 +45,7 @@
 #define snprintf _snprintf
 #endif
 
-#define ASSEMBLER_VERSION "1.6"
+#define ASSEMBLER_VERSION "1.7"
 
 /* print out the current matrix */
 void printMatrix(
@@ -1255,13 +1255,23 @@ void assembler_0_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
   avoidTransformedMirror = std::move(mir);
 }
 
-void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok) {
+/* Delivers one raw solution. didConsume reports whether the solution is
+ * done with -- delivered, filtered as a rotation, or already reported
+ * (signature dedup) -- as opposed to declined because the stop arrived
+ * first: a declined solution must be found again on resume (see
+ * assemblerWorker_c::solution()). Returns false when the callback asked
+ * to stop.
+ */
+bool assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stopTok, bool & didConsume) {
+  didConsume = false;
   if (getCallback()) {
     std::unique_ptr<assembly_c> assembly = buildAssembly(row_nodes, count);
 
     if (avoidTransformedAssemblies &&
-        assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
-      return;
+        assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete)) {
+      didConsume = true;
+      return true;
+    }
 
     uint64_t sig = 14695981039346656037ULL;
     for (unsigned int i = 0; i < piecenumber; i++) {
@@ -1278,17 +1288,22 @@ void assembler_0_c::handleSolution(const unsigned int *row_nodes, unsigned int c
     {
       std::lock_guard<std::mutex> lock(callbackMutex);
       if (stopTok.stop_requested())
-        return;
+        return false;
+      didConsume = true;
       if (!emittedSignatures.insert(sig).second)
-        return;
-      if (!getCallback()->assembly(std::move(assembly)))
+        return true;
+      if (!getCallback()->assembly(std::move(assembly))) {
         stop();
+        return false;
+      }
     }
   }
+  return true;
 }
 
 void assembler_0_c::solution(std::stop_token stop) {
-  handleSolution(rows.data(), pos, stop);
+  bool didConsume = false;
+  handleSolution(rows.data(), pos, stop, didConsume);
 }
 
 /* to understand this function you need to first completely understand the
@@ -1475,6 +1490,12 @@ public:
    * publication site in searchSubtree()
    */
   float publishedFraction;
+  /* Full paths of solutions found but never delivered (stop arrived
+   * between discovery and delivery -- see solution()). Emitted as exact
+   * single-leaf pieces by divideRemainder; cleared per task at
+   * searchSubtree() entry so nothing leaks across tasks.
+   */
+  std::vector<assembler_0_c::SubtreeTask> missedTasks;
 
   assemblerWorker_c(assembler_0_c & p, std::stop_token stop_ = {}) :
     parent(p),
@@ -1534,7 +1555,19 @@ public:
 
   void solution() {
     flushIterations();
-    parent.handleSolution(rows.data(), pos, stop);
+    bool didConsume = false;
+    parent.handleSolution(rows.data(), pos, stop, didConsume);
+    if (!didConsume && parent.getCallback()) {
+      // Stop arrived between discovery and delivery: found but never
+      // handed over (and uncounted). Divide drops searched regions, so
+      // record its full path here; divideRemainder re-emits it as an
+      // exact single-leaf piece.
+      // (Without a callback there is nobody to deliver to; skip it.)
+      assembler_0_c::SubtreeTask missed;
+      for (unsigned int i = 0; i < pos && i < parent.piecenumber; i++)
+        missed.prefix.push_back({columns[i], rows[i]});
+      missedTasks.push_back(std::move(missed));
+    }
   }
 
   /* fraction of this worker's own subtree explored so far, in [0,1].
@@ -1568,7 +1601,15 @@ public:
     return erg;
   }
 
-  void searchSubtree(const assembler_0_c::SubtreeTask & task,
+  /* Returns true when the loop itself ran out of territory (retreated
+   * below the prefix, or overflowed past the last piece) -- the task is
+   * fully searched, whatever the stop token says afterwards. False means
+   * the stop interrupted it: the live state is the resume point (see
+   * divideRemainder). Callers must use this rather than re-reading the
+   * token: a stop landing after exhaustion would otherwise read as an
+   * interruption of an already-unwound (or unwinding) task.
+   */
+  bool searchSubtree(const assembler_0_c::SubtreeTask & task,
                      assembler_0_c::WorkerProgress * slot) {
     unsigned int prefixDepth = task.prefix.size();
 
@@ -1576,6 +1617,7 @@ public:
      * published fraction to 0 for this task
      */
     publishedFraction = 0;
+    missedTasks.clear();
 
     // Apply prefix
     for (unsigned int d = 0; d < prefixDepth; d++) {
@@ -1587,9 +1629,18 @@ public:
     pos = prefixDepth;
 
     bool cont;
+    bool exhausted = false;
 
-    while (!stop.stop_requested()) {
-      if (pos < prefixDepth || pos > parent.piecenumber)
+    // Exhaustion is checked before the stop: with an empty prefix a
+    // retreat past level 0 wraps pos to UINT_MAX and is only recognized
+    // here, so testing the token first would misread a finished task as
+    // an interrupted one.
+    for (;;) {
+      if (pos < prefixDepth || pos > parent.piecenumber) {
+        exhausted = true;
+        break;
+      }
+      if (stop.stop_requested())
         break;
 
       if (!right[0])
@@ -1597,8 +1648,10 @@ public:
 
       if (pos == parent.piecenumber) {
         pos--;
-        if (pos < prefixDepth)
+        if (pos < prefixDepth) {
+          exhausted = true;
           break;
+        }
       }
 
       cont = false;
@@ -1678,8 +1731,10 @@ public:
         if (!cont) {
           rows[pos] = 0;
           pos--;
-          if (pos < prefixDepth)
+          if (pos < prefixDepth) {
+            exhausted = true;
             break;
+          }
           continue;
         }
 
@@ -1699,13 +1754,16 @@ public:
         uncover(columns[pos]);
         rows[pos] = 0;
         pos--;
-        if (pos < prefixDepth)
+        if (pos < prefixDepth) {
+          exhausted = true;
           break;
+        }
       }
     }
 
-    // Unwind prefix if search finished normally
-    if (!stop.stop_requested()) {
+    // Unwind prefix if search finished normally (an interrupted search
+    // keeps its live state for divideRemainder)
+    if (exhausted) {
       for (int d = (int)prefixDepth - 1; d >= 0; d--) {
         uncover_row(task.prefix[d].row);
         uncover(task.prefix[d].col);
@@ -1714,6 +1772,224 @@ public:
       }
       pos = 0;
     }
+    return exhausted;
+  }
+
+  /* Remainder of an interrupted task as exact continuation tasks.
+   *
+   * Runs on the stopped worker's live state: rows[]/columns[]/pos and the
+   * matrix links are exactly as the search left them (single-use workers
+   * never touch another task after a stop, so no cleanup is needed
+   * afterwards, and nothing here mutates shared state).
+   *
+   * The unexplored territory at a stop is, by the DLX DFS shape, two
+   * disjoint sets: for every placed level, the rows after the current one
+   * (each becomes a task over the live above-path plus that row, with the
+   * full subtree below it searched fresh); plus the completions of the
+   * live path itself below the deepest placed level, when the worker
+   * arrived by descent and had not gone below yet (one "continue" task
+   * over the full live path). A retreat landing has those levels fully
+   * searched already, so no continue (it would duplicate).
+   * The already-searched regions (everything before the current path) are
+   * simply absent: dropped, not stored. That is the whole point -- the
+   * remainder holds future work only, so every piece starts with a clean
+   * skip and resume re-walks nothing.
+   *
+   * The continue task is emitted only for a fresh descent; retreat
+   * landings have the levels below fully searched -- delivered or
+   * missed-recorded (see solution()) -- so emitting it again would
+   * duplicate. Solutions found but never delivered (stop arriving between
+   * discovery and delivery) are re-emitted from the recorded paths (see
+   * takeMissed): they lie on dropped current paths no divergent piece can
+   * contain. Fat levels chunk like runtime splits (up to K singletons
+   * plus a cursor rest, same splitFanout rule), so the piece count stays
+   * bounded; the cursor resumes through the existing cursor machinery
+   * with no format changes.
+   *
+   * rows[d] != 0 means covered at every level: descent covers before
+   * advancing, retreat zeroes before dropping below. The stop is only
+   * noticed at the loop head, so exactly two states reach here: a fresh
+   * descent (rows[pos] == 0, covered range [prefix, pos-1]) or a retreat
+   * landing (covered range [prefix, pos]). A solution's own level is
+   * never a loop-head state: the pos == piecenumber branch retreats and
+   * advances in the same iteration. The covered range is scanned, not
+   * assumed from pos.
+   *
+   * Only for interrupted tasks (searchSubtree returned false); exhausted
+   * ones go through takeMissed. requeueWhole asks the caller to requeue
+   * the task itself: exact for an untouched task (nothing placed past the
+   * prefix, nothing delivered). Its other uses are invariant breaches
+   * (asserted): requeueing whole there re-delivers, so release builds
+   * degrade to duplicates rather than losses. An empty result WITHOUT
+   * requeueWhole is a real outcome, not a fallback: a retreat landing on
+   * the last row of every covered level has nothing left -- the task was
+   * fully searched and must count as done.
+   */
+  std::vector<assembler_0_c::SubtreeTask> divideRemainder(
+      const assembler_0_c::SubtreeTask & task, bool & requeueWhole) {
+    const unsigned int prefixDepth = static_cast<unsigned int>(task.prefix.size());
+    requeueWhole = false;
+
+    // searchSubtree reports exhaustion itself (checked before the stop),
+    // so an interrupted loop always sits inside the territory.
+    bt_assert(pos >= prefixDepth && pos <= parent.piecenumber);
+    if (pos < prefixDepth || pos > parent.piecenumber) {
+      requeueWhole = true;
+      return {};
+    }
+
+    // Covered range scan: the topmost covered level, contiguous down to
+    // the prefix. Anything else contradicts the descent/retreat pairing
+    // above and falls back rather than risk a misread range.
+    unsigned int topCovered = prefixDepth;
+    bool anyCovered = false;
+    for (unsigned int d = prefixDepth; d < parent.piecenumber; d++) {
+      if (!rows[d])
+        break;
+      topCovered = d;
+      anyCovered = true;
+    }
+    if (!anyCovered) {
+      // Nothing placed past the prefix (untouched, or stopped exactly at
+      // the prefix before its first pick): nothing searched, nothing
+      // delivered, so the whole task is the exact remainder.
+      bt_assert(missedTasks.empty());
+      requeueWhole = true;
+      return {};
+    }
+    // Nothing covered above the range, and the range ends at pos (retreat
+    // landing) or just below it (fresh descent).
+    for (unsigned int d = topCovered + 1; d < parent.piecenumber; d++)
+      bt_assert(rows[d] == 0);
+    bt_assert(topCovered == pos || topCovered + 1 == pos);
+
+    std::vector<assembler_0_c::SubtreeTask> out;
+    // Continue task, only for a fresh descent (topCovered + 1 == pos): the
+    // worker had not descended below the deepest placed level, so this
+    // whole subtree is unexplored. A retreat landing (topCovered == pos)
+    // has the levels below fully searched -- delivered live or
+    // missed-recorded -- so emitting it would re-search them into
+    // duplicates. Captured before the unwind below zeroes rows[].
+    if (topCovered + 1 == pos) {
+      // Continue task over the full live path.
+      assembler_0_c::SubtreeTask cont;
+      cont.prefix = task.prefix;
+      for (unsigned int k = prefixDepth; k <= topCovered; k++)
+        cont.prefix.push_back({columns[k], rows[k]});
+      out.push_back(std::move(cont));
+    }
+    // Unwind deepest-first: when level d is enumerated, all levels below
+    // it are already uncovered, so its column links hold exactly the rows
+    // compatible with the above-path. The current row and everything
+    // before it were searched -- only rows after it become pieces.
+    // rows[d] != 0 for d <= topCovered is established by the scan above.
+    for (unsigned int top = topCovered + 1; top-- > prefixDepth;) {
+      const unsigned int d = top;
+      bt_assert(rows[d] != 0);
+      if (!rows[d]) {
+        requeueWhole = true;
+        return {};
+      }
+      const unsigned int col = columns[d];
+      const unsigned int cur = rows[d];
+
+      // Uncover the current row BEFORE enumerating: its placement masks
+      // rows that conflict only with it but are valid alternatives under
+      // the above-path. Deeper levels are already uncovered (descending)
+      // and the above-path stays covered, so the chain now holds exactly
+      // the compatible set, including the current row itself (a placed
+      // row's own column node is never unlinked: the column choice strips
+      // its other nodes first, shielding it from its own row covers, and
+      // no deeper cover can touch it). Enumerating before this uncover
+      // silently drops those masked alternatives.
+      uncover_row(cur);
+      // Index of the current row from the column head, then up to K
+      // following rows; anything beyond becomes one cursor rest (same
+      // K-singletons-plus-rest rule as splitPrefix).
+      unsigned int m = 0;
+      unsigned int r = down(col);
+      while (r != col && r != cur) {
+        r = down(r);
+        m++;
+      }
+      // The current row is always linked in its own column (see above).
+      bt_assert(r == cur);
+      if (r != cur) {
+        requeueWhole = true;
+        return {};
+      }
+      std::vector<unsigned int> following;
+      for (r = down(r); r != col && following.size() < parent.splitFanout; r = down(r))
+        following.push_back(r);
+      const bool exhaustedLevel = (r == col);
+      auto emitPiece = [&](unsigned int altRow) {
+        assembler_0_c::SubtreeTask piece;
+        piece.prefix = task.prefix;
+        for (unsigned int k = prefixDepth; k < d; k++)
+          piece.prefix.push_back({columns[k], rows[k]});
+        piece.prefix.push_back({col, altRow});
+        out.push_back(std::move(piece));
+      };
+      for (unsigned int alt : following)
+        emitPiece(alt);
+      if (!exhaustedLevel) {
+        assembler_0_c::SubtreeTask rest;
+        rest.prefix = task.prefix;
+        for (unsigned int k = prefixDepth; k < d; k++)
+          rest.prefix.push_back({columns[k], rows[k]});
+        rest.cursorCol = col;
+        // Skip through the current row and the emitted singletons
+        // (absolute indices 0..m+s), counted from the column head on
+        // the identically rebuilt resume state -- the same convention
+        // as splitPrefix.
+        rest.cursorSkip = m + static_cast<unsigned int>(following.size()) + 1;
+        out.push_back(std::move(rest));
+      }
+
+      // The row covers are already undone above; now drop the level
+      // itself before moving up.
+      uncover(col);
+      rows[d] = 0;
+      columns[d] = 0;
+    }
+
+    // Missed solutions (found but never delivered -- see solution()):
+    // they lie on dropped current paths, so no divergent piece can
+    // contain them.
+    for (auto & missed : missedTasks)
+      out.push_back(std::move(missed));
+    missedTasks.clear();
+
+    assignShares(out, task.share);
+    return out;
+  }
+
+  /* Remainder of an exhausted task: only its missed solutions (found but
+   * never delivered because the stop arrived between discovery and
+   * delivery -- see solution()), each as an exact single-leaf piece. The
+   * rest of the territory was searched with everything else delivered.
+   * Usually empty; non-empty only when a stop lands inside the very last
+   * deliveries of a task, e.g. on a single-leaf task (a re-emitted missed
+   * piece, or a continue task over a full path) -- whose territory is
+   * nothing but that leaf.
+   */
+  std::vector<assembler_0_c::SubtreeTask> takeMissed(
+      const assembler_0_c::SubtreeTask & task) {
+    std::vector<assembler_0_c::SubtreeTask> out = std::move(missedTasks);
+    missedTasks.clear();
+    assignShares(out, task.share);
+    return out;
+  }
+
+  // Shares divide evenly over a remainder (progress accounting only); the
+  // caller keeps the task-count total consistent with the transfer.
+  static void assignShares(std::vector<assembler_0_c::SubtreeTask> & pieces,
+                           float share) {
+    if (pieces.empty())
+      return;
+    const float unitShare = share / static_cast<float>(pieces.size());
+    for (auto & piece : pieces)
+      piece.share = unitShare;
   }
 
   void flushIterations() {
@@ -1746,7 +2022,11 @@ public:
 
     unsigned int maxPrefix =
         parent.piecenumber > 1 ? parent.piecenumber - 1 : 1u;
-    if (task.prefix.size() >= maxPrefix)
+    // Plain tasks past the cap run whole (the caller searches the
+    // original); cursors bypass it -- a cursor has no whole to run
+    // (searching its prefix would duplicate the emitted singletons), so
+    // refusing to split one can only lose its remaining rows.
+    if (task.prefix.size() >= maxPrefix && !task.hasCursor())
       return children;
 
     for (const auto &step : task.prefix) {
@@ -1768,11 +2048,25 @@ public:
       return children;
     }
 
-    // Same MRV column choice as searchSubtree, holes check included.
+    // Same MRV column choice as searchSubtree, holes check included
+    // (plain tasks; cursor tasks re-enumerate their fixed column below).
     unsigned int c = right[0];
-    unsigned int s = colCount[c];
+    unsigned int skip = 0;
+    unsigned int s;
+    if (task.hasCursor()) {
+      // Fixed column and skip: re-enumerate the same rows the cursor was
+      // created from. The scratch state is rebuilt identically every time
+      // (same base, same prefix covers), so the links -- and the cursor --
+      // are still valid. Selection (s = 1) only enters the enumeration
+      // below; MRV scan and holes check are skipped.
+      c = task.cursorCol;
+      skip = task.cursorSkip;
+      s = 1;
+    } else {
+      s = colCount[c];
+    }
 
-    if (s) {
+    if (s && !task.hasCursor()) {
       unsigned int j = right[c];
       while (j) {
         if (colCount[j] < s) {
@@ -1784,7 +2078,7 @@ public:
       }
     }
 
-    if (s) {
+    if (s && !task.hasCursor()) {
       unsigned int currentHoles = parent.holes;
       unsigned int j = right[parent.varivoxelEnd];
       while (j != parent.varivoxelEnd) {
@@ -1800,26 +2094,62 @@ public:
     }
 
     if (s) {
-      /* colCount[c] (== s) is still live here: c has not been covered yet,
-       * so this reads the same local branching factor generateSubtreeTasks()
-       * would multiply into a fresh task's share. Dividing task.share by s
-       * is that same product taken one step further rather than recomputed
-       * from scratch, and since this loop creates exactly s children, their
-       * shares sum back to task.share exactly -- the split conserves share
-       * the same way the original generation does.
+      /* Enumerate the column's rows, skipping the cursor's share on rest
+       * tasks. At most splitFanout units leave here: singletons plus, when
+       * rows remain, one cursor for the rest. A column with at most K rows
+       * yields exactly one task per row.
        */
-      float childShare = task.share / static_cast<float>(s);
-      for (unsigned int r = down(c); r != c; r = down(r)) {
+      unsigned int r = down(c);
+      for (unsigned int i = 0; i < skip && r != c; i++)
+        r = down(r);
+      std::vector<unsigned int> rows;
+      while (r != c && rows.size() < parent.splitFanout) {
+        rows.push_back(r);
+        r = down(r);
+      }
+      const bool exhausted = (r == c);
+
+      if (rows.empty()) {
+        // Dead column, or an exhausted cursor (defensive only -- cursors
+        // are created with rows remaining, on an identically rebuilt
+        // matrix). Either way there is nothing to split off.
+        unwind();
+        return children;
+      }
+      if (!task.hasCursor() && rows.size() < 2 && exhausted) {
+        // Single live child, plain task: splitting is pointless; the
+        // worker searches the task itself. A cursor in the
+        // same shape must still emit its one row -- dropping it would lose
+        // the subtree -- so cursors never take this path.
+        unwind();
+        return children;
+      }
+
+      /* Share is divided evenly over the emitted units (singletons plus
+       * the rest cursor, if any), so the children's shares sum back to
+       * task.share exactly -- the split conserves share the same way the
+       * original generation does. (Progress accounting only.)
+       */
+      const float unitShare = task.share /
+          static_cast<float>(rows.size() + (exhausted ? 0u : 1u));
+      for (unsigned int row : rows) {
         assembler_0_c::SubtreeTask child = task;
-        child.prefix.push_back({c, r});
-        child.share = childShare;
+        child.prefix.push_back({c, row});
+        child.cursorCol = 0;
+        child.cursorSkip = 0;
+        child.share = unitShare;
         children.push_back(std::move(child));
+      }
+      if (!exhausted) {
+        assembler_0_c::SubtreeTask rest = task;
+        rest.cursorCol = c;
+        rest.cursorSkip = skip + static_cast<unsigned int>(rows.size());
+        rest.share = unitShare;
+        children.push_back(std::move(rest));
       }
     }
 
     unwind();
-    if (children.size() < 2)
-      children.clear();
     return children;
   }
 };
@@ -1960,6 +2290,9 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   // shared run state in a hot path.
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
+  // Fan-out for splits and stop-time divides, fixed for the whole run.
+  splitFanout = SplitFanout::fromEnv();
+  splitBreadthFirst = SplitFanout::breadthFirstFromEnv();
 
   /* Workers call smallerRotationExists() outside callbackMutex, which reaches
    * the lazy mutable caches on the result shape AND on every part shape.
@@ -2061,6 +2394,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   // splitPrefix itself returns empty at the depth cap, on dead ends, and
   // for single children, so neither trigger can over-refine.
   auto shouldSplit = [&](const SubtreeTask &task) {
+    // Cursor tasks are never searchable -- they split again (or drop when
+    // exhausted) wherever they are popped.
+    if (task.hasCursor())
+      return true;
     if (task.prefix.size() < 3)
       return true;
     return pool.has_waiting_workers() && pool.queued() < 2u * workers;
@@ -2156,8 +2493,22 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               if (!children.empty()) {
                 task = std::move(children.front());
                 children.erase(children.begin());
-                totalTasks.fetch_add(pool.push_tasks(std::move(children)),
-                                     std::memory_order_relaxed);
+                size_t pushed = 0;
+                if (splitBreadthFirst)
+                  pushed = pool.push_tasks(std::move(children));
+                else
+                  pushed = pool.push_tasks_front(std::move(children));
+                totalTasks.fetch_add(pushed, std::memory_order_relaxed);
+              } else if (task.hasCursor()) {
+                // Exhausted cursor (defensive only -- live cursors always
+                // enumerate): its rows are fully covered by already-emitted
+                // singletons, so count it with zero share instead of
+                // searching the whole prefix (which would duplicate
+                // completed siblings' solutions).
+                task.share = 0;
+                finishTask(slot, task, true);
+                pool.finishTask();
+                continue;
               }
             }
 
@@ -2176,7 +2527,8 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
             auto flushingCb = [this, &st, runTok, &task_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
               this->iterations.fetch_add(task_iter.exchange(0, std::memory_order_relaxed),
                                          std::memory_order_relaxed);
-              handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
+              bool didConsume = false;
+              handleSolution(solution_nodes.data(), solution_nodes.size(), runTok, didConsume);
               return !runTok.stop_requested() && !st.stop_requested();
             };
             solver->solveSubtree(prefix_nodes, flushingCb, runTok, task_iter);
@@ -2239,22 +2591,49 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
               if (!children.empty()) {
                 task = std::move(children.front());
                 children.erase(children.begin());
-                totalTasks.fetch_add(pool.push_tasks(std::move(children)),
-                                     std::memory_order_relaxed);
+                size_t pushed = 0;
+                if (splitBreadthFirst)
+                  pushed = pool.push_tasks(std::move(children));
+                else
+                  pushed = pool.push_tasks_front(std::move(children));
+                totalTasks.fetch_add(pushed, std::memory_order_relaxed);
+              } else if (task.hasCursor()) {
+                // Exhausted cursor, see the SIMD branch above: count with
+                // zero share, never search the whole prefix.
+                task.share = 0;
+                finishTask(slot, task, true);
+                pool.finishTask();
+                continue;
               }
             }
             beginTask(slot, task);
-            worker.searchSubtree(task, slot);
-            const bool completed = !runTok.stop_requested() && !st.stop_requested();
-            if (!completed) {
-              // See SIMD branch: re-queue interrupted tasks for continue,
-              // without inflating totalTasks -- it is the same task, not
-              // new work.
-              std::vector<SubtreeTask> retry;
-              retry.push_back(task);
-              pool.push_tasks(std::move(retry));
+            const bool exhausted = worker.searchSubtree(task, slot);
+            // An interrupted task is divided into exact continuation tasks
+            // from the stopped live state (see divideRemainder) instead of
+            // being requeued whole: resume re-walks nothing. An exhausted
+            // one leaves only its missed solutions (see takeMissed), if
+            // the stop landed inside its last deliveries.
+            std::vector<SubtreeTask> toPush;
+            if (exhausted) {
+              toPush = worker.takeMissed(task);
+            } else {
+              bool requeueWhole = false;
+              toPush = worker.divideRemainder(task, requeueWhole);
+              // Untouched: the task itself, which delivered nothing, so a
+              // plain requeue resumes exactly. (No pieces without this
+              // flag means the stop landed after the last branch.)
+              if (requeueWhole)
+                toPush.assign(1, task);
             }
-            finishTask(slot, task, completed);
+            // The pieces partition the parent's remaining territory, so
+            // the parent's unit in totalTasks transfers to them.
+            const bool done = toPush.empty();
+            if (!done) {
+              totalTasks.fetch_add(toPush.size() - 1,
+                                   std::memory_order_relaxed);
+              pool.push_tasks(std::move(toPush));
+            }
+            finishTask(slot, task, done);
           } catch (...) {
             pool.finishTask();
             throw;
@@ -2302,7 +2681,20 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
     std::rethrow_exception(workerException);
   }
 
-  if (!runTok.stop_requested()) {
+  /* A stop that lands after the pool fully drained (every task counted,
+   * nothing left queued) means the search genuinely finished: complete
+   * exactly as an unstopped run. Saving that empty remainder as interrupted
+   * would make a continue regenerate everything from scratch (duplicating
+   * every assembly) or refuse the restore. drainedPoolComplete() pins the
+   * condition; its truth table is unit-tested directly.
+   */
+  runPoolDrainedHook();
+  const bool stopped = runTok.stop_requested();
+  if (stopped)
+    parallelTasks = pool.drain();
+  if (!stopped || drainedPoolComplete(stopped, parallelTasks.size(),
+        totalTasks.load(std::memory_order_relaxed),
+        completedTasks.load(std::memory_order_relaxed))) {
     pos = piecenumber + 1;
     parallelTasks.clear();
     prunedTaskShare = 0.0f;
@@ -2315,7 +2707,6 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
      * is suppressed via emittedSignatures. save() persists both (format 1.6),
      * so cross-session continue resumes from the same remainder.
      */
-    parallelTasks = pool.drain();
     parallelInterrupted = true;
   }
 
@@ -2423,51 +2814,18 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
   return solver;
 }
 
-void assembler_0_c::simdSearch(void) {
-  // Snapshot of the run token: assemble() refreshed the source.
-  std::stop_token runTok = currentRunToken();
-  running.store(true, std::memory_order_relaxed);
-
-  // See iterativeMultiSearch(): a serial run supersedes saved remainder.
-  parallelTasks.clear();
-
-  auto solver = createSimdSolver();
-  std::atomic<uint64_t> simd_iter{0};
-
-  // Drain per-solution remainders to the shared counter as they arise, so
-  // live readers (GUI progress, iterator API) observe advancing iterations
-  // even on single-threaded runs; exact totals preserved (exchange drains).
-  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
-    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
-                               std::memory_order_relaxed);
-    handleSolution(solution_nodes.data(), solution_nodes.size(), runTok);
-    return !runTok.stop_requested();
-  }, runTok, simd_iter);
-
-  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-  if (!runTok.stop_requested()) {
-    pos = piecenumber + 1;
-    parallelInterrupted = false;
-    searchComplete.store(true, std::memory_order_relaxed);
-  } else {
-    /* The SIMD search keeps its position in the solver, not in pos/rows[], so
-     * an aborted run leaves pos == 0 -- indistinguishable from "not started".
-     * Saving that next to an already populated solution list and continuing
-     * would replay the whole search and report every assembly again, so mark
-     * it unresumable, exactly as the parallel path does.
-     */
-    parallelInterrupted = true;
-  }
-  running.store(false, std::memory_order_relaxed);
-}
-
 bool assembler_0_c::willRunParallel(unsigned int threads) const {
   /* the condition assemble() dispatches on, in one place. pos != 0 is a
    * resumed search that carries a partial DLX stack the task generator cannot
    * start from, so it always runs serially however many threads are
-   * configured.
+   * configured. SIMD-eligible fresh runs take the task-based parallel path
+   * even with a single thread: parallelMultiSearch() runs worker 0 inline
+   * with no extra thread, and its pool remainder makes an interrupted run
+   * resumable.
    */
-  return (errorsState == ERR_NONE) && (pos == 0) && (threads > 1);
+  if ((errorsState != ERR_NONE) || (pos != 0))
+    return false;
+  return (threads > 1) || canUseSimd();
 }
 
 unsigned int assembler_0_c::getRunThreads(void) const {
@@ -2489,6 +2847,10 @@ void assembler_0_c::assemble(assembler_cb * callback) {
 
   asm_bc = callback;
   const unsigned int threads = getEffectiveThreads();
+  /* Single dispatch source: willRunParallel() covers the multi-thread case
+   * and SIMD-eligible fresh runs (single-threaded ones included). Only serial
+   * DLX resumes reach the iterative path below.
+   */
   const bool runParallel = willRunParallel(threads);
 
   /* The task counters are switched OFF for a non-parallel run, not merely
@@ -2512,17 +2874,13 @@ void assembler_0_c::assemble(assembler_cb * callback) {
   if (runParallel) {
     parallelMultiSearch(threads);
   } else {
-    // Serial path (single thread or in-session continue): hold a budget
+    // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
     // token too, so the cap covers resume runs as well. Skipped only when
     // stopping (no token with a callback set).
     BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
                        runTok);
     if (callback == nullptr || budget.holds()) {
-      if (canUseSimd()) {
-        simdSearch();
-      } else {
-        iterativeMultiSearch();
-      }
+      iterativeMultiSearch();
     }
   }
 }
@@ -2699,10 +3057,15 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   prunedTaskShare = 0.0f;
   emittedSignatures.clear();
 
-  /* Only the current version reloads: it persists the parallel remainder
-   * with per-task shares and the completed share for exact progress
-   * resume. Anything else is refused rather than silently misparsed. */
-  if (version == nullptr || strcmp(version, ASSEMBLER_VERSION) != 0)
+  /* The current version and 1.6 (0.8.0) reload: both persist the parallel
+   * remainder with per-task shares and the completed share for exact
+   * progress resume; 1.7 adds the per-task cursor (see SubtreeTask).
+   * Anything else is refused rather than silently misparsed. */
+  if (version == nullptr)
+    return ERR_CAN_NOT_RESTORE_VERSION;
+  const bool is17 = strcmp(version, ASSEMBLER_VERSION) == 0;
+  const bool is16 = strcmp(version, "1.6") == 0;
+  if (!is17 && !is16)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
   unsigned int len = strlen(string);
@@ -2735,8 +3098,20 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
       spos++;
       if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-      spos += getInt(string+spos, &rows[i]);      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      spos += getInt(string+spos, &columns[i]);   if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      /* Slot number piecenumber is the inert dummy pair save() writes when
+       * a stop lands with everything placed (pos == piecenumber has no
+       * rows/columns entry of its own): parsed for format alignment, never
+       * stored. The restore loop below only covers p < piecenumber.
+       */
+      unsigned int r = 0, c = 0;
+      spos += getInt(string+spos, &r);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &c);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      if (i < piecenumber) {
+        rows[i] = r;
+        columns[i] = c;
+      }
 
       while ((spos < len) && (*(string+spos) != ')')) spos++;
       spos++;
@@ -2755,7 +3130,8 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
   }
 
   /* Parallel remainder (issue #90): pool tasks as flat prefix steps with
-   * per-task shares, then the completed share, then reported signatures.
+   * per-task shares (1.7: plus cursor column and skip), then the completed
+   * share, then reported signatures.
    * Parsed into locals first so a syntax failure leaves no partial tasks
    * behind. Shares are round-trip exact (float/double max_digits10). */
   std::vector<SubtreeTask> newTasks;
@@ -2781,8 +3157,17 @@ assembler_c::errState assembler_0_c::setPosition(const char * string, const char
     }
     double share = 0;
     spos += getDouble(string+spos, &share);
-    if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (spos >= len && (is17 || i + 1 < taskCount)) return ERR_CAN_NOT_RESTORE_SYNTAX;
     t.share = static_cast<float>(share);
+    if (is17) {
+      unsigned int cCol = 0, cSkip = 0;
+      spos += getInt(string+spos, &cCol);
+      if (spos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      spos += getInt(string+spos, &cSkip);
+      if (spos >= len && i + 1 < taskCount) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      t.cursorCol = cCol;
+      t.cursorSkip = cSkip;
+    }
     // An empty prefix re-searches the whole space (dedup keeps it
     // correct); kept as-is rather than rejected.
     newTasks.push_back(std::move(t));
@@ -2861,16 +3246,28 @@ void assembler_0_c::save(xmlWriter_c & xml) const
   if (pos <= piecenumber)
     for (unsigned int j = 0; j <= pos; j++)
     {
-      str << "(" << rows[j] << " " << columns[j] << ")";
+      /* rows/columns hold one entry per placed piece (indices below
+       * piecenumber). A stop that lands with everything placed leaves
+       * pos == piecenumber, a transient the search loop normalizes
+       * (pos--) before any vector access. There is no rows[piecenumber]
+       * entry, so write an inert dummy pair for that slot; the restore
+       * loop parses it for alignment and ignores it.
+       */
+      const unsigned int r = (j < piecenumber) ? rows[j] : 0;
+      const unsigned int c = (j < piecenumber) ? columns[j] : 0;
+      str << "(" << r << " " << c << ")";
 
       if (j < pos) str << " ";
     }
 
   /* Parallel remainder for cross-session resume (issue #90): pool tasks as
-   * flat column/row prefix steps, then reported signatures (sorted for
-   * determinism). Shared by the DLX and SIMD paths -- both consume the same
-   * SubtreeTask prefix pool. A serial stop writes zero tasks and resumes
-   * from the position above; signatures are always written when non-empty.
+   * flat column/row prefix steps with per-task share and cursor position
+   * (format 1.7: cursor tasks, see SubtreeTask, persist their column and
+   * skip so a rest continues splitting where it left off), then the
+   * completed share, then reported signatures (sorted for determinism).
+   * Shared by the DLX and SIMD paths -- both consume the same SubtreeTask
+   * prefix pool. A serial stop writes zero tasks and resumes from the
+   * position above; signatures are always written when non-empty.
    */
   str << " " << parallelTasks.size() << " ";
   for (const auto &t : parallelTasks) {
@@ -2881,6 +3278,7 @@ void assembler_0_c::save(xmlWriter_c & xml) const
     // reproduces the progress state instead of sitting at 0%.
     str << std::setprecision(std::numeric_limits<float>::max_digits10)
         << t.share << " ";
+    str << t.cursorCol << " " << t.cursorSkip << " ";
   }
   // Completed share with double precision for the same reason.
   str << std::setprecision(std::numeric_limits<double>::max_digits10)

@@ -114,8 +114,8 @@ public:
 private:
 
   struct groupSnap_t {
-    unsigned short group;
-    unsigned short count;
+    unsigned short group = 0;
+    unsigned short count = 0;
   };
 
   struct partSnap_t {

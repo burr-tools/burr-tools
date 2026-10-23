@@ -22,6 +22,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <atomic>
+#include <mutex>
 
 namespace {
 
@@ -550,6 +551,197 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
       CHECK(first_phase_assemblies == 96);
     }
   }
+}
+
+namespace {
+
+/* Stops the solve between the assembler completing its search and the
+ * disassembly pool draining. The first assembly found is held back and only
+ * handed to the pool after stop(), so the pool salvages it instead of
+ * disassembling it: the run ends with the search complete but an assembly
+ * still undisassembled, which is the state a GUI Stop lands in when it
+ * arrives just as a fast search finishes.
+ */
+class stopAfterSearchSolveThread_c : public solveThread_c {
+  std::mutex heldMutex;
+  std::unique_ptr<assembly_c> held;
+
+public:
+  using solveThread_c::solveThread_c;
+
+  // assemblyPhaseEnded() is called on the worker: join it while this
+  // subclass is still intact
+  ~stopAfterSearchSolveThread_c() override { joinThread(); }
+
+protected:
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    {
+      std::lock_guard<std::mutex> lock(heldMutex);
+      if (!held) {
+        held = std::move(a);
+        return true;
+      }
+    }
+    return solveThread_c::assembly(std::move(a));
+  }
+
+  void assemblyPhaseEnded(void) override {
+    stop();
+    std::lock_guard<std::mutex> lock(heldMutex);
+    if (held)
+      solveThread_c::assembly(std::move(held));
+  }
+};
+
+}
+
+TEST_CASE("solveThread_c: a stop after the search completes stays resumable until every assembly is disassembled", "[disasm][pool][solvethread]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  const int par = solveThread_c::PAR_DISASSM |
+                  solveThread_c::PAR_KEEP_ROTATIONS |
+                  solveThread_c::PAR_KEEP_MIRROR;
+
+  {
+    stopAfterSearchSolveThread_c st1(*problem, par);
+    REQUIRE(st1.start(false));
+    while (st1.isRunning())
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    // The search is complete, but the held-back assembly was salvaged
+    // rather than disassembled, so the solve is paused, not finished.
+    REQUIRE(problem->getAssembler() != nullptr);
+    CHECK(problem->getAssembler()->getFinished() >= 1);
+    CHECK(st1.currentAction() == solveThread_c::ACT_PAUSING);
+    CHECK(problem->getSolveState() == SS_SOLVING);
+  }
+
+  // Continue disassembles the stashed assembly and only then finishes.
+  solveThread_c st2(*problem, par);
+  REQUIRE(st2.start(false));
+  while (st2.isRunning())
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+  CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+  CHECK(problem->getSolveState() == SS_SOLVED);
+  CHECK(problem->getNumAssemblies() == 12);
+  CHECK(problem->getNumSolutions() == 1);
+}
+
+namespace {
+// Bounded join-poll for the lifecycle tests below: a wedged worker must fail
+// the test, not hang the suite. Polls stopped() (true the moment the worker
+// publishes its terminal action), not isRunning().
+inline bool waitForStop(const solveThread_c & st, int seconds = 60) {
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
+  while (!st.stopped() && std::chrono::steady_clock::now() < deadline)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  return st.stopped();
+}
+}
+
+TEST_CASE("solveThread_c: lifecycle guard invariants", "[solvethread][lifecycle]") {
+  // LIFECYCLE-1..4 from design/2026-10-13-solver-lifecycle.md, asserted as
+  // post-mortem checks on real runs. Deterministic by construction: only
+  // terminal states are inspected, no timing windows.
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  // LIFECYCLE-4: a fresh problem is startable.
+  CHECK(problem->getSolveState() == SS_UNSOLVED);
+  CHECK(problem->canStartSolving());
+
+  const int par = solveThread_c::PAR_DISASSM |
+                  solveThread_c::PAR_KEEP_ROTATIONS |
+                  solveThread_c::PAR_KEEP_MIRROR;
+
+  solveThread_c st(*problem, par);
+  REQUIRE(st.start(false));
+  REQUIRE(waitForStop(st));
+  REQUIRE(st.currentAction() == solveThread_c::ACT_FINISHED);
+
+  // LIFECYCLE-1: FINISHED implies solved, search complete, nothing stashed.
+  CHECK(problem->getSolveState() == SS_SOLVED);
+  REQUIRE(problem->getAssembler() != nullptr);
+  CHECK(problem->getAssembler()->getFinished() >= 1);
+  auto stashed = problem->takeStashedAssemblies();
+  CHECK(stashed.empty());
+
+  // LIFECYCLE-4: a solved problem must be reset before restarting.
+  CHECK(!problem->canStartSolving());
+
+  // LIFECYCLE-3: stop() is a no-op on terminal states.
+  st.stop();
+  CHECK(st.currentAction() == solveThread_c::ACT_FINISHED);
+  CHECK(st.stopped());
+
+  // LIFECYCLE-4: reset restores startability; LIFECYCLE-2 is covered by the
+  // pause-branch checks in the lifecycle tests above (PAUSING implies
+  // SS_SOLVING with the assembler present).
+  problem->removeAllSolutions();
+  CHECK(problem->getSolveState() == SS_UNSOLVED);
+  CHECK(problem->canStartSolving());
+}
+
+TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes", "[solvethread][lifecycle]") {
+  // LIFECYCLE-4 enforcement: misuse fails loud unconditionally. Double-start
+  // and reuse throw on the caller; an unstartable problem fails the run to
+  // ACT_ERROR worker-side, where every polling frontend already handles it --
+  // and the problem is left exactly as it was.
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  problem_c * problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  const int par = solveThread_c::PAR_DISASSM |
+                  solveThread_c::PAR_KEEP_ROTATIONS |
+                  solveThread_c::PAR_KEEP_MIRROR;
+
+  solveThread_c st(*problem, par);
+  REQUIRE(st.start(false));
+
+  // Double-start while running throws instead of clobbering the worker.
+  CHECK_THROWS_AS(st.start(false), assert_exception);
+
+  REQUIRE(waitForStop(st));
+  REQUIRE(st.currentAction() == solveThread_c::ACT_FINISHED);
+
+  // Reuse after finish throws: one object per run, the monotone progress
+  // guard and pool state must not leak across runs.
+  CHECK_THROWS_AS(st.start(false), assert_exception);
+
+  // Starting a solved problem without reset is rejected worker-side: the run
+  // ends in ACT_ERROR with ERR_CAN_NOT_START in all build modes, so polling
+  // frontends observe a stopped thread instead of a
+  // wedged or silently-clobbered solve -- and the solved problem is left
+  // exactly as it was.
+  solveThread_c fresh(*problem, par);
+  REQUIRE(fresh.start(false));
+  REQUIRE(waitForStop(fresh, 20));
+  REQUIRE(fresh.currentAction() == solveThread_c::ACT_ERROR);
+  CHECK(fresh.getErrorState() == assembler_c::ERR_CAN_NOT_START);
+  CHECK(problem->getSolveState() == SS_SOLVED);
+  CHECK(problem->getAssembler() != nullptr);
+  CHECK(problem->getNumAssemblies() == 12);
+  CHECK(problem->getNumSolutions() == 1);
+
+  // After the reset the problem solves cleanly with a new object (one
+  // object per run: `fresh` is spent).
+  problem->removeAllSolutions();
+  solveThread_c resumed(*problem, par);
+  REQUIRE(resumed.start(false));
+  REQUIRE(waitForStop(resumed));
+  CHECK(resumed.currentAction() == solveThread_c::ACT_FINISHED);
+  CHECK(problem->getSolveState() == SS_SOLVED);
+  CHECK(problem->getNumAssemblies() == 12);
 }
 
 TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvethread][threads]") {

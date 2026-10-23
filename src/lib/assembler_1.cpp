@@ -78,7 +78,7 @@ uint64_t huang_memory::budgetBytes(void) {
   return kSimdMemoryBudgetBytes;
 }
 
-#define ASSEMBLER_VERSION "2.1"
+#define ASSEMBLER_VERSION "2.2"
 
 void printMatrix(
     const std::vector<unsigned int> & up,
@@ -813,7 +813,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
    */
   task_stack = { 0 };
   next_row_stack = { 0 };
-  simdCompleted = false;
 
   errorsState = ERR_NONE;
   return errorsState;
@@ -1600,7 +1599,7 @@ void assembler_1_c::iterative(void) {
   // A serial run supersedes any saved parallel remainder: it resumes from
   // the stacks, so stale tasks/prefixes must not linger into a later save()
   // (their subtrees are re-covered here; overlap stays correct via the kept
-  // signatures). Same clearing in simdSearch().
+  // signatures).
   parallelTasks.clear();
   pendingHuangPrefixes.clear();
   // The serial stacks are a real resume point from here on; a flag left over
@@ -2219,7 +2218,13 @@ class assemblerWorker_1 {
     return bestcol;
   }
 
-  void worker_solution(void) {
+  /* Delivery outcome: true means the stacks may advance past the solution
+   * (delivered, deduplicated, or nobody to deliver to). False means the
+   * solution was found but never delivered (stop arrived first): the
+   * caller must hold the stacks so the requeued task re-discovers and
+   * delivers it on resume.
+   */
+  bool worker_solution(void) {
     if (parent.getCallback()) {
       auto assembly = std::make_unique<assembly_c>(parent.problem.getPuzzle().getGridType());
 
@@ -2251,7 +2256,7 @@ class assemblerWorker_1 {
       if (parent.avoidTransformedAssemblies &&
           assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot,
                                           parent.avoidTransformedMirror.get(), parent.complete))
-        return;
+        return true;
 
       // Canonical signature shared with the SIMD-parallel callback and
       // serial solution(): sorted placements hash identically regardless of
@@ -2263,13 +2268,15 @@ class assemblerWorker_1 {
       {
         std::lock_guard<std::mutex> lock(parent.callbackMutex);
         if (stop.stop_requested())
-          return;
+          return false;
         if (!parent.emittedSignatures.insert(sig).second)
-          return;
+          return true;
         if (!parent.getCallback()->assembly(std::move(assembly)))
           parent.stop();
       }
+      return true;
     }
+    return true;
   }
 
   void restoreMatrix(const assembler_1_c::SubtreeTask_1 & task) {
@@ -2283,8 +2290,29 @@ class assemblerWorker_1 {
     unsigned int hiderows_pos = 0;
     unsigned int row_pos = 0;
 
-    for (size_t i = 0; i + 1 < task_stack.size(); i++) {
+    for (size_t i = 0; i < task_stack.size(); i++) {
+      // All entries below the frontier are settled covers (1/2/5: pushes
+      // always settle the parent first, so 0/3/4/6/7 never occur below the
+      // top). The frontier itself is replayed too: tops 1/2/5 carry live
+      // covers the resume cases uncover, 0/3/7 are cover-clean (column/row
+      // selection not yet applied, a 7's tried-rows segment is empty) and
+      // replay as no-ops. A top 4 is not clean: case 6 hid every row tried
+      // so far at this level into the segment case 3 opened, then moved on
+      // to the next row (the state a drained top-6 stop lands in). Those
+      // hides are replayed; the next row's own weight and hiderows are not
+      // applied yet (case 4 does that on resume).
       switch (task_stack[i]) {
+        case 0:
+        case 3:
+        case 7:
+          break;
+        case 4:
+          bt_assert(i + 1 == task_stack.size());
+          hiderows_pos++;
+          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
+            hiderow(hidden_rows[hiderows_pos++]);
+          }
+          break;
         case 1:
           cover_column_only(column_stack[column_stack_pos++]);
           break;
@@ -2325,7 +2353,14 @@ class assemblerWorker_1 {
     if (slot)
       slot->fraction.store(0.0f, std::memory_order_relaxed);
 
-    while (task_stack.size() >= base_depth && !stop.stop_requested()) {
+    while (!task_stack.empty() && task_stack.size() >= base_depth &&
+           (!stop.stop_requested() || task_stack.back() == 6)) {
+      // A stopped top-6 (mid-row bookkeeping with covers applied) drains
+      // through case 6 below: it never delivers or descends, so this is
+      // bounded by the live depth and lands on a cover-clean frontier
+      // (0/3/4/7) or a replayed whole one (1/2/5, see restoreMatrix).
+      // Every other stopped top is already one of those: write-back is
+      // exact for all of them.
       local_iterations++;
       if ((local_iterations - flushed_iterations) >= 128) {
         parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
@@ -2365,10 +2400,14 @@ class assemblerWorker_1 {
 
           if (next_row_stack.back() < parent.headerNodes) {
             if (right[0] == 0) {
-              worker_solution();
-              next_row_stack.pop_back();
-              task_stack.pop_back();
-              tracker.pop();
+              if (worker_solution()) {
+                next_row_stack.pop_back();
+                task_stack.pop_back();
+                tracker.pop();
+              }
+              // Missed (see worker_solution): hold the stacks so the
+              // requeued task re-discovers the solution on resume.
+              // The loop head re-checks stop and exits.
               break;
             }
 
@@ -2595,8 +2634,30 @@ public:
     colCount = parent.base_colCount;
     weight = parent.base_weight;
 
+    // The territory root, not the live frontier: write-back overwrites the
+    // stacks with a deeper position, and resuming with that size as base
+    // would exit early, abandoning the ancestor levels' alternatives.
+    const unsigned int base =
+        task.baseDepth != 0 ? task.baseDepth
+                            : static_cast<unsigned int>(task.task_stack.size());
     restoreMatrix(task);
-    worker_iterative(task.task_stack.size(), slot);
+    worker_iterative(base, slot);
+  }
+
+  size_t liveDepth() const { return task_stack.size(); }
+
+  /* Live position write-back for an interrupted task: the five stacks fully
+   * determine the matrix via restoreMatrix(), so copying them back resumes
+   * exactly where the worker stopped -- delivered solutions sit behind the
+   * frontier (stacks advanced past them), missed ones hold it (see
+   * worker_solution).
+   */
+  void writeBack(assembler_1_c::SubtreeTask_1 & task) const {
+    task.task_stack = task_stack;
+    task.next_row_stack = next_row_stack;
+    task.column_stack = column_stack;
+    task.rows = rows;
+    task.hidden_rows = hidden_rows;
   }
 
   void flushIterations() {
@@ -2609,13 +2670,19 @@ public:
 };
 
 bool assembler_1_c::willRunParallel(unsigned int threads) const {
-  /* a task_stack/next_row_stack that is not at its initial state is a resumed
+  /* the condition assemble() dispatches on, in one place. A
+   * task_stack/next_row_stack that is not at its initial state is a resumed
    * search: the task generator cannot start from it, so a resume runs serially
-   * however many threads are configured
+   * however many threads are configured. SIMD-eligible fresh runs take the
+   * task-based parallel path even with a single thread: parallelMultiSearch()
+   * runs worker 0 inline with no extra thread, and its pool remainder makes
+   * an interrupted run resumable.
    */
-  return (errorsState == ERR_NONE) && threads > 1 &&
-         task_stack.size() == 1 && rows.empty() &&
-         next_row_stack.size() == 1;
+  if (errorsState != ERR_NONE)
+    return false;
+  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
+    return false;
+  return (threads > 1) || canUseSimd();
 }
 
 unsigned int assembler_1_c::getRunThreads(void) const {
@@ -2675,6 +2742,7 @@ void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<
           t.column_stack = column_stack;
           t.rows = rows;
           t.hidden_rows = hidden_rows;
+          t.baseDepth = static_cast<unsigned int>(task_stack.size());
           tasks.push_back(std::move(t));
 
           next_row_stack.pop_back();
@@ -2689,6 +2757,7 @@ void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<
           t.column_stack = column_stack;
           t.rows = rows;
           t.hidden_rows = hidden_rows;
+          t.baseDepth = static_cast<unsigned int>(task_stack.size());
           tasks.push_back(std::move(t));
 
           next_row_stack.pop_back();
@@ -2975,7 +3044,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       &huangSalvaged
     );
 
-    if (!runTok.stop_requested()) {
+    /* Same stop-after-drain rule as the DLX paths (see
+     * drainedPoolComplete): a stop that lands after every seeded task was
+     * counted with nothing salvaged completes exactly as an unstopped run
+     * instead of saving an empty interrupted remainder.
+     */
+    runPoolDrainedHook();
+    const bool huangStopped = runTok.stop_requested();
+    if (huangStopped)
+      pendingHuangPrefixes = std::move(huangSalvaged);
+    if (!huangStopped || drainedPoolComplete(huangStopped, pendingHuangPrefixes.size(),
+          totalTasks.load(std::memory_order_relaxed),
+          completedTasks.load(std::memory_order_relaxed))) {
       /* Same reset as the DLX completion path below. Without clearing the
        * stacks a completed run still looks like an unstarted search, so
        * save() would write interrupted = 0 next to the root position and the
@@ -2994,7 +3074,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       // assemble() resumes from them instead of regenerating everything
       // (overlap re-searched, dedup via the kept emittedSignatures). Flag
       // serial dedup too: a serial continue re-searches everything.
-      pendingHuangPrefixes = std::move(huangSalvaged);
       resumeDedup = true;
       parallelInterrupted = true;
     }
@@ -3103,6 +3182,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
       SubtreeTask_1 task;
       while (pool.pop_task(task, runTok, st)) {
         try {
+          // Territory root for the completion check below (see baseDepth):
+          // the live stacks may already sit deeper on a resumed task.
+          const size_t rootDepth =
+              task.baseDepth != 0 ? task.baseDepth : task.task_stack.size();
           worker.searchSubtree(task, slot);
 
           /* The order of the handoff matters. The slot is cleared before the
@@ -3130,22 +3213,25 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
            */
           if (slot)
             slot->fraction.store(0.0f, std::memory_order_relaxed);
-          if (!runTok.stop_requested() && !st.stop_requested()) {
-            completedTasks.fetch_add(1, std::memory_order_release);
-          } else {
-            // Interrupted mid-task: re-queue the whole snapshot so an
-            // in-session continue re-searches it from scratch. Assemblies
-            // reported twice are suppressed via emittedSignatures. This is
-            // the same task re-added to the pool, not new work, so it must
-            // not inflate totalTasks -- getFinished() divides completedTasks
-            // by it, and every pause/resume that catches a worker mid-task
-            // would otherwise nudge the denominator up without a matching
-            // increase in what is actually done, biasing the reported
-            // fraction down a little further on every interruption.
+          const bool stopped = runTok.stop_requested() || st.stop_requested();
+          // Popped below the task's root, the territory is exhausted
+          // (every pop advances past searched, dead, delivered, or
+          // deduplicated ground): nothing to resume. This also covers
+          // the stop-after-completion race, which a blind requeue would
+          // resume into an empty frontier.
+          const bool exhausted = worker.liveDepth() < rootDepth;
+          if (stopped && !exhausted) {
+            // Interrupted mid-task: write back the live stacks (see
+            // writeBack) and requeue. Delivered solutions sit behind the
+            // frontier; missed ones hold it for rediscovery. The same task
+            // re-enters the pool, not new work, so totalTasks stays.
+            worker.writeBack(task);
             std::vector<SubtreeTask_1> retry;
             retry.push_back(std::move(task));
             pool.push_tasks(std::move(retry));
           }
+          if (!stopped || exhausted)
+            completedTasks.fetch_add(1, std::memory_order_release);
         } catch (...) {
           pool.finishTask();
           throw;
@@ -3192,7 +3278,18 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     std::rethrow_exception(workerException);
   }
 
-  if (!runTok.stop_requested()) {
+  /* Same stop-after-drain rule as assembler_0 (see drainedPoolComplete):
+   * a stop that lands after every task was counted with nothing left
+   * queued completes exactly as an unstopped run instead of saving an
+   * empty interrupted remainder.
+   */
+  runPoolDrainedHook();
+  const bool dlxStopped = runTok.stop_requested();
+  if (dlxStopped)
+    parallelTasks = pool.drain();
+  if (!dlxStopped || drainedPoolComplete(dlxStopped, parallelTasks.size(),
+        totalTasks.load(std::memory_order_relaxed),
+        completedTasks.load(std::memory_order_relaxed))) {
     next_row_stack.clear();
     task_stack.clear();
     parallelTasks.clear();
@@ -3209,7 +3306,6 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      * remainder instead (appended below) and setPosition() resumes from it.
      * Flag serial dedup as well: a serial continue re-searches everything.
      */
-    parallelTasks = pool.drain();
     resumeDedup = true;
     parallelInterrupted = true;
   }
@@ -3352,48 +3448,6 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
   return solver;
 }
 
-void assembler_1_c::simdSearch(void) {
-  // Snapshot of the run token: assemble() refreshed the source.
-  std::stop_token runTok = currentRunToken();
-  running.store(true, std::memory_order_relaxed);
-
-  // See iterative(): a serial run supersedes saved parallel remainder.
-  parallelTasks.clear();
-  pendingHuangPrefixes.clear();
-
-  auto solver = createSimdSolver();
-  std::atomic<uint64_t> simd_iter{0};
-
-  // Drain per-solution remainders to the shared counter as they arise, so
-  // live readers observe advancing iterations even on single-threaded runs;
-  // exact totals preserved (exchange drains). Mirrors the parallel worker.
-  solver->solve([this, runTok, &simd_iter](const std::vector<unsigned int> &solution_nodes) -> bool {
-    this->iterations.fetch_add(simd_iter.exchange(0, std::memory_order_relaxed),
-                               std::memory_order_relaxed);
-    rows = solution_nodes;
-    solution();
-    return !runTok.stop_requested();
-  }, runTok, simd_iter);
-
-  iterations.fetch_add(simd_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
-
-  /* as in assembler_0: the SIMD search keeps its position in the solver, so an
-   * aborted run leaves the master looking untouched. Saving that would claim
-   * nothing had been searched and the continue would replay everything.
-   */
-  parallelInterrupted = runTok.stop_requested();
-  simdCompleted.store(!parallelInterrupted, std::memory_order_release);
-  if (simdCompleted.load(std::memory_order_relaxed)) {
-    next_row_stack.clear();
-    task_stack.clear();
-    searchComplete.store(true, std::memory_order_relaxed);
-    emittedSignatures.clear();
-    resumeDedup = false;
-  }
-
-  running.store(false, std::memory_order_relaxed);
-}
-
 void assembler_1_c::assemble(assembler_cb * callback) {
 
   running.store(true, std::memory_order_relaxed);
@@ -3404,9 +3458,10 @@ void assembler_1_c::assemble(assembler_cb * callback) {
   debug = false;
 
   const unsigned int threads = getEffectiveThreads();
-  /* the same condition the branch below used to test inline, hoisted so the
-   * progress source can be chosen before anything is written, and factored
-   * out so getRunThreads() cannot drift from it
+  /* Single dispatch source, shared with getRunThreads(): willRunParallel()
+   * covers the multi-thread case and SIMD-eligible fresh runs
+   * (single-threaded ones included). Only serial DLX resumes reach the
+   * iterative path below.
    */
   const bool runParallel = willRunParallel(threads);
 
@@ -3426,9 +3481,9 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    * its whole body. That is what orders a poll that arrived BEFORE the switch
    * -- and so did read finished_a and next_row_stack, legitimately, while
    * nothing was running -- against the writes below: read, then lock, then
-   * write, with the lock carrying the happens-before edge. simdCompleted and
-   * inFlightProgress are atomics in their own right, so the lock is not what
-   * makes storing them safe; it is what makes this switch indivisible from
+   * write, with the lock carrying the happens-before edge. inFlightProgress is
+   * atomic in its own right, so the lock is not what
+   * makes storing it safe; it is what makes this switch indivisible from
    * getFinished()'s point of view, so no poll can land between "flag says
    * parallel" and "finished_a/next_row_stack are mid-write".
    *
@@ -3449,7 +3504,6 @@ void assembler_1_c::assemble(assembler_cb * callback) {
    */
   {
     std::lock_guard<std::mutex> lock(finishedMutex);
-    simdCompleted.store(false, std::memory_order_relaxed);
     inFlightProgress.store(runParallel, std::memory_order_relaxed);
     if (!runParallel) {
       totalTasks.store(0, std::memory_order_relaxed);
@@ -3475,22 +3529,19 @@ void assembler_1_c::assemble(assembler_cb * callback) {
       if (runParallel) {
         parallelMultiSearch(threads);
       } else {
-        // Serial path: hold a budget token too (see assembler_0_c::assemble).
+        // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
+        // token too (see assembler_0_c::assemble).
         BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
                            runTok);
         if (callback == nullptr || budget.holds()) {
-          if (canUseSimd()) {
-            simdSearch();
-          } else {
-            iterative();
-            // A completed serial run retires restored dedup state (mirrors
-            // the completion paths above); a stopped run keeps it for save().
-            // Completion is exactly empty stacks: iterative() only breaks
-            // with restorable states 1/2/5 on top otherwise.
-            if (task_stack.empty() && !runTok.stop_requested()) {
-              emittedSignatures.clear();
-              resumeDedup = false;
-            }
+          iterative();
+          // A completed serial run retires restored dedup state (mirrors
+          // the completion paths above); a stopped run keeps it for save().
+          // Completion is exactly empty stacks: iterative() only breaks
+          // with restorable states 1/2/5 on top otherwise.
+          if (task_stack.empty() && !runTok.stop_requested()) {
+            emittedSignatures.clear();
+            resumeDedup = false;
           }
         }
       }
@@ -3642,15 +3693,12 @@ float assembler_1_c::getFinished(void) const {
     return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
   }
 
-  /* Reaching here means inFlightProgress is off, i.e. a non-parallel run --
+  /* Reaching here means inFlightProgress is off, i.e. a serial DLX run --
    * and assemble() zeroes totalTasks for exactly those, so there is no
-   * task-count source to consult. The SIMD back end needs no case of its own
-   * here: it runs under inFlightProgress too and is served by the branch
+   * task-count source to consult. All SIMD runs (including single-threaded
+   * ones) take the task-based parallel path and are served by the branch
    * above.
    */
-
-  if (simdCompleted.load(std::memory_order_acquire))
-    return 1.0f;
 
   if (next_row_stack.size() == 0) return 1;
 
@@ -3753,17 +3801,19 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   emittedSignatures.clear();
   resumeDedup = false;
   resetTaskProgress();
-  simdCompleted.store(false, std::memory_order_relaxed);
 
   unsigned int pos = 0;
 
-  /* Accepted payloads: v0.7.1 ("2.0", no leading flag) and current ("2.1",
-   * flag plus stacks, with an appended parallel remainder when present).
-   * Anything else is refused rather than silently misparsed: a flagless
-   * rows vector read as a flag wipes the stored solutions, and an unknown
-   * layout would lose its remainder.
+  /* Accepted payloads: v0.7.1 ("2.0", no leading flag), 0.8.0 ("2.1",
+   * flag plus stacks, with an appended parallel remainder when present) and
+   * current ("2.2": DLX tasks additionally carry baseDepth, see
+   * SubtreeTask_1). Anything else is refused rather than silently
+   * misparsed: a flagless rows vector read as a flag wipes the stored
+   * solutions, and an unknown layout would lose its remainder.
    */
-  bool isCurrent = version != nullptr && strcmp(version, "2.1") == 0;
+  bool is22 = version != nullptr && strcmp(version, ASSEMBLER_VERSION) == 0;
+  bool is21 = version != nullptr && strcmp(version, "2.1") == 0;
+  bool isCurrent = is22 || is21;
   bool isLegacy = version != nullptr && strcmp(version, "2.0") == 0;
   if (!isCurrent && !isLegacy)
     return ERR_CAN_NOT_RESTORE_VERSION;
@@ -3815,6 +3865,11 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
         pos += stringToVector(string+pos, t.column_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
         pos += stringToVector(string+pos, t.rows);        if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
         pos += stringToVector(string+pos, t.hidden_rows); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        if (is22) {
+          unsigned int baseDepth = 0;
+          pos += getInt(string+pos, &baseDepth);            if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+          t.baseDepth = baseDepth;
+        }
         newTasks.push_back(std::move(t));
       }
     } else if (ptype == 2) {
@@ -3989,6 +4044,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
       vectorToStream(t.column_stack, str);
       vectorToStream(t.rows, str);
       vectorToStream(t.hidden_rows, str);
+      str << t.baseDepth << " ";
     }
   } else if (ptype == 2) {
     str << pendingHuangPrefixes.size() << " ";
