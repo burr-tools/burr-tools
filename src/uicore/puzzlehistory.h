@@ -95,7 +95,8 @@ public:
   undoResult_t redo(puzzle_c * puzzle);
 
   /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
-   *  limit drops the oldest undo steps at once. */
+   *  limit drops the oldest undo steps at once, then the redo steps furthest
+   *  ahead, down to the depth plus the current state, as record() keeps. */
   void setMaxUndo(unsigned int depth);
 
   /** Call after a successful save. */

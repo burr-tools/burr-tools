@@ -36,9 +36,15 @@ void puzzleHistory_c::setMaxUndo(unsigned int depth) {
   if (depth < 1) depth = 1;
   if (depth > MAX_UNDO) depth = MAX_UNDO;
   maxUndo_ = depth;
-  // a smaller limit applies to the steps already kept, not only to new ones
+  // a smaller limit applies to the steps already kept, not only to new
+  // ones: the undo steps behind the current state first, then the redo
+  // steps furthest ahead, down to the size record() keeps
   while (cursor > maxUndo_)
     evictOldest();
+  while (snapshots.size() > size_t(maxUndo_) + 1)
+    snapshots.pop_back();
+  if (savedCursorValid && savedCursor >= snapshots.size())
+    savedCursorValid = false;      // save point dropped with the redo steps
 }
 
 void puzzleHistory_c::evictOldest(void) {

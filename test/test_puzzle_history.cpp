@@ -383,7 +383,7 @@ TEST_CASE("a lower undo limit drops the oldest steps at once", "[gui][history]")
   CHECK_FALSE(h.canRedo());
 }
 
-TEST_CASE("lowering the limit with redo steps ahead keeps the current state and them", "[gui][history]") {
+TEST_CASE("lowering the limit with redo steps ahead keeps the current state and the undo steps first", "[gui][history]") {
   auto puzzle = makePuzzleWithShapes(1);
   puzzleHistory_c h;
   h.reset(puzzle.get());
@@ -396,25 +396,49 @@ TEST_CASE("lowering the limit with redo steps ahead keeps the current state and 
     h.undo(puzzle.get());
   REQUIRE(puzzle->getNumberOfShapes() == 41u);
 
-  // the limit counts the undo steps behind the current state; the 20 redo
-  // steps ahead are not trimmed, and trimming by the whole history's size
-  // would have dropped 35 undo steps for them
+  // the undo and redo steps there are, ending where it started
+  auto count = [&h, &puzzle](unsigned int & undos, unsigned int & redos) {
+    undos = redos = 0;
+    while (h.canUndo()) { h.undo(puzzle.get()); undos++; }
+    while (h.canRedo()) { h.redo(puzzle.get()); redos++; }
+    for (unsigned int i = 0; i < redos - undos; i++) h.undo(puzzle.get());
+  };
+  unsigned int undos = 0, redos = 0;
+
+  // room for the 40 undo steps but not all 20 redo steps: the history keeps
+  // what record() would, 50 steps and the current state, so the 10 redo
+  // steps furthest ahead go
+  h.setMaxUndo(50);
+  CHECK(puzzle->getNumberOfShapes() == 41u);
+  count(undos, redos);
+  CHECK(undos == 40);
+  CHECK(redos == 50);            // the 40 undone and 10 ahead
+  CHECK(puzzle->getNumberOfShapes() == 41u);
+
+  // the limit counts the undo steps behind the current state first:
+  // trimming by size alone would have dropped undo steps for redo steps
   h.setMaxUndo(25);
   CHECK(puzzle->getNumberOfShapes() == 41u);
-  unsigned int undos = 0;
-  while (h.canUndo()) {
-    h.undo(puzzle.get());
-    undos++;
-  }
+  count(undos, redos);
   CHECK(undos == 25);
-  CHECK(puzzle->getNumberOfShapes() == 16u);
-  unsigned int redos = 0;
-  while (h.canRedo()) {
+  CHECK(redos == 25);            // only the ones undone
+  CHECK(puzzle->getNumberOfShapes() == 41u);
+}
+
+TEST_CASE("lowering the limit drops a save point among the redo steps dropped", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  h.setMaxUndo(100);
+  for (unsigned int i = 0; i < 20; i++)
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  h.markSaved();
+  for (unsigned int i = 0; i < 15; i++)
+    h.undo(puzzle.get());
+  h.setMaxUndo(10);              // 5 undo steps and the current state stay
+  while (h.canRedo())
     h.redo(puzzle.get());
-    redos++;
-  }
-  CHECK(redos == 45);
-  CHECK(puzzle->getNumberOfShapes() == 61u);
+  CHECK(h.isModifiedFromSave());
 }
 
 TEST_CASE("trimming keeps the save point, or drops it with the steps", "[gui][history]") {
