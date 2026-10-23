@@ -138,6 +138,13 @@ void VoxelViewport::mouseReleaseEvent(QMouseEvent * e) {
   e->accept();
 }
 
+/* the grab went before the release: without this the gesture would stay
+ * on, and the next press would be ignored and continue it */
+void VoxelViewport::mouseUngrabEvent(void) {
+  if (m_controller)
+    m_controller->pointerCancel();
+}
+
 void VoxelViewport::wheelEvent(QWheelEvent * e) {
   if (m_controller)
     m_controller->wheel(e->angleDelta().y());

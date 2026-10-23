@@ -427,6 +427,7 @@ namespace {
     using VoxelViewport::mousePressEvent;
     using VoxelViewport::mouseMoveEvent;
     using VoxelViewport::mouseReleaseEvent;
+    using VoxelViewport::mouseUngrabEvent;
     using VoxelViewport::wheelEvent;
   };
 
@@ -638,6 +639,38 @@ void TestViewInput::aPressWithinTheSlopIsAClick() {
   QCOMPARE(clicked.count(), 1);
   QCOMPARE(clicked.at(0).at(2).value<Qt::KeyboardModifiers>(), Qt::KeyboardModifiers(Qt::ControlModifier));
   QVERIFY(sameQuat(before, f.app->viewport()->camera().orientation()));
+}
+
+/* the grab taken away mid-drag (a modal opens, the window manager takes the
+ * pointer), so no release comes: the next press starts a gesture of its own
+ * instead of being ignored and continuing the old one */
+void TestViewInput::aDragWhoseGrabIsTakenEndsThere() {
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  InputView view;
+  view.setController(f.app->viewport());
+  view.setSize(QSizeF(400, 300));
+  btui::Camera & cam = f.app->viewport()->camera();
+  QSignalSpy clicked(f.app->viewport(), &SceneController::clicked);
+
+  auto press = mouse(QEvent::MouseButtonPress, QPointF(200, 150));
+  view.mousePressEvent(&press);
+  auto move = mouse(QEvent::MouseMove, QPointF(260, 170));
+  view.mouseMoveEvent(&move);
+  view.mouseUngrabEvent();
+  const btui::Quat cancelled = cam.orientation();
+
+  // a click somewhere else is a click, and turns nothing
+  auto press2 = mouse(QEvent::MouseButtonPress, QPointF(50, 50));
+  view.mousePressEvent(&press2);
+  auto move2 = mouse(QEvent::MouseMove, QPointF(51, 51));
+  view.mouseMoveEvent(&move2);
+  auto release2 = mouse(QEvent::MouseButtonRelease, QPointF(51, 51));
+  view.mouseReleaseEvent(&release2);
+  QCOMPARE(clicked.count(), 1);
+  QVERIFY(sameQuat(cancelled, cam.orientation()));
+  view.mouseUngrabEvent();                       // nothing on: nothing to end
+  QCOMPARE(clicked.count(), 1);
 }
 
 void TestViewInput::homeAndFitRunToTheirEnd() {

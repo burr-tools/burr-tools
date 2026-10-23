@@ -180,6 +180,16 @@ void SceneController::pointerRelease(Qt::MouseButton b, float x, float y) {
   emit frameChanged();
 }
 
+void SceneController::pointerCancel(void) {
+  if (m_gesture == Gesture::None)
+    return;
+  if (m_gesture == Gesture::Orbit)
+    m_camera.endRotate();
+  m_gesture = Gesture::None;
+  m_button = Qt::NoButton;
+  emit frameChanged();
+}
+
 void SceneController::wheel(int angleDeltaY) {
   // the spec's delta follows the browser: about 100 per notch, positive
   // toward the user (zoom out); Qt reports 120 per notch, positive away

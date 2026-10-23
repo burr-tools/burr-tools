@@ -75,6 +75,10 @@ public:
   void pointerPress(Qt::MouseButton b, float x, float y, Qt::KeyboardModifiers mods);
   void pointerMove(float x, float y);
   void pointerRelease(Qt::MouseButton b, float x, float y);
+  /* the press was taken away before its release (a modal opened, the
+   * window manager took the pointer): the gesture ends where it got to,
+   * without a click */
+  void pointerCancel(void);
   /* one wheel event; angleDeltaY as Qt reports it (120 per notch, positive
    * when the wheel turns away from the user) */
   void wheel(int angleDeltaY);

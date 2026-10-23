@@ -42,6 +42,7 @@ private slots:
   void doubleClickingAFaceStraightensIt();
   void theViewOrbitsPansAndZooms();
   void aPressWithinTheSlopIsAClick();
+  void aDragWhoseGrabIsTakenEndsThere();
   void homeAndFitRunToTheirEnd();
 };
 
