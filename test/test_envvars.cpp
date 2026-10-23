@@ -99,7 +99,7 @@ TEST_CASE("the help prints each scope's variables under its heading", "[envvars]
 
 TEST_CASE("the help fits in 80 columns", "[envvars]") {
   std::ostringstream out;
-  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::QtGui, btenv::Scope::LegacyGui, btenv::Scope::Tests });
+  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::QtGui, btenv::Scope::Tests });
   std::istringstream in(out.str());
   std::string line;
   while (std::getline(in, line)) {

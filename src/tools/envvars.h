@@ -39,7 +39,6 @@ namespace btenv {
   enum class Scope {
     Solver,      ///< the solver library: every program, the GUIs and the CLIs
     QtGui,       ///< burrtools-qt
-    LegacyGui,   ///< burrtools (FLTK)
     Tests,       ///< the test programs and scripts
   };
 
@@ -62,6 +61,8 @@ namespace btenv {
     { "BURRTOOLS_NO_DISASM_POOL", Scope::Solver, "1", "disassemble on the solving thread instead of a pool of workers (benchmarking)" },
     { "BURRTOOLS_NO_BUDGET", Scope::Solver, "1", "no shared cap on the solver's threads: each pool takes all it asks for (benchmarking)" },
     { "BURRTOOLS_HUANG_MEM_MB", Scope::Solver, "<MB>", "memory budget for assembler 1's SIMD path; 0 turns that path off (benchmarking)" },
+    { "BURRTOOLS_SPLIT_FANOUT", Scope::Solver, "<n>", "assembler 0 divides a search level into at most n tasks plus one for the rest (default 16); any n >= 1 gives the same result (testing)" },
+    { "BURRTOOLS_SPLIT_BREADTH_FIRST", Scope::Solver, "1", "assembler 0 queues the tasks a split makes at the back of the pool instead of the front (benchmarking)" },
 
     // burrtools-qt
     { "BURRTOOLS_QT_SETTINGS", Scope::QtGui, "<file>", "use this settings file instead of the user's; the pipeline caches go beside it and Qt's own disk cache is off -- for scripted runs" },
@@ -70,8 +71,6 @@ namespace btenv {
     { "BURRTOOLS_EARLY_DEVICE", Scope::QtGui, "0", "Windows: leave the window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own" },
     { "BURRTOOLS_STARTUP_TRACE", Scope::QtGui, "1|quit", "print on stderr how long start-up took to each step, up to app ready; quit also quits there" },
     { "BURRTOOLS_QML_OUTLINES", Scope::QtGui, "1", "outline every named item; the one under the mouse is highlighted and labelled with its objectName and QML file:line, its parents printed on stderr (for reading the QML)" },
-
-    // the legacy GUI
     { "BURRTOOLS_UPDATE_VERSION_OVERRIDE", Scope::QtGui, "<version>", "the update check (Help > Check for updates; the legacy GUI's too) compares against this version instead of the program's (testing)" },
 
     // tests and scripts
@@ -89,10 +88,9 @@ namespace btenv {
 
   inline std::string_view scopeTitle(Scope s) {
     switch (s) {
-      case Scope::Solver:    return "Solver (every program)";
-      case Scope::QtGui:     return "burrtools-qt";
-      case Scope::LegacyGui: return "burrtools";
-      case Scope::Tests:     return "Tests and scripts";
+      case Scope::Solver: return "Solver (every program)";
+      case Scope::QtGui:  return "burrtools-qt";
+      case Scope::Tests:  return "Tests and scripts";
     }
     return "";
   }
