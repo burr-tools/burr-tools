@@ -27,6 +27,7 @@
 #include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
+#include "tools/envvars.h"
 
 #include <fstream>
 #include <iostream>
@@ -44,8 +45,9 @@ using namespace std;
 
 void usage(void) {
 
-  cout << "burrTxt [options] file [options]\n\n";
+  cout << "burrTxt2 [options] file [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve\n\n";
+  cout << "  -h, --help  this help\n";
   cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
   cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
   cout << "  -c    just count solutions\n";
@@ -54,6 +56,7 @@ void usage(void) {
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
   cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  btenv::print(cout, { btenv::Scope::Solver });
 }
 
 
@@ -80,6 +83,12 @@ static int solve(int argv, char* args[]) {
     usage();
     return 2;
   }
+
+  for (int i = 1; i < argv; i++)
+    if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0) {
+      usage();
+      return 0;
+    }
 
   int par = solveThread_c::PAR_REDUCE;
   bool restart = false;
