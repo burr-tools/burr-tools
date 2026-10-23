@@ -48,6 +48,12 @@ FILE_PATTERNS          = *.h \
 # the build directories are never walked in the first place.
 EXCLUDE                = src/lua
 
+# The coding agents' instructions are not pages of the API documentation: they
+# link to files outside INPUT, and CLAUDE.md's "@AGENTS.md" include reads as an
+# unknown doxygen command.
+EXCLUDE_PATTERNS       = */AGENTS.md \
+                         */CLAUDE.md
+
 # Paths appear relative to the repository root rather than as absolute paths
 # from whatever directory the CI runner happened to check out into.
 STRIP_FROM_PATH        = .
