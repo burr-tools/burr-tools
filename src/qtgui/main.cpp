@@ -286,13 +286,22 @@ int main(int argc, char ** argv) {
   EarlyGraphicsDevice earlyDevice;
   bt_assert_init();
 
-  if (argc == 2 && (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)) {
+  // wherever they are among the arguments, as burrTxt looks for -h; the
+  // help wins
+  bool help = false, check = false;
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
+      help = true;
+    else if (strcmp(argv[i], "--self-check") == 0)
+      check = true;
+  }
+  if (help) {
     printHelp();
     return 0;
   }
 
   // a headless invariant check for CI, before any window or QML exists
-  if (argc == 2 && strcmp(argv[1], "--self-check") == 0) {
+  if (check) {
     QString problems = selfCheck();
     if (!problems.isEmpty()) {
       fprintf(stderr, "self-check FAILED:\n%s\n", qPrintable(problems));
@@ -356,7 +365,9 @@ int main(int argc, char ** argv) {
    * legacy, the first one that loads wins. Main.qml opens it after the
    * window's first frame, before it makes the workspace
    * (DocumentController::loadStartupFiles); the commands and the screenshot
-   * wait for that.
+   * wait for that. Qt has taken its own options (-platform, ...) out by
+   * now; another one that starts with "-" is named on stderr and ignored,
+   * not opened.
    */
   QString screenshot, command;
   QStringList files;
@@ -368,7 +379,13 @@ int main(int argc, char ** argv) {
       command = args.at(i).mid(10);
     else if (args.at(i).startsWith(QLatin1String("-qmljsdebugger")))
       continue;           // qmlprofiler's, for Qt (a -Dqml_debug=true build), not a puzzle
-    else if (args.at(i) != QLatin1String("--gallery"))
+    else if (args.at(i).startsWith(QLatin1String("-psn_")))
+      continue;           // the process serial number older macOS adds for the Finder
+    else if (args.at(i) == QLatin1String("--gallery"))
+      continue;
+    else if (args.at(i).startsWith(QLatin1Char('-')))
+      fprintf(stderr, "burrtools-qt: unknown option %s ignored (--help lists the options)\n", qPrintable(args.at(i)));
+    else
       files << args.at(i);
   }
   DocumentController * doc = app.document();
@@ -382,9 +399,9 @@ int main(int argc, char ** argv) {
   trace.watch(mainWindow, [&app, doc] {
     return !doc->startupFilesPending() && (!doc->startupFileLoaded() || app.viewport()->meshReady());
   });
-  /* the compiled pipelines kept between runs, beside the settings file
-   * (a scratch one under BURRTOOLS_QT_SETTINGS); before the first frame,
-   * which comes from the event loop */
+  /* the compiled pipelines kept between runs, in the user's cache folder
+   * or beside a scratch settings file (BURRTOOLS_QT_SETTINGS); before the
+   * first frame, which comes from the event loop */
   PipelineCache::configureWindow(mainWindow, PipelineCache::windowFile(app.settings()->file()));
 
   // the file the window shows: macOS gives the title its document icon

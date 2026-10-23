@@ -11,6 +11,9 @@ was asked to:
   --gallery --screenshot=<png>  the component gallery instead of the window
   --command=<key>               a command run once the window is up
   <missing file>                a file that does not load still starts
+  <puzzle> --help, -h <puzzle>  the help, wherever the flag is among the others
+  --self-check <puzzle>         the same for the invariant check
+  --bogus                       an unknown option is named and ignored
   BURRTOOLS_RHI=<unknown>       an unknown graphics API is named and ignored
   -qmljsdebugger=<...>          qmlprofiler's argument is not a puzzle
 
@@ -26,7 +29,7 @@ EXE = os.path.abspath(sys.argv[1])
 failures = []
 
 
-def run(name, args, env=None, expect_png=None, expect_stderr=None):
+def run(name, args, env=None, expect_png=None, expect_stderr=None, expect_stdout=None):
     with tempfile.TemporaryDirectory() as tmp:
         e = dict(os.environ)
         e.update({
@@ -49,6 +52,8 @@ def run(name, args, env=None, expect_png=None, expect_stderr=None):
             problems.append('no screenshot written')
         if expect_stderr and expect_stderr not in p.stderr:
             problems.append(f'stderr does not say "{expect_stderr}"')
+        if expect_stdout and expect_stdout not in p.stdout:
+            problems.append(f'stdout does not say "{expect_stdout}"')
         if problems:
             failures.append(f'{name}: {", ".join(problems)}\n--- stdout\n{p.stdout}--- stderr\n{p.stderr}')
         print(f'{"FAIL" if problems else "ok  "}  {name}')
@@ -64,6 +69,11 @@ run('a file that does not load', ['no-such-puzzle.xmpuzzle', '--screenshot={png}
 run('an unknown graphics API', ['--screenshot={png}'], env={'BURRTOOLS_RHI': 'bogus'},
     expect_png=True, expect_stderr='BURRTOOLS_RHI=bogus is not one of')
 run('qmlprofiler\'s argument', ['-qmljsdebugger=port:3768', puzzle, '--screenshot={png}'], expect_png=True)
+run('--help after a file', [puzzle, '--help'], expect_stdout='burrtools-qt [options]')
+run('-h before a file', ['-h', puzzle], expect_stdout='burrtools-qt [options]')
+run('--self-check with a file', ['--self-check', puzzle], expect_stdout='self-check OK')
+run('an unknown option', ['--bogus', '--screenshot={png}'], expect_png=True,
+    expect_stderr='unknown option --bogus ignored')
 
 for f in failures:
     print(f, file=sys.stderr)
