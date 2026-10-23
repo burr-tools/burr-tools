@@ -14,6 +14,7 @@
 #include "guarded.h"
 #include "iconprovider.h"
 #include "keyboardcues.h"
+#include "popupwindowstyle.h"
 #include "layoutcontroller.h"
 #include "offscreenrenderer.h"
 #include "qmloutlines.h"
@@ -38,6 +39,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QJSEngine>
 #include <QKeyEvent>
 #include <QMetaMethod>
 #include <QMouseEvent>
@@ -1699,6 +1701,36 @@ private slots:
 #endif
     KeyboardCues cues;
     QCOMPARE(cues.showAccessKeys(), KeyboardCues::alwaysShown());
+  }
+  /* Alt with a menu's key opens the rail's menu and that submenu at once:
+   * the submenu waits for the menu's window to be exposed (Qt 6.12 would
+   * otherwise leave a filter on that window that opens the submenu again
+   * once the menu has closed), and is opened only once */
+  void aSubmenuWaitsForItsMenusWindowOnce() {
+    QJSEngine js;
+    js.globalObject().setProperty(QStringLiteral("calls"), 0);
+    const QJSValue callback = js.evaluate(QStringLiteral("(function () { calls++ })"));
+    auto calls = [&js] { return js.globalObject().property(QStringLiteral("calls")).toInt(); };
+    PopupWindowStyle style;
+    QQuickWindow window;
+    window.resize(100, 100);
+    QQuickItem item;
+    item.setParentItem(window.contentItem());
+
+    style.whenExposed(&item, callback);
+    QCOMPARE(calls(), 0);                 // not shown yet
+    window.show();
+    QTRY_COMPARE(calls(), 1);
+    window.hide();                        // a later expose calls nothing
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+    QTest::qWait(20);
+    QCOMPARE(calls(), 1);
+
+    style.whenExposed(&item, callback);   // exposed already: at once
+    QCOMPARE(calls(), 2);
+    style.whenExposed(nullptr, callback); // nothing to wait for: at once
+    QCOMPARE(calls(), 3);
   }
 };
 

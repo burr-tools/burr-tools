@@ -24,7 +24,34 @@
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QPlatformSurfaceEvent>
+#include <QQuickWindow>
+#include <QTimer>
 #include <QWindow>
+
+namespace {
+
+  /* calls back on the first expose of the window it watches, then goes */
+  class ExposeWaiter : public QObject {
+  public:
+    ExposeWaiter(QWindow * w, const QJSValue & callback) : QObject(w), m_callback(callback) {
+      w->installEventFilter(this);
+    }
+
+  protected:
+    bool eventFilter(QObject * watched, QEvent * event) override {
+      if (event->type() == QEvent::Expose && static_cast<QWindow *>(watched)->isExposed()) {
+        watched->removeEventFilter(this);
+        // once the window has handled the expose
+        QTimer::singleShot(0, watched, [callback = m_callback] { callback.call(); });
+        deleteLater();
+      }
+      return QObject::eventFilter(watched, event);
+    }
+
+  private:
+    QJSValue m_callback;
+  };
+}
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -75,6 +102,16 @@ bool PopupWindowStyle::supported(void) {
 PopupWindowStyle::PopupWindowStyle(QObject * parent) : QObject(parent), m_active(supported()) {
   if (m_active && QCoreApplication::instance())
     QCoreApplication::instance()->installEventFilter(this);
+}
+
+void PopupWindowStyle::whenExposed(QQuickItem * item, const QJSValue & callback) {
+  if (!callback.isCallable())
+    return;
+  QWindow * w = item ? item->window() : nullptr;
+  if (!w || w->isExposed())
+    callback.call();
+  else
+    new ExposeWaiter(w, callback);
 }
 
 bool PopupWindowStyle::eventFilter(QObject * watched, QEvent * event) {

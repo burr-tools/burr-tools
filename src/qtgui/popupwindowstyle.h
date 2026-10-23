@@ -21,7 +21,9 @@
 #ifndef BTQT_POPUPWINDOWSTYLE_H
 #define BTQT_POPUPWINDOWSTYLE_H
 
+#include <QJSValue>
 #include <QObject>
+#include <QQuickItem>
 #include <QtQml/qqmlregistration.h>
 
 /* Windows 11's frame for the menus' popup windows (Popup.Window): the
@@ -49,6 +51,17 @@ public:
 
   /* this system frames popups (Windows 11) */
   static bool supported(void);
+
+  /* Call `callback` once the window `item` is in is exposed: at once if it
+   * is (or there is none), else on its first expose.
+   *
+   * For a submenu opened together with its menu. Qt 6.12 holds back a popup
+   * whose parent window is not exposed yet with an event filter on that
+   * window, and leaves the filter there: on the window's next expose -- as
+   * the menu closes -- it opens the popup again, which then has no window
+   * ("cannot find any window to open popup in"). Opening the submenu once
+   * the menu's window is exposed keeps Qt from installing it. */
+  Q_INVOKABLE void whenExposed(QQuickItem * item, const QJSValue & callback);
 
 protected:
 

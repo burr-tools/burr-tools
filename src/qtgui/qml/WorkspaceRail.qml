@@ -53,6 +53,17 @@ Rectangle {
                 if (!allMenus.visible)
                     allMenus.popup(menuButton, menuButton.width + 6, 0)
             }
+            // a menu's submenu, opening this menu first if it is closed: once
+            // its window is up (PopupWindowStyle.whenExposed says why)
+            function openSubmenu(index: int) {
+                openMenus()
+                const item = allMenus.itemAt(index) as MenuItem
+                if (item)
+                    App.popupStyle.whenExposed(item, () => {
+                        if (allMenus.opened)
+                            item.triggered()
+                    })
+            }
             // its submenus, then itself: they are windows of their own, and a
             // submenu would outlive its parent
             function closeMenus() {
@@ -88,12 +99,7 @@ Rectangle {
                         menuButton.openMenus()
                     }
                 }
-                function onMenuKeyPressed(index: int) {
-                    menuButton.openMenus()
-                    const item = allMenus.itemAt(index) as MenuItem
-                    if (item)
-                        item.triggered()
-                }
+                function onMenuKeyPressed(index: int) { menuButton.openSubmenu(index) }
                 function onMenusDismissed() { menuButton.closeMenus() }
                 // a click in the window outside them (on the button itself, the
                 // button's own click toggles them)
