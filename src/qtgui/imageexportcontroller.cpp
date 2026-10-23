@@ -403,11 +403,15 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
 }
 
 /* One picture: drawn kWidthFactor times as wide as high, supersampled,
- * cropped to the columns with content and scaled down. */
+ * cropped to the columns with content and scaled to `height`. Within the
+ * render budget (btui::planRender): a large one with less supersampling,
+ * a huge one lower and scaled up. */
 QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
   static quint64 revision = 0;
   btui::SceneContent c = sceneFor(j);
-  const int h = height * aa, w = height * kWidthFactor * aa;
+  const btui::RenderSize r = btui::planRender(unsigned(height), unsigned(kWidthFactor), unsigned(aa));
+  aa = int(r.supersampling);
+  const int h = int(r.height) * aa, w = h * kWidthFactor;
 
   btui::Camera cam;
   cam.setViewport(float(w), float(h));
@@ -429,8 +433,8 @@ QImage ImageExportController::drawPicture(const Job & j, int height, int aa) {
     return img;
   img = img.convertToFormat(QImage::Format_ARGB32_Premultiplied);
   img = img.copy(contentColumns(img, aa));
-  if (aa > 1)
-    img = img.scaled(img.width() / aa, height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+  if (h != height)
+    img = img.scaled(int(qint64(img.width()) * height / h), height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
   return img;
 }
 

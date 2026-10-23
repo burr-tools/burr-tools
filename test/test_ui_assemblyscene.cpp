@@ -124,6 +124,24 @@ TEST_CASE("the line height is the largest that fits the pages", "[ui][imagepages
   CHECK(planLineHeight({}, 300, 200, 1) == 200);
 }
 
+TEST_CASE("a picture is rendered within the pixel budget, supersampling giving way first", "[ui][imagepages]") {
+  // small enough: as asked
+  CHECK(planRender(400, 3, 3).height == 400);
+  CHECK(planRender(400, 3, 3).supersampling == 3);
+  // A4 portrait at 300 dpi on one page (3508 high): less supersampling
+  const RenderSize a4 = planRender(3508, 3, 5);
+  CHECK(a4.height == 3508);
+  CHECK(a4.supersampling == 1);
+  // A4 portrait at 1200 dpi (14031 high): no supersampling, rendered lower
+  const RenderSize big = planRender(14031, 3, 3);
+  CHECK(big.supersampling == 1);
+  CHECK(big.height < 14031);
+  CHECK(big.height > 4000);
+  for (const RenderSize r : { a4, big, planRender(16384, 3, 5), planRender(2000, 3, 9) })
+    CHECK(3ull * r.height * r.supersampling * r.height * r.supersampling <= kMaxRenderPixels);
+  CHECK(planRender(0, 0, 0).height == 1);
+}
+
 TEST_CASE("pictures fill lines left to right, then pages", "[ui][imagepages]") {
   const auto pl = placePictures({ 100, 100, 100, 100 }, 300, 200, 100);
   REQUIRE(pl.size() == 4);

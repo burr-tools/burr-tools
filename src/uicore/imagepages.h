@@ -67,6 +67,18 @@ namespace btui {
   std::vector<Placement> placePictures(const std::vector<unsigned int> & widths, unsigned int pageW,
                                        unsigned int pageH, unsigned int lineHeight);
 
+  /* the most pixels one picture is rendered with: 64 Mpx, 256 MiB of RGBA
+   * (and about three times that while it is cropped and converted) */
+  constexpr unsigned long long kMaxRenderPixels = 64ull << 20;
+
+  struct RenderSize { unsigned int height, supersampling; };
+
+  /* How a picture `height` high and `widthFactor` times as wide is
+   * rendered when it is asked for `supersampling` times larger: within
+   * kMaxRenderPixels, the supersampling gives way first, then the height.
+   * A picture rendered lower than `height` is scaled up to it. */
+  RenderSize planRender(unsigned int height, unsigned int widthFactor, unsigned int supersampling);
+
   /* legacy's width for a picture of that ratio at that height */
   inline unsigned int pictureWidth(double ratio, unsigned int height) {
     return (unsigned int)(height * ratio + 0.9);

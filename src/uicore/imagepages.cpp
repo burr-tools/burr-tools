@@ -21,6 +21,7 @@
 #include "imagepages.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace btui {
 
@@ -75,6 +76,23 @@ namespace btui {
       curPage++;
     }
     return { curPage, 0, curLine * lineHeight };
+  }
+
+  RenderSize planRender(unsigned int height, unsigned int widthFactor, unsigned int supersampling) {
+    height = std::max(1u, height);
+    widthFactor = std::max(1u, widthFactor);
+    supersampling = std::max(1u, supersampling);
+    auto pixels = [widthFactor](unsigned long long h, unsigned long long aa) {
+      return h * aa * h * aa * widthFactor;
+    };
+    while (supersampling > 1 && pixels(height, supersampling) > kMaxRenderPixels)
+      supersampling--;
+    if (pixels(height, 1) > kMaxRenderPixels) {
+      height = std::max(1u, (unsigned int)std::sqrt(double(kMaxRenderPixels) / widthFactor));
+      while (height > 1 && pixels(height, 1) > kMaxRenderPixels)
+        height--;
+    }
+    return { height, supersampling };
   }
 
   std::vector<Placement> placePictures(const std::vector<unsigned int> & widths, unsigned int pageW,
