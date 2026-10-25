@@ -70,6 +70,13 @@ def main():
     if rc is not None:
         check(label, rc == 0 and "1 solutions" in out, f"exited {rc}\n{out}")
 
+    # -M bisects up to its upper end: with this bevel no cube is left there,
+    # which must be refused rather than crash in the geometry
+    label = "burrTxt -M beyond what the bevel allows"
+    rc, out = run(binary, ["-d", "-R", "-q", "-m", "0.081,0.3", "-M", "0.1,0.45"], aaa, label)
+    if rc is not None:
+        check(label, rc == 1 and "leaves no cube" in out, f"was not refused (rc={rc})\n{out}")
+
     for f in failures:
         print(f"FAILED  {f}")
 
