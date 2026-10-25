@@ -49,6 +49,21 @@ solution_c::solution_c(assembly_c * assm, unsigned int assmNum) :
 solution_c::solution_c(solution_c &&) noexcept = default;
 solution_c & solution_c::operator=(solution_c &&) noexcept = default;
 
+/* whether every orientation the states of s and its parts record is one
+ * of the grid's n */
+static bool orientationsValid(const separation_c * s, unsigned int n) {
+  if (!s)
+    return true;
+  for (unsigned int i = 0; i <= s->getMoves(); i++) {
+    const state_c * st = s->getState(i);
+    if (st->hasTrans())
+      for (unsigned int p = 0; p < s->getPieceNumber(); p++)
+        if (st->getTrans(p) >= n)
+          return false;
+  }
+  return orientationsValid(s->getLeft(), n) && orientationsValid(s->getRemoved(), n);
+}
+
 solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c * gt) :
   assembly(nullptr), tree(nullptr), treeInfo(nullptr), assemblyNum(0), solutionNum(0)
 {
@@ -86,6 +101,8 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
         if (assembly->isPlaced(i))
           pl++;
       tree = std::make_unique<separation_c>(pars, pl);
+      if (!orientationsValid(tree.get(), gt->getSymmetries()->getNumTransformationsMirror()))
+        pars.exception("piece orientation out of range for the grid");
 
       pars.require(xmlParser_c::END_TAG, "separation");
     }

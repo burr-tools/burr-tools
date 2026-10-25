@@ -20,7 +20,9 @@
  */
 #include "rotationtables.h"
 
+#include "assembly.h"
 #include "disassemblernode.h"
+#include "disassembly.h"
 #include "gridtype.h"
 #include "problem.h"
 #include "puzzle.h"
@@ -31,6 +33,9 @@
 #include <array>
 #include <chrono>
 #include <climits>
+#include <cmath>
+#include <cstdlib>
+#include <numbers>
 #include <map>
 #include <mutex>
 #include <tuple>
@@ -54,8 +59,8 @@ int rotationRadiusFor(const problem_c & problem) {
 namespace {
 
 struct cacheEntry_t {
-  rotationSettings_t settings;
-  int radius;
+  rotationSettings_t settings = {};
+  int radius = 0;
   std::weak_ptr<const rotationTables_c> tables;
 };
 
@@ -124,10 +129,13 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
   return sharedRotationTables(settings, rotationRadiusFor(problem));
 }
 
-rotationContext_c::rotationContext_c(const problem_c & p,
-                                     std::shared_future<std::shared_ptr<const rotationTables_c>> tables) :
+rotationContext_c::rotationContext_c(const problem_c & p, const rotationSettings_t & s,
+                                     std::shared_future<std::shared_ptr<const rotationTables_c>> tables,
+                                     std::shared_future<std::shared_ptr<const rotationTables_c>> relaxed) :
   problem(p),
-  tableFuture(std::move(tables))
+  settings(s),
+  tableFuture(std::move(tables)),
+  relaxedFuture(std::move(relaxed))
 {
   const gridType_c * gt = problem.getPuzzle().getGridType();
   const unsigned int orientations = gt->getSymmetries()->getNumTransformations();
@@ -174,6 +182,7 @@ rotationContext_c::rotationContext_c(const problem_c & p,
 
 rotationContext_c::~rotationContext_c() {
   park(std::move(tableFuture));
+  park(std::move(relaxedFuture));
 }
 
 rotationContext_c::canonical_t rotationContext_c::canonical(unsigned int piece, unsigned int trans) const {
@@ -221,6 +230,127 @@ const rotationPivotSet_t * rotationContext_c::store(const rotationPairKey_t & ke
   return (sh.sets[key] = std::move(set)).get();
 }
 
+namespace {
+
+/* In-plane doubled offsets from the pivot and axial layer of every cell. */
+std::vector<std::array<int, 3>> pivotOffsets(const std::vector<rotationGeometry::cell_t> & cells,
+                                             unsigned int axis, int hx, int hy, int hz) {
+  const int pu = (axis == 0) ? hy : ((axis == 1) ? hz : hx);
+  const int pv = (axis == 0) ? hz : ((axis == 1) ? hx : hy);
+  std::vector<std::array<int, 3>> r;
+  for (const rotationGeometry::cell_t & c : cells) {
+    int u, v;
+    rotationGeometry::inPlaneDoubled(c.x, c.y, c.z, axis, &u, &v);
+    r.push_back({ u - pu, v - pv, rotationGeometry::axialCoordinate(c.x, c.y, c.z, axis) });
+  }
+  return r;
+}
+
+/* The key of a turn's scene: sense, then the moving and the static cubes as
+ * offsets from the pivot, layers relative to the lowest moving one. Equal
+ * keys are equal scenes, whatever the axis and position. */
+std::vector<int> sceneKey(unsigned int sense, std::vector<std::array<int, 3>> moving, std::vector<std::array<int, 3>> stat, int layer0) {
+  std::sort(moving.begin(), moving.end());
+  std::sort(stat.begin(), stat.end());
+  std::vector<int> key = { (int)sense, (int)moving.size() };
+  for (const auto * list : { &moving, &stat })
+    for (const auto & c : *list) {
+      key.push_back(c[0]);
+      key.push_back(c[1]);
+      key.push_back(c[2] - layer0);
+    }
+  return key;
+}
+
+}
+
+int rotationContext_c::plannedPath(const std::vector<rotationGeometry::cell_t> & moving, const std::vector<rotationGeometry::cell_t> & stat,
+                                   unsigned int axis, int hx, int hy, int hz, unsigned int sense) {
+
+  using rotationGeometry::cell_t;
+  bt_assert(planner());
+
+  /* the static cubes that can matter: in a layer of a moving cube and
+   * within reach of its sweep, shifts and cube size included */
+  const std::vector<std::array<int, 3>> mo = pivotOffsets(moving, axis, hx, hy, hz);
+  const std::vector<std::array<int, 3>> so = pivotOffsets(stat, axis, hx, hy, hz);
+  double reach = 0;
+  int layer0 = INT_MAX;
+  for (const auto & c : mo) {
+    reach = std::max(reach, 0.5 * std::hypot(c[0], c[1]));
+    layer0 = std::min(layer0, c[2]);
+  }
+  reach += std::numbers::sqrt2 * (settings.plan.maxShift + 1) + 0.1;
+  std::vector<std::array<int, 3>> near;
+  std::vector<cell_t> nearCells;
+  for (size_t i = 0; i < so.size(); i++)
+    if (0.5 * std::hypot(so[i][0], so[i][1]) <= reach &&
+        std::any_of(mo.begin(), mo.end(), [&](const auto & m) { return m[2] == so[i][2]; })) {
+      near.push_back(so[i]);
+      nearCells.push_back(stat[i]);
+    }
+
+  /* the reverse turn: the moving cubes turned, the other sense */
+  std::vector<std::array<int, 3>> turned;
+  std::vector<cell_t> turnedCells;
+  for (size_t i = 0; i < mo.size(); i++) {
+    turned.push_back(sense == 0 ? std::array<int, 3>{ -mo[i][1], mo[i][0], mo[i][2] }
+                                : std::array<int, 3>{ mo[i][1], -mo[i][0], mo[i][2] });
+    cell_t c = moving[i];
+    rotationGeometry::turnAbout(&c.x, &c.y, &c.z, hx, hy, hz, axis, sense);
+    turnedCells.push_back(c);
+  }
+
+  std::vector<int> forward = sceneKey(sense, mo, near, layer0);
+  std::vector<int> backward = sceneKey(sense ^ 1, turned, near, layer0);
+  const bool fromHere = forward <= backward;
+  const std::vector<int> & key = fromHere ? forward : backward;
+
+  const unsigned int family = tables().size();
+  {
+    std::lock_guard<std::mutex> lock(planMutex);
+    auto it = plans.find(key);
+    if (it != plans.end()) {
+      const int id = fromHere ? it->second.forward : it->second.backward;
+      return (id < 0) ? -1 : (int)family + id;
+    }
+  }
+
+  /* plan from the key's side, outside the lock: the result depends only on
+   * the key, so a worker computing it twice gets the same */
+  rotationGeometry::planSettings_t ps = settings.plan;
+  ps.floor = 0;
+  ps.upper = false;
+  ps.widest = false;
+  const rotationGeometry::planarScene_c scene(fromHere ? moving : turnedCells, nearCells, axis, hx, hy, hz, settings.model);
+  const rotationGeometry::turnPlan_t plan = rotationGeometry::planTurn(scene, fromHere ? sense : sense ^ 1, ps);
+  /* the planner's bound may be 0 at contact; recorded turns must replay
+   * as clear, like the family's */
+  const bool found = plan.found && plan.clearance >= 0 && scene.certifyPath(plan.path) == rotationGeometry::PATH_CLEAR;
+  if (plan.gaveUp)
+    noteSkipped(SKIP_PLANNER);
+
+  std::lock_guard<std::mutex> lock(planMutex);
+  auto [it, inserted] = plans.try_emplace(key, planned_t{ -1, -1 });
+  if (inserted && found) {
+    it->second.forward = (int)plannedPaths.size();
+    plannedPaths.push_back(std::make_unique<rotationGeometry::path_t>(plan.path));
+    it->second.backward = (int)plannedPaths.size();
+    plannedPaths.push_back(std::make_unique<rotationGeometry::path_t>(rotationGeometry::reversePath(plan.path)));
+  }
+  const int id = fromHere ? it->second.forward : it->second.backward;
+  return (id < 0) ? -1 : (int)family + id;
+}
+
+rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, unsigned int index) const {
+  const unsigned int family = tables().size();
+  if (index < family)
+    return tables().table(sense, index).getSpec();
+  std::lock_guard<std::mutex> lock(planMutex);
+  bt_assert(index - family < plannedPaths.size());
+  return { rotationGeometry::PATH_PLANNED, sense, 0, 0, 0, *plannedPaths[index - family] };
+}
+
 std::shared_ptr<rotationContext_c>
 rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background) {
 
@@ -228,13 +358,105 @@ rotationContextFor(const problem_c & problem, const rotationSettings_t & setting
     return nullptr;
 
   const int radius = rotationRadiusFor(problem);
-  std::shared_future<std::shared_ptr<const rotationTables_c>> tables;
-  if (background)
-    tables = std::async(std::launch::async, [settings, radius] { return sharedRotationTables(settings, radius); }).share();
-  else {
+  auto tablesOf = [background, radius](const rotationSettings_t & s) {
+    if (background)
+      return std::async(std::launch::async, [s, radius] { return sharedRotationTables(s, radius); }).share();
     std::promise<std::shared_ptr<const rotationTables_c>> ready;
-    ready.set_value(sharedRotationTables(settings, radius));
-    tables = ready.get_future().share();
+    ready.set_value(sharedRotationTables(s, radius));
+    return ready.get_future().share();
+  };
+
+  const bool planner = settings.planner && !getenv("BURRTOOLS_NO_ROT_PLANNER");
+  std::shared_future<std::shared_ptr<const rotationTables_c>> relaxed;
+  if (planner) {
+    rotationSettings_t r = settings;
+    /* at most the largest play that leaves the cubes larger than their
+     * bevel: the slack only picks which turns are worth planning */
+    r.model.play = std::min(settings.model.play + settings.slack, 1.0 - 2.0 * settings.model.chamfer - 1e-6);
+    relaxed = tablesOf(r);
   }
-  return std::make_shared<rotationContext_c>(problem, std::move(tables));
+  return std::make_shared<rotationContext_c>(problem, settings, tablesOf(settings), std::move(relaxed));
+}
+
+namespace {
+
+void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & problem,
+                 const rotationSettings_t & settings, turnPlay_t & result) {
+
+  using rotationGeometry::cell_t;
+  const gridType_c * gt = problem.getPuzzle().getGridType();
+
+  /* the cells of piece k of the separation in state st */
+  auto cellsOf = [&](const state_c * st, unsigned int k) {
+    const unsigned int piece = s->getPieceName(k);
+    std::unique_ptr<voxel_c> v(gt->getVoxel(problem.getPartShape(problem.getPartIdToPieceId(piece))));
+    bt_assert2(v->transform(st->hasTrans() ? st->getTrans(k) : a->getTransformation(piece)));
+    std::vector<cell_t> cells;
+    for (unsigned int z = 0; z < v->getZ(); z++)
+      for (unsigned int y = 0; y < v->getY(); y++)
+        for (unsigned int x = 0; x < v->getX(); x++)
+          if (v->isFilled(x, y, z))
+            cells.push_back({ (int)x - v->getHx() + st->getX(k), (int)y - v->getHy() + st->getY(k), (int)z - v->getHz() + st->getZ(k) });
+    return cells;
+  };
+
+  for (unsigned int i = 1; i <= s->getMoves(); i++) {
+    state_c * st = s->editState(i);
+    const stateRotation_t * r = st->getRotation();
+    if (!r)
+      continue;
+    result.rotations = true;
+
+    const state_c * before = s->getState(i - 1);
+    std::vector<cell_t> moving, stat;
+    for (unsigned int k = 0; k < s->getPieceNumber(); k++) {
+      if (before->pieceRemoved(k))
+        continue;
+      const std::vector<cell_t> c = cellsOf(before, k);
+      std::vector<cell_t> & into = r->turns(k) ? moving : stat;
+      into.insert(into.end(), c.begin(), c.end());
+    }
+
+    /* the turning pieces' own motion, whichever side the search recorded */
+    const unsigned int sense = r->turnSense();
+    int hx, hy, hz;
+    rotationGeometry::pivotOf(r->axis, r->pivotU, r->pivotV, &hx, &hy, &hz);
+
+    const rotationGeometry::playBound_t pb =
+      rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.plan);
+    if (!pb.found) {
+      result.failed = true;
+      continue;
+    }
+    result.needs = std::max(result.needs, pb.needs);
+    result.atLeast = std::max(result.atLeast, pb.atLeast);
+
+    /* the path with the most room at the model's play */
+    rotationGeometry::planSettings_t widest = settings.plan;
+    widest.floor = 0;
+    widest.upper = false;
+    widest.widest = true;
+    const rotationGeometry::planarScene_c scene(moving, stat, r->axis, hx, hy, hz, settings.model);
+    const rotationGeometry::turnPlan_t best = rotationGeometry::planTurn(scene, sense, widest);
+    if (!best.found || best.clearance < 0 || scene.certifyPath(best.path) != rotationGeometry::PATH_CLEAR)
+      continue;   // keep the recorded path, it is certified at this play
+
+    stateRotation_t nr = *r;
+    nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, 0, best.path };
+    nr.inverse = false;
+    st->setRotation(nr);
+  }
+
+  if (s->editRemoved())
+    optimizeRec(s->editRemoved(), a, problem, settings, result);
+  if (s->editLeft())
+    optimizeRec(s->editLeft(), a, problem, settings, result);
+}
+
+}
+
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings) {
+  turnPlay_t result;
+  optimizeRec(s, a, problem, settings, result);
+  return result;
 }
