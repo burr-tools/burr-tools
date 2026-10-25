@@ -26,6 +26,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <numbers>
 #include <sstream>
 #include <stdexcept>
 
@@ -160,7 +161,7 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
 
   if (rotation)
   {
-    static const char * kinds[] = { "pure", "wiggle", "slide" };
+    static const char * kinds[] = { "pure", "wiggle", "slide", "planned" };
     xml.newTag("rotation");
     xml.newAttrib("axis", rotation->axis);
     xml.newAttrib("pu", rotation->pivotU);
@@ -175,7 +176,18 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
         pcs << (i ? " " : "") << rotation->pieces[i];
       xml.newAttrib("pieces", pcs.str());
     }
-    if (rotation->path.kind != rotationGeometry::PATH_PURE)
+    if (rotation->path.kind == rotationGeometry::PATH_PLANNED)
+    {
+      /* every digit: the loaded polyline is the one that was certified */
+      std::ostringstream wp;
+      wp.precision(17);
+      for (size_t i = 0; i < rotation->path.waypoints.size(); i++) {
+        const rotationGeometry::pose_t & q = rotation->path.waypoints[i];
+        wp << (i ? " " : "") << q.theta << " " << q.du << " " << q.dv;
+      }
+      xml.newAttrib("waypoints", wp.str());
+    }
+    else if (rotation->path.kind != rotationGeometry::PATH_PURE)
     {
       xml.newAttrib("du", rotation->path.dirU);
       xml.newAttrib("dv", rotation->path.dirV);
@@ -217,6 +229,16 @@ stateRotation_t loadRotation(xmlParser_c & pars)
       r.path.dirV = std::stoi(pars.getAttributeValue("dv"));
       r.path.amount = std::stod(pars.getAttributeValue("amount"));
     }
+    else if (kind == "planned")
+    {
+      r.path.kind = rotationGeometry::PATH_PLANNED;
+      std::istringstream wp(pars.getAttributeValue("waypoints"));
+      rotationGeometry::pose_t q = {};
+      while (wp >> q.theta >> q.du >> q.dv)
+        r.path.waypoints.push_back(q);
+      if (!wp.eof())
+        pars.exception("rotation waypoints must be numbers, three per pose");
+    }
     else
       pars.exception("unknown rotation path kind");
   }
@@ -228,9 +250,18 @@ stateRotation_t loadRotation(xmlParser_c & pars)
 
   if (r.axis > 2 || r.path.sense > 1 ||
       std::abs(r.path.dirU) > 1 || std::abs(r.path.dirV) > 1 ||
-      (r.path.kind != rotationGeometry::PATH_PURE &&
+      ((r.path.kind == rotationGeometry::PATH_WIGGLE || r.path.kind == rotationGeometry::PATH_SLIDE) &&
        ((r.path.dirU == 0 && r.path.dirV == 0) || !(r.path.amount > 0))))
     pars.exception("rotation with an invalid axis, sense or path");
+
+  if (r.path.kind == rotationGeometry::PATH_PLANNED) {
+    /* makePath's requirements: from the identity to the quarter turn */
+    const double end = (r.path.sense == 0 ? 0.5 : -0.5) * std::numbers::pi;
+    if (r.path.waypoints.size() < 2 || r.path.waypoints.front().theta != 0 ||
+        r.path.waypoints.front().du != 0 || r.path.waypoints.front().dv != 0 ||
+        r.path.waypoints.back().theta != end || r.path.waypoints.back().du != 0 || r.path.waypoints.back().dv != 0)
+      pars.exception("a planned rotation path runs from the identity to the quarter turn");
+  }
 
   return r;
 }
