@@ -722,13 +722,35 @@ void voxelFrame_c::drawVoxelSpace() {
 
   glPushName(0);
 
-  for (unsigned int run = 0; run < 2; run++) {
+  // run 0 paints the opaque shapes. The transparent shapes follow in two
+  // runs over all of them: run 1 writes only their depth, run 2 only their
+  // colours against that depth. Only the transparent surface nearest to the
+  // viewer is blended, so the transparent shapes occlude each other and
+  // their own back sides exactly like opaque ones and the set as a whole
+  // shows the opaque scene through. Doing the two steps per shape instead
+  // would let a shape drawn later blend over one drawn before it even when
+  // it lies behind it.
+  GLboolean colMask[4];
+  glGetBooleanv(GL_COLOR_WRITEMASK, colMask);
+
+  for (unsigned int run = 0; run < 3; run++) {
 
     // for the transparent shapes only draw the surface facing the viewer,
     // otherwise the backsides and insides of the pieces blend through
     // in irregular patches
-    if (run == 1)
+    if (run == 1) {
       glEnable(GL_CULL_FACE);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+      glDepthMask(GL_TRUE);
+    }
+
+    if (run == 2) {
+      glColorMask(colMask[0], colMask[1], colMask[2], colMask[3]);
+      glDepthMask(GL_FALSE);
+      // the colour fragments have exactly the depth run 1 laid down, so
+      // they must pass on equality
+      glDepthFunc(GL_LEQUAL);
+    }
 
     for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
@@ -743,10 +765,7 @@ void voxelFrame_c::drawVoxelSpace() {
 
       glLoadName(piece);
 
-      // in run 0 we only paint opaque objects and in run 1 only transparent ones
-      // this lets the transparent objects be always in front of the others
-      if ((run == 0) && (shape->a != 1)) continue;
-      if ((run == 1) && (shape->a == 1)) continue;
+      if ((run == 0) != (shape->a == 1)) continue;
 
       glPushMatrix();
 
@@ -779,7 +798,8 @@ void voxelFrame_c::drawVoxelSpace() {
         break;
       }
 
-      if (_showCoordinateSystem && shape->shape) {
+      // the overlays are colour only, they stay out of the depth run
+      if (run != 1 && _showCoordinateSystem && shape->shape) {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
         glBegin(GL_LINES);
@@ -816,36 +836,11 @@ void voxelFrame_c::drawVoxelSpace() {
         glEnable(GL_BLEND);
       }
 
-      if (run == 1)
-      {
-        // draw the transparent shape twice: first only its depth, then its
-        // colours. That way only the surface nearest to the viewer is
-        // blended and the shape does not also blend with its own back
-        // sides and get darker wherever several of its faces are stacked
-        // behind one another
-        GLboolean colMask[4];
-        glGetBooleanv(GL_COLOR_WRITEMASK, colMask);
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glDepthMask(GL_TRUE);
-
-        drawShape(shape);
-
-        glColorMask(colMask[0], colMask[1], colMask[2], colMask[3]);
-        glDepthMask(GL_FALSE);
-
-        // the colour fragments have exactly the depth the prepass laid
-        // down, so they must pass on equality
-        glDepthFunc(GL_LEQUAL);
-      }
-
       drawShape(shape);
-
-      if (run == 1)
-        glDepthFunc(GL_LESS);
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
-      if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
+      if (run != 1 && (markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
       {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
@@ -895,11 +890,10 @@ void voxelFrame_c::drawVoxelSpace() {
 
       glPopMatrix();
     }
-
-    glDepthMask(GL_FALSE);
   }
 
   glPopName();
+  glDepthFunc(GL_LESS);
   glDisable(GL_CULL_FACE);
   glDepthMask(GL_TRUE);
 
