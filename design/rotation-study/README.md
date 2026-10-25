@@ -36,6 +36,8 @@ scripts look for them in `puzzles/` next to the repository root, or in
 | `tics.py name=burrTxt ...` | Decoded TICs: default model, printed model, bisection of the smallest play (sharp) and smallest bevel (at printed play). Writes `results/tics.json`. |
 | `crowell.py name=burrTxt ...` | Crowell collection: default model and bisection of the smallest play. Appends to `results/crowell.jsonl`, resumable. |
 | `pr50crowell.py -R\|-C` | PR #50's Classic (`-R`) or Crowell (`-C`) engine on the Crowell collection, 60 s per puzzle; needs `BURRTXT_PR50` (burrTxt from `rotations-pr50`). |
+| `xcheck.cpp <solutionfile>` | Compares a Crowell `_SolutionFile` (one snapshot per step) with our disassembly of its first snapshot, state by state, modulo rigid motions; `FROM=1 PARTIAL=1` also disassembles from every snapshot, which pins down the step we cannot make. Build: `c++ -I build-rel -I src -DNDEBUG -std=c++20 -O2 -pthread xcheck.cpp build-rel/libburr_core.a build-rel/subprojects/manifold-3.5.2/libmanifold.a -lz`. |
+| `diag.cpp <solutionfile> <k>` | Diagnoses step k-1 -> k of a solution file: moving group, axis, pivot, family vs grid search over plays; `REQ=1` the play the turn needs (`requiredPlay`), `PLAN=1` one planner run, `DUMP=1` the scene as cells (for tests). The 17 blocked steps are listed in `results/crowell_blocked_steps.txt`. |
 | `run.sh <burrTxt> <outdir>` | Example puzzles with `-R` under both models, for a before/after diff. |
 
 The binaries compared were release builds (`just build-release`) of:
