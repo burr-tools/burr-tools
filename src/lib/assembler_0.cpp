@@ -1678,14 +1678,16 @@ public:
       if (!cut[d] && down(cur) != col) {
         if (!donateForced && !donatePool->claim_work())
           return false;
-        unsigned int remaining = 0;
-        for (unsigned int r = down(cur); r != col; r = down(r))
-          remaining++;
+        // n is the column's linked row count (stable while placed, see
+        // above), so one walk gives both the cursor and the rows after it
+        const unsigned int m = rowIndexInColumn(col, cur);
+        bt_assert(m < n);
+        const unsigned int remaining = n - m - 1;
 
         assembler_0_c::SubtreeTask piece;
         piece.prefix = abovePathPrefix(task, d);
         piece.cursorCol = col;
-        piece.cursorSkip = rowIndexInColumn(col, cur) + 1;
+        piece.cursorSkip = m + 1;
         // Exact arithmetic keeps the estimate below what the donor holds
         // (earlier donations were the shallower levels' later rows); the
         // clamp only absorbs float rounding.
