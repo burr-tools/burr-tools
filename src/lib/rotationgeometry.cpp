@@ -23,7 +23,9 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <array>
 #include <bit>
+#include <cstdint>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -31,6 +33,8 @@
 #include <numbers>
 #include <atomic>
 #include <optional>
+#include <queue>
+#include <unordered_map>
 #include <thread>
 
 namespace rotationGeometry {
@@ -252,6 +256,32 @@ double planarScene_c::clearance(const pose_t & p) const {
   return best;
 }
 
+double planarScene_c::clearanceAbove(const pose_t & p, double floor) const {
+
+  const double c = std::cos(p.theta);
+  const double s = std::sin(p.theta);
+  const double reach = 2.0 * std::sqrt(2.0) * half;
+
+  double best = std::numeric_limits<double>::max();
+
+  for (const layer_t & l : layers)
+    for (const square_t & m : l.moving) {
+      double mu = m.u * c - m.v * s + p.du;
+      double mv = m.u * s + m.v * c + p.dv;
+      for (const square_t & st : l.stat) {
+        double du = mu - st.u, dv = mv - st.v;
+        const double bound = best + reach;
+        if (bound >= 0 && du * du + dv * dv >= bound * bound)
+          continue;
+        best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer));
+        if (best < floor)
+          return best;
+      }
+    }
+
+  return best;
+}
+
 int planarScene_c::classify(const pose_t & p, double margin, double * clOut) const {
 
   const double c = std::cos(p.theta);
@@ -354,6 +384,12 @@ path_t makePath(const pathSpec_t & spec) {
   if (spec.kind == PATH_PURE)
     return { { 0, 0, 0 }, { end, 0, 0 } };
 
+  if (spec.kind == PATH_PLANNED) {
+    if (spec.waypoints.size() < 2 || spec.waypoints.back().theta != end)
+      bt_te("makePath: a planned path needs waypoints ending at the quarter turn");
+    return spec.waypoints;
+  }
+
   if ((spec.dirU == 0 && spec.dirV == 0) || std::abs(spec.dirU) > 1 || std::abs(spec.dirV) > 1 || !(spec.amount > 0))
     bt_te("makePath: shifts need a compass direction and a positive amount");
 
@@ -399,6 +435,456 @@ pose_t poseAt(const path_t & path, double t) {
   return { a.theta + local * (b.theta - a.theta),
            a.du + local * (b.du - a.du),
            a.dv + local * (b.dv - a.dv) };
+}
+
+namespace {
+
+/* No point of the moving group moves further than this over the segment
+ * (see certifySegment). */
+double segmentLipschitz(const pose_t & a, const pose_t & b, double rho) {
+  return std::hypot(b.du - a.du, b.dv - a.dv) + rho * std::fabs(b.theta - a.theta);
+}
+
+pose_t lerp(const pose_t & a, const pose_t & b, double s) {
+  return { a.theta + s * (b.theta - a.theta), a.du + s * (b.du - a.du), a.dv + s * (b.dv - a.dv) };
+}
+
+}
+
+double planarScene_c::segmentMinimum(const pose_t & a, const pose_t & b, double eps, double stopBelow) const {
+
+  const double lipschitz = segmentLipschitz(a, b, rho);
+
+  /* Piyavskii-style branch and bound: an interval of half width w around a
+   * sample with clearance c has no clearance below c - lipschitz·w. Refine
+   * the interval with the lowest such bound until it is within eps of the
+   * lowest sample, which makes it a lower bound within eps of the minimum. */
+  struct interval_t {
+    double lower, s0, s1;
+    bool operator<(const interval_t & o) const { return lower > o.lower; }
+  };
+  std::priority_queue<interval_t> todo;
+
+  double best = std::min(clearance(a), clearance(b));
+
+  auto push = [&](double s0, double s1) {
+    const double c = clearance(lerp(a, b, 0.5 * (s0 + s1)));
+    best = std::min(best, c);
+    todo.push({ c - 0.5 * (s1 - s0) * lipschitz, s0, s1 });
+  };
+  push(0, 1);
+
+  while (true) {
+    if (best < stopBelow)
+      return best;
+    const interval_t i = todo.top();
+    if (i.lower >= best - eps || (i.s1 - i.s0) * lipschitz < MIN_DISPLACEMENT)
+      return std::min(i.lower, best);
+    todo.pop();
+    const double sm = 0.5 * (i.s0 + i.s1);
+    push(i.s0, sm);
+    push(sm, i.s1);
+  }
+}
+
+double planarScene_c::minClearance(const std::vector<pose_t> & waypoints, double eps) const {
+
+  bt_assert(!waypoints.empty());
+  if (waypoints.size() == 1)
+    return clearance(waypoints[0]);
+
+  double result = std::numeric_limits<double>::max();
+  for (size_t i = 0; i + 1 < waypoints.size(); i++)
+    result = std::min(result, segmentMinimum(waypoints[i], waypoints[i + 1], eps, -std::numeric_limits<double>::max()));
+  return result;
+}
+
+bool planarScene_c::clearanceAtLeast(const std::vector<pose_t> & waypoints, double threshold) const {
+
+  bt_assert(!waypoints.empty());
+  if (clearance(waypoints[0]) < threshold)
+    return false;
+
+  for (size_t i = 0; i + 1 < waypoints.size(); i++) {
+    const pose_t & a = waypoints[i];
+    const pose_t & b = waypoints[i + 1];
+    const double lipschitz = segmentLipschitz(a, b, rho);
+    std::vector<std::pair<double, double>> todo = { { 0.0, 1.0 } };
+    while (!todo.empty()) {
+      auto [s0, s1] = todo.back();
+      todo.pop_back();
+      const double sm = 0.5 * (s0 + s1);
+      const double c = clearance(lerp(a, b, sm));
+      if (c < threshold || (s1 - s0) * lipschitz < MIN_DISPLACEMENT)
+        return false;
+      /* the sample proves sm ± (c - threshold) / lipschitz */
+      const double w = (lipschitz > 0) ? (c - threshold) / lipschitz : 1;
+      if (sm - w > s0)
+        todo.push_back({ s0, sm - w });
+      if (sm + w < s1)
+        todo.push_back({ sm + w, s1 });
+    }
+  }
+  return true;
+}
+
+playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                         unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense,
+                         const model_t & model, const planSettings_t & settings,
+                         double tolerance, double maxPlay) {
+
+  playBound_t result;
+
+  /* the smallest play the scene accepts: the cube must stay larger than
+   * its chamfer */
+  const double minPlay = 1e-3;
+
+  auto sceneAt = [&](double play) {
+    return planarScene_c(moving, stat, axis, pivotHx, pivotHy, pivotHz, { play, model.chamfer });
+  };
+
+  /* is the turn possible at play: a path with nonnegative certified clearance */
+  planSettings_t feasible = settings;
+  feasible.floor = 0;
+  feasible.upper = false;
+  auto tryPlay = [&](double play, path_t * path) {
+    turnPlan_t t = planTurn(sceneAt(play), sense, feasible);
+    if (!t.found || t.clearance < 0)
+      return false;
+    *path = std::move(t.path);
+    return true;
+  };
+
+  /* bracket: the best path at the model's play; if it is blocked by c < 0,
+   * the same path is clear at play - c */
+  double lo = minPlay, hi;
+  {
+    planSettings_t best = settings;
+    best.floor = -1;
+    best.upper = false;
+    turnPlan_t t = planTurn(sceneAt(model.play), sense, best);
+    if (t.found && t.clearance >= 0) {
+      hi = model.play;
+      result.path = t.path;
+    } else {
+      lo = model.play;
+      hi = t.found ? model.play - t.clearance + 1e-6 : maxPlay;
+      if (hi > maxPlay)
+        hi = maxPlay;
+      if (!(t.found && sceneAt(hi).clearanceAtLeast(t.path, 0)) && !tryPlay(hi, &result.path))
+        return result;
+      if (t.found && result.path.empty())
+        result.path = t.path;
+    }
+  }
+
+  while (hi - lo > tolerance) {
+    const double mid = 0.5 * (lo + hi);
+    path_t p;
+    if (tryPlay(mid, &p)) {
+      hi = mid;
+      result.path = std::move(p);
+    } else
+      lo = mid;
+  }
+
+  result.found = true;
+  result.needs = hi;
+
+  /* A proof for the lower end. No motion has more clearance than the
+   * optimistic bound u at play hi, and taking play away costs every
+   * clearance at least as much, so below hi - u nothing gets through. */
+  {
+    planSettings_t opt = settings;
+    opt.floor = -1;
+    opt.upper = true;
+    const double u = planTurn(sceneAt(hi), sense, opt).upper;
+    result.atLeast = std::max(0.0, std::min(hi, hi - u));
+  }
+  return result;
+}
+
+path_t reversePath(const path_t & path) {
+  bt_assert(!path.empty());
+  const double end = path.back().theta;
+  path_t r;
+  for (auto it = path.rbegin(); it != path.rend(); ++it)
+    r.push_back({ it->theta - end, it->du, it->dv });
+  return r;
+}
+
+namespace {
+
+/* The grid of planTurn: cell (k, a, b) is the pose (k·Δθ, a·h, b·h). */
+struct planGrid_t {
+  int steps, nd, side;
+  double dtheta, h;
+
+  uint32_t key(int k, int a, int b) const { return ((uint32_t)k * side + (a + nd)) * side + (b + nd); }
+  void cell(uint32_t key, int * k, int * a, int * b) const {
+    *b = (int)(key % side) - nd;
+    *a = (int)((key / side) % side) - nd;
+    *k = (int)(key / side / side);
+  }
+  pose_t pose(uint32_t key) const {
+    int k, a, b;
+    cell(key, &k, &a, &b);
+    return { k * dtheta, a * h, b * h };
+  }
+};
+
+/* Per-thread buffers of the grid searches, dense over the grid; only the
+ * touched entries are reset after a search. */
+struct gridBuffers_t {
+  std::vector<double> value, best;
+  std::vector<uint32_t> parent;
+  std::vector<uint32_t> touched;
+
+  void prepare(size_t cells) {
+    if (value.size() < cells) {
+      value.assign(cells, std::numeric_limits<double>::quiet_NaN());
+      best.assign(cells, -std::numeric_limits<double>::infinity());
+      parent.assign(cells, 0);
+    }
+  }
+  void reset(void) {
+    for (uint32_t t : touched) {
+      value[t] = std::numeric_limits<double>::quiet_NaN();
+      best[t] = -std::numeric_limits<double>::infinity();
+    }
+    touched.clear();
+  }
+};
+
+enum searchMode_e {
+  SEARCH_WIDEST,   ///< the path with the largest smallest cell value
+  SEARCH_GREEDY    ///< any path, heading for the end angle first
+};
+
+/* A path over the grid from the start to the end pose through cells whose
+ * value (centre clearance plus bonus, computed lazily) is at least floor.
+ * With diagonals, cells sharing an edge or a corner are neighbours too,
+ * which the optimistic bound needs (a continuous path can cross there).
+ * Returns the smallest value along the path found (the bottleneck; for
+ * SEARCH_WIDEST the largest possible), -inf if the end is unreachable or
+ * more than budget cells were evaluated (then *exhausted is set). */
+double gridSearch(const planarScene_c & scene, const planGrid_t & g, gridBuffers_t & buf, searchMode_e mode,
+                  double bonus, double floor, bool diagonals, std::vector<uint32_t> * cells,
+                  size_t budget = SIZE_MAX, bool * exhausted = nullptr) {
+
+  buf.prepare((size_t)(g.steps + 1) * g.side * g.side);
+
+  auto value = [&](uint32_t key) {
+    /* below floor the exact value does not matter: the cell is never entered */
+    double & v = buf.value[key];
+    if (std::isnan(v)) {
+      v = scene.clearanceAbove(g.pose(key), floor - bonus);
+      buf.touched.push_back(key);
+    }
+    return v + bonus;
+  };
+
+  const uint32_t start = g.key(0, 0, 0), goal = g.key(g.steps, 0, 0);
+  /* widest: by bottleneck; greedy: by angle reached, then by value */
+  auto priority = [&](double bott, uint32_t key) {
+    return (mode == SEARCH_WIDEST) ? bott : (double)(key / g.side / g.side) * 16 + std::min(bott, 8.0);
+  };
+  std::priority_queue<std::pair<double, uint32_t>> heap;
+  double result = -std::numeric_limits<double>::infinity();
+
+  const double s0 = value(start);
+  if (s0 >= floor) {
+    buf.best[start] = s0;
+    buf.parent[start] = start;
+    heap.push({ priority(s0, start), start });
+  }
+
+  while (!heap.empty()) {
+    if (buf.touched.size() > budget) {
+      if (exhausted)
+        *exhausted = true;
+      break;
+    }
+    const uint32_t key = heap.top().second;
+    const double bott = buf.best[key];
+    const double prio = heap.top().first;
+    heap.pop();
+    if (prio < priority(bott, key))
+      continue;   // stale entry
+    if (key == goal) {
+      if (cells) {
+        cells->clear();
+        for (uint32_t c = goal; ; c = buf.parent[c]) {
+          cells->push_back(c);
+          if (c == start)
+            break;
+        }
+        std::reverse(cells->begin(), cells->end());
+      }
+      result = bott;
+      break;
+    }
+    int k, a, b;
+    g.cell(key, &k, &a, &b);
+    for (int dk = -1; dk <= 1; dk++)
+      for (int da = -1; da <= 1; da++)
+        for (int db = -1; db <= 1; db++) {
+          const int moved = (dk != 0) + (da != 0) + (db != 0);
+          if (moved == 0 || (!diagonals && moved > 1))
+            continue;
+          const int k2 = k + dk, a2 = a + da, b2 = b + db;
+          if (k2 < 0 || k2 > g.steps || a2 < -g.nd || a2 > g.nd || b2 < -g.nd || b2 > g.nd)
+            continue;
+          const uint32_t key2 = g.key(k2, a2, b2);
+          const double v = value(key2);
+          if (v < floor)
+            continue;
+          const double b2v = std::min(bott, v);
+          if (buf.best[key2] >= b2v)
+            continue;
+          buf.best[key2] = b2v;
+          buf.parent[key2] = key;
+          heap.push({ priority(b2v, key2), key2 });
+        }
+  }
+
+  buf.reset();
+  return result;
+}
+
+/* True if at angle theta no shift in the box |du|, |dv| <= w reaches
+ * floor: a quadtree over the box, a square of half side r around d having
+ * no clearance above clearance(d) + r·√2. Squares no finer than minHalf
+ * that cannot be decided count as reaching floor. */
+bool sliceBlocked(const planarScene_c & scene, double theta, double w, double floor, double minHalf) {
+  std::vector<std::array<double, 3>> todo = { { 0, 0, w } };
+  while (!todo.empty()) {
+    const auto [u, v, r] = todo.back();
+    todo.pop_back();
+    const double c = scene.clearance({ theta, u, v });
+    if (c >= floor)
+      return false;
+    if (c + r * std::numbers::sqrt2 < floor)
+      continue;
+    if (r < minHalf)
+      return false;
+    const double q = 0.5 * r;
+    todo.push_back({ u - q, v - q, q });
+    todo.push_back({ u - q, v + q, q });
+    todo.push_back({ u + q, v - q, q });
+    todo.push_back({ u + q, v + q, q });
+  }
+  return true;
+}
+
+planGrid_t makeGrid(const planSettings_t & settings, unsigned int sense, int coarsen) {
+  planGrid_t g;
+  g.steps = std::max(1, settings.steps / coarsen);
+  g.h = settings.shift * coarsen;
+  g.nd = (int)std::lround(settings.maxShift / g.h);
+  g.side = 2 * g.nd + 1;
+  g.dtheta = ((sense == 0) ? 0.5 : -0.5) * std::numbers::pi / g.steps;
+  if ((double)(g.steps + 1) * g.side * g.side > 4e9)
+    bt_te("planTurn: grid too large");
+  return g;
+}
+
+/* largest displacement of a moving point within a cell from its centre */
+double cellMargin(const planarScene_c & scene, const planGrid_t & g) {
+  return g.h / std::numbers::sqrt2 + scene.radius() * std::fabs(g.dtheta) / 2;
+}
+
+/* The polyline through the cell centres, shortcut: from each kept waypoint
+ * jump to the farthest one the straight segment reaches without losing
+ * clearance. */
+path_t shortcut(const planarScene_c & scene, const path_t & full) {
+  const double base = scene.minClearance(full, 1e-3);
+  path_t path = { full[0] };
+  size_t i = 0;
+  while (i + 1 < full.size()) {
+    size_t j = full.size() - 1;
+    size_t step = j - i;
+    while (j > i + 1 && !scene.clearanceAtLeast({ full[i], full[j] }, base)) {
+      step = std::max<size_t>(1, step / 2);
+      j = (j - i > step) ? j - step : i + 1;
+    }
+    path.push_back(full[j]);
+    i = j;
+  }
+  return path;
+}
+
+}
+
+turnPlan_t planTurn(const planarScene_c & scene, unsigned int sense, const planSettings_t & settings) {
+
+  if (sense > 1 || settings.steps < 1 || !(settings.shift > 0) || !(settings.maxShift >= 0))
+    bt_te("planTurn: needs sense 0 or 1, steps >= 1, shift > 0, maxShift >= 0");
+
+  turnPlan_t plan;
+  thread_local gridBuffers_t fine;
+  const planGrid_t g = makeGrid(settings, sense, 1);
+
+  /* Every continuous path passes every angle, and a shift d changes the
+   * clearance by at most |d|: an angle at which no shift in the box reaches
+   * floor rules the turn out. Try the angles where the pure turn is worst
+   * first: an open angle costs a sample or a few, a blocked one is found
+   * soon after. */
+  {
+    std::vector<std::pair<double, int>> worst;
+    for (int k = 0; k <= g.steps; k++) {
+      const double c = scene.clearance({ k * g.dtheta, 0, 0 });
+      if (c + std::numbers::sqrt2 * settings.maxShift < settings.floor) {
+        plan.upper = -std::numeric_limits<double>::infinity();
+        return plan;
+      }
+      if (c < settings.floor)
+        worst.push_back({ c, k });
+    }
+    std::sort(worst.begin(), worst.end());
+    for (size_t i = 0; i < worst.size(); i++)
+      if (sliceBlocked(scene, worst[i].second * g.dtheta, settings.maxShift, settings.floor, 0.5 * settings.shift)) {
+        plan.upper = -std::numeric_limits<double>::infinity();
+        return plan;
+      }
+  }
+
+  if (settings.upper) {
+    plan.upper = gridSearch(scene, g, fine, SEARCH_WIDEST, cellMargin(scene, g), settings.floor, true, nullptr);
+    if (plan.upper < settings.floor)
+      return plan;
+  }
+
+  auto run = [&](searchMode_e mode, double floor) {
+    std::vector<uint32_t> cells;
+    const size_t budget = settings.widest ? SIZE_MAX : settings.budget;
+    if (gridSearch(scene, g, fine, mode, 0, floor, false, &cells, budget, &plan.gaveUp) == -std::numeric_limits<double>::infinity())
+      return false;
+    path_t full;
+    for (uint32_t c : cells)
+      full.push_back(g.pose(c));
+    full.back() = { (sense == 0 ? 0.5 : -0.5) * std::numbers::pi, 0, 0 };
+    plan.path = shortcut(scene, full);
+    plan.clearance = scene.minClearance(plan.path);
+    plan.found = true;
+    return true;
+  };
+
+  if (!settings.widest) {
+    /* any path, kept a little away from floor so that the polyline between
+     * the cell centres likely stays above it; else (no such path, or the
+     * polyline dips below) the widest path down to floor itself, within
+     * the same budget: near the threshold the room is that small */
+    if (run(SEARCH_GREEDY, settings.floor + 0.5 * cellMargin(scene, g)) && plan.clearance >= settings.floor)
+      return plan;
+    if (plan.gaveUp)
+      return plan;
+    plan.found = false;
+  }
+  run(SEARCH_WIDEST, settings.floor);
+  if (plan.found && plan.clearance < settings.floor && !settings.widest)
+    plan.found = false;
+  return plan;
 }
 
 namespace {

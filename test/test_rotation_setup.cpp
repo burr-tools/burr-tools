@@ -101,7 +101,7 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
 
 TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {
 
-  rotationContext_c context(pelikan(), std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
+  rotationContext_c context(pelikan(), defaultRotationSettings(), std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
   const rotationPairKey_t key = { 1, 2 }, other = { 1, 3 };
 
   const rotationPivotSet_t * found = nullptr;
