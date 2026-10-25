@@ -49,10 +49,12 @@
  *   `waiting_workers` are plain unsigned ints under that mutex -- deliberately
  *   NOT atomics, so the "queue empty && nobody active" quiescence predicate is
  *   evaluated atomically with the wait.
- * - Coordination happens only at task boundaries (pop / task_done / push).
- *   The only thing the exact-cover node loop touches is wants_work(), a
- *   relaxed atomic flag; a worker that acts on it donates with an ordinary
- *   push.
+ * - Coordination happens at task boundaries (pop / task_done / push) and
+ *   at donations. Per node, the exact-cover loop touches only
+ *   wants_work(), a relaxed atomic flag polled every few hundred nodes. A
+ *   worker that sees it raised and has something to give takes the pool
+ *   locks from inside its search: claim_work() (one CAS) and an ordinary
+ *   push_tasks() (the mutex and a notify), at most once per waiter.
  * - Every successful pop_task() MUST be paired with exactly one finishTask(),
  *   even when the task body throws or the search aborts mid-task. The worker
  *   loops use try/catch for this. (task_done() alone is only correct when no
@@ -249,8 +251,9 @@ public:
   }
 
   /// True while at least one worker is waiting for work. Used by the
-  /// split heuristic: a popping thread splits its task only when siblings
-  /// are actually starving. Lock-protected read; called at task granularity.
+  /// pop-time split heuristic that only runs with BURRTOOLS_NO_DONATE: a
+  /// popping thread splits its task only when siblings are actually
+  /// starving. Lock-protected read; called at task granularity.
   bool has_waiting_workers() const {
     std::lock_guard<std::mutex> lock(mtx);
     return waiting_workers > 0;
@@ -274,6 +277,8 @@ public:
   /// push_tasks() re-derives it, so a second waiter raises it again. Call
   /// only once there is something to give -- a claim that is not followed
   /// by a push leaves the waiter unannounced until the next pool event.
+  /// (push_tasks() never refuses a non-empty push, so a claim followed by
+  /// one always re-derives the flag.)
   bool claim_work() {
     bool expected = true;
     return hungry_.compare_exchange_strong(expected, false,

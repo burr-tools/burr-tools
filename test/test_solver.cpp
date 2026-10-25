@@ -3732,6 +3732,68 @@ TEST_CASE("donated work is searched exactly once",
   }
 }
 
+/* Forced donation on a real puzzle with a symmetry breaker.
+ *
+ * The line puzzle above has uniform frames and no symmetry breaker.
+ * Bermuda has both irregular frames and a breaker, so donated pieces run
+ * smallerRotationExists() from worker threads on prefixes built by
+ * abovePathPrefix (DLX) and prefixFromNodes (SIMD), and the cursor
+ * indices are taken on column lists that the covers of a real puzzle
+ * shaped. Each run must equal the serial baseline as a multiset (a lost
+ * and a duplicated assembly cancel in a count), and the finished tasks'
+ * shares must add up to 1. Under TSan this is the donation path's
+ * symmetry-breaker coverage.
+ */
+TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
+          "[assembler][parallel][tsan]") {
+  auto p = puzzle_c::load("examples/Bermuda.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  std::multiset<std::string> serial;
+  {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);  // serial DLX: no pool, no donation
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    serial = std::move(cb.fingerprints);
+  }
+  REQUIRE_FALSE(serial.empty());
+
+  // premise: symmetry breaking is active (see the parallel-vs-serial case)
+  {
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(1);
+    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    REQUIRE(cb.fingerprints.size() > serial.size());
+  }
+
+  struct Case { bool dlx; unsigned int threads; const char * every; };
+  const Case cases[] = {
+    {true, 4, "3"}, {true, 4, "50"}, {false, 1, "5"}, {false, 4, "5"},
+  };
+  for (const auto & c : cases) {
+    INFO((c.dlx ? "DLX" : "SIMD") << ", " << c.threads << " threads, every " << c.every);
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.dlx ? "1" : nullptr);
+    ScopedEnv every("BURRTOOLS_DONATE_EVERY", c.every);
+    RecordingAssemblerCallback cb;
+    assembler_0_c assm(*problem);
+    assm.setNumThreads(c.threads);
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    assm.assemble(&cb);
+    CHECK(assm.getDonations() > 0);
+    CHECK(SubtreeTaskShareTestAccess::completedShare(assm)
+          == Catch::Approx(1.0).margin(1e-4));
+    CHECK(cb.fingerprints == serial);
+  }
+}
+
 /* A0-SIMD divide-at-stop with SIMD rests on a real puzzle.
  *
  * A SIMD frame with more remaining branches than the fan-out cap leaves a

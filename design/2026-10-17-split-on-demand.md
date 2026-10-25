@@ -35,7 +35,11 @@ alternatives itself.
   push would donate for the same waiter. The donor's push re-derives the
   flag, so a second waiter raises it again. A worker claims only once it
   has found an open level, so a claim is always followed by a push.
-- A donation is an ordinary `push_tasks`. Nothing in the pool protocol
+- A donation is an ordinary `push_tasks`, made from inside the donor's
+  search: the claim's CAS and the push's mutex and notify are the only
+  pool operations the node loop performs, at most once per waiter. The
+  push never refuses (the pool has no stop flag), so nothing donated is
+  dropped and every claim re-derives the flag. Nothing in the pool protocol
   changes: the spec already models pushes by active workers, so the
   TLA+ model is unaffected.
 - At pop time only cursor tasks are split, because a cursor cannot be
