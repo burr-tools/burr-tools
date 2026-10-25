@@ -2664,6 +2664,13 @@ public:
    * row set), so each gets a level with its current child as the active
    * slot. Every frame of the territory then has a tracker level --
    * level j is stack index base_depth - 1 + j -- which donate() relies on.
+   * The live top frame gets a level too, with no active slot: a top 5 (a
+   * donated piece, or a write-back between two rows) resumes in case 5/6
+   * with its current row already searched, so its children are the rows
+   * after that row; a top 2 has searched its empty row set, so they are
+   * the frame's rows. Without the count the level keeps reset()'s single
+   * slot, and the first of those rows takes the whole share: the task
+   * reads as done after one row, and donate() finds nothing left to give.
    * The counts come from the restored matrix, where deeper hides can only
    * hide rows, so they may undercount; beginSlot() clamps and pop()
    * credits any residue, so conservation holds either way.
@@ -2689,6 +2696,14 @@ public:
       tracker.beginSlot();
       tracker.push();
     }
+    const size_t top = task_stack.size() - 1;
+    if (top + 1 < base_depth)
+      return;
+    if (task_stack[top] == 5) {
+      bt_assert(rowIdx + 1 == rows.size());  // case 6 continues from rows.back()
+      tracker.setChildren(isCut(top) ? 0 : countRowChildren(up, down, down[rows[rowIdx]]));
+    } else if (task_stack[top] == 2)
+      tracker.setChildren(countRowChildren(up, down, next_row_stack[top]));
   }
 
   void enableDonation(AssemblyTaskPool<assembler_1_c::SubtreeTask_1> & pool,
