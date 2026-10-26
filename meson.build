@@ -327,11 +327,14 @@ if not fltk_dep.found()
 endif
 
 
-link_args=[]
+# The legacy Windows binaries are linked fully static so they run without
+# shipping any DLLs. The arguments go to each target rather than the whole
+# project, so that a later target linking shared libraries (a Qt GUI links
+# Qt's) does not get a second, static copy of the C++ runtime.
+legacy_link_args = []
 
 if host_machine.system() == 'windows'
-  # add_project_arguments('-Wl,-lws2_32', language: ['cpp'])
-  link_args += [
+  legacy_link_args += [
     '-static'
     ,'-static-libgcc'
     ,'-static-libstdc++'
@@ -339,9 +342,6 @@ if host_machine.system() == 'windows'
     ,'-lcomctl32'
   ]
 endif
-
-add_project_link_arguments(link_args,
-			   language: ['c', 'cpp', 'objc'])
 
 # Manifold (https://github.com/elalish/manifold): the boolean / Minkowski
 # engine behind the chamfered STL export of the non-cube grids. Built from
@@ -381,11 +381,13 @@ libburr_core = static_library('burr_core',
 executable('burrTxt', ['src/burrTxt.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 burrtxt2_exe = executable('burrTxt2', ['src/burrTxt2.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, manifold_dep])
 
 # get_supported_arguments so these stay a no-op on compilers without the flag
@@ -411,6 +413,7 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
           include_directories: inc,
           link_with: [libburr_core, vendored_gui_lib, vendored_lua_lib],
           dependencies: [manifold_dep, thread_dep, zlib_dep, gl_dep, glu_dep, gdiplus_dep, fltk_dep, fltkgl_dep, fltkimages_dep, fltkpng_dep, fltkz_dep, libpng_dep, cocoa_dep, json_dep, httpget_dep],
+          link_args: legacy_link_args,
           win_subsystem: 'windows',
 	  )
 
@@ -432,6 +435,7 @@ test_burrtools = executable('test_burrtools',
     'test/test_curl_abi.cpp', 'test/test_envvars.cpp'],
   include_directories: inc,
   link_with: libburr_core,
+  link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],
 )
 
@@ -490,6 +494,7 @@ if not python_opt.disabled()
         python_src,
         include_directories: inc,
         link_with: libburr_core,
+        link_args: legacy_link_args,
         dependencies: [pybind11_dep, thread_dep, zlib_dep],
       )
 
