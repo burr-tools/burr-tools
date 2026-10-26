@@ -22,14 +22,15 @@ it can replace it.
 
 | Phase | Content | State |
 | :--- | :--- | :--- |
-| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except what later phases need first: the Stepper, GlyphButton, ActionButton, Accordion and Chip primitives, and the composed edit cursors (see *Deferred*) |
+| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except what later phases need first: the Stepper, GlyphButton, ActionButton and Accordion primitives, and the composed edit cursors (see *Deferred*). The Chip came with P2 |
 | P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout waits for the 2D grid (P4) |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
 | P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*) |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
 | — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles | Done; editing in 3D (Edit button, quick tools, ghosts, cursors) arrives with P4 |
-| P2 onward | Shapes sidebar (its collapsed rail's chips are in already), voxel editor, Puzzle and Solver workspaces | Next; the Puzzle and Solver cards are placeholders |
+| P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
+| P3 onward | Drawing colour, voxel editor, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
 
 ### Deferred to the next phase
 
@@ -39,7 +40,7 @@ Pick these up with the phase named.
 | Item | Spec | Why it waits | Pick up with |
 | :--- | :--- | :--- | :--- |
 | Composed edit cursors (OS pointer + tool badge) | P0 exit criteria, C06 | Only the voxel editor and 3D editing use them | P4 |
-| Stepper, GlyphButton, ActionButton, Accordion, Chip primitives | PR-08 and others | First used by the Shapes sidebar, the editor and the inspector | P2, P4, P6 |
+| Stepper, GlyphButton, ActionButton, Accordion primitives | PR-02, PR-03, PR-06, PR-09 | First used by the editor and the inspector | P4, P6 |
 | Status bar cursor readout | AC-C10-02 | Shows the hovered cell of the 2D grid, which does not exist yet; `StatusController::setCursorText` is ready, nothing calls it | P4 |
 | Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a, before cut-over |
 | `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P4 |
@@ -61,7 +62,9 @@ Pick these up with the phase named.
 | — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; control borders and unchecked switch/checkbox 1.3–1.6:1 (want a ≥ 3:1 border token); toggled toolbar icons differ by hue only (the list now rings its selection when focused) | P8 |
 | — Single-key shortcuts | WCAG 2.1.4 | O, P, F work window-wide and cannot be turned off or remapped; limit them to the focused 3D view (once it takes focus) or add a setting | with the keyboard 3D view |
 | — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 |
-| — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard; the collapsed rail's chips are not a Tab stop | P8 / P2 (rail chips) |
+| — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
+| — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 audit |
+| Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the gesture wants a check by hand or a C++ test with real event timestamps | P8 |
 | — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, elided shape names without a tooltip, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 audit |
 
@@ -111,7 +114,7 @@ editor); it is not a stable interface yet.
 | `DocumentController` | open, save, new, the window title, the undo / redo session |
 | `CommandController` | the command table (`uicore/commands`) as menus and shortcuts, per platform |
 | `LayoutController` | workspaces, card collapse, Focus 2D / 3D, the column widths |
-| `ShapesModel`, `StatusController` | the shape list and the status bar |
+| `ShapesModel`, `StatusController` | the shape list and its actions (new, duplicate, delete, rename, weight, reorder, each one undo step through `btui::shapelist`), and the status bar |
 | `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
 | `KeyboardCues`, `PopupWindowStyle` | Windows' access-key underlines; Windows 11 menu corners and borders |
@@ -310,8 +313,18 @@ commit holds just the images that changed.
   menus (Windows' convention); with the menu bar hidden it opens the rail's
   menu button instead. Alt held through a click or another key arms
   nothing, so the planned Alt+click quick tool keeps working.
-- **Collapsed Shapes card**: its rail lists the shapes as clickable chips
-  (colour and id) -- C01's rail chips, ahead of P2.
+- **Collapsed Shapes card**: its rail's selected chip has the card's row
+  highlight, not C01's 2 dp panel and 4 dp accent ring.
+- **Shapes list** (P2, product decisions 2026-10-27): **F2 stays Save**
+  (legacy's key); rename is Enter in the focused list, a double-click, the
+  pencil or the context menu (AC-C01-03 names F2). **Delete asks first**
+  when a problem using the shape has solutions or a search in progress,
+  which undo cannot restore. Legacy never asks (OQ-14), and the spec asks
+  only if legacy does. **Weight** stops at 0. Chip text is black or white by
+  contrast (`prefersWhiteText`), not white with a shadow (PR-08).
+  **Dragging a row** moves the other rows aside (150 ms, `motion.reorderMs`)
+  to open the gap it drops into, in place of AC-C01-07's 2 dp drop line
+  (product decision, 2026-10-27).
 - **Rendering** is gamma-correct; the layer slab's tint is scaled so it
   still reads like the mock's sRGB mix.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
@@ -359,10 +372,58 @@ commit holds just the images that changed.
   until the keyboard moves), and collapsing or expanding a sidebar keeps the
   keyboard on the button that undoes it.
 
-## Next
+## Next phases
 
-P2 — the Shapes sidebar (C01, C02), with a reusable Chip (PR-08); then the
-voxel editor (P4: the 2D grid, edit cursors, the Stepper, editing in 3D),
-the Puzzle and Solver workspaces, and the remaining primitives as their
-components arrive. The phase plan is in the spec's "Implementation plan"
-section.
+The spec's phase plan (`migration/00-phase-plan.md`), in the order its
+dependencies allow, less what the first cut already built. Each phase is
+one pull request, stacked on the one before until that merges. The right
+column is what the review of #140 asks of the phase.
+
+| Phase | Content | From the #140 review |
+| :--- | :--- | :--- |
+| **P2** Shapes sidebar (C01) | New, duplicate, delete, rename inline, weight, reorder (drag, menu, `Alt+↑/↓`), the row context menu, the rail's `+`, the Chip primitive. Each action is one undo step. The status bar flashes when shapes are renumbered | The rules go in a new `uicore/shapelist`, legacy's `cb_NewShape` and the rest stay as they are, and the drift table gets a row for them. The list's keys come from the command table, with a scope |
+| **P3** Drawing colour (C09) | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
+| **P4** Voxel editor (C07, C08, C02) | The 2D grid, tools, mirror and span, plane and layer, grid size, the composed edit cursors, the Stepper, and the deferred P4 rows above | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
+| **P5** 3D editing (rest of C06) | Edit mode and `E`, quick tools, ghosts, picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
+| **P6** Inspector (C03–C05) | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore or `src/lib`, so that legacy can share it |
+| **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
+| **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over: the accessibility rows above, and every "before cut-over" row | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
+
+Alongside these, and independent of them, are the two **legacy follow-ups**
+from [`gui-migration.md`](../../design-spec/gui-migration.md#the-legacy-gui-while-both-exist):
+legacy saves through the atomic write, and legacy's Convert, Import
+assemblies and Status call `btui::puzzletools`. Each is a small pull request
+of its own (rule 4).
+
+Every phase's pull request follows what #140 settled:
+
+- a short series of area commits, each of which builds and passes the tests;
+- a change that reaches legacy in a commit of its own, listed in the
+  description;
+- no merges from master inside the series.
+
+### P2 decisions
+
+- **Ids and colours by position** (OQ-16). The library keeps the problems'
+  references when shapes are exchanged or removed
+  (`puzzle_c::exchangeShapes`, `removeShape`), so a reorder from *i* to *j*
+  is done as adjacent exchanges, and every reference follows its shape, as
+  legacy's ←/→ did.
+- **New** takes the selected shape's dimensions, and the grid's default size
+  when nothing is selected, as legacy `cb_NewShape` does (OQ-14). **New and
+  Duplicate append** to the end of the list. A copy keeps the voxels, the
+  label and the weight.
+- **Delete** is disabled at one shape (AC-C01-05). Legacy could delete the
+  last one. A file with no shapes still shows the empty row. Delete asks
+  first only when it would lose data that undo cannot restore: the
+  solutions, or a search in progress, of a problem that uses the shape.
+  Otherwise it deletes at once, as legacy does, and undo brings the shape
+  back.
+- **Weight** stops at 0 (legacy had no lower bound).
+- **F2 stays Save.** It is legacy's save key, kept in the first cut. Rename
+  is Enter in the focused list, a double-click, the pencil button or the
+  context menu (a deviation from AC-C01-03, product decision 2026-10-27).
+- **The list's keys** (`↑ ↓`, `Alt+↑ ↓`, `Enter`, `Del`, `Ctrl+D`) work
+  only while the list has focus (spec Rev 6.0, C01 *Keyboard*). They are in
+  the command table with a scope, so they appear in Help ▸ Keyboard
+  shortcuts and never fire from elsewhere.
