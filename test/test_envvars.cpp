@@ -42,9 +42,10 @@ namespace {
    * handed to something that reads the environment -- not in a comment, a
    * test's ScopedEnv, or an environment a script sets up for a child.
    * C and C++ read through these functions, the name given as a literal --
-   * getenv, and Qt's qgetenv and qEnvironmentVariable*; a variable read
-   * some other way needs its reader added here. */
-  const char * const cppReaders = "getenv|qgetenv|qEnvironmentVariable(?:IsSet|IsEmpty|IntValue)?";
+   * getenv, Qt's qgetenv and qEnvironmentVariable*, and test/qtgui's
+   * envDir (snapshots.cpp); a variable read some other way needs its reader
+   * added here. */
+  const char * const cppReaders = "getenv|qgetenv|qEnvironmentVariable(?:IsSet|IsEmpty|IntValue)?|envDir";
 
   std::set<std::string> readsIn(const std::string & text, Lang lang) {
     static const std::regex cpp(std::string(R"(\b(?:)") + cppReaders + R"()\s*\(\s*"(BURRTOOLS_[A-Z0-9_]+)\")");
@@ -167,7 +168,7 @@ TEST_CASE("wrapped text counts a run of spaces as one", "[envvars]") {
 
 TEST_CASE("the help fits in 80 columns", "[envvars]") {
   std::ostringstream out;
-  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::Gui, btenv::Scope::QtGui });
+  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::Gui, btenv::Scope::QtGui, btenv::Scope::Tests });
   std::istringstream in(out.str());
   std::string line;
   while (std::getline(in, line)) {

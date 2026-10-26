@@ -40,6 +40,7 @@ namespace btenv {
     Solver,      ///< the solver library: every program, the GUIs and the CLIs
     Gui,         ///< both GUIs (burrtools, burrtools-qt)
     QtGui,       ///< burrtools-qt
+    Tests,       ///< the test programs and scripts
   };
 
   struct Variable {
@@ -76,6 +77,15 @@ namespace btenv {
     { "BURRTOOLS_EARLY_DEVICE", Scope::QtGui, "0", "Windows: leave the window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own" },
     { "BURRTOOLS_STARTUP_TRACE", Scope::QtGui, "1|quit", "print on stderr how long start-up took to each step, up to app ready; quit also quits there" },
     { "BURRTOOLS_QML_OUTLINES", Scope::QtGui, "", "outline every named item; the one under the mouse is highlighted and labelled with its objectName and QML file:line, its parents printed on stderr (for reading the QML)" },
+
+    // tests and scripts
+    { "BURRTOOLS_TEST_QPA", Scope::Tests, "<platform>", "test_qtgui's Qt platform plugin (default offscreen; Linux CI uses xcb on Xvfb for Vulkan)" },
+    { "BURRTOOLS_REQUIRE_GPU_TESTS", Scope::Tests, "", "render tests fail instead of skipping when no graphics backend can be made" },
+    { "BURRTOOLS_REQUIRE_SNAPSHOTS", Scope::Tests, "", "a missing gallery reference image fails instead of skipping" },
+    { "BURRTOOLS_UPDATE_SNAPSHOTS", Scope::Tests, "1", "gallery checks write their grabs as the new references, where missing or no longer matching" },
+    { "BURRTOOLS_SNAPSHOTS_ONLY", Scope::Tests, "<row,row>", "only these gallery rows (e.g. button,switch); unset: all" },
+    { "BURRTOOLS_SNAPSHOT_DIR", Scope::Tests, "<dir>", "where the gallery reference images are (set by meson)" },
+    { "BURRTOOLS_SNAPSHOT_OUT", Scope::Tests, "<dir>", "where grabs that did not match go (set by meson)" },
   };
 
   inline std::span<const Variable> all(void) { return variables; }
@@ -85,6 +95,7 @@ namespace btenv {
       case Scope::Solver: return "Solver (every program)";
       case Scope::Gui:    return "The GUIs (burrtools, burrtools-qt)";
       case Scope::QtGui:  return "burrtools-qt";
+      case Scope::Tests:  return "Tests and scripts";
     }
     return "";
   }
