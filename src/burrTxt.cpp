@@ -33,6 +33,7 @@
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 #include "tools/envvars.h"
+#include "tools/cliargs.h"
 
 #include <stdlib.h>
 
@@ -103,11 +104,13 @@ public:
   }
 };
 
-void usage(void) {
+/* The usage; with full (-h, --help) the environment variables too, which
+ * a wrong command line would only scroll the usage away with. */
+void usage(bool full = false) {
 
   cout << "burrTxt [options] file [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve\n\n";
-  cout << "  -h, --help  this help\n";
+  cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
@@ -122,7 +125,8 @@ void usage(void) {
   cout << "     s0 print solutions with the only the used pieces\n";
   cout << "     s1 print solutions including the assemblies\n";
   cout << "     c  print comment\n";
-  btenv::print(cout, { btenv::Scope::Solver });
+  if (full)
+    btenv::print(cout, { btenv::Scope::Solver });
 }
 
 int main(int argv, char* args[]) {
@@ -132,11 +136,10 @@ int main(int argv, char* args[]) {
     return 2;
   }
 
-  for (int i = 1; i < argv; i++)
-    if (strcmp(args[i], "-h") == 0 || strcmp(args[i], "--help") == 0) {
-      usage();
-      return 0;
-    }
+  if (btcli::wantsHelp(argv, args)) {
+    usage(true);
+    return 0;
+  }
 
   int state = 0;
   disassemble = false;
