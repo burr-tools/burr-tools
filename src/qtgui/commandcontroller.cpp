@@ -23,8 +23,11 @@
 #include "documentcontroller.h"
 #include "layoutcontroller.h"
 #include "settingscontroller.h"
+#include "shapesmodel.h"
 #include "stlexportcontroller.h"
 #include "viewportcontroller.h"
+
+#include "../uicore/shapelist.h"
 
 #include "../lib/bt_assert.h"
 #include "../lib/puzzle.h"
@@ -54,14 +57,16 @@ namespace {
 }
 
 CommandController::CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
-                                     ViewportController * viewport, QObject * parent) :
-  QObject(parent), m_settings(settings), m_doc(doc), m_layout(layout), m_viewport(viewport)
+                                     ViewportController * viewport, ShapesModel * shapes, QObject * parent) :
+  QObject(parent), m_settings(settings), m_doc(doc), m_layout(layout), m_viewport(viewport), m_shapes(shapes)
 {
   auto bump = [this] { m_revision++; emit revisionChanged(); };
   connect(m_settings, &SettingsController::changed, this, bump);
   connect(m_doc, &DocumentController::stateChanged, this, bump);
   connect(m_doc, &DocumentController::documentReplaced, this, bump);
   connect(m_layout, &LayoutController::changed, this, bump);
+  connect(m_shapes, &ShapesModel::selectedChanged, this, bump);
+  connect(m_shapes, &ShapesModel::countChanged, this, bump);
 }
 
 void CommandController::setBlocked(bool b) {
@@ -93,6 +98,11 @@ QString CommandController::nativeShortcutText(const btui::CommandInfo & c) {
   for (auto s : platformShortcuts(c).first(std::min<size_t>(2, platformShortcuts(c).size())))
     shown << QKeySequence(str(s), QKeySequence::PortableText).toString(QKeySequence::NativeText);
   return shown.join(QStringLiteral(" / "));
+}
+
+QString CommandController::shortcutText(const QString & key) const {
+  const btui::CommandInfo * c = btui::findCommand(key.toStdString());
+  return c ? nativeShortcutText(*c) : QString();
 }
 
 /* Access keys are a Windows and Linux convention; macOS menus have none. */
@@ -144,6 +154,8 @@ QVariantList CommandController::menuItems(const QString & menuKey) const {
 QVariantList CommandController::shortcuts(void) const {
   QVariantList out;
   for (const auto & c : btui::commandTable()) {
+    if (c.scope != btui::Scope::Window)
+      continue;
     auto list = platformShortcuts(c);
     // on macOS a menu command's first sequence belongs to its menu item
     if (menuItemsOwnShortcuts() && btui::menuOn(c, btui::currentPlatform()) != btui::Menu::None && !list.empty())
@@ -161,10 +173,29 @@ QVariantList CommandController::shortcuts(void) const {
   return out;
 }
 
+QString CommandController::keyInScope(const QString & scope, int key, int modifiers) const {
+  if (scope != QLatin1String("shapesList"))
+    return {};
+  // the keypad flag is no part of a shortcut (macOS reports the arrow keys
+  // with it), and the main Enter key (Qt's Return) is the table's Enter
+  const Qt::Key k = key == Qt::Key_Return ? Qt::Key_Enter : Qt::Key(key);
+  const QKeySequence pressed(QKeyCombination(Qt::KeyboardModifiers(modifiers) & ~Qt::KeypadModifier, k));
+  for (const auto & c : btui::commandTable()) {
+    if (c.scope != btui::Scope::ShapesList)
+      continue;
+    for (auto s : platformShortcuts(c))
+      if (QKeySequence(str(s), QKeySequence::PortableText) == pressed)
+        return str(c.key);
+  }
+  return {};
+}
+
 bool CommandController::isEnabled(const QString & key) const {
   const btui::CommandInfo * c = btui::findCommand(key.toStdString());
   if (!c)
     return false;
+  const int shape = m_shapes->selected();
+  const bool inEntities = m_layout->workspace() == LayoutController::Entities;
   switch (c->id) {
     case Command::Undo: return m_doc->canUndo();
     case Command::Redo: return m_doc->canRedo();
@@ -175,7 +206,17 @@ bool CommandController::isEnabled(const QString & key) const {
     // Entities-only keys do nothing in Puzzle and Solver (input map scoping rule)
     case Command::LayerUp:
     case Command::LayerDown:
-      return m_layout->workspace() == LayoutController::Entities;
+      return inEntities;
+    // the Shapes list's keys act on the selected shape
+    case Command::ShapeRename:
+    case Command::ShapeDuplicate:
+      return inEntities && shape >= 0;
+    case Command::ShapeDelete:
+      return inEntities && btui::canDeleteShape(m_doc->session().puzzle(), shape);
+    case Command::ShapeMoveEarlier:
+      return inEntities && shape > 0;
+    case Command::ShapeMoveLater:
+      return inEntities && shape >= 0 && shape < m_shapes->count() - 1;
     case Command::New: case Command::Open: case Command::Import: case Command::Close:
     case Command::Save: case Command::SaveAs: case Command::Convert:
     case Command::ImportAssemblies: case Command::Settings: case Command::Quit:
@@ -290,6 +331,17 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("Next / previous layer"), keysOf({ Command::LayerUp, Command::LayerDown })),
   };
 
+  // with the list focused (C01 Keyboard)
+  QVariantList shapesList{
+    row(tr("Select the previous / next shape"), { QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
+    row(tr("Move the shape earlier / later (renumbers)"), keysOf({ Command::ShapeMoveEarlier, Command::ShapeMoveLater })),
+    row(tr("Rename: Enter commits, Esc cancels"), keysOf({ Command::ShapeRename }) << QVariant(alt({}, tr("Double-click")))),
+    row(tr("Duplicate, as the last shape"), keysOf({ Command::ShapeDuplicate })),
+    row(tr("Delete"), keysOf({ Command::ShapeDelete })),
+    row(tr("Reorder"), { QVariant(alt({}, tr("Drag a row"))) }),
+    row(tr("The shape's menu"), { QVariant(alt({}, tr("Right-click"))) }),
+  };
+
   QVariantList dialogs{
     row(tr("Close the dialog or menu"), { QVariant(alt({ QStringLiteral("Esc") })) }),
     row(tr("Commit a number field"), { QVariant(alt({ QStringLiteral("Enter") })) }),
@@ -300,6 +352,7 @@ QVariantList CommandController::shortcutHelp(void) const {
     group(tr("Everywhere"), QString(), everywhere),
     group(tr("3D view"), tr("every workspace"), view3d),
     group(tr("Entities"), tr("voxel editor"), entities),
+    group(tr("Shapes list"), tr("Entities, with the list focused"), shapesList),
     group(tr("Dialogs and menus"), QString(), dialogs),
   };
 }
@@ -357,5 +410,10 @@ void CommandController::run(Command c) {
     case Command::ViewFit:          m_viewport->fit(); break;
     case Command::LayerUp:          m_viewport->layerStep(+1); break;
     case Command::LayerDown:        m_viewport->layerStep(-1); break;
+    case Command::ShapeRename:      m_shapes->requestRename(m_shapes->selected()); break;
+    case Command::ShapeDuplicate:   m_shapes->duplicateShape(m_shapes->selected()); break;
+    case Command::ShapeDelete:      m_shapes->requestDelete(m_shapes->selected()); break;
+    case Command::ShapeMoveEarlier: m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() - 1); break;
+    case Command::ShapeMoveLater:   m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() + 1); break;
   }
 }
