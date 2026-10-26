@@ -27,6 +27,8 @@
 #include "lib/voxel.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
+#include "tools/envvars.h"
+#include "tools/cliargs.h"
 
 #include <fstream>
 #include <iostream>
@@ -42,10 +44,13 @@
 
 using namespace std;
 
-void usage(void) {
+/* The usage; with full (-h, --help) the environment variables too, which
+ * a wrong command line would only scroll the usage away with. */
+void usage(bool full = false) {
 
-  cout << "burrTxt [options] file [options]\n\n";
+  cout << "burrTxt2 [options] file [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve\n\n";
+  cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
   cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
   cout << "  -c    just count solutions\n";
@@ -54,6 +59,8 @@ void usage(void) {
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
   cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  if (full)
+    btenv::print(cout, { btenv::Scope::Solver });
 }
 
 
@@ -79,6 +86,11 @@ static int solve(int argv, char* args[]) {
   if (argv < 1) {
     usage();
     return 2;
+  }
+
+  if (btcli::wantsHelp(argv, args)) {
+    usage(true);
+    return 0;
   }
 
   int par = solveThread_c::PAR_REDUCE;

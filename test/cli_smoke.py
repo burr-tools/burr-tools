@@ -73,6 +73,25 @@ def main():
         return 2
 
     binary, source_root = sys.argv[1], sys.argv[2]
+    # absolute: Windows runs a bare relative path ("build/burrTxt2.exe")
+    # only while NoDefaultCurrentDirectoryInExePath is unset
+    binary = str(Path(binary).resolve())
+
+    # -h/--help: the usage and the environment variables, exit 0. A wrong
+    # command line gets the usage alone, so the long list of variables does
+    # not scroll it away.
+    for label, args, ok, listed in (("--help", ["--help"], True, True),
+                                    ("a command line without a file", ["-R"], False, False)):
+        try:
+            proc = subprocess.run([binary] + args, stdin=subprocess.DEVNULL, capture_output=True,
+                                  text=True, timeout=TIMEOUT)
+        except subprocess.TimeoutExpired:
+            failures.append(f"{label}: did not terminate within {TIMEOUT}s")
+            continue
+        check(label, (proc.returncode == 0) == ok, f"exit status {proc.returncode}\n{proc.stdout}")
+        check(label, "-h, --help" in proc.stdout, f"no usage\n{proc.stdout}")
+        check(label, ("Environment variables" in proc.stdout) == listed,
+              f"environment variables {'missing' if listed else 'printed'}\n{proc.stdout}")
 
     # A grid without a disassembler must be refused up front, before anything
     # builds one: the disassembler asserts on the movement cache such a grid
