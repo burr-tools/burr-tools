@@ -33,6 +33,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `palette` | the shape colours, and black or white text on them (WCAG contrast) — the colours **shared with the legacy GUI** |
 | `imagepages`, `vectorexport` | the image export's page layout; vector export (PS, EPS, TeX, PDF, SVG, PGF) |
 | `puzzletools` | the status table's checks, convert, import assemblies |
+| `shapelist` | the Shapes list's operations: new, duplicate, delete (and whether it loses solutions), rename, weight, reorder; positional ids |
 | `windowplacement` | where the window opens: the saved place if still on a screen, else centred |
 
 Tests: `../../test/test_ui_<name>.cpp`, tagged `[ui]`, compiled into
