@@ -186,6 +186,8 @@ gui_src = [
   'src/gui/Images.cpp',
   # the undo history, kept toolkit-free in src/uicore
   'src/uicore/puzzlehistory.cpp',
+  # the piece colours, which src/gui/piececolor.cpp wraps
+  'src/uicore/palette.cpp',
 ]
 
 # Vendored third-party C sources, built separately so that their warnings can be
@@ -424,8 +426,8 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
 # test_burrtools cover it without Qt or FLTK, and what keeps a later toolkit
 # change cheap.
 #
-# The undo history (puzzlehistory) is shared: the legacy GUI compiles it into
-# burrtools from here too.
+# The undo history (puzzlehistory) and the piece colours (palette) are
+# shared: the legacy GUI compiles them into burrtools from here too.
 libburr_uicore = static_library('burr_uicore', [
     'src/uicore/assemblyscene.cpp',
     'src/uicore/camera.cpp',

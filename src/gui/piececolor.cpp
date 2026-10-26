@@ -20,192 +20,30 @@
  */
 #include "piececolor.h"
 
-#include <math.h>
+#include "../uicore/palette.h"
 
-#define COLS 18
-
-// the table for the first COLS fixed defined colours
-static float r[COLS] = {
-  0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.6f,
-  0.0f, 0.6f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 1.0f, 1.0f
-};
-static float g[COLS] = {
-  0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f,
-  0.6f, 0.6f, 0.0f, 1.0f, 1.0f, 0.6f, 0.0f, 0.6f, 0.0f
-};
-static float b[COLS] = {
-  1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.6f, 0.0f, 0.0f,
-  0.6f, 0.0f, 0.6f, 0.6f, 0.0f, 1.0f, 1.0f, 0.0f, 0.6f
-};
-
-#define JITTERS 53
-
-// the table with the modification values for the multi-pieces
-static float jr[JITTERS] = {
-   0.0f,
-  -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f,  0.3f,
-  -0.3f, -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,  0.0f,
-   0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
-  -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f,  0.4f,
-  -0.4f, -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,  0.0f,
-   0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f
-};
-static float jg[JITTERS] = {
-   0.0f,
-  -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.3f, -0.3f,  0.3f,
-  -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
-  -0.3f,  0.3f,  0.0f,  0.0f,  0.3f, -0.3f,  0.0f,  0.0f,
-  -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.4f, -0.4f,  0.4f,
-  -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f,
-  -0.4f,  0.4f,  0.0f,  0.0f,  0.4f, -0.4f,  0.0f,  0.0f
-};
-static float jb[JITTERS] = {
-   0.0f,
-  -0.3f,  0.3f,  0.3f, -0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,
-   0.0f,  0.0f,  0.0f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,
-   0.3f, -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,
-  -0.4f,  0.4f,  0.4f, -0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,
-   0.0f,  0.0f,  0.0f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,
-   0.4f, -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f
-};
-
-float pieceColorR(int x) {
-  if (x < COLS)
-    return r[x];
-  else
-    return float((1+sin(0.7*x))/2);
-}
-
-float pieceColorG(int x) {
-  if (x < COLS)
-    return g[x];
-  else
-    return float((1+sin(1.3*x+1.5))/2);
-}
-
-float pieceColorB(int x) {
-  if (x < COLS)
-    return b[x];
-  else
-    return float((1+sin(3.5*x+2.3))/2);
-}
-
-unsigned int pieceColorRi(int x) {
-  if (x < COLS)
-    return (unsigned int)(r[x]*255);
-  else
-    return (unsigned int)(255*(1+sin(0.7*x))/2);
-}
-
-unsigned int pieceColorGi(int x) {
-  if (x < COLS)
-    return (unsigned int)(g[x]*255);
-  else
-    return (unsigned int)(255*(1+sin(1.3*x+1.5))/2);
-}
-
-unsigned int pieceColorBi(int x) {
-  if (x < COLS)
-    return (unsigned int)(b[x]*255);
-  else
-    return (unsigned int)(255*(1+sin(3.5*x+2.3))/2);
-}
-
-
-/* the problem is that simply adding the jitter
- * would cause an overflow every now and then, so we
- * search in the list of possible jitter values
- * for the x-th with no overflow
- * when the table is exhausted, we simple do no
- * jittering any longer
+/* The colours come from src/uicore/palette, the one table both GUIs use,
+ * computed exactly as this file did before; these are its legacy names.
  */
-static int getJitter(int val, int sub) {
-  int j = 0;
-  float x;
 
-  while (j < JITTERS) {
-    x = pieceColorR(val) + jr[j];
-    if ((x < 0) || (x > 1)) {
-      j++;
-      continue;
-    }
-    x = pieceColorG(val) + jg[j];
-    if ((x < 0) || (x > 1)) {
-      j++;
-      continue;
-    }
-    x = pieceColorB(val) + jb[j];
-    if ((x < 0) || (x > 1)) {
-      j++;
-      continue;
-    }
+float pieceColorR(int x) { return btui::pieceColor(x).r; }
+float pieceColorG(int x) { return btui::pieceColor(x).g; }
+float pieceColorB(int x) { return btui::pieceColor(x).b; }
 
-    if (sub == 0)
-      break;
+unsigned int pieceColorRi(int x) { return btui::pieceColor8(x).r; }
+unsigned int pieceColorGi(int x) { return btui::pieceColor8(x).g; }
+unsigned int pieceColorBi(int x) { return btui::pieceColor8(x).b; }
 
-    sub--;
-    j++;
-  }
+float pieceColorR(int x, int sub) { return btui::pieceColor(x, sub).r; }
+float pieceColorG(int x, int sub) { return btui::pieceColor(x, sub).g; }
+float pieceColorB(int x, int sub) { return btui::pieceColor(x, sub).b; }
 
-  if (j == JITTERS) j = 0;
+unsigned int pieceColorRi(int x, int sub) { return btui::pieceColor8(x, sub).r; }
+unsigned int pieceColorGi(int x, int sub) { return btui::pieceColor8(x, sub).g; }
+unsigned int pieceColorBi(int x, int sub) { return btui::pieceColor8(x, sub).b; }
 
-  return j;
-}
-
-static float ramp(float val) {
-  return 0.5+0.5*fabs(1-2*val);
-}
-
-float pieceColorR(int x, int sub) {
-
-  float jitter = jr[getJitter(x, sub)];
-  float val = pieceColorR(x);
-
-  return val + jitter*0.5*ramp(val);
-}
-
-float pieceColorG(int x, int sub) {
-
-  float jitter = jg[getJitter(x, sub)];
-  float val = pieceColorG(x);
-
-  return val + jitter*0.4*ramp(val);
-}
-
-float pieceColorB(int x, int sub) {
-
-  float jitter = jb[getJitter(x, sub)];
-  float val = pieceColorB(x);
-
-  return val + jitter*0.7*ramp(val);
-}
-
-unsigned int pieceColorRi(int x, int sub) {
-
-  float jitter = jr[getJitter(x, sub)];
-  float val = pieceColorR(x);
-
-  return (unsigned int)((val + jitter*0.5*ramp(val))*255);
-}
-
-unsigned int pieceColorGi(int x, int sub) {
-
-  float jitter = jg[getJitter(x, sub)];
-  float val = pieceColorG(x);
-
-  return (unsigned int)((val + jitter*0.4*ramp(val))*255);
-}
-
-unsigned int pieceColorBi(int x, int sub) {
-
-  float jitter = jb[getJitter(x, sub)];
-  float val = pieceColorB(x);
-
-  return (unsigned int)((val + jitter*0.7*ramp(val))*255);
-}
-
-float darkPieceColor(float f) { return float(f * 0.9); }
-float lightPieceColor(float f) { return float(1 - (0.9 * (1-f))); }
+float darkPieceColor(float f) { return btui::darkShade(f); }
+float lightPieceColor(float f) { return btui::lightShade(f); }
 
 Fl_Color contrastPieceColor(int x) {
   if (3*pieceColorRi(x) + 6*pieceColorGi(x) + pieceColorBi(x) < 1275)
@@ -213,5 +51,3 @@ Fl_Color contrastPieceColor(int x) {
   else
     return fl_rgb_color(0, 0, 0);
 }
-
-
