@@ -24,6 +24,7 @@
 #include "../tools/homedir.h"
 #include <filesystem>
 #include <stdlib.h>
+#include <string.h>
 
 #include "BlockList.h"
 #include "view3dgroup.h"
@@ -86,7 +87,15 @@ static void updateParameters(stlExporter_c * stl, const std::vector<std::unique_
         stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
         break;
       case stlExporter_c::PAR_TYP_POS_INTEGER:
-        stl->setParameter(i, atoi(static_cast<LFl_Int_Input*>(params[i]->w)->value()));
+        {
+          LFl_Int_Input * in = static_cast<LFl_Int_Input*>(params[i]->w);
+          stl->setParameter(i, atoi(in->value()));
+          // the exporter may limit the value (the spheres' Recursions): show the one used
+          char val[10];
+          snprintf(val, 10, "%i", (int)stl->getParameter(i));
+          if (strcmp(val, in->value()) != 0)
+            in->value(val);
+        }
         break;
       case stlExporter_c::PAR_TYP_SWITCH:
         stl->setParameter(i, static_cast<LFl_Check_Button*>(params[i]->w)->value());

@@ -284,6 +284,32 @@ TEST_CASE("sphere mesh: the sphere radius scales the solid", "[spheremesh]") {
   REQUIRE(big < small * 10.0);
 }
 
+TEST_CASE("sphere mesh: Recursions stops at the exporter's limit, for every GUI that sets it",
+          "[spheremesh]") {
+  /* Each level splits every triangle in four, recursively: a few levels past
+     the limit take minutes and then overflow the stack, so the limit lives
+     here rather than in one GUI's input field. */
+  stlExporter_2_c exp;
+
+  unsigned int idx = exp.numParameters();
+  for (unsigned int i = 0; i < exp.numParameters(); i++)
+    if (std::string(exp.getParameterName(i)) == "Recursions")
+      idx = i;
+  REQUIRE(idx < exp.numParameters());
+
+  exp.setParameter(idx, 100);
+  REQUIRE(exp.getParameter(idx) == Approx(stlExporter_2_c::MAX_RECURSION));
+
+  exp.setParameter(idx, stlExporter_2_c::MAX_RECURSION);
+  REQUIRE(exp.getParameter(idx) == Approx(stlExporter_2_c::MAX_RECURSION));
+
+  exp.setParameter(idx, 3);
+  REQUIRE(exp.getParameter(idx) == Approx(3));
+
+  exp.setParameter(idx, -2);
+  REQUIRE(exp.getParameter(idx) == Approx(0));
+}
+
 TEST_CASE("sphere mesh: every parameter of the sphere exporter round-trips", "[spheremesh]") {
   stlExporter_2_c exp;
 
