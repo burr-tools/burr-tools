@@ -15,6 +15,7 @@ brew install meson ninja cmake
 - **Xcode Command Line Tools**: If not already installed, run `xcode-select --install` to obtain Apple Clang (with C++20 support) and Git.
 - **CMake**: Required by Meson because FLTK is built from source as a CMake subproject.
 - **Libraries**: Dependencies (FLTK 1.4, Catch2, libpng, zlib) are automatically fetched and built as subprojects, and linked against native macOS frameworks (`Cocoa`, `OpenGL`, `ScreenCaptureKit`, `UniformTypeIdentifiers`).
+- **Minimum macOS**: `burrtools` and `burrTxt` run on macOS 11 Big Sur and later (`-Dmacos_deployment_target=11.0`, the default).
 
 #### Optional Static Analysis Tools (macOS)
 

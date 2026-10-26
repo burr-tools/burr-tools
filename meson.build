@@ -27,16 +27,16 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target for compatibility with older macOS versions.
-# Minimum macOS version 11.0 (Big Sur) for broader compatibility while still
-# supporting modern features.
+# Set macOS deployment target: the oldest macOS the binaries and the
+# libraries run on, 11.0 (Big Sur) by default (-Dmacos_deployment_target).
 #
 # These are global rather than project arguments deliberately: meson subprojects
 # (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
 # with those their objects get built for the host's macOS version and linked into
 # a binary declaring an older minimum. The CMake subproject (fltk) inherits
 # neither and is handled separately, where it is configured below.
-macos_deployment_target = '11.0'
+#
+macos_deployment_target = get_option('macos_deployment_target')
 
 if host_machine.system() == 'darwin'
   add_global_arguments('-mmacosx-version-min=' + macos_deployment_target, language: ['c', 'cpp', 'objcpp'])

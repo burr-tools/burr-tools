@@ -1,1 +1,2 @@
 option('python', type: 'feature', value: 'auto', description: 'Build Python wrapper module')
+option('macos_deployment_target', type: 'string', value: '11.0', description: 'Oldest macOS the legacy binaries (burrtools, burrTxt) run on')
