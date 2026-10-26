@@ -21,7 +21,7 @@
 #ifndef __CURL_ABI_H__
 #define __CURL_ABI_H__
 
-/* The slice of libcurl's ABI that src/gui/httpget_curl.cpp needs.
+/* The slice of libcurl's ABI that src/tools/httpget_curl.cpp needs.
  *
  * Why this exists rather than #include <curl/curl.h>: the update check
  * reaches libcurl entirely through dlsym, so no curl symbol is ever
