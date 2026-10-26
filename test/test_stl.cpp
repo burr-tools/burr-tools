@@ -361,6 +361,30 @@ TEST_CASE("stl export: a two-cell shape encloses more volume than a one-cell sha
   REQUIRE(two > one * 1.5);
 }
 
+TEST_CASE("stl export: several shapes in one file are exactly the shapes written one by one",
+          "[stl]") {
+  /* the assembled-solution export: every piece meshed on its own into one
+     file, so the file holds each piece's triangles, none merged away */
+  TempDir dir;
+
+  gridType_c gt(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> one = unitCell(gt), two = domino(gt);
+
+  stlExporter_0_c exp;
+  exp.setBinaryMode(true);
+
+  exp.write(dir.file("one.stl").c_str(), *one);
+  exp.write(dir.file("two.stl").c_str(), *two);
+  exp.write(dir.file("both.stl").c_str(), std::vector<const voxel_c *>{ one.get(), two.get() });
+
+  const StlMesh a = readBinaryStl(slurp(dir.file("one.stl")));
+  const StlMesh b = readBinaryStl(slurp(dir.file("two.stl")));
+  const StlMesh both = readBinaryStl(slurp(dir.file("both.stl")));
+
+  REQUIRE(both.triangles.size() == a.triangles.size() + b.triangles.size());
+  REQUIRE(stlVolume(both) == Approx(stlVolume(a) + stlVolume(b)));
+}
+
 TEST_CASE("stl export: the solid name is the file's base name on every platform", "[stl]") {
   TempDir dir;
   const std::string path = dir.file("named.stl");

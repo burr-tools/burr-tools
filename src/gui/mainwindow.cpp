@@ -930,7 +930,7 @@ void mainWindow_c::cb_ExportSolutionSTL(void) {
   if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
     return;
 
-  stlExportSolution_c w(puzzle.get(), prob, sol);
+  stlExportSolution_c w(puzzle.get(), fname, prob, sol);
   w.show();
   while (w.visible())
     Fl::wait();
@@ -4409,7 +4409,7 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 11);
 
     BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Export Solution to STL",
-        " Export every piece type of the currently selected solution to individual STL files ",
+        " Export the pieces of the currently selected solution to STL: each piece type to its own file, or all pieces assembled in one file ",
         cb_ExportSolutionSTL_stub, this);
     static_cast<LFlatButton_c*>(BtnExportSolutionSTL)->weight(1, 0);
 
