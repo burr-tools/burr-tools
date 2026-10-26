@@ -22,6 +22,8 @@
 
 #include "voxel_2.h"
 
+#include <algorithm>
+
 #define Epsilon 1.0e-5
 
 Polyhedron * stlExporter_2_c::getMesh(const voxel_c & v) const
@@ -87,7 +89,7 @@ void stlExporter_2_c::setParameter(unsigned int idx, double value)
     case 1: connection_rad = value; return;
     case 2: round = value; return;
     case 3: offset = value; return;
-    case 4: recursion = value; return;
+    case 4: recursion = std::clamp(value, 0.0, double(MAX_RECURSION)); return;
     case 5: inner_rad = value; return;
     case 6: hole_diam = value; return;
     case 7: square_hole = value; return;
@@ -103,7 +105,7 @@ const char * stlExporter_2_c::getParameterTooltip(unsigned int idx) const
     case 1: return " Radius of the connection cylinder between the spheres, 1 is the maximum, 0 means no connection ";
     case 2: return " Define the radius of the curve that creates the transition between sphere surface and connection cylinder 1 is maximum ";
     case 3: return " The radius of the outer surface of the sphere is decreased by this value to make the spheres a bit smaller ";
-    case 4: return " How many levels of recursion, a value of 3 or 4 is enough, be careful with bigger values as it will take ages to generate ";
+    case 4: return " How many levels of recursion, at most 6; a value of 3 or 4 is enough, bigger values take long to generate ";
     case 5: return " The radius of the void inside the sphere, must be smaller than the sphere radius ";
     case 6: return " The radius of the holes inside the sphere wall that connect inside and outside ";
     case 7: return " When tagged the holes will be square, otherwise round ";
