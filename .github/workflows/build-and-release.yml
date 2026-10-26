@@ -55,6 +55,16 @@ jobs:
         name: burrtools-testlog-linux
         path: build/meson-logs/testlog.txt
     
+    # The redesigned GUI's hot paths in src/uicore (test/bench_ui.cpp),
+    # measured on this release build. A report, not a gate: shared runners
+    # vary too much to fail on time.
+    - name: Micro-benchmarks (report)
+      continue-on-error: true
+      shell: bash
+      run: |
+        ./build/test_burrtools "[bench]" --benchmark-samples 20 --benchmark-no-analysis | tee bench.txt
+        { echo "## Micro-benchmarks (src/uicore, release)"; echo '```'; cat bench.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
     - name: Run static analysis
       run: just check
     
@@ -159,6 +169,70 @@ jobs:
         TSAN_OPTIONS: "halt_on_error=0 exitcode=1 second_deadlock_stack=1 history_size=7"
       run: ./build-tsan/test_burrtools "[parallel]" --reporter compact
 
+  # AddressSanitizer and UndefinedBehaviorSanitizer over the unit tests and
+  # the Qt GUI's suites (renders included, on lavapipe as in qt-linux). Qt
+  # and the Mesa driver are not instrumented and keep memory to the end, so
+  # leaks are checked in test_burrtools only.
+  sanitizers:
+    name: Sanitizers (ASan + UBSan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    - name: Find lavapipe
+      run: |
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+
+    - name: Build with ASan and UBSan
+      run: |
+        meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
+          -Dqt_gui=enabled -Dpython=disabled
+        ninja -C build-asan
+
+    - name: Unit tests, leaks included
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+      run: ./build-asan/test_burrtools --reporter compact
+
+    - name: Qt GUI suites
+      env:
+        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
+        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+
+    - name: Upload the test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sanitizers-testlog
+        path: build-asan/meson-logs/testlog.txt
+        if-no-files-found: ignore
   # The TLA+ check is deterministic in its inputs (pinned tools, hermetic
   # models): unchanged inputs reproduce the previous result bit-for-bit.
   # spec/** carries the models, but the justfile defines the recipes
@@ -228,13 +302,18 @@ jobs:
         # translation could drift from the PlusCal while CI stays green.
         git diff --exit-code -- spec/ || { echo "::error::committed PlusCal translation is stale; run just spec-check and commit spec/"; exit 1; }
 
+  # Coverage in two jobs, so that the library's figure -- the one compared
+  # across pull requests -- never depends on installing Qt: `coverage`
+  # builds without the Qt GUI and measures the library and src/uicore (its
+  # [ui] cases); `coverage-qt` builds the Qt GUI and measures src/qtgui's
+  # C++. `coverage-report` puts both in one comment, the Qt GUI's part only
+  # when its job got that far.
   coverage:
     runs-on: ubuntu-latest
     continue-on-error: true
-    permissions:
-      contents: read
-      pull-requests: write
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    outputs:
+      html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -251,14 +330,28 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
-    # `shell: bash` sets pipefail, so a gcovr failure is not masked by tee's
-    # exit status.
+    # Configured without the Qt GUI, even where a Qt is found. `shell: bash`
+    # sets pipefail, so a gcovr failure is not masked by tee's exit status.
     - name: Report coverage and generate HTML report
       shell: bash
-      run: just coverage-html | tee coverage-summary.txt
+      run: |
+        meson setup build-cov -Db_coverage=true -Dqt_gui=disabled
+        just coverage-html | tee coverage-summary.txt
 
-    # Uploaded before the report body is built, so the body can link to it:
-    # the artifact-url output does not exist until the upload has run.
+    - name: Upload the coverage summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-summary
+        path: coverage-summary.txt
+
+    - name: Upload the coverage test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-testlog
+        path: build-cov/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
     - name: Upload HTML coverage report
       id: coverage_artifact
       uses: actions/upload-artifact@v4
@@ -266,31 +359,144 @@ jobs:
         name: coverage-html
         path: coverage-html/
 
+  coverage-qt:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    outputs:
+      html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Update package list
+      run: sudo apt-get update
+
+    # The Qt GUI's packages as in qt-linux; meson >= 1.7 from pip, which
+    # that GUI needs (Ubuntu's is older).
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    # Mesa's software Vulkan driver (lavapipe), found rather than named: its
+    # manifest's file name has changed between Mesa releases. The summary
+    # shows in the log which Vulkan device the render tests will get.
+    - name: Find lavapipe
+      run: |
+        ls /usr/share/vulkan/icd.d/
+        icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
+        echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+        VK_DRIVER_FILES="$icd" vulkaninfo --summary
+
+    - name: Install just
+      uses: extractions/setup-just@v2
+
+    # The Qt suites' render tests run as in qt-linux: Vulkan on Mesa's
+    # lavapipe, test_qtgui as "xcb" on Xvfb.
+    - name: Report coverage and generate HTML report
+      shell: bash
+      env:
+        BURRTOOLS_TEST_QPA: xcb
+        BURRTOOLS_OFFSCREEN_RHI: vulkan
+        BURRTOOLS_REQUIRE_GPU_TESTS: '1'
+        VK_LOADER_DEBUG: error
+      run: |
+        meson setup build-cov -Db_coverage=true -Dqt_gui=enabled
+        xvfb-run -a just coverage-html | tee coverage-summary.txt
+
+    - name: Upload the coverage summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-summary-qt
+        path: coverage-summary.txt
+
+    - name: Upload the coverage test log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-testlog-qt
+        path: build-cov/meson-logs/testlog.txt
+        if-no-files-found: ignore
+
+    - name: Upload HTML coverage report
+      id: coverage_artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-html-qt
+        path: coverage-html/
+
+  coverage-report:
+    runs-on: ubuntu-latest
+    needs: [coverage, coverage-qt]
+    if: always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/master')
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    # each summary in its own folder; one is missing when its job failed
+    - name: Download the coverage summaries
+      continue-on-error: true
+      uses: actions/download-artifact@v4
+      with:
+        pattern: coverage-summary*
+        path: summaries
+
+    # No report without the library's figure. The Qt GUI's is the block from
+    # its "== Qt GUI" line on, in the Qt job's summary.
     - name: Build the coverage report body
       env:
-        ARTIFACT_URL: ${{ steps.coverage_artifact.outputs.artifact-url }}
+        HTML_URL: ${{ needs.coverage.outputs.html-url }}
+        HTML_QT_URL: ${{ needs.coverage-qt.outputs.html-url }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
+        lib=summaries/coverage-summary/coverage-summary.txt
+        qt=summaries/coverage-summary-qt/coverage-summary.txt
+        if [ ! -f "$lib" ]; then
+          echo "::warning::no coverage summary: the coverage job failed"
+          exit 0
+        fi
+        link() {   # artifact-url is empty when the upload was skipped or failed
+          if [ -n "$2" ]; then echo "[$1]($2)"; else echo "$1 on [this run]($RUN_URL)"; fi
+        }
         {
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(lines|functions|branches):' coverage-summary.txt
+          grep -E '^(== |lines:|functions:|branches:)' "$lib"
+          if [ -f "$qt" ]; then
+            sed -n '/^== Qt GUI/,$p' "$qt" | grep -E '^(== |lines:|functions:|branches:)'
+          fi
           echo '```'
           echo
+          if [ ! -f "$qt" ]; then
+            echo "The Qt GUI's figure is missing: the coverage-qt job did not finish ([run]($RUN_URL))."
+            echo
+          fi
           echo "Measured on ubuntu-latest with gcc. Coverage numbers are"
           echo "toolchain-specific, so this Linux figure is the canonical one for"
-          echo "comparing across pull requests."
+          echo "comparing across pull requests -- the library's, the first block,"
+          echo "from a build without Qt. src/uicore is measured by its own [ui]"
+          echo "cases; src/qtgui's C++ (not its QML) by the Qt suites, in a job of"
+          echo "its own."
           echo
-          # artifact-url is empty if the upload was skipped or failed; fall
-          # back to the run, which lists whatever artifacts do exist.
-          if [ -n "$ARTIFACT_URL" ]; then
-            echo "Per-file breakdown: [coverage-html artifact]($ARTIFACT_URL)."
-          else
-            echo "Per-file breakdown: the coverage-html artifact on [this run]($RUN_URL)."
-          fi
-          echo "It is a zip -- GitHub does not serve artifact HTML directly, so"
-          echo "download it and open index.html."
+          echo "Per-file breakdown: $(link coverage-html "$HTML_URL"), and for the Qt GUI"
+          echo "$(link coverage-html-qt "$HTML_QT_URL"). Each is a zip -- GitHub does not"
+          echo "serve artifact HTML directly, so download it and open index.html."
         } > coverage-report.md
         cat coverage-report.md >> "$GITHUB_STEP_SUMMARY"
 
@@ -298,11 +504,11 @@ jobs:
     # comment is not possible there. Those runs still get the same report in
     # the run summary written above.
     - name: Comment the coverage report on the pull request
-      if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      if: hashFiles('coverage-report.md') != '' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        gh pr comment "${{ github.event.pull_request.number }}" \
+        gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" \
            --body-file coverage-report.md --edit-last --create-if-none
 
 
