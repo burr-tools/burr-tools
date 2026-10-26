@@ -191,6 +191,10 @@ coverage-html: setup-cov
 bench *args: build-release
     ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 
+# QML bindings qmlcachegen leaves to the JS engine, per file, against the baseline (--update writes it)
+qml-aot *args: build-qt
+    python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --import build/src/qtgui/qml/import --baseline test/qtgui/qml_aot_baseline.json {{args}}
+
 # Micro-benchmarks of the user interface's hot paths in src/uicore (release build); extra args go to Catch2
 bench-ui *args: build-release
     ./build-rel/test_burrtools "[bench]" {{args}}
@@ -254,6 +258,16 @@ run-qt *args: build-qt
 # Open the component gallery: every primitive in every state (light/dark toggle)
 run-gallery: build-qt
     ./build/burrtools-qt --gallery
+
+# Run only the Qt GUI tests (controllers, QML shell, gallery at each dp ratio)
+# plus its self-check
+test-qt: build-qt
+    ./build/burrtools-qt --self-check
+    meson test -C build --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+
+# Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
+update-snapshots rows="": build-qt
+    BURRTOOLS_UPDATE_SNAPSHOTS=1 BURRTOOLS_SNAPSHOTS_ONLY="{{rows}}" meson test -C build --print-errorlogs qtgui_qml qtgui_gallery_150 qtgui_gallery_200
 
 # Generate the Doxygen API reference into gendoc/html
 #

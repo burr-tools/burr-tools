@@ -716,4 +716,8 @@ if qt6_dep.found()
     dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps, json_dep, httpget_dep],
     win_subsystem: 'windows',
   )
+
+  if not qt_static
+    subdir('test/qtgui')
+  endif
 endif
