@@ -29,7 +29,7 @@
 #include <string_view>
 
 /* Every environment variable BurrTools reads, in one place. `--help` of
- * burrTxt and burrTxt2 prints the ones that concern it, and
+ * burrtools-qt, burrTxt and burrTxt2 prints the ones that concern it, and
  * test_envvars.cpp fails when the code reads a BURRTOOLS_ variable this
  * table does not list (or lists one nothing reads), so the help stays
  * complete.
@@ -37,8 +37,9 @@
 namespace btenv {
 
   enum class Scope {
-    Solver,      ///< the solver library: every program, the GUI and the CLIs
-    Gui,         ///< the GUI (burrtools)
+    Solver,      ///< the solver library: every program, the GUIs and the CLIs
+    Gui,         ///< both GUIs (burrtools, burrtools-qt)
+    QtGui,       ///< burrtools-qt
   };
 
   struct Variable {
@@ -65,8 +66,16 @@ namespace btenv {
     { "BURRTOOLS_SPLIT_FANOUT", Scope::Solver, "<n>", "assembler 0 divides a search level into at most n tasks plus one for the rest (default 16); any n >= 1 gives the same result (testing)" },
     { "BURRTOOLS_SPLIT_BREADTH_FIRST", Scope::Solver, "", "assembler 0 queues the tasks a split makes at the back of the pool instead of the front (benchmarking)" },
 
-    // the GUI
+    // both GUIs
     { "BURRTOOLS_UPDATE_VERSION_OVERRIDE", Scope::Gui, "<version>", "the update check (Help > Check for updates) compares against this version instead of the program's (testing)" },
+
+    // burrtools-qt
+    { "BURRTOOLS_QT_SETTINGS", Scope::QtGui, "<file>", "use this settings file instead of the user's; the pipeline caches go beside it and Qt's own disk cache is off -- for scripted runs" },
+    { "BURRTOOLS_RHI", Scope::QtGui, "d3d11|d3d12|vulkan|opengl|metal", "the 3D graphics API (default: the platform's -- Direct3D 11, Metal, OpenGL)" },
+    { "BURRTOOLS_OFFSCREEN_RHI", Scope::QtGui, "d3d11|vulkan|opengl|metal", "the graphics API of the image export (and the render tests)" },
+    { "BURRTOOLS_EARLY_DEVICE", Scope::QtGui, "0", "Windows: leave the window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own" },
+    { "BURRTOOLS_STARTUP_TRACE", Scope::QtGui, "1|quit", "print on stderr how long start-up took to each step, up to app ready; quit also quits there" },
+    { "BURRTOOLS_QML_OUTLINES", Scope::QtGui, "", "outline every named item; the one under the mouse is highlighted and labelled with its objectName and QML file:line, its parents printed on stderr (for reading the QML)" },
   };
 
   inline std::span<const Variable> all(void) { return variables; }
@@ -74,7 +83,8 @@ namespace btenv {
   inline std::string_view scopeTitle(Scope s) {
     switch (s) {
       case Scope::Solver: return "Solver (every program)";
-      case Scope::Gui:    return "The GUI (burrtools)";
+      case Scope::Gui:    return "The GUIs (burrtools, burrtools-qt)";
+      case Scope::QtGui:  return "burrtools-qt";
     }
     return "";
   }

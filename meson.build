@@ -27,8 +27,9 @@ if host_machine.system() == 'windows'
   add_project_arguments('-DWIN32', language: ['c', 'cpp'])
 endif
 
-# Set macOS deployment target: the oldest macOS the binaries and the
-# libraries run on, 11.0 (Big Sur) by default (-Dmacos_deployment_target).
+# Set macOS deployment target: the oldest macOS the legacy binaries (burrtools,
+# burrTxt) and the libraries run on, 11.0 (Big Sur) by default. burrtools-qt
+# targets a later one, qt_macos_deployment_target (below, beside Qt).
 #
 # These are global rather than project arguments deliberately: meson subprojects
 # (catch2, libpng on macOS/Windows, and zlib on Windows) do not inherit add_project_arguments, so
@@ -184,7 +185,7 @@ gui_src = [
   'src/gui/LFl_Tile.cpp',
   'src/gui/Layouter.cpp',
   'src/gui/Images.cpp',
-  # the undo history, kept toolkit-free in src/uicore
+  # the undo history, shared with the Qt GUI (burr_uicore)
   'src/uicore/puzzlehistory.cpp',
   # the piece colours, which src/gui/piececolor.cpp wraps
   'src/uicore/palette.cpp',
@@ -235,6 +236,9 @@ else
   httpget_src = ['src/tools/httpget_curl.cpp']
   httpget_dep = dependency('dl')
 endif
+# the same as files, for subdirectories (burrtools-qt's update check)
+httpget_files = files(httpget_src)
+updatecheck_files = files('src/tools/updatecheck.cpp')
 
 if host_machine.system() == 'windows'
   wm = import('windows')
@@ -330,9 +334,9 @@ endif
 
 
 # The legacy Windows binaries are linked fully static so they run without
-# shipping any DLLs. The arguments go to each target rather than the whole
-# project, so that a later target linking shared libraries (a Qt GUI links
-# Qt's) does not get a second, static copy of the C++ runtime.
+# shipping any DLLs. The Qt GUI (src/qtgui) does not get these: it links Qt's
+# shared libraries, and a static C++ runtime in its executable would put two
+# copies of libstdc++ in one process.
 legacy_link_args = []
 
 if host_machine.system() == 'windows'
@@ -580,5 +584,136 @@ if not meson.is_cross_build()
     suite: 'fast',
     timeout: 300,
     workdir: meson.project_source_root(),
+  )
+endif
+
+# burrtools-qt: the redesigned GUI (design-spec/, the Qt 6 Quick profile).
+# It is a second, independent binary next to the FLTK burrtools; nothing in
+# the legacy GUI depends on it. 'auto' builds it whenever a new enough Qt is
+# installed and silently skips it otherwise, so a checkout without Qt still
+# builds and tests everything else exactly as before.
+#
+# Qt >= 6.8: QQuickRhiItem (the 3D view's host) arrived in 6.7, and 6.8 is the
+# LTS the implementation guide names as the floor. private_headers is needed
+# for QRhi, which Qt ships in its semi-private include directory.
+#
+# qt.qml_module() needs meson >= 1.7. The project as a whole does not demand
+# that -- CI installs an older meson for the legacy jobs -- so an older meson
+# simply skips this GUI (or refuses, when it was asked for explicitly).
+qt_gui_opt = get_option('qt_gui')
+if meson.version().version_compare('<1.7')
+  if qt_gui_opt.enabled()
+    error('qt_gui needs meson >= 1.7, this is ' + meson.version())
+  endif
+  qt_gui_opt = qt_gui_opt.disable_auto_if(true)
+endif
+
+# qt_static: a static Qt, found through its qmake (point meson at it with a
+# native file: [binaries] qmake = '.../qt6-static/bin/qmake6'), linked into
+# one standalone burrtools-qt (src/qtgui/meson.build adds the plugins a
+# static program must name). The Qt tests stay with the shared build.
+qt_static = get_option('qt_static')
+qt6_dep = dependency('qt6',
+  modules: ['Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg'],
+  private_headers: true,
+  version: '>=6.8',
+  required: qt_gui_opt,
+  method: qt_static ? 'qmake' : 'auto',
+  static: qt_static,
+)
+
+# The official Qt frameworks for macOS name themselves @rpath/..., so the Qt
+# executables carry Qt's library directory as a build rpath: they then run
+# from the build tree, and macdeployqt finds the frameworks to bundle.
+# (Homebrew's Qt uses absolute paths and needs none; elsewhere meson or the
+# environment already covers it.)
+qt_build_rpath = ''
+if qt6_dep.found() and host_machine.system() == 'darwin' and not qt_static
+  qt_qmake = find_program('qmake6', 'qmake', required: false)
+  if qt_qmake.found()
+    qt_build_rpath = run_command(qt_qmake, '-query', 'QT_INSTALL_LIBS', check: false).stdout().strip()
+  endif
+endif
+
+# The Qt GUI and its tests target qt_macos_deployment_target (14.0, above
+# official Qt 6.11's macOS 13), compiled and linked; the legacy binaries keep
+# macos_deployment_target. Homebrew's Qt bottles target the macOS they were
+# built on, and linking one built for a newer macOS than the target makes ld
+# warn (Xcode 26's ld does), and --werror fail: the Qt targets then target the
+# newest macOS any of Qt's frameworks needs.
+qt_macos_args = []
+if host_machine.system() == 'darwin'
+  qt_macos_target = get_option('qt_macos_deployment_target')
+  if qt_macos_target.version_compare('<' + macos_deployment_target)
+    qt_macos_target = macos_deployment_target
+  endif
+  if qt_build_rpath != ''
+    qt_macos_min = run_command('sh', '-c',
+      'd=$1; shift; for m; do otool -l "$d/Qt$m.framework/Qt$m"; done 2>/dev/null | sed -n "s/^ *minos //p" | sort -t. -k1,1n -k2,2n | tail -n 1',
+      'sh', qt_build_rpath, 'Core', 'Gui', 'Qml', 'Quick', 'QuickControls2', 'Svg',
+      check: false).stdout().strip()
+    if qt_macos_min != '' and qt_macos_min.version_compare('>' + qt_macos_target)
+      message('Qt is built for macOS @0@, so the Qt targets target it (qt_macos_deployment_target is @1@)'.format(qt_macos_min, qt_macos_target))
+      qt_macos_target = qt_macos_min
+    endif
+  endif
+  qt_macos_args = ['-mmacosx-version-min=' + qt_macos_target]
+endif
+
+# Homebrew's Qt: include/Qt<M> links to each framework's Headers, so meson
+# takes the include/ layout and adds include/Qt<M>/<version>/Qt<M> for the
+# private headers (and QRhi's) -- which do not exist: they are only in
+# Qt<M>.framework/Headers/<version>/Qt<M>. Where that is the layout, add the
+# framework's directories. The official Qt is found as frameworks and gets
+# them from meson already.
+qt_private_args = []
+if host_machine.system() == 'darwin' and qt_build_rpath != ''
+  fs = import('fs')
+  qt_headers = run_command(qt_qmake, '-query', 'QT_INSTALL_HEADERS', check: false).stdout().strip()
+  foreach m : ['Core', 'Gui', 'Qml', 'Quick']
+    qt_module = 'Qt' + m
+    qt_fw_private = qt_build_rpath / (qt_module + '.framework') / 'Headers' / qt6_dep.version()
+    if (qt_headers != '' and fs.is_dir(qt_headers / qt_module)
+        and not fs.is_dir(qt_headers / qt_module / qt6_dep.version() / qt_module)
+        and fs.is_dir(qt_fw_private / qt_module))
+      qt_private_args += ['-I' + qt_fw_private, '-I' + qt_fw_private / qt_module]
+    endif
+  endforeach
+  if qt_private_args.length() > 0
+    message('Qt has its private headers only in its frameworks (as Homebrew does): adding those')
+  endif
+endif
+
+# what every Qt target compiles with
+qt_cpp_args = qt_macos_args + qt_private_args
+
+if qt6_dep.found()
+  subdir('src/qtgui')
+
+  # The program itself, defined here so that it lands in the build folder's
+  # top level, beside burrtools and burrTxt; its parts come from
+  # src/qtgui/meson.build.
+
+  # macOS names an unbundled program after its file; Info.plist names it BurrTools
+  qtgui_plist_args = []
+  qtgui_plist = []
+  if host_machine.system() == 'darwin'
+    qtgui_plist = files('src/qtgui/Info.plist')
+    qtgui_plist_args = ['-Wl,-sectcreate,__TEXT,__info_plist,' + meson.project_source_root() / 'src/qtgui/Info.plist']
+  endif
+
+  # -Dqml_debug=true: qmlprofiler and the QML debugger may attach
+  # (just profile-qml, the Qt profile workflow); never in a release
+  qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
+
+  burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources,
+    include_directories: inc,
+    cpp_args: qtgui_main_args + qt_cpp_args,
+    link_whole: libburr_qtgui,
+    link_args: qtgui_static_link_args + qt_macos_args + qtgui_plist_args,
+    link_depends: qtgui_plist,
+    build_rpath: qt_build_rpath,
+    dependencies: [qt6_dep, thread_dep, zlib_dep, manifold_dep, qtgui_platform_deps, json_dep, httpget_dep],
+    win_subsystem: 'windows',
   )
 endif
