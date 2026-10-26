@@ -20,8 +20,10 @@
  */
 #include "shapesmodel.h"
 #include "documentcontroller.h"
+#include "guarded.h"
 
 #include "../uicore/palette.h"
+#include "../uicore/shapelist.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
@@ -108,6 +110,81 @@ QHash<int, QByteArray> ShapesModel::roleNames(void) const {
     { VariableRole, "variableCount" },
     { WeightRole, "weight" },
   };
+}
+
+bool ShapesModel::canDelete(void) const {
+  return btui::canDeleteShape(m_doc->session().puzzle(), 0);
+}
+
+int ShapesModel::weightOf(int row) const {
+  return isRow(row) ? m_doc->session().puzzle().getShape(unsigned(row))->getWeight() : 1;
+}
+
+template <class F> bool ShapesModel::edit(int select, F && f) {
+  return guarded([&] { return m_doc->editStructure(select, std::forward<F>(f)); });
+}
+
+void ShapesModel::addShape(void) {
+  const int from = m_selected;
+  edit(count(), [&](puzzle_c & p) { btui::newShape(p, from); return true; });
+}
+
+void ShapesModel::duplicateShape(int row) {
+  if (isRow(row))
+    edit(count(), [&](puzzle_c & p) { return btui::duplicateShape(p, row) >= 0; });
+}
+
+void ShapesModel::requestDelete(int row) {
+  const puzzle_c & p = m_doc->session().puzzle();
+  if (!isRow(row) || !btui::canDeleteShape(p, row))
+    return;
+  if (btui::deleteLosesSolutions(p, row))
+    emit deleteConfirmRequested(row, QString::fromStdString(btui::shapeId(row)));
+  else
+    deleteShape(row);
+}
+
+void ShapesModel::deleteShape(int row) {
+  if (!isRow(row) || !btui::canDeleteShape(m_doc->session().puzzle(), row))
+    return;
+  const int n = count();
+  if (!edit(std::min(row, n - 2), [&](puzzle_c & p) { return btui::deleteShape(p, row) >= 0; }))
+    return;
+  // the spec's flash after a delete that renumbers; the last one renumbers nothing
+  if (row < n - 1)
+    emit flashRequested(tr("Order changed — shapes renumbered S1…S%1").arg(n - 1));
+  else
+    emit flashRequested(tr("Shape S%1 deleted").arg(row + 1));
+}
+
+void ShapesModel::renameShape(int row, const QString & label) {
+  if (isRow(row))
+    edit(row, [&](puzzle_c & p) { return btui::renameShape(p, row, label.toStdString()); });
+}
+
+void ShapesModel::moveShape(int from, int to) {
+  if (!isRow(from))
+    return;
+  to = std::clamp(to, 0, count() - 1);
+  if (edit(to, [&](puzzle_c & p) { return btui::moveShape(p, from, to); }))
+    emit flashRequested(tr("Order changed — shapes renumbered S1…S%1").arg(count()));
+}
+
+void ShapesModel::changeWeight(int row, int delta) {
+  if (isRow(row))
+    edit(row, [&](puzzle_c & p) { return btui::changeWeight(p, row, delta); });
+}
+
+void ShapesModel::requestRename(int row) {
+  if (!isRow(row))
+    return;
+  select(row);
+  emit renameRequested(row);
+}
+
+void ShapesModel::selectBy(int delta) {
+  if (count() > 0)
+    select(std::max(0, m_selected + delta));
 }
 
 void ShapesModel::select(int i) {

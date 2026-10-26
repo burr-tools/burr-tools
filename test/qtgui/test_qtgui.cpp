@@ -28,6 +28,7 @@
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
+#include "../../src/uicore/shapelist.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
@@ -1424,7 +1425,7 @@ private slots:
     auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
 
     std::vector<std::unique_ptr<AnySignal>> spies;
-    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->settings() })
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->settings(), a->shapes() })
       spies.push_back(std::make_unique<AnySignal>(o));
     auto happened = [&] {
       int n = int(links.urls.size());
@@ -1444,6 +1445,9 @@ private slots:
         a->viewport()->setNavMode(QStringLiteral("pan"));
       if (key == QLatin1String("editor.layerDown"))
         a->viewport()->setLayer(1);
+      // a shape with one before it
+      if (key.startsWith(QLatin1String("shapes.")))
+        a->shapes()->select(1);
       for (auto & s : spies)
         s->clear();
       links.urls.clear();
@@ -1895,6 +1899,174 @@ private slots:
     const voxel_c * s = f.app->document()->session().puzzle().getShape(0);
     QCOMPARE(m->data(m->index(0), ShapesModel::FixedRole).toInt(), int(s->countState(voxel_c::VX_FILLED)));
     QCOMPARE(m->data(m->index(0), ShapesModel::VariableRole).toInt(), int(s->countState(voxel_c::VX_VARIABLE)));
+  }
+
+  void theListsActionsAreUndoStepsThatSelectAndRenumber() {
+    // C01: each action one undo step, the selection on the shape it leaves,
+    // and the status bar told when shapes were renumbered
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    StatusController * status = f.app->status();
+    const puzzle_c & p = d->session().puzzle();
+    const int n = m->count();
+    QVERIFY(n >= 3);
+    auto label = [&](int row) { return m->data(m->index(row), ShapesModel::LabelRole).toString(); };
+
+    // New: as big as the selected shape, appended and selected
+    m->select(1);
+    m->addShape();
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(m->selected(), n);
+    QCOMPARE(p.getShape(unsigned(n))->getX(), p.getShape(1)->getX());
+    QVERIFY(d->canUndo());
+    d->undo();
+    QCOMPARE(m->count(), n);
+
+    // Duplicate: appended, a copy, selected
+    m->renameShape(1, QStringLiteral("Arm"));
+    QCOMPARE(label(1), QStringLiteral("Arm"));
+    m->duplicateShape(1);
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(m->selected(), n);
+    QCOMPARE(label(n), QStringLiteral("Arm"));
+
+    // weight: steps, stops at 0
+    const int w = m->data(m->index(n), ShapesModel::WeightRole).toInt();
+    m->changeWeight(n, +1);
+    QCOMPARE(m->data(m->index(n), ShapesModel::WeightRole).toInt(), w + 1);
+    m->changeWeight(n, -1000);
+    QCOMPARE(m->data(m->index(n), ShapesModel::WeightRole).toInt(), 0);
+    QSignalSpy edited(d, &DocumentController::puzzleEdited);
+    m->changeWeight(n, -1);
+    QCOMPARE(edited.count(), 0);                        // nothing changed, no undo step
+
+    // a move renumbers; the selection follows the shape
+    m->moveShape(n, 0);
+    QCOMPARE(m->selected(), 0);
+    QCOMPARE(label(0), QStringLiteral("Arm"));
+    QCOMPARE(label(2), QStringLiteral("Arm"));
+    QCOMPARE(status->text(), QStringLiteral("Order changed — shapes renumbered S1…S%1").arg(n + 1));
+
+    // a delete renumbers the later ones and selects the one now in its place
+    m->deleteShape(0);
+    QCOMPARE(m->count(), n);
+    QCOMPARE(m->selected(), 0);
+    QCOMPARE(label(1), QStringLiteral("Arm"));
+    QCOMPARE(status->text(), QStringLiteral("Order changed — shapes renumbered S1…S%1").arg(n));
+    // the last one renumbers nothing
+    m->deleteShape(n - 1);
+    QCOMPARE(m->selected(), n - 2);
+    QCOMPARE(status->text(), QStringLiteral("Shape S%1 deleted").arg(n));
+
+    // rows that are no shape do nothing
+    edited.clear();
+    for (int row : { -1, m->count() }) {
+      m->duplicateShape(row);
+      m->deleteShape(row);
+      m->renameShape(row, QStringLiteral("x"));
+      m->moveShape(row, 0);
+      m->changeWeight(row, 1);
+    }
+    QCOMPARE(edited.count(), 0);
+
+    // undo walks it all back, one step each
+    while (d->canUndo())
+      d->undo();
+    QCOMPARE(m->count(), n);
+    QVERIFY(label(1) != QStringLiteral("Arm"));
+  }
+
+  void deleteKeepsOneShape() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ShapesModel * m = f.app->shapes();
+    QVERIFY(!m->canDelete());
+    m->addShape();
+    QCOMPARE(m->count(), 1);
+    QVERIFY(!m->canDelete());
+    m->requestDelete(0);
+    m->deleteShape(0);
+    QCOMPARE(m->count(), 1);
+    QSignalSpy can(m, &ShapesModel::countChanged);
+    m->addShape();
+    QVERIFY(m->canDelete());
+    QCOMPARE(can.count(), 1);
+    QVERIFY(d->canUndo());
+  }
+
+  void deleteAsksFirstOnlyWhenSolutionsWouldBeLost() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/SolidSixPieceBurrs.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const puzzle_c & p = d->session().puzzle();
+    int used = -1;
+    for (int s = 0; s < m->count() && used < 0; s++)
+      if (btui::deleteLosesSolutions(p, s))
+        used = s;
+    QVERIFY(used >= 0);
+    const int n = m->count();
+
+    QSignalSpy ask(m, &ShapesModel::deleteConfirmRequested);
+    m->requestDelete(used);
+    QCOMPARE(ask.count(), 1);
+    QCOMPARE(ask.first().at(0).toInt(), used);
+    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("S%1").arg(used + 1));
+    QCOMPARE(m->count(), n);                            // nothing yet: QML asks
+    m->deleteShape(used);                               // the answer
+    QCOMPARE(m->count(), n - 1);
+
+    // a shape no problem uses goes at once
+    m->addShape();
+    ask.clear();
+    m->requestDelete(m->count() - 1);
+    QCOMPARE(ask.count(), 0);
+    QCOMPARE(m->count(), n - 1);
+  }
+
+  void theListsKeysWorkOnlyInTheirScope() {
+    Fixture f;
+    f.make();
+    CommandController * c = f.app->commands();
+    const QString list = QStringLiteral("shapesList");
+#ifdef Q_OS_MACOS
+    QCOMPARE(c->keyInScope(list, Qt::Key_Backspace, 0), QStringLiteral("shapes.delete"));
+#endif
+    QCOMPARE(c->keyInScope(list, Qt::Key_Delete, 0), QStringLiteral("shapes.delete"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Return, 0), QStringLiteral("shapes.rename"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Enter, Qt::KeypadModifier), QStringLiteral("shapes.rename"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_D, Qt::ControlModifier), QStringLiteral("shapes.duplicate"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Up, Qt::AltModifier), QStringLiteral("shapes.moveEarlier"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Down, Qt::AltModifier | Qt::KeypadModifier), QStringLiteral("shapes.moveLater"));
+    // F2 is Save, the window's; plain arrows are the list's own navigation
+    QVERIFY(c->keyInScope(list, Qt::Key_F2, 0).isEmpty());
+    QVERIFY(c->keyInScope(list, Qt::Key_Up, 0).isEmpty());
+    QVERIFY(c->keyInScope(QStringLiteral("elsewhere"), Qt::Key_Delete, 0).isEmpty());
+
+    // and none of them is bound window-wide
+    for (const QVariant & v : c->shortcuts())
+      QVERIFY(!v.toMap().value(QStringLiteral("key")).toString().startsWith(QLatin1String("shapes.")));
+
+    // they act on the selected shape, in Entities only
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    m->select(0);
+    QVERIFY(!c->isEnabled(QStringLiteral("shapes.moveEarlier")));
+    QVERIFY(c->isEnabled(QStringLiteral("shapes.moveLater")));
+    c->trigger(QStringLiteral("shapes.moveLater"));
+    QCOMPARE(m->selected(), 1);
+    QSignalSpy rename(m, &ShapesModel::renameRequested);
+    c->trigger(QStringLiteral("shapes.rename"));
+    QCOMPARE(rename.count(), 1);
+    QCOMPARE(rename.first().at(0).toInt(), 1);
+    f.app->layout()->setWorkspace(LayoutController::Puzzle);
+    for (const char * key : { "shapes.rename", "shapes.duplicate", "shapes.delete", "shapes.moveEarlier", "shapes.moveLater" })
+      QVERIFY2(!c->isEnabled(QString::fromLatin1(key)), key);
   }
 
   void statusTextIsTheLegacySentence() {

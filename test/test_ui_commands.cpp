@@ -32,17 +32,44 @@ TEST_CASE("command keys are unique and every command is findable by key", "[ui][
   CHECK(findCommand("no.such.command") == nullptr);
 }
 
-TEST_CASE("no two commands share a shortcut on the same platform", "[ui][commands]") {
+TEST_CASE("no two commands share a shortcut on the same platform and in the same scope", "[ui][commands]") {
   for (bool mac : { false, true }) {
-    std::set<std::string_view> seen;
+    std::set<std::pair<Scope, std::string_view>> seen;
     for (const auto & c : commandTable()) {
       auto list = (mac && !c.macShortcuts.empty()) ? c.macShortcuts : c.shortcuts;
       for (auto s : list) {
         INFO((mac ? "mac " : "portable ") << s << " on " << c.key);
-        CHECK(seen.insert(s).second);
+        CHECK(seen.insert({ c.scope, s }).second);
       }
     }
   }
+}
+
+TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[ui][commands]") {
+  const Command list[] = { Command::ShapeRename, Command::ShapeDuplicate, Command::ShapeDelete,
+                           Command::ShapeMoveEarlier, Command::ShapeMoveLater };
+  for (Command c : list) {
+    const CommandInfo & i = commandInfo(c);
+    INFO(i.key);
+    CHECK(i.scope == Scope::ShapesList);
+    CHECK(i.menu == Menu::None);
+    CHECK_FALSE(i.shortcuts.empty());
+  }
+  // every other command is the window's
+  for (const auto & c : commandTable())
+    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list))
+      CHECK(c.scope == Scope::Window);
+
+  auto first = [](Command c, Platform p) { return std::string(shortcutsOn(commandInfo(c), p)[0]); };
+  CHECK(first(Command::ShapeRename, Platform::Windows) == "Enter");
+  CHECK(first(Command::ShapeDuplicate, Platform::Windows) == "Ctrl+D");
+  CHECK(first(Command::ShapeDelete, Platform::Windows) == "Del");
+  CHECK(first(Command::ShapeDelete, Platform::Mac) == "Backspace");
+  CHECK(first(Command::ShapeMoveEarlier, Platform::Linux) == "Alt+Up");
+  CHECK(first(Command::ShapeMoveLater, Platform::Linux) == "Alt+Down");
+  // the spec's F2 rename is not taken: F2 is legacy's Save
+  for (auto s : commandInfo(Command::ShapeRename).shortcuts)
+    CHECK(s != "F2");
 }
 
 TEST_CASE("the legacy shortcuts survive and Toggle 3D's F4 is gone", "[ui][commands]") {

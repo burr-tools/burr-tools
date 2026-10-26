@@ -31,6 +31,7 @@
 class DocumentController;
 class LayoutController;
 class SettingsController;
+class ShapesModel;
 class ViewportController;
 
 /* The application commands for QML: the menu bar and its menus, the
@@ -61,7 +62,7 @@ class CommandController : public QObject {
 public:
 
   CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
-                    ViewportController * viewport, QObject * parent = nullptr);
+                    ViewportController * viewport, ShapesModel * shapes, QObject * parent = nullptr);
 
   int revision(void) const { return m_revision; }
   bool blocked(void) const { return m_blocked; }
@@ -77,11 +78,19 @@ public:
    * for one menu */
   Q_INVOKABLE QVariantList menuItems(const QString & menuKey) const;
 
-  /* The key bindings the menu items do not own: commands outside the menus,
-   * and the second and later sequences of those in them (F3 for Open,
-   * Ctrl+Y for Redo): [{ key, sequences: [portable text] }]. Where menu
-   * items only display their shortcuts (all but macOS), every sequence. */
+  /* The window's key bindings the menu items do not own: commands outside
+   * the menus, and the second and later sequences of those in them (F3 for
+   * Open, Ctrl+Y for Redo): [{ key, sequences: [portable text] }]. Where
+   * menu items only display their shortcuts (all but macOS), every
+   * sequence. A scope's keys are not among them (keyInScope). */
   Q_INVOKABLE QVariantList shortcuts(void) const;
+
+  /* The command a key press means in a scope -- "shapesList", the focused
+   * Shapes list -- by the table's shortcuts; empty when none. The scope's
+   * item calls it from its key handlers, and takes the key over from the
+   * window's shortcuts when there is one. key and modifiers are a
+   * KeyEvent's. */
+  Q_INVOKABLE QString keyInScope(const QString & scope, int key, int modifiers) const;
 
   /* a label as this platform shows it: access keys on Windows and Linux,
    * none on macOS; Windows' own wording where the table has one */
@@ -111,6 +120,9 @@ public:
   /* the shortcuts a menu shows, up to two, in the platform's own text:
    * "Ctrl+O / F3" on Windows, "⌘O" on macOS */
   static QString nativeShortcutText(const btui::CommandInfo & c);
+  /* the same by key, for menus QML builds itself (a row's context menu);
+   * empty for an unknown key */
+  Q_INVOKABLE QString shortcutText(const QString & key) const;
 
   /* the shortcut list for this platform */
   static std::span<const std::string_view> platformShortcuts(const btui::CommandInfo & c);
@@ -141,6 +153,7 @@ private:
   DocumentController * m_doc;
   LayoutController * m_layout;
   ViewportController * m_viewport;
+  ShapesModel * m_shapes;
   int m_revision = 0;
   bool m_blocked = false;
 };
