@@ -160,28 +160,76 @@ spec-check: spec-tools
 setup-cov:
     @if [ ! -d "build-cov" ]; then meson setup build-cov -Db_coverage=true; fi
 
-# Shared gcovr filters, used by both `coverage` and `coverage-html` so the two
+# Shared gcovr options, used by both `coverage` and `coverage-html` so the two
 # recipes can never silently drift and report different numbers. Excluding
 # build-cov/subprojects skips walking vendored coverage data the filters would
 # discard anyway (~44s saved); it must not change the reported TOTAL.
-gcovr_flags := "--root . " + \
-    "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/' " + \
+gcovr_base := "--root . " + \
     "--exclude 'src/lua/' " + \
     "--exclude-directories 'build-cov/subprojects' " + \
     ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
 
-# Report test coverage for BurrTools sources (excludes subprojects and lua)
-coverage: setup-cov
-    ninja -C build-cov
-    ./build-cov/test_burrtools
-    gcovr {{ gcovr_flags }} --print-summary build-cov
+# What is measured, reported as one figure per area. The library is the
+# canonical figure compared across pull requests; the redesigned GUI's two
+# layers stand beside it. The GUI suites run library code too, so the
+# library's figure is taken from the library's own tests alone, before they
+# run (_coverage-tests) -- adding them never shifts the library's number.
+# src/qtgui counts its C++ only: QML is not compiled code gcov sees.
+gcovr_lib := "--filter 'src/lib/' --filter 'src/tools/' --filter 'src/halfedge/'"
+gcovr_uicore := "--filter 'src/uicore/'"
+gcovr_qtgui := "--filter 'src/qtgui/'"
 
-# Write an HTML coverage report to coverage-html/index.html
-coverage-html: setup-cov
+# Build the coverage build and run the suites that feed it: test_burrtools
+# (the library and, as its [ui] cases, src/uicore), then the Qt GUI's suites
+# when the coverage build has the Qt GUI (Qt >= 6.8 found). Headless Linux
+# needs the render tests' platform set up as the qt-linux CI job does.
+_coverage-tests: setup-cov
+    #!/usr/bin/env bash
+    set -euo pipefail
     ninja -C build-cov
-    ./build-cov/test_burrtools
-    mkdir -p coverage-html
-    gcovr {{ gcovr_flags }} --print-summary --html-details coverage-html/index.html
+    # counters add up across runs: start from zero, so the library's figure
+    # below holds the library's tests only, not an earlier run's GUI suites
+    find build-cov -name '*.gcda' -delete
+    ./build-cov/test_burrtools '~[ui]'
+    gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
+    ./build-cov/test_burrtools '[ui]'
+    if [ -d build-cov/test/qtgui ]; then
+        meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+    fi
+
+# One gcov pass into a JSON tracefile (and an HTML report of every area when
+# html names its index file), then a summary per area read back from it --
+# the library's from the tracefile _coverage-tests took after its own tests.
+# (The HTML report shows every suite's hits, the library's files included.)
+_coverage-summary html="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    html_args=()
+    if [ -n "{{ html }}" ]; then
+        mkdir -p "$(dirname "{{ html }}")"
+        html_args=(--html-details "{{ html }}")
+    fi
+    gcovr {{ gcovr_base }} {{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }} \
+        --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
+    area() {
+        echo "== $1"     # the CI report picks these lines out of the build's output
+        local tracefile="$2"
+        shift 2
+        # the summary is what is wanted; the full text report goes to a file
+        # (gcovr refuses /dev/null as an output)
+        gcovr --root . --add-tracefile "$tracefile" "$@" --print-summary --output build-cov/coverage-area.txt
+    }
+    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
+    area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    if [ -d build-cov/test/qtgui ]; then
+        area "Qt GUI: src/qtgui, C++ only" build-cov/coverage.json {{ gcovr_qtgui }}
+    fi
+
+# Report test coverage per area (library, UI core, Qt GUI)
+coverage: _coverage-tests _coverage-summary
+
+# Per-area coverage summary plus an HTML report of every area in coverage-html/
+coverage-html: _coverage-tests (_coverage-summary "coverage-html/index.html")
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
