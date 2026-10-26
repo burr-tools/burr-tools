@@ -149,7 +149,7 @@ TestCase {
         for (const row of ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
                            "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
-                           "keyBadge", "card"])
+                           "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
     }
 
@@ -179,6 +179,12 @@ TestCase {
             { tag: "check row h30", cell: "checkRow.normal", h: 30 },
             { tag: "number field h30", cell: "numberField.normal", h: 30 },
             { tag: "rail button 52x50", cell: "railButton.normal", w: 52, h: 50 },
+            // PR-08: shape chip h26, min 34 (header 28); count badge h20; weight badge h18
+            { tag: "shape chip 34x26", cell: "chip.shape", w: 34, h: 26 },
+            { tag: "header chip 28x26", cell: "chip.header", w: 28, h: 26 },
+            { tag: "wide shape chip grows", cell: "chip.wide", h: 26, minW: 35 },
+            { tag: "count badge h20", cell: "chip.count", h: 20, minW: 24 },
+            { tag: "weight badge h18", cell: "chip.weight", h: 18 },
         ]
     }
     function test_sizesFollowTheTokens(data) {
@@ -329,7 +335,7 @@ TestCase {
         const rows = ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
                       "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
-                      "keyBadge", "card", "glyphs", "icons"]
+                      "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []
         for (const t of ["light", "dark"])
             for (const r of rows)

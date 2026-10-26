@@ -153,6 +153,7 @@
   "motion": {
     "columnMs": 200,
     "chevronMs": 150,
+    "reorderMs": 150,
     "switchMs": 150,
     "flashMs": 2400,
     "tooltipDelayMs": 500

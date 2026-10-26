@@ -8,6 +8,7 @@ import BurrTools.Ui
 MenuItem {
     id: root
     property string shortcutText: root.action && root.action.shortcutText !== undefined ? root.action.shortcutText : ""
+    property bool danger: false        // a destructive item (Delete): its text in danger
 
     implicitHeight: 30
     implicitWidth: Math.max(200, leftPadding + rightPadding + contentItem.implicitWidth)
@@ -42,7 +43,7 @@ MenuItem {
             // items take no letters, and draw none
             text: root.subMenu ? App.keyboardCues.accessKeyText(root.text, App.keyboardCues.showAccessKeys) : root.plainText
             textFormat: root.subMenu ? Text.StyledText : Text.PlainText
-            color: Theme.text
+            color: root.danger ? Theme.danger : Theme.text
             font.pixelSize: Theme.fontBody
         }
         Text {

@@ -105,6 +105,8 @@ class Theme : public QObject {
   // motion (section 6), in ms
   Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
   Q_PROPERTY(int durChevron READ durChevron CONSTANT FINAL)
+  /* list rows making room for a dragged one (the Shapes list) */
+  Q_PROPERTY(int durReorder READ durReorder CONSTANT FINAL)
   Q_PROPERTY(int durFlash READ durFlash CONSTANT FINAL)
   Q_PROPERTY(int tooltipDelay READ tooltipDelay CONSTANT FINAL)
 
@@ -193,6 +195,7 @@ public:
 
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }
+  int durReorder(void) const { return motion("reorderMs"); }
   int durFlash(void) const { return int(num("motion.flashMs")); }
   int tooltipDelay(void) const { return int(num("motion.tooltipDelayMs")); }
 

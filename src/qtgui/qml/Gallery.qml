@@ -398,6 +398,16 @@ ApplicationWindow {
             Section {
                 title: qsTr("Surfaces")
                 GalleryRow {
+                    // legacy's first two shape colours: white text on S1's blue, black on S2's green
+                    name: "chip"; label: "PR-08 Chip"
+                    Cell { kind: "shape"; Chip { text: "S1"; fill: "#0000ff"; textColor: "white" } }
+                    Cell { kind: "shapeDarkText"; Chip { text: "S2"; fill: "#00ff00"; textColor: "black" } }
+                    Cell { kind: "wide"; Chip { text: "S128"; fill: "#0000ff"; textColor: "white" } }
+                    Cell { kind: "header"; Chip { kind: Chip.Header; text: "S1"; fill: "#0000ff"; textColor: "white" } }
+                    Cell { kind: "count"; Chip { kind: Chip.Count; text: "8" } }
+                    Cell { kind: "weight"; Chip { kind: Chip.Weight; text: "W2" } }
+                }
+                GalleryRow {
                     name: "card"; label: "PR-10 Card"
                     Cell {
                         kind: "normal"

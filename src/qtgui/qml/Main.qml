@@ -118,6 +118,7 @@ ApplicationWindow {
                                       || shown(statusDialog) || shown(stlDialog)
                                       || shown(vectorDialog) || shown(imageDialog)
                                       || shown(shortcutsDialog) || shown(updateDialog)
+                                      || shown(deleteShapeDialog)
                                       || messageShown(discardDialog) || messageShown(messageDialog)
                                       || messageShown(internalErrorDialog)
     function showDialog(dialog: Loader) {
@@ -459,6 +460,7 @@ ApplicationWindow {
     Loader { id: imageDialog; active: false; source: "ImageExportDialog.qml" }
     Loader { id: shortcutsDialog; active: false; source: "KeyboardShortcutsDialog.qml" }
     Loader { id: updateDialog; active: false; source: "UpdateDialog.qml" }
+    Loader { id: deleteShapeDialog; active: false; source: "DeleteShapeDialog.qml" }
 
     Loader {
         id: noticeDialog
@@ -647,6 +649,16 @@ ApplicationWindow {
                 win.restoreVisibility = win.visibility
                 win.showFullScreen()
             }
+        }
+    }
+
+    // a delete that would lose solutions asks first (ShapesModel::requestDelete)
+    Connections {
+        target: App.shapes
+        function onDeleteConfirmRequested(row: int, idText: string) {
+            deleteShapeDialog.active = true
+            const d = deleteShapeDialog.item as DeleteShapeDialog
+            d.ask(row, idText)
         }
     }
 
