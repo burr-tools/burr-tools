@@ -182,6 +182,10 @@ coverage-html: setup-cov
 bench *args: build-release
     ./bench/run_snapshot.sh --binary build-rel/burrTxt {{args}}
 
+# Micro-benchmarks of the user interface's hot paths in src/uicore (release build); extra args go to Catch2
+bench-ui *args: build-release
+    ./build-rel/test_burrtools "[bench]" {{args}}
+
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 build-asan:
     @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi
