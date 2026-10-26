@@ -41,9 +41,10 @@ namespace {
   /* The BURRTOOLS_ variables `text` reads: a name counts only where it is
    * handed to something that reads the environment -- not in a comment, a
    * test's ScopedEnv, or an environment a script sets up for a child.
-   * C and C++ read through these functions, the name given as a literal;
-   * a variable read some other way needs its reader added here. */
-  const char * const cppReaders = "getenv";
+   * C and C++ read through these functions, the name given as a literal --
+   * getenv, and Qt's qgetenv and qEnvironmentVariable*; a variable read
+   * some other way needs its reader added here. */
+  const char * const cppReaders = "getenv|qgetenv|qEnvironmentVariable(?:IsSet|IsEmpty|IntValue)?";
 
   std::set<std::string> readsIn(const std::string & text, Lang lang) {
     static const std::regex cpp(std::string(R"(\b(?:)") + cppReaders + R"()\s*\(\s*"(BURRTOOLS_[A-Z0-9_]+)\")");
@@ -99,8 +100,10 @@ TEST_CASE("only a read counts: not a comment, a test's setup, or a child's envir
     "// BURRTOOLS_A in a comment\n"
     "ScopedEnv env(\"BURRTOOLS_B\", \"1\");\n"
     "const char * v = std::getenv(\"BURRTOOLS_C\");\n"
-    "if (getenv( \"BURRTOOLS_D\" ) != nullptr) {}\n";
-  CHECK(readsIn(cpp, Lang::Cpp) == std::set<std::string>{ "BURRTOOLS_C", "BURRTOOLS_D" });
+    "if (getenv( \"BURRTOOLS_D\" ) != nullptr) {}\n"
+    "if (qEnvironmentVariableIsSet(\"BURRTOOLS_E\")) {}\n"
+    "qputenv(\"BURRTOOLS_F\", \"1\");\n";
+  CHECK(readsIn(cpp, Lang::Cpp) == std::set<std::string>{ "BURRTOOLS_C", "BURRTOOLS_D", "BURRTOOLS_E" });
 
   const std::string python =
     "env = {'BURRTOOLS_A': '1'}\n"
@@ -164,7 +167,7 @@ TEST_CASE("wrapped text counts a run of spaces as one", "[envvars]") {
 
 TEST_CASE("the help fits in 80 columns", "[envvars]") {
   std::ostringstream out;
-  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::Gui });
+  btenv::print(out, { btenv::Scope::Solver, btenv::Scope::Gui, btenv::Scope::QtGui });
   std::istringstream in(out.str());
   std::string line;
   while (std::getline(in, line)) {

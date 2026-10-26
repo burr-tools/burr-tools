@@ -64,15 +64,24 @@ test-regression: build
 # Also absent is `--suppress="*:*test*"`: as a substring glob it matches any path
 # merely containing "test", not the test directory; `-i test` above already
 # excludes that directory, so don't add it back.
+#
+# Where Qt is found the build has the Qt GUI: --library=qt teaches cppcheck
+# Qt's macros (Q_PROPERTY, QT_CONFIG, ...), `-i build` skips what moc and
+# qmlcachegen generate, and the framework glob covers macOS Qt's headers
+# (Homebrew's and the official), which /usr/include does not.
 check-cppcheck: setup
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
              -i src/lua \
              -i test \
+             -i build \
+             --library=qt \
              --suppress="*:*subprojects*" \
              --suppress="*:*src/lua*" \
              --suppress="*:*/usr/include/*" \
+             --suppress="*:*/Qt*.framework/*" \
              --suppress="preprocessorErrorDirective:*python*" \
+             --suppress="preprocessorErrorDirective:*qt6*" \
              --enable=warning,performance,portability \
              --inline-suppr \
              --error-exitcode=1 \
@@ -228,6 +237,23 @@ test-release:
 # Headless GUI invariant check (menu table consistency)
 check-gui: build
     ./build/burrtools --self-check
+
+# --- burrtools-qt, the redesigned GUI (src/qtgui) ---------------------------
+# Built by `just build` whenever Qt >= 6.8 and meson >= 1.7 are installed
+# (-Dqt_gui=auto); these recipes insist on it and fail clearly when it is not.
+
+# Configure the build directory with the Qt GUI required, then build
+build-qt: setup
+    meson configure build -Dqt_gui=enabled
+    ninja -C build
+
+# Run burrtools-qt, optionally with a puzzle file: just run-qt examples/PelikanBurr.xmpuzzle
+run-qt *args: build-qt
+    ./build/burrtools-qt {{args}}
+
+# Open the component gallery: every primitive in every state (light/dark toggle)
+run-gallery: build-qt
+    ./build/burrtools-qt --gallery
 
 # Generate the Doxygen API reference into gendoc/html
 #
