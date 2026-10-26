@@ -64,7 +64,13 @@ test-regression: build
 # Also absent is `--suppress="*:*test*"`: as a substring glob it matches any path
 # merely containing "test", not the test directory; `-i test` above already
 # excludes that directory, so don't add it back.
+#
+# Which findings cppcheck reports depends on its version: CI installs Ubuntu's
+# cppcheck while macOS developers get Homebrew's newer one, and a newer release
+# can flag code an older one passes. The version is printed first so a local
+# failure that CI doesn't reproduce can be traced to the checker.
 check-cppcheck: setup
+    @cppcheck --version
     cppcheck --project=build/compile_commands.json \
              -i subprojects \
              -i src/lua \
@@ -80,8 +86,28 @@ check-cppcheck: setup
              -j$(getconf _NPROCESSORS_ONLN)
 
 # Run clang-tidy across BurrTools source files (excluding subprojects and lua)
+#
+# Homebrew's llvm is keg-only, so its run-clang-tidy and clang-tidy are not on
+# PATH. When run-clang-tidy isn't found on PATH, the recipe looks in the llvm
+# keg, and passes the clang-tidy next to it explicitly, since run-clang-tidy
+# otherwise searches PATH for clang-tidy too.
 check-tidy pattern="burr-tools/src/(?!lua/).*": setup
-    run-clang-tidy -p build "{{pattern}}"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tidy=$(command -v run-clang-tidy || true)
+    if [ -z "$tidy" ] && command -v brew >/dev/null; then
+        keg_tidy="$(brew --prefix llvm)/bin/run-clang-tidy"
+        if [ -x "$keg_tidy" ]; then tidy=$keg_tidy; fi
+    fi
+    if [ -z "$tidy" ]; then
+        echo "error: run-clang-tidy not found on PATH or in Homebrew's llvm keg." >&2
+        echo "Install it with 'brew install llvm' (macOS) or 'apt-get install clang-tidy' (Linux)." >&2
+        exit 1
+    fi
+    args=(-p build)
+    sibling="$(dirname "$tidy")/clang-tidy"
+    if [ -x "$sibling" ]; then args+=(-clang-tidy-binary "$sibling"); fi
+    exec "$tidy" "${args[@]}" "{{pattern}}"
 
 # Run Clang Static Analyzer (scan-build) and output report
 check-scan: setup
