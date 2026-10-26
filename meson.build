@@ -417,6 +417,56 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
           win_subsystem: 'windows',
 	  )
 
+# The GUI-independent parts of the user interface: camera and view-cube maths,
+# mesh building and picking for the 3D view, the layout model, the command
+# table, the document session and its undo history, and the settings store.
+# Nothing in here may include a toolkit header -- that is what lets
+# test_burrtools cover it without Qt or FLTK, and what keeps a later toolkit
+# change cheap.
+#
+# The undo history (puzzlehistory) is shared: the legacy GUI compiles it into
+# burrtools from here too.
+libburr_uicore = static_library('burr_uicore', [
+    'src/uicore/assemblyscene.cpp',
+    'src/uicore/camera.cpp',
+    'src/uicore/commands.cpp',
+    'src/uicore/depthsort.cpp',
+    'src/uicore/documentsession.cpp',
+    'src/uicore/imagepages.cpp',
+    'src/uicore/layoutmodel.cpp',
+    'src/uicore/palette.cpp',
+    'src/uicore/puzzlehistory.cpp',
+    'src/uicore/puzzletools.cpp',
+    'src/uicore/scenemesh.cpp',
+    'src/uicore/settingsstore.cpp',
+    'src/uicore/vecmath.cpp',
+    'src/uicore/vectorexport.cpp',
+    'src/uicore/viewcube.cpp',
+    'src/uicore/windowplacement.cpp',
+  ],
+  include_directories: inc,
+  link_with: libburr_core,
+  dependencies: [thread_dep, zlib_dep],
+)
+
+uicore_test_src = [
+  'test/test_ui_assemblyscene.cpp',
+  'test/test_ui_camera.cpp',
+  'test/test_ui_commands.cpp',
+  'test/test_ui_depthsort.cpp',
+  'test/test_ui_documentsession.cpp',
+  'test/test_ui_layoutmodel.cpp',
+  'test/test_ui_palette.cpp',
+  'test/test_ui_puzzletools.cpp',
+  'test/test_ui_scenemesh.cpp',
+  'test/test_ui_settingsstore.cpp',
+  'test/test_ui_vectorexport.cpp',
+  'test/test_ui_viewcube.cpp',
+  'test/test_ui_windowplacement.cpp',
+  'test/alloccount.cpp',
+  'test/bench_ui.cpp',
+]
+
 # On macOS always the bundled Catch2, like libpng above: a system copy (e.g.
 # Homebrew's bottle) is prebuilt for the host's macOS version, and linking
 # it into a binary declaring macOS 11 makes the linker warn once per object
@@ -430,11 +480,11 @@ endif
 
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'test/test_thread_protocol.cpp', 'src/gui/solveprogresscache.cpp',
-    'test/test_puzzle_history.cpp', 'src/uicore/puzzlehistory.cpp',
+    'test/test_puzzle_history.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
-    'test/test_curl_abi.cpp', 'test/test_envvars.cpp'],
+    'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
   include_directories: inc,
-  link_with: libburr_core,
+  link_with: [libburr_core, libburr_uicore],
   link_args: legacy_link_args,
   dependencies: [thread_dep, zlib_dep, catch2_dep, manifold_dep, json_dep],
 )
