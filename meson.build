@@ -214,14 +214,14 @@ endif
 # -Werror in the release jobs.
 json_dep = dependency('nlohmann_json', include_type: 'system')
 
-# The update check's HTTPS backend; see src/gui/httpget.h.
+# The update check's HTTPS backend; see src/tools/httpget.h.
 if host_machine.system() == 'darwin'
   add_languages('objcpp', native: false)
   add_project_arguments('-std=c++20', language: 'objcpp')
-  httpget_src = ['src/gui/httpget_mac.mm']
+  httpget_src = ['src/tools/httpget_mac.mm']
   httpget_dep = dependency('appleframeworks', modules: ['Foundation'])
 elif host_machine.system() == 'windows'
-  httpget_src = ['src/gui/httpget_win.cpp']
+  httpget_src = ['src/tools/httpget_win.cpp']
   httpget_dep = cxx.find_library('winhttp')
 else
   # Needs no libcurl headers and links no libcurl: the constants come from
@@ -230,7 +230,7 @@ else
   # the build host's headers would mean developers without them silently
   # compile a different (stub) backend and never build this file at all.
   # Where libcurl is missing at runtime, httpGet() reports Unsupported.
-  httpget_src = ['src/gui/httpget_curl.cpp']
+  httpget_src = ['src/tools/httpget_curl.cpp']
   httpget_dep = dependency('dl')
 endif
 
