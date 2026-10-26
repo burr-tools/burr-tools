@@ -53,10 +53,18 @@ namespace btui {
     // not in a menu: the 3D view (every workspace) and the active layer (Entities)
     ViewOrbit, ViewPan, ViewHome, ViewFit,
     LayerUp, LayerDown,
+    // the focused Shapes list (C01 Keyboard), also its rows' context menu
+    ShapeRename, ShapeDuplicate, ShapeDelete, ShapeMoveEarlier, ShapeMoveLater,
   };
 
   /* Where a command appears. Menu::None means keyboard / buttons only. */
   enum class Menu { None, File, Edit, View, Export, Help };
+
+  /* Where a command's shortcuts work: anywhere in the window, or only while
+   * one part of it has the keyboard (spec C01 Keyboard: the Shapes list's
+   * keys work with the list focused). A key may mean one thing in the
+   * window and another in a scope; the scope wins while it has focus. */
+  enum class Scope { Window, ShapesList };
 
   /* The menus differ a little per platform, each following its own
    * conventions (labels, places, shortcuts). */
@@ -90,6 +98,7 @@ namespace btui {
     /* the menu on macOS when it differs (Status, Close: File); Menu::None
      * means the same menu as elsewhere */
     Menu macMenu = Menu::None;
+    Scope scope = Scope::Window;
   };
 
   /* The menu, label and shortcuts of a command on a platform. */

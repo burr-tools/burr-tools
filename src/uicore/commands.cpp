@@ -68,6 +68,15 @@ namespace btui {
     constexpr sv scFit[]         = { "F" };
     constexpr sv scLayerUp[]     = { "PgUp" };
     constexpr sv scLayerDown[]   = { "PgDown" };
+    /* The Shapes list's. Rename is Enter -- the main key (Qt's "Return")
+     * and the keypad's alike -- not the spec's F2, which stays Save (product
+     * decision, 2026-10-27). macOS deletes with Backspace, as its lists do. */
+    constexpr sv scShapeRename[] = { "Enter" };
+    constexpr sv scShapeDup[]    = { "Ctrl+D" };
+    constexpr sv scShapeDel[]    = { "Del" };
+    constexpr sv scShapeDelMac[] = { "Backspace", "Del" };
+    constexpr sv scShapeEarlier[] = { "Alt+Up" };
+    constexpr sv scShapeLater[]  = { "Alt+Down" };
 
     constexpr std::span<const sv> none;
 
@@ -122,6 +131,13 @@ namespace btui {
       { Command::ViewFit,          "view.fit",              "Fit to view",            Menu::None,   false, scFit,        none,       "", "", "", Menu::None },
       { Command::LayerUp,          "editor.layerUp",        "Next layer",             Menu::None,   false, scLayerUp,    none,       "", "", "", Menu::None },
       { Command::LayerDown,        "editor.layerDown",      "Previous layer",         Menu::None,   false, scLayerDown,  none,       "", "", "", Menu::None },
+
+      // replace legacy's shape buttons (Label, Copy, Delete, <-, ->), not menu items
+      { Command::ShapeRename,      "shapes.rename",         "Rename…",                Menu::None,   false, scShapeRename, none,      "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ShapeDuplicate,   "shapes.duplicate",      "Duplicate",              Menu::None,   false, scShapeDup,   none,       "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ShapeDelete,      "shapes.delete",         "Delete",                 Menu::None,   false, scShapeDel,   scShapeDelMac, "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ShapeMoveEarlier, "shapes.moveEarlier",    "Move earlier",           Menu::None,   false, scShapeEarlier, none,     "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ShapeMoveLater,   "shapes.moveLater",      "Move later",             Menu::None,   false, scShapeLater, none,       "", "", "", Menu::None, Scope::ShapesList },
     };
 
     /* The menu bar, left to right. Legacy's File, Edit, Export and Help
