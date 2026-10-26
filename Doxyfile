@@ -29,10 +29,11 @@ OUTPUT_DIRECTORY       = gendoc
 
 # The landing page is the \mainpage block in src/lib/voxel.cpp -- the original
 # author's guided tour of the library, which is a far better introduction to the
-# API than the repository README. The two markdown files are listed so they show
-# up under "Related Pages" and so the README's link to BUILD.md resolves;
+# API than the repository README. The markdown files are listed so they show
+# up under "Related Pages" and so the links between them resolve (the README's
+# to BUILD.md, src/qtgui/README.md's to the redesign spec in design-spec/);
 # deliberately no USE_MDFILE_AS_MAINPAGE, which would displace voxel.cpp's block.
-INPUT                  = src README.md BUILD.md
+INPUT                  = src README.md BUILD.md design-spec/BurrTools-SPEC-FULL-FINAL-v6.md design-spec/gui-migration.md
 
 INPUT_ENCODING         = UTF-8
 RECURSIVE              = YES
@@ -46,6 +47,12 @@ FILE_PATTERNS          = *.h \
 # else needs excluding, because INPUT only reaches into src -- subprojects/ and
 # the build directories are never walked in the first place.
 EXCLUDE                = src/lua
+
+# The coding agents' instructions are not pages of the API documentation: they
+# link to files outside INPUT, and CLAUDE.md's "@AGENTS.md" include reads as an
+# unknown doxygen command.
+EXCLUDE_PATTERNS       = */AGENTS.md \
+                         */CLAUDE.md
 
 # Paths appear relative to the repository root rather than as absolute paths
 # from whatever directory the CI runner happened to check out into.
