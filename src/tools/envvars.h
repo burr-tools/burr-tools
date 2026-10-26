@@ -86,6 +86,7 @@ namespace btenv {
     { "BURRTOOLS_SNAPSHOTS_ONLY", Scope::Tests, "<row,row>", "only these gallery rows (e.g. button,switch); unset: all" },
     { "BURRTOOLS_SNAPSHOT_DIR", Scope::Tests, "<dir>", "where the gallery reference images are (set by meson)" },
     { "BURRTOOLS_SNAPSHOT_OUT", Scope::Tests, "<dir>", "where grabs that did not match go (set by meson)" },
+    { "BURRTOOLS_PROFILE_PUZZLE", Scope::Tests, "<file>", "the puzzle scripts/profile-qt.sh opens (default examples/PelikanBurr.xmpuzzle)" },
   };
 
   inline std::span<const Variable> all(void) { return variables; }

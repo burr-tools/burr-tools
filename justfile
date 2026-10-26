@@ -195,7 +195,21 @@ bench *args: build-release
 qml-aot *args: build-qt
     python3 scripts/qml_aot_report.py --qrc build/src/qtgui/qml/BurrTools_Ui_qml.qrc --sources src/qtgui/qml --import build/src/qtgui/qml/import --baseline test/qtgui/qml_aot_baseline.json {{args}}
 
-# Micro-benchmarks of the user interface's hot paths in src/uicore (release build); extra args go to Catch2
+# burrtools-qt cold and warm start-up times (scripts/profile-qt.sh) into artifacts/profile
+startup-time: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile startup
+
+# A qmlprofiler trace of burrtools-qt in artifacts/profile/qml.qtd (a -Dqml_debug=true build of its own)
+profile-qml:
+    @if [ ! -d "build-prof" ]; then meson setup build-prof --buildtype=debugoptimized -Dqt_gui=enabled -Dqml_debug=true; fi
+    meson compile -C build-prof burrtools-qt
+    bash scripts/profile-qt.sh build-prof artifacts/profile qml
+
+# A heaptrack profile of burrtools-qt in artifacts/profile (Linux, heaptrack installed)
+heap-qt: build-qt
+    bash scripts/profile-qt.sh build artifacts/profile heap
+
+# Micro-benchmarks of the Qt GUI's hot paths in src/uicore (release build); extra args go to Catch2
 bench-ui *args: build-release
     ./build-rel/test_burrtools "[bench]" {{args}}
 
@@ -268,6 +282,16 @@ test-qt: build-qt
 # Rewrite changed gallery references (test/qtgui/snapshots/<os>), all rows or e.g. `button,switch`
 update-snapshots rows="": build-qt
     BURRTOOLS_UPDATE_SNAPSHOTS=1 BURRTOOLS_SNAPSHOTS_ONLY="{{rows}}" meson test -C build --print-errorlogs qtgui_qml qtgui_gallery_150 qtgui_gallery_200
+
+# Self-contained burrtools-qt preview in artifacts/qt: zip (Windows), .app (macOS), AppImage (Linux); as CI
+deploy-qt:
+    @if [ ! -d "build-rel" ]; then meson setup build-rel --buildtype=release -Db_ndebug=true -Dqt_gui=enabled; else meson configure build-rel -Dqt_gui=enabled; fi
+    meson compile -C build-rel burrtools-qt
+    bash scripts/package-qt.sh build-rel artifacts/qt
+
+# Standalone burrtools-qt.exe with static Qt in artifacts/qt-static (MSYS2 qt6-static; as qt-standalone.yml)
+build-qt-static:
+    bash scripts/build-qt-static.sh build-static artifacts/qt-static
 
 # Generate the Doxygen API reference into gendoc/html
 #
