@@ -5,7 +5,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/gui/puzzlehistory.h"
+#include "../src/uicore/puzzlehistory.h"
 
 #include "../src/lib/gridtype.h"
 #include "../src/lib/problem.h"
