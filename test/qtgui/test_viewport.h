@@ -54,6 +54,7 @@ private slots:
   void darkThemeUsesTheDarkCanvas();
   void theSlabTintsItsLayer();
   void dimmingFadesTheOtherLayersInEveryStyle();
+  void dimmingLeavesTheActiveLayerAsItIs();
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();
   void theStlPreviewDrawsTheMeshAndItsInsides();

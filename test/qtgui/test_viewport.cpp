@@ -1213,6 +1213,56 @@ void TestRender::theSlabTintsItsLayer() {
   QVERIFY(a.blue() >= b.blue());
 }
 
+void TestRender::dimmingLeavesTheActiveLayerAsItIs() {
+  // With only the active layer holding voxels, Dim other layers dims
+  // nothing: the picture is the one without it, though it is drawn back to
+  // front -- the Classic variable voxels' markers whole (a face's triangles
+  // sorted as one), the slab's edges in front of them without a halo (only
+  // a line's solid core writing depth)
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  for (const char * style : { "legacy", "flat" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    f.app->document()->editStructure(-1, [](puzzle_c & p) {
+      // inside the grid, off its edges: the bounds' and the slab's edges
+      // pass in front of the voxels without lying on theirs
+      p.addShape(5, 5, 2);
+      for (unsigned i = 1; i < 4; i++)
+        p.getShape(0)->setState(i, i, 0, voxel_c::VX_VARIABLE);
+      p.getShape(0)->setState(1, 3, 0, voxel_c::VX_FILLED);
+      return true;
+    });
+    f.app->shapes()->refresh();
+    f.app->shapes()->select(0);
+    ViewportController * v = f.app->viewport();
+    f.app->editor()->setLayer(0);
+    v->camera().setOrientation(btui::Camera::lookFrom({ 0.8f, -0.5f, 1.0f }, 0));
+    const QImage plain = t.render(v->frame(1));
+    v->setDisplayDimOtherLayers(true);
+    const QImage dimmed = t.render(v->frame(1));
+    saveForInspection(plain, qPrintable(QStringLiteral("dim-none-%1").arg(QLatin1String(style))));
+    saveForInspection(dimmed, qPrintable(QStringLiteral("dim-active-%1").arg(QLatin1String(style))));
+    // inside the voxels (blue faces, dark markers; lines over them blue
+    // too): the same picture. A lost marker half is navy against blue, a
+    // halo the light canvas; a line's anti-aliased edge may differ a little.
+    // (Lines elsewhere differ by design: in this mode the slab's tint is
+    // drawn over them.)
+    int voxel = 0, differing = 0;
+    for (int y = 0; y < plain.height(); y++)
+      for (int x = 0; x < plain.width(); x++) {
+        const QColor p = plain.pixelColor(x, y);
+        if (p.blue() < p.red() + 80 || p.lightness() > 150)
+          continue;
+        voxel++;
+        differing += !near(p, dimmed.pixelColor(x, y), 60);
+      }
+    QVERIFY2(voxel > 2000, style);
+    QVERIFY2(differing < 20, qPrintable(QStringLiteral("%1: %2 of %3 voxel pixels differ")
+                                            .arg(QLatin1String(style)).arg(differing).arg(voxel)));
+  }
+}
+
 void TestRender::dimmingFadesTheOtherLayersInEveryStyle() {
   // AC-C06-05 / AC-C11-08: a 6x6x2 block seen from +Z shows its layer 1;
   // dimming around layer 0 fades it, around layer 1 leaves it as it is

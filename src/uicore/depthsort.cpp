@@ -33,7 +33,10 @@ namespace btui {
       // view-space z; the view looks down -z, so the most negative is farthest
       m_order[i] = { view(2, 0) * c.x + view(2, 1) * c.y + view(2, 2) * c.z + view(2, 3), std::uint32_t(i) };
     }
-    std::sort(m_order.begin(), m_order.end(), [](const auto & a, const auto & b) { return a.first < b.first; });
+    // triangles with one key (one face's) keep the mesh's order: ties go by
+    // index (std::stable_sort would allocate, every frame of an orbit)
+    std::sort(m_order.begin(), m_order.end(),
+              [](const auto & a, const auto & b) { return a.first < b.first || (a.first == b.first && a.second < b.second); });
     out.resize(n * 3);
     for (size_t i = 0; i < n; i++) {
       const std::uint32_t first = base + m_order[i].second * 3;
