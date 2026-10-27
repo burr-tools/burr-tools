@@ -26,6 +26,7 @@
 #include "theme.h"
 #include "updatecontroller.h"
 #include "test_editor.h"
+#include "test_inspector.h"
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
@@ -3297,6 +3298,7 @@ int main(int argc, char ** argv) {
   run(TestViewportController());
   run(TestEditor());
   run(TestEdit3d());
+  run(TestInspector());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

@@ -283,6 +283,24 @@ void TestEdit3d::aClickEditsWithAQuickToolOrInEditMode() {
   QCOMPARE(f.state(0, 1, 0) + f.state(2, 1, 0), 0);
 }
 
+void TestEdit3d::quickClicksAreAStepEach() {
+  // C06 Commit: one undo step per click, however quickly they follow (not a stroke's coalescing)
+  Edit3dFixture f;
+  f.fill(1, 1, 1);
+  f.click3d(Qt::ShiftModifier);
+  f.v->frame(1);
+  f.click3d(Qt::ShiftModifier);
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_FILLED));
+  QCOMPARE(f.filled(), 2);
+  f.click3d(kErase);
+  QCOMPARE(f.filled(), 1);
+  f.app->document()->undo();
+  QCOMPARE(f.filled(), 2);
+  f.app->document()->undo();
+  QCOMPARE(f.filled(), 1);
+  QCOMPARE(f.state(1, 1, 1), int(voxel_c::VX_FILLED));
+}
+
 void TestEdit3d::dragsAndOtherButtonsNeverEdit() {
   // AC-C06-12: past 4 dp a press navigates; middle and right never edit
   Edit3dFixture f;

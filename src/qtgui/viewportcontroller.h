@@ -24,6 +24,7 @@
 #include "documentcontroller.h"
 #include "scenecontroller.h"
 
+#include "../uicore/scenemesh.h"
 #include "../uicore/voxeledit.h"
 
 #include <QColor>
@@ -31,6 +32,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 class DocumentController;
@@ -130,6 +132,26 @@ public:
   /* where a click at (x, y) with these modifiers would act */
   btui::Target3d targetAt(float x, float y, Qt::KeyboardModifiers mods);
 
+  // --- Transform preview (C04) -------------------------------------------------
+
+  /* A Transform button under the pointer or focus (InspectorController):
+   * the shape as the task leaves it, as a ghost in the shape's colour at
+   * 50 %, and the hint -- an arc about a rotation's axis, a double arrow
+   * along a mirror's normal, an arrow along a nudge -- in the colour of the
+   * axis it mostly runs along, danger when the task is blocked (no ghost
+   * then). Shown until cleared. */
+  struct TransformPreview {
+    std::shared_ptr<const voxel_c> result;   ///< null: blocked, or nothing to show
+    bool hint = false;
+    btui::TransformHint kind = btui::TransformHint::Rotate;
+    btui::Vec3 axis{ 0, 0, 1 };
+    float angleDeg = 0;
+    bool blocked = false;
+  };
+  void setTransformPreview(TransformPreview p);
+  void clearTransformPreview(void);
+  bool transformPreviewShown(void) const { return m_transform.has_value(); }
+
 signals:
 
   void optionsChanged(void);
@@ -144,6 +166,7 @@ private:
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
   void addGhosts(SceneFrame & f) const;
+  void addTransformPreview(SceneFrame & f) const;
   void updateSlab(void);
   void click(float x, float y, Qt::KeyboardModifiers mods);
   void navigationStarted(void) override;
@@ -174,6 +197,7 @@ private:
   std::vector<btui::PickTriangle> m_layerPick;
   bool m_layerPickDirty = true;    ///< made on the first pick that needs it, not per layer step
   float m_hoverX = -1, m_hoverY = -1;
+  std::optional<TransformPreview> m_transform;
 
   /* the persisted Display options, kept here for frame() (readDisplay) */
   struct Display {
