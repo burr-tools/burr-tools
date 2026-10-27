@@ -150,14 +150,19 @@ TestCase {
     function test_tabGoesOnFromTheButtonLastClicked() {
         // a mouse click makes the button the keyboard's starting point (no ring)
         activate(win)
-        const orbit = item("entities.viewport.toolbar.orbit")
-        const pan = item("entities.viewport.toolbar.pan")
-        mouseClick(orbit)
-        verify(orbit.activeFocus)
-        verify(!orbit.visualFocus)
+        const entities = item("rail-entities")
+        const puzzle = item("rail-puzzle")
+        mouseClick(entities)
+        verify(entities.activeFocus)
+        verify(!entities.visualFocus)
         keyClick(Qt.Key_Tab)
-        verify(pan.activeFocus)
-        verify(pan.visualFocus)
+        verify(puzzle.activeFocus)
+        verify(puzzle.visualFocus)
+        // the 3D toolbar is one roving stop whose buttons take no focus on a
+        // click (C20 sticky focus): the keyboard stays where it was
+        mouseClick(item("entities.viewport.toolbar.pan"))
+        verify(puzzle.activeFocus)
+        App.viewport.navMode = "orbit"
     }
 
     function test_theVoxelTypeChipIsNoTabStop() {
@@ -320,14 +325,13 @@ TestCase {
             { tag: "cards", rails: false, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
-                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan", "entities.viewport.toolbar.edit",
-                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus", "entities.viewport.surface",
+                "entities.viewport.toolbar", "entities.viewport.surface",
                 "entities.editor.focus2d", "entities.editor.collapse",
                 // the tool strip and the planes are one stop each
                 "entities.editor.tools.group",
                 "entities.editor.mirror.x", "entities.editor.mirror.y", "entities.editor.mirror.z",
                 "entities.editor.span.x", "entities.editor.span.y", "entities.editor.span.z",
-                "entities.editor.plane.group",
+                "entities.editor.plane.group", "entities.editor.grid",
                 "entities.editor.size.applyAll",
                 "entities.editor.size.x.input", "entities.editor.size.y.input", "entities.editor.size.z.input",
                 "entities.editor.colour.info", "entities.editor.colour.add", "entities.editor.colour.more",
@@ -335,8 +339,7 @@ TestCase {
             { tag: "rails", rails: true, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "workspace.left.rail.expand", "entities.shapes.rail.row.0", "entities.shapes.rail.new",
-                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan", "entities.viewport.toolbar.edit",
-                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus", "entities.viewport.surface",
+                "entities.viewport.toolbar", "entities.viewport.surface",
                 "workspace.right.rail.expand" ] },
         ]
     }

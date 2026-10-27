@@ -192,6 +192,64 @@ namespace btui {
     return out;
   }
 
+  Pt cellCentre(const GridCell & c) {
+    if (c.round)
+      return c.centre;
+    Pt m{ 0, 0 };
+    for (const Pt & q : c.outline) {
+      m.x += q.x;
+      m.y += q.y;
+    }
+    const double n = double(std::max<size_t>(1, c.outline.size()));
+    return { m.x / n, m.y / n };
+  }
+
+  int stepCell(const GridLayout & layout, int from, double dx, double dy) {
+    if (from < 0 || size_t(from) >= layout.cells.size())
+      return -1;
+    const double len = std::hypot(dx, dy);
+    if (len <= 0)
+      return -1;
+    dx /= len;
+    dy /= len;
+    const Pt o = cellCentre(layout.cells[size_t(from)]);
+    int best = -1;
+    double bestScore = 0;
+    for (size_t i = 0; i < layout.cells.size(); i++) {
+      if (int(i) == from)
+        continue;
+      const Pt c = cellCentre(layout.cells[i]);
+      const double vx = c.x - o.x, vy = c.y - o.y;
+      const double d = std::hypot(vx, vy);
+      if (d < 1e-9)
+        continue;
+      const double cosine = (vx * dx + vy * dy) / d;
+      if (cosine < 0.5)                    // outside 60 degrees
+        continue;
+      // near and straight: a step along the row beats a diagonal one
+      const double score = d / (cosine * cosine);
+      if (best < 0 || score < bestScore - 1e-9) {
+        best = int(i);
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  int nearestCell(const GridLayout & layout, Pt p) {
+    int best = -1;
+    double bestD = 0;
+    for (size_t i = 0; i < layout.cells.size(); i++) {
+      const Pt c = cellCentre(layout.cells[i]);
+      const double d = std::hypot(c.x - p.x, c.y - p.y);
+      if (best < 0 || d < bestD) {
+        best = int(i);
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
   int cellAt(const GridLayout & layout, Pt p) {
     for (size_t i = 0; i < layout.cells.size(); i++) {
       const GridCell & c = layout.cells[i];

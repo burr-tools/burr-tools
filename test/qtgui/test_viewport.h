@@ -79,6 +79,7 @@ private slots:
   void drawsWithTheBestMultisamplingTheDeviceHas();
   void dimmingShowsInTheViewInEveryStyle();
   void theCardShowsItsCanvas();
+  void hoverPicksAtMostOnceAFrame();
 };
 
 /* The pipeline caches of the main window and the offscreen renderer. */

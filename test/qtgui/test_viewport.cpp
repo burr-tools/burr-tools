@@ -1581,6 +1581,45 @@ void TestViewportItem::theCardShowsItsCanvas() {
   QVERIFY2(mid.blue() > mid.red() + 80 && mid.blue() > mid.green() + 80, qPrintable(mid.name()));
 }
 
+namespace {
+  /* a scene that counts the hovers it is asked to pick */
+  struct CountingScene : SceneController {
+    using SceneController::SceneController;
+    int hovers = 0;
+    float lastX = -1;
+    void pointerHover(float x, float, Qt::KeyboardModifiers) override {
+      hovers++;
+      lastX = x;
+    }
+  };
+}
+
+void TestViewportItem::hoverPicksAtMostOnceAFrame() {
+  // the Qt Quick guide, section 7: the hover pick throttled to the frame
+  // -- ten pointer moves between two frames, one pick, at the last point
+  AppFixture f;
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(200, 150)));
+  CountingScene scene(f.app->settings());
+  auto * view = new VoxelViewport(t.window->contentItem());
+  view->setController(&scene);
+  view->setSize(QSizeF(200, 150));
+  t.frame();
+  QHoverEvent enter(QEvent::HoverEnter, QPointF(10, 10), QPointF(10, 10), QPointF(10, 10));
+  QCoreApplication::sendEvent(view, &enter);
+  for (int i = 1; i <= 10; i++) {
+    QHoverEvent move(QEvent::HoverMove, QPointF(10 + i, 10), QPointF(10 + i, 10), QPointF(9 + i, 10));
+    QCoreApplication::sendEvent(view, &move);
+  }
+  QCOMPARE(scene.hovers, 0);                         // none yet: the frame picks
+  t.frame();
+  QCOMPARE(scene.hovers, 1);
+  QCOMPARE(scene.lastX, 20.0f);
+  t.frame();
+  QCOMPARE(scene.hovers, 1);                         // nothing new, no pick
+  view->setController(nullptr);
+}
+
 void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {
   // smooth voxel edges: as many samples as Settings ▸ Anti-aliasing asks
   // for (4x by default), as far as the device goes, else fewer or none
