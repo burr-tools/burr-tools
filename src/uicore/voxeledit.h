@@ -109,6 +109,19 @@ namespace btui {
    * type are skipped. Returns whether anything changed. */
   bool applyTool(voxel_c & shape, const std::vector<Cell3> & cells, Tool t, unsigned int colour);
 
+  /* What applyTool() would do to each cell, for the ghost preview the 3D
+   * view draws while the pointer is over a cell (C06, AC-C08-10): Place an
+   * empty cell (Fixed, Variable), Replace a voxel whose state or colour would
+   * change, Erase a voxel, Paint a voxel. Cells it would leave as they are,
+   * outside the shape or not valid for its voxel type, are left out. */
+  enum class GhostKind { Place, Replace, Erase, Paint };
+  struct GhostCell {
+    Cell3 cell;
+    GhostKind kind = GhostKind::Place;
+    auto operator<=>(const GhostCell &) const = default;
+  };
+  std::vector<GhostCell> previewTool(const voxel_c & shape, const std::vector<Cell3> & cells, Tool t, unsigned int colour);
+
   // --- the 2D grid's cell size (C08) -----------------------------------------
 
   /* floor(min((areaW - 70) / unitsW, (areaH - 60) / unitsH)), clamped to

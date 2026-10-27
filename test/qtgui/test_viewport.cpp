@@ -28,6 +28,7 @@
 #include "scenerenderer.h"
 #include "theme.h"
 #include "viewcubeitem.h"
+#include "editorcontroller.h"
 #include "viewportcontroller.h"
 #include "voxelviewport.h"
 
@@ -713,6 +714,72 @@ void TestRender::rendersTheShapeOnTheCanvas() {
   const QColor mid = img.pixelColor(160, 120);
   QVERIFY(!near(mid, canvas, 20));
   QVERIFY(mid.blue() > mid.red() + 60);
+}
+
+void TestRender::hoveringTheGridDrawsTheGhost() {
+  // AC-C08-10 / AC-C06-11: the 2D grid's hover shows in 3D -- a placed cube,
+  // an erased voxel in danger, a cell inside the shape faint through the
+  // voxels in front of it -- and leaves nothing behind
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  f.app->document()->editStructure(-1, [](puzzle_c & p) {
+    p.addShape(3, 3, 3);
+    for (unsigned x = 0; x < 3; x++)
+      for (unsigned y = 0; y < 3; y++)
+        for (unsigned z = 0; z < 2; z++)
+          p.getShape(0)->setState(x, y, z, voxel_c::VX_FILLED);
+    return true;
+  });
+  f.app->shapes()->refresh();
+  f.app->shapes()->select(0);
+  ViewportController * v = f.app->viewport();
+  EditorController * e = f.app->editor();
+  v->setDisplayLayerSlab(false);
+  v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+  const QPoint c(160, 120);                   // the middle cell, (1, 1)
+  const QImage plainImage = t.render(v->frame(1));
+  const QColor plain = plainImage.pixelColor(c);
+  auto changed = [&](const QImage & img) {
+    int n = 0;
+    for (int y = 0; y < img.height(); y++)
+      for (int x = 0; x < img.width(); x++)
+        n += !near(img.pixelColor(x, y), plainImage.pixelColor(x, y), 20);
+    return n;
+  };
+
+  // Fixed on the empty top layer: a cube in front of the voxels, in the
+  // drawing colour -- Default, the shape's own -- outlined in accent
+  e->setLayer(2);
+  e->hover(1, 1);
+  QVERIFY(!v->frame(1).ghostFaces.empty());
+  const QImage placed = t.render(v->frame(1));
+  saveForInspection(placed, "ghost-place");
+  QVERIFY2(changed(placed) > 200, "the placed cube's outline shows");
+  QVERIFY(near(placed.pixelColor(c), plain, 20));
+
+  // Ctrl: Erase on the voxel below, in the danger colour
+  e->setLayer(1);
+  e->hover(1, 1);
+  e->setModifiers(Qt::ControlModifier);
+  const QImage erased = t.render(v->frame(1));
+  saveForInspection(erased, "ghost-erase");
+  const QColor r = erased.pixelColor(c);
+  QVERIFY2(r.red() > plain.red() + 80, qPrintable(r.name()));        // danger at 50 % over the voxel
+
+  // the bottom layer, behind the voxels in front: still shows, fainter
+  e->setLayer(0);
+  e->hover(1, 1);
+  const QImage hidden = t.render(v->frame(1));
+  saveForInspection(hidden, "ghost-hidden");
+  const QColor h = hidden.pixelColor(c);
+  QVERIFY2(!near(h, plain, 8), qPrintable(h.name()));
+  QVERIFY2(h.red() < r.red(), "fainter than in front");
+
+  // off the grid: no ghost
+  e->hover(-1, -1);
+  QVERIFY(v->frame(1).ghostFaces.empty());
+  QCOMPARE(changed(t.render(v->frame(1))), 0);
 }
 
 void TestRender::variableVoxelEdgesAreEvenDashes() {

@@ -189,6 +189,39 @@ namespace btui {
     return changed;
   }
 
+  std::vector<GhostCell> previewTool(const voxel_c & shape, const std::vector<Cell3> & cells, Tool t, unsigned int colour) {
+    if (colour >= 64)
+      colour = 0;
+    std::vector<GhostCell> out;
+    for (const Cell3 & c : cells) {
+      if (!inside(shape, c))
+        continue;
+      const unsigned x = unsigned(c.x), y = unsigned(c.y), z = unsigned(c.z);
+      const int state = shape.getState(x, y, z);
+      const bool sameColour = shape.getColor(x, y, z) == colour;
+      switch (t) {
+        case Tool::Fixed:
+        case Tool::Variable: {
+          const int want = t == Tool::Fixed ? voxel_c::VX_FILLED : voxel_c::VX_VARIABLE;
+          if (state == voxel_c::VX_EMPTY)
+            out.push_back({ c, GhostKind::Place });
+          else if (state != want || !sameColour)
+            out.push_back({ c, GhostKind::Replace });
+          break;
+        }
+        case Tool::Erase:
+          if (state != voxel_c::VX_EMPTY)
+            out.push_back({ c, GhostKind::Erase });
+          break;
+        case Tool::Paint:
+          if (state != voxel_c::VX_EMPTY && !sameColour)
+            out.push_back({ c, GhostKind::Paint });
+          break;
+      }
+    }
+    return out;
+  }
+
   int cellSize(double areaW, double areaH, double unitsW, double unitsH) {
     if (unitsW <= 0 || unitsH <= 0)
       return 16;

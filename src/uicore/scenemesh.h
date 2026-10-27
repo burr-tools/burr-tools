@@ -24,6 +24,7 @@
 #include "palette.h"
 #include "vecmath.h"
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -46,7 +47,10 @@ class Polyhedron;
  */
 namespace btui {
 
-  struct Rgba8 { std::uint8_t r = 0, g = 0, b = 0, a = 255; };
+  struct Rgba8 {
+    std::uint8_t r = 0, g = 0, b = 0, a = 255;
+    bool operator==(const Rgba8 &) const = default;
+  };
 
   /* the scene's light direction, in view space (C13); the renderer and the
    * vector export both shade with it */
@@ -177,6 +181,17 @@ namespace btui {
 
   /* the six faces of a box as triangles (36 vertices), one flat colour */
   void addBoxFaces(std::vector<MeshVertex> & out, const Box & b, Rgba8 color);
+
+  /* Ghosts (C06's hover preview): cells of a shape's grid as faces in `fill`
+   * and their edges as lines in `outline`, every face whatever is next to
+   * it. Made by the flat style's builder, so a ghost has its voxel type's
+   * shape; spheres have no edges. Never dimmed. */
+  struct GhostStyle {
+    Rgba8 fill, outline;
+    float widthDp = 2, dashDp = 0, gapDp = 0;
+  };
+  void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style);
 
   /* the axes from the origin, reaching 0.7 of a cell beyond the grid (C06) */
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp);

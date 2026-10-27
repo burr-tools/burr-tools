@@ -28,7 +28,7 @@ it can replace it.
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
 | P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*). An audit on 2026-10-27 found the Voxel editor ignoring the density and five smaller gaps (rail captions, "+", button and status bar sizes, the toolbar's height); fixed, and `qtgui_density_tokens` now fails on a density token no component reads |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
-| — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in 3D (Edit mode, quick tools, ghosts, cursors) arrives with P5; the Edit button already shows the editor's tool |
+| — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; the ghosts of the 2D grid's hover since P4; editing in 3D (Edit mode, quick tools, ghosts under the 3D pointer, cursors) arrives with P5; the Edit button already shows the editor's tool |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
 | P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; the 2D grid paints with it since P4, 3D editing with P5 |
 | P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for bricks), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
@@ -355,6 +355,9 @@ commit holds just the images that changed.
   stops: PgUp / PgDn step the layer anywhere in Entities. The grid has no
   elevation shadow. Rulers number square cells only; the other voxel
   types' cells are not in rows and columns of one cell each.
+- **Ghosts behind voxels** show at 35 % of their strength, drawn last
+  with the depth test reversed, so a cell inside the shape still shows
+  where it is (C06 does not say).
 - **Rendering** is gamma-correct; the layer slab's tint is scaled so it
   still reads like the mock's sRGB mix. **Dim other layers** draws the
   whole shape back to front while it is on, so the dimmed voxels show
@@ -416,7 +419,7 @@ column is what the review of #140 asks of the phase.
 | **P2** Shapes sidebar (C01) — done | New, duplicate, delete, rename inline, weight, reorder (drag, menu, `Alt+↑/↓`), the row context menu, the rail's `+`, the Chip primitive. Each action is one undo step. The status bar flashes when shapes are renumbered | The rules go in a new `uicore/shapelist`, legacy's `cb_NewShape` and the rest stay as they are, and the drift table gets a row for them. The list's keys come from the command table, with a scope |
 | **P3** Drawing colour (C09) — done | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
 | **P4** Voxel editor (C07, C08, C02) — done | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
-| **P5** 3D editing (rest of C06) | Edit mode and `E`, quick tools, ghosts, picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
+| **P5** 3D editing (rest of C06) | Edit mode and `E`, quick tools, ghosts under the 3D pointer (the hover preview's second source), picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore or `src/lib`, so that legacy can share it |
 | **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
 | **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
@@ -544,6 +547,16 @@ Every phase's pull request follows what #140 settled:
   `EditorController`; the 3D view reads them for its slab.
 - **Settings and modes** are read and written through one table each
   (`uicore/vocabulary`); the QML still sees words.
+- **The hover preview** (AC-C08-10, AC-C06-11; added after P4's review,
+  which had missed it): `EditorController::preview()` is what a click on
+  the hovered cell would do -- `btui::previewTool` over the same Mirror /
+  Span expansion, with the tool in effect, so modifiers change it at once
+  -- and the 3D view draws it as C06's ghosts: placed cubes in the drawing
+  colour at 55 % with an accent outline (dashed for Variable), a faint
+  dashed overlay on a voxel that would change, Erase in danger, Paint at
+  50 %. A ghost is its voxel type's shape (`btui::addGhost`, the flat
+  builder). It clears off the grid and while a stroke paints. Only cells
+  that would change get a ghost (Paint over a voxel of that colour: none).
 - **Sizes** are density.md §1's, through `Theme` (tool strip 48, Mirror /
   Span 44, planes 54 × 46, layer chips 32 × 24, stepper 28, the drawing
   colour 32; Minimal 36, 32, 38 × 34, 30 × 22, 26, 26), not C07 / C08 /

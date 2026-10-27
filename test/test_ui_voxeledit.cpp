@@ -127,6 +127,39 @@ TEST_CASE("applyTool skips cells outside the shape and keeps the bounding box ri
   CHECK(v->boundZ2() == 1);
 }
 
+TEST_CASE("the preview names what each tool would do to each cell, and nothing it would not", "[ui][voxeledit]") {
+  // C06's ghost table (AC-C06-10, AC-C08-10)
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 4, 1, 1);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);                          // colour 0
+  v->setState(2, 0, 0, voxel_c::VX_VARIABLE);
+  v->setColor(3, 0, 0, 0);
+  const std::vector<Cell3> row{ { 0, 0, 0 }, { 1, 0, 0 }, { 2, 0, 0 }, { 3, 0, 0 }, { 9, 0, 0 } };
+  using G = GhostCell;
+  // Fixed: the empty cells placed, the variable voxel replaced, the same fixed one left
+  CHECK(previewTool(*v, row, Tool::Fixed, 0) ==
+        std::vector<G>{ { { 0, 0, 0 }, GhostKind::Place }, { { 2, 0, 0 }, GhostKind::Replace }, { { 3, 0, 0 }, GhostKind::Place } });
+  // another colour replaces the fixed voxel too
+  CHECK(previewTool(*v, row, Tool::Fixed, 2).size() == 4);
+  CHECK(previewTool(*v, row, Tool::Variable, 0) ==
+        std::vector<G>{ { { 0, 0, 0 }, GhostKind::Place }, { { 1, 0, 0 }, GhostKind::Replace }, { { 3, 0, 0 }, GhostKind::Place } });
+  CHECK(previewTool(*v, row, Tool::Erase, 0) ==
+        std::vector<G>{ { { 1, 0, 0 }, GhostKind::Erase }, { { 2, 0, 0 }, GhostKind::Erase } });
+  // Paint: voxels that would take the colour; the empty cells and a voxel already that colour, none
+  CHECK(previewTool(*v, row, Tool::Paint, 0).empty());
+  CHECK(previewTool(*v, row, Tool::Paint, 3) ==
+        std::vector<G>{ { { 1, 0, 0 }, GhostKind::Paint }, { { 2, 0, 0 }, GhostKind::Paint } });
+  // what the preview names is what the tool changes
+  for (Tool t : { Tool::Fixed, Tool::Variable, Tool::Erase, Tool::Paint }) {
+    auto w = bttest::makeVoxel(gt, 4, 1, 1);
+    w->setState(1, 0, 0, voxel_c::VX_FILLED);
+    w->setState(2, 0, 0, voxel_c::VX_VARIABLE);
+    const auto before = previewTool(*w, row, t, 3);
+    CHECK(applyTool(*w, row, t, 3) == !before.empty());
+    CHECK(previewTool(*w, row, t, 3).empty());          // done: nothing left to do
+  }
+}
+
 TEST_CASE("applyTool skips coordinates that are not a cell of the voxel type", "[ui][voxeledit]") {
   gridType_c gt(gridType_c::GT_SPHERES);
   auto v = bttest::makeVoxel(gt, 2, 2, 1);

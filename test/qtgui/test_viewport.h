@@ -61,6 +61,7 @@ private slots:
   void translucencyBlendsInLinearLight();
   void innerVariableVoxelsShowThroughTheOuterOnes();
   void variableVoxelEdgesAreEvenDashes();
+  void hoveringTheGridDrawsTheGhost();
   void theTargetsOutgrowTheViewInSteps();
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();

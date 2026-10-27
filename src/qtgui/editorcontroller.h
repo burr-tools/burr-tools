@@ -169,6 +169,12 @@ public:
   /* "Cursor X1 Y2 · Z0" for a cell of the current plane and layer */
   QString cursorText(int col, int row) const;
 
+  /* The hover preview (C06, AC-C08-10): what the tool in effect would do at
+   * the cell under the pointer, Mirror and Span included -- the 3D view
+   * draws it as ghosts. Empty while the pointer is off the grid and while a
+   * stroke paints. previewChanged() whenever it may have changed. */
+  std::vector<btui::GhostCell> preview(void) const;
+
 signals:
 
   void toolChanged(void);
@@ -181,6 +187,7 @@ signals:
   void revisionChanged(void);
   void flashRequested(const QString & text);
   void drawColourChanged(void);
+  void previewChanged(void);
 
 private:
 

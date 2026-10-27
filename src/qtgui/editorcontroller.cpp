@@ -75,6 +75,10 @@ EditorController::EditorController(DocumentController * doc, ShapesModel * shape
     }
   });
   connect(m_colours, &ColoursModel::drawColourChanged, this, &EditorController::drawColourChanged);
+  // the hover preview follows the tool, Mirror and Span, the voxels and the colour
+  for (auto s : { &EditorController::toolChanged, &EditorController::modifiersChanged,
+                  &EditorController::revisionChanged, &EditorController::drawColourChanged })
+    connect(this, s, this, &EditorController::previewChanged);
   refreshShape();
 }
 
@@ -308,6 +312,19 @@ void EditorController::hover(int col, int row) {
   m_status->setCursorText(col >= 0 ? cursorText(col, row) : QString());
   if (toolInEffect() != before)
     emit toolChanged();
+  emit previewChanged();
+}
+
+std::vector<btui::GhostCell> EditorController::preview(void) const {
+  const voxel_c * s = shape();
+  if (!s || m_stroking || m_hoverCol < 0 || m_hoverRow < 0)
+    return {};
+  const btui::Cell3 t = btui::voxelAt(planeValue(), m_hoverCol, m_hoverRow, m_layer);
+  const std::vector<btui::Cell3> cells =
+      btui::expand(t, { int(s->getX()), int(s->getY()), int(s->getZ()) }, modifiers());
+  return guarded([&] {
+    return btui::previewTool(*s, cells, btui::Tool(int(toolInEffect())), unsigned(drawColour()));
+  });
 }
 
 void EditorController::setModifiers(Qt::KeyboardModifiers m) {

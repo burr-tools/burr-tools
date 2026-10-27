@@ -16,6 +16,7 @@ private slots:
   void theQuickToolIsCapturedAtThePress();
   void theToolInEffectFollowsTheModifiersHeldOverTheGrid();
   void mirrorAndSpanExpandEveryPlacement();
+  void theHoverPreviewIsWhatAClickWouldDo();
   void paintUsesTheDrawingColourAndLeavesEmptyCells();
   void theCursorReadoutNamesThePlanesAxes();
   void gridSizeStepsAndIsBlockedBeforeCuttingVoxels();
