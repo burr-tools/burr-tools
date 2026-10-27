@@ -363,10 +363,21 @@ private slots:
     QCOMPARE(t->topBar(), 36.0);
     QCOMPARE(t->workspaceRail(), 60.0);
     QCOMPARE(t->collapsedRail(), 48.0);
+    QCOMPARE(t->toolStrip(), 48.0);
+    QCOMPARE(t->planeWidth(), 54.0);
+    QCOMPARE(t->planeHeight(), 46.0);
+    QCOMPARE(t->layerChipWidth(), 32.0);
+    QCOMPARE(t->drawSwatch(), 32.0);
     t->setDensity(QStringLiteral("minimal"));
     QCOMPARE(t->topBar(), 32.0);
     QCOMPARE(t->workspaceRail(), 44.0);
     QCOMPARE(t->cardRadius(), 0.0);
+    QCOMPARE(t->toolStrip(), 36.0);
+    QCOMPARE(t->mirrorSpan(), 32.0);
+    QCOMPARE(t->planeWidth(), 38.0);
+    QCOMPARE(t->layerChipHeight(), 22.0);
+    QCOMPARE(t->stepper(), 26.0);
+    QCOMPARE(t->drawSwatch(), 26.0);
     t->setDensity(QStringLiteral("standard"));
 
     // anything that is not light or dark means "system"
