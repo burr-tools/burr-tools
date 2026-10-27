@@ -81,13 +81,14 @@ Where the two GUIs implement the same behaviour:
 
 | Behaviour | New GUI | Legacy | State |
 | :--- | :--- | :--- | :--- |
-| Undo history | `uicore/puzzlehistory` | the same code | shared |
+| Undo history | `uicore/puzzlehistory` | the same code | shared; a colour removal's step now copies the shapes it renumbers, which fixes legacy's Remove colour then Undo / Redo too (#140 second cut) |
 | Piece colours | `uicore/palette` | `gui/piececolor.cpp` wraps it | shared, to the bit (#140) |
 | STL parameter limits (sphere *Recursions*) | `lib/stl_2` | the same exporter | shared (#140) |
 | Update check | `tools/updatecheck`, `tools/httpget` | the same code | shared |
 | Menu commands | `uicore/commands` | `gui/mainmenu.cpp` | separate; `test_ui_commands` checks the new table against legacy's |
 | Open, save, import `.puz` | `uicore/documentsession`: writes beside the file and renames over it; an imported `.puz` is unsaved and has no name | `mainWindow_c` (`cb_Save`, `tryToLoad`, `cb_Load_Ps3d`): writes the file in place; keeps the `.puz` name | **to do:** legacy saves through the atomic write |
 | Convert, Import assemblies, Status | `uicore/puzzletools`: an import that adds nothing records no undo step | `convertwindow`, `assmimportwindow`, `statuswindow` | **to do:** legacy calls `btui::puzzletools` |
+| Colour list: add, edit, remove | `uicore/drawcolours` (P3): add stops at the library's 63; remove asks before it loses solutions | `mainWindow_c` `cb_AddColor`, `cb_ChangeColor`, `cb_RemoveColor`, `changeColor` | separate; legacy calls `btui::drawcolours` when it is next touched (rule 3) -- its Add can reach the library's assert at 63 colours |
 | Shape list: new, copy, delete, label, weight, reorder | `uicore/shapelist` (P2): weight stops at 0; delete keeps one shape and asks before it loses solutions | `mainWindow_c` `cb_NewShape`, `cb_CopyShape`, `cb_DeleteShape`, `cb_NameShape`, `cb_WeightChange`, `cb_ShapeExchange` | separate; legacy calls `btui::shapelist` when it is next touched (rule 3) |
 | Image and vector export, the 3D view | `uicore/imagepages`, `vectorexport`, `assemblyscene`, drawn on QRhi | `imageExport_c`, gl2ps, `voxelFrame_c` | separate by design: different renderers |
 | Settings | `uicore/settingsstore`, seeded once from legacy's file | `configuration_c` | separate by design; legacy's file is never written |
