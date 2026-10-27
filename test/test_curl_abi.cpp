@@ -20,7 +20,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 
-#include "../src/gui/curl_abi.h"
+#include "../src/tools/curl_abi.h"
 
 /* dlopen is POSIX-only. On Windows the update check uses WinHTTP, so the
  * runtime half of this file -- loading a live libcurl to cross-check the

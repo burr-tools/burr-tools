@@ -34,6 +34,11 @@ class stlExporter_2_c : public stlExporter_c {
 
     virtual Polyhedron * getMesh(const voxel_c & v) const;
 
+    /* the most Recursions setParameter() accepts: every level splits each
+     * triangle in four, recursively, so a few levels more take minutes and
+     * then overflow the stack */
+    static constexpr int MAX_RECURSION = 6;
+
     /* some functions to set some parameters for the output,
      * all parameters must be double values.
      */
