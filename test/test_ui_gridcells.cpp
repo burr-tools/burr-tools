@@ -115,16 +115,50 @@ TEST_CASE("sphere layers hold the voxels whose x+y+z is even, as touching circle
     CHECK(c.round);
 }
 
-TEST_CASE("planes other than XY, and layers out of range, have no cells", "[ui][gridcells]") {
+TEST_CASE("the prism's other planes, and layers out of range, have no cells", "[ui][gridcells]") {
   for (gridType_c::gridType t : bttest::ALL_GRIDS) {
     INFO(bttest::gridName(t));
     gridType_c gt(t);
     auto v = bttest::makeVoxel(gt, 5, 5, 5);
     CHECK(gridLayout(*v, Plane::XY, -1).cells.empty());
     CHECK(gridLayout(*v, Plane::XY, 5).cells.empty());
-    if (t != gridType_c::GT_BRICKS) {
-      CHECK(gridLayout(*v, Plane::XZ, 0).cells.empty());
-      CHECK(gridLayout(*v, Plane::YZ, 0).cells.empty());
+    CHECK(gridLayout(*v, Plane::XZ, 5).cells.empty());
+    CHECK(gridLayout(*v, Plane::XZ, 0).cells.empty() == (t == gridType_c::GT_TRIANGULAR_PRISM));
+    CHECK(gridLayout(*v, Plane::YZ, 0).cells.empty() == (t == gridType_c::GT_TRIANGULAR_PRISM));
+  }
+}
+
+TEST_CASE("an XZ or YZ layer of a symmetric grid is the XY layer with the axes swapped", "[ui][gridcells]") {
+  // spheres, rhombic and tetra-octa: the same drawing, the cells' voxels
+  // with the plane's axes; each cell hit at its own centre
+  for (gridType_c::gridType t : { gridType_c::GT_SPHERES, gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA }) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 10, 10, 10);
+    for (int layer : { 0, 1, 2, 3, 7 }) {
+      INFO("layer " << layer);
+      const GridLayout xy = gridLayout(*v, Plane::XY, layer);
+      for (Plane p : { Plane::XZ, Plane::YZ }) {
+        const GridLayout l = gridLayout(*v, p, layer);
+        REQUIRE(l.cells.size() == xy.cells.size());
+        CHECK(l.width == xy.width);
+        CHECK(l.height == xy.height);
+        for (size_t i = 0; i < l.cells.size(); i++) {
+          const GridCell & a = l.cells[i];
+          const GridCell & b = xy.cells[i];
+          CHECK(a.col == b.col);
+          CHECK(a.row == b.row);
+          CHECK(a.voxel == voxelAt(p, a.col, a.row, layer));
+          CHECK(v->validCoordinate(a.voxel.x, a.voxel.y, a.voxel.z));
+          REQUIRE(a.outline.size() == b.outline.size());
+          Pt m{ 0, 0 };
+          for (const Pt & q : a.outline) {
+            m.x += q.x / double(a.outline.size());
+            m.y += q.y / double(a.outline.size());
+          }
+          CHECK(cellAt(l, m) == int(i));
+        }
+      }
     }
   }
 }

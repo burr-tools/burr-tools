@@ -319,7 +319,7 @@ Card {
                             HoverHandler { id: planeHover; enabled: !planeCell.available }
                             BtToolTip {
                                 shown: planeHover.hovered
-                                text: qsTr("Only brick shapes are edited in the XZ and YZ planes; %1 shapes are edited one XY layer at a time").arg(App.document.gridTypeName)
+                                text: qsTr("%1 shapes are edited one XY layer at a time: across the prisms their layers are not alike").arg(App.document.gridTypeName)
                             }
                         }
                     }

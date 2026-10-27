@@ -169,8 +169,8 @@ TestCase {
         compare(App.editor.tool, EditorController.Paint)
         keyClick(Qt.Key_Left)
         compare(App.editor.tool, EditorController.Erase)
-        // the planes: a disabled one is skipped
-        App.document.newDocument(2)
+        // the planes: a disabled one is skipped (prisms: XY only)
+        App.document.newDocument(1)
         App.shapes.addShape()
         App.shapes.select(0)
         const planes = item("entities.editor.plane.group")
@@ -227,9 +227,9 @@ TestCase {
         compare(App.editor.layer, top - 2)
     }
 
-    function test_otherVoxelTypesEditXyOnly() {
-        // product decision 2026-10-27: XZ and YZ for bricks only
-        App.document.newDocument(2)                          // spheres
+    function test_prismsEditXyOnly() {
+        // product decision 2026-10-28: every plane but for prisms
+        App.document.newDocument(1)                          // triangular prisms
         App.shapes.addShape()
         App.shapes.select(0)
         waitForRendering(win.contentItem)
@@ -238,6 +238,17 @@ TestCase {
         verify(item("entities.editor.plane.xy").on)
         mouseClick(item("entities.editor.plane.yz"))
         compare(App.editor.plane, EditorController.XY)
+        // spheres, rhombic, tetra-octa: all three
+        for (const type of [2, 3, 4]) {
+            App.document.newDocument(type)
+            App.shapes.addShape()
+            App.shapes.select(0)
+            waitForRendering(win.contentItem)
+            verify(item("entities.editor.plane.yz").enabled, type)
+            mouseClick(item("entities.editor.plane.yz"))
+            compare(App.editor.plane, EditorController.YZ)
+            mouseClick(item("entities.editor.plane.xy"))
+        }
     }
 
     function test_theSteppersResizeAndRefuseToCutVoxels() {
