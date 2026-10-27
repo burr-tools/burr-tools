@@ -165,7 +165,7 @@ bool EditorController::click3d(const btui::Target3d & t, Qt::KeyboardModifiers m
   const int idx = m_shapeIndex;
   bool changed = false;
   guarded([&] {
-    m_doc->edit(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, DocumentController::Change::Voxels, idx, idx,
+    m_doc->edit(puzzleHistory_c::AK_ENTITIES_CLICK_3D, DocumentController::Change::Voxels, idx, idx,
                 [&](puzzle_c & p) { return changed = btui::applyTool(*p.getShape(unsigned(idx)), cells, *tool, colour); });
   });
   return changed;

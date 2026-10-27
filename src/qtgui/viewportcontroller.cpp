@@ -429,7 +429,43 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
     }
   }
   addGhosts(f);
+  addTransformPreview(f);
   return f;
+}
+
+// --- Transform preview (C04) ---------------------------------------------------
+
+void ViewportController::setTransformPreview(TransformPreview p) {
+  m_transform = std::move(p);
+  emit frameChanged();
+}
+
+void ViewportController::clearTransformPreview(void) {
+  if (!m_transform)
+    return;
+  m_transform.reset();
+  emit frameChanged();
+}
+
+void ViewportController::addTransformPreview(SceneFrame & f) const {
+  const Theme * t = Theme::instance();
+  if (!m_transform || !m_shape || !t)
+    return;
+  const TransformPreview & p = *m_transform;
+  const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
+  const QColor piece = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  guarded([&] {
+    btui::addResultGhost(f.ghostFaces, f.ghostLines, *m_shape, p.result.get(),
+                         { rgba(piece, 0.5f), rgba(t->accent()), 1.5f });
+  });
+  if (!p.hint)
+    return;
+  // legacy's colour: the axis the change mostly runs along
+  const float ax = std::fabs(p.axis.x), ay = std::fabs(p.axis.y), az = std::fabs(p.axis.z);
+  const QColor c = p.blocked ? t->danger() : ax >= ay && ax >= az ? t->axisX() : ay >= az ? t->axisY() : t->axisZ();
+  const btui::Box g = btui::gridBounds(*m_shape);
+  btui::addTransformHint(f.hintLines, (g.min + g.max) * 0.5f, btui::transformHintRadius(*m_shape), p.kind, p.axis,
+                         p.angleDeg, rgba(c), 3.0f);
 }
 
 /* The editor's hover preview as ghosts (C06 "Ghost preview"): Fixed and

@@ -39,6 +39,7 @@ class TestEdit3d : public QObject {
   Q_OBJECT
 private slots:
   void aClickEditsWithAQuickToolOrInEditMode();
+  void quickClicksAreAStepEach();
   void dragsAndOtherButtonsNeverEdit();
   void theSlabIsA2dGridInTheView();
   void anEmptyShapeWithoutTheSlabStartsAtTheOrigin();
