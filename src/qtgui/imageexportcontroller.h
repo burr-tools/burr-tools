@@ -25,6 +25,7 @@
 
 #include "../uicore/assemblyscene.h"
 #include "../uicore/imagepages.h"
+#include "../uicore/vocabulary.h"
 
 #include <QImage>
 #include <QString>
@@ -92,7 +93,7 @@ public:
                         QObject * parent = nullptr);
   ~ImageExportController() override;
 
-  QString mode(void) const { return m_mode; }
+  QString mode(void) const;
   void setMode(const QString & m);
   int shape(void) const { return m_shape; }
   void setShape(int s);
@@ -112,7 +113,7 @@ public:
   bool dimStatic(void) const { return m_dim; }
   void setDimStatic(bool d);
 
-  QString paper(void) const { return m_paper; }
+  QString paper(void) const;
   void setPaper(const QString & p);
   int sizeXmm(void) const { return m_mmX; }
   void setSizeXmm(int v);
@@ -186,11 +187,11 @@ private:
   DocumentController * m_doc;
   ShapesModel * m_shapes;
 
-  QString m_mode = QStringLiteral("solution");
+  btui::ImageMode m_mode = btui::ImageMode::Solution;
   int m_shape = 0, m_problem = 0;
   bool m_transparent = false, m_constraint = false, m_dim = false;
   int m_aa = 3;
-  QString m_paper = QStringLiteral("manual");
+  btui::Paper m_paper = btui::Paper::Manual;
   int m_mmX = 0, m_mmY = 0, m_dpi = 300, m_pxX = 300, m_pxY = 300, m_pages = 1;
 
   bool m_open = false;             // between begin() and end()
