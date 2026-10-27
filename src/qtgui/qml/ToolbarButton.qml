@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // A 3D-toolbar button (C06): icon over a caption, 48x44; compact 34x34
+// (Focus 2D), 34x32 in Minimal
 // icon-only (Focus 2D, Minimal), where the caption becomes the tooltip.
 AbstractButton {
     id: root
@@ -16,7 +17,7 @@ AbstractButton {
     property string badge            // the Edit button's tool number
 
     implicitWidth: compact ? 34 : Theme.toolbarButtonWidth
-    implicitHeight: compact ? 34 : Theme.toolbarButtonHeight
+    implicitHeight: compact && !Theme.minimal ? 34 : Theme.toolbarButtonHeight
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     Accessible.name: caption
