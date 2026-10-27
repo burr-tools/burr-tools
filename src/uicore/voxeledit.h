@@ -72,9 +72,12 @@ namespace btui {
   /* the voxel a cell of a plane's layer is */
   Cell3 voxelAt(Plane p, int col, int row, int layer);
 
-  /* Only bricks have a 2D grid in every plane; the other voxel types are
-   * edited in the XY plane, one Z layer at a time, as legacy does (product
-   * decision 2026-10-27: their XZ and YZ cuts are not designed). */
+  /* Every voxel type but the triangular prism has a 2D grid in every
+   * plane: bricks, spheres, rhombic and tetra-octa grids look the same along
+   * X, Y and Z (their cells map onto each other when the axes are swapped),
+   * so an XZ or YZ layer is drawn as an XY one (product decision 2026-10-28).
+   * Prisms are edited in the XY plane, one Z layer at a time, as legacy
+   * does: across the prisms their layers are not alike. */
   bool planeAvailable(gridType_c::gridType type, Plane p);
 
   /* "X", "Y", "Z" for axis 0, 1, 2 */
@@ -132,8 +135,9 @@ namespace btui {
    *    the cell beyond it (Rejected when that is outside the grid: no
    *    ghost, the face outlined, a click does nothing); Erase and Paint on
    *    the voxel itself.
-   *  - Slab: the pointer is on the active layer's slab, nearer than any
-   *    voxel: the layer acts as the 2D grid, on the cell under the pointer.
+   *  - Slab: the pointer is on the active layer's slab and on no voxel: the
+   *    layer acts as the 2D grid, on the cell under the pointer. A voxel
+   *    under the pointer always decides, even behind or below the slab.
    *  - Origin: the shape is empty and the slab not shown -- the first voxel
    *    goes to the origin, wherever the pointer is.
    * `voxel` is the hit against the shape's voxels, `slab` the hit against

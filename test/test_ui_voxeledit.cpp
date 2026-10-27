@@ -11,7 +11,10 @@
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
 
+#include <array>
+#include <cmath>
 #include <memory>
+#include <set>
 
 using namespace btui;
 
@@ -194,33 +197,37 @@ TEST_CASE("a 3D press acts beyond the face for Fixed and Variable, on the voxel 
   CHECK(target3d(*v, Tool::Fixed, down(*v, 0.5f, 0.5f), none, false).source == TargetSource::None);
 }
 
-TEST_CASE("the active layer's slab acts as the 2D grid where no voxel is nearer", "[ui][voxeledit]") {
-  // product decision 2026-10-27
+TEST_CASE("the active layer's slab acts as the 2D grid where the pointer is on no voxel", "[ui][voxeledit]") {
+  // product decisions 2026-10-27 and -28
   gridType_c gt(gridType_c::GT_BRICKS);
-  auto v = bttest::makeVoxel(gt, 3, 3, 3);
-  v->setState(2, 2, 0, voxel_c::VX_FILLED);                // below the active layer 1
-  auto layer = layerCells(*v, Plane::XY, 1);
-  CHECK(layer->countState(voxel_c::VX_FILLED) == 9);
+  auto v = bttest::makeVoxel(gt, 4, 3, 4);
+  v->setState(2, 2, 0, voxel_c::VX_FILLED);                // below the active layer 2
+  auto layer = layerCells(*v, Plane::XY, 2);
+  CHECK(layer->countState(voxel_c::VX_FILLED) == 12);
   auto slabAt = [&](float x, float y) { return down(*layer, x, y); };
 
-  // over an empty cell of the slab: that cell, though a voxel lies below
-  Target3d t = target3d(*v, Tool::Fixed, down(*v, 2.5f, 2.5f), slabAt(2.5f, 2.5f), true);
+  // over an empty column: the slab's cell
+  Target3d t = target3d(*v, Tool::Fixed, down(*v, 0.5f, 0.5f), slabAt(0.5f, 0.5f), true);
   CHECK(t.source == TargetSource::Slab);
+  CHECK(t.cell == Cell3{ 0, 0, 2 });
+  // on a voxel below the slab: its face decides, not the slab in front of it
+  t = target3d(*v, Tool::Fixed, down(*v, 2.5f, 2.5f), slabAt(2.5f, 2.5f), true);
+  CHECK(t.source == TargetSource::Face);
   CHECK(t.cell == Cell3{ 2, 2, 1 });
-  // the slab hidden: the voxel's face again
+  // the slab hidden: the same
   t = target3d(*v, Tool::Fixed, down(*v, 2.5f, 2.5f), slabAt(2.5f, 2.5f), false);
   CHECK(t.source == TargetSource::Face);
   CHECK(t.cell == Cell3{ 2, 2, 1 });
-  // a voxel in the slab: its face wins the tie
-  v->setState(0, 0, 1, voxel_c::VX_FILLED);
+  // a voxel in the slab: its face
+  v->setState(0, 0, 2, voxel_c::VX_FILLED);
   t = target3d(*v, Tool::Fixed, down(*v, 0.5f, 0.5f), slabAt(0.5f, 0.5f), true);
   CHECK(t.source == TargetSource::Face);
-  CHECK(t.cell == Cell3{ 0, 0, 2 });
+  CHECK(t.cell == Cell3{ 0, 0, 3 });
   // a voxel above the slab, in front of it: its face
-  v->setState(1, 0, 2, voxel_c::VX_FILLED);
+  v->setState(1, 0, 3, voxel_c::VX_FILLED);
   t = target3d(*v, Tool::Erase, down(*v, 1.5f, 0.5f), slabAt(1.5f, 0.5f), true);
   CHECK(t.source == TargetSource::Face);
-  CHECK(t.cell == Cell3{ 1, 0, 2 });
+  CHECK(t.cell == Cell3{ 1, 0, 3 });
 }
 
 TEST_CASE("an empty shape with the slab hidden places at the origin", "[ui][voxeledit]") {
@@ -265,12 +272,58 @@ TEST_CASE("planes map columns, rows and layers to X Y Z; a 4x3x5 shape has 5, 3 
     CHECK(planeAxes(p).layer == layerAxis(p));
 }
 
-TEST_CASE("only bricks have the XZ and YZ planes", "[ui][voxeledit]") {
+TEST_CASE("every voxel type but the prism has the XZ and YZ planes", "[ui][voxeledit]") {
   for (gridType_c::gridType t : bttest::ALL_GRIDS) {
     INFO(bttest::gridName(t));
     CHECK(planeAvailable(t, Plane::XY));
-    CHECK(planeAvailable(t, Plane::XZ) == (t == gridType_c::GT_BRICKS));
-    CHECK(planeAvailable(t, Plane::YZ) == (t == gridType_c::GT_BRICKS));
+    CHECK(planeAvailable(t, Plane::XZ) == (t != gridType_c::GT_TRIANGULAR_PRISM));
+    CHECK(planeAvailable(t, Plane::YZ) == (t != gridType_c::GT_TRIANGULAR_PRISM));
+  }
+}
+
+TEST_CASE("the grids with every plane look the same along every axis", "[ui][voxeledit]") {
+  // why an XZ or YZ layer may be drawn as an XY one (planeAvailable): the
+  // cells, and every corner of their faces, map onto each other when the
+  // axes are swapped -- all six orders of X, Y, Z
+  const int perms[6][3] = { { 0, 1, 2 }, { 0, 2, 1 }, { 1, 0, 2 }, { 1, 2, 0 }, { 2, 0, 1 }, { 2, 1, 0 } };
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    if (!planeAvailable(t, Plane::YZ))
+      continue;
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    const int n = 10;                          // two of the rhombic grid's 5-unit blocks
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    // a cell's corners in drawing space, rounded to 1/1000
+    auto corners = [&](int x, int y, int z) {
+      std::set<std::array<long, 3>> out;
+      std::vector<float> fc;
+      int nx, ny, nz;
+      for (unsigned k = 0; v->getNeighbor(k, 0, x, y, z, &nx, &ny, &nz); k++) {
+        fc.clear();
+        v->getConnectionFace(x, y, z, int(k), 0, 0, fc);
+        for (size_t i = 0; i + 2 < fc.size(); i += 3)
+          out.insert({ std::lround(fc[i] * 1000), std::lround(fc[i + 1] * 1000), std::lround(fc[i + 2] * 1000) });
+      }
+      return out;
+    };
+    int checked = 0;
+    for (const auto & p : perms)
+      for (int x = 0; x < n; x++)
+        for (int y = 0; y < n; y++)
+          for (int z = 0; z < n; z++) {
+            const int c[3] = { x, y, z };
+            const int q[3] = { c[p[0]], c[p[1]], c[p[2]] };
+            REQUIRE(v->validCoordinate(x, y, z) == v->validCoordinate(q[0], q[1], q[2]));
+            if (t == gridType_c::GT_SPHERES || !v->validCoordinate(x, y, z) || x + y + z > 12)
+              continue;
+            std::set<std::array<long, 3>> mapped;
+            for (const auto & k : corners(x, y, z))
+              mapped.insert({ k[size_t(p[0])], k[size_t(p[1])], k[size_t(p[2])] });
+            CHECK(mapped == corners(q[0], q[1], q[2]));
+            checked++;
+          }
+    if (t != gridType_c::GT_SPHERES)
+      CHECK(checked > 100);
   }
 }
 

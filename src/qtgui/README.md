@@ -31,7 +31,7 @@ it can replace it.
 | — 3D view | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in it since P5 |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
 | P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; the 2D grid paints with it since P4, 3D editing with P5 |
-| P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for bricks), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
+| P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for all but prisms), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
 | P6 onward | Inspector, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
 
@@ -344,10 +344,13 @@ commit holds just the images that changed.
   chooser); Edit colour… opens the platform's chooser (`ColorDialog`). The
   palette has a row of its own under the current colour, as wide as the
   card (C09 put it beside the name, where it had room for one swatch).
-- **Voxel editor** (P4): **XZ and YZ are for bricks only** (product
-  decision 2026-10-27): the other voxel types are edited one XY layer at a
-  time, as legacy does, and their XZ / YZ buttons are disabled with a
-  tooltip saying why (C08 offers all three planes for every type). The
+- **Voxel editor** (P4): **XZ and YZ for every voxel type but the
+  triangular prism** (product decisions 2026-10-27 and -28): spheres,
+  rhombic and tetra-octa grids look the same along X, Y and Z -- a test
+  maps every cell's corners onto each other under the six axis orders --
+  so their XZ and YZ layers are drawn as XY ones. Prisms are edited one XY
+  layer at a time, as legacy does; their XZ / YZ buttons are disabled with
+  a tooltip saying why (C08 offers all three planes for every type). The
   tool strip and the plane row are **one Tab stop each** (the selected
   button, ← → move), as C07 asks of the strip. The layer chips are no Tab
   stops: PgUp / PgDn step the layer anywhere in Entities. The grid has no
@@ -584,9 +587,10 @@ Every phase's pull request follows what #140 settled:
   one place.
 - **Where it acts** (`btui::target3d`; product decision 2026-10-27): on a
   voxel's face, Fixed and Variable the cell beyond it and Erase and Paint
-  the voxel; on the active layer's slab, nearer than any voxel, the layer
-  is a 2D grid and the cell under the pointer is the target (a voxel in
-  the slab wins the tie); in an empty shape with the slab hidden, the
+  the voxel -- a voxel under the pointer always decides, even behind or
+  below the slab (2026-10-28); on the active layer's slab where the
+  pointer is on no voxel, the layer is a 2D grid and the cell under the
+  pointer is the target; in an empty shape with the slab hidden, the
   first voxel goes to the origin (the voxel type's nearest cell) wherever
   the pointer is. A Fixed or Variable press whose cell is outside the grid
   outlines the face in dashed danger and does nothing. Picking runs on

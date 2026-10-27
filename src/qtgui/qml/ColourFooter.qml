@@ -13,9 +13,10 @@ import BurrTools.Ui
 //
 // Wireframe (each number marks its code below):
 //
-//   ┌───────────────────────────────────────────┐   ① 32 dp; Minimal 26, the
-//   │ ①┌──┐ ②DRAWING COLOUR          ④[+] ⑤[⋯] │      caption in its tooltip
-//   │  └──┘   C1                               │
+//   ┌───────────────────────────────────────────┐
+//   │ ⑦COLOURS ⓘ                                 │   what colours are for, as a tooltip
+//   │ ①┌──┐ ②DRAWING COLOUR          ④[+] ⑤[⋯] │   ① 32 dp; Minimal 26, the
+//   │  └──┘   C1                               │      caption in its tooltip
 //   │ ③(●)(■)(■)(■)(■)(■)(■)(■)                 │   the palette, full width:
 //   │   (■)(■)                                  │   it wraps, 3 rows, then scrolls
 //   └───────────────────────────────────────────┘
@@ -23,11 +24,14 @@ import BurrTools.Ui
 Rectangle {
     id: root
     objectName: "entities.editor.colour"
-    implicitHeight: row.implicitHeight + 8 + palette.implicitHeight + 16
+    implicitHeight: header.height + 8 + row.implicitHeight + 8 + palette.implicitHeight + 16
     color: Theme.panel
 
     readonly property int swatchSize: 26
     readonly property string paletteHelp: qsTr("Arrow keys choose, Enter edits, Delete removes, the Menu key has the rest")
+    /* what the colours are for: voxels are coloured mainly to constrain
+     * where pieces may go (the Puzzle workspace's colour rules) */
+    readonly property string purpose: qsTr("Colours are mainly for colour constraints: in the Puzzle workspace, colour rules say which colours of the pieces may fill which colours of the result. New and painted voxels get the drawing colour; Default, the shape's own colour, constrains nothing.")
 
     function openMenu(id: int, at: Item, x: real, y: real) {
         colourMenu.colourId = id
@@ -141,10 +145,55 @@ Rectangle {
         }
     }
 
+    Row { // ⑦
+        id: header
+        objectName: "entities.editor.colour.header"
+        anchors { left: parent.left; top: parent.top; leftMargin: 12; topMargin: 8 }
+        height: info.height
+        spacing: 4
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("Colours")
+            color: Theme.muted
+            font.pixelSize: Theme.fontMicro
+            font.weight: Font.DemiBold
+            font.capitalization: Font.AllUppercase
+        }
+        // the purpose, by pointer or keyboard
+        AbstractButton {
+            id: info
+            objectName: "entities.editor.colour.info"
+            anchors.verticalCenter: parent.verticalCenter
+            width: 20
+            height: 20
+            focusPolicy: Qt.TabFocus
+            hoverEnabled: true
+            Accessible.role: Accessible.Button
+            Accessible.name: qsTr("About colours")
+            Accessible.description: root.purpose
+            readonly property alias toolTip: infoTip
+            background: Rectangle {
+                radius: 10
+                color: info.hovered ? Theme.panel2 : "transparent"
+                border.width: info.visualFocus ? 2 : 0
+                border.color: Theme.accent
+            }
+            contentItem: Item {
+                Icon {
+                    anchors.centerIn: parent
+                    name: "info"
+                    size: 14
+                    color: info.hovered || info.visualFocus ? Theme.text : Theme.muted
+                }
+            }
+            BtToolTip { id: infoTip; shown: info.hovered || info.visualFocus; text: root.purpose }
+        }
+    }
+
     RowLayout {
         id: row
-        anchors { left: parent.left; right: parent.right; top: parent.top
-                  leftMargin: 12; rightMargin: 12; topMargin: 10 }
+        anchors { left: parent.left; right: parent.right; top: header.bottom
+                  leftMargin: 12; rightMargin: 12; topMargin: 8 }
         spacing: 12
 
         Rectangle { // ①
@@ -226,7 +275,7 @@ Rectangle {
         focusPolicy: Qt.TabFocus
         Accessible.role: Accessible.List
         Accessible.name: qsTr("Drawing colour: %1").arg(App.colours.drawName)
-        Accessible.description: root.paletteHelp
+        Accessible.description: root.paletteHelp + ". " + root.purpose
         // the palette's keys are its own, not the window's (Home is the 3D view's)
         Keys.onShortcutOverride: (event) => {
             if ([Qt.Key_Home, Qt.Key_End, Qt.Key_Return, Qt.Key_Enter, Qt.Key_Delete, Qt.Key_Backspace].indexOf(event.key) >= 0

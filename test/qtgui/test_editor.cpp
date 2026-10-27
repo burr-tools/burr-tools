@@ -305,13 +305,18 @@ void TestEdit3d::theSlabIsA2dGridInTheView() {
   QCOMPARE(int(f.v->targetAt(160, 120, Qt::ShiftModifier).source), int(btui::TargetSource::Slab));
   f.click3d(Qt::ShiftModifier);
   QCOMPARE(f.state(1, 1, 1), int(voxel_c::VX_FILLED));
-  // a voxel below the layer: the slab is nearer, its cell is the target
-  f.fill(2, 1, 0);
-  f.editor()->setLayer(1);
+  // over a column with nothing in it: the slab's cell
   const QPointF c21 = f.at(2, 1);
-  const btui::Target3d t = f.v->targetAt(float(c21.x()), float(c21.y()), Qt::ShiftModifier);
+  btui::Target3d t = f.v->targetAt(float(c21.x()), float(c21.y()), Qt::ShiftModifier);
   QCOMPARE(int(t.source), int(btui::TargetSource::Slab));
   QVERIFY((t.cell == btui::Cell3{ 2, 1, 1 }));
+  // a voxel below the layer: the pointer is on it, so its face decides (2026-10-28)
+  f.fill(2, 1, 0);
+  f.editor()->setLayer(2);
+  t = f.v->targetAt(float(c21.x()), float(c21.y()), Qt::ShiftModifier);
+  QCOMPARE(int(t.source), int(btui::TargetSource::Face));
+  QVERIFY((t.cell == btui::Cell3{ 2, 1, 1 }));
+  f.editor()->setLayer(1);
   // the voxel in the layer: its face is the target
   QCOMPARE(int(f.v->targetAt(160, 120, Qt::ShiftModifier).source), int(btui::TargetSource::Face));
 }
@@ -562,6 +567,7 @@ void TestEditor::applyToAllResizesEveryShape() {
 }
 
 void TestEditor::onlyBricksHaveTheXzAndYzPlanes() {
+  // all but the prisms (product decision 2026-10-28)
   EditorFixture f(4, 4, 4);
   EditorController * e = f.editor();
   QVERIFY(e->allPlanes());
@@ -570,8 +576,19 @@ void TestEditor::onlyBricksHaveTheXzAndYzPlanes() {
   f.app->document()->newDocument(gridType_c::GT_SPHERES);
   f.app->document()->editStructure(0, [](puzzle_c & p) { p.addShape(4, 4, 4); return true; });
   f.app->shapes()->select(0);
+  QVERIFY(e->allPlanes());
+  e->setPlane(EditorController::YZ);
+  QCOMPARE(e->plane(), EditorController::YZ);
+  // a YZ click: the cell's voxel has X the layer
+  e->setLayer(2);
+  f.click(0, 0);
+  QCOMPARE(f.state(2, 0, 0), int(voxel_c::VX_FILLED));
+  // prisms: XY only, and a plane they lack falls back
+  f.app->document()->newDocument(gridType_c::GT_TRIANGULAR_PRISM);
+  f.app->document()->editStructure(0, [](puzzle_c & p) { p.addShape(4, 4, 4); return true; });
+  f.app->shapes()->select(0);
   QVERIFY(!e->allPlanes());
-  QCOMPARE(e->plane(), EditorController::XY);   // fell back
+  QCOMPARE(e->plane(), EditorController::XY);
   e->setPlane(EditorController::YZ);
   QCOMPARE(e->plane(), EditorController::XY);
   QVERIFY(!e->planeAvailable(EditorController::YZ));
