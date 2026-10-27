@@ -227,6 +227,14 @@ TestCase {
             if (minimal)
                 verify(b.height >= caption.implicitWidth + 22, n + " holds its caption")
         }
+        // the menu button (the menu bar hidden): Minimal shows its icon alone
+        App.settings.showMenuBar = false
+        const menu = item("rail-menu")
+        if (menu.visible) {
+            compare(findChild(menu, "caption").visible, !minimal)
+            compare(menu.Accessible.name, "Menu")
+            compare(menu.tip, "All menus")
+        }
 
         // Shapes' New: "+" alone in Minimal, square; named for assistive tech either way
         const add = item("entities.shapes.new")
