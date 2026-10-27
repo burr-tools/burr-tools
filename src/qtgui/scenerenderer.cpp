@@ -99,6 +99,37 @@ namespace {
 
   constexpr int kMeshStride = sizeof(btui::MeshVertex);
 
+  /* The key each triangle is sorted by, back to front: the centre of its
+   * face -- the run of triangles of one voxel facing one way, a fan and the
+   * Classic style's variable marker over it -- so a face's triangles stay
+   * together in the mesh's order, the marker after its face. Each
+   * triangle's own centre would put one of a face's triangles in front of
+   * the marker as often as not, and hide half of it. */
+  void faceCentres(const std::vector<btui::MeshVertex> & t, std::vector<btui::Vec3> & out) {
+    auto centre = [&](size_t i) {
+      return btui::Vec3{ t[i].pos[0] + t[i + 1].pos[0] + t[i + 2].pos[0], t[i].pos[1] + t[i + 1].pos[1] + t[i + 2].pos[1],
+                         t[i].pos[2] + t[i + 1].pos[2] + t[i + 2].pos[2] } * (1.0f / 3.0f);
+    };
+    auto sameFace = [&](size_t a, size_t b) {
+      for (int k = 0; k < 3; k++)
+        if (t[a].cell[k] != t[b].cell[k] || t[a].normal[k] != t[b].normal[k])
+          return false;
+      return true;
+    };
+    for (size_t i = 0; i + 2 < t.size();) {
+      size_t end = i + 3;
+      while (end + 2 < t.size() && sameFace(i, end))
+        end += 3;
+      btui::Vec3 c{ 0, 0, 0 };
+      for (size_t j = i; j < end; j += 3)
+        c = c + centre(j);
+      c = c * (3.0f / float(end - i));
+      for (size_t j = i; j < end; j += 3)
+        out.push_back(c);
+      i = end;
+    }
+  }
+
   // the spec's light direction, in view space (C13; the mock uses it for the scene too)
   constexpr const float (&kLight)[3] = btui::kSceneLight;
 
@@ -148,9 +179,10 @@ struct SceneRenderer::Impl {
   std::unique_ptr<QRhiTextureRenderTarget> sceneRt;
   std::unique_ptr<QRhiRenderPassDescriptor> sceneRp;
 
-  std::unique_ptr<QRhiBuffer> meshUbo, translucentUbo, overlayUbo, ghostUbo, ghostHiddenUbo, lineUbo, compositeUbo;
+  std::unique_ptr<QRhiBuffer> meshUbo, translucentUbo, overlayUbo, ghostUbo, ghostHiddenUbo, lineUbo, lineCoreUbo,
+                              compositeUbo;
   std::unique_ptr<QRhiShaderResourceBindings> meshSrb, translucentSrb, overlaySrb, ghostSrb, ghostHiddenSrb, lineSrb,
-                                              compositeSrb;
+                                              lineCoreSrb, compositeSrb;
   std::unique_ptr<QRhiSampler> sampler;
   std::unique_ptr<QRhiBuffer> triangle;          // the composite pass's one big triangle
   bool triangleUploaded = false;
@@ -277,6 +309,7 @@ void SceneRenderer::Impl::createShared(void) {
   ghostUbo = ubo(sizeof(MeshUniforms));
   ghostHiddenUbo = ubo(sizeof(MeshUniforms));
   lineUbo = ubo(sizeof(LineUniforms));
+  lineCoreUbo = ubo(sizeof(LineUniforms));
   compositeUbo = ubo(sizeof(CompositeUniforms));
 
   const auto stages = QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage;
@@ -292,6 +325,7 @@ void SceneRenderer::Impl::createShared(void) {
   ghostSrb = srb(ghostUbo.get());
   ghostHiddenSrb = srb(ghostHiddenUbo.get());
   lineSrb = srb(lineUbo.get());
+  lineCoreSrb = srb(lineCoreUbo.get());
 
   sampler.reset(rhi->newSampler(QRhiSampler::Nearest, QRhiSampler::Nearest, QRhiSampler::None,
                                 QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
@@ -452,9 +486,12 @@ void SceneRenderer::Impl::createScenePipelines(void) {
   ghost = make(meshVs, meshFs, meshLayout, ghostSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
   ghostHidden = make(meshVs, meshFs, meshLayout, ghostHiddenSrb.get(), GP::Back, false, GP::Greater, &blend);
   linesHidden = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, false, GP::Greater, &blend);
-  // before every translucent layer: a line inside a translucent block is
-  // seen through the voxels in front of it, one in front stays on top
-  linesFirst = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, true, GP::LessOrEqual, &blend);
+  /* before every translucent layer: a line inside a translucent block is
+   * seen through the voxels in front of it, one in front stays on top. Its
+   * depth only, and only its solid core's (cover >= 0.5): the fading fringe
+   * writing depth would cut a hole into a voxel behind it, the background
+   * showing through as a halo. The colour goes first, with `lines`. */
+  linesFirst = make(lineVs, lineFs, lineLayout, lineCoreSrb.get(), GP::None, true, GP::LessOrEqual, &noColor);
 }
 
 /* The copy into the caller's target, made for its render pass layout. */
@@ -511,14 +548,8 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     d->allCentres.clear();
     d->sorted = false;
     if (f.mesh) {
-      auto centres = [](const std::vector<btui::MeshVertex> & t, std::vector<btui::Vec3> & out) {
-        for (size_t i = 0; i + 2 < t.size(); i += 3)
-          out.push_back(btui::Vec3{ t[i].pos[0] + t[i + 1].pos[0] + t[i + 2].pos[0],
-                                    t[i].pos[1] + t[i + 1].pos[1] + t[i + 2].pos[1],
-                                    t[i].pos[2] + t[i + 1].pos[2] + t[i + 2].pos[2] } * (1.0f / 3.0f));
-      };
       d->translucentCentres.reserve(f.mesh->translucent.size() / 3);
-      centres(f.mesh->translucent, d->translucentCentres);
+      faceCentres(f.mesh->translucent, d->translucentCentres);
     }
   }
 
@@ -534,12 +565,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   if (dimming && d->allCentres.empty() && f.mesh) {
     d->allCentres.reserve((d->opaqueCount + d->translucentCount) / 3);
     for (const auto * part : { &f.mesh->opaque, &f.mesh->translucent })
-      for (size_t i = 0; i + 2 < part->size(); i += 3) {
-        const auto & t = *part;
-        d->allCentres.push_back(btui::Vec3{ t[i].pos[0] + t[i + 1].pos[0] + t[i + 2].pos[0],
-                                            t[i].pos[1] + t[i + 1].pos[1] + t[i + 2].pos[1],
-                                            t[i].pos[2] + t[i + 1].pos[2] + t[i + 2].pos[2] } * (1.0f / 3.0f));
-      }
+      faceCentres(*part, d->allCentres);
   }
   if (layers && (!d->sorted || d->sortedAll != dimming || !btui::sameRotation(f.view, d->sortedView))) {
     if (dimming)
@@ -604,6 +630,9 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   lu.viewport[1] = float(px.height());
   lu.viewport[2] = lin;
   u->updateDynamicBuffer(d->lineUbo.get(), 0, sizeof(lu), &lu);
+  // the depth of the lines' solid core alone (linesFirst)
+  lu.viewport[3] = 0.5f;
+  u->updateDynamicBuffer(d->lineCoreUbo.get(), 0, sizeof(lu), &lu);
 
   CompositeUniforms cu{};
   cu.target[0] = float(d->sceneSize.width());     // the scene texture, which the view may not fill
@@ -693,10 +722,18 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   }
 
   if (lineCount && layers) {
+    // the colour first, hidden only by the opaque voxels: lines on one
+    // another (an axis on the slab's edge) then overlap in their order, as
+    // when drawn last, not each pixel to whichever depth is nearer
+    const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), 0);
+    cb->setGraphicsPipeline(d->lines.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &vi);
+    cb->draw(lineCount);
     cb->setGraphicsPipeline(d->linesFirst.get());
     cb->setViewport(vp);
     cb->setShaderResources();
-    const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), 0);
     cb->setVertexInput(0, 1, &vi);
     cb->draw(lineCount);
   }
