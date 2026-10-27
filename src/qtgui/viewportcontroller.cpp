@@ -89,8 +89,9 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   connect(m_doc, &DocumentController::historyApplied, this, &ViewportController::refreshShape);
   connect(m_doc, &DocumentController::puzzleEdited, this,
           [this](int, DocumentController::Change c) { edited(c); });
-  // the slab follows the editor's plane and layer
+  // the slab follows the editor's plane and layer, the ghosts its hover preview
   connect(m_editor, &EditorController::layerChanged, this, &ViewportController::frameChanged);
+  connect(m_editor, &EditorController::previewChanged, this, &ViewportController::frameChanged);
 
   refreshShape();
   buildMesh();
@@ -298,7 +299,62 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
       f.dimLayer = float(layer);
     }
   }
+  addGhosts(f);
   return f;
+}
+
+/* The editor's hover preview as ghosts (C06 "Ghost preview"): Fixed and
+ * Variable place cubes in the drawing colour at 55 % outlined in accent,
+ * dashed for Variable; a voxel they would change gets a faint dashed
+ * "replace" overlay; Erase shows danger over the voxels, Paint the drawing
+ * colour at 50 %. */
+void ViewportController::addGhosts(SceneFrame & f) const {
+  const Theme * t = Theme::instance();
+  if (!m_shape || !t)
+    return;
+  const std::vector<btui::GhostCell> ghosts = m_editor->preview();
+  if (ghosts.empty())
+    return;
+
+  // the drawing colour: the voxel colour, or Default's -- the shape's own
+  QColor draw;
+  const int c = m_editor->drawColour();
+  const puzzle_c & p = m_doc->session().puzzle();
+  if (c > 0 && unsigned(c) <= p.colorNumber()) {
+    unsigned char r, g, b;
+    p.getColor(unsigned(c) - 1, &r, &g, &b);
+    draw = QColor(r, g, b);
+  } else {
+    const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
+    draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  }
+  const bool variable = m_editor->toolInEffect() == EditorController::Variable;
+
+  for (const btui::GhostKind kind : { btui::GhostKind::Place, btui::GhostKind::Replace, btui::GhostKind::Erase,
+                                      btui::GhostKind::Paint }) {
+    std::vector<std::array<int, 3>> cells;
+    for (const btui::GhostCell & g : ghosts)
+      if (g.kind == kind)
+        cells.push_back({ g.cell.x, g.cell.y, g.cell.z });
+    if (cells.empty())
+      continue;
+    btui::GhostStyle s;
+    switch (kind) {
+      case btui::GhostKind::Place:
+        s = { rgba(draw, 0.55f), rgba(t->accent()), 2.0f, variable ? 5.0f : 0.0f, variable ? 4.0f : 0.0f };
+        break;
+      case btui::GhostKind::Replace:
+        s = { rgba(draw, 0.22f), rgba(t->accent()), 1.5f, 5.0f, 4.0f };
+        break;
+      case btui::GhostKind::Erase:
+        s = { rgba(t->danger(), 0.5f), rgba(t->danger()), 2.0f };
+        break;
+      case btui::GhostKind::Paint:
+        s = { rgba(draw, 0.5f), rgba(t->accent()), 2.0f };
+        break;
+    }
+    guarded([&] { btui::addGhost(f.ghostFaces, f.ghostLines, *m_shape, cells, s); });
+  }
 }
 
 // --- vector export -----------------------------------------------------------

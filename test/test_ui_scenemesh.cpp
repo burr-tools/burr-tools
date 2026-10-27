@@ -478,6 +478,53 @@ TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the 
   CHECK_THAT(axes[2].b.z, WithinAbs(5.7, 1e-5));
 }
 
+TEST_CASE("a ghost is its cells' every face and edge, in its style, never dimmed", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  v->setAll(voxel_c::VX_FILLED);              // the shape's voxels hide no face of a ghost
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 140 }, Rgba8{ 1, 2, 3, 255 }, 2.0f, 5.0f, 4.0f };
+  addGhost(faces, lines, *v, { { 1, 1, 1 } }, s);
+  CHECK(faces.size() == 36);                  // 6 faces, 2 triangles each
+  REQUIRE(lines.size() == 12);
+  for (const MeshVertex & m : faces) {
+    CHECK(m.color == s.fill);
+    CHECK(m.cell[0] < -1000);
+    CHECK(m.pos[0] >= 1.0f - 1e-5f);
+    CHECK(m.pos[0] <= 2.0f + 1e-5f);
+  }
+  for (const LineSeg & l : lines) {
+    CHECK(l.color == s.outline);
+    CHECK(l.widthDp == 2.0f);
+    CHECK(l.dashDp == 5.0f);
+  }
+  // two neighbours: both cubes whole, their shared edges once
+  faces.clear();
+  lines.clear();
+  addGhost(faces, lines, *v, { { 0, 0, 0 }, { 1, 0, 0 } }, s);
+  CHECK(faces.size() == 72);
+  CHECK(lines.size() == 20);
+  // every voxel type has a ghost; none for no cells, nor for a coordinate
+  // that is no cell of the type
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c g(t);
+    auto w = bttest::makeVoxel(g, 3, 3, 3);
+    std::array<int, 3> cell{ -1, -1, -1 }, notCell{ -1, -1, -1 };
+    for (int i = 0; i < 27; i++)
+      (w->validCoordinate(i % 3, i / 3 % 3, i / 9) ? cell : notCell) = { i % 3, i / 3 % 3, i / 9 };
+    faces.clear();
+    lines.clear();
+    addGhost(faces, lines, *w, { cell }, s);
+    CHECK(faces.size() >= 12);
+    const size_t n = faces.size();
+    addGhost(faces, lines, *w, {}, s);
+    addGhost(faces, lines, *w, { notCell, { 7, 0, 0 } }, s);
+    CHECK(faces.size() == n);
+  }
+}
+
 TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
   // the outline dashes run along an edge as one line, the same seen from
   // both faces that meet there, not restarting in every triangle
