@@ -77,6 +77,8 @@ public:
   bool canDelete(void) const;
   /* a row's weight, for menus built when they open; 1 for no shape */
   Q_INVOKABLE int weightOf(int row) const;
+  /* a row's id, "S3" (btui::shapeId): the one place it is spelt */
+  Q_INVOKABLE QString idTextOf(int row) const;
 
   /* The list's actions, each one undo step and selecting the shape it
    * leaves for the user; a row that names no shape does nothing. */
@@ -102,13 +104,15 @@ public:
   /* the chip colour of shape i, by position */
   static QColor chipColor(int i);
 
-  /* Re-read the shapes after the puzzle changed; keeps the selection when
-   * it still exists, else clamps it (the spec's "nearest remaining"). The
-   * rows stay: a change in number inserts or removes rows at the end, every
-   * other row is updated in place, so a view keeps its delegates. A new
-   * document (`reset`) replaces them all.
+  /* Re-read the shapes after the puzzle changed, and select `want` (when it
+   * is a row) or keep the selection within the list -- one selectedChanged,
+   * for the end state. The rows stay: a change in number inserts or removes
+   * rows at the end, every other row is updated in place, so a view keeps
+   * its delegates; the list's own one-row changes (rename, weight) update
+   * that row's role alone and keep the voxel counts. A new document
+   * (`reset`) replaces them all.
    */
-  void refresh(bool reset = false);
+  void refresh(bool reset = false, int want = -1);
 
 signals:
 
@@ -138,6 +142,8 @@ private:
   DocumentController * m_doc;
   int m_selected = -1;
   int m_rows = 0;                          ///< the rows the views have been told about
+  int m_onlyRow = -1;                      ///< an edit in progress changes only this row ...
+  int m_onlyRole = 0;                      ///< ... and only this role
   mutable std::vector<Counts> m_counts;    ///< per row, filled as the views ask
 };
 

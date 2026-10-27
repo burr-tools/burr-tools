@@ -36,7 +36,11 @@ Card {
     onCollapseClicked: App.layout.leftCollapsed = true
 
     readonly property AppMenu contextMenu: shapeMenu      // for tests: a popup is no child item
-    readonly property string weightTip:qsTr("in the Solver, heavier shapes stay in place and lighter ones move")
+    readonly property string weightTip: qsTr("in the Solver, heavier shapes stay in place and lighter ones move")
+    // the keys the rows' tooltips name, worked out once for every row
+    readonly property string renameKeys: App.commands.shortcutText("shapes.rename")
+    readonly property string duplicateKeys: App.commands.shortcutText("shapes.duplicate")
+    readonly property string deleteKeys: App.commands.shortcutText("shapes.delete")
 
     headerExtras: [
         Chip { // ①
@@ -73,7 +77,8 @@ Card {
         implicitHeight: 24
         focusPolicy: Qt.NoFocus          // the list is the one Tab stop; its menu has these
         hoverEnabled: true
-        Accessible.name: text
+        property string spoken           // the name read out: "Increase weight", not "W+"
+        Accessible.name: spoken
         Accessible.description: tip
         BtToolTip { shown: wb.hovered; text: wb.tip }
         background: Rectangle {
@@ -92,16 +97,24 @@ Card {
         opacity: enabled ? 1 : 0.4
     }
 
-    // the context menu's dividers, as the menu bar's (CommandMenu)
-    component Separator: MenuSeparator {
-        topPadding: 3
-        bottomPadding: 3
-        contentItem: Rectangle { implicitHeight: 1; color: Theme.line }
+    // a row's icon actions: 24 x 24, no Tab stop (the list is one)
+    component RowIconButton: IconButton {
+        implicitWidth: 24
+        implicitHeight: 24
+        iconSize: 16
+        focusPolicy: Qt.NoFocus
     }
 
     Connections {
         target: App.shapes
         function onRenameRequested(row: int) { list.startRename(row) }
+        // the menu names one row: when the rows change under it, it goes
+        function onCountChanged() { shapeMenu.close() }
+    }
+    Connections {
+        target: App.document
+        function onHistoryApplied() { shapeMenu.close() }
+        function onDocumentReplaced() { shapeMenu.close() }
     }
 
     ListView { // ③
@@ -182,7 +195,7 @@ Card {
             App.shapes.select(row)
             shapeMenu.row = row
             shapeMenu.weight = App.shapes.weightOf(row)
-            shapeMenu.idText = "S" + (row + 1)
+            shapeMenu.idText = App.shapes.idTextOf(row)
             shapeMenu.popup(at, x, y)
         }
         function openMenuForSelection() {
@@ -319,7 +332,8 @@ Card {
                     // the label shrinks first, but keeps about six characters
                     Layout.minimumWidth: Math.min(implicitWidth, Theme.fontBody * 3.5)
                     text: row.label
-                    color: Theme.muted
+                    // the selected row's fill is accentSoft: muted is too faint on it
+                    color: row.selected ? Theme.text : Theme.muted
                     font.pixelSize: Theme.fontBody
                     elide: Text.ElideRight
                     HoverHandler { id: labelHover }
@@ -335,6 +349,7 @@ Card {
                         property bool done: false
                         text: row.label
                         placeholderText: qsTr("Label")
+                        maximumLength: 100
                         selectByMouse: true
                         color: Theme.text
                         placeholderTextColor: Theme.muted
@@ -377,60 +392,54 @@ Card {
                     visible: row.weight !== 1
                     text: "W" + row.weight
                 }
-                Row { // ⑩
-                    visible: row.showActions
-                    spacing: 0
-                    IconButton {
-                        objectName: "entities.shapes.row." + row.index + ".rename"
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        iconSize: 16
-                        focusPolicy: Qt.NoFocus
-                        iconName: "edit"
-                        tip: qsTr("Rename (%1, or double-click)").arg(App.commands.shortcutText("shapes.rename"))
-                        onClicked: list.startRename(row.index)
-                    }
-                    IconButton {
-                        objectName: "entities.shapes.row." + row.index + ".duplicate"
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        iconSize: 16
-                        focusPolicy: Qt.NoFocus
-                        iconName: "copy"
-                        tip: qsTr("Duplicate, as the last shape (%1)").arg(App.commands.shortcutText("shapes.duplicate"))
-                        onClicked: App.shapes.duplicateShape(row.index)
-                    }
-                    WeightButton {
-                        objectName: "entities.shapes.row." + row.index + ".weightDown"
-                        text: qsTr("W−")
-                        tip: qsTr("Weight −1 — %1").arg(root.weightTip)
-                        enabled: row.weight > 0
-                        onClicked: App.shapes.changeWeight(row.index, -1)
-                    }
-                    WeightButton {
-                        objectName: "entities.shapes.row." + row.index + ".weightUp"
-                        text: qsTr("W+")
-                        tip: qsTr("Weight +1 — %1").arg(root.weightTip)
-                        onClicked: App.shapes.changeWeight(row.index, +1)
-                    }
-                    IconButton {
-                        objectName: "entities.shapes.row." + row.index + ".delete"
-                        implicitWidth: 24
-                        implicitHeight: 24
-                        iconSize: 16
-                        focusPolicy: Qt.NoFocus
-                        iconName: "trash"
-                        dangerHover: true
-                        enabled: App.shapes.canDelete
-                        tip: App.shapes.canDelete ? qsTr("Delete (%1)").arg(App.commands.shortcutText("shapes.delete"))
-                                                  : qsTr("The only shape cannot be deleted")
-                        onClicked: App.shapes.requestDelete(row.index)
+                // only the hovered or selected row has its actions: made for that row alone
+                Loader { // ⑩
+                    active: row.showActions
+                    visible: active
+                    sourceComponent: Row {
+                        spacing: 0
+                        RowIconButton {
+                            objectName: "entities.shapes.row." + row.index + ".rename"
+                            iconName: "edit"
+                            tip: qsTr("Rename (%1, or double-click)").arg(root.renameKeys)
+                            onClicked: list.startRename(row.index)
+                        }
+                        RowIconButton {
+                            objectName: "entities.shapes.row." + row.index + ".duplicate"
+                            iconName: "copy"
+                            tip: qsTr("Duplicate, as the last shape (%1)").arg(root.duplicateKeys)
+                            onClicked: App.shapes.duplicateShape(row.index)
+                        }
+                        WeightButton {
+                            objectName: "entities.shapes.row." + row.index + ".weightDown"
+                            text: qsTr("W−")
+                            spoken: qsTr("Decrease weight")
+                            tip: qsTr("Weight −1 — %1").arg(root.weightTip)
+                            enabled: row.weight > 0
+                            onClicked: App.shapes.changeWeight(row.index, -1)
+                        }
+                        WeightButton {
+                            objectName: "entities.shapes.row." + row.index + ".weightUp"
+                            text: qsTr("W+")
+                            spoken: qsTr("Increase weight")
+                            tip: qsTr("Weight +1 — %1").arg(root.weightTip)
+                            onClicked: App.shapes.changeWeight(row.index, +1)
+                        }
+                        RowIconButton {
+                            objectName: "entities.shapes.row." + row.index + ".delete"
+                            iconName: "trash"
+                            dangerHover: true
+                            enabled: App.shapes.canDelete
+                            tip: App.shapes.canDelete ? qsTr("Delete (%1)").arg(root.deleteKeys)
+                                                      : qsTr("The only shape cannot be deleted")
+                            onClicked: App.shapes.requestDelete(row.index)
+                        }
                     }
                 }
             }
         }
-
         Text { // ⑪
+            objectName: "entities.shapes.empty"
             visible: list.count === 0
             anchors.centerIn: parent
             text: qsTr("No shapes — click + New")
@@ -452,6 +461,7 @@ Card {
         MenuItem {
             objectName: "entities.shapes.contextMenu.header"
             enabled: false
+            Accessible.name: qsTr("Shape %1").arg(shapeMenu.idText)
             opacity: 1
             implicitHeight: 26
             leftPadding: 10
@@ -469,16 +479,16 @@ Card {
         AppMenuItem {
             objectName: "entities.shapes.contextMenu.rename"
             text: qsTr("Rename…")
-            shortcutText: App.commands.shortcutText("shapes.rename")
+            shortcutText: root.renameKeys
             onTriggered: shapeMenu.renameOnClose = true
         }
         AppMenuItem {
             objectName: "entities.shapes.contextMenu.duplicate"
             text: qsTr("Duplicate")
-            shortcutText: App.commands.shortcutText("shapes.duplicate")
+            shortcutText: root.duplicateKeys
             onTriggered: App.shapes.duplicateShape(shapeMenu.row)
         }
-        Separator {}
+        AppMenuSeparator {}
         AppMenuItem {
             objectName: "entities.shapes.contextMenu.moveEarlier"
             text: qsTr("Move earlier")
@@ -494,7 +504,7 @@ Card {
             enabled: App.commands.revision >= 0 && App.commands.isEnabled("shapes.moveLater")
             onTriggered: App.commands.trigger("shapes.moveLater")
         }
-        Separator {}
+        AppMenuSeparator {}
         AppMenuItem {
             objectName: "entities.shapes.contextMenu.weightUp"
             text: qsTr("Weight +1")
@@ -506,12 +516,12 @@ Card {
             enabled: shapeMenu.weight > 0
             onTriggered: App.shapes.changeWeight(shapeMenu.row, -1)
         }
-        Separator {}
+        AppMenuSeparator {}
         AppMenuItem {
             objectName: "entities.shapes.contextMenu.delete"
             text: qsTr("Delete")
             danger: true
-            shortcutText: App.commands.shortcutText("shapes.delete")
+            shortcutText: root.deleteKeys
             enabled: App.shapes.canDelete
             onTriggered: App.shapes.requestDelete(shapeMenu.row)
         }

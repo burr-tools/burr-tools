@@ -23,11 +23,7 @@ AppMenu {
     }
     Component {
         id: separatorComponent
-        MenuSeparator {
-            topPadding: 3
-            bottomPadding: 3
-            contentItem: Rectangle { implicitHeight: 1; color: Theme.line }
-        }
+        AppMenuSeparator {}
     }
 
     Component.onCompleted: {
