@@ -150,6 +150,7 @@ void SceneController::pointerMove(float x, float y) {
     }
     m_lastX = m_pressX;
     m_lastY = m_pressY;
+    navigationStarted();
   }
 
   if (m_gesture == Gesture::Orbit) {
@@ -184,6 +185,51 @@ void SceneController::pointerCancel(void) {
   m_gesture = Gesture::None;
   m_button = Qt::NoButton;
   emit frameChanged();
+}
+
+void SceneController::pointerHover(float, float, Qt::KeyboardModifiers) {}
+
+void SceneController::pointerLeave(void) {}
+
+void SceneController::orbitStep(float rightDeg, float upDeg) {
+  m_camera.cancelAnimation();
+  // about the view's up axis, then its right axis: the view's own frame
+  const btui::Quat q = btui::Quat::axisAngle({ 1, 0, 0 }, btui::radians(-upDeg)) *
+                       btui::Quat::axisAngle({ 0, 1, 0 }, btui::radians(rightDeg)) * m_camera.orientation();
+  m_camera.setOrientation(q);
+  emit frameChanged();
+}
+
+void SceneController::panStep(float dxDp, float dyDp) {
+  m_camera.cancelAnimation();
+  m_camera.panBy(dxDp, dyDp);
+  emit frameChanged();
+}
+
+void SceneController::zoomStep(int notches) {
+  wheel(notches * 120 * (m_settings->reverseScroll() ? -1 : 1));
+  emit frameChanged();
+}
+
+void SceneController::turn(btui::ViewCube::Arrow a) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Arrow;
+  h.arrow = a;
+  cubeClick(h);
+}
+
+void SceneController::roll(int direction) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Roll;
+  h.roll = direction;
+  cubeClick(h);
+}
+
+void SceneController::viewFrom(btui::CubeDir face) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Region;
+  h.dir = face;
+  cubeClick(h);
 }
 
 void SceneController::wheel(int angleDeltaY) {

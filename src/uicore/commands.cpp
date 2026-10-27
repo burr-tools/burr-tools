@@ -23,6 +23,7 @@
 #include "../lib/bt_assert.h"
 
 #include <array>
+#include <cctype>
 
 namespace btui {
 
@@ -66,6 +67,37 @@ namespace btui {
     constexpr sv scPan[]         = { "P" };
     constexpr sv scHome[]        = { "Home" };
     constexpr sv scFit[]         = { "F" };
+    constexpr sv scEdit3d[]      = { "E" };
+    // the focused 3D view's own keys (Scope::Viewport)
+    constexpr sv scOrbitLeft[]   = { "Left" };
+    constexpr sv scOrbitRight[]  = { "Right" };
+    constexpr sv scOrbitUp[]     = { "Up" };
+    constexpr sv scOrbitDown[]   = { "Down" };
+    constexpr sv scPanLeft[]     = { "Shift+Left" };
+    constexpr sv scPanRight[]    = { "Shift+Right" };
+    constexpr sv scPanUp[]       = { "Shift+Up" };
+    constexpr sv scPanDown[]     = { "Shift+Down" };
+    constexpr sv scZoomIn[]      = { "+", "=" };
+    constexpr sv scZoomOut[]     = { "-" };
+    constexpr sv scTurnLeft[]    = { "Ctrl+Left" };
+    constexpr sv scTurnRight[]   = { "Ctrl+Right" };
+    constexpr sv scTurnUp[]      = { "Ctrl+Up" };
+    constexpr sv scTurnDown[]    = { "Ctrl+Down" };
+    // macOS keeps Control+arrows for Mission Control and its spaces
+    constexpr sv scTurnLeftMac[]  = { "Alt+Left" };
+    constexpr sv scTurnRightMac[] = { "Alt+Right" };
+    constexpr sv scTurnUpMac[]    = { "Alt+Up" };
+    constexpr sv scTurnDownMac[]  = { "Alt+Down" };
+    constexpr sv scRollLeft[]    = { "Ctrl+Shift+Left" };
+    constexpr sv scRollRight[]   = { "Ctrl+Shift+Right" };
+    constexpr sv scRollLeftMac[]  = { "Alt+Shift+Left" };
+    constexpr sv scRollRightMac[] = { "Alt+Shift+Right" };
+    constexpr sv scFront[]       = { "Alt+1" };
+    constexpr sv scBack[]        = { "Alt+2" };
+    constexpr sv scLeft[]        = { "Alt+3" };
+    constexpr sv scRight[]       = { "Alt+4" };
+    constexpr sv scTop[]         = { "Alt+5" };
+    constexpr sv scBottom[]      = { "Alt+6" };
     constexpr sv scLayerUp[]     = { "PgUp" };
     constexpr sv scLayerDown[]   = { "PgDown" };
     // the tool numbers used everywhere (C07): keys, badges, quick tools
@@ -136,6 +168,8 @@ namespace btui {
       { Command::ViewPan,          "view.pan",              "Pan mode",               Menu::None,   false, scPan,        none,       "", "", "", Menu::None },
       { Command::ViewHome,         "view.home",             "Home view",              Menu::None,   false, scHome,       none,       "", "", "", Menu::None },
       { Command::ViewFit,          "view.fit",              "Fit to view",            Menu::None,   false, scFit,        none,       "", "", "", Menu::None },
+      // C06: Edit mode, the latched tool of the 3D view
+      { Command::Edit3d,           "view.edit3d",           "3D edit mode",           Menu::None,   false, scEdit3d,     none,       "", "", "", Menu::None },
       { Command::LayerUp,          "editor.layerUp",        "Next layer",             Menu::None,   false, scLayerUp,    none,       "", "", "", Menu::None },
       { Command::LayerDown,        "editor.layerDown",      "Previous layer",         Menu::None,   false, scLayerDown,  none,       "", "", "", Menu::None },
       // replace legacy's tool buttons (L60), not menu items
@@ -150,6 +184,30 @@ namespace btui {
       { Command::ShapeDelete,      "shapes.delete",         "Delete",                 Menu::None,   false, scShapeDel,   scShapeDelMac, "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeMoveEarlier, "shapes.moveEarlier",    "Move earlier",           Menu::None,   false, scShapeEarlier, none,     "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeMoveLater,   "shapes.moveLater",      "Move later",             Menu::None,   false, scShapeLater, none,       "", "", "", Menu::None, Scope::ShapesList },
+
+      // the focused 3D view: the mouse's orbit, pan and zoom, and the view cube's turns, rolls and faces
+      { Command::ViewOrbitLeft,    "view.orbitLeft",        "Orbit left",             Menu::None,   false, scOrbitLeft,  none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewOrbitRight,   "view.orbitRight",       "Orbit right",            Menu::None,   false, scOrbitRight, none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewOrbitUp,      "view.orbitUp",          "Orbit up",               Menu::None,   false, scOrbitUp,    none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewOrbitDown,    "view.orbitDown",        "Orbit down",             Menu::None,   false, scOrbitDown,  none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewPanLeft,      "view.panLeft",          "Pan left",               Menu::None,   false, scPanLeft,    none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewPanRight,     "view.panRight",         "Pan right",              Menu::None,   false, scPanRight,   none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewPanUp,        "view.panUp",            "Pan up",                 Menu::None,   false, scPanUp,      none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewPanDown,      "view.panDown",          "Pan down",               Menu::None,   false, scPanDown,    none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewZoomIn,       "view.zoomIn",           "Zoom in",                Menu::None,   false, scZoomIn,     none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewZoomOut,      "view.zoomOut",          "Zoom out",               Menu::None,   false, scZoomOut,    none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewTurnLeft,     "view.turnLeft",         "Turn 90° left",          Menu::None,   false, scTurnLeft,   scTurnLeftMac,  "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewTurnRight,    "view.turnRight",        "Turn 90° right",         Menu::None,   false, scTurnRight,  scTurnRightMac, "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewTurnUp,       "view.turnUp",           "Turn 90° up",            Menu::None,   false, scTurnUp,     scTurnUpMac,    "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewTurnDown,     "view.turnDown",         "Turn 90° down",          Menu::None,   false, scTurnDown,   scTurnDownMac,  "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewRollLeft,     "view.rollLeft",         "Roll 90° counter-clockwise", Menu::None, false, scRollLeft, scRollLeftMac,  "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewRollRight,    "view.rollRight",        "Roll 90° clockwise",     Menu::None,   false, scRollRight,  scRollRightMac, "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewFront,        "view.front",            "View from the front (+Z)", Menu::None,   false, scFront,      none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewBack,         "view.back",             "View from the back (−Z)", Menu::None,   false, scBack,       none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewLeft,         "view.left",             "View from the left (−X)", Menu::None,   false, scLeft,       none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewRight,        "view.right",            "View from the right (+X)", Menu::None,   false, scRight,      none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewTop,          "view.top",              "View from the top (+Y)", Menu::None,   false, scTop,        none,       "", "", "", Menu::None, Scope::Viewport },
+      { Command::ViewBottom,       "view.bottom",           "View from the bottom (−Y)", Menu::None,   false, scBottom,     none,       "", "", "", Menu::None, Scope::Viewport },
     };
 
     /* The menu bar, left to right. Legacy's File, Edit, Export and Help
@@ -191,6 +249,11 @@ namespace btui {
 
   std::span<const MenuBarEntry> menuBar(void) {
     return menus;
+  }
+
+  bool isSingleCharacter(std::string_view shortcut) {
+    // "+" alone is the plus key; any other "+" joins a modifier
+    return shortcut.size() == 1 && std::isprint(static_cast<unsigned char>(shortcut[0])) && shortcut[0] != ' ';
   }
 
   Platform currentPlatform(void) {

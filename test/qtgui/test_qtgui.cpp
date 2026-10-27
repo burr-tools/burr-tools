@@ -3296,6 +3296,7 @@ int main(int argc, char ** argv) {
   run(TestImageExport());
   run(TestViewportController());
   run(TestEditor());
+  run(TestEdit3d());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

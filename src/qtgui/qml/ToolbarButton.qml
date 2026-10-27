@@ -15,6 +15,9 @@ AbstractButton {
     property bool toggle: false     // `on` is a state (a mode, a menu open): checked to assistive tech
     property bool compact: false
     property string badge            // the Edit button's tool number
+    /* a momentary state (the Edit button while a quick tool is held, C06):
+     * a dashed accent outline inset 3 dp over the accent-soft fill */
+    property bool override: false
 
     implicitWidth: compact ? 34 : Theme.toolbarButtonWidth
     implicitHeight: compact && !Theme.minimal ? 34 : Theme.toolbarButtonHeight
@@ -35,9 +38,28 @@ AbstractButton {
 
     background: Rectangle {
         radius: 8
-        color: root.on ? Theme.accentSoft : (root.hovered ? Theme.panel2 : "transparent")
+        color: root.on || root.override ? Theme.accentSoft : (root.hovered ? Theme.panel2 : "transparent")
         border.width: root.visualFocus ? 2 : 0
         border.color: Theme.accent
+        // made only while it shows
+        Loader {
+            objectName: "override"
+            anchors { fill: parent; margins: 3 }
+            active: root.override
+            sourceComponent: Canvas {
+                Connections { target: Theme; function onChanged() { requestPaint() } }
+                onPaint: {
+                    const c = getContext("2d")
+                    c.reset()
+                    c.setLineDash([3, 2])
+                    c.strokeStyle = Theme.accent
+                    c.lineWidth = 1.5
+                    c.beginPath()
+                    c.roundedRect(0.75, 0.75, width - 1.5, height - 1.5, 6, 6)
+                    c.stroke()
+                }
+            }
+        }
     }
 
     contentItem: Item {
@@ -75,7 +97,7 @@ AbstractButton {
             visible: root.badge.length > 0
             anchors { top: parent.top; right: parent.right; topMargin: 2; rightMargin: 4 }
             text: root.badge
-            color: root.on ? Theme.accent : Theme.muted
+            color: root.on || root.override ? Theme.accent : Theme.muted
             font.pixelSize: Theme.fontKeyBadge
             font.weight: Font.Bold
         }

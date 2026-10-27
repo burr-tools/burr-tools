@@ -28,6 +28,8 @@
 
 #include <array>
 #include <compare>
+#include <cstdint>
+#include <memory>
 #include <optional>
 #include <vector>
 
@@ -121,6 +123,38 @@ namespace btui {
     auto operator<=>(const GhostCell &) const = default;
   };
   std::vector<GhostCell> previewTool(const voxel_c & shape, const std::vector<Cell3> & cells, Tool t, unsigned int colour);
+
+  // --- 3D editing (C06) --------------------------------------------------------
+
+  /* Where a press in the 3D view acts (C06 "3D editing" and product
+   * decision 2026-10-27):
+   *  - Face: the pointer is on a voxel's face. Fixed and Variable act on
+   *    the cell beyond it (Rejected when that is outside the grid: no
+   *    ghost, the face outlined, a click does nothing); Erase and Paint on
+   *    the voxel itself.
+   *  - Slab: the pointer is on the active layer's slab, nearer than any
+   *    voxel: the layer acts as the 2D grid, on the cell under the pointer.
+   *  - Origin: the shape is empty and the slab not shown -- the first voxel
+   *    goes to the origin, wherever the pointer is.
+   * `voxel` is the hit against the shape's voxels, `slab` the hit against
+   * the active layer's cells (each cell of the layer filled), when the slab
+   * is shown; a hit's voxel is a cell index of the shape's grid. */
+  enum class TargetSource { None, Face, Slab, Origin, Rejected };
+  struct Target3d {
+    TargetSource source = TargetSource::None;
+    Cell3 cell;                 ///< the cell the tool acts on (Rejected: the voxel hit)
+    std::uint32_t voxel = 0;    ///< Face and Rejected: the voxel hit and its face's neighbour index
+    std::int32_t face = 0;
+  };
+  Target3d target3d(const voxel_c & shape, Tool t, const PickHit & voxel, const PickHit & slab, bool slabShown);
+
+  /* the first cell of the voxel type from the origin: (0, 0, 0) where the
+   * type has it */
+  Cell3 originCell(const voxel_c & shape);
+
+  /* the cells of one layer of a plane, each filled: what the slab's
+   * pointer is picked against */
+  std::unique_ptr<voxel_c> layerCells(const voxel_c & shape, Plane p, int layer);
 
   // --- the 2D grid's cell size (C08) -----------------------------------------
 

@@ -45,6 +45,49 @@ TEST_CASE("no two commands share a shortcut on the same platform and in the same
   }
 }
 
+TEST_CASE("the focused 3D view has keys for the mouse's every gesture and the cube's views", "[ui][commands]") {
+  // WCAG 2.1.1: orbit, pan, zoom, the cube's 90 degree turns, rolls and faces
+  const Command view[] = {
+    Command::ViewOrbitLeft, Command::ViewOrbitRight, Command::ViewOrbitUp, Command::ViewOrbitDown,
+    Command::ViewPanLeft, Command::ViewPanRight, Command::ViewPanUp, Command::ViewPanDown,
+    Command::ViewZoomIn, Command::ViewZoomOut,
+    Command::ViewTurnLeft, Command::ViewTurnRight, Command::ViewTurnUp, Command::ViewTurnDown,
+    Command::ViewRollLeft, Command::ViewRollRight,
+    Command::ViewFront, Command::ViewBack, Command::ViewLeft, Command::ViewRight, Command::ViewTop, Command::ViewBottom,
+  };
+  for (Command c : view) {
+    const CommandInfo & i = commandInfo(c);
+    INFO(i.key);
+    CHECK(i.scope == Scope::Viewport);
+    CHECK(i.menu == Menu::None);
+    for (Platform p : { Platform::Windows, Platform::Mac, Platform::Linux })
+      CHECK_FALSE(shortcutsOn(i, p).empty());
+  }
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewOrbitLeft), Platform::Linux)[0]) == "Left");
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewPanUp), Platform::Linux)[0]) == "Shift+Up");
+  // macOS keeps Control+arrows for its spaces
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewTurnLeft), Platform::Mac)[0]) == "Alt+Left");
+  // E toggles 3D edit mode, anywhere (C06, AC-C06-07)
+  CHECK(commandInfo(Command::Edit3d).scope == Scope::Window);
+  CHECK(std::string(commandInfo(Command::Edit3d).shortcuts[0]) == "E");
+}
+
+TEST_CASE("single character shortcuts are told from the others", "[ui][commands]") {
+  // WCAG 2.1.4: the window's single-character keys can be turned off
+  for (const char * s : { "O", "P", "F", "E", "1", "+", "-", "=" })
+    CHECK(isSingleCharacter(s));
+  for (const char * s : { "Home", "PgUp", "Ctrl+S", "Shift+Left", "F2", "Del", "Alt+1", "" })
+    CHECK_FALSE(isSingleCharacter(s));
+  std::set<std::string_view> single;
+  for (const auto & c : commandTable())
+    if (c.scope == Scope::Window)
+      for (auto s : c.shortcuts)
+        if (isSingleCharacter(s))
+          single.insert(c.key);
+  CHECK(single == std::set<std::string_view>{ "view.orbit", "view.pan", "view.fit", "view.edit3d", "editor.tool.fixed",
+                                               "editor.tool.variable", "editor.tool.erase", "editor.tool.paint" });
+}
+
 TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[ui][commands]") {
   const Command list[] = { Command::ShapeRename, Command::ShapeDuplicate, Command::ShapeDelete,
                            Command::ShapeMoveEarlier, Command::ShapeMoveLater };
@@ -55,9 +98,9 @@ TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[u
     CHECK(i.menu == Menu::None);
     CHECK_FALSE(i.shortcuts.empty());
   }
-  // every other command is the window's
+  // every other command is the window's, but the focused 3D view's
   for (const auto & c : commandTable())
-    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list))
+    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list) && c.scope != Scope::Viewport)
       CHECK(c.scope == Scope::Window);
 
   auto first = [](Command c, Platform p) { return std::string(shortcutsOn(commandInfo(c), p)[0]); };

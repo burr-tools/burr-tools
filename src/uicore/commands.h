@@ -51,11 +51,16 @@ namespace btui {
     // Help
     HelpGuide, HelpShortcuts, CheckForUpdates, About,
     // not in a menu: the 3D view (every workspace); the voxel editor's tools and layer (Entities)
-    ViewOrbit, ViewPan, ViewHome, ViewFit,
+    ViewOrbit, ViewPan, ViewHome, ViewFit, Edit3d,
     LayerUp, LayerDown,
     ToolFixed, ToolVariable, ToolErase, ToolPaint,
     // the focused Shapes list (C01 Keyboard), also its rows' context menu
     ShapeRename, ShapeDuplicate, ShapeDelete, ShapeMoveEarlier, ShapeMoveLater,
+    // the focused 3D view (WCAG 2.1.1): orbit, pan, zoom, the view cube's turns and faces
+    ViewOrbitLeft, ViewOrbitRight, ViewOrbitUp, ViewOrbitDown,
+    ViewPanLeft, ViewPanRight, ViewPanUp, ViewPanDown, ViewZoomIn, ViewZoomOut,
+    ViewTurnLeft, ViewTurnRight, ViewTurnUp, ViewTurnDown, ViewRollLeft, ViewRollRight,
+    ViewFront, ViewBack, ViewLeft, ViewRight, ViewTop, ViewBottom,
   };
 
   /* Where a command appears. Menu::None means keyboard / buttons only. */
@@ -65,7 +70,7 @@ namespace btui {
    * one part of it has the keyboard (spec C01 Keyboard: the Shapes list's
    * keys work with the list focused). A key may mean one thing in the
    * window and another in a scope; the scope wins while it has focus. */
-  enum class Scope { Window, ShapesList };
+  enum class Scope { Window, ShapesList, Viewport };
 
   /* The menus differ a little per platform, each following its own
    * conventions (labels, places, shortcuts). */
@@ -117,6 +122,12 @@ namespace btui {
 
   /* Every command, in menu order. */
   std::span<const CommandInfo> commandTable(void);
+
+  /* A shortcut that is one character key without a modifier ("O", "1"):
+   * WCAG 2.1.4 asks that the window-wide ones can be turned off (Settings ▸
+   * General ▸ Single-key shortcuts). Home, PgUp and the like are no
+   * characters. */
+  bool isSingleCharacter(std::string_view shortcut);
 
   /* Lookup by id; never fails for a valid enumerator. */
   const CommandInfo & commandInfo(Command c);
