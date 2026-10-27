@@ -459,6 +459,39 @@ TEST_CASE("the layer slab is one layer thick and spans the grid", "[ui][scenemes
   CHECK(layerCount(*v, Plane::YZ) == 4);
 }
 
+TEST_CASE("the layer slab holds every voxel of its layer as drawn, of every voxel type", "[ui][scenemesh]") {
+  // the spheres of one layer reach into the next (centres sqrt(0.5) apart,
+  // radius 0.5): the slab is as thick as they are, not as the layer step
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int layer = 0; layer < 6; layer++) {
+      INFO(bttest::gridName(t) << ", layer " << layer);
+      auto only = bttest::makeVoxel(gt, 6, 6, 6);
+      for (int x = 0; x < 6; x++)
+        for (int y = 0; y < 6; y++)
+          if (only->validCoordinate(x, y, layer))
+            only->setState(unsigned(x), unsigned(y), unsigned(layer), voxel_c::VX_FILLED);
+      MeshOptions o;
+      o.style = VoxelStyle::Flat;
+      const ShapeMesh m = buildShapeMesh(*only, o);
+      if (m.opaque.empty())
+        continue;
+      float lo = 1e30f, hi = -1e30f;
+      for (const MeshVertex & mv : m.opaque) {
+        lo = std::min(lo, mv.pos[2]);
+        hi = std::max(hi, mv.pos[2]);
+      }
+      const Box s = layerSlab(*v, Plane::XY, layer);
+      CHECK(s.min.z <= lo + 1e-3f);
+      CHECK(s.max.z >= hi - 1e-3f);
+      // and no thicker than they are
+      CHECK(s.min.z >= lo - 0.02f);
+      CHECK(s.max.z <= hi + 0.02f);
+    }
+  }
+}
+
 TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the grid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 4, 3, 5);

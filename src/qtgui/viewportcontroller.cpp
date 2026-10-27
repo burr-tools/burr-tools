@@ -90,7 +90,10 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   connect(m_doc, &DocumentController::puzzleEdited, this,
           [this](int, DocumentController::Change c) { edited(c); });
   // the slab follows the editor's plane and layer, the ghosts its hover preview
-  connect(m_editor, &EditorController::layerChanged, this, &ViewportController::frameChanged);
+  connect(m_editor, &EditorController::layerChanged, this, [this] {
+    updateSlab();
+    emit frameChanged();
+  });
   connect(m_editor, &EditorController::previewChanged, this, &ViewportController::frameChanged);
 
   refreshShape();
@@ -257,10 +260,24 @@ void ViewportController::buildMesh(void) {
     m_mesh.reset();
   }
   m_meshStyle = m_voxelStyle;
+  updateSlab();
   m_meshRevision++;
 
   emit sceneChanged();      // emptyShape follows the mesh
   emit frameChanged();
+}
+
+/* From the editor's shape, which it reads from the puzzle as it is: on the
+ * editor's layerChanged after an edit, m_shape may not be refreshed yet */
+void ViewportController::updateSlab(void) {
+  const btui::Plane plane = m_editor->planeValue();
+  const voxel_c * s = m_editor->shape();
+  m_hasSlab = s && btui::layerCount(*s, plane) > 0;
+  if (m_hasSlab)
+    m_hasSlab = guarded([&] {
+      m_slab = btui::layerSlab(*s, plane, m_editor->layer());
+      return true;
+    });
 }
 
 SceneFrame ViewportController::frame(float devicePixelRatio) const {
@@ -289,10 +306,9 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
   const btui::Plane plane = m_editor->planeValue();
   const int layer = m_editor->layer();
   if (editorVisible() && btui::layerCount(*m_shape, plane) > 0) {
-    if (m_display.slab) {
-      const btui::Box slab = btui::layerSlab(*m_shape, plane, layer);
-      btui::addBoxFaces(f.overlayFaces, slab, rgba(t->accent(), 0.11f));
-      btui::addBoxEdges(f.lines, slab, rgba(t->accent()), 1.8f);
+    if (m_display.slab && m_hasSlab) {
+      btui::addBoxFaces(f.overlayFaces, m_slab, rgba(t->accent(), 0.11f));
+      btui::addBoxEdges(f.lines, m_slab, rgba(t->accent()), 1.8f);
     }
     if (m_display.dim) {
       f.dimAxis = btui::layerAxis(plane);
