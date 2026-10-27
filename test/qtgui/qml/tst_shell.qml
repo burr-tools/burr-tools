@@ -248,6 +248,70 @@ TestCase {
         verify(item("status.text").text.indexOf("S2") >= 0)
     }
 
+    // Tab from the window's start round to it again: every stop, in order
+    function tabStops() {
+        win.requestActivate()
+        tryVerify(() => win.active, 3000)
+        win.contentItem.forceActiveFocus()
+        const stops = []
+        for (let i = 0; i < 80; i++) {
+            keyClick(Qt.Key_Tab)
+            const f = win.activeFocusItem
+            verify(f !== null, "Tab left the focus nowhere after " + stops.map(s => s.name).join(", "))
+            if (f === win.contentItem)
+                continue                                   // not yet in the chain
+            if (stops.length > 0 && f === stops[0].item)
+                break
+            stops.push({ item: f, name: f.objectName })
+        }
+        return stops
+    }
+
+    function test_tabStopsOnlyOnControlsInReadingOrder_data() {
+        return [
+            { tag: "cards", rails: false, order: [
+                "rail-entities", "rail-puzzle", "rail-solver",
+                "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
+                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan",
+                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus",
+                "entities.editor.focus2d", "entities.editor.collapse",
+                "entities.editor.colour.add", "entities.editor.colour.more", "entities.editor.colour.palette" ] },
+            { tag: "rails", rails: true, order: [
+                "rail-entities", "rail-puzzle", "rail-solver",
+                "workspace.left.rail.expand", "entities.shapes.rail.row.0", "entities.shapes.rail.new",
+                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan",
+                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus",
+                "workspace.right.rail.expand" ] },
+        ]
+    }
+    function test_tabStopsOnlyOnControlsInReadingOrder(data) {
+        // WCAG 2.4.3 / 2.1.1: Tab reaches every control once, in the order the
+        // eye reads the window (rail, left card, 3D toolbar, right card), and
+        // stops on nothing that does nothing -- no chip, label, read-only voxel
+        // type, row action (the list is one stop; its keys and menu have
+        // those) or disabled button (Edit until P5). A phase that adds a
+        // control adds it here, where it belongs.
+        App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
+        // the puzzle's comment comes up in a message: out of the way
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                break
+            m.close()
+        }
+        App.shapes.select(0)
+        App.layout.leftCollapsed = data.rails
+        App.layout.rightCollapsed = data.rails
+        wait(400)                                          // the columns' animation
+        const stops = tabStops()
+        compare(stops.map(s => s.name), data.order)
+        for (const s of stops) {
+            verify(s.item.visible && s.item.enabled, s.name + " is a stop but hidden or disabled")
+            verify(s.item.Accessible.name.length > 0, s.name + " has no accessible name")
+        }
+    }
+
     function test_themeSwitchRecolours() {
         App.settings.theme = "light"
         compare(Theme.dark, false)
