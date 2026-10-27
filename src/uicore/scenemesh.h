@@ -201,7 +201,7 @@ namespace btui {
     float widthDp = 2, dashDp = 0, gapDp = 0;
   };
   void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
-                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style);
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style, Vec3 offset = {});
 
   /* The outline of one voxel face as picking sees it (C06: a face whose
    * far side is outside the grid, outlined): the sides of its triangles
@@ -211,6 +211,22 @@ namespace btui {
 
   /* the axes from the origin, reaching 0.7 of a cell beyond the grid (C06) */
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp);
+
+  /* A Transform button's hover preview (C04; legacy previewTransform):
+   * every voxel of `result` as a ghost, its box centred where `shape`'s is
+   * -- a rotation that swaps the grid's sizes turns about the middle, as
+   * legacy draws it -- and none when result is null (the task is blocked). */
+  void addResultGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                      const voxel_c * result, const GhostStyle & style);
+
+  /* Its hint, legacy's: an arc with an arrowhead around a rotation's axis
+   * (sweeping the angle, 60°-300°), a double arrow along a mirror's plane
+   * normal, an arrow along a nudge's direction -- centred on `centre`,
+   * `radius` legacy's min(0.4 * the shape's radius + 0.5, 2). */
+  enum class TransformHint { Rotate, Mirror, Nudge };
+  float transformHintRadius(const voxel_c & shape);
+  void addTransformHint(std::vector<LineSeg> & out, Vec3 centre, float radius, TransformHint kind, Vec3 axis,
+                        float angleDeg, Rgba8 color, float widthDp);
 }
 
 #endif

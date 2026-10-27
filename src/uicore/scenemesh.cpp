@@ -614,7 +614,7 @@ namespace btui {
   }
 
   void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
-                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style) {
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style, Vec3 offset) {
     if (cells.empty())
       return;
     /* the cells alone, as variable voxels: the flat builder draws every
@@ -633,9 +633,14 @@ namespace btui {
         v.color = style.fill;
         v.edge[0] = v.edge[1] = v.edge[2] = kNoOutline;
         v.cell[0] = v.cell[1] = v.cell[2] = -1e4f;
+        v.pos[0] += offset.x;
+        v.pos[1] += offset.y;
+        v.pos[2] += offset.z;
         faces.push_back(v);
       }
     for (LineSeg e : m.edges) {
+      e.a += offset;
+      e.b += offset;
       e.color = style.outline;
       e.widthDp = style.widthDp;
       e.dashDp = style.dashDp;
@@ -676,5 +681,67 @@ namespace btui {
     out.push_back({ { 0, 0, 0 }, { g.max.x + extra, 0, 0 }, x, widthDp });
     out.push_back({ { 0, 0, 0 }, { 0, g.max.y + extra, 0 }, y, widthDp });
     out.push_back({ { 0, 0, 0 }, { 0, 0, g.max.z + extra }, z, widthDp });
+  }
+
+  namespace {
+    Vec3 centreOf(const Box & b) { return (b.min + b.max) * 0.5f; }
+
+    /* a unit vector at right angles to a unit axis (legacy's choice of it) */
+    Vec3 sideOf(Vec3 axis) {
+      const Vec3 ref = std::fabs(axis.z) > 0.9f ? Vec3(1, 0, 0) : Vec3(0, 0, 1);
+      const Vec3 s = normalize(cross(ref, axis));
+      return length(s) > 0.5f ? s : Vec3(1, 0, 0);
+    }
+
+    /* an arrowhead as two strokes back from the tip */
+    void arrowHead(std::vector<LineSeg> & out, Vec3 tip, Vec3 dir, Vec3 side, float size, Rgba8 color, float widthDp) {
+      const Vec3 back = tip - dir * size;
+      out.push_back({ tip, back + side * (size * 0.5f), color, widthDp });
+      out.push_back({ tip, back - side * (size * 0.5f), color, widthDp });
+    }
+  }
+
+  void addResultGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                      const voxel_c * result, const GhostStyle & style) {
+    if (!result)
+      return;
+    std::vector<std::array<int, 3>> cells;
+    for (unsigned int z = 0; z < result->getZ(); z++)
+      for (unsigned int y = 0; y < result->getY(); y++)
+        for (unsigned int x = 0; x < result->getX(); x++)
+          if (result->getState(x, y, z) != voxel_c::VX_EMPTY)
+            cells.push_back({ int(x), int(y), int(z) });
+    addGhost(faces, lines, *result, cells, style, centreOf(gridBounds(shape)) - centreOf(gridBounds(*result)));
+  }
+
+  float transformHintRadius(const voxel_c & shape) {
+    const Box g = gridBounds(shape);
+    return std::min(0.4f * length(g.max - g.min) * 0.5f + 0.5f, 2.0f);
+  }
+
+  void addTransformHint(std::vector<LineSeg> & out, Vec3 centre, float radius, TransformHint kind, Vec3 axis,
+                        float angleDeg, Rgba8 color, float widthDp) {
+    axis = normalize(axis);
+    if (length(axis) < 0.5f)
+      return;
+    const Vec3 u = sideOf(axis);
+    if (kind == TransformHint::Rotate) {
+      const Vec3 v = cross(axis, u);
+      const float sweep = radians(std::clamp(angleDeg, 60.0f, 300.0f));
+      constexpr int segs = 32;
+      auto at = [&](float a) { return centre + (u * std::cos(a) + v * std::sin(a)) * radius; };
+      for (int i = 0; i < segs; i++)
+        out.push_back({ at(sweep * float(i) / segs), at(sweep * float(i + 1) / segs), color, widthDp });
+      // the head at the arc's leading end, along the sweep
+      const Vec3 radial = u * std::cos(sweep) + v * std::sin(sweep);
+      const Vec3 tangent = v * std::cos(sweep) - u * std::sin(sweep);
+      arrowHead(out, at(sweep), tangent, radial, radius * 0.22f, color, widthDp);
+      return;
+    }
+    const Vec3 a = centre - axis * radius, b = centre + axis * radius;
+    out.push_back({ a, b, color, widthDp });
+    arrowHead(out, b, axis, u, radius * 0.3f, color, widthDp);
+    if (kind == TransformHint::Mirror)
+      arrowHead(out, a, -axis, u, radius * 0.3f, color, widthDp);
   }
 }
