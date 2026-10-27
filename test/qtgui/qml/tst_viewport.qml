@@ -208,7 +208,7 @@ TestCase {
         const ring = item("entities.viewport.focusRing")
         verify(canvas.activeFocusOnTab)
         verify(!ring.visible)
-        item("entities.viewport.toolbar.focus").forceActiveFocus(Qt.TabFocusReason)
+        item("entities.viewport.toolbar").forceActiveFocus(Qt.TabFocusReason)
         keyClick(Qt.Key_Tab)
         verify(canvas.activeFocus)
         verify(ring.visible)
@@ -219,7 +219,7 @@ TestCase {
         keyClick(Qt.Key_Left)                              // orbits; the shapes list is not involved
         compare(App.shapes.selected, App.shapes.selected)
         // a click in the view takes no focus (C20)
-        item("entities.viewport.toolbar.orbit").forceActiveFocus(Qt.TabFocusReason)
+        item("entities.viewport.toolbar").forceActiveFocus(Qt.TabFocusReason)
         mouseClick(canvas, 300, 300)
         verify(!canvas.activeFocus)
     }

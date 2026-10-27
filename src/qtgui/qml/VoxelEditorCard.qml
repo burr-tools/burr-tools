@@ -432,13 +432,25 @@ Card {
                     objectName: "entities.editor.grid"
                     anchors.fill: parent
                     editor: root.editor
+                    // a Tab stop: arrows move a cell cursor, Space paints, Delete erases (VoxelGridItem)
+                    activeFocusOnTab: true
                     Accessible.role: Accessible.Table
                     Accessible.name: qsTr("2D grid: layer %1 of %2").arg(root.editor.layer + 1).arg(root.editor.layerCount)
+                    Accessible.description: qsTr("Arrow keys move the cell cursor, Space or Enter applies the tool (Shift+Space: fixed), Delete erases, Page Up and Page Down change the layer")
                     HoverHandler { id: gridHover }
                     BtToolTip {
                         shown: gridHover.hovered && !root.editor.stroking
                         text: qsTr("Click or drag: active tool (Shift fixed · Alt variable · Ctrl erase) · Right-click or right-drag: erase")
                     }
+                }
+                // the keyboard's focus on the grid
+                Rectangle {
+                    objectName: "entities.editor.grid.focusRing"
+                    anchors.fill: parent
+                    visible: grid.activeFocus
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.accent
                 }
                 Text {
                     anchors.centerIn: parent

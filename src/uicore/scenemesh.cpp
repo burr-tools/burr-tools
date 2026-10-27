@@ -413,6 +413,35 @@ namespace btui {
   }
 
   std::vector<PickTriangle> buildPickMesh(const voxel_c & shape) {
+    if (shape.getGridType()->getType() == gridType_c::GT_SPHERES)
+      return buildPickMeshFromFlatMesh(shape);
+    std::vector<PickTriangle> out;
+    std::vector<float> fc;
+    std::vector<Vec3> c;
+    for (unsigned int z = 0; z < shape.getZ(); z++)
+      for (unsigned int y = 0; y < shape.getY(); y++)
+        for (unsigned int x = 0; x < shape.getX(); x++) {
+          if (shape.isEmpty(x, y, z))
+            continue;
+          const std::uint32_t index = shape.getIndex(x, y, z);
+          int nx, ny, nz;
+          for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
+            // a face shows where the neighbour is empty or outside the grid
+            if (shape.getState2(nx, ny, nz) != voxel_c::VX_EMPTY)
+              continue;
+            fc.clear();
+            shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, fc);
+            c.clear();
+            for (size_t i = 0; i + 2 < fc.size(); i += 3)
+              c.push_back({ fc[i], fc[i + 1], fc[i + 2] });
+            for (size_t i = 1; i + 1 < c.size(); i++)
+              out.push_back({ c[0], c[i], c[i + 1], index, std::int32_t(n) });
+          }
+        }
+    return out;
+  }
+
+  std::vector<PickTriangle> buildPickMeshFromFlatMesh(const voxel_c & shape) {
     std::vector<PickTriangle> out;
     std::unique_ptr<Polyhedron> poly(shape.getFlatMesh());
     if (!poly)

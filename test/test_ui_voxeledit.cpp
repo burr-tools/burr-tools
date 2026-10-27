@@ -74,12 +74,15 @@ TEST_CASE("the quick tools: Ctrl erases, Alt is Variable, Shift is Fixed; Ctrl >
   }
 }
 
-TEST_CASE("on macOS Option or Command is Variable and Control (Qt's meta) erases", "[ui][voxeledit]") {
+TEST_CASE("on macOS Command is Variable and Option erases; Control picks nothing", "[ui][voxeledit]") {
+  // Control-click is the secondary click on macOS (overview/04 section 6;
+  // product decision 2026-10-28)
   const Platform mac = Platform::Mac;
-  CHECK(quickTool(mac, { .alt = true }) == Tool::Variable);
   CHECK(quickTool(mac, { .control = true }) == Tool::Variable);   // Command
-  CHECK(quickTool(mac, { .meta = true }) == Tool::Erase);         // Control
-  CHECK(quickTool(mac, { .shift = true, .control = true, .meta = true }) == Tool::Erase);
+  CHECK(quickTool(mac, { .alt = true }) == Tool::Erase);          // Option
+  CHECK_FALSE(quickTool(mac, { .meta = true }).has_value());      // Control
+  CHECK(quickTool(mac, { .shift = true, .alt = true, .control = true }) == Tool::Erase);
+  CHECK(quickTool(mac, { .shift = true, .control = true }) == Tool::Variable);
 }
 
 TEST_CASE("the right button erases whatever the tool and the modifiers", "[ui][voxeledit]") {

@@ -37,6 +37,13 @@ class QPainter;
  * rulers and axis lines, the hovered cell's outline and the tool cursor;
  * the pointer paints through the EditorController.
  *
+ * By keyboard (WCAG 2.1.1; the spec's Tab order has the grid): focused, a
+ * cell cursor -- the hover outline, the readout and the 3D ghost, as the
+ * pointer's -- moves with the arrows (btui::stepCell, every voxel type);
+ * Space or Enter applies the tool in effect (Shift: the Fixed quick tool),
+ * Delete or Backspace erases, as the right button. A click focuses it too,
+ * so the keys go on from the clicked cell.
+ *
  * QPainter, as the view cube: a few hundred flat cells, hatching and text,
  * which QPainter draws directly and a test can draw into an image.
  */
@@ -78,6 +85,10 @@ protected:
   void mouseMoveEvent(QMouseEvent * e) override;
   void mouseReleaseEvent(QMouseEvent * e) override;
   void mouseUngrabEvent(void) override;
+  void keyPressEvent(QKeyEvent * e) override;
+  void keyReleaseEvent(QKeyEvent * e) override;
+  void focusInEvent(QFocusEvent * e) override;
+  void focusOutEvent(QFocusEvent * e) override;
   /* Shift, Alt and Ctrl pressed or released over the grid change the
    * quick tool at once, without a pointer move */
   bool eventFilter(QObject * watched, QEvent * e) override;
@@ -87,6 +98,9 @@ private:
   void relayout(void);
   void updateCursor(void);
   void hoverAt(QPointF p);
+  /* the keyboard's cell, by index into m_layout.cells: shown as hovered */
+  void setKeyCell(int index);
+  int keyCell(void) const;
   /* the stroke from the last point to p, every cell on the way */
   void strokeTo(QPointF p);
   QPointF toItem(btui::Pt u) const;
@@ -103,6 +117,7 @@ private:
   bool m_filtering = false;
   bool m_pressed = false;
   QPointF m_last;                     ///< the stroke's last point
+  int m_keyCol = -1, m_keyRow = -1;   ///< the keyboard's cell, kept across layers
   std::vector<QStaticText> m_numbers;   ///< the rulers' numbers, laid out once
 };
 

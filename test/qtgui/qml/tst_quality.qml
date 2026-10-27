@@ -315,13 +315,26 @@ TestCase {
         App.viewport.navMode = "pan"
         verify(!orbit.Accessible.checked)
         App.viewport.navMode = "orbit"
-        // the tooltip shows on keyboard focus (Tab), not only under the mouse
+        // the tooltip shows on keyboard focus (Tab), not only under the mouse:
+        // the toolbar is one Tab stop, ringing its button (overview/04 section 5)
         App.settings.tooltips = true
-        for (let i = 0; i < 40 && !orbit.activeFocus; i++)
+        const bar = findChild(win.contentItem, "entities.viewport.toolbar")
+        for (let i = 0; i < 40 && !bar.activeFocus; i++)
             keyClick(Qt.Key_Tab)
-        verify(orbit.activeFocus, "Tab reaches the Orbit button")
-        verify(orbit.visualFocus)
+        verify(bar.activeFocus, "Tab reaches the toolbar")
+        bar.current = 0
+        verify(orbit.ring)
         tryVerify(() => orbit.toolTip.visible, 2000)
+        // -> rings the next button, Enter presses it
+        keyClick(Qt.Key_Right)
+        const pan = findChild(win.contentItem, "entities.viewport.toolbar.pan")
+        verify(pan.ring && !orbit.ring)
+        keyClick(Qt.Key_Return)
+        compare(App.viewport.navMode, "pan")
+        verify(bar.activeFocus)
+        keyClick(Qt.Key_Left)
+        keyClick(Qt.Key_Space)
+        compare(App.viewport.navMode, "orbit")
         const rail = findChild(win.contentItem, "rail-entities")
         compare(rail.Accessible.role, Accessible.PageTab)
         verify(rail.Accessible.selected)

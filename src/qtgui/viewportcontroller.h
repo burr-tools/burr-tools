@@ -170,6 +170,7 @@ private:
   /* what the pointer is picked against: the shape's voxels (with the mesh)
    * and the active layer's cells (with the slab) */
   std::vector<btui::PickTriangle> m_pick;
+  bool m_pickDirty = false;        ///< m_pick is not the mesh's shape's: made on the next pick
   std::vector<btui::PickTriangle> m_layerPick;
   bool m_layerPickDirty = true;    ///< made on the first pick that needs it, not per layer step
   float m_hoverX = -1, m_hoverY = -1;

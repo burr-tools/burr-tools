@@ -20,6 +20,10 @@ AbstractButton {
      * the button's glyph and badge show the quick tool */
     property bool override: false
     readonly property bool lit: on || override
+    /* the focus ring for a toolbar that holds the focus for its buttons
+     * (one roving Tab stop, overview/04 section 5) */
+    property bool ring: false
+    readonly property bool toolbarButton: true
 
     implicitWidth: compact ? 34 : Theme.toolbarButtonWidth
     implicitHeight: compact && !Theme.minimal ? 34 : Theme.toolbarButtonHeight
@@ -34,14 +38,14 @@ AbstractButton {
     readonly property alias toolTip: tipPopup
     BtToolTip {
         id: tipPopup
-        shown: (root.hovered || root.visualFocus) && (root.tip.length > 0 || root.compact)
+        shown: (root.hovered || root.visualFocus || root.ring) && (root.tip.length > 0 || root.compact)
         text: root.tip.length > 0 ? root.tip : root.caption
     }
 
     background: Rectangle {
         radius: 8
         color: root.lit ? Theme.accentSoft : (root.hovered ? Theme.panel2 : "transparent")
-        border.width: root.visualFocus ? 2 : 0
+        border.width: root.visualFocus || root.ring ? 2 : 0
         border.color: Theme.accent
     }
 

@@ -11,6 +11,10 @@
 
 #include "../src/lib/voxel.h"
 
+#include <set>
+#include <utility>
+#include <vector>
+
 using namespace btui;
 using Catch::Matchers::WithinAbs;
 
@@ -113,6 +117,48 @@ TEST_CASE("sphere layers hold the voxels whose x+y+z is even, as touching circle
   CHECK(l1.cells.size() == 4);
   for (const GridCell & c : l0.cells)
     CHECK(c.round);
+}
+
+TEST_CASE("arrow keys step to the next cell in their direction, for every voxel type", "[ui][gridcells]") {
+  // the grid by keyboard (WCAG 2.1.1): from a cell, each arrow reaches a
+  // neighbour or stops at the edge; every cell is reachable
+  auto at = [](const GridLayout & l, int col, int row) {
+    for (size_t i = 0; i < l.cells.size(); i++)
+      if (l.cells[i].col == col && l.cells[i].row == row)
+        return int(i);
+    return -1;
+  };
+  gridType_c bricks(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(bricks, 3, 3, 1);
+  const GridLayout l = gridLayout(*v, Plane::XY, 0);
+  const int mid = at(l, 1, 1);
+  CHECK(stepCell(l, mid, 1, 0) == at(l, 2, 1));
+  CHECK(stepCell(l, mid, -1, 0) == at(l, 0, 1));
+  CHECK(stepCell(l, mid, 0, 1) == at(l, 1, 2));          // up: rows count upward
+  CHECK(stepCell(l, mid, 0, -1) == at(l, 1, 0));
+  CHECK(stepCell(l, at(l, 2, 1), 1, 0) == -1);           // the edge
+  CHECK(nearestCell(l, { 1.5, 1.5 }) == mid);
+
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    auto w = bttest::makeVoxel(gt, 6, 6, 6);
+    const GridLayout g = gridLayout(*w, Plane::XY, 2);
+    REQUIRE(!g.cells.empty());
+    // from the first cell, the four arrows reach every cell
+    std::set<int> seen{ 0 };
+    std::vector<int> todo{ 0 };
+    while (!todo.empty()) {
+      const int c = todo.back();
+      todo.pop_back();
+      for (auto [dx, dy] : { std::pair{ 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+        const int n = stepCell(g, c, dx, dy);
+        if (n >= 0 && seen.insert(n).second)
+          todo.push_back(n);
+      }
+    }
+    CHECK(seen.size() == g.cells.size());
+  }
 }
 
 TEST_CASE("the prism's other planes, and layers out of range, have no cells", "[ui][gridcells]") {

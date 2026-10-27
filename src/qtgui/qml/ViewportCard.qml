@@ -88,6 +88,36 @@ Rectangle {
         color: Theme.panel
         border.color: Theme.line
 
+        /* One roving Tab stop (overview/04 section 5): <- / -> move between
+         * the shown buttons, Enter or Space presses the one ringed; the
+         * buttons take no focus themselves */
+        activeFocusOnTab: true
+        property int current: 0
+        function shown(): list<Item> {
+            const out = []
+            for (let i = 0; i < buttons.children.length; i++) {
+                const b = buttons.children[i]
+                if (b.toolbarButton === true && b.visible)
+                    out.push(b)
+            }
+            return out
+        }
+        function ringed(b: Item): bool {
+            const list = shown()
+            return toolbar.activeFocus && list[Math.min(current, list.length - 1)] === b
+        }
+        Keys.onLeftPressed: current = Math.max(0, Math.min(current, shown().length - 1) - 1)
+        Keys.onRightPressed: current = Math.min(shown().length - 1, current + 1)
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Space || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                const list = shown()
+                list[Math.min(current, list.length - 1)].clicked()
+                event.accepted = true
+            }
+        }
+        Accessible.role: Accessible.ToolBar
+        Accessible.name: qsTr("3D view toolbar")
+
         component Separator: Rectangle {
             width: 1
             height: root.compact ? 20 : 28
@@ -102,6 +132,8 @@ Rectangle {
 
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.orbit"
+                focusPolicy: Qt.NoFocus
+                ring: toolbar.ringed(this)
                 toggle: true
                 iconName: "orbit"
                 caption: qsTr("Orbit")
@@ -112,6 +144,8 @@ Rectangle {
             }
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.pan"
+                focusPolicy: Qt.NoFocus
+                ring: toolbar.ringed(this)
                 toggle: true
                 iconName: "pan"
                 caption: qsTr("Pan")
@@ -123,6 +157,8 @@ Rectangle {
             Separator { visible: root.entities }
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.edit"
+                focusPolicy: Qt.NoFocus
+                ring: toolbar.ringed(this)
                 visible: root.entities
                 readonly property var toolNames: [qsTr("Fixed"), qsTr("Variable"), qsTr("Erase"), qsTr("Paint")]
                 readonly property string toolName: toolNames[App.editor.toolInEffect]
@@ -145,6 +181,8 @@ Rectangle {
             ToolbarButton {
                 id: displayButton
                 objectName: "entities.viewport.toolbar.display"
+                focusPolicy: Qt.NoFocus
+                ring: toolbar.ringed(this)
                 toggle: true
                 iconName: "eye"
                 caption: qsTr("Display")
@@ -162,6 +200,8 @@ Rectangle {
             Separator {}
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.focus"
+                focusPolicy: Qt.NoFocus
+                ring: toolbar.ringed(this)
                 toggle: true
                 iconName: App.layout.focus === LayoutController.Focus3d ? "unfocus" : "focus"
                 caption: App.layout.focus === LayoutController.Focus3d ? qsTr("Exit") : qsTr("Focus")
@@ -251,9 +291,9 @@ Rectangle {
             spacing: 5
             KeyBadge { text: "Shift" }
             HintText { text: qsTr("click 1 fixed ·") }
-            KeyBadge { text: Qt.platform.os === "osx" ? "Option" : "Alt" }
+            KeyBadge { text: Qt.platform.os === "osx" ? "Command" : "Alt" }
             HintText { text: qsTr("click 2 variable ·") }
-            KeyBadge { text: Qt.platform.os === "osx" ? "Control" : "Ctrl" }
+            KeyBadge { text: Qt.platform.os === "osx" ? "Option" : "Ctrl" }
             HintText { text: qsTr("click 3 erase") }
         }
         // line 2 follows the navigation mode

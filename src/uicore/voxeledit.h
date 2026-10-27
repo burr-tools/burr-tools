@@ -93,8 +93,9 @@ namespace btui {
   struct ModifierKeys { bool shift = false, alt = false, control = false, meta = false; };
 
   /* The quick tool the held modifiers pick (C06, C08): Shift = Fixed,
-   * Alt = Variable (Option or Command on macOS), Ctrl = Erase (Control on
-   * macOS); with several held, Ctrl > Alt/Command > Shift. None without. */
+   * Alt = Variable, Ctrl = Erase; on macOS Command = Variable and Option =
+   * Erase (Control-click is the secondary click there). With several held,
+   * Erase > Variable > Shift. None without. */
   std::optional<Tool> quickTool(Platform p, ModifierKeys m);
 
   /* The tool a press uses: the right button erases whatever else holds

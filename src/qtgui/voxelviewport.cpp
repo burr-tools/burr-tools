@@ -161,13 +161,24 @@ void VoxelViewport::hoverEnterEvent(QHoverEvent * e) {
 
 void VoxelViewport::hoverMoveEvent(QHoverEvent * e) {
   m_hover = e->position();
-  if (m_controller)
-    m_controller->pointerHover(float(m_hover.x()), float(m_hover.y()), e->modifiers());
+  m_hoverMods = e->modifiers();
+  m_hoverPending = true;
+  polish();                    // picked once, before the next frame
+}
+
+void VoxelViewport::updatePolish(void) {
+  QQuickRhiItem::updatePolish();
+  if (!m_hoverPending)
+    return;
+  m_hoverPending = false;
+  if (m_controller && m_hover.x() >= 0)
+    m_controller->pointerHover(float(m_hover.x()), float(m_hover.y()), m_hoverMods);
   updateCursor();
 }
 
 void VoxelViewport::hoverLeaveEvent(QHoverEvent *) {
   m_hover = { -1, -1 };
+  m_hoverPending = false;
   if (m_filtering) {
     QGuiApplication::instance()->removeEventFilter(this);
     m_filtering = false;
@@ -182,8 +193,9 @@ bool VoxelViewport::eventFilter(QObject * watched, QEvent * e) {
   if ((e->type() == QEvent::KeyPress || e->type() == QEvent::KeyRelease) && m_controller && m_hover.x() >= 0) {
     const int key = static_cast<QKeyEvent *>(e)->key();
     if (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta) {
-      m_controller->pointerHover(float(m_hover.x()), float(m_hover.y()), QGuiApplication::queryKeyboardModifiers());
-      updateCursor();
+      m_hoverMods = QGuiApplication::queryKeyboardModifiers();
+      m_hoverPending = true;
+      polish();
     }
   }
   return QQuickRhiItem::eventFilter(watched, e);

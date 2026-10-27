@@ -132,7 +132,7 @@ void TestEditor::theQuickToolIsCapturedAtThePress() {
   QCOMPARE(f.variable(), 2);
   QCOMPARE(f.editor()->tool(), EditorController::Fixed);
   // Ctrl erases (Control on macOS)
-  f.click(0, 0, btui::currentPlatform() == btui::Platform::Mac ? Qt::MetaModifier : Qt::ControlModifier);
+  f.click(0, 0, btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
   QCOMPARE(f.variable(), 1);
   f.click(2, 0, Qt::ShiftModifier);
   QCOMPARE(f.filled(), 1);
@@ -209,8 +209,8 @@ void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
 
 namespace {
 
-  // Ctrl erases (Control, Qt's meta, on macOS)
-  const Qt::KeyboardModifiers kErase = btui::currentPlatform() == btui::Platform::Mac ? Qt::MetaModifier : Qt::ControlModifier;
+  // Ctrl erases (Option on macOS)
+  const Qt::KeyboardModifiers kErase = btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier;
 
   /* a 3x3x3 brick shape seen from +Z, framed: the view's middle (160, 120)
    * is over cell column (1, 1) */
@@ -726,6 +726,101 @@ void TestEditor::theGridPaintsAStrokeWithoutGaps() {
   auto outside = mouse(QEvent::MouseButtonPress, QPointF(2, 2));
   g.mousePressEvent(&outside);
   QVERIFY(!outside.isAccepted());
+}
+
+void TestEditor::theViewIsReadyInTimeAfterAStrokeSegment() {
+  // AC-C08-08's second half: after a stroke segment, the 3D view's next
+  // frame -- the edit, the mesh rebuilt, the frame put together -- within
+  // 16 ms, on a 16 x 16 x 16 shape half filled (the render itself is the
+  // GPU's, measured in the performance guide)
+  EditorFixture f(16, 16, 16);
+  f.app->document()->editStructure(0, [](puzzle_c & p) {
+    voxel_c * v = p.getShape(0);
+    for (unsigned x = 0; x < 16; x++)
+      for (unsigned y = 0; y < 16; y++)
+        for (unsigned z = 0; z < 16; z++)
+          if ((x + y + z) % 2 == 0)
+            v->setState(x, y, z, (x + y) % 5 == 0 ? voxel_c::VX_VARIABLE : voxel_c::VX_FILLED);
+    return true;
+  });
+  ViewportController * v = f.app->viewport();
+  v->setViewportSize(800, 600);
+  v->frame(1);
+  std::vector<qint64> ns;
+  f.editor()->setLayer(8);
+  f.editor()->press(1, 0, false, Qt::NoModifier);
+  quint64 rev = v->frame(1).meshRevision;
+  for (int i = 2; i <= 10; i++) {
+    QElapsedTimer t;
+    t.start();
+    f.editor()->dragTo(i, (i + 1) % 2);               // one segment: an empty cell filled
+    const SceneFrame fr = v->frame(1);                // the next frame builds the mesh
+    ns.push_back(t.nsecsElapsed());
+    QVERIFY(fr.mesh && !fr.mesh->empty());
+    QVERIFY2(fr.meshRevision != rev, "the mesh was rebuilt");
+    rev = fr.meshRevision;
+  }
+  f.editor()->release();
+  const double ms = double(*std::min_element(ns.begin(), ns.end())) / 1e6;
+  qInfo("stroke segment to 3D frame, 16^3 half full: %.2f ms (best of 9)", ms);
+  QVERIFY2(ms < 16.0, qPrintable(QString::number(ms) + QStringLiteral(" ms")));
+
+  // and a 3D hover after an edit: the pick mesh made again, the target found
+  std::vector<qint64> picks;
+  for (int i = 0; i < 5; i++) {
+    // an empty cell (the sum of its coordinates odd) filled: the mesh changes
+    const quint64 before = v->frame(1).meshRevision;
+    f.editor()->press(3 + i, i % 2 == 0 ? 6 : 5, false, Qt::NoModifier);
+    f.editor()->release();
+    QVERIFY(v->frame(1).meshRevision != before);
+    QElapsedTimer t;
+    t.start();
+    const btui::Target3d target = v->targetAt(400, 300, Qt::ShiftModifier);
+    picks.push_back(t.nsecsElapsed());
+    QVERIFY(target.source != btui::TargetSource::None);
+  }
+  const double pickMs = double(*std::min_element(picks.begin(), picks.end())) / 1e6;
+  qInfo("edit to 3D hover target, 16^3 half full: %.2f ms (best of 5)", pickMs);
+  QVERIFY2(pickMs < 16.0, qPrintable(QString::number(pickMs) + QStringLiteral(" ms")));
+}
+
+void TestEditor::theGridByKeyboard() {
+  // WCAG 2.1.1 (overview/04 section 5): focused, the arrows move a cell
+  // cursor -- the hover, so readout and ghost follow -- Space applies the
+  // tool, Shift+Space the Fixed quick tool, Delete erases; one step each
+  EditorFixture f(3, 3, 1);
+  InputGrid g;
+  g.setSize(QSizeF(400, 300));
+  g.setEditor(f.editor());
+  QFocusEvent in(QEvent::FocusIn, Qt::TabFocusReason);
+  QCoreApplication::sendEvent(&g, &in);
+  QCOMPARE(f.editor()->hoverCol(), 1);                  // the middle cell first
+  QCOMPARE(f.editor()->hoverRow(), 1);
+  auto key = [&](int k, Qt::KeyboardModifiers m = Qt::NoModifier) {
+    QKeyEvent e(QEvent::KeyPress, k, m);
+    QCoreApplication::sendEvent(&g, &e);
+    return e.isAccepted();
+  };
+  QVERIFY(key(Qt::Key_Right));
+  QCOMPARE(f.editor()->hoverCol(), 2);
+  QVERIFY(key(Qt::Key_Up));
+  QCOMPARE(f.editor()->hoverRow(), 2);                  // rows count upward
+  key(Qt::Key_Right);                                   // the edge: stays
+  QCOMPARE(f.editor()->hoverCol(), 2);
+  QVERIFY(!f.editor()->preview().empty());              // the 3D ghost follows
+  f.editor()->setTool(EditorController::Variable);
+  QVERIFY(key(Qt::Key_Space));
+  QCOMPARE(f.state(2, 2, 0), int(voxel_c::VX_VARIABLE));
+  QVERIFY(key(Qt::Key_Space, Qt::ShiftModifier));       // the Fixed quick tool
+  QCOMPARE(f.state(2, 2, 0), int(voxel_c::VX_FILLED));
+  QVERIFY(key(Qt::Key_Delete));                         // erases, whatever the tool
+  QCOMPARE(f.state(2, 2, 0), int(voxel_c::VX_EMPTY));
+  f.app->document()->undo();                            // one step each
+  QCOMPARE(f.state(2, 2, 0), int(voxel_c::VX_FILLED));
+  QVERIFY(!key(Qt::Key_A));                             // others go on to the window
+  QFocusEvent out(QEvent::FocusOut, Qt::TabFocusReason);
+  QCoreApplication::sendEvent(&g, &out);
+  QCOMPARE(f.editor()->hoverCol(), -1);
 }
 
 void TestEditor::a32By32GridRedrawsInTime() {

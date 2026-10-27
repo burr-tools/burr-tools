@@ -404,6 +404,49 @@ TEST_CASE("picking a cube from outside finds the voxel and face under the ray", 
   CHECK_FALSE(pick(pm, { 1.5f, 0.5f, 10 }, { 0, 0, -1 }).hit);
 }
 
+TEST_CASE("the fast pick mesh picks what the library's flat mesh does, for every voxel type", "[ui][scenemesh]") {
+  // rays from every side through a scattered shape (variable voxels among
+  // the fixed ones) meet the same voxel and face in both
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int x = 0; x < 6; x++)
+      for (int y = 0; y < 6; y++)
+        for (int z = 0; z < 6; z++)
+          if (v->validCoordinate(x, y, z) && (x * 7 + y * 3 + z * 5) % 4 != 0)
+            v->setState(unsigned(x), unsigned(y), unsigned(z),
+                        (x + y + z) % 5 == 0 ? voxel_c::VX_VARIABLE : voxel_c::VX_FILLED);
+    const auto fast = buildPickMesh(*v);
+    const auto slow = buildPickMeshFromFlatMesh(*v);
+    REQUIRE(!fast.empty());
+    float cx, cy, cz;
+    v->calculateSize(&cx, &cy, &cz);
+    int compared = 0, hits = 0;
+    const Vec3 dirs[6] = { { 0, 0, -1 }, { 0, 0, 1 }, { 0, -1, 0 }, { 0, 1, 0 }, { -1, 0, 0 }, { 1, 0, 0 } };
+    for (const Vec3 & d : dirs)
+      for (int i = 0; i < 12; i++)
+        for (int j = 0; j < 12; j++) {
+          // a grid of rays across the box, off the cells' edges
+          const float u = (i + 0.37f) / 12.0f, w = (j + 0.61f) / 12.0f;
+          Vec3 o{ u * cx, w * cy, w * cz };
+          if (d.z != 0) o = { u * cx, w * cy, d.z < 0 ? cz + 5 : -5 };
+          if (d.y != 0) o = { u * cx, d.y < 0 ? cy + 5 : -5, w * cz };
+          if (d.x != 0) o = { d.x < 0 ? cx + 5 : -5, u * cy, w * cz };
+          const PickHit a = pick(fast, o, d), b = pick(slow, o, d);
+          compared++;
+          CHECK(a.hit == b.hit);
+          if (a.hit && b.hit) {
+            hits++;
+            CHECK(std::abs(a.t - b.t) < 1e-3f);
+            CHECK(a.voxel == b.voxel);
+            CHECK(a.face == b.face);
+          }
+        }
+    CHECK(hits > compared / 4);
+  }
+}
+
 TEST_CASE("picking works through the camera on an example of every grid", "[ui][scenemesh]") {
   // one example per grid type from examples/; a ray through the centre of the
   // view of a framed, non-empty shape always meets it

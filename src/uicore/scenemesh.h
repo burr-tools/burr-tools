@@ -151,7 +151,17 @@ namespace btui {
     std::int32_t face = 0;
   };
 
+  /* What a ray is picked against: every voxel's faces toward an empty cell
+   * or out of the grid (variable voxels count as voxels), fanned into
+   * triangles. Built from the cells' faces as the flat style draws them --
+   * fast, ~ the visible mesh's cost; spheres, whose drawn surface is not
+   * their cells' faces, from the library's flat mesh. */
   std::vector<PickTriangle> buildPickMesh(const voxel_c & shape);
+
+  /* the same from the library's flat mesh (voxel_c::getFlatMesh), for every
+   * voxel type: the reference the fast one is tested against -- it costs a
+   * hundred times more on a large shape */
+  std::vector<PickTriangle> buildPickMeshFromFlatMesh(const voxel_c & shape);
 
   /* the front-most triangle the ray meets (legacy: smallest depth) */
   PickHit pick(const std::vector<PickTriangle> & mesh, Vec3 origin, Vec3 dir);
