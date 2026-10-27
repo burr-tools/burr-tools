@@ -37,6 +37,7 @@
 #include "../halfedge/polyhedron.h"
 
 #include <math.h>
+#include <algorithm>
 #include <vector>
 
 #pragma GCC diagnostic push
@@ -722,13 +723,10 @@ void voxelFrame_c::drawVoxelSpace() {
 
   glPushName(0);
 
-  for (unsigned int run = 0; run < 2; run++) {
-
-    // for the transparent shapes only draw the surface facing the viewer,
-    // otherwise the backsides and insides of the pieces blend through
-    // in irregular patches
-    if (run == 1)
-      glEnable(GL_CULL_FACE);
+  // One pass over the entries. The opaque pass draws the entries with alpha
+  // 1, a translucent pass those of the given layer. `overlays` adds the
+  // coordinate axes and the 3D cursor, which are colour only.
+  auto pass = [&](bool opaque, unsigned int layer, bool overlays) {
 
     for (unsigned int piece = 0; piece < shapes.size(); piece++) {
 
@@ -743,10 +741,8 @@ void voxelFrame_c::drawVoxelSpace() {
 
       glLoadName(piece);
 
-      // in run 0 we only paint opaque objects and in run 1 only transparent ones
-      // this lets the transparent objects be always in front of the others
-      if ((run == 0) && (shape->a != 1)) continue;
-      if ((run == 1) && (shape->a == 1)) continue;
+      if (opaque != (shape->a == 1)) continue;
+      if (!opaque && shape->layer != layer) continue;
 
       glPushMatrix();
 
@@ -779,7 +775,8 @@ void voxelFrame_c::drawVoxelSpace() {
         break;
       }
 
-      if (_showCoordinateSystem && shape->shape) {
+      // the overlays are colour only, they stay out of the depth run
+      if (overlays && _showCoordinateSystem && shape->shape) {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
         glBegin(GL_LINES);
@@ -816,36 +813,11 @@ void voxelFrame_c::drawVoxelSpace() {
         glEnable(GL_BLEND);
       }
 
-      if (run == 1)
-      {
-        // draw the transparent shape twice: first only its depth, then its
-        // colours. That way only the surface nearest to the viewer is
-        // blended and the shape does not also blend with its own back
-        // sides and get darker wherever several of its faces are stacked
-        // behind one another
-        GLboolean colMask[4];
-        glGetBooleanv(GL_COLOR_WRITEMASK, colMask);
-        glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-        glDepthMask(GL_TRUE);
-
-        drawShape(shape);
-
-        glColorMask(colMask[0], colMask[1], colMask[2], colMask[3]);
-        glDepthMask(GL_FALSE);
-
-        // the colour fragments have exactly the depth the prepass laid
-        // down, so they must pass on equality
-        glDepthFunc(GL_LEQUAL);
-      }
-
       drawShape(shape);
-
-      if (run == 1)
-        glDepthFunc(GL_LESS);
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
-      if ((markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
+      if (overlays && (markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
       {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
@@ -895,11 +867,71 @@ void voxelFrame_c::drawVoxelSpace() {
 
       glPopMatrix();
     }
+  };
 
+  GLboolean colMask[4];
+  glGetBooleanv(GL_COLOR_WRITEMASK, colMask);
+
+  // the opaque entries first, with depth
+  pass(true, 0, true);
+
+  // The translucent entries follow, layer by layer in ascending order. Each
+  // layer is drawn twice over all its entries: first only its depth, then
+  // only its colours against that depth. Only the surface nearest to the
+  // viewer is blended, so the entries of one layer occlude each other and
+  // their own back sides exactly like opaque ones and the layer as a whole
+  // shows the scene through. Doing the two steps per entry instead would
+  // let an entry drawn later blend over one drawn before it even when it
+  // lies behind it.
+  //
+  // Between layers the depth buffer is put back to the opaque scene, so a
+  // higher layer blends over a lower one everywhere instead of being
+  // occluded by it: a piece fading out of view is composited over the
+  // pieces fading in at the same time, whichever is nearer.
+  std::vector<unsigned int> layers;
+  for (const shapeInfo & s : shapes)
+    if (s.a != 0 && s.a != 1 && s.mode != invisible && (s.shape || s.poly))
+      layers.push_back(s.layer);
+  std::sort(layers.begin(), layers.end());
+  layers.erase(std::unique(layers.begin(), layers.end()), layers.end());
+
+  // picking and vector export record every primitive drawn, so they must
+  // not see the opaque entries a second time; they get the layers drawn
+  // straight after one another
+  GLint renderMode;
+  glGetIntegerv(GL_RENDER_MODE, &renderMode);
+
+  for (unsigned int i = 0; i < layers.size(); i++) {
+
+    if (i > 0 && renderMode == GL_RENDER) {
+      // the clear obeys the depth write mask, which the colour pass of the
+      // previous layer left off
+      glDepthMask(GL_TRUE);
+      glClear(GL_DEPTH_BUFFER_BIT);
+      glDisable(GL_CULL_FACE);
+      glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+      glDepthFunc(GL_LESS);
+      pass(true, 0, true);
+    }
+
+    // only draw the surface facing the viewer, otherwise the backsides and
+    // insides of the pieces blend through in irregular patches
+    glEnable(GL_CULL_FACE);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LESS);
+    pass(false, layers[i], false);
+
+    glColorMask(colMask[0], colMask[1], colMask[2], colMask[3]);
     glDepthMask(GL_FALSE);
+    // the colour fragments have exactly the depth just laid down, so they
+    // must pass on equality
+    glDepthFunc(GL_LEQUAL);
+    pass(false, layers[i], true);
   }
 
   glPopName();
+  glDepthFunc(GL_LESS);
   glDisable(GL_CULL_FACE);
   glDepthMask(GL_TRUE);
 
@@ -1125,6 +1157,10 @@ void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, flo
   }
 
   redraw();
+}
+
+void voxelFrame_c::setSpaceLayer(unsigned int nr, unsigned int layer) {
+  shapes[nr].layer = layer;
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float a) {
@@ -1695,6 +1731,7 @@ void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
   for (unsigned int p = 0; p < shapes.size()-1; p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
+    setSpaceLayer(p, shifting->fadingOut(p) ? 1 : 0);
   }
 
   redraw();
@@ -1805,6 +1842,7 @@ void voxelFrame_c::updatePositionsOverlap(piecePositions_c *shifting) {
   for (unsigned int p = 0; p < shapes.size()-1; p++) {
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
+    setSpaceLayer(p, shifting->fadingOut(p) ? 1 : 0);
   }
 
   _showCoordinateSystem = false;

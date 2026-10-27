@@ -211,6 +211,7 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     void setSpaceColor(unsigned int nr, float r, float g, float b, float a);
     void setSpaceColor(unsigned int nr, float a);
+    void setSpaceLayer(unsigned int nr, unsigned int layer);
 
     void setSpacePosition(unsigned int nr, float x, float y, float z, float scale);
 
@@ -231,6 +232,13 @@ class voxelFrame_c : public Fl_Gl_Window {
     struct shapeInfo {
 
       float r = 0.0f, g = 0.0f, b = 0.0f, a = 1.0f;
+
+      /* translucent compositing layer, see drawVoxelSpace(): the translucent
+       * entries of one layer form a single body that occludes itself, and a
+       * higher layer is blended over the lower ones everywhere. Opaque
+       * entries ignore it. */
+      unsigned int layer = 0;
+
       const voxel_c * shape = nullptr;
       drawingMode mode = normal;
       float x = 0.0f, y = 0.0f, z = 0.0f, scale = 1.0f;

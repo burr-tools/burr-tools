@@ -30,6 +30,7 @@ disasmToMoves_c::disasmToMoves_c(const separation_c * tr, unsigned int sz, unsig
     size(sz),
     moves(max * 4, 0.0f),
     mv(max, false),
+    fading(max, false),
     maxPieceName(max) {
 }
 
@@ -43,6 +44,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
   // a temporary array, used to save the 2nd placement for the interpolation
   std::vector<float> moves2(maxPieceName * 4, 0.0f);
   std::fill(moves.begin(), moves.end(), 0.0f);
+  std::fill(fading.begin(), fading.end(), false);
 
   /* what we do is go twice through the tree and linearly interpolate between
    * the 2 states that we have in in the two nodes that we are currently in between
@@ -58,6 +60,7 @@ void disasmToMoves_c::setStep(float step, bool fadeOut, bool center_active) {
     // interpolate and check, which piece moves right now
     for (unsigned int i = 0; i < maxPieceName; i++) {
       mv[i] = ((moves[4*i+0] != moves2[4*i+0]) || (moves[4*i+1] != moves2[4*i+1]) || (moves[4*i+2] != moves2[4*i+2]));
+      fading[i] = moves[4*i+3] > moves2[4*i+3];
       moves[4*i+0] = (1-frac)*moves[4*i+0] + frac*moves2[4*i+0];
       moves[4*i+1] = (1-frac)*moves[4*i+1] + frac*moves2[4*i+1];
       moves[4*i+2] = (1-frac)*moves[4*i+2] + frac*moves2[4*i+2];
@@ -90,6 +93,10 @@ float disasmToMoves_c::getA(unsigned int piece) {
 bool disasmToMoves_c::moving(unsigned int piece) {
   bt_assert(piece < maxPieceName);
   return mv[piece];
+}
+bool disasmToMoves_c::fadingOut(unsigned int piece) {
+  bt_assert(piece < maxPieceName);
+  return fading[piece];
 }
 
 static int mabs(int a) {
@@ -302,5 +309,6 @@ float fixedPositions_c::getX(unsigned int piece) { bt_assert(piece < pieces); re
 float fixedPositions_c::getY(unsigned int piece) { bt_assert(piece < pieces); return y[piece]; }
 float fixedPositions_c::getZ(unsigned int piece) { bt_assert(piece < pieces); return z[piece]; }
 float fixedPositions_c::getA(unsigned int piece) { return visible[piece] ? 1 : 0; }
+bool fixedPositions_c::fadingOut(unsigned int /*piece*/) { return false; }
 bool fixedPositions_c::moving(unsigned int /*piece*/) { return false; }
 
