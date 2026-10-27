@@ -22,6 +22,7 @@
 #define BTQT_SETTINGSCONTROLLER_H
 
 #include "../uicore/settingsstore.h"
+#include "../uicore/vocabulary.h"
 
 #include <QObject>
 #include <QString>
@@ -88,6 +89,14 @@ public:
    * caches that belong to it are kept beside it */
   QString file(void) const;
   static QString defaultLegacyFile(void);
+
+  /* the typed values of the word settings (btui/vocabulary.h); the
+   * QString properties are their words, for QML */
+  btui::ThemeChoice themeValue(void) const;
+  btui::Density densityValue(void) const;
+  btui::Camera::RotationMethod rotationMethodValue(void) const;
+  btui::VoxelStyle voxelStyleValue(void) const;
+  btui::Antialiasing antialiasingValue(void) const;
 
   QString theme(void) const;
   void setTheme(const QString & v);
@@ -163,6 +172,11 @@ private:
   void write(void);
   void save(void);
   void applyToTheme(void);
+  template <class E, std::size_t N>
+  E wordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def) const;
+  /* false when the value is already set */
+  template <class E, std::size_t N>
+  bool setWordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def, E value);
 
   btui::SettingsStore m_store;
   QTimer m_saveTimer;              ///< runs while a change waits to be written

@@ -47,6 +47,8 @@
 
 namespace {
 
+  QString word(std::string_view w) { return QString::fromLatin1(w.data(), qsizetype(w.size())); }
+
   // legacy draws the measuring pictures 600 x 200 and the final ones three
   // times as wide as high, then crops them to their content
   const int kMeasureHeight = 200;
@@ -121,19 +123,23 @@ bool ImageExportController::canSolution(void) const {
 
 /* legacy cb_Update3DView: an unavailable choice falls back to the next */
 void ImageExportController::fixMode(void) {
-  if ((m_mode == QLatin1String("disassembly") || m_mode == QLatin1String("solution")) && !canSolution())
-    m_mode = QStringLiteral("assembly");
-  if (m_mode == QLatin1String("assembly") && !canAssembly())
-    m_mode = QStringLiteral("problem");
-  if (m_mode == QLatin1String("problem") && !canProblem())
-    m_mode = QStringLiteral("shape");
+  if ((m_mode == btui::ImageMode::Disassembly || m_mode == btui::ImageMode::Solution) && !canSolution())
+    m_mode = btui::ImageMode::Assembly;
+  if (m_mode == btui::ImageMode::Assembly && !canAssembly())
+    m_mode = btui::ImageMode::Problem;
+  if (m_mode == btui::ImageMode::Problem && !canProblem())
+    m_mode = btui::ImageMode::Shape;
+}
+
+QString ImageExportController::mode(void) const {
+  return word(btui::kImageModes.word(m_mode));
 }
 
 void ImageExportController::setMode(const QString & m) {
-  static const QStringList modes{ "shape", "problem", "assembly", "solution", "disassembly" };
-  if (!modes.contains(m) || m == m_mode)
+  const std::optional<btui::ImageMode> v = btui::kImageModes.find(m.toStdString());
+  if (!v || *v == m_mode)
     return;
-  m_mode = m;
+  m_mode = *v;
   fixMode();
   rebuildPreview();
 }
@@ -191,10 +197,10 @@ btui::SceneContent ImageExportController::sceneFor(const Job & j) const {
 void ImageExportController::rebuildPreview(void) {
   const puzzle_c & p = m_doc->session().puzzle();
   std::optional<Job> j;
-  if (m_mode == QLatin1String("shape")) {
+  if (m_mode == btui::ImageMode::Shape) {
     if (canShape())
       j = Job{ false, unsigned(m_shape) };
-  } else if (m_mode == QLatin1String("problem")) {
+  } else if (m_mode == btui::ImageMode::Problem) {
     if (canProblem() && p.getProblem(unsigned(m_problem))->resultValid())
       j = Job{ false, p.getProblem(unsigned(m_problem))->getResultId() };
   } else if (canAssembly()) {
@@ -269,14 +275,23 @@ void ImageExportController::recomputePixels(void) {
   emit sizeChanged();
 }
 
+QString ImageExportController::paper(void) const {
+  return word(btui::kPapers.word(m_paper));
+}
+
 void ImageExportController::setPaper(const QString & p) {
+  const std::optional<btui::Paper> v = btui::kPapers.find(p.toStdString());
+  if (!v)
+    return;
   btui::PaperSize s{ 0, 0 };
-  if (p == QLatin1String("a4p")) s = btui::kA4Portrait;
-  else if (p == QLatin1String("a4l")) s = btui::kA4Landscape;
-  else if (p == QLatin1String("letterp")) s = btui::kLetterPortrait;
-  else if (p == QLatin1String("letterl")) s = btui::kLetterLandscape;
-  else if (p != QLatin1String("manual")) return;
-  m_paper = p;
+  switch (*v) {
+    case btui::Paper::Manual: break;
+    case btui::Paper::A4Portrait: s = btui::kA4Portrait; break;
+    case btui::Paper::A4Landscape: s = btui::kA4Landscape; break;
+    case btui::Paper::LetterPortrait: s = btui::kLetterPortrait; break;
+    case btui::Paper::LetterLandscape: s = btui::kLetterLandscape; break;
+  }
+  m_paper = *v;
   if (s.widthMm) {
     m_mmX = int(s.widthMm);
     m_mmY = int(s.heightMm);
@@ -311,12 +326,12 @@ void ImageExportController::begin(void) {
   readSettings();
   // a fresh dialog has legacy's defaults
   m_open = true;
-  m_mode = QStringLiteral("solution");
+  m_mode = btui::ImageMode::Solution;
   m_shape = 0;
   m_problem = 0;
   m_transparent = m_constraint = m_dim = false;
   m_aa = 3;
-  m_paper = QStringLiteral("manual");
+  m_paper = btui::Paper::Manual;
   m_mmX = m_mmY = 0;
   m_dpi = 300;
   m_pxX = m_pxY = 300;
@@ -346,7 +361,7 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
   std::vector<Job> out;
   const puzzle_c & p = m_doc->session().puzzle();
 
-  if (m_mode == QLatin1String("shape")) {
+  if (m_mode == btui::ImageMode::Shape) {
     if (canShape())
       out.push_back(Job{ false, unsigned(m_shape) });
     return out;
@@ -356,7 +371,7 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
   const unsigned int prob = unsigned(m_problem);
   const problem_c * pr = p.getProblem(prob);
 
-  if (m_mode == QLatin1String("problem")) {
+  if (m_mode == btui::ImageMode::Problem) {
     if (pr->resultValid())
       out.push_back(Job{ false, pr->getResultId() });
     for (unsigned int part = 0; part < pr->getNumberOfParts(); part++)
@@ -368,7 +383,7 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
   Job base;
   base.assembly = true;
   base.problem = prob;
-  if (m_mode == QLatin1String("assembly")) {
+  if (m_mode == btui::ImageMode::Assembly) {
     out.push_back(base);      // the first solution, as legacy exports it
     return out;
   }
@@ -381,7 +396,7 @@ std::vector<ImageExportController::Job> ImageExportController::jobs(void) const 
     return out;
   const int moves = int(t->sumMoves());
   base.dim = m_dim;
-  if (m_mode == QLatin1String("disassembly")) {
+  if (m_mode == btui::ImageMode::Disassembly) {
     for (int s = 0; s < moves; s++) {
       Job j = base;
       j.step = s;
