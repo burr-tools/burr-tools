@@ -364,6 +364,9 @@ commit holds just the images that changed.
   active layer's slab acts as a 2D grid in the 3D view, and an empty shape
   with the slab hidden takes its first voxel at the origin; C06 targets
   voxel faces only, which leaves an empty shape unreachable from 3D.
+- **The Edit button's override** (P5, product decision 2026-10-27): a
+  quick tool held over the view lights the button as Edit mode does (the
+  glyph and badge the quick tool's), not with C06's dashed outline.
 - **The view's keys** (P5): Alt+1 … 6 for the cube's faces, Ctrl+arrows
   for its turns (Option on macOS); the spec asks for them without naming keys.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
