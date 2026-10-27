@@ -28,11 +28,22 @@ import BurrTools.Ui
 Rectangle {
     id: root
     objectName: "entities.viewport"
-    color: Theme.canvas
+    /* transparent: the canvas (z -1, after the toolbar in Tab order) is
+     * drawn behind this item's own fill, which would hide it; the fill is
+     * the child below, behind the canvas */
+    color: "transparent"
     radius: Theme.cardRadius
     border.color: Theme.line
     border.width: Theme.minimal ? 0 : 1
     clip: true
+
+    Rectangle {
+        objectName: "entities.viewport.fill"
+        anchors.fill: parent
+        z: -2
+        radius: root.radius
+        color: Theme.canvas
+    }
 
     readonly property bool entities: App.layout.workspace === LayoutController.Entities
     readonly property bool focus2d: App.layout.focus === LayoutController.Focus2d
