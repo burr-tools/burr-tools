@@ -30,4 +30,20 @@ private slots:
   void a32By32GridRedrawsInTime();
 };
 
+/* Editing in the 3D view (C06, P5): Edit mode and the quick tools, the
+ * target a click picks (a face, the active layer's slab, the origin), the
+ * ghost and the status line while hovering, and the focused view's keys. */
+class TestEdit3d : public QObject {
+  Q_OBJECT
+private slots:
+  void aClickEditsWithAQuickToolOrInEditMode();
+  void dragsAndOtherButtonsNeverEdit();
+  void theSlabIsA2dGridInTheView();
+  void anEmptyShapeWithoutTheSlabStartsAtTheOrigin();
+  void aFaceWithNothingBeyondIsOutlinedNotEdited();
+  void hoveringShowsTheGhostAndNamesTheTarget();
+  void theFocusedViewsKeysTurnPanAndZoom();
+  void singleKeyShortcutsCanBeTurnedOff();
+};
+
 #endif

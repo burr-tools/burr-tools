@@ -28,6 +28,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <set>
 
@@ -612,6 +613,32 @@ namespace btui {
       e.gapDp = style.gapDp;
       lines.push_back(e);
     }
+  }
+
+  void addFaceOutline(std::vector<LineSeg> & lines, const std::vector<PickTriangle> & pick, std::uint32_t voxel,
+                      std::int32_t face, const GhostStyle & style) {
+    auto q = [](float v) { return std::int64_t(std::llround(double(v) * 1024.0)); };
+    // each side by its ends rounded to 1/1024, either way round, and how often it occurs
+    std::map<std::array<std::int64_t, 6>, std::pair<std::pair<Vec3, Vec3>, int>> sides;
+    for (const PickTriangle & t : pick) {
+      if (t.voxel != voxel || t.face != face)
+        continue;
+      const Vec3 p[3] = { t.a, t.b, t.c };
+      for (int i = 0; i < 3; i++) {
+        Vec3 a = p[i], b = p[(i + 1) % 3];
+        std::array<std::int64_t, 6> k{ q(a.x), q(a.y), q(a.z), q(b.x), q(b.y), q(b.z) };
+        if (std::lexicographical_compare(k.begin() + 3, k.end(), k.begin(), k.begin() + 3)) {
+          std::swap_ranges(k.begin(), k.begin() + 3, k.begin() + 3);
+          std::swap(a, b);
+        }
+        auto & e = sides[k];
+        e.first = { a, b };
+        e.second++;
+      }
+    }
+    for (const auto & [k, e] : sides)
+      if (e.second == 1)
+        lines.push_back({ e.first.first, e.first.second, style.outline, style.widthDp, style.dashDp, style.gapDp });
   }
 
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp) {

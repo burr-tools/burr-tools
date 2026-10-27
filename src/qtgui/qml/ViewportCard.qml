@@ -6,9 +6,10 @@ import BurrTools.Ui
 
 // C06 3D viewport card: the canvas, the floating toolbar, the Display
 // menu, the view tag, the hint, the empty-shape message and the view cube
-// (C13). Editing in 3D (Edit mode, cursors, ghosts) arrives with phase P5;
-// the Edit button is shown, disabled, so the toolbar already has its final
-// layout, and already shows the voxel editor's tool in effect (AC-C07-09).
+// (C13). The canvas edits (P5): a quick tool held, or Edit mode (the Edit
+// button, E) -- ViewportController picks the target, EditorController
+// applies the tool. Tab reaches the canvas, which then has keys of its own
+// (the command table's viewport scope) and a ring on the card's edge.
 //
 // Wireframe (each number marks its code below):
 //
@@ -21,7 +22,8 @@ import BurrTools.Ui
 //   │        ① the 3D canvas, the whole card                │
 //   │        ⑦ No shape — open a puzzle ... (when empty)    │
 //   │                                                       │
-//   │ ⑥ Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
+//   │ ⑥ [Shift] click 1 fixed · [Alt] click 2 variable · …  │
+//   │   Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
 //   └───────────────────────────────────────────────────────┘
 Rectangle {
     id: root
@@ -35,20 +37,6 @@ Rectangle {
     readonly property bool entities: App.layout.workspace === LayoutController.Entities
     readonly property bool focus2d: App.layout.focus === LayoutController.Focus2d
     readonly property bool compact: focus2d || Theme.minimal
-
-    VoxelViewport { // ①
-        id: canvas
-        objectName: "entities.viewport.surface"
-        anchors.fill: parent
-        controller: App.viewport
-        // to assistive tech: what it shows, and the gestures the hint line (hidden
-        // in Minimal and Focus 2D) explains
-        Accessible.role: Accessible.Graphic
-        Accessible.name: App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
-        Accessible.description: App.viewport.navMode === "orbit"
-                                ? qsTr("Drag to orbit, Shift-drag or middle-drag to pan, wheel to zoom. O orbit mode, P pan mode, Home home view, F fit.")
-                                : qsTr("Drag to pan, Shift-drag to orbit, middle-drag to pan, wheel to zoom. O orbit mode, P pan mode, Home home view, F fit.")
-    }
 
     // --- view tag (top left) ---
     Row { // ②
@@ -125,13 +113,22 @@ Rectangle {
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.edit"
                 visible: root.entities
+                readonly property var toolNames: [qsTr("Fixed"), qsTr("Variable"), qsTr("Erase"), qsTr("Paint")]
+                readonly property string toolName: toolNames[App.editor.toolInEffect]
+                readonly property int toolNo: App.editor.toolInEffect + 1
+                toggle: true
                 glyphName: ["edit-tool-fixed", "edit-tool-variable", "edit-tool-erase",
                             "edit-tool-paint"][App.editor.toolInEffect]
                 caption: qsTr("Edit")
-                badge: String(App.editor.toolInEffect + 1)
-                tip: qsTr("3D edit mode (E) arrives with the editing phase")
+                badge: String(toolNo)
+                // C06 Edit button: on in Edit mode; override while a quick tool is held
+                on: App.editor.editMode
+                override: App.editor.quickHeld3d
+                tip: override ? qsTr("Quick tool — %1 (%2).").arg(toolName).arg(toolNo)
+                   : App.editor.editMode ? qsTr("Click edits with the active tool. Press E to leave edit mode.")
+                   : qsTr("3D edit mode — %1 (%2). Press E to turn edit mode on; or hold Shift/Alt/Ctrl while clicking.").arg(toolName).arg(toolNo)
                 compact: root.compact
-                enabled: false
+                onClicked: App.editor.toggleEditMode()
             }
             Separator {}
             ToolbarButton {
@@ -165,6 +162,48 @@ Rectangle {
         }
     }
 
+    VoxelViewport { // ①
+        id: canvas
+        objectName: "entities.viewport.surface"
+        anchors.fill: parent
+        // after the toolbar in Tab order (the spec's: toolbar, then canvas), drawn below everything
+        z: -1
+        controller: App.viewport
+        // to assistive tech: what it shows, and the gestures the hint line (hidden
+        // in Minimal and Focus 2D) explains
+        Accessible.role: Accessible.Graphic
+        Accessible.name: App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
+        Accessible.description: App.viewport.navMode === "orbit"
+                                ? qsTr("Drag to orbit, Shift-drag or middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
+                                : qsTr("Drag to pan, Shift-drag to orbit, middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
+        // Tab reaches it (a click does not take the focus: C20); its keys are
+        // the command table's viewport scope (Help ▸ Keyboard shortcuts)
+        activeFocusOnTab: true
+        Keys.onShortcutOverride: (event) => {
+            if (App.commands.keyInScope("viewport", event.key, event.modifiers) !== "")
+                event.accepted = true
+        }
+        Keys.onPressed: (event) => {
+            const key = App.commands.keyInScope("viewport", event.key, event.modifiers)
+            if (key !== "") {
+                App.commands.trigger(key)
+                event.accepted = true
+            }
+        }
+    }
+
+    // the keyboard's focus on the canvas: a ring on the card's edge
+    Rectangle {
+        objectName: "entities.viewport.focusRing"
+        anchors.fill: parent
+        visible: canvas.activeFocus
+        color: "transparent"
+        radius: root.radius
+        border.width: 2
+        border.color: Theme.accent
+        z: 10
+    }
+
     // --- view cube (top right, C13 placement) ---
     ViewCubeItem { // ④
         id: cube
@@ -182,11 +221,11 @@ Rectangle {
     }
 
     // --- hint (bottom left) ---
-    Row { // ⑥
+    Column { // ⑥
         objectName: "entities.viewport.hint"
         visible: !root.focus2d && !Theme.minimal
         anchors { left: parent.left; bottom: parent.bottom; margins: 14 }
-        spacing: 5
+        spacing: 4
 
         component HintText: Text {
             anchors.verticalCenter: parent ? parent.verticalCenter : undefined
@@ -194,9 +233,25 @@ Rectangle {
             font.pixelSize: Theme.fontSecondary
         }
 
-        HintText { text: App.viewport.navMode === "orbit" ? qsTr("Drag orbit ·") : qsTr("Drag pan ·") }
-        KeyBadge { text: "Shift" }
-        HintText { text: App.viewport.navMode === "orbit" ? qsTr("/ middle-drag pan · Wheel zoom") : qsTr("-drag orbit · Middle-drag pan · Wheel zoom") }
+        // line 1, fixed: the quick tools (Entities)
+        Row {
+            objectName: "entities.viewport.hint.tools"
+            visible: root.entities
+            spacing: 5
+            KeyBadge { text: "Shift" }
+            HintText { text: qsTr("click 1 fixed ·") }
+            KeyBadge { text: Qt.platform.os === "osx" ? "Option" : "Alt" }
+            HintText { text: qsTr("click 2 variable ·") }
+            KeyBadge { text: Qt.platform.os === "osx" ? "Control" : "Ctrl" }
+            HintText { text: qsTr("click 3 erase") }
+        }
+        // line 2 follows the navigation mode
+        Row {
+            spacing: 5
+            HintText { text: App.viewport.navMode === "orbit" ? qsTr("Drag orbit ·") : qsTr("Drag pan ·") }
+            KeyBadge { text: "Shift" }
+            HintText { text: App.viewport.navMode === "orbit" ? qsTr("/ middle-drag pan · Wheel zoom") : qsTr("-drag orbit · Middle-drag pan · Wheel zoom") }
+        }
     }
 
     // --- empty states ---
@@ -208,7 +263,10 @@ Rectangle {
                                   ? qsTr("The Puzzle scene arrives with the Puzzle phase")
                                   : qsTr("The Solver scene arrives with the Solver phase"))
              : !App.viewport.hasShape ? qsTr("No shape — open a puzzle or add a shape")
-             : App.viewport.emptyShape ? qsTr("Empty shape — draw in the Voxel editor") : ""
+             : !App.viewport.emptyShape ? ""
+             : App.viewport.editorVisible && App.viewport.displayLayerSlab
+               ? qsTr("Empty shape — draw in the Voxel editor, or Shift-click the highlighted layer here")
+             : qsTr("Empty shape — Shift-click here (or press E, then click) to place the first voxel at the origin")
         color: Theme.muted
         font.pixelSize: Theme.fontSecondary
     }

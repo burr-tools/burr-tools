@@ -207,6 +207,258 @@ void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
   QVERIFY(e->preview().empty());
 }
 
+namespace {
+
+  // Ctrl erases (Control, Qt's meta, on macOS)
+  const Qt::KeyboardModifiers kErase = btui::currentPlatform() == btui::Platform::Mac ? Qt::MetaModifier : Qt::ControlModifier;
+
+  /* a 3x3x3 brick shape seen from +Z, framed: the view's middle (160, 120)
+   * is over cell column (1, 1) */
+  struct Edit3dFixture : EditorFixture {
+    ViewportController * v;
+    Edit3dFixture() : EditorFixture(3, 3, 3) {
+      v = app->viewport();
+      v->setViewportSize(320, 240);
+      v->setProjection(QStringLiteral("orthographic"));
+      v->frame(1);                       // the mesh built, the camera framed
+      v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+    }
+    void fill(int x, int y, int z, int state = voxel_c::VX_FILLED) {
+      app->document()->editStructure(0, [&](puzzle_c & p) {
+        p.getShape(0)->setState(unsigned(x), unsigned(y), unsigned(z), state);
+        return true;
+      });
+      v->frame(1);                       // the pick mesh follows
+    }
+    /* where the middle of a cell column (x, y) is on the view, at height z */
+    QPointF at(float x, float y, float z = 1) const {
+      const btui::Vec3 p = v->camera().project({ x + 0.5f, y + 0.5f, z });
+      return { p.x, p.y };
+    }
+    void click3d(Qt::KeyboardModifiers m = Qt::NoModifier, float x = 160, float y = 120,
+                 Qt::MouseButton b = Qt::LeftButton) {
+      v->pointerPress(b, x, y, m);
+      v->pointerRelease(b, x, y);
+    }
+  };
+}
+
+void TestEdit3d::aClickEditsWithAQuickToolOrInEditMode() {
+  // AC-C06-06 / 07 / 12, T-C06-2
+  Edit3dFixture f;
+  f.fill(1, 1, 1);
+  f.click3d();                                           // no modifier, no Edit mode: nothing
+  QCOMPARE(f.filled(), 1);
+  QVERIFY(!f.editor()->viewportAction(Qt::NoModifier).has_value());
+
+  f.click3d(Qt::ShiftModifier);                          // Fixed on top of the voxel
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_FILLED));
+  f.app->document()->undo();                             // one step
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_EMPTY));
+  QCOMPARE(f.state(1, 1, 1), int(voxel_c::VX_FILLED));
+
+  f.click3d(Qt::AltModifier);                            // Variable
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_VARIABLE));
+  f.click3d(kErase);                                     // Erase: the voxel under the pointer
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_EMPTY));
+
+  // Edit mode: a plain click applies the tool, a modifier still overrides it
+  f.editor()->setEditMode(true);
+  f.editor()->setTool(EditorController::Erase);
+  QCOMPARE(int(*f.editor()->viewportAction(Qt::NoModifier)), int(btui::Tool::Erase));
+  QCOMPARE(int(*f.editor()->viewportAction(Qt::ShiftModifier)), int(btui::Tool::Fixed));
+  f.click3d(Qt::ShiftModifier);
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_FILLED));
+  f.click3d();
+  QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_EMPTY));
+
+  // Mirror X: both copies, one step (T-C06-4)
+  f.editor()->setTool(EditorController::Fixed);
+  f.editor()->setMirror(1);
+  const QPointF c01 = f.at(0, 1);
+  f.click3d(Qt::NoModifier, float(c01.x()), float(c01.y()));   // over column (0, 1): nothing there but the slab
+  f.editor()->setMirror(0);
+  QCOMPARE(f.state(0, 1, 0) + f.state(2, 1, 0), 2 * int(voxel_c::VX_FILLED));
+  f.app->document()->undo();                             // both, one step
+  QCOMPARE(f.state(0, 1, 0) + f.state(2, 1, 0), 0);
+}
+
+void TestEdit3d::dragsAndOtherButtonsNeverEdit() {
+  // AC-C06-12: past 4 dp a press navigates; middle and right never edit
+  Edit3dFixture f;
+  f.fill(1, 1, 1);
+  f.v->pointerPress(Qt::LeftButton, 160, 120, Qt::ShiftModifier);
+  f.v->pointerMove(170, 120);
+  f.v->pointerRelease(Qt::LeftButton, 170, 120);
+  QCOMPARE(f.filled(), 1);
+  f.click3d(Qt::ShiftModifier, 160, 120, Qt::MiddleButton);
+  f.click3d(Qt::ShiftModifier, 160, 120, Qt::RightButton);
+  QCOMPARE(f.filled(), 1);
+}
+
+void TestEdit3d::theSlabIsA2dGridInTheView() {
+  // product decision 2026-10-27: off every voxel, the active layer's slab
+  // is the 2D grid -- in an empty shape too
+  Edit3dFixture f;
+  QVERIFY(f.v->editorVisible() && f.v->displayLayerSlab());
+  f.editor()->setLayer(1);
+  QCOMPARE(int(f.v->targetAt(160, 120, Qt::ShiftModifier).source), int(btui::TargetSource::Slab));
+  f.click3d(Qt::ShiftModifier);
+  QCOMPARE(f.state(1, 1, 1), int(voxel_c::VX_FILLED));
+  // a voxel below the layer: the slab is nearer, its cell is the target
+  f.fill(2, 1, 0);
+  f.editor()->setLayer(1);
+  const QPointF c21 = f.at(2, 1);
+  const btui::Target3d t = f.v->targetAt(float(c21.x()), float(c21.y()), Qt::ShiftModifier);
+  QCOMPARE(int(t.source), int(btui::TargetSource::Slab));
+  QVERIFY((t.cell == btui::Cell3{ 2, 1, 1 }));
+  // the voxel in the layer: its face is the target
+  QCOMPARE(int(f.v->targetAt(160, 120, Qt::ShiftModifier).source), int(btui::TargetSource::Face));
+}
+
+void TestEdit3d::anEmptyShapeWithoutTheSlabStartsAtTheOrigin() {
+  Edit3dFixture f;
+  f.v->setDisplayLayerSlab(false);
+  QCOMPARE(int(f.v->targetAt(10, 10, Qt::ShiftModifier).source), int(btui::TargetSource::Origin));
+  f.click3d(Qt::ShiftModifier, 10, 10);                  // anywhere in the view
+  QCOMPARE(f.state(0, 0, 0), int(voxel_c::VX_FILLED));
+  QCOMPARE(f.filled(), 1);
+  // not empty any more: off the voxels, nothing
+  f.v->frame(1);
+  f.click3d(Qt::ShiftModifier, 10, 10);
+  QCOMPARE(f.filled(), 1);
+}
+
+void TestEdit3d::aFaceWithNothingBeyondIsOutlinedNotEdited() {
+  // T-C06-2: the target outside the grid -- no ghost, the face dashed in danger, no change
+  Edit3dFixture f;
+  f.fill(1, 1, 2);                                       // the top layer
+  f.v->pointerHover(160, 120, Qt::ShiftModifier);
+  QCOMPARE(int(f.editor()->target3d().source), int(btui::TargetSource::Rejected));
+  const SceneFrame fr = f.v->frame(1);
+  QVERIFY(fr.ghostFaces.empty());
+  QCOMPARE(fr.ghostLines.size(), size_t(4));              // the square's four sides
+  for (const btui::LineSeg & l : fr.ghostLines) {
+    QVERIFY(l.dashDp > 0);
+    QCOMPARE(l.widthDp, 2.5f);
+  }
+  f.click3d(Qt::ShiftModifier);
+  QCOMPARE(f.filled(), 1);
+}
+
+void TestEdit3d::hoveringShowsTheGhostAndNamesTheTarget() {
+  // AC-C06-08 / 10 / 11: the ghost and the cursor's tool the moment a
+  // modifier is held, none without; the status line names the target
+  Edit3dFixture f;
+  f.fill(1, 1, 1);
+  f.v->pointerHover(160, 120, Qt::NoModifier);
+  QVERIFY(f.editor()->preview().empty());
+  QCOMPARE(f.v->editCursorTool(), -1);
+  QVERIFY(!f.editor()->quickHeld3d());
+
+  QSignalSpy tool(f.editor(), &EditorController::toolChanged);
+  f.v->pointerHover(160, 120, Qt::ShiftModifier);        // as the modifier filter reports a key
+  QVERIFY(tool.count() > 0);
+  QVERIFY(f.editor()->quickHeld3d());
+  QCOMPARE(f.v->editCursorTool(), int(EditorController::Fixed));
+  std::vector<btui::GhostCell> p = f.editor()->preview();
+  QCOMPARE(p.size(), size_t(1));
+  QVERIFY((p[0].cell == btui::Cell3{ 1, 1, 2 }));
+  QVERIFY(!f.v->frame(1).ghostFaces.empty());
+  QVERIFY(f.app->status()->cursorText().contains(QStringLiteral("X1 Y1 Z2")));
+
+  f.v->pointerHover(160, 120, kErase);                   // Erase: the voxel itself
+  p = f.editor()->preview();
+  QVERIFY(p.size() == 1 && p[0].kind == btui::GhostKind::Erase && (p[0].cell == btui::Cell3{ 1, 1, 1 }));
+  QCOMPARE(f.v->editCursorTool(), int(EditorController::Erase));
+
+  // the slab's cell names its layer
+  const QPointF c01 = f.at(0, 1);
+  f.v->pointerHover(float(c01.x()), float(c01.y()), Qt::ShiftModifier);
+  QVERIFY(f.app->status()->cursorText().contains(QStringLiteral("active layer")));
+
+  // a drag hides the ghost; leaving clears it
+  f.v->pointerPress(Qt::LeftButton, 160, 120, Qt::NoModifier);
+  f.v->pointerMove(180, 120);
+  QVERIFY(f.editor()->preview().empty());
+  f.v->pointerRelease(Qt::LeftButton, 180, 120);
+  f.v->pointerHover(160, 120, Qt::ShiftModifier);
+  QVERIFY(!f.editor()->preview().empty());
+  f.v->pointerLeave();
+  QVERIFY(f.editor()->preview().empty());
+  QVERIFY(f.v->frame(1).ghostFaces.empty());
+  QVERIFY(f.app->status()->cursorText().isEmpty());
+}
+
+void TestEdit3d::theFocusedViewsKeysTurnPanAndZoom() {
+  // WCAG 2.1.1: every mouse gesture of the view by keys, through the command table
+  Edit3dFixture f;
+  ViewportController * v = f.v;
+  CommandController * c = f.app->commands();
+  const btui::Quat start = v->camera().orientation();
+  QCOMPARE(c->keyInScope(QStringLiteral("viewport"), Qt::Key_Left, Qt::NoModifier), QStringLiteral("view.orbitLeft"));
+  QCOMPARE(c->keyInScope(QStringLiteral("viewport"), Qt::Key_Up, Qt::ShiftModifier), QStringLiteral("view.panUp"));
+  QCOMPARE(c->keyInScope(QStringLiteral("viewport"), Qt::Key_Plus, Qt::NoModifier), QStringLiteral("view.zoomIn"));
+  QVERIFY(c->keyInScope(QStringLiteral("viewport"), Qt::Key_O, Qt::NoModifier).isEmpty());   // the window's
+
+  // 24 steps of 15 degrees: once round
+  c->trigger(QStringLiteral("view.orbitRight"));
+  QVERIFY(btui::angleBetween(start, v->camera().orientation()) > 0.2f);
+  for (int i = 1; i < 24; i++)
+    c->trigger(QStringLiteral("view.orbitRight"));
+  QVERIFY(btui::angleBetween(start, v->camera().orientation()) < 1e-3f);
+  c->trigger(QStringLiteral("view.orbitUp"));
+  c->trigger(QStringLiteral("view.orbitDown"));
+  QVERIFY(btui::angleBetween(start, v->camera().orientation()) < 1e-3f);
+
+  const btui::Mat4 before = v->camera().viewMatrix();
+  c->trigger(QStringLiteral("view.panLeft"));
+  QVERIFY(v->camera().viewMatrix()(0, 3) != before(0, 3));
+  const float zoom = v->camera().zoom();
+  c->trigger(QStringLiteral("view.zoomIn"));
+  while (v->tick(16)) {}
+  QVERIFY(v->camera().zoom() > zoom);
+
+  // the cube's faces and turns, animated to their end
+  c->trigger(QStringLiteral("view.top"));
+  while (v->tick(16)) {}
+  QVERIFY(btui::angleBetween(v->camera().orientation(), btui::Camera::lookFrom({ 0, 1, 0 }, 0)) < 0.05f ||
+          std::fabs(btui::rotate(v->camera().orientation(), btui::Vec3{ 0, 1, 0 }).z - 1.0f) < 1e-3f);
+  c->trigger(QStringLiteral("view.front"));
+  while (v->tick(16)) {}
+  QVERIFY(std::fabs(btui::rotate(v->camera().orientation(), btui::Vec3{ 0, 0, 1 }).z - 1.0f) < 1e-3f);
+  c->trigger(QStringLiteral("view.turnRight"));
+  while (v->tick(16)) {}
+  QVERIFY(std::fabs(btui::rotate(v->camera().orientation(), btui::Vec3{ 0, 0, 1 }).z) < 1e-3f);
+}
+
+void TestEdit3d::singleKeyShortcutsCanBeTurnedOff() {
+  // WCAG 2.1.4: the window's one-character keys are marked, so the shell
+  // can switch them with Settings ▸ General ▸ Single-key shortcuts
+  Edit3dFixture f;
+  QVERIFY(f.app->settings()->singleKeyShortcuts());
+  QStringList single;
+  for (const QVariant & e : f.app->commands()->shortcuts()) {
+    const QVariantMap m = e.toMap();
+    if (m.value(QStringLiteral("singleKey")).toBool())
+      single << m.value(QStringLiteral("key")).toString();
+  }
+  single.sort();
+  QCOMPARE(single, QStringList({ QStringLiteral("editor.tool.erase"), QStringLiteral("editor.tool.fixed"),
+                                 QStringLiteral("editor.tool.paint"), QStringLiteral("editor.tool.variable"),
+                                 QStringLiteral("view.edit3d"), QStringLiteral("view.fit"), QStringLiteral("view.orbit"),
+                                 QStringLiteral("view.pan") }));
+  f.app->settings()->setSingleKeyShortcuts(false);
+  QVERIFY(!f.app->settings()->singleKeyShortcuts());
+  // the shortcuts list says they are off
+  bool said = false;
+  for (const QVariant & g : f.app->commands()->shortcutHelp())
+    for (const QVariant & r : g.toMap().value(QStringLiteral("rows")).toList())
+      said |= r.toMap().value(QStringLiteral("action")).toString().contains(QStringLiteral("off (Settings"));
+  QVERIFY(said);
+  f.app->settings()->setSingleKeyShortcuts(true);
+}
+
 void TestEditor::mirrorAndSpanExpandEveryPlacement() {
   // AC-C07-03 / 04 / 06, through the controller
   EditorFixture f(4, 4, 3);

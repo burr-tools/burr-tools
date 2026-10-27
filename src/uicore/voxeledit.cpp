@@ -189,6 +189,76 @@ namespace btui {
     return changed;
   }
 
+  Cell3 originCell(const voxel_c & shape) {
+    // the nearest cell to the origin, by the sum of its coordinates
+    const int n = int(shape.getX() + shape.getY() + shape.getZ());
+    for (int s = 0; s <= n; s++)
+      for (int x = 0; x <= s && x < int(shape.getX()); x++)
+        for (int y = 0; x + y <= s && y < int(shape.getY()); y++) {
+          const int z = s - x - y;
+          if (z < int(shape.getZ()) && shape.validCoordinate(x, y, z))
+            return { x, y, z };
+        }
+    return { 0, 0, 0 };
+  }
+
+  std::unique_ptr<voxel_c> layerCells(const voxel_c & shape, Plane p, int layer) {
+    std::unique_ptr<voxel_c> v(shape.getGridType()->getVoxel(shape.getX(), shape.getY(), shape.getZ(), voxel_c::VX_EMPTY));
+    const int axis = layerAxis(p);
+    const int dims[3] = { int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+    if (layer < 0 || layer >= dims[axis])
+      return v;
+    int c[3];
+    c[axis] = layer;
+    const int a1 = (axis + 1) % 3, a2 = (axis + 2) % 3;
+    for (c[a1] = 0; c[a1] < dims[a1]; c[a1]++)
+      for (c[a2] = 0; c[a2] < dims[a2]; c[a2]++)
+        if (v->validCoordinate(c[0], c[1], c[2]))
+          v->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_FILLED);
+    return v;
+  }
+
+  Target3d target3d(const voxel_c & shape, Tool t, const PickHit & voxel, const PickHit & slab, bool slabShown) {
+    Target3d out;
+    auto cellOf = [&](std::uint32_t index) {
+      unsigned int x = 0, y = 0, z = 0;
+      shape.indexToXYZ(index, &x, &y, &z);
+      return Cell3{ int(x), int(y), int(z) };
+    };
+    const bool useSlab = slabShown && slab.hit;
+    // the nearer wins; on a tie (a voxel in the slab, its face on the slab's
+    // surface) the voxel's face
+    if (voxel.hit && (!useSlab || voxel.t <= slab.t + 1e-4f * std::max(1.0f, slab.t))) {
+      const Cell3 hit = cellOf(voxel.voxel);
+      out.voxel = voxel.voxel;
+      out.face = voxel.face;
+      if (t == Tool::Erase || t == Tool::Paint) {
+        out.source = TargetSource::Face;
+        out.cell = hit;
+        return out;
+      }
+      int nx, ny, nz;
+      if (shape.getNeighbor(unsigned(voxel.face), 0, hit.x, hit.y, hit.z, &nx, &ny, &nz) && inside(shape, { nx, ny, nz })) {
+        out.source = TargetSource::Face;
+        out.cell = { nx, ny, nz };
+      } else {
+        out.source = TargetSource::Rejected;
+        out.cell = hit;
+      }
+      return out;
+    }
+    if (useSlab) {
+      out.source = TargetSource::Slab;
+      out.cell = cellOf(slab.voxel);
+      return out;
+    }
+    if (!slabShown && shape.countState(voxel_c::VX_FILLED) + shape.countState(voxel_c::VX_VARIABLE) == 0) {
+      out.source = TargetSource::Origin;
+      out.cell = originCell(shape);
+    }
+    return out;
+  }
+
   std::vector<GhostCell> previewTool(const voxel_c & shape, const std::vector<Cell3> & cells, Tool t, unsigned int colour) {
     if (colour >= 64)
       colour = 0;

@@ -193,6 +193,12 @@ namespace btui {
   void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
                 const std::vector<std::array<int, 3>> & cells, const GhostStyle & style);
 
+  /* The outline of one voxel face as picking sees it (C06: a face whose
+   * far side is outside the grid, outlined): the sides of its triangles
+   * that no other of its triangles shares, in the style's outline. */
+  void addFaceOutline(std::vector<LineSeg> & lines, const std::vector<PickTriangle> & pick, std::uint32_t voxel,
+                      std::int32_t face, const GhostStyle & style);
+
   /* the axes from the origin, reaching 0.7 of a cell beyond the grid (C06) */
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp);
 }

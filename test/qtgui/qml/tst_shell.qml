@@ -320,8 +320,8 @@ TestCase {
             { tag: "cards", rails: false, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
-                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan",
-                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus",
+                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan", "entities.viewport.toolbar.edit",
+                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus", "entities.viewport.surface",
                 "entities.editor.focus2d", "entities.editor.collapse",
                 // the tool strip and the planes are one stop each
                 "entities.editor.tools.group",
@@ -334,8 +334,8 @@ TestCase {
             { tag: "rails", rails: true, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "workspace.left.rail.expand", "entities.shapes.rail.row.0", "entities.shapes.rail.new",
-                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan",
-                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus",
+                "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan", "entities.viewport.toolbar.edit",
+                "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus", "entities.viewport.surface",
                 "workspace.right.rail.expand" ] },
         ]
     }
@@ -344,8 +344,8 @@ TestCase {
         // eye reads the window (rail, left card, 3D toolbar, right card), and
         // stops on nothing that does nothing -- no chip, label, read-only voxel
         // type, row action (the list is one stop; its keys and menu have
-        // those) or disabled button (Edit until P5). A phase that adds a
-        // control adds it here, where it belongs.
+        // those) or disabled button. The 3D canvas is one (its keys, P5), after
+        // the toolbar. A phase that adds a control adds it here, where it belongs.
         App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
         // the puzzle's comment comes up in a message: out of the way
         for (let i = 0; i < 5; i++) {

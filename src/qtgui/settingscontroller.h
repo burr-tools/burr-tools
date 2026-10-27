@@ -47,6 +47,9 @@ class SettingsController : public QObject {
   Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed FINAL)
   Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed FINAL)
   Q_PROPERTY(bool tooltips READ tooltips WRITE setTooltips NOTIFY changed FINAL)
+  /* the window-wide one-character shortcuts (O, P, F, E, 1-4): WCAG 2.1.4
+   * lets a user who types by voice or one finger turn them off */
+  Q_PROPERTY(bool singleKeyShortcuts READ singleKeyShortcuts WRITE setSingleKeyShortcuts NOTIFY changed FINAL)
   // Help > Check for updates, at launch too (at most daily; legacy checkForUpdates)
   Q_PROPERTY(bool checkForUpdates READ checkForUpdates WRITE setCheckForUpdates NOTIFY changed FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed FINAL)
@@ -103,6 +106,8 @@ public:
   QString density(void) const;
   void setDensity(const QString & v);
   bool tooltips(void) const;
+  bool singleKeyShortcuts(void) const;
+  void setSingleKeyShortcuts(bool v);
   void setTooltips(bool v);
   bool checkForUpdates(void) const;
   void setCheckForUpdates(bool v);
