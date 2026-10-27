@@ -164,8 +164,12 @@ setup-cov:
 # recipes can never silently drift and report different numbers. Excluding
 # build-cov/subprojects skips walking vendored coverage data the filters would
 # discard anyway (~44s saved); it must not change the reported TOTAL.
+# The assembler's worker threads race on gcov's counters, which newer gcc
+# (15) can report as negative hits (gcc bug 68080); gcovr counts those lines
+# as not run and warns, rather than failing the whole report.
 gcovr_base := "--root . " + \
     "--exclude 'src/lua/' " + \
+    "--gcov-ignore-parse-errors=negative_hits.warn_once_per_file " + \
     "--exclude-directories 'build-cov/subprojects' " + \
     ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
 
