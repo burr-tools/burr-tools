@@ -44,6 +44,7 @@ Rectangle {
             tip: qsTr("All menus")
             selected: allMenus.visible
             tab: false
+            minimalCaption: false            // the icon says it; the tooltip names it
             onClicked: allMenus.visible ? closeMenus() : openMenus()
 
             // Alt reaches these menus by keyboard while the menu bar is hidden

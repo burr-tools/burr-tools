@@ -315,7 +315,8 @@ commit holds just the images that changed.
 - **Workspace rail**: the selected workspace's fill runs to the rail's right
   edge, square there, with the indicator bar on that edge -- a tab joined to
   the workspace (spec AC-C15-02: the bar at the left). In Minimal a rail
-  button is as tall as its turned caption.
+  button is as tall as its turned caption; the menu button (menu bar
+  hidden) shows its icon alone, "All menus" in its tooltip.
 - **Density** (density.md §1 over the component sections, as §1 says):
   buttons 28 (PR-04: 30); the status bar's 11.5 dp text is drawn at 12, a
   font's pixel size being whole.
