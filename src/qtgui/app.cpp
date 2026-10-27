@@ -83,9 +83,12 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_layout = new LayoutController(m_settings, this);
   m_status = new StatusController(this);
   m_shapes = new ShapesModel(m_document, this);
+  m_colours = new ColoursModel(m_document, m_shapes, this);
   m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, this);
   m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_shapes, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
+  connect(m_colours, &ColoursModel::flashRequested, m_status, &StatusController::flash);
+  connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);

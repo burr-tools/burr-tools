@@ -63,6 +63,9 @@ TestCase {
             verify(contrast(Theme.text, Theme[fill]) >= 4.5, "text on " + fill)
             verify(contrast(Theme.muted, Theme[fill]) >= 4.5,
                    "muted on " + fill + ": " + contrast(Theme.muted, Theme[fill]).toFixed(2))
+            // a menu's Delete, highlighted (panel2) or not (panel)
+            verify(contrast(Theme.dangerText, Theme[fill]) >= 4.5,
+                   "dangerText on " + fill + ": " + contrast(Theme.dangerText, Theme[fill]).toFixed(2))
         }
         // primary buttons: white text on the accent
         if (data.theme === "dark")

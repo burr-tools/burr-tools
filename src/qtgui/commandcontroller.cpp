@@ -176,16 +176,22 @@ QVariantList CommandController::shortcuts(void) const {
 QString CommandController::keyInScope(const QString & scope, int key, int modifiers) const {
   if (scope != QLatin1String("shapesList"))
     return {};
-  // the keypad flag is no part of a shortcut (macOS reports the arrow keys
-  // with it), and the main Enter key (Qt's Return) is the table's Enter
-  const Qt::Key k = key == Qt::Key_Return ? Qt::Key_Enter : Qt::Key(key);
-  const QKeySequence pressed(QKeyCombination(Qt::KeyboardModifiers(modifiers) & ~Qt::KeypadModifier, k));
+  // The keypad flag is no part of a shortcut (macOS reports the arrow keys
+  // with it), and the main Enter key and the keypad's are one: Qt calls the
+  // first Return, the table writes Enter (Return on macOS, for its glyph).
+  const auto normal = [](QKeyCombination k) {
+    return QKeyCombination(k.keyboardModifiers() & ~Qt::KeypadModifier,
+                           k.key() == Qt::Key_Return ? Qt::Key_Enter : k.key());
+  };
+  const QKeyCombination pressed = normal(QKeyCombination(Qt::KeyboardModifiers(modifiers), Qt::Key(key)));
   for (const auto & c : btui::commandTable()) {
     if (c.scope != btui::Scope::ShapesList)
       continue;
-    for (auto s : platformShortcuts(c))
-      if (QKeySequence(str(s), QKeySequence::PortableText) == pressed)
+    for (auto s : platformShortcuts(c)) {
+      const QKeySequence seq(str(s), QKeySequence::PortableText);
+      if (seq.count() == 1 && normal(seq[0]) == pressed)
         return str(c.key);
+    }
   }
   return {};
 }

@@ -43,7 +43,7 @@ MenuItem {
             // items take no letters, and draw none
             text: root.subMenu ? App.keyboardCues.accessKeyText(root.text, App.keyboardCues.showAccessKeys) : root.plainText
             textFormat: root.subMenu ? Text.StyledText : Text.PlainText
-            color: root.danger ? Theme.danger : Theme.text
+            color: root.danger ? Theme.dangerText : Theme.text
             font.pixelSize: Theme.fontBody
         }
         Text {

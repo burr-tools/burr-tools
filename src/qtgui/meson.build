@@ -8,6 +8,7 @@ fs = import('fs')
 # module built in qml/meson.build.
 qtgui_moc_headers = files(
   'app.h',
+  'coloursmodel.h',
   'commandcontroller.h',
   'documentcontroller.h',
   'imageexportcontroller.h',
@@ -114,6 +115,7 @@ endif
 # plain static link would drop them.
 libburr_qtgui = static_library('burr_qtgui', [
     'app.cpp',
+    'coloursmodel.cpp',
     'commandcontroller.cpp',
     'documentcontroller.cpp',
     'earlydevice.cpp',

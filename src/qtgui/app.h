@@ -22,6 +22,7 @@
 #define BTQT_APP_H
 
 // the controllers are Q_PROPERTY types, which moc needs complete
+#include "coloursmodel.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
 #include "imageexportcontroller.h"
@@ -65,6 +66,7 @@ class App : public QObject {
   Q_PROPERTY(LayoutController * layout READ layout CONSTANT FINAL)
   Q_PROPERTY(StatusController * status READ status CONSTANT FINAL)
   Q_PROPERTY(ShapesModel * shapes READ shapes CONSTANT FINAL)
+  Q_PROPERTY(ColoursModel * colours READ colours CONSTANT FINAL)
   Q_PROPERTY(CommandController * commands READ commands CONSTANT FINAL)
   Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
   Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
@@ -94,6 +96,7 @@ public:
   LayoutController * layout(void) const { return m_layout; }
   StatusController * status(void) const { return m_status; }
   ShapesModel * shapes(void) const { return m_shapes; }
+  ColoursModel * colours(void) const { return m_colours; }
   CommandController * commands(void) const { return m_commands; }
   ViewportController * viewport(void) const { return m_viewport; }
   ToolsController * tools(void) const { return m_tools; }
@@ -145,6 +148,7 @@ private:
   LayoutController * m_layout;
   StatusController * m_status;
   ShapesModel * m_shapes;
+  ColoursModel * m_colours;
   CommandController * m_commands;
   ViewportController * m_viewport;
   ToolsController * m_tools;

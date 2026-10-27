@@ -24,6 +24,7 @@ import BurrTools.Ui
 //   └──────┘
 Item {
     id: root
+    objectName: "entities.shapes.rail"
 
     ListView { // ①
         id: list
@@ -76,7 +77,8 @@ Item {
             HoverHandler { id: hover }
             TapHandler { onTapped: { App.shapes.select(row.index); list.forceActiveFocus() } }
             BtToolTip {
-                shown: hover.hovered
+                // the label: on hover, and for the keyboard on the selected chip
+                shown: hover.hovered || (row.selected && list.activeFocus)
                 text: row.label.length > 0 ? row.idText + "  " + row.label : row.idText
             }
             Accessible.role: Accessible.ListItem

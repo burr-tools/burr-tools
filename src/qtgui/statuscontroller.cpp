@@ -55,6 +55,14 @@ void StatusController::flash(const QString & text) {
   emit announced(text);
 }
 
+void StatusController::endFlash(void) {
+  if (!m_flashing)
+    return;
+  m_timer.stop();
+  m_flashing = false;
+  emit changed();
+}
+
 QString StatusController::shapeText(unsigned int shapeIndex, unsigned int fixed, unsigned int variable) {
   return QStringLiteral("Shape <b>S%1</b> has <b>%2</b> voxels (%3 fixed, %4 variable)")
     .arg(shapeIndex + 1).arg(fixed + variable).arg(fixed).arg(variable);

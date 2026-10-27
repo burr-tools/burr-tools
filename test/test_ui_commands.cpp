@@ -62,6 +62,7 @@ TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[u
 
   auto first = [](Command c, Platform p) { return std::string(shortcutsOn(commandInfo(c), p)[0]); };
   CHECK(first(Command::ShapeRename, Platform::Windows) == "Enter");
+  CHECK(first(Command::ShapeRename, Platform::Mac) == "Return");   // ↩, not the keypad's ⌤
   CHECK(first(Command::ShapeDuplicate, Platform::Windows) == "Ctrl+D");
   CHECK(first(Command::ShapeDelete, Platform::Windows) == "Del");
   CHECK(first(Command::ShapeDelete, Platform::Mac) == "Backspace");

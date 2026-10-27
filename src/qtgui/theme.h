@@ -70,6 +70,8 @@ class Theme : public QObject {
   Q_PROPERTY(QColor axisY READ axisY NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisZ READ axisZ NOTIFY changed FINAL)
   Q_PROPERTY(QColor danger READ danger NOTIFY changed FINAL)
+  /* danger as text on panel and panel2 (a menu's Delete): >= 4.5:1 on both */
+  Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed FINAL)
   Q_PROPERTY(QColor scrim READ scrim NOTIFY changed FINAL)
 
   // type scale (design-tokens.md section 2), in dp
@@ -159,6 +161,7 @@ public:
   QColor axisY(void) const { return col("axisY"); }
   QColor axisZ(void) const { return col("axisZ"); }
   QColor danger(void) const { return col("danger"); }
+  QColor dangerText(void) const { return col("dangerText"); }
   QColor scrim(void) const { return col("scrim"); }
 
   qreal fontDialogTitle(void) const { return num("font.dialogTitle"); }

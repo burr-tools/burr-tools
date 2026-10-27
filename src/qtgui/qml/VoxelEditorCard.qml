@@ -2,19 +2,19 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// C07 Voxel editor card, first cut: header with the read-only voxel type chip
-// (C14), Focus 2D and collapse. The tools, grid and colour footer arrive with
-// phases P3 and P4.
+// C07 Voxel editor card: header with the read-only voxel type chip (C14),
+// Focus 2D and collapse, and the Drawing colour footer (C09, P3). The tools,
+// grid and grid size arrive with phase P4.
 //
 // Wireframe (each number marks its code below):
 //
 //   ┌───────────────────────────────────────────┐
 //   │ Voxel editor  ①(▪ Brick)        ②[⤢] [◨] │   title, collapse: Card
 //   ├───────────────────────────────────────────┤
-//   │                                           │
-//   │      ③ The voxel editor (tools, ...)      │
-//   │         arrives in a later phase.         │
-//   │                                           │
+//   │      ③ The tools, grid and grid size      │
+//   │         arrive in a later phase.          │
+//   ├───────────────────────────────────────────┤
+//   │ ④ Drawing colour: [■] C2  (●)(■)(■) [+][⋯] │
 //   └───────────────────────────────────────────┘
 Card {
     id: root
@@ -91,12 +91,18 @@ Card {
     ]
 
     Text { // ③
-        anchors.centerIn: parent
+        anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter
+                  verticalCenterOffset: -footer.height / 2 }
         width: parent.width - 40
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
-        text: qsTr("The voxel editor (tools, mirror and span, layers, 2D grid, grid size and drawing colour) arrives in a later phase.")
+        text: qsTr("The voxel editor's tools, mirror and span, layers, 2D grid and grid size arrive in a later phase.")
         color: Theme.muted
         font.pixelSize: Theme.fontSecondary
+    }
+
+    ColourFooter { // ④
+        id: footer
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
     }
 }

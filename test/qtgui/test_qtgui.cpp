@@ -239,7 +239,7 @@ private slots:
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
-                          "ViewportCard.qml", "VoxelEditorCard.qml", "StatusBar.qml",
+                          "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
       if (f != QLatin1String("BtDialog.qml"))     // the frame the dialogs share
@@ -1955,8 +1955,9 @@ private slots:
     QCOMPARE(m->count(), n);
     QCOMPARE(m->selected(), 0);
     QCOMPARE(label(1), QStringLiteral("Arm"));
-    QCOMPARE(status->text(), QStringLiteral("Order changed — shapes renumbered S1…S%1").arg(n));
-    // the last one renumbers nothing
+    QCOMPARE(status->text(), QStringLiteral("Shape S1 deleted — later shapes renumbered S1…S%1").arg(n));
+    // the last one renumbers nothing; deleted while selected, its neighbour is
+    m->select(n - 1);
     m->deleteShape(n - 1);
     QCOMPARE(m->selected(), n - 2);
     QCOMPARE(status->text(), QStringLiteral("Shape S%1 deleted").arg(n));
@@ -1977,6 +1978,79 @@ private slots:
       d->undo();
     QCOMPARE(m->count(), n);
     QVERIFY(label(1) != QStringLiteral("Arm"));
+  }
+
+  void deletingAnotherRowKeepsTheSelectionOnItsShape() {
+    // a row's own trash button deletes a row that is not selected: the
+    // selected shape stays selected (a row up when it came after), with one
+    // selectedChanged for the end state
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const puzzle_c & p = f.app->document()->session().puzzle();
+    m->select(4);
+    const voxel_c * selected = p.getShape(4);
+    QSignalSpy changed(m, &ShapesModel::selectedChanged);
+    m->deleteShape(1);
+    QCOMPARE(m->selected(), 3);
+    QCOMPARE(p.getShape(3), selected);
+    QCOMPARE(changed.count(), 1);
+
+    changed.clear();
+    m->deleteShape(m->count() - 1);                   // after it: it stays
+    QCOMPARE(m->selected(), 3);
+    QCOMPARE(changed.count(), 0);
+  }
+
+  void renameAndWeightUpdateTheirRowAlone() {
+    // one row, one role: no other delegate re-reads, no voxel recount
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    QSignalSpy data(m, &QAbstractItemModel::dataChanged);
+    m->renameShape(2, QStringLiteral("Arm"));
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(0).toModelIndex().row(), 2);
+    QCOMPARE(data.first().at(1).toModelIndex().row(), 2);
+    QCOMPARE(data.first().at(2).value<QList<int>>(), QList<int>{ ShapesModel::LabelRole });
+    data.clear();
+    m->changeWeight(2, +1);
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(2).value<QList<int>>(), QList<int>{ ShapesModel::WeightRole });
+    // and undo, which may change anything, refreshes them all
+    data.clear();
+    f.app->document()->undo();
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(0).toModelIndex().row(), 0);
+  }
+
+  void shapeActionsRedo() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const int n = m->count();
+    auto label = [&](int row) { return m->data(m->index(row), ShapesModel::LabelRole).toString(); };
+    const QString first = label(0);
+    m->moveShape(0, 2);
+    m->duplicateShape(2);
+    m->deleteShape(1);
+    const int afterAll = m->count();
+    while (d->canUndo())
+      d->undo();
+    QCOMPARE(m->count(), n);
+    QCOMPARE(label(0), first);
+    d->redo();
+    QCOMPARE(label(2), first);
+    d->redo();
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(label(n), first);
+    d->redo();
+    QCOMPARE(m->count(), afterAll);
+    QVERIFY(!d->canRedo());
   }
 
   void deleteKeepsOneShape() {
@@ -2069,6 +2143,202 @@ private slots:
       QVERIFY2(!c->isEnabled(QString::fromLatin1(key)), key);
   }
 
+  void theColourListFollowsTheDocument() {
+    // C09: Default first, always; a new document starts drawing with it
+    Fixture f;
+    f.make();
+    ColoursModel * c = f.app->colours();
+    QCOMPARE(c->count(), 1);
+    QCOMPARE(c->drawColour(), 0);
+    QCOMPARE(c->drawName(), QStringLiteral("Default"));
+    QVERIFY(!c->drawRgb().isValid());                 // the shape's colour
+    QVERIFY(c->canAdd());
+    QCOMPARE(c->data(c->index(0), ColoursModel::IsDefaultRole).toBool(), true);
+    c->select(5);
+    QCOMPARE(c->drawColour(), 0);                     // clamped
+  }
+
+  void addIsQuickAndEditGoesThroughTheChooserAsUndoSteps() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    QSignalSpy chooser(c, &ColoursModel::chooserRequested);
+
+    // Add: the first preset at once, no chooser, and drawn with
+    c->addColour();
+    QCOMPARE(chooser.count(), 0);
+    QCOMPARE(c->count(), 2);
+    QCOMPARE(c->drawColour(), 1);
+    QCOMPARE(c->drawName(), QStringLiteral("C1"));
+    const QColor first(0xef, 0x44, 0x44);
+    QCOMPARE(c->drawRgb(), first);
+    c->addColour();
+    QVERIFY(c->colourOf(2) != first);                 // the next preset, a different one
+
+    // Edit: Default cannot be edited; a colour can, starting from its own
+    c->requestEdit(0);
+    QCOMPARE(chooser.count(), 0);
+    c->requestEdit(1);
+    QCOMPARE(chooser.count(), 1);
+    QCOMPARE(chooser.last().at(1).value<QColor>(), first);
+    c->chooseColour(QColor(0, 0, 255));
+    QCOMPARE(c->colourOf(1), QColor(0, 0, 255));
+
+    // a cancelled chooser changes nothing, and a late answer is ignored
+    c->requestEdit(1);
+    c->cancelChoose();
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->colourOf(1), QColor(0, 0, 255));
+
+    // each was one undo step; undoing the adds leaves Default to draw with
+    d->undo();
+    QCOMPARE(c->colourOf(1), first);
+    d->undo();
+    d->undo();
+    QCOMPARE(c->count(), 1);
+    QCOMPARE(c->drawColour(), 0);
+  }
+
+  void theChooserIsCancelledWhenTheColoursChangeUnderIt() {
+    // Edit's chooser is up for C1; an undo renumbers the colours: the answer
+    // would go to another colour, so the chooser is closed and the answer
+    // dropped. The same when the document is replaced.
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    c->addColour();
+    c->addColour();
+    const QColor second = c->colourOf(2);
+    QSignalSpy cancelled(c, &ColoursModel::chooserCancelled);
+    c->requestEdit(2);
+    d->undo();                                        // C2 goes
+    QCOMPARE(cancelled.count(), 1);
+    c->chooseColour(QColor(1, 2, 3));                 // the late answer
+    QCOMPARE(c->colourOf(1), QColor(0xef, 0x44, 0x44));
+    d->redo();
+    QCOMPARE(c->colourOf(2), second);
+
+    c->requestEdit(1);
+    d->newDocument(0);
+    QCOMPARE(cancelled.count(), 2);
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->count(), 1);
+
+    // an edit that renumbers nothing leaves it up
+    c->addColour();
+    c->requestEdit(1);
+    f.app->shapes()->addShape();
+    QCOMPARE(cancelled.count(), 2);
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->colourOf(1), QColor(1, 2, 3));
+  }
+
+  void theDrawingColourSignalsOnlyWhenItChanges() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ColoursModel * c = f.app->colours();
+    ShapesModel * m = f.app->shapes();
+    c->addColour();
+    QSignalSpy draw(c, &ColoursModel::drawColourChanged);
+    QSignalSpy rows(c, &QAbstractItemModel::dataChanged);
+    m->renameShape(0, QStringLiteral("Arm"));         // a shape edit: nothing of the colours
+    m->changeWeight(1, +1);
+    QCOMPARE(draw.count(), 0);
+    QCOMPARE(rows.count(), 0);
+    // Default shows the selected shape's colour: a new selection is a change
+    c->select(0);
+    draw.clear();
+    m->select(1);
+    QCOMPARE(draw.count(), 1);
+    QCOMPARE(c->drawShown(), ShapesModel::chipColor(1));
+    // an Edit changes that colour's row alone
+    c->requestEdit(1);
+    c->chooseColour(QColor(9, 9, 9));
+    QCOMPARE(rows.count(), 1);
+    QCOMPARE(rows.first().at(0).toModelIndex().row(), 1);
+  }
+
+  void removingAColourIsAnnouncedAndRedoes() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    StatusController * status = f.app->status();
+    c->addColour();
+    c->addColour();
+    const QColor second = c->colourOf(2);
+    c->removeColour(1);
+    QCOMPARE(status->text(), QStringLiteral("Colour C1 removed — C2 is now C1"));
+    QCOMPARE(c->colourOf(1), second);                 // C2 is C1 now
+    c->removeColour(1);
+    QCOMPARE(status->text(), QStringLiteral("Colour C1 removed"));
+    d->undo();
+    d->undo();
+    QCOMPARE(c->count(), 3);
+    d->redo();
+    QCOMPARE(c->count(), 2);
+    QCOMPARE(c->colourOf(1), second);
+  }
+
+  void aPuzzleHasAtMost63Colours() {
+    Fixture f;
+    f.make();
+    ColoursModel * c = f.app->colours();
+    for (int i = 0; i < 63; i++)
+      c->addColour();
+    QCOMPARE(c->count(), 64);
+    QVERIFY(!c->canAdd());
+    QSignalSpy edited(f.app->document(), &DocumentController::puzzleEdited);
+    c->addColour();                                   // refused, no assert
+    QCOMPARE(c->count(), 64);
+    QCOMPARE(edited.count(), 0);
+  }
+
+  void removeAsksFirstOnlyWhenSolutionsWouldBeLost() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/SolidSixPieceBurrs.xmpuzzle")));
+    ColoursModel * c = f.app->colours();
+    const int before = c->count();
+    // two new colours: the first on a voxel of every shape, the second on none
+    c->addColour();
+    c->addColour();
+    const int used = before, unused = before + 1;
+    d->edit(puzzleHistory_c::AK_COLOR_PALETTE, 0, [&](puzzle_c & p) {
+      for (unsigned s = 0; s < p.getNumberOfShapes(); s++)
+        for (unsigned j = 0; j < p.getShape(s)->getXYZ(); j++)
+          if (p.getShape(s)->getState(j) != voxel_c::VX_EMPTY) {
+            p.getShape(s)->setColor(j, unsigned(used));
+            break;
+          }
+      return true;
+    });
+
+    QSignalSpy ask(c, &ColoursModel::removeConfirmRequested);
+    c->select(unused);
+    c->requestRemove(unused);                         // goes at once
+    QCOMPARE(ask.count(), 0);
+    QCOMPARE(c->count(), before + 1);
+    QCOMPARE(c->drawColour(), 0);                     // C09: back to Default
+
+    c->requestRemove(used);
+    QCOMPARE(ask.count(), 1);
+    QCOMPARE(ask.first().at(0).toInt(), used);
+    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("C%1").arg(used));
+    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML asks
+    c->removeColour(used);                            // the answer
+    QCOMPARE(c->count(), before);
+
+    c->requestRemove(0);                              // Default cannot go
+    c->removeColour(0);
+    QCOMPARE(c->count(), before);
+  }
+
   void statusTextIsTheLegacySentence() {
     Fixture f;
     f.make();
@@ -2097,6 +2367,18 @@ private slots:
     QCOMPARE(s.cursorText(), QStringLiteral("Cursor X1 Y2 · Z0"));
     s.setCursorText(QString());
     QVERIFY(s.cursorText().isEmpty());
+  }
+
+  void aNewDocumentEndsTheFlash() {
+    // a message about the old document does not stay over the new one
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    f.app->shapes()->deleteShape(0);
+    QVERIFY(f.app->status()->flashing());
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QVERIFY(!f.app->status()->flashing());
+    QVERIFY(f.app->status()->text().startsWith(QStringLiteral("Shape <b>S1</b>")));
   }
 
   void aFlashReplacesTheTextThenReverts() {
