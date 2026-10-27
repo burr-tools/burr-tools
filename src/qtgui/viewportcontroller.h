@@ -129,6 +129,7 @@ private:
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
   void addGhosts(SceneFrame & f) const;
+  void updateSlab(void);
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
@@ -142,6 +143,11 @@ private:
   btui::VoxelStyle m_meshStyle = btui::VoxelStyle::Flat;   ///< the voxel style m_mesh was built in
   bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
   bool m_meshQueued = false;       ///< a buildMesh() is posted
+  /* the layer slab of the shape as m_mesh shows it, the editor's plane and
+   * layer: measured from the layer's cells (btui::layerSlab), so kept, not
+   * measured every frame */
+  btui::Box m_slab{};
+  bool m_hasSlab = false;
 
   /* the persisted Display options, kept here for frame() (readDisplay) */
   struct Display {
