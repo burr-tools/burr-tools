@@ -545,7 +545,8 @@ Every phase's pull request follows what #140 settled:
   a stroke ends it first, so nothing painted is lost. The tool is captured
   at the press (AC-C08-10); a fast drag paints every cell it crosses.
 - **The quick tools** follow C06 (Ctrl > Alt / ⌘ > Shift). On macOS,
-  Option or Command picks Variable and Control erases (Qt's meta).
+  Command picks Variable and Option erases (product decision 2026-10-28:
+  Control-click is macOS's secondary click, overview/04 §6).
 - **Grid size** counts in steps: 5 voxels for rhombic shapes, 3 for
   tetra-octa ones (legacy's fields), 1 … 1000. A shrink that would cut
   voxels is refused (OQ-5); with Apply to all, every shape that allows it
@@ -615,6 +616,21 @@ Every phase's pull request follows what #140 settled:
   spaces), Ctrl+Shift+Left / Right its rolls, Alt+1 … 6 its faces (front
   +Z, back −Z, left −X, right +X, top +Y, bottom −Y, as the cube labels
   them).
+- **The review of 2026-10-28** (spec and guide against P1–P5; product
+  decisions): the **3D toolbar is one roving Tab stop** (← → move the
+  ring, Enter or Space press; its buttons take no focus on a click, C20),
+  as overview/04 §5 asks. The **2D grid is a Tab stop** with a cell cursor
+  -- the hover, so the outline, readout and 3D ghost follow -- moved by the
+  arrows (`btui::stepCell`, every voxel type), Space or Enter applying the
+  tool in effect (Shift+Space Fixed), Delete or Backspace erasing; a click
+  focuses it too. Alt+Space and Ctrl+Space are the system's (window menu,
+  input source), so no quick tool rides on them. **macOS**: Command picks
+  Variable and Option erases (Control-click is the secondary click there).
+  **Performance**: a stroke segment to the 3D view's next frame is tested
+  under AC-C08-08's 16 ms (16³ half full: ~7 ms); the pick mesh is made only
+  when a pick needs it, from the cells' faces (~2 ms there, against ~170 ms
+  through the library's flat mesh, which spheres keep), and the 3D hover
+  is picked at most once a frame (`VoxelViewport::updatePolish`).
 - **Single-key shortcuts** (WCAG 2.1.4): O, P, F, E and 1–4 are marked in
   the command table (`btui::isSingleCharacter`) and Settings ▸ General ▸
   Single-key shortcuts turns them all off; the shortcuts window says so.
