@@ -204,6 +204,46 @@ TestCase {
         verify(!list.visible)
     }
 
+    function test_theShellFollowsTheDensity_data() {
+        // density.md section 1 and 2, outside the cards
+        return [
+            { tag: "standard", density: "standard", button: 28, status: 11.5, toolbar: 44 },
+            { tag: "minimal", density: "minimal", button: 26, status: 11, toolbar: 32 },
+        ]
+    }
+    function test_theShellFollowsTheDensity(data) {
+        App.settings.density = data.density
+        const minimal = data.density === "minimal"
+        waitForRendering(win.contentItem)
+
+        // the workspace rail: Minimal turns the caption, reading top to bottom,
+        // and the button is as tall as it, inside the 44 dp rail
+        for (const n of ["rail-entities", "rail-puzzle", "rail-solver"]) {
+            const b = item(n)
+            const caption = findChild(b, "caption")
+            verify(caption.visible, n)
+            compare(caption.rotation, minimal ? 90 : 0, n)
+            verify(b.width <= Theme.workspaceRail, n)
+            if (minimal)
+                verify(b.height >= caption.implicitWidth + 22, n + " holds its caption")
+        }
+
+        // Shapes' New: "+" alone in Minimal, square; named for assistive tech either way
+        const add = item("entities.shapes.new")
+        compare(add.text, minimal ? "+" : "+ New")
+        if (minimal)
+            compare(add.width, add.height)
+        compare(add.Accessible.name, "New shape")
+
+        // buttons, the status bar's text, the 3D toolbar
+        compare(item("entities.shapes.new").height, 26)              // small in both
+        compare(Theme.button, data.button)
+        // a font's pixel size is whole: 11.5 is drawn at 12
+        compare(item("status.text").font.pixelSize, Math.round(data.status))
+        compare(item("status.cursor").font.pixelSize, Math.round(data.status))
+        compare(item("entities.viewport.toolbar.orbit").height, data.toolbar)
+    }
+
     function test_columnWidthsAtTheReferenceSize() {
         // T-DEN-2 at Standard density, 1600 dp wide
         tryCompare(item("workspace.left"), "width", 320, 1000)

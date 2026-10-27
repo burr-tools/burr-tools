@@ -368,6 +368,8 @@ private slots:
     QCOMPARE(t->planeHeight(), 46.0);
     QCOMPARE(t->layerChipWidth(), 32.0);
     QCOMPARE(t->drawSwatch(), 32.0);
+    QCOMPARE(t->button(), 28.0);
+    QCOMPARE(t->statusBarFont(), 11.5);
     t->setDensity(QStringLiteral("minimal"));
     QCOMPARE(t->topBar(), 32.0);
     QCOMPARE(t->workspaceRail(), 44.0);
@@ -378,6 +380,8 @@ private slots:
     QCOMPARE(t->layerChipHeight(), 22.0);
     QCOMPARE(t->stepper(), 26.0);
     QCOMPARE(t->drawSwatch(), 26.0);
+    QCOMPARE(t->button(), 26.0);
+    QCOMPARE(t->statusBarFont(), 11.0);
     t->setDensity(QStringLiteral("standard"));
 
     // anything that is not light or dark means "system"

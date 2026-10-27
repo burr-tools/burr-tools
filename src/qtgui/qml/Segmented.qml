@@ -12,7 +12,7 @@ FocusScope {
     property var value
     signal activated(var value)
 
-    implicitHeight: 26
+    implicitHeight: Theme.segmentedButton + 4      // the options on a 2 dp padded track
     implicitWidth: row.implicitWidth + 4
     activeFocusOnTab: true
     // one choice of several: a group of radio buttons to assistive tools

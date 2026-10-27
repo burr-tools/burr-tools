@@ -168,7 +168,7 @@ TestCase {
     function test_sizesFollowTheTokens_data() {
         return [
             { tag: "icon button 28", cell: "iconButton.normal", w: 28, h: 28 },
-            { tag: "button h30", cell: "button.normal", h: 30 },
+            { tag: "button h28 (density.md section 1)", cell: "button.normal", h: 28 },
             { tag: "small button h26", cell: "button.small", h: 26 },
             { tag: "3D toolbar button 48x44", cell: "toolbarButton.normal", w: 48, h: 44 },
             { tag: "compact toolbar button 34", cell: "toolbarButton.compact", w: 34, h: 34 },
@@ -328,7 +328,8 @@ TestCase {
         // a 1 dp border must still read as its colour, not a blur of it
         useTheme(data.theme)
         const line2 = Theme.line2
-        expectColors("button", [8, 15, 22].map(y => ["button.normal", 0.25, y, line2, "button border at y " + y]))
+        // the straight part of a 28 dp button with radius 8
+        expectColors("button", [9, 14, 19].map(y => ["button.normal", 0.25, y, line2, "button border at y " + y]))
         const d = control("dropdown.normal")
         expectColors("dropdown", [ ["dropdown.normal", d.width - 0.25, 15, line2, "dropdown right border"] ])
     }

@@ -57,7 +57,9 @@ Card {
             objectName: "entities.shapes.new"
             primary: true
             small: true
-            text: qsTr("+ New")
+            // Minimal: "+" alone, square; the tooltip says what it does
+            text: Theme.minimal ? "+" : qsTr("+ New")
+            width: Theme.minimal ? height : implicitWidth
             Accessible.name: qsTr("New shape")
             Accessible.description: newTip.text
             onClicked: App.shapes.addShape()
