@@ -68,6 +68,8 @@ interleaved (2026-10-10):
 | round 1: the window first, dialogs on demand, fonts warmed on a thread | 555 / 700 ms | 892 / 966 ms |
 | round 2: the device made early, one font family (no fallback scan), the puzzle opened after the first frame, dialog files loaded on demand | **349 / 486 ms** | **624 / 917 ms** |
 | check after the first cut's final pass (2026-10-13; 5 warm runs, not interleaved, so a sanity check rather than a comparison) | 309 ms (275–433) / — | 515 ms (447–684) / — |
+| standalone (static) build, PR 140's head (2026-10-27; 15 interleaved runs, times from process creation) | 285 / 302 ms | 471 / 562 ms |
+| the same after P2 and P3 (Shapes card actions, the Drawing colour footer) | 287 / 304 ms | 481 / 572 ms (+10 ms, ~2 %; first paint unchanged. Not traced; most likely the colour footer and the two context menus the workspace now makes) |
 
 Memory at that point, release build with PelikanBurr open and idle: 116–118 MB
 working set, ~310 MB committed (much of it the Direct3D driver's), the same
