@@ -41,7 +41,10 @@ ColoursModel::ColoursModel(DocumentController * doc, ShapesModel * shapes, QObje
 {
   connect(doc, &DocumentController::documentReplaced, this, [this] { refresh(true); });
   connect(doc, &DocumentController::historyApplied, this, [this] { refresh(); });
-  connect(doc, &DocumentController::puzzleEdited, this, [this] { refresh(); });
+  connect(doc, &DocumentController::puzzleEdited, this, [this](int, DocumentController::Change c) {
+    if (c == DocumentController::Change::Palette || c == DocumentController::Change::Structure)
+      refresh();
+  });
   // Default shows the selected shape's colour
   connect(shapes, &ShapesModel::selectedChanged, this, &ColoursModel::publishDraw);
   connect(shapes, &ShapesModel::countChanged, this, &ColoursModel::publishDraw);

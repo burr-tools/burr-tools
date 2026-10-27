@@ -25,6 +25,7 @@
 #include "statuscontroller.h"
 #include "theme.h"
 #include "updatecontroller.h"
+#include "test_editor.h"
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
@@ -1425,7 +1426,7 @@ private slots:
     auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
 
     std::vector<std::unique_ptr<AnySignal>> spies;
-    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->settings(), a->shapes() })
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes() })
       spies.push_back(std::make_unique<AnySignal>(o));
     auto happened = [&] {
       int n = int(links.urls.size());
@@ -1444,7 +1445,10 @@ private slots:
       if (key == QLatin1String("view.orbit"))
         a->viewport()->setNavMode(QStringLiteral("pan"));
       if (key == QLatin1String("editor.layerDown"))
-        a->viewport()->setLayer(1);
+        a->editor()->setLayer(1);
+      // another tool than the one the key picks
+      if (key.startsWith(QLatin1String("editor.tool.")))
+        a->editor()->setTool(key == QLatin1String("editor.tool.fixed") ? EditorController::Paint : EditorController::Fixed);
       // a shape with one before it
       if (key.startsWith(QLatin1String("shapes.")))
         a->shapes()->select(1);
@@ -1472,11 +1476,11 @@ private slots:
     CommandController * c = a->commands();
     QVERIFY(a->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
     a->layout()->setWorkspace(LayoutController::Solver);
-    const int layer = a->viewport()->layer();
+    const int layer = a->editor()->layer();
     QVERIFY(!c->isEnabled(QStringLiteral("editor.layerUp")));
     c->trigger(QStringLiteral("editor.layerUp"));
     c->trigger(QStringLiteral("editor.layerDown"));
-    QCOMPARE(a->viewport()->layer(), layer);
+    QCOMPARE(a->editor()->layer(), layer);
     QVERIFY(!c->isEnabled(QStringLiteral("no.such.command")));
     AnySignal any(c);
     c->trigger(QStringLiteral("no.such.command"));
@@ -2004,7 +2008,7 @@ private slots:
   }
 
   void renameAndWeightUpdateTheirRowAlone() {
-    // one row, one role: no other delegate re-reads, no voxel recount
+    // one row, its label roles: no other delegate re-reads, no voxel recount
     Fixture f;
     f.make();
     QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
@@ -2014,11 +2018,12 @@ private slots:
     QCOMPARE(data.count(), 1);
     QCOMPARE(data.first().at(0).toModelIndex().row(), 2);
     QCOMPARE(data.first().at(1).toModelIndex().row(), 2);
-    QCOMPARE(data.first().at(2).value<QList<int>>(), QList<int>{ ShapesModel::LabelRole });
+    const QList<int> labelRoles{ ShapesModel::LabelRole, ShapesModel::WeightRole };
+    QCOMPARE(data.first().at(2).value<QList<int>>(), labelRoles);
     data.clear();
     m->changeWeight(2, +1);
     QCOMPARE(data.count(), 1);
-    QCOMPARE(data.first().at(2).value<QList<int>>(), QList<int>{ ShapesModel::WeightRole });
+    QCOMPARE(data.first().at(2).value<QList<int>>(), labelRoles);
     // and undo, which may change anything, refreshes them all
     data.clear();
     f.app->document()->undo();
@@ -3275,6 +3280,7 @@ int main(int argc, char ** argv) {
   run(TestStlExport());
   run(TestImageExport());
   run(TestViewportController());
+  run(TestEditor());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

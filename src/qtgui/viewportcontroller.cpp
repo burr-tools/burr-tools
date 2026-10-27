@@ -21,6 +21,7 @@
 #include "viewportcontroller.h"
 
 #include "documentcontroller.h"
+#include "editorcontroller.h"
 #include "guarded.h"
 #include "layoutcontroller.h"
 #include "localpath.h"
@@ -30,6 +31,7 @@
 
 #include "../uicore/palette.h"
 #include "../uicore/vectorexport.h"
+#include "../uicore/vocabulary.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
@@ -55,14 +57,12 @@ namespace {
              std::uint8_t(std::clamp(c.alphaF() * alpha, 0.0f, 1.0f) * 255.0f + 0.5f) };
   }
 
-  btui::Plane planeOf(int p) {
-    return p == 1 ? btui::Plane::XZ : (p == 2 ? btui::Plane::YZ : btui::Plane::XY);
-  }
+  QString word(std::string_view w) { return QString::fromLatin1(w.data(), qsizetype(w.size())); }
 }
 
 ViewportController::ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                                       LayoutController * layout, QObject * parent) :
-  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout)
+                                       LayoutController * layout, EditorController * editor, QObject * parent) :
+  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor)
 {
   /* the camera, lighting and voxel style follow the settings in
    * SceneController, connected first; Settings ▸ Voxel style changes the
@@ -87,7 +87,10 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   connect(m_shapes, &ShapesModel::countChanged, this, &ViewportController::refreshShape);
   connect(m_doc, &DocumentController::documentReplaced, this, &ViewportController::refreshShape);
   connect(m_doc, &DocumentController::historyApplied, this, &ViewportController::refreshShape);
-  connect(m_doc, &DocumentController::puzzleEdited, this, &ViewportController::refreshShape);
+  connect(m_doc, &DocumentController::puzzleEdited, this,
+          [this](int, DocumentController::Change c) { edited(c); });
+  // the slab follows the editor's plane and layer
+  connect(m_editor, &EditorController::layerChanged, this, &ViewportController::frameChanged);
 
   refreshShape();
   buildMesh();
@@ -109,8 +112,12 @@ void ViewportController::setDisplay(const char * key, bool & option, bool v) {
   emit frameChanged();
 }
 
+QString ViewportController::navMode(void) const {
+  return word(btui::kNavModes.word(m_pan ? btui::NavMode::Pan : btui::NavMode::Orbit));
+}
+
 void ViewportController::setNavMode(const QString & m) {
-  const bool pan = (m == QLatin1String("pan"));
+  const bool pan = btui::kNavModes.parse(m.toStdString()) == btui::NavMode::Pan;
   if (pan == m_pan)
     return;
   m_pan = pan;
@@ -123,67 +130,39 @@ void ViewportController::setDisplayLayerSlab(bool v) { setDisplay(kSlab, m_displ
 void ViewportController::setDisplayDimOtherLayers(bool v) { setDisplay(kDim, m_display.dim, v); }
 
 QString ViewportController::projection(void) const {
-  return m_settings->stringValue(QString::fromLatin1(kProjection), QStringLiteral("perspective"));
+  return word(btui::kProjections.word(
+      btui::kProjections.parse(m_settings->stringValue(QString::fromLatin1(kProjection), QString()).toStdString())));
 }
 
 void ViewportController::setProjection(const QString & p) {
-  const QString v = (p == QLatin1String("orthographic")) ? p : QStringLiteral("perspective");
-  if (v == projection())
+  const btui::Camera::Projection v = btui::kProjections.parse(p.toStdString());
+  const QString w = word(btui::kProjections.word(v));
+  if (w == projection())
     return;
-  m_settings->setStringValue(QString::fromLatin1(kProjection), v);
-  m_camera.setProjection(v == QLatin1String("orthographic") ? btui::Camera::Projection::Orthographic
-                                                            : btui::Camera::Projection::Perspective);
+  m_settings->setStringValue(QString::fromLatin1(kProjection), w);
+  m_camera.setProjection(v);
   emit optionsChanged();
   emit frameChanged();
 }
 
+btui::ColorMode ViewportController::colourViewValue(void) const {
+  return btui::kColourViews.parse(m_settings->stringValue(QString::fromLatin1(kColourView), QString()).toStdString());
+}
+
 QString ViewportController::colourView(void) const {
-  return m_settings->stringValue(QString::fromLatin1(kColourView), QStringLiteral("piece"));
+  return word(btui::kColourViews.word(colourViewValue()));
 }
 
 void ViewportController::setColourView(const QString & v) {
-  const QString c = (v == QLatin1String("voxel")) ? v : QStringLiteral("piece");
-  if (c == colourView())
+  const btui::ColorMode c = btui::kColourViews.parse(v.toStdString());
+  if (c == colourViewValue())
     return;
-  m_settings->setStringValue(QString::fromLatin1(kColourView), c);
+  m_settings->setStringValue(QString::fromLatin1(kColourView), word(btui::kColourViews.word(c)));
   // the STL style draws in the shape's colour alone: nothing to rebuild (a
   // later switch of style rebuilds, and reads the colours then)
   if (m_voxelStyle != btui::VoxelStyle::Stl)
     scheduleMesh();
   emit optionsChanged();
-}
-
-int ViewportController::layerCount(void) const {
-  return m_shape ? btui::layerCount(*m_shape, planeOf(m_plane)) : 0;
-}
-
-void ViewportController::clampLayer(void) {
-  const int n = layerCount();
-  m_layer = n > 0 ? std::clamp(m_layer, 0, n - 1) : 0;
-}
-
-void ViewportController::setPlane(int p) {
-  p = std::clamp(p, 0, 2);
-  if (p == m_plane)
-    return;
-  m_plane = p;
-  clampLayer();     // C08: keep the layer, clamped to the new plane's count
-  emit layerChanged();
-  emit frameChanged();
-}
-
-void ViewportController::setLayer(int l) {
-  const int n = layerCount();
-  l = n > 0 ? std::clamp(l, 0, n - 1) : 0;
-  if (l == m_layer)
-    return;
-  m_layer = l;
-  emit layerChanged();
-  emit frameChanged();
-}
-
-void ViewportController::layerStep(int delta) {
-  setLayer(m_layer + delta);
 }
 
 bool ViewportController::editorVisible(void) const { return m_layout->editorVisible(); }
@@ -212,10 +191,26 @@ void ViewportController::refreshShape(void) {
   const int sel = m_shapes->selected();
   m_shape = (sel >= 0 && unsigned(sel) < p.getNumberOfShapes()) ? p.getShape(unsigned(sel)) : nullptr;
   m_shapeIndex = m_shape ? sel : -1;
-  clampLayer();
   emit sceneChanged();
-  emit layerChanged();
   scheduleMesh();
+}
+
+/* An edit rebuilds the mesh only when it changed what the mesh shows: a
+ * rename or a weight does not, a colour only in the voxel colour view. */
+void ViewportController::edited(DocumentController::Change change) {
+  switch (change) {
+    case DocumentController::Change::Structure:
+    case DocumentController::Change::Voxels:
+      refreshShape();
+      break;
+    case DocumentController::Change::Label:
+      emit sceneChanged();       // the view tag's label
+      break;
+    case DocumentController::Change::Palette:
+      if (colourViewValue() == btui::ColorMode::Voxel && m_voxelStyle != btui::VoxelStyle::Stl)
+        scheduleMesh();
+      break;
+  }
 }
 
 void ViewportController::scheduleMesh(void) {
@@ -243,7 +238,7 @@ void ViewportController::buildMesh(void) {
     btui::MeshOptions opt;
     opt.style = m_voxelStyle;
     opt.piece = btui::pieceColor(m_shapeIndex);
-    opt.colors = colourView() == QLatin1String("voxel") ? btui::ColorMode::Voxel : btui::ColorMode::Piece;
+    opt.colors = colourViewValue();
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
       p.getColor(i, &r, &g, &b);
@@ -290,15 +285,17 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
     btui::addBoxEdges(f.lines, btui::gridBounds(*m_shape), rgba(t->line2()), 1.0f, 4.0f, 4.0f);
 
   // the slab and dimming only while the voxel editor shows the layer (C06)
-  if (editorVisible() && layerCount() > 0) {
+  const btui::Plane plane = m_editor->planeValue();
+  const int layer = m_editor->layer();
+  if (editorVisible() && btui::layerCount(*m_shape, plane) > 0) {
     if (m_display.slab) {
-      const btui::Box slab = btui::layerSlab(*m_shape, planeOf(m_plane), m_layer);
+      const btui::Box slab = btui::layerSlab(*m_shape, plane, layer);
       btui::addBoxFaces(f.overlayFaces, slab, rgba(t->accent(), 0.11f));
       btui::addBoxEdges(f.lines, slab, rgba(t->accent()), 1.8f);
     }
     if (m_display.dim) {
-      f.dimAxis = btui::layerAxis(planeOf(m_plane));
-      f.dimLayer = float(m_layer);
+      f.dimAxis = btui::layerAxis(plane);
+      f.dimLayer = float(layer);
     }
   }
   return f;
