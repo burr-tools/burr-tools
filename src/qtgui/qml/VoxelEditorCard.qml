@@ -6,6 +6,8 @@ import BurrTools.Ui
 // C07 / C08 / C02 Voxel editor card: header with the read-only voxel type
 // chip (C14), Focus 2D and collapse; the tools, Mirror and Span, the plane
 // and layer, the 2D grid, the grid size and the Drawing colour footer (C09).
+// Sizes per density (density.md §1); Minimal shows the tools, Mirror and
+// Span and the planes as icons alone, their names in the tooltips.
 //
 // Wireframe (each number marks its code below):
 //
@@ -173,7 +175,7 @@ Card {
               id: toolStrip
               objectName: "entities.editor.tools.group"
               width: parent.width
-              height: 58
+              height: Theme.toolStrip
               count: 4
               current: root.editor.tool
               buttons: toolRow.buttons
@@ -203,7 +205,9 @@ Card {
                         focusPolicy: Qt.NoFocus
                         ring: toolStrip.visualFocus && on
                         width: toolRow.cell
-                        height: 58
+                        height: Theme.toolStrip
+                        glyphSize: Theme.minimal ? 24 : 30
+                        iconOnly: Theme.minimal
                         glyph: modelData.glyph
                         caption: modelData.caption
                         keyBadge: String(index + 1)
@@ -233,7 +237,11 @@ Card {
                         width: (parent.width - 14) / 2
                         spacing: 4
                         readonly property bool mirror: modelData.name === "mirror"
-                        MicroLabel { text: group.modelData.label }
+                        MicroLabel {
+                            objectName: "entities.editor." + group.modelData.name + ".label"
+                            text: group.modelData.label
+                            visible: !Theme.minimal
+                        }
                         Row {
                             spacing: 6
                             Repeater {
@@ -244,15 +252,17 @@ Card {
                                     objectName: "entities.editor." + group.modelData.name + "." + axis.toLowerCase()
                                     toggle: true
                                     width: (group.width - 12) / 3
-                                    height: 54
-                                    glyphSize: 28
+                                    height: Theme.mirrorSpan
+                                    glyphSize: Theme.minimal ? 22 : 28
+                                    iconOnly: Theme.minimal
                                     glyph: group.modelData.glyph + axis.toLowerCase()
                                     caption: axis
                                     captionColor: root.axisColours[index]
                                     on: ((group.mirror ? root.editor.mirror : root.editor.span) & (1 << index)) !== 0
+                                    // names the group too: Minimal hides its label
                                     tip: group.mirror
-                                         ? qsTr("Also place a mirrored voxel across the %1 centre plane").arg(axis)
-                                         : qsTr("Fill the whole grid along %1 on each click").arg(axis)
+                                         ? qsTr("Mirror %1: also place a mirrored voxel across the %1 centre plane").arg(axis)
+                                         : qsTr("Span %1: fill the whole grid along %1 on each click").arg(axis)
                                     onClicked: group.mirror ? root.editor.toggleMirror(index) : root.editor.toggleSpan(index)
                                 }
                             }
@@ -266,12 +276,12 @@ Card {
             objectName: "entities.editor.plane"
             Item {
                 width: parent.width
-                height: 56
+                height: Theme.planeHeight
                 RadioStrip {
                   id: planeStrip
                   objectName: "entities.editor.plane.group"
-                  width: 3 * 62 + 2 * 6
-                  height: 56
+                  width: 3 * Theme.planeWidth + 2 * 6
+                  height: Theme.planeHeight
                   count: 3
                   current: root.editor.plane
                   buttons: planeRow.buttons
@@ -287,8 +297,8 @@ Card {
                             id: planeCell
                             required property string modelData
                             required property int index
-                            width: 62
-                            height: 56
+                            width: Theme.planeWidth
+                            height: Theme.planeHeight
                             readonly property bool available: root.editor.allPlanes || index === 0
                             GlyphButton {
                                 anchors.fill: parent
@@ -296,6 +306,8 @@ Card {
                                 focusPolicy: Qt.NoFocus
                                 ring: planeStrip.visualFocus && on
                                 enabled: planeCell.available
+                                glyphSize: Theme.minimal ? 24 : 30
+                                iconOnly: Theme.minimal
                                 glyph: "plane-" + planeCell.modelData.toLowerCase()
                                 caption: planeCell.modelData
                                 tip: qsTr("Edit the %1 plane").arg(planeCell.modelData)
@@ -332,7 +344,7 @@ Card {
             Rectangle { // ⑥
                 id: strip
                 objectName: "entities.editor.layers"
-                width: Theme.minimal ? 40 : 48
+                width: Theme.layerStrip
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                 color: Theme.panel
                 Rectangle {
@@ -340,9 +352,12 @@ Card {
                     width: 1
                     color: Theme.line
                 }
-                Text {
+                Text { // Minimal: the chips' tooltips name the axis
                     id: stripHeader
-                    anchors { top: parent.top; topMargin: 8; horizontalCenter: parent.horizontalCenter }
+                    objectName: "entities.editor.layers.caption"
+                    visible: !Theme.minimal
+                    height: visible ? implicitHeight : 0
+                    anchors { top: parent.top; topMargin: visible ? 8 : 0; horizontalCenter: parent.horizontalCenter }
                     text: qsTr("%1 layer").arg(root.editor.layerAxisName)
                     color: root.axisColours[root.editor.layerAxis]
                     font.pixelSize: Theme.fontMicro
@@ -364,14 +379,14 @@ Card {
                         readonly property bool current: layerNo === root.editor.layer
                         objectName: "entities.editor.layer." + (layerNo + 1)
                         x: (layers.width - width) / 2 - 0.5
-                        width: 36
-                        height: 28
-                        radius: 7
+                        width: Theme.layerChipWidth
+                        height: Theme.layerChipHeight
+                        radius: 6
                         color: current ? Theme.accent : (chipMouse.containsMouse ? Theme.panel2 : "transparent")
                         border.width: 1
                         border.color: current || chipMouse.containsMouse ? Theme.accent : Theme.line
                         Accessible.role: Accessible.Button
-                        Accessible.name: qsTr("Layer %1").arg(layerNo + 1)
+                        Accessible.name: qsTr("%1 layer %2").arg(root.editor.layerAxisName).arg(layerNo + 1)
                         Text {
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: dot.visible ? -3 : 0
@@ -396,7 +411,7 @@ Card {
                             hoverEnabled: true
                             onClicked: root.editor.layer = chip.layerNo
                         }
-                        BtToolTip { shown: chipMouse.containsMouse; text: qsTr("Layer %1").arg(chip.layerNo + 1) }
+                        BtToolTip { shown: chipMouse.containsMouse; text: chip.Accessible.name }
                     }
                     // keep the current layer's chip in view
                     function follow() {

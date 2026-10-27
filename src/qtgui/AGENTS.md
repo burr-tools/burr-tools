@@ -159,6 +159,14 @@ stale `libburr_qtgui.a` ("thin archive" errors) is fixed by deleting it.
 - Both themes and both densities: check light and dark, Standard and
   Minimal. In Minimal, help text hidden from view must stay reachable
   (tooltip, `Accessible.description`) — AC-DEN-03.
+- **Sizes come from density.md §1, never from a component section's own
+  numbers.** §1 overrides C00–C21 where they disagree (C07's h58 tool
+  strip is §1's h48). Anything §1 lists is read from `Theme` (add the
+  token's property if it is missing), not written as a literal, and §2's
+  Minimal changes (icon only, hidden captions and help text) come with the
+  component, not later. Every card gets a test that checks its §1 sizes
+  and §2 changes in both densities (`tst_editor`'s
+  `test_theCardFollowsTheDensity` is the pattern).
 
 ### Accessibility and keyboard
 

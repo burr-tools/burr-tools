@@ -103,6 +103,16 @@ class Theme : public QObject {
   Q_PROPERTY(double button READ button NOTIFY changed FINAL)
   Q_PROPERTY(double toolbarButtonWidth READ toolbarButtonWidth NOTIFY changed FINAL)
   Q_PROPERTY(double toolbarButtonHeight READ toolbarButtonHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double stepper READ stepper NOTIFY changed FINAL)
+  // the Voxel editor (C07, C08, C09)
+  Q_PROPERTY(double toolStrip READ toolStrip NOTIFY changed FINAL)
+  Q_PROPERTY(double mirrorSpan READ mirrorSpan NOTIFY changed FINAL)
+  Q_PROPERTY(double planeWidth READ planeWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double planeHeight READ planeHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double layerStrip READ layerStrip NOTIFY changed FINAL)
+  Q_PROPERTY(double layerChipWidth READ layerChipWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double layerChipHeight READ layerChipHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double drawSwatch READ drawSwatch NOTIFY changed FINAL)
 
   // motion (section 6), in ms
   Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
@@ -195,6 +205,16 @@ public:
   qreal button(void) const { return dens("button"); }
   qreal toolbarButtonWidth(void) const { return dens("toolbarButton.0"); }
   qreal toolbarButtonHeight(void) const { return dens("toolbarButton.1"); }
+  qreal stepper(void) const { return dens("stepper"); }
+  qreal toolStrip(void) const { return dens("toolStrip"); }
+  qreal mirrorSpan(void) const { return dens("mirrorSpan"); }
+  qreal planeWidth(void) const { return dens("plane.0"); }
+  qreal planeHeight(void) const { return dens("plane.1"); }
+  qreal layerStrip(void) const { return dens("layerStrip"); }
+  qreal layerChipWidth(void) const { return dens("layerChip.0"); }
+  qreal layerChipHeight(void) const { return dens("layerChip.1"); }
+  /* the Drawing colour footer's big swatch */
+  qreal drawSwatch(void) const { return dens("drawSwatch"); }
 
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }

@@ -26,7 +26,7 @@ it can replace it.
 | P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout since P4 |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
-| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*) |
+| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar and the rows *Minimal density: the rest* (see *Deferred*); the Voxel editor's geometry since P4's density fix |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
 | — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in 3D (Edit mode, quick tools, ghosts, cursors) arrives with P5; the Edit button already shows the editor's tool |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
@@ -46,6 +46,7 @@ below, lists them per phase).
 | The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
 | Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
 | Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
+| Minimal density: the rest (audit of 2026-10-27) | density §1, §2, AC-DEN-02, AC-DEN-04 | Found when the Voxel editor turned out to ignore the density (fixed): the workspace rail hides its captions instead of rotating them; Shapes' "+ New" stays "+ New" (Minimal: "+"); buttons are 30 / small 26 (§1: 28, Minimal 26); the status bar's text is 12 (§1: 11.5, Minimal 11); Minimal's 3D toolbar buttons are 34 × 34 (§1: 34 × 32; 34 × 34 is Focus 2D's) | P12a |
 | `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P5 |
 | Quick tool 2 (Alt+click) in 3D | AC-C06-06 | In the 2D grid since P4. Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P5 |
 | Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P5 |
@@ -437,7 +438,9 @@ moves to a later phase says why in that table.
 - **P6 Inspector:** the ActionButton and Accordion primitives.
 - **P11 Solver:** shape and colour edits refused while a solve runs
   (legacy `threadStopped()`); the solver's progress announced.
-- **P12a Density:** Minimal's auto-hiding 3D toolbar.
+- **P12a Density:** Minimal's auto-hiding 3D toolbar; the rest of
+  Minimal (rotated rail captions, "+", button and status bar sizes, the
+  toolbar's 32 dp height).
 - **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
   other layers in the STL style; STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the
@@ -539,3 +542,12 @@ Every phase's pull request follows what #140 settled:
   `EditorController`; the 3D view reads them for its slab.
 - **Settings and modes** are read and written through one table each
   (`uicore/vocabulary`); the QML still sees words.
+- **Sizes** are density.md §1's, through `Theme` (tool strip 48, Mirror /
+  Span 44, planes 54 × 46, layer chips 32 × 24, stepper 28, the drawing
+  colour 32; Minimal 36, 32, 38 × 34, 30 × 22, 26, 26), not C07 / C08 /
+  C09's own older numbers (58, 54, 62 × 56, 36 × 28, 30, 40): §1 says it
+  wins. Minimal shows the tools, Mirror / Span and the planes as icons
+  alone and hides the group labels, "Z layer" and "Drawing colour"; the
+  tooltips name them (Mirror and Span's say which, the layer chips their
+  axis, the drawing colour's swatch the colour). `tst_editor` checks every
+  size in both densities.

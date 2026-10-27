@@ -185,8 +185,10 @@ TestCase {
             { tag: "wide shape chip grows", cell: "chip.wide", h: 26, minW: 35 },
             { tag: "count badge h20", cell: "chip.count", h: 20, minW: 24 },
             { tag: "weight badge h18", cell: "chip.weight", h: 18 },
-            { tag: "glyph button 62x58", cell: "glyphButton.normal", w: 62, h: 58 },
-            { tag: "stepper h30", cell: "stepper.normal", h: 30 },
+            // density.md §1 (Standard): tool strip h48, mirror / span h44, stepper h28
+            { tag: "glyph button 62x48", cell: "glyphButton.normal", w: 62, h: 48 },
+            { tag: "mirror / span glyph button h44", cell: "glyphButton.axis", h: 44 },
+            { tag: "stepper h28", cell: "stepper.normal", h: 28 },
         ]
     }
     function test_sizesFollowTheTokens(data) {

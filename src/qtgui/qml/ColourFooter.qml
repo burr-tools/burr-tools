@@ -13,8 +13,8 @@ import BurrTools.Ui
 //
 // Wireframe (each number marks its code below):
 //
-//   ┌───────────────────────────────────────────┐
-//   │ ①┌──┐ ②DRAWING COLOUR          ④[+] ⑤[⋯] │
+//   ┌───────────────────────────────────────────┐   ① 32 dp; Minimal 26, the
+//   │ ①┌──┐ ②DRAWING COLOUR          ④[+] ⑤[⋯] │      caption in its tooltip
 //   │  └──┘   C1                               │
 //   │ ③(●)(■)(■)(■)(■)(■)(■)(■)                 │   the palette, full width:
 //   │   (■)(■)                                  │   it wraps, 3 rows, then scrolls
@@ -148,32 +148,38 @@ Rectangle {
         spacing: 12
 
         Rectangle { // ①
+            id: current
             objectName: "entities.editor.colour.current"
             Layout.alignment: Qt.AlignTop
-            implicitWidth: 40
-            implicitHeight: 40
-            radius: 10
+            implicitWidth: Theme.drawSwatch
+            implicitHeight: Theme.drawSwatch
+            radius: Math.round(width / 4)
             color: Theme.line2
             Accessible.ignored: true                 // the name beside it says it
             Rectangle {
                 anchors { fill: parent; margins: 1 }
-                radius: 9
+                radius: current.radius - 1
                 color: Theme.panel
                 Rectangle {
                     anchors { fill: parent; margins: 2 }
-                    radius: 7
+                    radius: current.radius - 3
                     color: App.colours.drawShown.valid ? App.colours.drawShown : Theme.panel2
                 }
             }
+            // Minimal: the caption it loses, with the name
+            readonly property string tip: qsTr("Drawing colour: %1").arg(App.colours.drawName)
+            HoverHandler { id: currentHover; enabled: Theme.minimal }
+            BtToolTip { shown: currentHover.hovered; text: current.tip }
         }
 
         Column { // ②
-            Layout.alignment: Qt.AlignTop
+            Layout.alignment: Theme.minimal ? Qt.AlignVCenter : Qt.AlignTop
             Layout.fillWidth: true
             Layout.minimumWidth: 78
             spacing: 2
             Text {
                 objectName: "entities.editor.colour.caption"
+                visible: !Theme.minimal
                 text: qsTr("Drawing colour")
                 font.capitalization: Font.AllUppercase
                 color: Theme.muted

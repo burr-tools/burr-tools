@@ -215,7 +215,8 @@ ApplicationWindow {
                     Cell { kind: "on"; GlyphButton { glyph: "tool-fixed"; caption: "Fixed"; keyBadge: "1"; tip: "Fixed"; on: true } }
                     Cell { kind: "focus"; GlyphButton { glyph: "plane-xz"; caption: "XZ"; tip: "XZ" } }
                     Cell { kind: "disabled"; GlyphButton { glyph: "plane-yz"; caption: "YZ"; tip: "YZ"; enabled: false } }
-                    Cell { kind: "axis"; GlyphButton { glyph: "mirror-x"; caption: "X"; captionColor: Theme.axisX; toggle: true; height: 54; glyphSize: 28; tip: "Mirror X" } }
+                    Cell { kind: "axis"; GlyphButton { glyph: "mirror-x"; caption: "X"; captionColor: Theme.axisX; toggle: true; height: Theme.mirrorSpan; glyphSize: 28; tip: "Mirror X" } }
+                    Cell { kind: "iconOnly"; GlyphButton { glyph: "tool-erase"; caption: "Erase"; keyBadge: "3"; tip: "Erase (3)"; iconOnly: true; height: 36; glyphSize: 24 } }
                 }
                 GalleryRow {
                     name: "button"; label: "PR-04 Button"

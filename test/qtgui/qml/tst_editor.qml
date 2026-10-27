@@ -40,6 +40,7 @@ TestCase {
     }
 
     function cleanup() {
+        App.settings.density = "standard"
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false
@@ -62,6 +63,74 @@ TestCase {
         verify(p.x >= 0, "cell " + col + "," + row)
         mouseClick(g, p.x, p.y, button === undefined ? Qt.LeftButton : button,
                    modifiers === undefined ? Qt.NoModifier : modifiers)
+    }
+
+    function test_theCardFollowsTheDensity_data() {
+        // density.md §1, the Voxel editor's rows
+        return [
+            { tag: "standard", density: "standard", card: 340, tool: 48, mirror: 44, plane: [54, 46],
+              strip: 48, chip: [32, 24], stepper: 28, swatch: 32 },
+            { tag: "minimal", density: "minimal", card: 320, tool: 36, mirror: 32, plane: [38, 34],
+              strip: 40, chip: [30, 22], stepper: 26, swatch: 26 },
+        ]
+    }
+    function test_theCardFollowsTheDensity(data) {
+        App.settings.density = data.density
+        const card = item("entities.editor")
+        tryCompare(card, "width", data.card, 1000)
+        waitForRendering(win.contentItem)
+        const minimal = data.density === "minimal"
+        const inCard = (o) => {
+            const p = o.mapToItem(card, 0, 0)
+            return p.x >= -0.5 && p.x + o.width <= card.width + 0.5
+        }
+
+        // the tools, Mirror and Span, the planes: icon alone in Minimal (§2.1),
+        // the name then in the tooltip (AC-DEN-03)
+        const buttons = []
+        for (const n of ["fixed", "variable", "erase", "paint"])
+            buttons.push([item("entities.editor.tool." + n), data.tool])
+        for (const g of ["mirror", "span"])
+            for (const a of ["x", "y", "z"])
+                buttons.push([item("entities.editor." + g + "." + a), data.mirror])
+        for (const p of ["xy", "xz", "yz"]) {
+            const b = item("entities.editor.plane." + p)
+            compare(b.width, data.plane[0], b.objectName)
+            buttons.push([b, data.plane[1]])
+        }
+        for (const [b, h] of buttons) {
+            compare(b.height, h, b.objectName)
+            compare(b.iconOnly, minimal, b.objectName)
+            verify(b.tip.length > 0, b.objectName + " has a tooltip")
+            verify(inCard(b), b.objectName + " inside the card")
+        }
+        verify(item("entities.editor.mirror.x").tip.startsWith("Mirror X"))
+        verify(item("entities.editor.span.z").tip.startsWith("Span Z"))
+        compare(item("entities.editor.mirror.label").visible, !minimal)
+        compare(item("entities.editor.span.label").visible, !minimal)
+
+        // the planes and "Layer k of n" share a row without meeting
+        const yz = item("entities.editor.plane.yz"), label = item("entities.editor.layerLabel")
+        verify(yz.mapToItem(card, yz.width, 0).x < label.mapToItem(card, 0, 0).x, "planes clear of the layer label")
+
+        // the layer strip and its chips; Minimal drops the "Z layer" caption
+        // and the chips' tooltips name the axis
+        compare(item("entities.editor.layers").width, data.strip)
+        const chip = item("entities.editor.layer.1")
+        compare(chip.width, data.chip[0])
+        compare(chip.height, data.chip[1])
+        compare(chip.Accessible.name, "Z layer 1")
+        compare(item("entities.editor.layers.caption").visible, !minimal)
+
+        // the grid size steppers and the Drawing colour's swatch and caption
+        for (const a of ["x", "y", "z"]) {
+            const s = item("entities.editor.size." + a)
+            compare(s.height, data.stepper)
+            verify(inCard(s), s.objectName + " inside the card")
+        }
+        compare(item("entities.editor.colour.current").width, data.swatch)
+        compare(item("entities.editor.colour.caption").visible, !minimal)
+        compare(item("entities.editor.colour.current").tip, "Drawing colour: " + App.colours.drawName)
     }
 
     function test_keysAndButtonsPickTheTool() {
