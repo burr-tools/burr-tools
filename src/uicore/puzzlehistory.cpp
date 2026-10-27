@@ -103,12 +103,13 @@ puzzleHistory_c::capture(const puzzle_c * puzzle,
 
   // COW shape sharing: only clone shapes that could have changed.
   // AK_NONE and AK_ENTITIES_STRUCTURAL may change any shape → clone all.
-  // AK_COLOR_PALETTE, AK_PROBLEM_STRUCTURAL → no shape changes → share all.
+  // AK_COLOR_PALETTE too: removing a colour renumbers the voxels of every
+  // shape (puzzle_c::removeColor), and a shared copy would keep the old ids.
+  // AK_PROBLEM_STRUCTURAL → no shape changes → share all.
   // Paint/transform/click → only selectedShape changed → share the rest.
-  const bool cloneAll  = (kind == AK_NONE || kind == AK_ENTITIES_STRUCTURAL);
-  const bool cloneNone = !cloneAll &&
-                         (kind == AK_COLOR_PALETTE ||
-                          kind == AK_PROBLEM_STRUCTURAL);
+  const bool cloneAll  = (kind == AK_NONE || kind == AK_ENTITIES_STRUCTURAL ||
+                          kind == AK_COLOR_PALETTE);
+  const bool cloneNone = !cloneAll && kind == AK_PROBLEM_STRUCTURAL;
 
   for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
     const bool doClone = cloneAll || (!cloneNone && i == selectedShape);
