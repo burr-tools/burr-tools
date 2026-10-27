@@ -35,43 +35,44 @@ it can replace it.
 
 ### Deferred to the next phase
 
-Work that belongs to the phases above but waits, each for the reason given.
-Pick these up with the phase named.
+Work that belongs to the phases above but waits, each for the reason given,
+and the phase that takes it on (the plan's *Deferred work by phase*,
+below, lists them per phase).
 
-| Item | Spec | Why it waits | Pick up with |
+| Item | Spec | Why it waits | Phase |
 | :--- | :--- | :--- | :--- |
 | Composed edit cursors (OS pointer + tool badge) | P0 exit criteria, C06 | Only the voxel editor and 3D editing use them | P4 |
-| Stepper, GlyphButton, ActionButton, Accordion primitives | PR-02, PR-03, PR-06, PR-09 | First used by the editor and the inspector | P4, P6 |
+| Stepper, GlyphButton, ActionButton, Accordion primitives | PR-02, PR-03, PR-06, PR-09 | First used by the editor and the inspector | P4 (Stepper, GlyphButton), P6 (ActionButton, Accordion) |
 | Status bar cursor readout | AC-C10-02 | Shows the hovered cell of the 2D grid, which does not exist yet; `StatusController::setCursorText` is ready, nothing calls it | P4 |
-| Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a, before cut-over |
-| `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P4 |
+| Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
+| `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P5 |
 | Layer slab and Dim other layers | AC-C06-05, AC-C11-08 | Drawn only while the voxel editor is on screen, so not visible yet; every voxel style (STL included) carries the voxel per vertex the dimming needs -- check them on screen then | P4 |
-| Quick tool 2 (Alt+click) | AC-C06-06 | Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P4 design |
-| Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P4 |
-| STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | before cut-over |
-| Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 polish |
-| STL dialog after the document changes under it | `StlExportController` | Keeps the exporter of the grid it opened with; only reachable when a file opens while the modal dialog is up (macOS Finder) | before cut-over |
-| Settings and modes as strings | `SettingsController`, `ImageExportController` | Voxel style, rotation, density, colour view, image mode: parsed from strings in several places each; one typed table per vocabulary would keep them in step | P3 cleanup |
-| Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 polish |
-| macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | before cut-over |
+| Quick tool 2 (Alt+click) | AC-C06-06 | Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P4 (2D grid), P5 (3D) |
+| Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P5 |
+| STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
+| Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 |
+| STL dialog after the document changes under it | `StlExportController` | Keeps the exporter of the grid it opened with; only reachable when a file opens while the modal dialog is up (macOS Finder) | P8 |
+| Settings and modes as strings | `SettingsController`, `ImageExportController` | Voxel style, rotation, density, colour view, image mode: parsed from strings in several places each; one typed table per vocabulary would keep them in step | P4, before the editor adds its own (tool, plane) |
+| Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 |
+| macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | P8 |
 | **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
-| — 3D view and view cube by keyboard | WCAG 2.1.1, spec §5 "3D canvas" Tab stop | The canvas takes no focus and has no keys; orbit, pan, zoom and the cube's views need the pointer (O/P/Home/F exist). Wants a focusable canvas (ring on the card edge), arrows to orbit, Shift+arrows to pan, +/− to zoom, commands for the six faces and the rolls, listed in Help | P4/P5 (3D editing brings keyboard picking) |
+| — 3D view and view cube by keyboard | WCAG 2.1.1, spec §5 "3D canvas" Tab stop | The canvas takes no focus and has no keys; orbit, pan, zoom and the cube's views need the pointer (O/P/Home/F exist). Wants a focusable canvas (ring on the card edge), arrows to orbit, Shift+arrows to pan, +/− to zoom, commands for the six faces and the rolls, listed in Help | P5 |
 | — Reduced motion | spec: durations 0 under the OS setting | Camera snaps (360 ms), eased zoom, card transitions (200 ms) and BtSwitch (literal 150 ms) ignore Windows' "Show animations" and macOS's Reduce motion. Theme should read the setting (notifying), zero its duration tokens, and the camera jump straight to its target | P8 |
 | — Text size and high contrast | WCAG 1.4.4, 1.4.11 | Fonts are constant dp sizes: Windows' "Make text bigger" changes nothing, and chips/buttons have fixed heights that would clip. High-contrast themes are not detected; the tokens override them. Wants a text-scale factor on the font tokens and a high-contrast token set | P8 |
 | — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
 | — Dark-theme button text | WCAG 1.4.3 | White on the dark danger (2.71:1) and accent (2.77:1, a known XFAIL) buttons: a design-token decision (dark text, or darker tokens) | P8 |
 | — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; control borders and unchecked switch/checkbox 1.3–1.6:1 (want a ≥ 3:1 border token); toggled toolbar icons differ by hue only (the list now rings its selection when focused) | P8 |
-| — Single-key shortcuts | WCAG 2.1.4 | O, P, F work window-wide and cannot be turned off or remapped; limit them to the focused 3D view (once it takes focus) or add a setting | with the keyboard 3D view |
-| — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 |
+| — Single-key shortcuts | WCAG 2.1.4 | O, P, F work window-wide and cannot be turned off or remapped; limit them to the focused 3D view (once it takes focus) or add a setting | P5 |
+| — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 (the solver's progress: P11) |
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
-| — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 audit |
+| — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
 | Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
-| Edits that change no geometry rebuild the 3D mesh | performance guide | A rename, a weight step or a colour added rebuilds the selected shape's mesh (`puzzleEdited` carries no kind). `puzzleEdited` could say whether voxels changed | P4, with the editor's edit kinds |
+| Edits that change no geometry rebuild the 3D mesh | performance guide | A rename, a weight step or a colour added rebuilds the selected shape's mesh (`puzzleEdited` carries no kind). `puzzleEdited` could say whether voxels changed | P4 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
-| Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 audit |
+| Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
 | — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, elided shape names without a tooltip, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
-| — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 audit |
+| — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 |
 
 ## Architecture
 
@@ -397,13 +398,44 @@ column is what the review of #140 asks of the phase.
 
 | Phase | Content | From the #140 review |
 | :--- | :--- | :--- |
-| **P2** Shapes sidebar (C01) | New, duplicate, delete, rename inline, weight, reorder (drag, menu, `Alt+↑/↓`), the row context menu, the rail's `+`, the Chip primitive. Each action is one undo step. The status bar flashes when shapes are renumbered | The rules go in a new `uicore/shapelist`, legacy's `cb_NewShape` and the rest stay as they are, and the drift table gets a row for them. The list's keys come from the command table, with a scope |
-| **P3** Drawing colour (C09) | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
-| **P4** Voxel editor (C07, C08, C02) | The 2D grid, tools, mirror and span, plane and layer, grid size, the composed edit cursors, the Stepper, and the deferred P4 rows above | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
+| **P2** Shapes sidebar (C01) — done | New, duplicate, delete, rename inline, weight, reorder (drag, menu, `Alt+↑/↓`), the row context menu, the rail's `+`, the Chip primitive. Each action is one undo step. The status bar flashes when shapes are renumbered | The rules go in a new `uicore/shapelist`, legacy's `cb_NewShape` and the rest stay as they are, and the drift table gets a row for them. The list's keys come from the command table, with a scope |
+| **P3** Drawing colour (C09) — done | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
+| **P4** Voxel editor (C07, C08, C02) | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
 | **P5** 3D editing (rest of C06) | Edit mode and `E`, quick tools, ghosts, picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore or `src/lib`, so that legacy can share it |
 | **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
-| **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over: the accessibility rows above, and every "before cut-over" row | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
+| **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
+
+### Deferred work by phase
+
+What each phase takes on besides its own components: the rows of
+*Deferred to the next phase* (above, where each row says why it waits),
+by the phase named there. A phase is done when these are, too; a row that
+moves to a later phase says why in that table.
+
+- **P4 Voxel editor:** the composed edit cursors; the Stepper and
+  GlyphButton primitives; the status bar's cursor readout; the layer slab
+  and Dim other layers on screen; quick tool 2 (Alt+click) in the 2D grid;
+  settings and modes as typed tables, before the editor adds tool and
+  plane; edits that change no geometry no longer rebuilding the 3D mesh
+  (`puzzleEdited` saying what changed).
+- **P5 3D editing:** Edit mode and its `E` key; picking in use; quick
+  tool 2 in 3D; the 3D view and view cube by keyboard (a focusable canvas,
+  arrows, the cube's faces as commands); the single-key shortcuts O, P, F
+  limited to the focused 3D view.
+- **P6 Inspector:** the ActionButton and Accordion primitives.
+- **P11 Solver:** shape and colour edits refused while a solve runs
+  (legacy `threadStopped()`); the solver's progress announced.
+- **P12a Density:** Minimal's auto-hiding 3D toolbar.
+- **P8 Polish and cut-over:** STL export writing in place; image export
+  memory; the STL dialog after the document changes under it; the
+  hardening from the final review (device loss, resize); macOS and Linux
+  start-up measured; the accessibility rows -- reduced motion, text size
+  and high contrast, small screens, dark-theme button text, remaining
+  contrast, progress and errors announced, lists by keyboard, small items
+  -- and the screen reader and real-system checks (the shape row's
+  actions, the P2 / P3 lists and menus, the accessibility tree); the
+  double-click rename test; command enabled-state bumps.
 
 Alongside these, and independent of them, are the two **legacy follow-ups**
 from [`gui-migration.md`](../../design-spec/gui-migration.md#the-legacy-gui-while-both-exist):
