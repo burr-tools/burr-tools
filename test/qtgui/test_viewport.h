@@ -78,6 +78,7 @@ private slots:
   void redrawsAtTheFinalSizeAfterTheCardGrows();
   void drawsWithTheBestMultisamplingTheDeviceHas();
   void dimmingShowsInTheViewInEveryStyle();
+  void theCardShowsItsCanvas();
 };
 
 /* The pipeline caches of the main window and the offscreen renderer. */

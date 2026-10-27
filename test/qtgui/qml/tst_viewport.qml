@@ -217,6 +217,20 @@ TestCase {
         verify(!canvas.activeFocus)
     }
 
+    function test_nothingOpaqueCoversTheCanvas() {
+        // a child with a negative z is drawn behind its parent's own fill:
+        // the canvas, below the toolbar, must not be under an opaque card
+        const canvas = item("entities.viewport.surface")
+        const card = item("entities.viewport")
+        verify(canvas.parent === card)
+        if (canvas.z < 0)
+            compare(card.color.a, 0)
+        // and every sibling drawn below it is below in z too
+        for (const c of card.children)
+            if (c !== canvas && c.visible && c.z < 0)
+                verify(c.z < canvas.z, c.objectName + " drawn over the canvas")
+    }
+
     function test_theHintNamesTheQuickTools() {
         // C06 hint line 1, in Entities
         verify(item("entities.viewport.hint.tools").visible)
