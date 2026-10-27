@@ -12,6 +12,7 @@
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
 
+#include <climits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -205,6 +206,11 @@ TEST_CASE("rename sets the label, and reports whether it changed", "[ui][shapeli
   CHECK(p->getShape(0)->getName().empty());
   CHECK_FALSE(renameShape(*p, 2, "x"));
   CHECK_FALSE(renameShape(*p, -1, "x"));
+
+  // control characters go (a pasted newline), other text stays, UTF-8 included
+  CHECK(renameShape(*p, 1, "Arm\n\tpiece\x7f \xc3\xa9"));
+  CHECK(p->getShape(1)->getName() == "Armpiece \xc3\xa9");
+  CHECK_FALSE(renameShape(*p, 1, "Arm\npiece \xc3\xa9"));    // the same once cleaned
 }
 
 TEST_CASE("the weight steps by the given amount and stops at 0", "[ui][shapelist]") {
@@ -218,6 +224,16 @@ TEST_CASE("the weight steps by the given amount and stops at 0", "[ui][shapelist
   CHECK(p->getShape(0)->getWeight() == 0);
   CHECK_FALSE(changeWeight(*p, 1, +1));
   CHECK_FALSE(changeWeight(*p, 0, 0));
+
+  // a legacy file's negative weight goes up step by step, not to 0, and not further down
+  p->getShape(0)->setWeight(-5);
+  CHECK(changeWeight(*p, 0, +1));
+  CHECK(p->getShape(0)->getWeight() == -4);
+  CHECK_FALSE(changeWeight(*p, 0, -1));
+  CHECK(p->getShape(0)->getWeight() == -4);
+  // no overflow at the top
+  p->getShape(0)->setWeight(INT_MAX);
+  CHECK_FALSE(changeWeight(*p, 0, +1));
 }
 
 TEST_CASE("each list operation is one undo step, and undo restores order and references", "[ui][shapelist]") {
@@ -251,4 +267,14 @@ TEST_CASE("each list operation is one undo step, and undo restores order and ref
   d.undo();
   CHECK(p.getNumberOfShapes() == 0);
   CHECK_FALSE(d.canUndo());
+
+  // and redo walks it forward again, references and all
+  d.redo();
+  d.redo();
+  CHECK(labels(p) == std::vector<std::string>{ "2", "0", "1" });
+  CHECK(p.getShape(p.getProblem(0)->getResultId())->getName() == "2");
+  d.redo();
+  d.redo();
+  CHECK(labels(p) == std::vector<std::string>{ "2", "1", "2" });
+  CHECK_FALSE(d.canRedo());
 }

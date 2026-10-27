@@ -82,11 +82,13 @@ namespace btui {
    * exchanges, legacy's ←/→ repeated. Returns whether anything moved. */
   bool moveShape(puzzle_c & p, int from, int to);
 
-  /* Set shape i's label; empty means none. Returns whether it changed. */
+  /* Set shape i's label, without control characters (UTF-8 is kept as
+   * is); empty means none. Returns whether it changed. */
   bool renameShape(puzzle_c & p, int i, const std::string & label);
 
-  /* Shape i's weight plus delta, stopping at 0 (legacy had no floor).
-   * Returns whether it changed. */
+  /* Shape i's weight plus delta, stepping down no further than 0 (legacy
+   * had no floor). A weight below 0 from a legacy file goes up by delta and
+   * does not go further down. Returns whether it changed. */
   bool changeWeight(puzzle_c & p, int i, int delta);
 }
 

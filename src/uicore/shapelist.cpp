@@ -106,9 +106,18 @@ namespace btui {
   }
 
   bool renameShape(puzzle_c & p, int i, const std::string & label) {
-    if (!isShape(p, i) || p.getShape(unsigned(i))->getName() == label)
+    if (!isShape(p, i))
       return false;
-    p.getShape(unsigned(i))->setName(label);
+    // control characters (a pasted newline or tab) do not belong in a label,
+    // and the file's XML 1.0 cannot hold most of them
+    std::string clean;
+    clean.reserve(label.size());
+    for (char ch : label)
+      if (static_cast<unsigned char>(ch) >= 0x20 && ch != 0x7f)
+        clean += ch;
+    if (p.getShape(unsigned(i))->getName() == clean)
+      return false;
+    p.getShape(unsigned(i))->setName(clean);
     return true;
   }
 
@@ -116,8 +125,12 @@ namespace btui {
     if (!isShape(p, i))
       return false;
     voxel_c * v = p.getShape(unsigned(i));
-    const long long w = std::clamp<long long>((long long)v->getWeight() + delta, 0, INT_MAX);
-    if (w == v->getWeight())
+    const long long old = v->getWeight();
+    // a step down stops at 0; a weight a file already has below 0 (legacy
+    // had no floor) stays where it is going down, and goes up step by step
+    const long long floor = std::min(old, 0LL);
+    const long long w = std::clamp<long long>(old + delta, floor, INT_MAX);
+    if (w == old)
       return false;
     v->setWeight(int(w));
     return true;
