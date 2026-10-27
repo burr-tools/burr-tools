@@ -2705,23 +2705,38 @@ ProgressTrace traceSolve(assembler_c & assm, assembler_cb & cb) {
  * few seconds and still exercise them. The caller must discard the terminal
  * sample: an aborted run accounts every in-flight task as complete, so its
  * last value is an artifact of the abort rather than a point on the curve.
+ *
+ * With minSamples the search runs past the budget until the sampler has taken
+ * that many samples, up to ten times the budget. A loaded CI runner can
+ * oversleep the interval several times over (a macOS runner once took 20
+ * samples in a 3 s budget at 20 ms), and a sample count is a statement about
+ * the scheduler, not about the progress code.
  */
 ProgressTrace traceSolveStoppingAfter(assembler_c & assm, assembler_cb & cb,
                                       std::chrono::milliseconds budget,
-                                      std::chrono::milliseconds interval) {
+                                      std::chrono::milliseconds interval,
+                                      size_t minSamples = 0) {
   ProgressTrace t;
   std::atomic<bool> done{false};
+  std::atomic<size_t> taken{0};
   std::thread sampler([&]{
     while (!done.load(std::memory_order_relaxed)) {
       t.samples.push_back(assm.getFinished());
+      taken.fetch_add(1, std::memory_order_relaxed);
       std::this_thread::sleep_for(interval);
     }
   });
   std::thread stopper([&]{
-    auto deadline = std::chrono::steady_clock::now() + budget;
-    while (!done.load(std::memory_order_relaxed) &&
-           std::chrono::steady_clock::now() < deadline)
+    const auto start = std::chrono::steady_clock::now();
+    const auto deadline = start + budget;
+    const auto hardDeadline = start + 10 * budget;
+    while (!done.load(std::memory_order_relaxed)) {
+      const auto now = std::chrono::steady_clock::now();
+      if (now >= hardDeadline ||
+          (now >= deadline && taken.load(std::memory_order_relaxed) >= minSamples))
+        break;
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
     assm.stop();
   });
   assm.assemble(&cb);
@@ -2836,8 +2851,9 @@ TEST_CASE("parallel assembly progress advances smoothly",
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
     TestAssemblerCallback cb;
+    /* 22 samples: one is dropped below and more than 20 are required */
     ProgressTrace t = traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(3000),
-                                              std::chrono::milliseconds(20));
+                                              std::chrono::milliseconds(20), 22);
 
     /* drop the terminal sample of the stopped run before asserting on shape */
     REQUIRE(t.samples.size() > 1);
@@ -4163,8 +4179,9 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
     TestAssemblerCallback cb;
+    /* 22 samples: one is dropped below and more than 20 are required */
     ProgressTrace t = traceSolveStoppingAfter(assm, cb, std::chrono::milliseconds(3000),
-                                              std::chrono::milliseconds(20));
+                                              std::chrono::milliseconds(20), 22);
 
     /* drop the terminal sample of the stopped run before asserting on shape */
     REQUIRE(t.samples.size() > 1);
