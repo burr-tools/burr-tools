@@ -104,6 +104,8 @@ class Theme : public QObject {
   Q_PROPERTY(double toolbarButtonWidth READ toolbarButtonWidth NOTIFY changed FINAL)
   Q_PROPERTY(double toolbarButtonHeight READ toolbarButtonHeight NOTIFY changed FINAL)
   Q_PROPERTY(double stepper READ stepper NOTIFY changed FINAL)
+  Q_PROPERTY(double segmentedButton READ segmentedButton NOTIFY changed FINAL)
+  Q_PROPERTY(double statusBarFont READ statusBarFont NOTIFY changed FINAL)
   // the Voxel editor (C07, C08, C09)
   Q_PROPERTY(double toolStrip READ toolStrip NOTIFY changed FINAL)
   Q_PROPERTY(double mirrorSpan READ mirrorSpan NOTIFY changed FINAL)
@@ -206,6 +208,8 @@ public:
   qreal toolbarButtonWidth(void) const { return dens("toolbarButton.0"); }
   qreal toolbarButtonHeight(void) const { return dens("toolbarButton.1"); }
   qreal stepper(void) const { return dens("stepper"); }
+  qreal segmentedButton(void) const { return dens("segmentedButton"); }
+  qreal statusBarFont(void) const { return dens("statusBarFont"); }
   qreal toolStrip(void) const { return dens("toolStrip"); }
   qreal mirrorSpan(void) const { return dens("mirrorSpan"); }
   qreal planeWidth(void) const { return dens("plane.0"); }

@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// PR-21 Workspace rail button: icon over caption (icon only in Minimal);
+// PR-21 Workspace rail button: icon over caption (Minimal: the caption
+// rotated 90 degrees, reading top to bottom, and the button as tall as it);
 // selected = accentSoft fill reaching the rail's right edge, accent icon and
 // caption, and a 3 dp indicator bar at that edge, so selection never relies
 // on colour alone.
@@ -16,7 +17,7 @@ AbstractButton {
     property bool tab: true
 
     implicitWidth: Theme.minimal ? 36 : 52
-    implicitHeight: Theme.minimal ? 40 : 50
+    implicitHeight: Theme.minimal ? stack.implicitHeight + 16 : 50
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     // a workspace is a tab of the window; the menu button is a plain button
@@ -64,21 +65,30 @@ AbstractButton {
     }
     contentItem: Item {
         Column {
+            id: stack
             anchors.centerIn: parent
-            spacing: 2
+            spacing: Theme.minimal ? 6 : 2
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 name: root.iconName
                 size: 22
                 color: root.selected ? Theme.accent : (root.hovered ? Theme.text : Theme.muted)
             }
-            Text {
+            // turned, the caption's box is its text's, swapped
+            Item {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: root.text
-                visible: !Theme.minimal
-                color: root.selected ? Theme.accent : (root.hovered ? Theme.text : Theme.muted)
-                font.pixelSize: Theme.fontCaption
-                font.weight: Font.DemiBold
+                implicitWidth: Theme.minimal ? caption.implicitHeight : caption.implicitWidth
+                implicitHeight: Theme.minimal ? caption.implicitWidth : caption.implicitHeight
+                Text {
+                    id: caption
+                    objectName: "caption"
+                    anchors.centerIn: parent
+                    rotation: Theme.minimal ? 90 : 0
+                    text: root.text
+                    color: root.selected ? Theme.accent : (root.hovered ? Theme.text : Theme.muted)
+                    font.pixelSize: Theme.fontCaption
+                    font.weight: Font.DemiBold
+                }
             }
         }
     }

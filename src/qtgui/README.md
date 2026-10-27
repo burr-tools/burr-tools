@@ -26,7 +26,7 @@ it can replace it.
 | P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout since P4 |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
-| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar and the rows *Minimal density: the rest* (see *Deferred*); the Voxel editor's geometry since P4's density fix |
+| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*). An audit on 2026-10-27 found the Voxel editor ignoring the density and five smaller gaps (rail captions, "+", button and status bar sizes, the toolbar's height); fixed, and `qtgui_density_tokens` now fails on a density token no component reads |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
 | — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in 3D (Edit mode, quick tools, ghosts, cursors) arrives with P5; the Edit button already shows the editor's tool |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
@@ -46,7 +46,6 @@ below, lists them per phase).
 | The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
 | Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
 | Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
-| Minimal density: the rest (audit of 2026-10-27) | density §1, §2, AC-DEN-02, AC-DEN-04 | Found when the Voxel editor turned out to ignore the density (fixed): the workspace rail hides its captions instead of rotating them; Shapes' "+ New" stays "+ New" (Minimal: "+"); buttons are 30 / small 26 (§1: 28, Minimal 26); the status bar's text is 12 (§1: 11.5, Minimal 11); Minimal's 3D toolbar buttons are 34 × 34 (§1: 34 × 32; 34 × 34 is Focus 2D's) | P12a |
 | `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P5 |
 | Quick tool 2 (Alt+click) in 3D | AC-C06-06 | In the 2D grid since P4. Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P5 |
 | Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P5 |
@@ -289,6 +288,7 @@ renamed over the old one, so a crash part way leaves the old settings.
 | Qt Test `test_qtgui` (17 classes, ~165 functions) | the controllers, theme, settings, icons; real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
 | Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~90 functions) | the shell, menus, settings, dialogs, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
 | Gallery snapshots | each gallery row and the glyph / icon sheets against reference images, light and dark, at device-pixel ratios 1, 1.5 and 2 | `test/qtgui/snapshots/<os>/`; tolerant diff |
+| Density tokens (`qtgui_density_tokens`) | every density token of `design-tokens.json` read by a component (through `Theme`, or the layout's metrics, which must match), or listed with the phase that builds it; Standard and Minimal with the same tokens | `scripts/check_density_tokens.py`, no build needed |
 | Performance | work counts per edit, the scene targets' graphics memory, allocations per frame (none per triangle), QML bindings left to the JS engine (`qtgui_qml_aot`, against a baseline); benchmarks and profiles as reports | Qt suites and `just qml-aot`; `just bench-ui`, `startup-time`, `profile-qml`, `heap-qt`; see `design/2026-10-08-qtgui-performance-guide.md` |
 
 Render tests use Direct3D's WARP rasteriser on Windows and Mesa's lavapipe
@@ -314,8 +314,11 @@ commit holds just the images that changed.
   voxel styles are additions.
 - **Workspace rail**: the selected workspace's fill runs to the rail's right
   edge, square there, with the indicator bar on that edge -- a tab joined to
-  the workspace (spec AC-C15-02: the bar at the left). Minimal density's rail
-  buttons are 40 dp high.
+  the workspace (spec AC-C15-02: the bar at the left). In Minimal a rail
+  button is as tall as its turned caption.
+- **Density** (density.md §1 over the component sections, as §1 says):
+  buttons 28 (PR-04: 30); the status bar's 11.5 dp text is drawn at 12, a
+  font's pixel size being whole.
 - **Menus by keyboard**: an Alt tap underlines the access keys and arms the
   menus (Windows' convention); with the menu bar hidden it opens the rail's
   menu button instead. Alt held through a click or another key arms
@@ -438,9 +441,7 @@ moves to a later phase says why in that table.
 - **P6 Inspector:** the ActionButton and Accordion primitives.
 - **P11 Solver:** shape and colour edits refused while a solve runs
   (legacy `threadStopped()`); the solver's progress announced.
-- **P12a Density:** Minimal's auto-hiding 3D toolbar; the rest of
-  Minimal (rotated rail captions, "+", button and status bar sizes, the
-  toolbar's 32 dp height).
+- **P12a Density:** Minimal's auto-hiding 3D toolbar.
 - **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
   other layers in the STL style; STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the

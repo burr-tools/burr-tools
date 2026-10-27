@@ -90,6 +90,14 @@ if qt6_test_dep.found()
     timeout: 180,
     workdir: meson.project_source_root())
 
+  # every density token (density.md section 1) read by a component or listed
+  # with the phase that builds it (scripts/check_density_tokens.py)
+  test('qtgui_density_tokens', python3,
+    args: [meson.project_source_root() / 'scripts' / 'check_density_tokens.py',
+           '--root', meson.project_source_root()],
+    suite: 'fast',
+    timeout: 30)
+
   # how many bindings qmlcachegen leaves to the JavaScript engine, against a
   # baseline that may only go down (scripts/qml_aot_report.py; `just qml-aot`)
   test('qtgui_qml_aot', python3,
