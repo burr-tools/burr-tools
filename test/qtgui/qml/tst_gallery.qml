@@ -146,7 +146,7 @@ TestCase {
     // --- coverage ------------------------------------------------------------------
 
     function test_everyBuiltPrimitiveHasARow() {
-        for (const row of ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
+        for (const row of ["iconButton", "glyphButton", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
                            "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
@@ -185,6 +185,8 @@ TestCase {
             { tag: "wide shape chip grows", cell: "chip.wide", h: 26, minW: 35 },
             { tag: "count badge h20", cell: "chip.count", h: 20, minW: 24 },
             { tag: "weight badge h18", cell: "chip.weight", h: 18 },
+            { tag: "glyph button 62x58", cell: "glyphButton.normal", w: 62, h: 58 },
+            { tag: "stepper h30", cell: "stepper.normal", h: 30 },
         ]
     }
     function test_sizesFollowTheTokens(data) {

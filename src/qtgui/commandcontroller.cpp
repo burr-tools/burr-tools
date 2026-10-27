@@ -21,6 +21,7 @@
 #include "commandcontroller.h"
 #include "app.h"
 #include "documentcontroller.h"
+#include "editorcontroller.h"
 #include "layoutcontroller.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
@@ -57,8 +58,10 @@ namespace {
 }
 
 CommandController::CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
-                                     ViewportController * viewport, ShapesModel * shapes, QObject * parent) :
-  QObject(parent), m_settings(settings), m_doc(doc), m_layout(layout), m_viewport(viewport), m_shapes(shapes)
+                                     ViewportController * viewport, EditorController * editor, ShapesModel * shapes,
+                                     QObject * parent) :
+  QObject(parent), m_settings(settings), m_doc(doc), m_layout(layout), m_viewport(viewport), m_editor(editor),
+  m_shapes(shapes)
 {
   auto bump = [this] { m_revision++; emit revisionChanged(); };
   connect(m_settings, &SettingsController::changed, this, bump);
@@ -212,6 +215,10 @@ bool CommandController::isEnabled(const QString & key) const {
     // Entities-only keys do nothing in Puzzle and Solver (input map scoping rule)
     case Command::LayerUp:
     case Command::LayerDown:
+    case Command::ToolFixed:
+    case Command::ToolVariable:
+    case Command::ToolErase:
+    case Command::ToolPaint:
       return inEntities;
     // the Shapes list's keys act on the selected shape
     case Command::ShapeRename:
@@ -273,6 +280,17 @@ QStringList CommandController::keyCaps(std::string_view portable) {
 
 namespace {
 
+  /* a modifier's key cap: a modifier alone is no key sequence, so it is
+   * read from one with a key, and the key dropped */
+  QString modifierCap(const char * modifier) {
+    const QStringList caps = CommandController::keyCaps(std::string(modifier) + "+A");
+#ifdef Q_OS_MACOS
+    return caps.value(0).chopped(1);
+#else
+    return caps.value(0);
+#endif
+  }
+
   QVariantMap part(const QString & text, bool mouse = false) {
     return { { QStringLiteral("text"), text }, { QStringLiteral("mouse"), mouse } };
   }
@@ -308,6 +326,10 @@ namespace {
 QVariantList CommandController::shortcutHelp(void) const {
   using btui::Command;
   const QString shift = keyCaps("Shift").value(0);
+  // the quick tools' keys (btui::quickTool): Alt (Option), Ctrl (Control on macOS)
+  const bool mac = btui::currentPlatform() == btui::Platform::Mac;
+  const QString variableKey = modifierCap("Alt");
+  const QString eraseKey = modifierCap(mac ? "Meta" : "Ctrl");
 
   QVariantList everywhere{
     row(tr("Switch to Entities / Puzzle / Solver"), keysOf({ Command::WorkspaceEntities, Command::WorkspacePuzzle, Command::WorkspaceSolver })),
@@ -334,7 +356,13 @@ QVariantList CommandController::shortcutHelp(void) const {
   };
 
   QVariantList entities{
+    row(tr("Tools: Fixed, Variable, Erase, Paint"),
+        keysOf({ Command::ToolFixed, Command::ToolVariable, Command::ToolErase, Command::ToolPaint })),
     row(tr("Next / previous layer"), keysOf({ Command::LayerUp, Command::LayerDown })),
+    row(tr("Quick tool while held: Fixed / Variable / Erase"),
+        { QVariant(alt({ shift }, tr("Click"))), QVariant(alt({ variableKey }, tr("Click"))),
+          QVariant(alt({ eraseKey }, tr("Click"))) }),
+    row(tr("Erase, whatever the tool"), { QVariant(alt({}, tr("Right-click or right-drag"))) }),
   };
 
   // with the list focused (C01 Keyboard)
@@ -414,8 +442,12 @@ void CommandController::run(Command c) {
     case Command::ViewPan:          m_viewport->setNavMode(QStringLiteral("pan")); break;
     case Command::ViewHome:         m_viewport->home(); break;
     case Command::ViewFit:          m_viewport->fit(); break;
-    case Command::LayerUp:          m_viewport->layerStep(+1); break;
-    case Command::LayerDown:        m_viewport->layerStep(-1); break;
+    case Command::LayerUp:          m_editor->layerStep(+1); break;
+    case Command::LayerDown:        m_editor->layerStep(-1); break;
+    case Command::ToolFixed:        m_editor->setTool(EditorController::Fixed); break;
+    case Command::ToolVariable:     m_editor->setTool(EditorController::Variable); break;
+    case Command::ToolErase:        m_editor->setTool(EditorController::Erase); break;
+    case Command::ToolPaint:        m_editor->setTool(EditorController::Paint); break;
     case Command::ShapeRename:      m_shapes->requestRename(m_shapes->selected()); break;
     case Command::ShapeDuplicate:   m_shapes->duplicateShape(m_shapes->selected()); break;
     case Command::ShapeDelete:      m_shapes->requestDelete(m_shapes->selected()); break;

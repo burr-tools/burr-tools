@@ -6,9 +6,9 @@ import BurrTools.Ui
 
 // C06 3D viewport card: the canvas, the floating toolbar, the Display
 // menu, the view tag, the hint, the empty-shape message and the view cube
-// (C13). Editing in 3D (the Edit button, cursors, ghosts) arrives with the
-// editing phase; the Edit button is shown, disabled, so the toolbar already
-// has its final layout.
+// (C13). Editing in 3D (Edit mode, cursors, ghosts) arrives with phase P5;
+// the Edit button is shown, disabled, so the toolbar already has its final
+// layout, and already shows the voxel editor's tool in effect (AC-C07-09).
 //
 // Wireframe (each number marks its code below):
 //
@@ -125,9 +125,10 @@ Rectangle {
             ToolbarButton {
                 objectName: "entities.viewport.toolbar.edit"
                 visible: root.entities
-                glyphName: "edit-tool-fixed"
+                glyphName: ["edit-tool-fixed", "edit-tool-variable", "edit-tool-erase",
+                            "edit-tool-paint"][App.editor.toolInEffect]
                 caption: qsTr("Edit")
-                badge: "1"
+                badge: String(App.editor.toolInEffect + 1)
                 tip: qsTr("3D edit mode (E) arrives with the editing phase")
                 compact: root.compact
                 enabled: false

@@ -29,6 +29,7 @@
 #include <QtQml/qqmlregistration.h>
 
 class DocumentController;
+class EditorController;
 class LayoutController;
 class SettingsController;
 class ShapesModel;
@@ -62,7 +63,8 @@ class CommandController : public QObject {
 public:
 
   CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
-                    ViewportController * viewport, ShapesModel * shapes, QObject * parent = nullptr);
+                    ViewportController * viewport, EditorController * editor, ShapesModel * shapes,
+                    QObject * parent = nullptr);
 
   int revision(void) const { return m_revision; }
   bool blocked(void) const { return m_blocked; }
@@ -153,6 +155,7 @@ private:
   DocumentController * m_doc;
   LayoutController * m_layout;
   ViewportController * m_viewport;
+  EditorController * m_editor;
   ShapesModel * m_shapes;
   int m_revision = 0;
   bool m_blocked = false;

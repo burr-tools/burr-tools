@@ -84,10 +84,12 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_status = new StatusController(this);
   m_shapes = new ShapesModel(m_document, this);
   m_colours = new ColoursModel(m_document, m_shapes, this);
-  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, this);
-  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_shapes, this);
+  m_editor = new EditorController(m_document, m_shapes, m_colours, m_status, this);
+  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, this);
+  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
   connect(m_colours, &ColoursModel::flashRequested, m_status, &StatusController::flash);
+  connect(m_editor, &EditorController::flashRequested, m_status, &StatusController::flash);
   connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
@@ -117,7 +119,10 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_shapes, &ShapesModel::countChanged, this, &App::updateStatusText);
   connect(m_document, &DocumentController::documentReplaced, this, &App::updateStatusText);
   connect(m_document, &DocumentController::historyApplied, this, &App::updateStatusText);
-  connect(m_document, &DocumentController::puzzleEdited, this, &App::updateStatusText);
+  connect(m_document, &DocumentController::puzzleEdited, this, [this](int, DocumentController::Change c) {
+    if (c != DocumentController::Change::Label && c != DocumentController::Change::Palette)
+      updateStatusText();
+  });
   connect(m_layout, &LayoutController::changed, this, &App::updateStatusText);
   updateStatusText();
 }

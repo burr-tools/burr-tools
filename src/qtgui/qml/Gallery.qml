@@ -209,6 +209,15 @@ ApplicationWindow {
                     Cell { kind: "dangerHover"; IconButton { iconName: "trash"; tip: "Delete"; dangerHover: true } }
                 }
                 GalleryRow {
+                    name: "glyphButton"; label: "PR-02 Glyph button"
+                    Cell { kind: "normal"; GlyphButton { glyph: "tool-variable"; caption: "Variable"; keyBadge: "2"; tip: "Variable" } }
+                    Cell { kind: "hover"; GlyphButton { glyph: "tool-variable"; caption: "Variable"; keyBadge: "2"; tip: "Variable" } }
+                    Cell { kind: "on"; GlyphButton { glyph: "tool-fixed"; caption: "Fixed"; keyBadge: "1"; tip: "Fixed"; on: true } }
+                    Cell { kind: "focus"; GlyphButton { glyph: "plane-xz"; caption: "XZ"; tip: "XZ" } }
+                    Cell { kind: "disabled"; GlyphButton { glyph: "plane-yz"; caption: "YZ"; tip: "YZ"; enabled: false } }
+                    Cell { kind: "axis"; GlyphButton { glyph: "mirror-x"; caption: "X"; captionColor: Theme.axisX; toggle: true; height: 54; glyphSize: 28; tip: "Mirror X" } }
+                }
+                GalleryRow {
                     name: "button"; label: "PR-04 Button"
                     Cell { kind: "normal"; BtButton { text: "Reset section" } }
                     Cell { kind: "hover"; BtButton { text: "Reset section" } }
@@ -249,6 +258,13 @@ ApplicationWindow {
                     Cell { kind: "normal"; Segmented { options: [ { value: "a", label: "Trackball" }, { value: "b", label: "Turntable" } ]; value: "a" } }
                     Cell { kind: "focus"; Segmented { options: [ { value: "a", label: "Trackball" }, { value: "b", label: "Turntable" } ]; value: "b" } }
                     Cell { kind: "disabled"; Segmented { options: [ { value: "a", label: "Trackball" }, { value: "b", label: "Turntable" } ]; value: "a"; enabled: false } }
+                }
+                GalleryRow {
+                    name: "stepper"; label: "PR-06 Stepper"
+                    Cell { kind: "normal"; Stepper { axis: "X"; axisColor: Theme.axisX; value: 4 } }
+                    Cell { kind: "focus"; Stepper { axis: "Y"; axisColor: Theme.axisY; value: 12 } }
+                    Cell { kind: "at minimum"; Stepper { axis: "Z"; axisColor: Theme.axisZ; value: 1 } }
+                    Cell { kind: "disabled"; Stepper { axis: "X"; axisColor: Theme.axisX; value: 3; enabled: false } }
                 }
                 GalleryRow {
                     name: "switch"; label: "PR-07 Switch"

@@ -68,6 +68,11 @@ namespace btui {
     constexpr sv scFit[]         = { "F" };
     constexpr sv scLayerUp[]     = { "PgUp" };
     constexpr sv scLayerDown[]   = { "PgDown" };
+    // the tool numbers used everywhere (C07): keys, badges, quick tools
+    constexpr sv scTool1[]       = { "1" };
+    constexpr sv scTool2[]       = { "2" };
+    constexpr sv scTool3[]       = { "3" };
+    constexpr sv scTool4[]       = { "4" };
     /* The Shapes list's. Rename is Enter -- the main key (Qt's "Return")
      * and the keypad's alike -- not the spec's F2, which stays Save (product
      * decision, 2026-10-27). macOS deletes with Backspace, as its lists do. */
@@ -133,6 +138,11 @@ namespace btui {
       { Command::ViewFit,          "view.fit",              "Fit to view",            Menu::None,   false, scFit,        none,       "", "", "", Menu::None },
       { Command::LayerUp,          "editor.layerUp",        "Next layer",             Menu::None,   false, scLayerUp,    none,       "", "", "", Menu::None },
       { Command::LayerDown,        "editor.layerDown",      "Previous layer",         Menu::None,   false, scLayerDown,  none,       "", "", "", Menu::None },
+      // replace legacy's tool buttons (L60), not menu items
+      { Command::ToolFixed,        "editor.tool.fixed",     "Fixed voxel",            Menu::None,   false, scTool1,      none,       "", "", "", Menu::None },
+      { Command::ToolVariable,     "editor.tool.variable",  "Variable voxel",         Menu::None,   false, scTool2,      none,       "", "", "", Menu::None },
+      { Command::ToolErase,        "editor.tool.erase",     "Erase",                  Menu::None,   false, scTool3,      none,       "", "", "", Menu::None },
+      { Command::ToolPaint,        "editor.tool.paint",     "Paint",                  Menu::None,   false, scTool4,      none,       "", "", "", Menu::None },
 
       // replace legacy's shape buttons (Label, Copy, Delete, <-, ->), not menu items
       { Command::ShapeRename,      "shapes.rename",         "Rename…",                Menu::None,   false, scShapeRename, scShapeRenameMac, "", "", "", Menu::None, Scope::ShapesList },

@@ -25,6 +25,7 @@
 #include "coloursmodel.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
+#include "editorcontroller.h"
 #include "imageexportcontroller.h"
 #include "keyboardcues.h"
 #include "updatecontroller.h"
@@ -68,6 +69,7 @@ class App : public QObject {
   Q_PROPERTY(ShapesModel * shapes READ shapes CONSTANT FINAL)
   Q_PROPERTY(ColoursModel * colours READ colours CONSTANT FINAL)
   Q_PROPERTY(CommandController * commands READ commands CONSTANT FINAL)
+  Q_PROPERTY(EditorController * editor READ editor CONSTANT FINAL)
   Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
   Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
   Q_PROPERTY(StlExportController * stl READ stl CONSTANT FINAL)
@@ -98,6 +100,7 @@ public:
   ShapesModel * shapes(void) const { return m_shapes; }
   ColoursModel * colours(void) const { return m_colours; }
   CommandController * commands(void) const { return m_commands; }
+  EditorController * editor(void) const { return m_editor; }
   ViewportController * viewport(void) const { return m_viewport; }
   ToolsController * tools(void) const { return m_tools; }
   StlExportController * stl(void) const { return m_stl; }
@@ -150,6 +153,7 @@ private:
   ShapesModel * m_shapes;
   ColoursModel * m_colours;
   CommandController * m_commands;
+  EditorController * m_editor;
   ViewportController * m_viewport;
   ToolsController * m_tools;
   StlExportController * m_stl;

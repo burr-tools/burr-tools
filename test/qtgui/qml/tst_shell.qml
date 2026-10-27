@@ -275,6 +275,13 @@ TestCase {
                 "entities.viewport.toolbar.orbit", "entities.viewport.toolbar.pan",
                 "entities.viewport.toolbar.display", "entities.viewport.toolbar.focus",
                 "entities.editor.focus2d", "entities.editor.collapse",
+                // the tool strip and the planes are one stop each
+                "entities.editor.tools.group",
+                "entities.editor.mirror.x", "entities.editor.mirror.y", "entities.editor.mirror.z",
+                "entities.editor.span.x", "entities.editor.span.y", "entities.editor.span.z",
+                "entities.editor.plane.group",
+                "entities.editor.size.applyAll",
+                "entities.editor.size.x.input", "entities.editor.size.y.input", "entities.editor.size.z.input",
                 "entities.editor.colour.add", "entities.editor.colour.more", "entities.editor.colour.palette" ] },
             { tag: "rails", rails: true, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",

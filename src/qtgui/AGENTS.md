@@ -25,6 +25,7 @@
 | `app.{h,cpp}` | `App`, the QML singleton: owns every controller, the status sentence, internal-error rescue |
 | `*controller.{h,cpp}`, `shapesmodel`, `keyboardcues`, `popupwindowstyle` | one QObject per concern (table in README); QML reaches them as `App.document`, `App.layout`, … |
 | `scenecontroller`, `viewportcontroller`, `stl/imageexportcontroller` | camera, gestures and the `SceneFrame` each view draws; `SceneController::applyStyle` is the one rule for how a voxel style is drawn |
+| `editorcontroller`, `voxelgriditem`, `editcursor` | the voxel editor: tool, Mirror and Span, plane and layer, strokes and grid size (`App.editor`); the 2D grid (QPainter); the composed edit cursors |
 | `voxelviewport`, `viewcubeitem`, `scenerenderer`, `offscreenrenderer`, `pipelinecache`, `earlydevice`, `shaders/` | the 3D view on QRhi: render thread, offscreen renders, pipeline cache, shaders compiled by `qsb` |
 | `theme.{h,cpp}`, `resources/design-tokens.json` | every colour, size and duration of the spec, light and dark, Standard and Minimal |
 | `qml/` | the QML module `BurrTools.Ui`: `Main.qml` (the window), panels, `*Dialog.qml`, primitives (`Bt*`, `IconButton`, `Segmented`, …), `Gallery.qml` |

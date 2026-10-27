@@ -50,9 +50,10 @@ namespace btui {
     ExportImage, ExportVector, ExportStl,
     // Help
     HelpGuide, HelpShortcuts, CheckForUpdates, About,
-    // not in a menu: the 3D view (every workspace) and the active layer (Entities)
+    // not in a menu: the 3D view (every workspace); the voxel editor's tools and layer (Entities)
     ViewOrbit, ViewPan, ViewHome, ViewFit,
     LayerUp, LayerDown,
+    ToolFixed, ToolVariable, ToolErase, ToolPaint,
     // the focused Shapes list (C01 Keyboard), also its rows' context menu
     ShapeRename, ShapeDuplicate, ShapeDelete, ShapeMoveEarlier, ShapeMoveLater,
   };

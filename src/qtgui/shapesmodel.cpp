@@ -46,7 +46,7 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
   });
   // the change names the shape to select: one selectedChanged, for the end state
   connect(doc, &DocumentController::historyApplied, this, [this](int, int shape) { refresh(false, shape); });
-  connect(doc, &DocumentController::puzzleEdited, this, [this](int shape) { refresh(false, shape); });
+  connect(doc, &DocumentController::puzzleEdited, this, &ShapesModel::edited);
   refresh(true);
   select(0);
 }
@@ -124,6 +124,39 @@ template <class F> bool ShapesModel::edit(int select, F && f) {
   return guarded([&] { return m_doc->editStructure(select, std::forward<F>(f)); });
 }
 
+template <class F> bool ShapesModel::editLabel(int row, F && f) {
+  // the selection stays: a rename can be committed by clicking another row,
+  // and a hovered row's W+ / W- is not a selection
+  return guarded([&] {
+    return m_doc->edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, DocumentController::Change::Label, row, m_selected,
+                       std::forward<F>(f));
+  });
+}
+
+/* An edit, the list's own or another's: only what it changed is re-read. */
+void ShapesModel::edited(int selectedShape, DocumentController::Change change, int shape) {
+  switch (change) {
+    case DocumentController::Change::Label:
+      if (isRow(shape))
+        emit dataChanged(index(shape), index(shape), { LabelRole, WeightRole });
+      break;
+    case DocumentController::Change::Voxels:
+      if (isRow(shape) && size_t(shape) < m_counts.size()) {
+        m_counts[size_t(shape)] = Counts{};
+        emit dataChanged(index(shape), index(shape), { FixedRole, VariableRole });
+      } else if (m_rows > 0) {
+        m_counts.assign(m_counts.size(), Counts{});
+        emit dataChanged(index(0), index(m_rows - 1), { FixedRole, VariableRole });
+      }
+      break;
+    case DocumentController::Change::Palette:
+      break;                                    // no row shows the colours
+    case DocumentController::Change::Structure:
+      refresh(false, selectedShape);
+      break;
+  }
+}
+
 void ShapesModel::addShape(void) {
   const int from = m_selected;
   const int added = count();
@@ -175,11 +208,7 @@ void ShapesModel::deleteShape(int row) {
 void ShapesModel::renameShape(int row, const QString & label) {
   if (!isRow(row))
     return;
-  m_onlyRow = row;                       // one row's label: no recount, no other row
-  m_onlyRole = LabelRole;
-  // the selection stays: a rename can be committed by clicking another row
-  edit(m_selected, [&](puzzle_c & p) { return btui::renameShape(p, row, label.toStdString()); });
-  m_onlyRow = -1;
+  editLabel(row, [&](puzzle_c & p) { return btui::renameShape(p, row, label.toStdString()); });
 }
 
 void ShapesModel::moveShape(int from, int to) {
@@ -193,11 +222,7 @@ void ShapesModel::moveShape(int from, int to) {
 void ShapesModel::changeWeight(int row, int delta) {
   if (!isRow(row))
     return;
-  m_onlyRow = row;
-  m_onlyRole = WeightRole;
-  // the selection stays: a hovered row's W+ / W- is not a selection
-  edit(m_selected, [&](puzzle_c & p) { return btui::changeWeight(p, row, delta); });
-  m_onlyRow = -1;
+  editLabel(row, [&](puzzle_c & p) { return btui::changeWeight(p, row, delta); });
 }
 
 void ShapesModel::requestRename(int row) {
@@ -229,9 +254,6 @@ void ShapesModel::refresh(bool reset, int want) {
     m_rows = n;
     m_counts.assign(size_t(n), Counts{});
     endResetModel();
-  } else if (m_onlyRow >= 0 && n == old && m_onlyRow < n) {
-    // one of the list's own one-row changes (rename, weight): that row and role
-    emit dataChanged(index(m_onlyRow), index(m_onlyRow), { m_onlyRole });
   } else {
     m_counts.assign(size_t(n), Counts{});    // any shape may have changed
     if (n > old) {

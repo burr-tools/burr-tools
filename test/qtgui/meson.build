@@ -30,8 +30,9 @@ if qt6_test_dep.found()
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
 
   test_qtgui = executable('test_qtgui',
-    ['test_qtgui.cpp', 'test_viewport.cpp', '../alloccount.cpp',
-     qt6.compile_moc(sources: 'test_qtgui.cpp', headers: 'test_viewport.h', dependencies: qt6_test_dep)],
+    ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', '../alloccount.cpp',
+     qt6.compile_moc(sources: 'test_qtgui.cpp', headers: ['test_viewport.h', 'test_editor.h'],
+                     dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
     # the shaders' Direct3D form (src/qtgui/meson.build, -Ddxbc)

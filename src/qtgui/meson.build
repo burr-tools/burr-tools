@@ -11,6 +11,7 @@ qtgui_moc_headers = files(
   'coloursmodel.h',
   'commandcontroller.h',
   'documentcontroller.h',
+  'editorcontroller.h',
   'imageexportcontroller.h',
   'keyboardcues.h',
   'layoutcontroller.h',
@@ -25,6 +26,7 @@ qtgui_moc_headers = files(
   'updatecontroller.h',
   'viewcubeitem.h',
   'viewportcontroller.h',
+  'voxelgriditem.h',
   'voxelviewport.h',
 )
 
@@ -118,6 +120,8 @@ libburr_qtgui = static_library('burr_qtgui', [
     'coloursmodel.cpp',
     'commandcontroller.cpp',
     'documentcontroller.cpp',
+    'editcursor.cpp',
+    'editorcontroller.cpp',
     'earlydevice.cpp',
     'iconprovider.cpp',
     'imageexportcontroller.cpp',
@@ -139,6 +143,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'updatecontroller.cpp',
     'viewcubeitem.cpp',
     'viewportcontroller.cpp',
+    'voxelgriditem.cpp',
     'voxelviewport.cpp',
     httpget_files,
     updatecheck_files,
