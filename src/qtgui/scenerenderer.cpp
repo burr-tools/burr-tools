@@ -658,7 +658,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   std::vector<LineVertex> & lv = d->lineVertices;
   lv.clear();
   const size_t meshEdges = f.mesh && !f.xray ? f.mesh->edges.size() : 0;
-  lv.reserve((f.lines.size() + meshEdges + 2 * f.ghostLines.size()) * 6);
+  lv.reserve((f.lines.size() + meshEdges + 2 * (f.ghostLines.size() + f.hintLines.size())) * 6);
   auto addLine = [&](const btui::LineSeg & s, std::uint8_t alpha) {
     const float corners[6][2] = { { 0, -1 }, { 1, -1 }, { 1, 1 }, { 0, -1 }, { 1, 1 }, { 0, 1 } };
     for (const auto & c : corners) {
@@ -685,12 +685,16 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   }
   const quint32 edgeLineCount = quint32(lv.size()) - frameLineCount;
   const quint32 lineCount = frameLineCount;
-  // the ghosts' outlines, then the same faint for where voxels hide them
-  for (const btui::LineSeg & s : f.ghostLines)
-    addLine(s, s.color.a);
+  /* the ghosts' outlines and the hint, then the same for where voxels hide
+   * them: the outlines faint, the hint as strong */
+  for (const auto * list : { &f.ghostLines, &f.hintLines })
+    for (const btui::LineSeg & s : *list)
+      addLine(s, s.color.a);
   for (const btui::LineSeg & s : f.ghostLines)
     addLine(s, std::uint8_t(std::lround(s.color.a * kGhostHidden)));
-  const quint32 ghostLineCount = quint32(f.ghostLines.size() * 6);
+  for (const btui::LineSeg & s : f.hintLines)
+    addLine(s, s.color.a);
+  const quint32 ghostLineCount = quint32((f.ghostLines.size() + f.hintLines.size()) * 6);
   if (!lv.empty()) {
     const quint32 bytes = quint32(lv.size() * sizeof(LineVertex));
     d->lineVbuf.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer);
