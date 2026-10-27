@@ -174,6 +174,13 @@ TestCase {
         App.editor.tool = EditorController.Erase
         compare(edit.badge, "3")
         compare(edit.glyphName, "edit-tool-erase")
+        // a quick tool held over the view looks as Edit mode does (product
+        // decision 2026-10-27): lit, no outline of its own
+        App.editor.editMode = false
+        edit.override = true
+        verify(edit.lit)
+        compare(findChild(edit, "override"), null)
+        edit.override = Qt.binding(() => App.editor.quickHeld3d)
     }
 
     function test_singleKeyShortcutsCanBeTurnedOff() {
