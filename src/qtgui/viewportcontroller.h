@@ -128,6 +128,7 @@ private:
   void buildMesh(void);
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
+  void addGhosts(SceneFrame & f) const;
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;

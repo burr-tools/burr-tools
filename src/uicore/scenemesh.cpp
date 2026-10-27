@@ -560,6 +560,37 @@ namespace btui {
     }
   }
 
+  void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style) {
+    if (cells.empty())
+      return;
+    /* the cells alone, as variable voxels: the flat builder draws every
+     * face of one (a variable neighbour hides none) and its edges */
+    std::unique_ptr<voxel_c> g(shape.getGridType()->getVoxel(shape.getX(), shape.getY(), shape.getZ(), voxel_c::VX_EMPTY));
+    for (const auto & c : cells)
+      if (c[0] >= 0 && c[1] >= 0 && c[2] >= 0 && unsigned(c[0]) < g->getX() && unsigned(c[1]) < g->getY() &&
+          unsigned(c[2]) < g->getZ() && g->validCoordinate(c[0], c[1], c[2]))
+        g->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_VARIABLE);
+    MeshOptions opt;
+    opt.style = VoxelStyle::Flat;
+    opt.variableAlpha = 1;
+    const ShapeMesh m = buildShapeMesh(*g, opt);
+    for (const auto * list : { &m.opaque, &m.translucent })
+      for (MeshVertex v : *list) {
+        v.color = style.fill;
+        v.edge[0] = v.edge[1] = v.edge[2] = kNoOutline;
+        v.cell[0] = v.cell[1] = v.cell[2] = -1e4f;
+        faces.push_back(v);
+      }
+    for (LineSeg e : m.edges) {
+      e.color = style.outline;
+      e.widthDp = style.widthDp;
+      e.dashDp = style.dashDp;
+      e.gapDp = style.gapDp;
+      lines.push_back(e);
+    }
+  }
+
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp) {
     const Box g = gridBounds(shape);
     const float extra = 0.7f;

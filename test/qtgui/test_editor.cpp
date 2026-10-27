@@ -158,6 +158,55 @@ void TestEditor::theToolInEffectFollowsTheModifiersHeldOverTheGrid() {
   QVERIFY(!e->momentary());
 }
 
+void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
+  // AC-C08-10 / AC-C06-11: the cell under the pointer, the tool in effect
+  // with the modifiers held, Mirror and Span; none off the grid or mid-stroke
+  EditorFixture f(4, 4, 3);
+  EditorController * e = f.editor();
+  QSignalSpy changed(e, &EditorController::previewChanged);
+  QVERIFY(e->preview().empty());
+  e->hover(1, 2);
+  QVERIFY(changed.count() > 0);
+  std::vector<btui::GhostCell> p = e->preview();
+  QCOMPARE(p.size(), size_t(1));
+  QVERIFY((p[0].cell == btui::Cell3{ 1, 2, 0 }));
+  QVERIFY(p[0].kind == btui::GhostKind::Place);
+
+  // Mirror X: the copy too
+  changed.clear();
+  e->toggleMirror(0);
+  QVERIFY(changed.count() > 0);
+  QCOMPARE(e->preview().size(), size_t(2));
+  e->toggleMirror(0);
+
+  // a voxel there: Ctrl held (Erase) previews erasing it, at once
+  f.click(1, 2);
+  e->hover(-1, -1);
+  e->hover(1, 2);
+  QVERIFY(e->preview().empty());              // Fixed over the same fixed voxel: no change
+  changed.clear();
+  e->setModifiers(Qt::ControlModifier);
+  QVERIFY(changed.count() > 0);
+  p = e->preview();
+  QCOMPARE(p.size(), size_t(1));
+  QVERIFY(p[0].kind == btui::GhostKind::Erase);
+  // Alt (Variable) would change it: replaced
+  e->setModifiers(Qt::AltModifier);
+  QVERIFY(e->preview()[0].kind == btui::GhostKind::Replace);
+  e->setModifiers(Qt::NoModifier);
+
+  // the layer moves the cell; a stroke and leaving the grid clear it
+  e->setLayer(1);
+  QVERIFY((e->preview()[0].cell == btui::Cell3{ 1, 2, 1 }));
+  e->press(0, 0, false, Qt::NoModifier);
+  QVERIFY(e->preview().empty());
+  e->release();
+  changed.clear();
+  e->hover(-1, -1);
+  QVERIFY(changed.count() > 0);
+  QVERIFY(e->preview().empty());
+}
+
 void TestEditor::mirrorAndSpanExpandEveryPlacement() {
   // AC-C07-03 / 04 / 06, through the controller
   EditorFixture f(4, 4, 3);
