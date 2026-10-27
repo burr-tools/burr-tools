@@ -15,9 +15,11 @@ AbstractButton {
     // a workspace: selected, it joins the rail's edge as a tab with the bar;
     // false for the menu button, which is only highlighted while its menu is open
     property bool tab: true
+    // Minimal: false shows the icon alone (the menu button)
+    property bool minimalCaption: true
 
     implicitWidth: Theme.minimal ? 36 : 52
-    implicitHeight: Theme.minimal ? stack.implicitHeight + 16 : 50
+    implicitHeight: Theme.minimal ? Math.max(40, stack.implicitHeight + 16) : 50
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     // a workspace is a tab of the window; the menu button is a plain button
@@ -77,6 +79,7 @@ AbstractButton {
             // turned, the caption's box is its text's, swapped
             Item {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: !Theme.minimal || root.minimalCaption
                 implicitWidth: Theme.minimal ? caption.implicitHeight : caption.implicitWidth
                 implicitHeight: Theme.minimal ? caption.implicitWidth : caption.implicitHeight
                 Text {
