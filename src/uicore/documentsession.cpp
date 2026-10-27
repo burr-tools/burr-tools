@@ -45,6 +45,7 @@ namespace btui {
   DocumentSession::~DocumentSession(void) = default;
 
   void DocumentSession::adopt(std::unique_ptr<puzzle_c> p) {
+    stroking = false;     // the history starts afresh: the stroke goes with the old puzzle
     puz = std::move(p);
     hist->reset(puz.get());
   }
@@ -253,8 +254,30 @@ namespace btui {
   bool DocumentSession::canUndo(void) const { return hist->canUndo(); }
   bool DocumentSession::canRedo(void) const { return hist->canRedo(); }
 
-  puzzleHistory_c::undoResult_t DocumentSession::undo(void) { return hist->undo(puz.get()); }
-  puzzleHistory_c::undoResult_t DocumentSession::redo(void) { return hist->redo(puz.get()); }
+  puzzleHistory_c::undoResult_t DocumentSession::undo(void) {
+    endStroke();
+    return hist->undo(puz.get());
+  }
+
+  puzzleHistory_c::undoResult_t DocumentSession::redo(void) {
+    endStroke();
+    return hist->redo(puz.get());
+  }
+
+  void DocumentSession::beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {
+    endStroke();
+    stroking = true;
+    strokeKind = kind;
+    strokeShape = selectedShape;
+    hist->beginStroke(kind);
+  }
+
+  bool DocumentSession::endStroke(void) {
+    if (!stroking)
+      return false;
+    stroking = false;
+    return hist->endStroke(puz.get(), strokeShape);
+  }
 
   void DocumentSession::record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {
     hist->record(puz.get(), kind, selectedShape);
