@@ -22,16 +22,17 @@ it can replace it.
 
 | Phase | Content | State |
 | :--- | :--- | :--- |
-| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except what later phases need first: the Stepper, GlyphButton, ActionButton and Accordion primitives, and the composed edit cursors (see *Deferred*). The Chip came with P2 |
-| P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout waits for the 2D grid (P4) |
+| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except the ActionButton and Accordion primitives, which the inspector needs first (see *Deferred*). The Chip came with P2; the GlyphButton, the Stepper and the composed edit cursors with P4 |
+| P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout since P4 |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
 | P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*) |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
-| — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles | Done; editing in 3D (Edit button, quick tools, ghosts, cursors) arrives with P4 |
+| — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in 3D (Edit mode, quick tools, ghosts, cursors) arrives with P5; the Edit button already shows the editor's tool |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
-| P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; painting with it arrives with P4 / P5 |
-| P4 onward | Voxel editor, 3D editing, inspector, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
+| P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; the 2D grid paints with it since P4, 3D editing with P5 |
+| P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for bricks), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
+| P5 onward | 3D editing, inspector, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
 
 ### Deferred to the next phase
 
@@ -41,18 +42,16 @@ below, lists them per phase).
 
 | Item | Spec | Why it waits | Phase |
 | :--- | :--- | :--- | :--- |
-| Composed edit cursors (OS pointer + tool badge) | P0 exit criteria, C06 | Only the voxel editor and 3D editing use them | P4 |
-| Stepper, GlyphButton, ActionButton, Accordion primitives | PR-02, PR-03, PR-06, PR-09 | First used by the editor and the inspector | P4 (Stepper, GlyphButton), P6 (ActionButton, Accordion) |
-| Status bar cursor readout | AC-C10-02 | Shows the hovered cell of the 2D grid, which does not exist yet; `StatusController::setCursorText` is ready, nothing calls it | P4 |
+| ActionButton, Accordion primitives | PR-03, PR-09 | First used by the inspector (the GlyphButton and the Stepper came with P4) | P6 |
+| The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
+| Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
 | Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
 | `E` toggles 3D edit mode | AC-C06-07 | Edit mode itself arrives with 3D editing; the Edit button is shown disabled, its tooltip names E; the key is not bound and not in the shortcuts window | P5 |
-| Layer slab and Dim other layers | AC-C06-05, AC-C11-08 | Drawn only while the voxel editor is on screen, so not visible yet; every voxel style (STL included) carries the voxel per vertex the dimming needs -- check them on screen then | P4 |
-| Quick tool 2 (Alt+click) | AC-C06-06 | Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P4 (2D grid), P5 (3D) |
+| Quick tool 2 (Alt+click) in 3D | AC-C06-06 | In the 2D grid since P4. Safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). Open question: KDE moves windows on Alt+drag by default, so on that desktop the window manager may take the click | P5 |
 | Picking in use | C06 3D editing | `buildPickMesh` / `pick` and `SceneController::clicked` exist and are tested; nothing in the app uses them yet | P5 |
 | STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
 | Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 |
 | STL dialog after the document changes under it | `StlExportController` | Keeps the exporter of the grid it opened with; only reachable when a file opens while the modal dialog is up (macOS Finder) | P8 |
-| Settings and modes as strings | `SettingsController`, `ImageExportController` | Voxel style, rotation, density, colour view, image mode: parsed from strings in several places each; one typed table per vocabulary would keep them in step | P4, before the editor adds its own (tool, plane) |
 | Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 |
 | macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | P8 |
 | **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
@@ -67,7 +66,6 @@ below, lists them per phase).
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
 | Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
-| Edits that change no geometry rebuild the 3D mesh | performance guide | A rename, a weight step or a colour added rebuilds the selected shape's mesh (`puzzleEdited` carries no kind). `puzzleEdited` could say whether voxels changed | P4 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
@@ -122,7 +120,8 @@ editor); it is not a stable interface yet.
 | `LayoutController` | workspaces, card collapse, Focus 2D / 3D, the column widths |
 | `ColoursModel` | the drawing colour and the puzzle's colours: add and edit through the colour chooser, remove (asks first when solutions would go), each one `AK_COLOR_PALETTE` undo step through `btui::drawcolours` |
 | `ShapesModel`, `StatusController` | the shape list and its actions (new, duplicate, delete, rename, weight, reorder, each one undo step through `btui::shapelist`), and the status bar |
-| `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw |
+| `EditorController` | the voxel editor: tool and quick tool, Mirror and Span, plane and layer, the 2D grid's strokes (one undo step each, `DocumentSession::beginStroke`), grid size; the cursor readout |
+| `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw (the slab from the editor's plane and layer) |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
 | `KeyboardCues`, `PopupWindowStyle` | Windows' access-key underlines; Windows 11 menu corners and borders |
 | `UpdateController` | Help ▸ Check for updates and the launch check (GitHub Releases, as legacy) |
@@ -342,8 +341,19 @@ commit holds just the images that changed.
   chooser); Edit colour… opens the platform's chooser (`ColorDialog`). The
   palette has a row of its own under the current colour, as wide as the
   card (C09 put it beside the name, where it had room for one swatch).
+- **Voxel editor** (P4): **XZ and YZ are for bricks only** (product
+  decision 2026-10-27): the other voxel types are edited one XY layer at a
+  time, as legacy does, and their XZ / YZ buttons are disabled with a
+  tooltip saying why (C08 offers all three planes for every type). The
+  tool strip and the plane row are **one Tab stop each** (the selected
+  button, ← → move), as C07 asks of the strip. The layer chips are no Tab
+  stops: PgUp / PgDn step the layer anywhere in Entities. The grid has no
+  elevation shadow. Rulers number square cells only; the other voxel
+  types' cells are not in rows and columns of one cell each.
 - **Rendering** is gamma-correct; the layer slab's tint is scaled so it
-  still reads like the mock's sRGB mix.
+  still reads like the mock's sRGB mix. **Dim other layers** draws the
+  whole shape back to front while it is on, so the dimmed voxels show
+  what is behind them, the active layer among them.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
   design files declare 48 × 48 round a 28 × 24 drawing, which Qt stretches).
 
@@ -400,7 +410,7 @@ column is what the review of #140 asks of the phase.
 | :--- | :--- | :--- |
 | **P2** Shapes sidebar (C01) — done | New, duplicate, delete, rename inline, weight, reorder (drag, menu, `Alt+↑/↓`), the row context menu, the rail's `+`, the Chip primitive. Each action is one undo step. The status bar flashes when shapes are renumbered | The rules go in a new `uicore/shapelist`, legacy's `cb_NewShape` and the rest stay as they are, and the drift table gets a row for them. The list's keys come from the command table, with a scope |
 | **P3** Drawing colour (C09) — done | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
-| **P4** Voxel editor (C07, C08, C02) | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
+| **P4** Voxel editor (C07, C08, C02) — done | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
 | **P5** 3D editing (rest of C06) | Edit mode and `E`, quick tools, ghosts, picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore or `src/lib`, so that legacy can share it |
 | **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
@@ -413,12 +423,13 @@ What each phase takes on besides its own components: the rows of
 by the phase named there. A phase is done when these are, too; a row that
 moves to a later phase says why in that table.
 
-- **P4 Voxel editor:** the composed edit cursors; the Stepper and
+- **P4 Voxel editor** — done: the composed edit cursors; the Stepper and
   GlyphButton primitives; the status bar's cursor readout; the layer slab
-  and Dim other layers on screen; quick tool 2 (Alt+click) in the 2D grid;
-  settings and modes as typed tables, before the editor adds tool and
-  plane; edits that change no geometry no longer rebuilding the 3D mesh
-  (`puzzleEdited` saying what changed).
+  and Dim other layers on screen (which found Dim other layers drawn into
+  an opaque pass, so the window never showed it in the Classic style);
+  quick tool 2 (Alt+click) in the 2D grid; settings and modes as typed
+  tables (`uicore/vocabulary`); edits that change no geometry no longer
+  rebuilding the 3D mesh (`puzzleEdited` says what changed).
 - **P5 3D editing:** Edit mode and its `E` key; picking in use; quick
   tool 2 in 3D; the 3D view and view cube by keyboard (a focusable canvas,
   arrows, the cube's faces as commands); the single-key shortcuts O, P, F
@@ -427,7 +438,8 @@ moves to a later phase says why in that table.
 - **P11 Solver:** shape and colour edits refused while a solve runs
   (legacy `threadStopped()`); the solver's progress announced.
 - **P12a Density:** Minimal's auto-hiding 3D toolbar.
-- **P8 Polish and cut-over:** STL export writing in place; image export
+- **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
+  other layers in the STL style; STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the
   hardening from the final review (device loss, resize); macOS and Linux
   start-up measured; the accessibility rows -- reduced motion, text size
@@ -495,3 +507,35 @@ Every phase's pull request follows what #140 settled:
   `DocumentController::edit(kind, …)`, which `editStructure` now calls.
 - The drawing colour is not used yet: the 2D grid and 3D editing paint with
   it from P4 and P5 (AC-C09-02 is checked there).
+
+### P4 decisions
+
+- **The rules** are in uicore: `voxeledit` (the tools and quick tools,
+  Mirror and Span as C07's expansion -- Span, then Mirror, sorted, no
+  duplicates --, what a tool does to a cell, the planes, the cell size, the
+  grid size in steps) and `gridcells` (each voxel type's 2D cells, ported
+  from legacy's `gridEditor_0` … `_4`, and their hit test). Each is tested
+  for every voxel type.
+- **A tool's effect** is legacy's: Fixed and Variable set the state and
+  the colour, Erase empties and clears the colour, Paint recolours a voxel
+  that is there and leaves empty cells alone (AC-C07-02). Coordinates that
+  name no cell of the voxel type are skipped.
+- **Strokes**: `DocumentSession::beginStroke` / `strokeEdit` /
+  `endStroke` make a drag one undo step (AC-C08-05) without the caller
+  touching `puzzleHistory_c`; an undo, an edit or another document during
+  a stroke ends it first, so nothing painted is lost. The tool is captured
+  at the press (AC-C08-10); a fast drag paints every cell it crosses.
+- **The quick tools** follow C06 (Ctrl > Alt / ⌘ > Shift). On macOS,
+  Option or Command picks Variable and Control erases (Qt's meta).
+- **Grid size** counts in steps: 5 voxels for rhombic shapes, 3 for
+  tetra-octa ones (legacy's fields), 1 … 1000. A shrink that would cut
+  voxels is refused (OQ-5); with Apply to all, every shape that allows it
+  changes by the same steps and the others are left as they are, one undo
+  step, with the message if any was refused.
+- **What an edit changed** is on `puzzleEdited` (`DocumentController::Change`:
+  Structure, Voxels, Label, Palette): a rename re-reads one row and no
+  mesh, a colour rebuilds the mesh only in the voxel colour view.
+- **Plane and layer** moved from `ViewportController` to the new
+  `EditorController`; the 3D view reads them for its slab.
+- **Settings and modes** are read and written through one table each
+  (`uicore/vocabulary`); the QML still sees words.
