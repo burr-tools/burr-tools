@@ -72,6 +72,8 @@ namespace btui {
      * and the keypad's alike -- not the spec's F2, which stays Save (product
      * decision, 2026-10-27). macOS deletes with Backspace, as its lists do. */
     constexpr sv scShapeRename[] = { "Enter" };
+    // macOS names that key Return (↩); its "Enter" is the keypad's ⌤
+    constexpr sv scShapeRenameMac[] = { "Return" };
     constexpr sv scShapeDup[]    = { "Ctrl+D" };
     constexpr sv scShapeDel[]    = { "Del" };
     constexpr sv scShapeDelMac[] = { "Backspace", "Del" };
@@ -133,7 +135,7 @@ namespace btui {
       { Command::LayerDown,        "editor.layerDown",      "Previous layer",         Menu::None,   false, scLayerDown,  none,       "", "", "", Menu::None },
 
       // replace legacy's shape buttons (Label, Copy, Delete, <-, ->), not menu items
-      { Command::ShapeRename,      "shapes.rename",         "Rename…",                Menu::None,   false, scShapeRename, none,      "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ShapeRename,      "shapes.rename",         "Rename…",                Menu::None,   false, scShapeRename, scShapeRenameMac, "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeDuplicate,   "shapes.duplicate",      "Duplicate",              Menu::None,   false, scShapeDup,   none,       "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeDelete,      "shapes.delete",         "Delete",                 Menu::None,   false, scShapeDel,   scShapeDelMac, "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeMoveEarlier, "shapes.moveEarlier",    "Move earlier",           Menu::None,   false, scShapeEarlier, none,     "", "", "", Menu::None, Scope::ShapesList },

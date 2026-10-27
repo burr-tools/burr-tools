@@ -139,10 +139,15 @@ public:
    * -1 keeps the current shape selection where possible.
    */
   template <class F> bool editStructure(int selectedShape, F && f) {
+    return edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, selectedShape, std::forward<F>(f));
+  }
+
+  /* The same as one undo step of another kind: the colour list
+   * (AK_COLOR_PALETTE), and later the voxel editor's. */
+  template <class F> bool edit(puzzleHistory_c::actionKind_e kind, int selectedShape, F && f) {
     bool changed;
     try {
-      changed = m_session.edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL,
-                               selectedShape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(selectedShape),
+      changed = m_session.edit(kind, selectedShape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(selectedShape),
                                std::forward<F>(f));
     } catch (...) {
       structureEdited(selectedShape);

@@ -32,6 +32,13 @@ TestCase {
         settle()
     }
 
+    // the layout is the App's, shared with the other test files
+    function cleanup() {
+        App.layout.workspace = LayoutController.Entities
+        App.layout.leftCollapsed = false
+        App.layout.rightCollapsed = false
+    }
+
     function open(name) {
         App.document.openFile(Qt.resolvedUrl("../../../examples/" + name + ".xmpuzzle"))
         settle()
@@ -86,9 +93,11 @@ TestCase {
         App.shapes.select(0)
         mouseMove(win.contentItem, 800, 500)             // away from the list
         verify(item("entities.shapes.row.0.duplicate").visible)
-        verify(!item("entities.shapes.row.1.duplicate").visible)
+        // the others have none: a row's actions are made when it shows them
+        compare(findChild(win.contentItem, "entities.shapes.row.1.duplicate"), null)
         mouseMove(row(1), 60, row(1).height / 2)
-        tryVerify(() => item("entities.shapes.row.1.duplicate").visible)
+        tryVerify(() => findChild(win.contentItem, "entities.shapes.row.1.duplicate") !== null
+                        && item("entities.shapes.row.1.duplicate").visible)
         // the row's buttons are no Tab stops: the list is one
         verify(!item("entities.shapes.row.1.delete").activeFocusOnTab)
     }
@@ -137,6 +146,51 @@ TestCase {
         compare(label(1), "Arm")
         compare(App.layout.focus, LayoutController.FocusNone)
         verify(list().activeFocus)
+    }
+
+    function test_theWeightButtonsAndBadge() {
+        // AC-C01-06: W+ / W- on the row, the badge iff the weight is not 1, W- stops at 0
+        App.shapes.select(2)
+        waitForRendering(win.contentItem)
+        const w = App.shapes.weightOf(2)
+        mouseClick(item("entities.shapes.row.2.weightUp"))
+        compare(App.shapes.weightOf(2), w + 1)
+        compare(item("entities.shapes.row.2.weightBadge").text, "W" + (w + 1))
+        for (let i = 0; i < w + 1; i++)
+            mouseClick(item("entities.shapes.row.2.weightDown"))
+        compare(App.shapes.weightOf(2), 0)
+        compare(item("entities.shapes.row.2.weightBadge").text, "W0")
+        verify(!item("entities.shapes.row.2.weightDown").enabled)
+        mouseClick(item("entities.shapes.row.2.weightUp"))
+        verify(!item("entities.shapes.row.2.weightBadge").visible)     // W1: no badge
+        compare(item("entities.shapes.row.2.weightUp").Accessible.name, "Increase weight")
+    }
+
+    function test_renameCommitsWhenTheFieldLosesFocus() {
+        // AC-C01-03: blur commits, as Enter does
+        const r = row(1)
+        list().startRename(1)
+        let field = null
+        tryVerify(() => (field = findChild(r, "entities.shapes.row.1.labelField")) !== null && field.activeFocus, 1000)
+        field.text = "Blurred"
+        mouseClick(row(3), 60, row(3).height / 2)
+        tryCompare(App.shapes, "selected", 3)
+        compare(label(1), "Blurred")
+        tryVerify(() => findChild(r, "entities.shapes.row.1.labelField") === null)
+    }
+
+    function test_theEmptyListAndTheOnlyShape() {
+        // C01 edge cases: a new document has no shapes; one shape cannot be deleted
+        App.document.newDocument(0)
+        tryCompare(list(), "count", 0)
+        verify(item("entities.shapes.empty").visible)
+        mouseClick(item("entities.shapes.new"))
+        compare(App.shapes.count, 1)
+        verify(!item("entities.shapes.empty").visible)
+        waitForRendering(win.contentItem)
+        verify(!item("entities.shapes.row.0.delete").enabled)
+        keyClick(Qt.Key_Delete)                          // nothing, from the keys either
+        compare(App.shapes.count, 1)
     }
 
     function test_theListsKeys() {
@@ -255,7 +309,7 @@ TestCase {
 
         App.shapes.requestDelete(0)
         tryVerify(() => dialog.opened, 1000)
-        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.delete"))
+        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.confirm"))
         tryVerify(() => !dialog.visible, 1000)
         compare(App.shapes.count, n - 1)
     }

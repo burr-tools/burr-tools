@@ -2,10 +2,10 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// Delete a shape whose problems have solutions (C01, product decision
-// 2026-10-27): undo brings the shape back, not the solutions, so the delete
-// asks first -- only then (btui::deleteLosesSolutions). Cancel is the
-// default; Delete is the danger button.
+// A question before a change undo cannot fully take back: deleting a shape
+// or removing a colour that solutions depend on (C01, C09; product decision
+// 2026-10-27). Cancel is the default; the change is the danger button. Its
+// buttons are named after the dialog: <objectName>.cancel, .confirm.
 //
 // Wireframe (each number marks its code below):
 //
@@ -17,26 +17,28 @@ import BurrTools.Ui
 //   └───────────────────────────────────────────┘
 BtDialog {
     id: root
-    objectName: "entities.shapes.deleteDialog"
-    property int row: -1
-    property string idText
-    title: qsTr("Delete %1?").arg(idText)
+    property string text
+    property string confirmText: qsTr("Delete")
+    property int subject: -1           // what it asks about: a shape's row, a colour's id
+    signal confirmed()
+
     defaultButton: cancelButton
     width: 460
 
-    function ask(r: int, id: string) {
-        row = r
-        idText = id
+    function ask(title: string, text: string, confirmText: string) {
+        root.title = title
+        root.text = text
+        root.confirmText = confirmText
         open()
     }
 
     contentItem: Text { // ①
-        objectName: "entities.shapes.deleteDialog.text"
+        objectName: root.objectName + ".text"
         wrapMode: Text.WordWrap
         color: Theme.text
         font.pixelSize: Theme.fontBody
         lineHeight: 1.35
-        text: qsTr("A problem that uses %1 has solutions or a search in progress. Deleting %1 removes it from those problems and deletes their solutions that use it. Undo brings the shape back, but not the solutions.").arg(root.idText)
+        text: root.text
     }
 
     footer: Item { // ②
@@ -46,17 +48,17 @@ BtDialog {
             spacing: 8
             BtButton {
                 id: cancelButton
-                objectName: "entities.shapes.deleteDialog.cancel"
+                objectName: root.objectName + ".cancel"
                 text: qsTr("Cancel")
                 onClicked: root.close()
             }
             BtButton {
-                objectName: "entities.shapes.deleteDialog.delete"
-                text: qsTr("Delete")
+                objectName: root.objectName + ".confirm"
+                text: root.confirmText
                 danger: true
                 onClicked: {
                     root.close()
-                    App.shapes.deleteShape(root.row)
+                    root.confirmed()
                 }
             }
         }

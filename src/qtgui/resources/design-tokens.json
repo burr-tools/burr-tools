@@ -26,6 +26,7 @@
       "axisY": "#2fa85a",
       "axisZ": "#2f6df6",
       "danger": "#d92d20",
+      "dangerText": "#b42318",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "dark": {
@@ -44,6 +45,7 @@
       "axisY": "#4bd17f",
       "axisZ": "#5b9bff",
       "danger": "#ff7066",
+      "dangerText": "#ff7066",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "glyph": {
