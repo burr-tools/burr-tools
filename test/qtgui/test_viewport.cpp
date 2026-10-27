@@ -29,6 +29,7 @@
 #include "theme.h"
 #include "viewcubeitem.h"
 #include "editorcontroller.h"
+#include "iconprovider.h"
 #include "viewportcontroller.h"
 #include "voxelviewport.h"
 
@@ -47,6 +48,8 @@
 #include <QMouseEvent>
 #include <QQuickGraphicsConfiguration>
 #include <QQuickGraphicsDevice>
+#include <QQmlComponent>
+#include <QQmlEngine>
 #include <QQuickRenderControl>
 #include <QQuickRenderTarget>
 #include <QQuickWindow>
@@ -1548,6 +1551,34 @@ void TestViewportItem::dimmingShowsInTheViewInEveryStyle() {
     QVERIFY2(!near(c, plain, 30), qPrintable(QStringLiteral("%1: %2 -> %3")
                                                     .arg(QLatin1String(style), plain.name(), c.name())));
   }
+}
+
+void TestViewportItem::theCardShowsItsCanvas() {
+  // The real ViewportCard, drawn by Qt Quick: the shape shows in the middle
+  // of the card. (Its canvas sits at z -1, after the toolbar in Tab order --
+  // behind the card's own fill, had the card one.) The QML tests have no 3D
+  // device and the render tests draw the scene alone: neither sees this.
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  Theme::instance()->setMode(QStringLiteral("light"));
+  QTRY_VERIFY_WITH_TIMEOUT(!f.app->viewport()->animating(), 3000);
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(480, 360)));
+  QQmlEngine engine;
+  engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+  QQmlComponent c(&engine);
+  c.setData("import BurrTools.Ui\nViewportCard { width: 480; height: 360 }", QUrl());
+  std::unique_ptr<QObject> o(c.create());
+  QVERIFY2(o, qPrintable(c.errorString()));
+  auto * card = qobject_cast<QQuickItem *>(o.get());
+  card->setParentItem(t.window->contentItem());
+  t.frame();
+  QTRY_VERIFY_WITH_TIMEOUT(!f.app->viewport()->animating(), 3000);
+  const QImage img = t.frame();
+  saveForInspection(img, "item-card");
+  // the shape's blue (S1) fills the middle; never the canvas or the window behind
+  const QColor mid = img.pixelColor(240, 200);
+  QVERIFY2(mid.blue() > mid.red() + 80 && mid.blue() > mid.green() + 80, qPrintable(mid.name()));
 }
 
 void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {
