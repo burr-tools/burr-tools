@@ -133,6 +133,21 @@ TestCase {
         compare(item("entities.editor.colour.current").tip, "Drawing colour: " + App.colours.drawName)
     }
 
+    function test_aLongTooltipIsCentredOverItsControl() {
+        // BtToolTip centres by its wrapped width, not its one-line text's
+        // (the Basic style's): the Colours info tooltip, 280 dp, over its button
+        const info = item("entities.editor.colour.info")
+        mouseMove(info, info.width / 2, info.height / 2)
+        const tip = info.toolTip
+        tryVerify(() => tip.opened, 2000)
+        compare(tip.width, 280)
+        const c = info.mapToItem(null, info.width / 2, 0)
+        const p = tip.contentItem.mapToItem(null, tip.contentItem.width / 2, tip.contentItem.height)
+        verify(Math.abs(p.x - c.x) <= 1, "centred: " + p.x + " over " + c.x)
+        verify(p.y <= c.y && p.y >= c.y - 12, "just above: " + p.y + " over " + c.y)
+        mouseMove(win.contentItem, 5, 5)
+    }
+
     function test_keysAndButtonsPickTheTool() {
         // AC-C07-01: four buttons, keys 1-4, one selected
         for (const name of ["fixed", "variable", "erase", "paint"])
@@ -248,6 +263,7 @@ TestCase {
             mouseClick(item("entities.editor.plane.yz"))
             compare(App.editor.plane, EditorController.YZ)
             mouseClick(item("entities.editor.plane.xy"))
+            waitForRendering(win.contentItem)
         }
     }
 
