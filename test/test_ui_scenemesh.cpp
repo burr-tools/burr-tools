@@ -15,6 +15,8 @@
 #include "../src/tools/xml.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <set>
 #include <string>
 
@@ -233,9 +235,10 @@ TEST_CASE("flat style: variable voxels are slightly see-through with a dashed ou
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   REQUIRE_FALSE(m.translucent.empty());
+  CHECK(m.edges.size() == 12);                       // the dashed outline: lines, one per edge
   for (const auto & vert : m.translucent) {
     CHECK(vert.cell[0] == 1.0f);
-    CHECK(vert.edge[3] == 1.0f);                     // dashed
+    CHECK(vert.edge[3] == 0.0f);                     // no dashes drawn by the face itself
     CHECK(vert.color.a == 153);                      // 60 %
     CHECK(vert.color.b == 255);                      // its colour, not legacy's black marker
   }
@@ -473,4 +476,46 @@ TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the 
   REQUIRE(axes.size() == 3);
   CHECK_THAT(axes[0].b.x, WithinAbs(4.7, 1e-5));
   CHECK_THAT(axes[2].b.z, WithinAbs(5.7, 1e-5));
+}
+
+TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
+  // the outline dashes run along an edge as one line, the same seen from
+  // both faces that meet there, not restarting in every triangle
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(2, 0, 0, voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Flat;
+  ShapeMesh m = buildShapeMesh(*v, o);
+  // two unit cubes side by side: 8 edges along X, 4 across at each of x = 0, 1, 2
+  REQUIRE(m.edges.size() == 20);
+  std::set<std::array<float, 6>> seen;
+  for (const LineSeg & e : m.edges) {
+    CHECK(e.dashDp > 0);
+    CHECK(e.gapDp > 0);
+    CHECK(e.color.a < 255);
+    CHECK(std::abs(length(e.b - e.a) - 1.0f) < 1e-4f);
+    std::array<float, 6> k{ e.a.x, e.a.y, e.a.z, e.b.x, e.b.y, e.b.z };
+    std::array<float, 6> r{ e.b.x, e.b.y, e.b.z, e.a.x, e.a.y, e.a.z };
+    CHECK(seen.count(r) == 0);
+    CHECK(seen.insert(k).second);
+  }
+  // their faces carry no outline of their own; the fixed voxel's still do
+  for (const auto & vert : m.translucent)
+    for (int i = 0; i < 3; i++)
+      CHECK(vert.edge[i] > 0.5f);
+  bool fixedOutlined = false;
+  for (const auto & vert : m.opaque)
+    fixedOutlined |= vert.edge[0] < 1.5f;     // the side opposite corner 0 is a polygon side
+  CHECK(fixedOutlined);
+
+  // no variable voxel, no lines; the other styles draw none either
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  CHECK(buildShapeMesh(*v, o).edges.empty());
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  o.style = VoxelStyle::Legacy;
+  CHECK(buildShapeMesh(*v, o).edges.empty());
 }

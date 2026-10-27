@@ -60,6 +60,7 @@ private slots:
   void theFlatStyleOutlinesEveryVoxelFace();
   void translucencyBlendsInLinearLight();
   void innerVariableVoxelsShowThroughTheOuterOnes();
+  void variableVoxelEdgesAreEvenDashes();
   void theTargetsOutgrowTheViewInSteps();
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();

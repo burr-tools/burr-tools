@@ -96,9 +96,23 @@ namespace btui {
     float variableAlpha = 0.6f;
   };
 
+  /* A line for the overlay pass: drawn as a screen-space quad of widthDp,
+   * dashed when dashDp > 0. */
+  struct LineSeg {
+    Vec3 a, b;
+    Rgba8 color;
+    float widthDp = 1;
+    float dashDp = 0, gapDp = 0;
+  };
+
   struct ShapeMesh {
     std::vector<MeshVertex> opaque;       ///< fixed voxels, triangles
     std::vector<MeshVertex> translucent;  ///< variable voxels, triangles, alpha from MeshOptions
+    /* The flat style's variable voxels: their faces' sides as dashed lines,
+     * each once. Dashes drawn as lines run evenly along an edge, the same
+     * on both faces that meet there; the face shader's outline dashes
+     * could not (they restart in every triangle). */
+    std::vector<LineSeg> edges;
     Vec3 boundsMin, boundsMax;            ///< the shape's drawing-space box, [0, calculateSize]
     bool empty(void) const { return opaque.empty() && translucent.empty(); }
   };
@@ -157,15 +171,6 @@ namespace btui {
    * drawing space -- for every grid type, through the shape's own grid to
    * drawing-space mapping. */
   Box layerSlab(const voxel_c & shape, Plane p, int layer);
-
-  /* A line for the overlay pass: drawn as a screen-space quad of widthDp,
-   * dashed when dashDp > 0. */
-  struct LineSeg {
-    Vec3 a, b;
-    Rgba8 color;
-    float widthDp = 1;
-    float dashDp = 0, gapDp = 0;
-  };
 
   /* the 12 edges of a box */
   void addBoxEdges(std::vector<LineSeg> & out, const Box & b, Rgba8 color, float widthDp, float dashDp = 0, float gapDp = 0);

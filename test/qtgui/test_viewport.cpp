@@ -715,6 +715,84 @@ void TestRender::rendersTheShapeOnTheCanvas() {
   QVERIFY(mid.blue() > mid.red() + 60);
 }
 
+void TestRender::variableVoxelEdgesAreEvenDashes() {
+  // C06: a variable voxel's outline is dashed. Seen close up along an edge
+  // the dashes come and go at a steady pitch -- the line pipeline's 3 dp
+  // dashes, the same from both faces the edge joins.
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  f.app->document()->editStructure(-1, [](puzzle_c & p) {
+    p.addShape(1, 1, 1);
+    p.getShape(0)->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+    return true;
+  });
+  f.app->shapes()->refresh();
+  f.app->shapes()->select(0);
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  // straight at the +Z face: its four edges are the square's sides
+  v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+  const SceneFrame fr = v->frame(1);
+  QVERIFY(fr.mesh && fr.mesh->edges.size() == 12);
+  const QImage img = t.render(fr);
+  saveForInspection(img, "variable-edges");
+
+  // the square's top side: find its row, then walk it
+  int top = -1;
+  for (int y = 0; y < img.height() && top < 0; y++)
+    if (img.pixelColor(img.width() / 2, y) != img.pixelColor(img.width() / 2, 0))
+      top = y;
+  QVERIFY(top > 0);
+  int left = -1, right = -1;
+  for (int x = 0; x < img.width(); x++)
+    if (img.pixelColor(x, top + 2) != img.pixelColor(0, top + 2)) {
+      if (left < 0)
+        left = x;
+      right = x;
+    }
+  QVERIFY(right - left > 100);
+  // dark runs (dashes) and light runs (gaps) along the side, inside its
+  // corners: the darkest of the side's first rows, which the 1.2 dp line spans
+  std::vector<int> runs;
+  bool dark = false;
+  int len = 0;
+  const QColor face = img.pixelColor((left + right) / 2, img.height() / 2);
+  for (int x = left + 8; x < right - 8; x++) {
+    int l = 255;
+    for (int y = top; y < top + 3; y++)
+      l = std::min(l, img.pixelColor(x, y).lightness());
+    const bool d = l < face.lightness() - 15;
+    if (d != dark && len > 0) {
+      runs.push_back(len);
+      len = 0;
+    }
+    dark = d;
+    len++;
+  }
+  QVERIFY2(runs.size() >= 10, qPrintable(QString::number(runs.size())));
+  // every whole dash and gap (not the cut ones at the ends) within 2 px of the median
+  std::vector<int> inner(runs.begin() + 1, runs.end() - 1);
+  std::vector<int> sorted = inner;
+  std::sort(sorted.begin(), sorted.end());
+  const int median = sorted[sorted.size() / 2];
+  for (int r : inner)
+    QVERIFY2(std::abs(r - median) <= 2, qPrintable(QStringLiteral("run %1, median %2").arg(r).arg(median)));
+
+  // and at an angle, a block of them, for a look
+  f.app->document()->editStructure(0, [](puzzle_c & p) {
+    voxel_c * s = p.getShape(0);
+    s->resize(2, 2, 2, 0);
+    s->setAll(voxel_c::VX_VARIABLE);
+    s->setState(0, 0, 0, voxel_c::VX_FILLED);
+    return true;
+  });
+  v->camera().setOrientation(btui::Camera::lookFrom({ 1.0f, 0.7f, 1.4f }, 0));
+  saveForInspection(t.render(v->frame(1)), "variable-edges-angled");
+}
+
 void TestRender::theTargetsOutgrowTheViewInSteps() {
   // the scene's (multisampled, half-float) targets are made in 64 px steps
   // and kept while the view fits, so a window resize does not make them anew
