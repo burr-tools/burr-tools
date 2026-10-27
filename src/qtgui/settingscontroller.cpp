@@ -199,31 +199,54 @@ void SettingsController::applyToTheme(void) {
   }
 }
 
+namespace {
+  QString text(std::string_view w) { return QString::fromLatin1(w.data(), qsizetype(w.size())); }
+}
+
+/* A setting from a fixed vocabulary (btui/vocabulary.h): read through its
+ * table, an unknown word meaning the table's fallback; written as the
+ * table's word. */
+template <class E, std::size_t N>
+E SettingsController::wordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def) const {
+  const std::optional<std::string> w = m_store.getString(key);
+  return w ? v.parse(*w) : def;
+}
+
+template <class E, std::size_t N>
+bool SettingsController::setWordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def, E value) {
+  if (value == wordSetting(key, v, def))
+    return false;
+  m_store.set(key, std::string(v.word(value)));
+  write();
+  return true;
+}
+
+btui::ThemeChoice SettingsController::themeValue(void) const {
+  return wordSetting(kTheme, btui::kThemes, btui::kDefaultTheme);
+}
+
 QString SettingsController::theme(void) const {
-  // Light by default, as legacy looks (the spec's default is System)
-  return QString::fromStdString(m_store.getString(kTheme, "light"));
+  return text(btui::kThemes.word(themeValue()));
 }
 
 void SettingsController::setTheme(const QString & v) {
-  QString t = (v == QLatin1String("light") || v == QLatin1String("dark")) ? v : QStringLiteral("system");
-  if (t == theme())
+  if (!setWordSetting(kTheme, btui::kThemes, btui::kDefaultTheme, btui::kThemes.parse(v.toStdString())))
     return;
-  m_store.set(kTheme, t.toStdString());
-  write();
   applyToTheme();
   emit changed();
 }
 
+btui::Density SettingsController::densityValue(void) const {
+  return wordSetting(kDensity, btui::kDensities, btui::Density::Standard);
+}
+
 QString SettingsController::density(void) const {
-  return QString::fromStdString(m_store.getString(kDensity, "standard"));
+  return text(btui::kDensities.word(densityValue()));
 }
 
 void SettingsController::setDensity(const QString & v) {
-  QString d = (v == QLatin1String("minimal")) ? v : QStringLiteral("standard");
-  if (d == density())
+  if (!setWordSetting(kDensity, btui::kDensities, btui::Density::Standard, btui::kDensities.parse(v.toStdString())))
     return;
-  m_store.set(kDensity, d.toStdString());
-  write();
   applyToTheme();
   emit changed();
 }
@@ -250,53 +273,51 @@ BOOL_SETTING(showMenuBar, setShowMenuBar, kMenuBar, true)
 
 #undef BOOL_SETTING
 
+btui::Camera::RotationMethod SettingsController::rotationMethodValue(void) const {
+  return wordSetting(kRotation, btui::kRotationMethods, btui::Camera::RotationMethod::Drag);
+}
+
 QString SettingsController::rotationMethod(void) const {
-  return QString::fromStdString(m_store.getString(kRotation, "drag"));
+  return text(btui::kRotationMethods.word(rotationMethodValue()));
 }
 
 void SettingsController::setRotationMethod(const QString & v) {
-  QString m = (v == QLatin1String("arcball")) ? v : QStringLiteral("drag");
-  if (m == rotationMethod())
-    return;
-  m_store.set(kRotation, m.toStdString());
-  write();
-  emit changed();
+  if (setWordSetting(kRotation, btui::kRotationMethods, btui::Camera::RotationMethod::Drag,
+                     btui::kRotationMethods.parse(v.toStdString())))
+    emit changed();
+}
+
+btui::VoxelStyle SettingsController::voxelStyleValue(void) const {
+  return wordSetting(kVoxelStyle, btui::kVoxelStyles, btui::VoxelStyle::Flat);
 }
 
 QString SettingsController::voxelStyle(void) const {
-  return QString::fromStdString(m_store.getString(kVoxelStyle, "flat"));
+  return text(btui::kVoxelStyles.word(voxelStyleValue()));
 }
 
 void SettingsController::setVoxelStyle(const QString & v) {
-  QString s = (v == QLatin1String("legacy") || v == QLatin1String("stl")) ? v : QStringLiteral("flat");
-  if (s == voxelStyle())
-    return;
-  m_store.set(kVoxelStyle, s.toStdString());
-  write();
-  emit changed();
+  if (setWordSetting(kVoxelStyle, btui::kVoxelStyles, btui::VoxelStyle::Flat, btui::kVoxelStyles.parse(v.toStdString())))
+    emit changed();
 }
 
 /* 4x by default: 8x smooths little more and, for the 3D view's half-float
  * target, costs about twice the graphics memory (some 400 MB for a large
  * view on a high-DPI screen) */
+btui::Antialiasing SettingsController::antialiasingValue(void) const {
+  return wordSetting(kAntialiasing, btui::kAntialiasing, btui::Antialiasing::X4);
+}
+
 QString SettingsController::antialiasing(void) const {
-  return QString::fromStdString(m_store.getString(kAntialiasing, "4x"));
+  return text(btui::kAntialiasing.word(antialiasingValue()));
 }
 
 void SettingsController::setAntialiasing(const QString & v) {
-  const bool known = v == QLatin1String("off") || v == QLatin1String("2x") || v == QLatin1String("4x") ||
-                     v == QLatin1String("8x");
-  const QString a = known ? v : QStringLiteral("4x");
-  if (a == antialiasing())
-    return;
-  m_store.set(kAntialiasing, a.toStdString());
-  write();
-  emit changed();
+  if (setWordSetting(kAntialiasing, btui::kAntialiasing, btui::Antialiasing::X4, btui::kAntialiasing.parse(v.toStdString())))
+    emit changed();
 }
 
 int SettingsController::antialiasingSamples(void) const {
-  const QString a = antialiasing();
-  return a == QLatin1String("off") ? 1 : a == QLatin1String("2x") ? 2 : a == QLatin1String("8x") ? 8 : 4;
+  return btui::samples(antialiasingValue());
 }
 
 /* any number -- a hand-edited file holds a 64-bit one -- to the nearest

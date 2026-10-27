@@ -41,15 +41,11 @@ SceneController::SceneController(SettingsController * settings, QObject * parent
 }
 
 void SceneController::readSettings(void) {
-  m_camera.setRotationMethod(m_settings->rotationMethod() == QLatin1String("arcball")
-                               ? btui::Camera::RotationMethod::Arcball : btui::Camera::RotationMethod::Drag);
-  m_camera.setProjection(m_settings->stringValue(QStringLiteral("view.projection"), QStringLiteral("perspective"))
-                             == QLatin1String("orthographic")
-                           ? btui::Camera::Projection::Orthographic : btui::Camera::Projection::Perspective);
+  m_camera.setRotationMethod(m_settings->rotationMethodValue());
+  m_camera.setProjection(btui::kProjections.parse(
+      m_settings->stringValue(QStringLiteral("view.projection"), QString()).toStdString()));
   m_lighting = m_settings->lighting();
-  const QString style = m_settings->voxelStyle();
-  m_voxelStyle = style == QLatin1String("legacy") ? btui::VoxelStyle::Legacy
-               : style == QLatin1String("stl")    ? btui::VoxelStyle::Stl : btui::VoxelStyle::Flat;
+  m_voxelStyle = m_settings->voxelStyleValue();
   m_samples = m_settings->antialiasingSamples();
 }
 
