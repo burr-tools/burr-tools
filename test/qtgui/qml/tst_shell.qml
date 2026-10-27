@@ -330,7 +330,8 @@ TestCase {
                 "entities.editor.plane.group",
                 "entities.editor.size.applyAll",
                 "entities.editor.size.x.input", "entities.editor.size.y.input", "entities.editor.size.z.input",
-                "entities.editor.colour.add", "entities.editor.colour.more", "entities.editor.colour.palette" ] },
+                "entities.editor.colour.info", "entities.editor.colour.add", "entities.editor.colour.more",
+                "entities.editor.colour.palette" ] },
             { tag: "rails", rails: true, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "workspace.left.rail.expand", "entities.shapes.rail.row.0", "entities.shapes.rail.new",

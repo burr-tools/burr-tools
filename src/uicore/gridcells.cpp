@@ -173,11 +173,13 @@ namespace btui {
             }
             break;
           }
+          // drawn by the column, row and layer: the grids are alike along
+          // every axis, so the XY drawing is every plane's (planeAvailable)
           case gridType_c::GT_RHOMBIC:
-            cell.outline = rhombicTriangle(v.x, v.y, v.z);
+            cell.outline = rhombicTriangle(c, r, layer);
             break;
           case gridType_c::GT_TETRA_OCTA:
-            cell.outline = tetraOctaPolygon(v.x, v.y, v.z);
+            cell.outline = tetraOctaPolygon(c, r, layer);
             break;
           case gridType_c::GT_NUM_GRIDS:
             break;

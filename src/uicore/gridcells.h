@@ -61,9 +61,9 @@ namespace btui {
     int cols = 0, rows = 0;
   };
 
-  /* The cells of a layer of a plane. Planes other than XY exist for bricks
-   * only (planeAvailable); for another voxel type, or a layer out of range,
-   * the layout is empty. */
+  /* The cells of a layer of a plane. Prisms have the XY plane only
+   * (planeAvailable); for their others, or a layer out of range, the layout
+   * is empty. */
   GridLayout gridLayout(const voxel_c & shape, Plane p, int layer);
 
   /* the index of the cell at a point, -1 for none */

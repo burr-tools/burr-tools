@@ -68,7 +68,7 @@ namespace btui {
   }
 
   bool planeAvailable(gridType_c::gridType type, Plane p) {
-    return p == Plane::XY || type == gridType_c::GT_BRICKS;
+    return p == Plane::XY || type != gridType_c::GT_TRIANGULAR_PRISM;
   }
 
   char axisLetter(int axis) {
@@ -226,9 +226,9 @@ namespace btui {
       return Cell3{ int(x), int(y), int(z) };
     };
     const bool useSlab = slabShown && slab.hit;
-    // the nearer wins; on a tie (a voxel in the slab, its face on the slab's
-    // surface) the voxel's face
-    if (voxel.hit && (!useSlab || voxel.t <= slab.t + 1e-4f * std::max(1.0f, slab.t))) {
+    // a voxel under the pointer decides, wherever the slab is (product
+    // decision 2026-10-28): the face the pointer is on
+    if (voxel.hit) {
       const Cell3 hit = cellOf(voxel.voxel);
       out.voxel = voxel.voxel;
       out.face = voxel.face;
