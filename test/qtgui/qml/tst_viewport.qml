@@ -47,8 +47,8 @@ TestCase {
         }
         for (const n of ["zoom", "views", "fit"])
             compare(findChild(win.contentItem, "entities.viewport.toolbar." + n), null)
-        // editing in 3D arrives with the editing phase
-        verify(!item("entities.viewport.toolbar.edit").enabled)
+        // Edit mode (P5): a toggle
+        verify(item("entities.viewport.toolbar.edit").enabled)
     }
 
     function test_orbitAndPanAreARadioPair() {
@@ -132,5 +132,95 @@ TestCase {
         compare(item("entities.viewport.toolbar.orbit").width, 34)
         App.layout.escape()
         compare(item("entities.viewport.toolbar.orbit").width, Theme.toolbarButtonWidth)
+    }
+
+    function cleanup() {
+        App.editor.editMode = false
+        App.editor.tool = EditorController.Fixed
+        App.settings.singleKeyShortcuts = true
+    }
+
+    // keys reach the window's shortcuts only while it is the active one
+    // and while no modal is up: the puzzle's comment comes up as a message
+    function activate() {
+        win.requestActivate()
+        tryVerify(() => win.active, 3000)
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                break
+            m.close()
+        }
+        tryVerify(() => !win.modalOpen, 1000)
+    }
+
+    function test_theEditButtonAndEToggleEditMode() {
+        // AC-C06-07 / 09: the button and E latch Edit mode; the button shows
+        // the tool, on in Edit mode, and its tooltip says what a click does
+        activate()
+        const edit = item("entities.viewport.toolbar.edit")
+        verify(!App.editor.editMode)
+        verify(edit.tip.indexOf("Press E to turn edit mode on") >= 0)
+        compare(edit.badge, String(App.editor.toolInEffect + 1))
+        mouseClick(edit)
+        verify(App.editor.editMode)
+        verify(edit.on)
+        verify(edit.tip.indexOf("Press E to leave edit mode") >= 0)
+        keyClick(Qt.Key_E)
+        verify(!App.editor.editMode)
+        keyClick(Qt.Key_E)
+        verify(App.editor.editMode)
+        App.editor.tool = EditorController.Erase
+        compare(edit.badge, "3")
+        compare(edit.glyphName, "edit-tool-erase")
+    }
+
+    function test_singleKeyShortcutsCanBeTurnedOff() {
+        // WCAG 2.1.4: Settings ▸ General ▸ Single-key shortcuts
+        activate()
+        App.settings.singleKeyShortcuts = false
+        keyClick(Qt.Key_P)
+        compare(App.viewport.navMode, "orbit")
+        keyClick(Qt.Key_E)
+        verify(!App.editor.editMode)
+        keyClick(Qt.Key_2)
+        compare(App.editor.tool, EditorController.Fixed)
+        App.settings.singleKeyShortcuts = true
+        keyClick(Qt.Key_P)
+        compare(App.viewport.navMode, "pan")
+        keyClick(Qt.Key_E)
+        verify(App.editor.editMode)
+    }
+
+    function test_tabReachesTheCanvasAndRingsTheCard() {
+        // WCAG 2.1.1 / 2.4.7: the canvas is a Tab stop after the toolbar,
+        // ringed on the card's edge, and its keys are the viewport's
+        activate()
+        const canvas = item("entities.viewport.surface")
+        const ring = item("entities.viewport.focusRing")
+        verify(canvas.activeFocusOnTab)
+        verify(!ring.visible)
+        item("entities.viewport.toolbar.focus").forceActiveFocus(Qt.TabFocusReason)
+        keyClick(Qt.Key_Tab)
+        verify(canvas.activeFocus)
+        verify(ring.visible)
+        // a key of its own, not the window's: O stays the window's orbit mode
+        App.viewport.navMode = "pan"
+        keyClick(Qt.Key_O)
+        compare(App.viewport.navMode, "orbit")
+        keyClick(Qt.Key_Left)                              // orbits; the shapes list is not involved
+        compare(App.shapes.selected, App.shapes.selected)
+        // a click in the view takes no focus (C20)
+        item("entities.viewport.toolbar.orbit").forceActiveFocus(Qt.TabFocusReason)
+        mouseClick(canvas, 300, 300)
+        verify(!canvas.activeFocus)
+    }
+
+    function test_theHintNamesTheQuickTools() {
+        // C06 hint line 1, in Entities
+        verify(item("entities.viewport.hint.tools").visible)
+        App.layout.workspace = LayoutController.Puzzle
+        verify(!item("entities.viewport.hint.tools").visible)
     }
 }

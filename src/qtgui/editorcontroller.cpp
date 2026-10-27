@@ -103,9 +103,72 @@ void EditorController::setTool(Tool t) {
 EditorController::Tool EditorController::toolInEffect(void) const {
   if (m_stroking)
     return Tool(int(m_strokeTool));
-  const bool over = m_hoverCol >= 0;
-  return Tool(int(btui::toolInEffect(btui::Tool(int(m_tool)), btui::currentPlatform(), over ? m_keys : btui::ModifierKeys{},
-                                     false)));
+  // the keys held over the grid, or over the 3D view (its quick tools)
+  const btui::ModifierKeys keys = m_hoverCol >= 0 ? m_keys : m_over3d ? keysOf(m_keys3d) : btui::ModifierKeys{};
+  return Tool(int(btui::toolInEffect(btui::Tool(int(m_tool)), btui::currentPlatform(), keys, false)));
+}
+
+void EditorController::setEditMode(bool on) {
+  if (on == m_editMode)
+    return;
+  m_editMode = on;
+  emit editModeChanged();
+  emit toolChanged();          // viewportActive
+}
+
+std::optional<btui::Tool> EditorController::viewportAction(Qt::KeyboardModifiers m) const {
+  if (auto q = btui::quickTool(btui::currentPlatform(), keysOf(m)))
+    return q;
+  if (m_editMode)
+    return btui::Tool(int(m_tool));
+  return std::nullopt;
+}
+
+bool EditorController::quickHeld3d(void) const {
+  return m_over3d && btui::quickTool(btui::currentPlatform(), keysOf(m_keys3d)).has_value();
+}
+
+void EditorController::hover3d(const btui::Target3d & t, Qt::KeyboardModifiers m) {
+  const Tool before = toolInEffect();
+  const bool wasActive = viewportActive();
+  const bool wasHeld = quickHeld3d();
+  const bool changed = !m_over3d || m_keys3d != m || t.source != m_target3d.source || t.cell != m_target3d.cell ||
+                       t.voxel != m_target3d.voxel || t.face != m_target3d.face;
+  m_over3d = true;
+  m_keys3d = m;
+  m_target3d = t;
+  if (toolInEffect() != before || viewportActive() != wasActive || quickHeld3d() != wasHeld)
+    emit toolChanged();
+  if (changed)
+    emit previewChanged();
+}
+
+void EditorController::leave3d(void) {
+  if (!m_over3d)
+    return;
+  m_over3d = false;
+  m_keys3d = Qt::NoModifier;
+  m_target3d = {};
+  emit toolChanged();          // the tool in effect, viewportActive, quickHeld3d
+  emit previewChanged();
+}
+
+bool EditorController::click3d(const btui::Target3d & t, Qt::KeyboardModifiers m) {
+  const voxel_c * s = shape();
+  const std::optional<btui::Tool> tool = viewportAction(m);
+  if (!s || !tool || (t.source != btui::TargetSource::Face && t.source != btui::TargetSource::Slab &&
+                      t.source != btui::TargetSource::Origin))
+    return false;
+  const std::vector<btui::Cell3> cells =
+      btui::expand(t.cell, { int(s->getX()), int(s->getY()), int(s->getZ()) }, modifiers());
+  const unsigned colour = unsigned(drawColour());
+  const int idx = m_shapeIndex;
+  bool changed = false;
+  guarded([&] {
+    m_doc->edit(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, DocumentController::Change::Voxels, idx, idx,
+                [&](puzzle_c & p) { return changed = btui::applyTool(*p.getShape(unsigned(idx)), cells, *tool, colour); });
+  });
+  return changed;
 }
 
 void EditorController::setMirror(int bits) {
@@ -315,16 +378,30 @@ void EditorController::hover(int col, int row) {
   emit previewChanged();
 }
 
+/* One hover preview, whichever pointer is active (C06 hover_preview): the
+ * 2D grid's cell, or the 3D view's target with the viewport action. */
 std::vector<btui::GhostCell> EditorController::preview(void) const {
   const voxel_c * s = shape();
-  if (!s || m_stroking || m_hoverCol < 0 || m_hoverRow < 0)
+  if (!s || m_stroking)
     return {};
-  const btui::Cell3 t = btui::voxelAt(planeValue(), m_hoverCol, m_hoverRow, m_layer);
+  btui::Cell3 t;
+  btui::Tool tool;
+  if (m_hoverCol >= 0 && m_hoverRow >= 0) {
+    t = btui::voxelAt(planeValue(), m_hoverCol, m_hoverRow, m_layer);
+    tool = btui::Tool(int(toolInEffect()));
+  } else if (m_over3d) {
+    const std::optional<btui::Tool> a = viewportAction(m_keys3d);
+    const btui::TargetSource src = m_target3d.source;
+    if (!a || (src != btui::TargetSource::Face && src != btui::TargetSource::Slab && src != btui::TargetSource::Origin))
+      return {};
+    t = m_target3d.cell;
+    tool = *a;
+  } else {
+    return {};
+  }
   const std::vector<btui::Cell3> cells =
       btui::expand(t, { int(s->getX()), int(s->getY()), int(s->getZ()) }, modifiers());
-  return guarded([&] {
-    return btui::previewTool(*s, cells, btui::Tool(int(toolInEffect())), unsigned(drawColour()));
-  });
+  return guarded([&] { return btui::previewTool(*s, cells, tool, unsigned(drawColour())); });
 }
 
 void EditorController::setModifiers(Qt::KeyboardModifiers m) {

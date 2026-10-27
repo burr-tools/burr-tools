@@ -27,6 +27,7 @@
 #include "localpath.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
+#include "statuscontroller.h"
 #include "theme.h"
 
 #include "../uicore/palette.h"
@@ -38,6 +39,7 @@
 
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QThread>
 
 #include <algorithm>
@@ -95,6 +97,12 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
     emit frameChanged();
   });
   connect(m_editor, &EditorController::previewChanged, this, &ViewportController::frameChanged);
+  connect(this, &SceneController::clicked, this, &ViewportController::click);
+  // Edit mode, the tool or Mirror / Span changed under a still pointer: the target follows
+  connect(m_editor, &EditorController::editModeChanged, this, [this] {
+    if (m_editor->over3d())
+      pointerHover(m_hoverX, m_hoverY, QGuiApplication::queryKeyboardModifiers());
+  });
 
   refreshShape();
   buildMesh();
@@ -252,12 +260,14 @@ void ViewportController::buildMesh(void) {
     m_mesh.reset();
     guarded([&] {
       auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
+      m_pick = btui::buildPickMesh(*m_shape);
       const btui::Vec3 c = (mesh->boundsMin + mesh->boundsMax) * 0.5f;
       m_camera.setScene(c, std::max(0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f));
       m_mesh = std::move(mesh);
     });
   } else {
     m_mesh.reset();
+    m_pick.clear();
   }
   m_meshStyle = m_voxelStyle;
   updateSlab();
@@ -273,11 +283,104 @@ void ViewportController::updateSlab(void) {
   const btui::Plane plane = m_editor->planeValue();
   const voxel_c * s = m_editor->shape();
   m_hasSlab = s && btui::layerCount(*s, plane) > 0;
+  m_layerPick.clear();
+  m_layerPickDirty = true;
   if (m_hasSlab)
     m_hasSlab = guarded([&] {
       m_slab = btui::layerSlab(*s, plane, m_editor->layer());
       return true;
     });
+}
+
+bool ViewportController::slabShown(void) const {
+  return m_display.slab && m_hasSlab && editorVisible();
+}
+
+// --- 3D editing (C06) ------------------------------------------------------------
+
+btui::Target3d ViewportController::targetAt(float x, float y, Qt::KeyboardModifiers mods) {
+  if (m_meshDirty)
+    buildMesh();           // pick against the shape as it is
+  const voxel_c * s = m_editor->shape();
+  const std::optional<btui::Tool> tool = m_editor->viewportAction(mods);
+  if (!s || !tool || m_layout->workspace() != LayoutController::Entities)
+    return {};
+  const btui::Camera::Ray r = m_camera.rayAt(x, y);
+  const btui::PickHit voxel = btui::pick(m_pick, r.origin, r.dir);
+  const bool shown = slabShown();
+  if (shown && m_layerPickDirty) {
+    m_layerPickDirty = false;
+    guarded([&] {
+      m_layerPick = btui::buildPickMesh(*btui::layerCells(*s, m_editor->planeValue(), m_editor->layer()));
+      return true;
+    });
+  }
+  const btui::PickHit slab = shown ? btui::pick(m_layerPick, r.origin, r.dir) : btui::PickHit{};
+  return guarded([&] { return btui::target3d(*s, *tool, voxel, slab, shown); });
+}
+
+void ViewportController::pointerHover(float x, float y, Qt::KeyboardModifiers mods) {
+  m_hoverX = x;
+  m_hoverY = y;
+  if (navigating() || x < 0)
+    return;
+  const btui::Target3d t = targetAt(x, y, mods);
+  m_editor->hover3d(t, mods);
+
+  // the status bar names the target (C06; product decision 2026-10-27)
+  const btui::PlaneAxes a = btui::planeAxes(m_editor->planeValue());
+  auto cell = [&](const btui::Cell3 & c) {
+    return tr("X%1 Y%2 Z%3").arg(c.x).arg(c.y).arg(c.z);
+  };
+  QString text;
+  switch (t.source) {
+    case btui::TargetSource::Face:
+      text = tr("Cursor %1").arg(cell(t.cell));
+      break;
+    case btui::TargetSource::Slab:
+      text = tr("Cursor %1 · in the active layer (%2%3)").arg(cell(t.cell))
+                 .arg(QChar::fromLatin1(btui::axisLetter(a.layer))).arg(m_editor->layer());
+      break;
+    case btui::TargetSource::Origin:
+      text = tr("Cursor %1 · the first voxel goes to the origin").arg(cell(t.cell));
+      break;
+    case btui::TargetSource::Rejected:
+      text = tr("Outside the grid: nothing to place here");
+      break;
+    case btui::TargetSource::None:
+      break;
+  }
+  if (StatusController * st = m_editor->status())
+    st->setCursorText(text);
+}
+
+void ViewportController::pointerLeave(void) {
+  m_hoverX = m_hoverY = -1;
+  if (m_editor->over3d()) {
+    m_editor->leave3d();
+    if (StatusController * st = m_editor->status())
+      st->setCursorText(QString());
+  }
+}
+
+void ViewportController::navigationStarted(void) {
+  // a drag navigates: no ghost while it lasts (C06 hover_preview)
+  m_editor->leave3d();
+}
+
+void ViewportController::click(float x, float y, Qt::KeyboardModifiers mods) {
+  const btui::Target3d t = targetAt(x, y, mods);
+  m_editor->click3d(t, mods);
+  // the voxels changed under the pointer: what it now points at
+  pointerHover(x, y, mods);
+}
+
+int ViewportController::editCursorTool(void) const {
+  return m_editor->viewportActive() ? int(m_editor->toolInEffect()) : -1;
+}
+
+QColor ViewportController::editCursorColour(void) const {
+  return m_editor->cursorColour();
 }
 
 SceneFrame ViewportController::frame(float devicePixelRatio) const {
@@ -328,6 +431,12 @@ void ViewportController::addGhosts(SceneFrame & f) const {
   const Theme * t = Theme::instance();
   if (!m_shape || !t)
     return;
+  // a Fixed or Variable press on a face whose far side is outside the grid:
+  // the face outlined, dashed danger, and no ghost (C06)
+  const btui::Target3d & target = m_editor->target3d();
+  if (m_editor->over3d() && m_editor->viewportActive() && target.source == btui::TargetSource::Rejected)
+    btui::addFaceOutline(f.ghostLines, m_pick, target.voxel, target.face,
+                         { rgba(t->danger()), rgba(t->danger()), 2.5f, 5.0f, 4.0f });
   const std::vector<btui::GhostCell> ghosts = m_editor->preview();
   if (ghosts.empty())
     return;

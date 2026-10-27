@@ -160,6 +160,90 @@ TEST_CASE("the preview names what each tool would do to each cell, and nothing i
   }
 }
 
+namespace {
+  // a ray straight down -Z through (x, y), from above the grid
+  PickHit down(const voxel_c & v, float x, float y) {
+    return pick(buildPickMesh(v), Vec3{ x, y, 10 }, Vec3{ 0, 0, -1 });
+  }
+}
+
+TEST_CASE("a 3D press acts beyond the face for Fixed and Variable, on the voxel for Erase and Paint", "[ui][voxeledit]") {
+  // C06 3D editing (AC-C06-06, T-C06-2)
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  v->setState(1, 1, 1, voxel_c::VX_FILLED);
+  const PickHit h = down(*v, 1.5f, 1.5f);
+  REQUIRE(h.hit);
+  const PickHit none{};
+  Target3d t = target3d(*v, Tool::Fixed, h, none, false);
+  CHECK(t.source == TargetSource::Face);
+  CHECK(t.cell == Cell3{ 1, 1, 2 });                     // on top of it
+  t = target3d(*v, Tool::Variable, h, none, true);
+  CHECK(t.cell == Cell3{ 1, 1, 2 });
+  for (Tool tool : { Tool::Erase, Tool::Paint }) {
+    t = target3d(*v, tool, h, none, false);
+    CHECK(t.source == TargetSource::Face);
+    CHECK(t.cell == Cell3{ 1, 1, 1 });
+  }
+  // the top layer: beyond it is outside the grid -- rejected, the voxel hit kept for the outline
+  v->setState(1, 1, 2, voxel_c::VX_FILLED);
+  t = target3d(*v, Tool::Fixed, down(*v, 1.5f, 1.5f), none, false);
+  CHECK(t.source == TargetSource::Rejected);
+  CHECK(t.cell == Cell3{ 1, 1, 2 });
+  // nothing under the pointer, the slab hidden: nothing, as the shape has voxels
+  CHECK(target3d(*v, Tool::Fixed, down(*v, 0.5f, 0.5f), none, false).source == TargetSource::None);
+}
+
+TEST_CASE("the active layer's slab acts as the 2D grid where no voxel is nearer", "[ui][voxeledit]") {
+  // product decision 2026-10-27
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  v->setState(2, 2, 0, voxel_c::VX_FILLED);                // below the active layer 1
+  auto layer = layerCells(*v, Plane::XY, 1);
+  CHECK(layer->countState(voxel_c::VX_FILLED) == 9);
+  auto slabAt = [&](float x, float y) { return down(*layer, x, y); };
+
+  // over an empty cell of the slab: that cell, though a voxel lies below
+  Target3d t = target3d(*v, Tool::Fixed, down(*v, 2.5f, 2.5f), slabAt(2.5f, 2.5f), true);
+  CHECK(t.source == TargetSource::Slab);
+  CHECK(t.cell == Cell3{ 2, 2, 1 });
+  // the slab hidden: the voxel's face again
+  t = target3d(*v, Tool::Fixed, down(*v, 2.5f, 2.5f), slabAt(2.5f, 2.5f), false);
+  CHECK(t.source == TargetSource::Face);
+  CHECK(t.cell == Cell3{ 2, 2, 1 });
+  // a voxel in the slab: its face wins the tie
+  v->setState(0, 0, 1, voxel_c::VX_FILLED);
+  t = target3d(*v, Tool::Fixed, down(*v, 0.5f, 0.5f), slabAt(0.5f, 0.5f), true);
+  CHECK(t.source == TargetSource::Face);
+  CHECK(t.cell == Cell3{ 0, 0, 2 });
+  // a voxel above the slab, in front of it: its face
+  v->setState(1, 0, 2, voxel_c::VX_FILLED);
+  t = target3d(*v, Tool::Erase, down(*v, 1.5f, 0.5f), slabAt(1.5f, 0.5f), true);
+  CHECK(t.source == TargetSource::Face);
+  CHECK(t.cell == Cell3{ 1, 0, 2 });
+}
+
+TEST_CASE("an empty shape with the slab hidden places at the origin", "[ui][voxeledit]") {
+  for (gridType_c::gridType type : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(type));
+    gridType_c gt(type);
+    auto v = bttest::makeVoxel(gt, 4, 4, 4);
+    const PickHit none{};
+    const Target3d t = target3d(*v, Tool::Fixed, none, none, false);
+    CHECK(t.source == TargetSource::Origin);
+    CHECK(v->validCoordinate(t.cell.x, t.cell.y, t.cell.z));
+    // and no cell of the type is nearer the origin
+    const int sum = t.cell.x + t.cell.y + t.cell.z;
+    for (int x = 0; x < 4; x++)
+      for (int y = 0; y < 4; y++)
+        for (int z = 0; z < 4; z++)
+          if (x + y + z < sum)
+            CHECK_FALSE(v->validCoordinate(x, y, z));
+    // the slab shown: it is where the first voxel goes; off it, nothing
+    CHECK(target3d(*v, Tool::Fixed, none, none, true).source == TargetSource::None);
+  }
+}
+
 TEST_CASE("applyTool skips coordinates that are not a cell of the voxel type", "[ui][voxeledit]") {
   gridType_c gt(gridType_c::GT_SPHERES);
   auto v = bttest::makeVoxel(gt, 2, 2, 1);

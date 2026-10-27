@@ -38,6 +38,7 @@ namespace {
   const char * const kTheme       = "ui.theme";
   const char * const kDensity     = "ui.density";
   const char * const kTooltips    = "ui.tooltips";
+  const char * const kSingleKeys  = "ui.singleKeyShortcuts";
   const char * const kUpdateCheck = "update.checkAtLaunch";
   const char * const kUpdateLast  = "update.lastCheck";       // epoch seconds of the last good fetch
   const char * const kUpdateSkip  = "update.skippedVersion";  // updatecheck::packVersion; 0: none
@@ -263,6 +264,7 @@ void SettingsController::setDensity(const QString & v) {
   }
 
 BOOL_SETTING(tooltips, setTooltips, kTooltips, true)
+BOOL_SETTING(singleKeyShortcuts, setSingleKeyShortcuts, kSingleKeys, true)
 BOOL_SETTING(checkForUpdates, setCheckForUpdates, kUpdateCheck, true)
 BOOL_SETTING(showViewCube, setShowViewCube, kViewCube, true)
 BOOL_SETTING(reverseScroll, setReverseScroll, kReverse, false)
@@ -388,7 +390,7 @@ void SettingsController::setStringValue(const QString & key, const QString & v) 
 
 void SettingsController::resetSection(const QString & page) {
   if (page == QLatin1String("general")) {
-    for (const char * k : { kTheme, kDensity, kTooltips, kUndoDepth, kUpdateCheck })
+    for (const char * k : { kTheme, kDensity, kTooltips, kSingleKeys, kUndoDepth, kUpdateCheck })
       m_store.remove(k);
   } else if (page == QLatin1String("view3d")) {
     for (const char * k : { kViewCube, kReverse, kRotation, kVoxelStyle, kAntialiasing, kLighting, kFade })

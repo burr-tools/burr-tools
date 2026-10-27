@@ -30,8 +30,15 @@
 /* The 3D view's surface (spec C06 "canvas"): a QQuickRhiItem that draws the
  * controller's frame with SceneRenderer and passes pointer input on in dp.
  *
- * It never takes keyboard focus -- pressing in the 3D view must not pull
- * focus out of the Solver's lists (C20 sticky focus).
+ * A press never takes keyboard focus -- it must not pull focus out of the
+ * Solver's lists (C20 sticky focus); Tab reaches it where the QML lets it
+ * (the main view: its keys, WCAG 2.1.1).
+ *
+ * Over it without a button the pointer and the modifiers held go to the
+ * controller (pointerHover), which the main view edits from (C06): the
+ * modifiers also when only they change, so a quick tool's cursor and ghost
+ * appear the moment its key goes down (AC-C06-08). The cursor is the edit
+ * tool's while a click would edit, the grab hand while dragging.
  */
 class VoxelViewport : public QQuickRhiItem {
   Q_OBJECT
@@ -74,11 +81,20 @@ protected:
   void mouseReleaseEvent(QMouseEvent * e) override;
   void mouseUngrabEvent(void) override;
   void wheelEvent(QWheelEvent * e) override;
+  void hoverEnterEvent(QHoverEvent * e) override;
+  void hoverMoveEvent(QHoverEvent * e) override;
+  void hoverLeaveEvent(QHoverEvent * e) override;
+  bool eventFilter(QObject * watched, QEvent * e) override;
 
 private:
 
+  void updateCursor(void);
+
   QPointer<SceneController> m_controller;
   QMetaObject::Connection m_frameConnection;
+  QPointF m_hover{ -1, -1 };       ///< the pointer, while over the item
+  bool m_filtering = false;        ///< watching the modifier keys
+  int m_cursorKey = -2;            ///< the cursor set: -1 none, the tool, or a grab hand (-3 orbit, -4 pan)
   QList<int> m_supported;          ///< the device's sample counts; empty until known
 };
 

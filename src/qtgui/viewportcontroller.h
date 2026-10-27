@@ -24,11 +24,14 @@
 #include "documentcontroller.h"
 #include "scenecontroller.h"
 
+#include "../uicore/voxeledit.h"
+
 #include <QColor>
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
 
 #include <memory>
+#include <vector>
 
 class DocumentController;
 class EditorController;
@@ -44,7 +47,10 @@ class ShapesModel;
  * is the spec's: left-drag does what the toolbar mode says, Shift+left-drag
  * the other thing, middle-drag always pans, the wheel always zooms, and a
  * press that moves less than 4 dp before release is a click, which never
- * navigates (and, from the editing phase on, edits).
+ * navigates but edits: the quick tool the modifiers pick, or in Edit mode
+ * the voxel editor's tool (C06 3D editing), at the target the pointer
+ * picks (btui::target3d) -- a voxel's face, the active layer's slab, or in
+ * an empty shape without the slab the origin.
  *
  * The plane and the active layer are the voxel editor's (EditorController);
  * the view draws them as its slab while the editor is on screen.
@@ -115,6 +121,15 @@ public:
   /* the frame to draw now; colours come from the theme */
   SceneFrame frame(float devicePixelRatio) const override;
 
+  // --- 3D editing (C06) ------------------------------------------------------
+
+  void pointerHover(float x, float y, Qt::KeyboardModifiers mods) override;
+  void pointerLeave(void) override;
+  int editCursorTool(void) const override;
+  QColor editCursorColour(void) const override;
+  /* where a click at (x, y) with these modifiers would act */
+  btui::Target3d targetAt(float x, float y, Qt::KeyboardModifiers mods);
+
 signals:
 
   void optionsChanged(void);
@@ -130,6 +145,10 @@ private:
   void setDisplay(const char * key, bool & option, bool v);
   void addGhosts(SceneFrame & f) const;
   void updateSlab(void);
+  void click(float x, float y, Qt::KeyboardModifiers mods);
+  void navigationStarted(void) override;
+  /* the slab is drawn: its option on and the voxel editor on screen */
+  bool slabShown(void) const;
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
@@ -148,6 +167,12 @@ private:
    * measured every frame */
   btui::Box m_slab{};
   bool m_hasSlab = false;
+  /* what the pointer is picked against: the shape's voxels (with the mesh)
+   * and the active layer's cells (with the slab) */
+  std::vector<btui::PickTriangle> m_pick;
+  std::vector<btui::PickTriangle> m_layerPick;
+  bool m_layerPickDirty = true;    ///< made on the first pick that needs it, not per layer step
+  float m_hoverX = -1, m_hoverY = -1;
 
   /* the persisted Display options, kept here for frame() (readDisplay) */
   struct Display {

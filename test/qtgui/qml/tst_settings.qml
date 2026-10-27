@@ -70,7 +70,7 @@ TestCase {
         // AC-C12-01: each once, on the spec's page
         const d = openSettings()
         const pages = {
-            general: ["density", "theme", "undoDepth", "tooltips"],
+            general: ["density", "theme", "undoDepth", "tooltips", "singleKeyShortcuts"],
             view3d: ["viewCube", "reverseScroll", "rotationMethod", "voxelStyle", "antialiasing", "lighting", "fadePieces"],
             performance: ["workerThreads", "displayLists"]
         }

@@ -21,7 +21,10 @@
 #include "voxelviewport.h"
 #include "scenerenderer.h"
 #include "scenecontroller.h"
+#include "editcursor.h"
+#include "theme.h"
 
+#include <QGuiApplication>
 #include <QQuickWindow>
 #include <rhi/qrhi.h>
 
@@ -73,6 +76,7 @@ VoxelViewport::VoxelViewport(QQuickItem * parent) : QQuickRhiItem(parent) {
   setAcceptedMouseButtons(Qt::LeftButton | Qt::MiddleButton | Qt::RightButton);
   setFlag(ItemIsFocusScope, false);
   setActiveFocusOnTab(false);
+  setAcceptHoverEvents(true);
 }
 
 void VoxelViewport::setController(SceneController * c) {
@@ -81,7 +85,10 @@ void VoxelViewport::setController(SceneController * c) {
   disconnect(m_frameConnection);
   m_controller = c;
   if (c) {
-    m_frameConnection = connect(c, &SceneController::frameChanged, this, &QQuickItem::update);
+    m_frameConnection = connect(c, &SceneController::frameChanged, this, [this] {
+      update();
+      updateCursor();
+    });
     c->setViewportSize(float(width()), float(height()));
   }
   emit controllerChanged();
@@ -126,16 +133,85 @@ void VoxelViewport::mousePressEvent(QMouseEvent * e) {
   e->accept();
 }
 
+
 void VoxelViewport::mouseMoveEvent(QMouseEvent * e) {
+  m_hover = e->position();
   if (m_controller)
     m_controller->pointerMove(float(e->position().x()), float(e->position().y()));
   e->accept();
 }
 
 void VoxelViewport::mouseReleaseEvent(QMouseEvent * e) {
-  if (m_controller)
+  if (m_controller) {
     m_controller->pointerRelease(e->button(), float(e->position().x()), float(e->position().y()));
+    // over the view still: what the pointer points at now
+    if (contains(e->position()))
+      m_controller->pointerHover(float(e->position().x()), float(e->position().y()), e->modifiers());
+  }
   e->accept();
+}
+
+void VoxelViewport::hoverEnterEvent(QHoverEvent * e) {
+  if (!m_filtering && QGuiApplication::instance()) {
+    QGuiApplication::instance()->installEventFilter(this);
+    m_filtering = true;
+  }
+  hoverMoveEvent(e);
+}
+
+void VoxelViewport::hoverMoveEvent(QHoverEvent * e) {
+  m_hover = e->position();
+  if (m_controller)
+    m_controller->pointerHover(float(m_hover.x()), float(m_hover.y()), e->modifiers());
+  updateCursor();
+}
+
+void VoxelViewport::hoverLeaveEvent(QHoverEvent *) {
+  m_hover = { -1, -1 };
+  if (m_filtering) {
+    QGuiApplication::instance()->removeEventFilter(this);
+    m_filtering = false;
+  }
+  if (m_controller)
+    m_controller->pointerLeave();
+  updateCursor();
+}
+
+/* a modifier pressed or released with the pointer still: a quick tool on or off */
+bool VoxelViewport::eventFilter(QObject * watched, QEvent * e) {
+  if ((e->type() == QEvent::KeyPress || e->type() == QEvent::KeyRelease) && m_controller && m_hover.x() >= 0) {
+    const int key = static_cast<QKeyEvent *>(e)->key();
+    if (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta) {
+      m_controller->pointerHover(float(m_hover.x()), float(m_hover.y()), QGuiApplication::queryKeyboardModifiers());
+      updateCursor();
+    }
+  }
+  return QQuickRhiItem::eventFilter(watched, e);
+}
+
+void VoxelViewport::updateCursor(void) {
+  int key = -1;
+  if (m_controller) {
+    if (m_controller->navigating())
+      key = m_controller->panning() ? -4 : -3;
+    else if (m_hover.x() >= 0)
+      key = m_controller->editCursorTool();
+  }
+  const QColor colour = m_controller ? m_controller->editCursorColour() : QColor();
+  const Theme * t = Theme::instance();
+  // the tool's cursor follows the drawing colour and the theme: compose it again when one changes
+  const int full = key >= 0 ? key * 1000003 + int(colour.rgba() % 1000003) * 2 + (t && t->dark()) : key;
+  if (full == m_cursorKey)
+    return;
+  m_cursorKey = full;
+  if (key == -3)
+    setCursor(Qt::ClosedHandCursor);
+  else if (key == -4)
+    setCursor(Qt::SizeAllCursor);
+  else if (key >= 0 && t)
+    setCursor(editcursor::cursor(btui::Tool(key), colour, t->dark(), window() ? window()->effectiveDevicePixelRatio() : 1.0));
+  else
+    unsetCursor();
 }
 
 /* the grab went before the release: without this the gesture would stay

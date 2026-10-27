@@ -121,6 +121,12 @@ QString CommandController::platformLabel(const btui::CommandInfo & c) {
   return platformLabel(btui::labelOn(c, btui::currentPlatform()));
 }
 
+namespace {
+  // the focused 3D view's steps (WCAG 2.1.1)
+  constexpr float kOrbitStepDeg = 15.0f;
+  constexpr float kPanStepDp = 40.0f;
+}
+
 QVariantList CommandController::menuBar(void) const {
   QVariantList out;
   for (const auto & m : btui::menuBar()) {
@@ -166,18 +172,26 @@ QVariantList CommandController::shortcuts(void) const {
     if (list.empty())
       continue;
     QStringList seqs;
-    for (auto s : list)
+    bool single = false;
+    for (auto s : list) {
       seqs.append(str(s));
+      single = single || btui::isSingleCharacter(s);
+    }
     QVariantMap e;
     e.insert(QStringLiteral("key"), str(c.key));
     e.insert(QStringLiteral("sequences"), seqs);
+    // Settings ▸ General ▸ Single-key shortcuts turns these off (WCAG 2.1.4)
+    e.insert(QStringLiteral("singleKey"), single);
     out.append(e);
   }
   return out;
 }
 
 QString CommandController::keyInScope(const QString & scope, int key, int modifiers) const {
-  if (scope != QLatin1String("shapesList"))
+  const btui::Scope sc = scope == QLatin1String("shapesList") ? btui::Scope::ShapesList
+                       : scope == QLatin1String("viewport")   ? btui::Scope::Viewport
+                                                              : btui::Scope::Window;
+  if (sc == btui::Scope::Window)
     return {};
   // The keypad flag is no part of a shortcut (macOS reports the arrow keys
   // with it), and the main Enter key and the keypad's are one: Qt calls the
@@ -188,7 +202,7 @@ QString CommandController::keyInScope(const QString & scope, int key, int modifi
   };
   const QKeyCombination pressed = normal(QKeyCombination(Qt::KeyboardModifiers(modifiers), Qt::Key(key)));
   for (const auto & c : btui::commandTable()) {
-    if (c.scope != btui::Scope::ShapesList)
+    if (c.scope != sc)
       continue;
     for (auto s : platformShortcuts(c)) {
       const QKeySequence seq(str(s), QKeySequence::PortableText);
@@ -215,6 +229,7 @@ bool CommandController::isEnabled(const QString & key) const {
     // Entities-only keys do nothing in Puzzle and Solver (input map scoping rule)
     case Command::LayerUp:
     case Command::LayerDown:
+    case Command::Edit3d:
     case Command::ToolFixed:
     case Command::ToolVariable:
     case Command::ToolErase:
@@ -241,6 +256,13 @@ bool CommandController::isEnabled(const QString & key) const {
     case Command::HelpGuide: case Command::HelpShortcuts: case Command::CheckForUpdates:
     case Command::About:
     case Command::ViewOrbit: case Command::ViewPan: case Command::ViewHome: case Command::ViewFit:
+    case Command::ViewOrbitLeft: case Command::ViewOrbitRight: case Command::ViewOrbitUp: case Command::ViewOrbitDown:
+    case Command::ViewPanLeft: case Command::ViewPanRight: case Command::ViewPanUp: case Command::ViewPanDown:
+    case Command::ViewZoomIn: case Command::ViewZoomOut:
+    case Command::ViewTurnLeft: case Command::ViewTurnRight: case Command::ViewTurnUp: case Command::ViewTurnDown:
+    case Command::ViewRollLeft: case Command::ViewRollRight:
+    case Command::ViewFront: case Command::ViewBack: case Command::ViewLeft: case Command::ViewRight:
+    case Command::ViewTop: case Command::ViewBottom:
       return true;
   }
   return true;
@@ -342,21 +364,37 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("Move keyboard focus between controls"), { QVariant(alt({ QStringLiteral("Tab") })), QVariant(alt({ shift, QStringLiteral("Tab") })) }),
     row(tr("Activate the focused button, switch or chip"), { QVariant(alt({ QStringLiteral("Enter") })), QVariant(alt({ QStringLiteral("Space") })) }),
   };
+  /* the one-letter and number keys stop with Settings ▸ General ▸
+   * Single-key shortcuts off (WCAG 2.1.4): the list says so */
+  const QString singleOff = m_settings->singleKeyShortcuts() ? QString() : tr(" — off (Settings › General)");
 
   QVariantList view3d{
     row(tr("Orbit (Orbit mode) or pan (Pan mode)"), { QVariant(alt({}, tr("Left-drag"))) }),
     row(tr("The other of orbit / pan"), { QVariant(alt({ shift }, tr("Left-drag"))) }),
     row(tr("Pan"), { QVariant(alt({}, tr("Middle-drag"))) }),
     row(tr("Zoom"), { QVariant(alt({}, tr("Wheel"))) }),
-    row(tr("Orbit mode / Pan mode"), keysOf({ Command::ViewOrbit, Command::ViewPan })),
+    row(tr("Orbit mode / Pan mode") + singleOff, keysOf({ Command::ViewOrbit, Command::ViewPan })),
     row(tr("Home view — default orientation, framed"), keysOf({ Command::ViewHome })),
-    row(tr("Fit the shape to the view, orientation kept"), keysOf({ Command::ViewFit })),
+    row(tr("Fit the shape to the view, orientation kept") + singleOff, keysOf({ Command::ViewFit })),
     row(tr("Turn to that view"), { QVariant(alt({}, tr("Click view-cube face, edge or corner"))) }),
     row(tr("Upright view of that face"), { QVariant(alt({}, tr("Double-click a view-cube face"))) }),
   };
 
+  // with the 3D view focused (Tab to it): the mouse's gestures and the cube's views
+  QVariantList view3dFocused{
+    row(tr("Orbit"), keysOf({ Command::ViewOrbitLeft, Command::ViewOrbitRight, Command::ViewOrbitUp, Command::ViewOrbitDown })),
+    row(tr("Pan"), keysOf({ Command::ViewPanLeft, Command::ViewPanRight, Command::ViewPanUp, Command::ViewPanDown })),
+    row(tr("Zoom in / out"), keysOf({ Command::ViewZoomIn, Command::ViewZoomOut })),
+    row(tr("Turn 90° (the view cube's arrows)"),
+        keysOf({ Command::ViewTurnLeft, Command::ViewTurnRight, Command::ViewTurnUp, Command::ViewTurnDown })),
+    row(tr("Roll 90° counter-clockwise / clockwise"), keysOf({ Command::ViewRollLeft, Command::ViewRollRight })),
+    row(tr("View from the front / back / left / right / top / bottom"),
+        keysOf({ Command::ViewFront, Command::ViewBack, Command::ViewLeft, Command::ViewRight, Command::ViewTop, Command::ViewBottom })),
+  };
+
   QVariantList entities{
-    row(tr("Tools: Fixed, Variable, Erase, Paint"),
+    row(tr("3D edit mode: a click in the 3D view applies the tool (toggle)") + singleOff, keysOf({ Command::Edit3d })),
+    row(tr("Tools: Fixed, Variable, Erase, Paint") + singleOff,
         keysOf({ Command::ToolFixed, Command::ToolVariable, Command::ToolErase, Command::ToolPaint })),
     row(tr("Next / previous layer"), keysOf({ Command::LayerUp, Command::LayerDown })),
     row(tr("Quick tool while held: Fixed / Variable / Erase"),
@@ -385,6 +423,7 @@ QVariantList CommandController::shortcutHelp(void) const {
   return {
     group(tr("Everywhere"), QString(), everywhere),
     group(tr("3D view"), tr("every workspace"), view3d),
+    group(tr("3D view, focused"), tr("Tab to the 3D view"), view3dFocused),
     group(tr("Entities"), tr("voxel editor"), entities),
     group(tr("Shapes list"), tr("Entities, with the list focused"), shapesList),
     group(tr("Dialogs and menus"), QString(), dialogs),
@@ -453,5 +492,31 @@ void CommandController::run(Command c) {
     case Command::ShapeDelete:      m_shapes->requestDelete(m_shapes->selected()); break;
     case Command::ShapeMoveEarlier: m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() - 1); break;
     case Command::ShapeMoveLater:   m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() + 1); break;
+    case Command::Edit3d:           m_editor->toggleEditMode(); break;
+
+    // the focused 3D view: 15 degrees, 40 dp, a wheel notch; the cube's turns and faces
+    case Command::ViewOrbitLeft:    m_viewport->orbitStep(-kOrbitStepDeg, 0); break;
+    case Command::ViewOrbitRight:   m_viewport->orbitStep(kOrbitStepDeg, 0); break;
+    case Command::ViewOrbitUp:      m_viewport->orbitStep(0, kOrbitStepDeg); break;
+    case Command::ViewOrbitDown:    m_viewport->orbitStep(0, -kOrbitStepDeg); break;
+    case Command::ViewPanLeft:      m_viewport->panStep(-kPanStepDp, 0); break;
+    case Command::ViewPanRight:     m_viewport->panStep(kPanStepDp, 0); break;
+    case Command::ViewPanUp:        m_viewport->panStep(0, -kPanStepDp); break;
+    case Command::ViewPanDown:      m_viewport->panStep(0, kPanStepDp); break;
+    case Command::ViewZoomIn:       m_viewport->zoomStep(+1); break;
+    case Command::ViewZoomOut:      m_viewport->zoomStep(-1); break;
+    case Command::ViewTurnLeft:     m_viewport->turn(btui::ViewCube::Arrow::Left); break;
+    case Command::ViewTurnRight:    m_viewport->turn(btui::ViewCube::Arrow::Right); break;
+    case Command::ViewTurnUp:       m_viewport->turn(btui::ViewCube::Arrow::Up); break;
+    case Command::ViewTurnDown:     m_viewport->turn(btui::ViewCube::Arrow::Down); break;
+    case Command::ViewRollLeft:     m_viewport->roll(+1); break;
+    case Command::ViewRollRight:    m_viewport->roll(-1); break;
+    // the view cube's faces, by its labels: world +Y is up, +Z toward the viewer at the front
+    case Command::ViewFront:        m_viewport->viewFrom({ 0, 0, 1 }); break;
+    case Command::ViewBack:         m_viewport->viewFrom({ 0, 0, -1 }); break;
+    case Command::ViewLeft:         m_viewport->viewFrom({ -1, 0, 0 }); break;
+    case Command::ViewRight:        m_viewport->viewFrom({ 1, 0, 0 }); break;
+    case Command::ViewTop:          m_viewport->viewFrom({ 0, 1, 0 }); break;
+    case Command::ViewBottom:       m_viewport->viewFrom({ 0, -1, 0 }); break;
   }
 }

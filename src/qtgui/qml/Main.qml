@@ -195,7 +195,7 @@ ApplicationWindow {
             required property var modelData
             sequences: modelData.sequences
             context: Qt.WindowShortcut
-            enabled: !win.modalOpen
+            enabled: !win.modalOpen && (!modelData.singleKey || App.settings.singleKeyShortcuts)
             onActivated: App.commands.trigger(modelData.key)
         }
     }

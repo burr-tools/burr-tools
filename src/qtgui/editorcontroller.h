@@ -69,6 +69,17 @@ private:
   Q_PROPERTY(Tool toolInEffect READ toolInEffect NOTIFY toolChanged FINAL)
   /* a quick tool (or the right button) overrides `tool` */
   Q_PROPERTY(bool momentary READ momentary NOTIFY toolChanged FINAL)
+  /* 3D edit mode (C06, key E): a plain click in the 3D view applies `tool` */
+  Q_PROPERTY(bool editMode READ editMode WRITE setEditMode NOTIFY editModeChanged FINAL)
+  /* the 3D view would edit now: a quick tool held over it, or Edit mode
+   * (C06 "viewport action"); the Edit button shows the override state */
+  Q_PROPERTY(bool viewportActive READ viewportActive NOTIFY toolChanged FINAL)
+  /* a quick tool's modifier is held over the 3D view: the Edit button's
+   * override state (C06), whatever the tool */
+  Q_PROPERTY(bool quickHeld3d READ quickHeld3d NOTIFY toolChanged FINAL)
+  /* what a click in the 3D view would do where the pointer is, for the
+   * status bar and the empty-shape message (C06; see target3d()) */
+  Q_PROPERTY(int targetSource READ targetSource NOTIFY previewChanged FINAL)
   /* Mirror and Span: a bit per axis, X 1, Y 2, Z 4 */
   Q_PROPERTY(int mirror READ mirror WRITE setMirror NOTIFY modifiersChanged FINAL)
   Q_PROPERTY(int span READ span WRITE setSpan NOTIFY modifiersChanged FINAL)
@@ -109,6 +120,10 @@ public:
   Q_INVOKABLE void toggleMirror(int axis);
   Q_INVOKABLE void toggleSpan(int axis);
 
+  bool editMode(void) const { return m_editMode; }
+  void setEditMode(bool on);
+  Q_INVOKABLE void toggleEditMode(void) { setEditMode(!m_editMode); }
+
   Plane plane(void) const { return m_plane; }
   void setPlane(Plane p);
   btui::Plane planeValue(void) const { return btui::Plane(int(m_plane)); }
@@ -128,6 +143,8 @@ public:
   const voxel_c * shape(void) const;
   int shapeIndex(void) const { return m_shapeIndex; }
   const DocumentController * document(void) const { return m_doc; }
+  /* the status bar, whose cursor readout the 3D view's pointer writes too */
+  StatusController * status(void) const { return m_status; }
 
   int sizeX(void) const { return size(0); }
   int sizeY(void) const { return size(1); }
@@ -175,6 +192,26 @@ public:
    * stroke paints. previewChanged() whenever it may have changed. */
   std::vector<btui::GhostCell> preview(void) const;
 
+  // --- the pointer over the 3D view (C06 3D editing) ------------------------
+
+  /* The tool a click in the 3D view applies with these modifiers held: the
+   * quick tool, else (Edit mode) `tool`, else none. */
+  std::optional<btui::Tool> viewportAction(Qt::KeyboardModifiers m) const;
+  bool viewportActive(void) const { return m_over3d && viewportAction(m_keys3d).has_value(); }
+  bool quickHeld3d(void) const;
+  /* The pointer is over the 3D view with these modifiers, and a click would
+   * act on `t` (ViewportController picks it); the hover preview follows.
+   * leave3d(): it left, or a drag began. */
+  void hover3d(const btui::Target3d & t, Qt::KeyboardModifiers m);
+  void leave3d(void);
+  bool over3d(void) const { return m_over3d; }
+  const btui::Target3d & target3d(void) const { return m_target3d; }
+  int targetSource(void) const { return m_over3d ? int(m_target3d.source) : 0; }
+  /* A click in the 3D view: the tool the modifiers pick applied at `t`,
+   * Mirror and Span included, as one undo step. False when nothing changed
+   * (no action, no target, or the cells already as the tool leaves them). */
+  bool click3d(const btui::Target3d & t, Qt::KeyboardModifiers m);
+
 signals:
 
   void toolChanged(void);
@@ -188,6 +225,7 @@ signals:
   void flashRequested(const QString & text);
   void drawColourChanged(void);
   void previewChanged(void);
+  void editModeChanged(void);
 
 private:
 
@@ -214,6 +252,10 @@ private:
 
   int m_hoverCol = -1, m_hoverRow = -1;
   btui::ModifierKeys m_keys;               ///< held over the grid
+  bool m_editMode = false;
+  bool m_over3d = false;                   ///< the pointer is over the 3D view
+  Qt::KeyboardModifiers m_keys3d;          ///< held over it
+  btui::Target3d m_target3d;
   bool m_stroking = false;
   bool m_rightDown = false;
   btui::Tool m_strokeTool = btui::Tool::Fixed;
