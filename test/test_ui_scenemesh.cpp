@@ -601,6 +601,68 @@ TEST_CASE("a ghost is its cells' every face and edge, in its style, never dimmed
   }
 }
 
+TEST_CASE("a transform's preview: the result centred on the shape, and legacy's hint", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 4, 2, 2);
+  auto r = bttest::makeVoxel(gt, 2, 4, 2);    // as a turn about Z leaves it
+  r->setState(0, 0, 0, voxel_c::VX_FILLED);
+  r->setState(1, 3, 1, voxel_c::VX_VARIABLE);
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 128 }, Rgba8{ 1, 2, 3, 255 } };
+  addResultGhost(faces, lines, *v, r.get(), s);
+  CHECK(faces.size() == 72);                  // both voxels, fixed and variable
+  // the result's box (2 x 4 x 2) centred on the shape's (4 x 2 x 2): x from 1, y from -1
+  float lo[3] = { 1e9f, 1e9f, 1e9f };
+  for (const MeshVertex & m : faces)
+    for (int k = 0; k < 3; k++)
+      lo[k] = std::min(lo[k], m.pos[k]);
+  CHECK_THAT(lo[0], WithinAbs(1.0, 1e-4));
+  CHECK_THAT(lo[1], WithinAbs(-1.0, 1e-4));
+  CHECK_THAT(lo[2], WithinAbs(0.0, 1e-4));
+  faces.clear();
+  addResultGhost(faces, lines, *v, nullptr, s);   // blocked: no ghost
+  CHECK(faces.empty());
+
+  // legacy's radius: min(0.4 * the box's half diagonal + 0.5, 2)
+  CHECK_THAT(transformHintRadius(*v), WithinAbs(0.4 * std::sqrt(24.0) / 2 + 0.5, 1e-4));
+  CHECK(transformHintRadius(*bttest::makeVoxel(gt, 20, 20, 20)) == 2.0f);
+
+  const Vec3 c{ 2, 1, 1 };
+  const float rad = 1.5f;
+  const Rgba8 col{ 255, 0, 0, 255 };
+  auto within = [&](const std::vector<LineSeg> & ls) {
+    for (const LineSeg & l : ls)
+      for (Vec3 p : { l.a, l.b })
+        if (length(p - c) > rad + 1e-4f)
+          return false;
+    return true;
+  };
+  // a rotation: an arc of 32 strokes about the axis, in its plane, and a head of 2
+  std::vector<LineSeg> h;
+  addTransformHint(h, c, rad, TransformHint::Rotate, { 0, 0, 1 }, 90, col, 3);
+  REQUIRE(h.size() == 34);
+  for (int i = 0; i < 32; i++) {
+    CHECK_THAT(h[size_t(i)].a.z, WithinAbs(1.0, 1e-5));
+    CHECK_THAT(length(h[size_t(i)].a - c), WithinAbs(rad, 1e-4));
+  }
+  CHECK(h[0].color == col);
+  CHECK(h[0].widthDp == 3.0f);
+  // a mirror: the shaft along the normal and a head at each end; a nudge one head
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Mirror, { 2, 0, 0 }, 0, col, 3);
+  REQUIRE(h.size() == 5);
+  CHECK_THAT(h[0].a.x, WithinAbs(c.x - rad, 1e-5));
+  CHECK_THAT(h[0].b.x, WithinAbs(c.x + rad, 1e-5));
+  CHECK(within(h));
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 1, 0 }, 0, col, 3);
+  CHECK(h.size() == 3);
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 0, 0 }, 0, col, 3);   // no direction: nothing
+  CHECK(h.empty());
+}
+
 TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
   // the outline dashes run along an edge as one line, the same seen from
   // both faces that meet there, not restarting in every triangle
