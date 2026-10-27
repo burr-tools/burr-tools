@@ -21,6 +21,7 @@
 #ifndef BTQT_VIEWPORTCONTROLLER_H
 #define BTQT_VIEWPORTCONTROLLER_H
 
+#include "documentcontroller.h"
 #include "scenecontroller.h"
 
 #include <QColor>
@@ -30,6 +31,7 @@
 #include <memory>
 
 class DocumentController;
+class EditorController;
 class LayoutController;
 class SettingsController;
 class ShapesModel;
@@ -44,8 +46,8 @@ class ShapesModel;
  * press that moves less than 4 dp before release is a click, which never
  * navigates (and, from the editing phase on, edits).
  *
- * Plane and layer are owned here until the voxel editor (phase P4) takes
- * them over; PgUp / PgDn already step the layer.
+ * The plane and the active layer are the voxel editor's (EditorController);
+ * the view draws them as its slab while the editor is on screen.
  */
 class ViewportController : public SceneController {
   Q_OBJECT
@@ -59,9 +61,6 @@ class ViewportController : public SceneController {
   Q_PROPERTY(bool displayDimOtherLayers READ displayDimOtherLayers WRITE setDisplayDimOtherLayers NOTIFY optionsChanged FINAL)
   Q_PROPERTY(QString projection READ projection WRITE setProjection NOTIFY optionsChanged FINAL)
   Q_PROPERTY(QString colourView READ colourView WRITE setColourView NOTIFY optionsChanged FINAL)
-  Q_PROPERTY(int plane READ plane WRITE setPlane NOTIFY layerChanged FINAL)
-  Q_PROPERTY(int layer READ layer WRITE setLayer NOTIFY layerChanged FINAL)
-  Q_PROPERTY(int layerCount READ layerCount NOTIFY layerChanged FINAL)
   Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY optionsChanged FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube NOTIFY optionsChanged FINAL)
   Q_PROPERTY(bool hasShape READ hasShape NOTIFY sceneChanged FINAL)
@@ -75,9 +74,10 @@ class ViewportController : public SceneController {
 public:
 
   ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                     LayoutController * layout, QObject * parent = nullptr);
+                     LayoutController * layout, EditorController * editor, QObject * parent = nullptr);
 
-  QString navMode(void) const { return m_pan ? QStringLiteral("pan") : QStringLiteral("orbit"); }
+  /* the modes and options as words (btui/vocabulary.h), for QML */
+  QString navMode(void) const;
   void setNavMode(const QString & m);
   bool displayAxes(void) const { return m_display.axes; }
   void setDisplayAxes(bool v);
@@ -91,11 +91,7 @@ public:
   void setProjection(const QString & p);
   QString colourView(void) const;
   void setColourView(const QString & v);
-  int plane(void) const { return m_plane; }
-  void setPlane(int p);
-  int layer(void) const { return m_layer; }
-  void setLayer(int l);
-  int layerCount(void) const;
+  btui::ColorMode colourViewValue(void) const;
   bool editorVisible(void) const;
   bool showViewCube(void) const;
   bool hasShape(void) const { return m_shape != nullptr; }
@@ -106,8 +102,6 @@ public:
   QString shapeLabel(void) const;
   QColor shapeColor(void) const;
   QColor shapeTextColor(void) const;
-
-  Q_INVOKABLE void layerStep(int delta);
 
   /* Export ▸ Vector Image: write the view as it is now to file in the
    * format btui::VectorFormat names (0 PS, 1 EPS, 2 TeX, 3 PDF, 4 SVG,
@@ -124,21 +118,21 @@ public:
 signals:
 
   void optionsChanged(void);
-  void layerChanged(void);
   void sceneChanged(void);
 
 private:
 
   void refreshShape(void);
+  void edited(DocumentController::Change change);
   void scheduleMesh(void);
   void buildMesh(void);
-  void clampLayer(void);
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
   LayoutController * m_layout;
+  EditorController * m_editor;
 
   const voxel_c * m_shape = nullptr;
   int m_shapeIndex = -1;
@@ -147,9 +141,6 @@ private:
   btui::VoxelStyle m_meshStyle = btui::VoxelStyle::Flat;   ///< the voxel style m_mesh was built in
   bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
   bool m_meshQueued = false;       ///< a buildMesh() is posted
-
-  int m_plane = 0;
-  int m_layer = 0;
 
   /* the persisted Display options, kept here for frame() (readDisplay) */
   struct Display {

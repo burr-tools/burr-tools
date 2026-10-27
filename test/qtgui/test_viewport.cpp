@@ -120,7 +120,7 @@ void TestViewportController::framesFollowTheDisplayOptions() {
   QCOMPARE(int(fr.lines.size()), 12);
 
   v->setDisplayDimOtherLayers(true);
-  v->setPlane(1);   // XZ: layers run along Y
+  f.app->editor()->setPlane(EditorController::XZ);   // XZ: layers run along Y
   QCOMPARE(v->frame(1).dimAxis, 1);
 }
 
@@ -297,17 +297,17 @@ void TestViewportController::layerStepsClampAndFollowThePlane() {
   f.app->document()->editStructure(-1, [](puzzle_c & p) { p.addShape(4, 3, 5); return true; });
   f.app->shapes()->refresh();
   f.app->shapes()->select(0);
-  ViewportController * v = f.app->viewport();
+  EditorController * v = f.app->editor();
   QCOMPARE(v->layerCount(), 5);
   v->setLayer(4);
-  v->setPlane(1);
+  v->setPlane(EditorController::XZ);
   QCOMPARE(v->layerCount(), 3);
   QCOMPARE(v->layer(), 2);           // clamped
   v->layerStep(+5);
   QCOMPARE(v->layer(), 2);
   v->layerStep(-1);
   QCOMPARE(v->layer(), 1);
-  v->setPlane(2);
+  v->setPlane(EditorController::YZ);
   QCOMPARE(v->layerCount(), 4);
 }
 
@@ -1056,7 +1056,7 @@ void TestRender::theSlabTintsItsLayer() {
   f.app->shapes()->refresh();
   f.app->shapes()->select(0);
   ViewportController * v = f.app->viewport();
-  v->setLayer(1);                 // the empty upper layer: the slab sits in front of the plate
+  f.app->editor()->setLayer(1);   // the empty upper layer: the slab sits in front of the plate
   v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
   const QImage with = t.render(v->frame(1));
   v->setDisplayLayerSlab(false);

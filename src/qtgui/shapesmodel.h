@@ -21,13 +21,14 @@
 #ifndef BTQT_SHAPESMODEL_H
 #define BTQT_SHAPESMODEL_H
 
+#include "documentcontroller.h"
+
 #include <QAbstractListModel>
 
 #include <vector>
 #include <QColor>
 #include <QtQml/qqmlregistration.h>
 
-class DocumentController;
 
 /* The puzzle's shapes for the Shapes list (C01, contract section 2), which
  * one is selected, and the list's actions: new, duplicate, delete, rename,
@@ -108,8 +109,7 @@ public:
    * is a row) or keep the selection within the list -- one selectedChanged,
    * for the end state. The rows stay: a change in number inserts or removes
    * rows at the end, every other row is updated in place, so a view keeps
-   * its delegates; the list's own one-row changes (rename, weight) update
-   * that row's role alone and keep the voxel counts. A new document
+   * its delegates. A new document
    * (`reset`) replaces them all.
    */
   void refresh(bool reset = false, int want = -1);
@@ -130,6 +130,9 @@ private:
   /* one undo step changing the list; select is the shape selected after
    * it. Returns whether the puzzle changed. */
   template <class F> bool edit(int select, F && f);
+  /* one undo step changing a row's name or weight, the selection kept */
+  template <class F> bool editLabel(int row, F && f);
+  void edited(int selectedShape, DocumentController::Change change, int shape);
   bool isRow(int row) const { return row >= 0 && row < rowCount(); }
 
   /* a shape's voxel counts, read once per change of the puzzle */
@@ -142,8 +145,6 @@ private:
   DocumentController * m_doc;
   int m_selected = -1;
   int m_rows = 0;                          ///< the rows the views have been told about
-  int m_onlyRow = -1;                      ///< an edit in progress changes only this row ...
-  int m_onlyRole = 0;                      ///< ... and only this role
   mutable std::vector<Counts> m_counts;    ///< per row, filled as the views ask
 };
 
