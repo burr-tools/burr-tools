@@ -25,7 +25,11 @@
 #include "../halfedge/polyhedron.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
 #include <memory>
+#include <set>
 
 namespace btui {
 
@@ -66,6 +70,9 @@ namespace btui {
       const voxel_c & shape;
       const MeshOptions & opt;
       ShapeMesh & out;
+      /* the variable voxels' edges drawn so far, by their ends rounded to
+       * 1/1024: an edge two faces or two voxels share is one line */
+      std::set<std::array<std::int64_t, 6>> edgesSeen{};
 
       Vec3 cellOf(std::uint32_t voxel) const {
         unsigned int x, y, z;
@@ -189,8 +196,15 @@ namespace btui {
        * first. */
       void addFlatPolygon(const std::vector<Vec3> & corners, Vec3 n, Rgba8 col, Vec3 cell, bool variable, bool outline) {
         std::vector<MeshVertex> & dst = variable && col.a < 255 ? out.translucent : out.opaque;
-        const float dashed = variable ? 1.0f : 0.0f;
         const size_t k = corners.size();
+        // a variable voxel's sides are dashed lines (ShapeMesh::edges), not
+        // the face shader's outline
+        if (variable && outline) {
+          for (size_t i = 0; i < k; i++)
+            addEdge(corners[i], corners[(i + 1) % k]);
+          outline = false;
+        }
+        const float dashed = 0.0f;
         for (size_t i = 1; i + 1 < k; i++) {
           const float o0 = outline ? 0.0f : kNoOutline;
           const float o1 = outline && i + 1 == k - 1 ? 0.0f : kNoOutline;
@@ -199,6 +213,21 @@ namespace btui {
           push(dst, corners[i], n, col, cell, o0, 1 + o1, o2, dashed);
           push(dst, corners[i + 1], n, col, cell, o0, o1, 1 + o2, dashed);
         }
+      }
+
+      void addEdge(Vec3 a, Vec3 b) {
+        auto q = [](float v) { return std::int64_t(std::llround(double(v) * 1024.0)); };
+        std::array<std::int64_t, 6> key{ q(a.x), q(a.y), q(a.z), q(b.x), q(b.y), q(b.z) };
+        // the same edge either way round
+        if (std::lexicographical_compare(key.begin() + 3, key.end(), key.begin(), key.begin() + 3)) {
+          std::swap_ranges(key.begin(), key.begin() + 3, key.begin() + 3);
+          std::swap(a, b);
+        }
+        if (!edgesSeen.insert(key).second)
+          return;
+        // the face outline's look (C06, the mock's render3d): black at 32 %,
+        // 1.2 dp, dashes of 3 dp
+        out.edges.push_back({ a, b, Rgba8{ 0, 0, 0, 82 }, 1.2f, 3.0f, 3.0f });
       }
 
       /* the colour legacy drawShape() gives a face in the voxel style */
