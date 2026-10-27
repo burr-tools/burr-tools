@@ -25,6 +25,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `commands` | **the command table**: every menu item and shortcut once — key, label (`&` access key), menu, divider, shortcuts per platform, the legacy callback it replaces, the macOS/Windows label and menu differences |
 | `layoutmodel` | workspaces, card collapse per workspace, Focus 2D / 3D, the column widths for a window width and density |
 | `documentsession` | open, save (beside the file, then renamed over it), import, new, the modified state, undo / redo |
+| `drawcolours` | the puzzle's colours as the Drawing colour footer edits them: names, add (up to the library's 63), edit, remove (and whether it loses solutions) |
 | `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit) — **shared with the legacy GUI** |
 | `settingsstore` | the settings file: `key = value` lines, typed reads with defaults, an atomic save |
 | `camera`, `viewcube`, `vecmath` | the 3D view's camera (orbit, pan, zoom, eased animations, projections) and the view cube's faces, edges, corners and hit testing |
