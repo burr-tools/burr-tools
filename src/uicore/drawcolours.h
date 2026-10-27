@@ -21,6 +21,8 @@
 #ifndef BTUI_DRAWCOLOURS_H
 #define BTUI_DRAWCOLOURS_H
 
+#include "palette.h"
+
 #include <cstdint>
 #include <string>
 
@@ -39,11 +41,6 @@ class puzzle_c;
  * that names no colour changes nothing, and nothing here throws for it.
  */
 namespace btui {
-
-  struct Rgb8 {
-    std::uint8_t r = 0, g = 0, b = 0;
-    bool operator==(const Rgb8 &) const = default;
-  };
 
   /* The library's limit: a voxel holds a colour id in 6 bits, and 0 is
    * Default (puzzle_c::addColor asserts beyond it; legacy's Add did not

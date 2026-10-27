@@ -45,10 +45,12 @@ namespace btui {
   Rgb pieceColor(int shape, int copy);
 
   /* the same colours as 0 to 255 per channel, cut off rather than rounded
-   * (legacy pieceColorRi and friends, the FLTK GUI's colours)
+   * (legacy pieceColorRi and friends, the FLTK GUI's colours); the
+   * drawing colours' RGB is one too (drawcolours)
    */
   struct Rgb8 {
-    unsigned int r, g, b;
+    unsigned int r = 0, g = 0, b = 0;
+    bool operator==(const Rgb8 &) const = default;
   };
   Rgb8 pieceColor8(int shape);
   Rgb8 pieceColor8(int shape, int copy);
