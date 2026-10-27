@@ -491,33 +491,56 @@ namespace btui {
 
   Box layerSlab(const voxel_c & shape, Plane p, int layer) {
     const int axis = layerAxis(p);
-    const float size[3] = { float(shape.getX()), float(shape.getY()), float(shape.getZ()) };
-    float lo[3] = { 0, 0, 0 }, hi[3] = { size[0], size[1], size[2] };
-    lo[axis] = float(layer);
-    hi[axis] = float(layer + 1);
 
-    // map the grid box's corners to drawing space and take their extent;
-    // for cubes the mapping is the identity
-    Box b{ { 1e30f, 1e30f, 1e30f }, { -1e30f, -1e30f, -1e30f } };
-    for (int i = 0; i < 8; i++) {
-      float x = (i & 1) ? hi[0] : lo[0];
-      float y = (i & 2) ? hi[1] : lo[1];
-      float z = (i & 4) ? hi[2] : lo[2];
-      shape.recalcSpaceCoordinates(&x, &y, &z);
-      b.min = { std::min(b.min.x, x), std::min(b.min.y, y), std::min(b.min.z, z) };
-      b.max = { std::max(b.max.x, x), std::max(b.max.y, y), std::max(b.max.z, z) };
+    /* Along the layer axis: the layer's cells as they are drawn, which is
+     * more than one layer step where cells reach into the next layer
+     * (spheres, rhombic and tetra-octa cells). A cell is the faces round it
+     * as the flat style draws them (getConnectionFace); a sphere is a ball
+     * of radius 0.5 round its centre (the drawing mesh's). Every voxel type
+     * repeats within 10 cells, so a window of the plane that size will do. */
+    const int dims[3] = { int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+    const bool spheres = shape.getGridType()->getType() == gridType_c::GT_SPHERES;
+    float lo = 1e30f, hi = -1e30f;
+    auto take = [&](float v) { lo = std::min(lo, v); hi = std::max(hi, v); };
+    int c[3];
+    std::vector<float> fc;
+    const int a1 = (axis + 1) % 3, a2 = (axis + 2) % 3;
+    c[axis] = layer;
+    for (c[a1] = 0; c[a1] < std::min(dims[a1], 10); c[a1]++)
+      for (c[a2] = 0; c[a2] < std::min(dims[a2], 10); c[a2]++) {
+        if (!shape.validCoordinate(c[0], c[1], c[2]))
+          continue;
+        if (spheres) {
+          float m[3] = { float(c[0]), float(c[1]), float(c[2]) };
+          shape.recalcSpaceCoordinates(&m[0], &m[1], &m[2]);
+          // the centre is half a unit in from the mapped coordinate
+          take(m[axis]);
+          take(m[axis] + 1.0f);
+          continue;
+        }
+        int nx, ny, nz;
+        for (unsigned int n = 0; shape.getNeighbor(n, 0, c[0], c[1], c[2], &nx, &ny, &nz); n++) {
+          fc.clear();
+          shape.getConnectionFace(c[0], c[1], c[2], int(n), 0, 0, fc);
+          for (size_t i = 0; i + 2 < fc.size(); i += 3)
+            take(fc[i + size_t(axis)]);
+        }
+      }
+    if (lo > hi) {
+      // no cell of the type in the layer: its step, mapped to drawing space
+      float s[3] = { 0, 0, 0 }, e[3] = { 0, 0, 0 };
+      s[axis] = float(layer);
+      e[axis] = float(layer + 1);
+      shape.recalcSpaceCoordinates(&s[0], &s[1], &s[2]);
+      shape.recalcSpaceCoordinates(&e[0], &e[1], &e[2]);
+      lo = s[axis];
+      hi = e[axis];
     }
 
     // the in-plane extent is the whole grid as drawn
-    const Box g = gridBounds(shape);
-    for (int i = 0; i < 3; i++) {
-      if (i == axis)
-        continue;
-      float * mn = i == 0 ? &b.min.x : (i == 1 ? &b.min.y : &b.min.z);
-      float * mx = i == 0 ? &b.max.x : (i == 1 ? &b.max.y : &b.max.z);
-      *mn = g.min[i];
-      *mx = g.max[i];
-    }
+    Box b = gridBounds(shape);
+    (axis == 0 ? b.min.x : axis == 1 ? b.min.y : b.min.z) = lo;
+    (axis == 0 ? b.max.x : axis == 1 ? b.max.y : b.max.z) = hi;
     return b;
   }
 
