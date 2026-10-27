@@ -129,7 +129,7 @@ SVG glyphs | Plugin, now with an SVG document and texture cache | Qt SVG / Vecto
 Composed edit cursors | Via the system interface and an OS cursor call (custom work) | QCursor from a pixmap
 Light / Dark / System theme with OS change detection | Swap stylesheets; detect via SDL3's system-theme event | Built-in colour-scheme hint with a change signal
 High DPI | Per-context scaling ratio; the Win32 backend supports high DPI only on Windows 10 and newer | Automatic
-2D voxel grid editor | Custom element drawing through the render interface | Custom QQuickItem with scene-graph geometry
+2D voxel grid editor | Custom element drawing through the render interface | Custom QQuickItem with scene-graph geometry (built as a `QQuickPaintedItem`: QPainter with cached hatch and cell images, 32×32 in ~1.4 ms; see `migration/RESOLUTIONS.md`)
 3D viewport and view cube | Your OpenGL draws straight into the window | Custom item rendered through Qt's GPU layer (QRhi), or an underlay
 OS accessibility tree (also used by UI automation) | None | Yes
 

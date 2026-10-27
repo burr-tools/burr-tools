@@ -471,6 +471,8 @@ Undo/redo does not cover solution deletion or analysis (they mark the document m
 
 # 04 — Input map, shortcuts, focus
 
+> **Implemented (Qt Quick, P1–P5, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** Focus 3D is `Ctrl+Shift+F`, not `Ctrl+Space` (macOS switches the input source with it, Windows CJK input methods use it). `F2` stays Save (legacy's key); rename is `Enter` in the focused Shapes list, a double-click, the pencil or the context menu. The window-wide one-character keys (`O` `P` `F` `E` `1`–`4`) can be turned off: Settings ▸ General ▸ *Single-key shortcuts* (WCAG 2.1.4). The focused 3D canvas (a Tab stop after the toolbar, §5) has keys of its own: arrows orbit 15°, Shift+arrows pan, `+`/`−` zoom, Ctrl+arrows the view cube's 90° turns and Ctrl+Shift+←/→ its rolls (Option instead of Ctrl on macOS, whose Control+arrows switch spaces), Alt+1…6 its faces (+Z front, −Z back, −X left, +X right, +Y top, −Y bottom, as the cube labels them).
+
 ## 1. Keyboard (when focus is not in a text field) — authoritative; C22 is the user-facing copy
 **Everywhere**
 | Key | Action | Component |
@@ -826,6 +828,8 @@ Ids: `#help-shortcuts` (window), `.kbgrp`, `.kbrow`; in the mock `#setPg` page `
 <!-- FILE: foundations/density.md -->
 
 # Interface density — Standard (default) and Minimal
+
+> **Implemented (P12a/b and the 2026-10-27 audit; deviations logged in `migration/RESOLUTIONS.md`):** as §1–§2, through `Theme` tokens (a test fails on a token no component reads). The status bar's 11.5 dp text is drawn at 12 dp (font pixel sizes are whole). In Minimal the rail's menu button (shown while the menu bar is hidden) is icon-only, its name in the tooltip; the rail's rotated captions are the workspaces'. §3, the auto-hiding toolbar, is not built yet (P12a).
 
 **Setting:** Settings ▸ General ▸ **Interface density** = **Standard | Minimal** (default **Standard**; persisted with the other settings). The earlier *Comfortable* spacing is **retired**: Standard (formerly "Compact") is the baseline every component spec refers to. **Every function is available in both densities** — Minimal only changes geometry, captions and where help text appears.
 **Images:** Standard — `01-main-light.png`, `41-puzzle-tab-chips.png`, `51-solver-list-view.png`; Minimal — `67-minimal-entities.png`, `68-minimal-entities-fit-repair.png`, `69-minimal-puzzle.png`, `70-minimal-solver.png`, `71-minimal-toolbar-hidden.png`, `72-minimal-toolbar-shown.png`, `73-minimal-dark-collapsed.png`.
@@ -1423,6 +1427,8 @@ The **Entities / Puzzle / Solver switch moves from the top bar to the vertical w
 
 # C01 — Shapes sidebar (list, row actions, weight, reorder, context menu, rail)
 
+> **Implemented (P2, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** `F2` stays Save (legacy); rename starts from `Enter` in the focused list, double-click, the pencil or the menu. **Delete asks first** when a problem using the shape has solutions or a running search (undo cannot bring those back; legacy never asks). Weight stops at 0. Chip text is black or white by contrast. Dragging a row moves the others aside (150 ms) to open the gap it drops into, instead of the 2 dp drop line. The collapsed rail's selected chip has the row highlight, not the ring.
+
 **Phase:** P2. **Images:** `01-main-light.png`, `21-shape-row-hover.png`, `20-shape-row-context-menu.png`, `05-left-collapsed.png`. **Legacy:** L10 New, L11 Delete, L12 Copy, L13 Label, L14 W+, L15 W−, L16 ←, L17 →, L18 shape list. **New ids:** N10–N15.
 
 ## Purpose
@@ -1519,6 +1525,8 @@ The list is a single tab stop. With the list focused: `↑`/`↓` select the pre
 <!-- FILE: components/C02-voxel-editor-grid-size.md -->
 
 # C02 — Voxel editor ▸ Grid size
+
+> **Implemented (P4, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** sizes count in the voxel type's steps — 5 voxels for rhombic shapes, 3 for tetra-octa ones, as legacy's fields — from 1 to 1000 steps (OQ-6). With *Apply to all shapes*, every shape that allows the change changes by the same steps; the others stay, and the blocked message names them. Steppers are 28 dp (density §1).
 
 **Phase:** P4. **Images:** `01-main-light.png`, `23-voxel-editor-card.png`, `00-new-annotated.png` (N58), `legacy-size-tab-annotated.png` (L30–L33). **Legacy:** *Edit ▸ Size* tab (dimension fields + sliders + checkboxes + "Apply to All Shapes").
 *Why here:* grid size is a property of the 2D grid, and the right card has the vertical room. It sits **between the grid and the Drawing-colour footer** and is always visible (no accordion). Grid-fitting operations (prune, centre, origin) are not size edits and live in C03.
@@ -1712,6 +1720,8 @@ Product-owner definitions: A = convert inner/outer surface voxels to **fixed**; 
 
 # C06 — 3D viewport (canvas, toolbar, navigation, Display menu, 3D editing, overlays)
 
+> **Implemented (P4/P5, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** **Targets** — a voxel under the pointer always decides (its face: Fixed/Variable beyond it, Erase/Paint the voxel); where the pointer is on no voxel, the active layer's slab acts as the 2D grid (the cell under the pointer); in an empty shape with the slab hidden the first voxel goes to the origin. The status bar names the target and the empty-shape message says what a Shift-click places. **Edit button** — the override state is drawn as `on` (accent fill, accent glyph and badge of the quick tool), without the dashed outline; its glyph does not take the drawing colour yet (P8). **Slab** — as thick as the active layer's cells as drawn (a sphere layer's balls reach into the next layer; rhombic and tetra-octa cells too), not one layer step. **Ghosts** — drawn last; behind voxels at 35 % of their strength; only cells the tool would change get one (Paint over a voxel of that colour: none). **Keyboard** — the canvas is a Tab stop after the toolbar, ringed on the card's edge; its keys in `overview/04`. The hint's first line names Option / Control on macOS. Flat variable voxels are 60 % opaque (50 % here); Classic and STL voxel styles are additions.
+
 **Phase:** P5. **Images:** `01-main-light.png`, `15-display-menu.png`, `26-display-menu-dim-layers.png`, `16…19-3d-*-ghost.png`, `27…28-2d-hover-*.png`, `29-edit-button-*.png`, `30-focus-3d-no-slab.png`, `04-focus-3d.png`. **Legacy:** L95 (canvas; legacy modifier-click editing), L91/L92 (status glyph pairs → now in the Display menu). **New ids:** N40–N44. Variables/events: `overview/06-ui-contract.md §4`.
 
 ## Anatomy (centre card, no header)
@@ -1813,6 +1823,8 @@ ids `entities.viewport.display.axes|bounds|layer|dim|persp|ortho|colourPiece|col
 
 # C07 — Voxel editor: header, tool strip, Mirror & Span
 
+> **Implemented (P4, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** sizes per density §1 (tool strip h48, Mirror/Span h44; Minimal icon-only, group labels hidden). Mirror/Span tooltips name their group (“Mirror X: also place a mirrored voxel across the X centre plane”, “Span X: fill the whole grid along X on each click”), since Minimal hides the labels. The header also carries the read-only voxel-type chip (C14).
+
 **Phase:** P4. **Images:** `23-voxel-editor-card.png`, `19-3d-mirror-span-preview.png`, `legacy-tools-tab-annotated.png` (L60–L63). **New ids:** N50–N54.
 
 ## Card structure (right card, width 400; rail 56)
@@ -1872,6 +1884,8 @@ The same `S` is used for the 3D ghost preview (C06). The whole expansion is part
 > **Density (Rev 6.0):** dimensions here are **Standard** density values; Minimal values and any later corrections are in `foundations/density.md`, which wins on conflicts.
 
 # C08 — Voxel editor: plane selector, layer strip, 2D grid
+
+> **Implemented (P4, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** **Planes** — XZ and YZ for every voxel type but the triangular prism (product decision 2026-10-28): spheres, rhombic and tetra-octa grids look the same along every axis, so their XZ/YZ layers are drawn as XY ones; prisms are edited one XY layer at a time, the disabled buttons say why. **Layer chips** 32×24 (density §1); their tooltip and name say the axis (“Z layer 3”); no Tab stops (`PgUp`/`PgDn` work anywhere in Entities). The grid has no elevation shadow; rulers number square cells only.
 
 **Phase:** P4. **Images:** `23-voxel-editor-card.png`, `03-focus-2d.png`, legacy L70 (layer slider), L71 (grid). **New ids:** N55–N57.
 
@@ -1933,6 +1947,8 @@ In Focus-2D the card gets all remaining width; cell size grows (up to 120 dp). L
 <!-- FILE: components/C09-drawing-colour.md -->
 
 # C09 — Drawing colour (footer, palette, colour menu, rail swatch)
+
+> **Implemented (P3, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** the footer has a title, **“Colours”**, with an info button whose tooltip says what colours are mainly for (the Puzzle workspace's colour constraints; Default constrains nothing). Names follow legacy: **Default, C1, C2 …** (OQ-8; not C1 for Default). **Add** appends the next preset colour at once (Edit colour… opens the chooser). **Remove** asks first when a problem using the colour has solutions or a running search; Add stops at the library's 63 colours. The palette has a row of its own under the current colour; the big swatch is 32 dp (Minimal 26, density §1).
 
 **Phase:** P3. **Images:** `23-voxel-editor-card.png`, `24-colour-menu.png`, legacy L80–L83 (`legacy-tools-tab-annotated.png`). **New id:** N58.
 
@@ -2085,6 +2101,8 @@ Left rail contents: expand button, one chip per shape, `+`. Right rail: expand b
 <!-- FILE: components/C12-settings-dialog.md -->
 
 # C12 — Settings dialog
+
+> **Implemented (P7 and P5, 2026-10):** General also has **Single-key shortcuts** (default on): off, the window-wide one-character keys (`O` `P` `F` `E` `1`–`4`) do nothing (WCAG 2.1.4); the Keyboard shortcuts window says so.
 
 **Phase:** P7. **Images:** `09-settings-general.png`, `66-settings-general-theme.png`, `10-settings-3dview.png`, `11-settings-performance.png`, `12-settings-shortcuts.png`, `13-settings-search.png`; legacy `legacy-settings-dialog.png`. **New id:** N70 (`settings.*`).
 
@@ -3260,22 +3278,22 @@ Build the **framework-neutral controller layer** against `overview/06-ui-contrac
 | OQ-1 Flip semantics |  |  |  |  |
 | OQ-2 Size-tab icon order / inner-outer pair order *(Grid Scale dropped)* |  |  |  |  |
 | OQ-3 *(closed — dropped by product decision)* | n/a |  |  |  |
-| OQ-4 2D plane selection, tooltips, shape context menu |  |  |  |  |
-| OQ-5 Shrink below occupied voxels |  |  |  |  |
-| OQ-6 Size limits |  |  |  |  |
+| OQ-4 2D plane selection, tooltips, shape context menu | One plane selector (C08). XZ/YZ for all voxel types but the triangular prism (2026-10-28). Context menu as C01 (legacy has none) | `uicore/voxeledit.cpp:planeAvailable`, `qml/ShapesCard.qml` | C08, C01 notes | 2026-10 / implementation |
+| OQ-5 Shrink below occupied voxels | Blocked with the C02 message, nothing changes | `uicore/voxeledit.cpp:resizeShape` | C02 note | 2026-10 / implementation |
+| OQ-6 Size limits | 1…1000 steps; a step is 5 voxels (rhombic), 3 (tetra-octa), else 1 | `uicore/voxeledit.h:maxGridSteps, sizeStep` | C02 note | 2026-10 / implementation |
 | OQ-7 Out-of-grid transforms |  |  |  |  |
-| OQ-8 Colour add/edit/remove |  |  |  |  |
-| OQ-9 Legacy shortcuts / modifier-click / status glyph mapping |  |  |  |  |
+| OQ-8 Colour add/edit/remove | Legacy names: Default, C1, C2 …; Add = next preset at once, Edit = platform chooser; Remove reassigns to Default and asks when solutions would be lost; at most 63 colours | legacy `gui/BlockList.cpp:ColorSelector::getText`; `uicore/drawcolours.cpp` | C09 note | 2026-10 / implementation |
+| OQ-9 Legacy shortcuts / modifier-click / status glyph mapping | Legacy accelerators kept; quick tools Shift = Fixed, Alt (Option/⌘ on macOS) = Variable, Ctrl (Control on macOS) = Erase; status glyph pairs → Display menu | `uicore/commands.cpp`, `uicore/voxeledit.cpp:quickTool` | 04 note | 2026-10 / implementation |
 | OQ-10 Menu commands |  |  |  |  |
 | OQ-11 Config keys & ranges |  |  |  |  |
-| OQ-12 Picking |  |  |  |  |
+| OQ-12 Picking | Front-most face of the flat mesh; a voxel under the pointer decides, else the active layer's slab, else (empty shape, slab hidden) the origin | `uicore/scenemesh.cpp:pick`, `uicore/voxeledit.cpp:target3d` | C06 note | 2026-10 / implementation |
 | OQ-13 RmlUi version & capabilities, integration with GL renderer/legacy GUI |  |  |  |  |
-| OQ-14 New-shape defaults / delete confirm |  |  |  |  |
+| OQ-14 New-shape defaults / delete confirm | New: empty, as big as the selected shape. Delete asks only when a problem using it has solutions or a running search (legacy never asks) | `uicore/shapelist.cpp`, `qtgui/shapesmodel.cpp` | C01 note | 2026-10 / implementation |
 | OQ-15 Weight limits |  |  |  |  |
 | OQ-16 Positional ids / cross-tab references / palette |  |  |  |  |
-| OQ-17 OS default pointer bitmap for cursor composition |  |  |  |  |
+| OQ-17 OS default pointer bitmap for cursor composition | Fallback used on every platform: the bundled arrow with the badge; the OS arrow and cursor size wait for P8 | `qtgui/editcursor.cpp` | — | 2026-10 / implementation |
 | OQ-18 File ▸ New flow, voxel type names, view-cube legacy details |  |  |  |  |
-| OQ-19 Per-voxel-type transforms/scale/mirror/planes/layers |  |  |  |  |
+| OQ-19 Per-voxel-type transforms/scale/mirror/planes/layers | Planes and layers: every type, XZ/YZ but for prisms; Mirror/Span on the grid's cells for every type (transforms: P6) | `uicore/gridcells.cpp`, `uicore/voxeledit.cpp:expand` | C08 note | 2026-10 / implementation |
 | OQ-20 Groups meaning/storage |  |  |  |  |
 | OQ-21 Legacy ←/→ in Puzzle tab |  |  |  |  |
 | OQ-22 Colour rules semantics |  |  |  |  |
@@ -3293,4 +3311,31 @@ Build the **framework-neutral controller layer** against `overview/06-ui-contrac
 | OQ-34 Legacy menu-only features | existing dialogs kept; Config = Settings; bulk range → Puzzle ⋯ menu | product owner | Rev 5.2 | resolved |
 | *OQ-25 note:* Before/After = current sorted list order (confirmed by product owner) |  |  |  |  |
 | OQ-35 Front-end framework decision (spike results, scores, raw numbers) |  |  |  |  |
-| OQ-36 Legacy accelerators vs new keys |  |  |  |  |
+| OQ-36 Legacy accelerators vs new keys | Legacy wins: `F2` stays Save; Focus 3D is `Ctrl+Shift+F` (`Ctrl+Space` is the OS input-source key) | `uicore/commands.cpp` | 04 note | 2026-10 / implementation |
+
+## Implementation deviations (Qt Quick front end, P1–P5, 2026-10)
+
+What the implementation does differently from the spec, on purpose; the
+running log, with the reasons in full, is `src/qtgui/README.md` (*Deviations
+from the spec, by decision* and the per-phase decisions). Product decisions
+are the owner's; the rest the implementation's, measured or argued there.
+
+| Area | Spec | Implemented | Why |
+|---|---|---|---|
+| Keys (04) | Focus 3D `Ctrl+Space`; rename `F2` | `Ctrl+Shift+F`; `F2` stays Save | OS input-source key; legacy accelerator wins (OQ-36) |
+| Keys (04, C12) | — | Settings ▸ General ▸ *Single-key shortcuts* | WCAG 2.1.4 (product decision 2026-10-27) |
+| Keys (04 §5) | 3D canvas a Tab stop, keys unnamed | arrows / Shift+arrows / `+` `−` / Ctrl(+Shift)+arrows / Alt+1…6 | WCAG 2.1.1; keys chosen (P5) |
+| Density | §1 numbers | as §1 via tokens; status text 11.5 drawn at 12; Minimal menu button icon-only | whole-pixel fonts; product decision 2026-10-27 |
+| C01 | `F2`; no confirm; 2 dp drop line; ring on rail chip | `Enter`; confirm when solutions; rows move aside; row highlight | product decisions 2026-10-27 |
+| C02 | ±1 voxel | ±1 step of the voxel type (5 rhombic, 3 tetra-octa) | legacy's fields |
+| C06 targets | voxel faces only | + the slab as 2D grid off voxels; + origin in an empty shape | product decisions 2026-10-27/28 |
+| C06 Edit button | override = dashed outline | override drawn as `on` | product decision 2026-10-27 |
+| C06 slab | one layer step thick | the layer's cells as drawn | spheres overlap (product decision 2026-10-27) |
+| C06 ghosts | — behind voxels; Paint on all voxels | 35 % behind voxels; only cells that change | find inner cells; one rule with the 2D preview |
+| C06 voxels | variable 50 % | 60 %; Classic and STL styles | earlier phases |
+| C07 | tooltips “Also place …” | name the group (“Mirror X: …”) | Minimal hides the group labels |
+| C08 planes | all planes, every type | all but prisms' XZ/YZ | prisms are not alike across their layers (2026-10-28) |
+| C08 grid | elevation shadow | none | flat cards |
+| C09 | no title; Add = chooser; names Default=C1 | “Colours” + info tooltip; Add = preset; Default, C1 … | product decisions; legacy names (OQ-8) |
+| Qt guide §5.2 | grid as scene-graph geometry | `QQuickPaintedItem` (QPainter, cached hatch and cell images) | 32×32 in ~1.4 ms, well inside AC-C08-08's 8 ms |
+| Contract §4 | `edit_mode` owned by ViewportController | `EditorController.editMode` | one owner for tool, quick tool and Edit mode |
