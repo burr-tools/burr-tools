@@ -350,8 +350,9 @@ QVariantList CommandController::shortcutHelp(void) const {
   const QString shift = keyCaps("Shift").value(0);
   // the quick tools' keys (btui::quickTool): Alt (Option), Ctrl (Control on macOS)
   const bool mac = btui::currentPlatform() == btui::Platform::Mac;
-  const QString variableKey = modifierCap("Alt");
-  const QString eraseKey = modifierCap(mac ? "Meta" : "Ctrl");
+  // macOS: Command (Qt's "Ctrl") and Option (Qt's "Alt")
+  const QString variableKey = modifierCap(mac ? "Ctrl" : "Alt");
+  const QString eraseKey = modifierCap(mac ? "Alt" : "Ctrl");
 
   QVariantList everywhere{
     row(tr("Switch to Entities / Puzzle / Solver"), keysOf({ Command::WorkspaceEntities, Command::WorkspacePuzzle, Command::WorkspaceSolver })),

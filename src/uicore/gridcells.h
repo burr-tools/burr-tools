@@ -68,6 +68,18 @@ namespace btui {
 
   /* the index of the cell at a point, -1 for none */
   int cellAt(const GridLayout & layout, Pt p);
+
+  /* a cell's centre: the circle's, else its outline's corners' mean */
+  Pt cellCentre(const GridCell & c);
+
+  /* The cell an arrow key steps to from cell `from` (the grid by keyboard):
+   * the nearest whose centre lies within 60 degrees of the direction
+   * (dx, dy), in layout units (y up), straighter ones first; -1 at the
+   * edge. Every voxel type's cells, squares or not. */
+  int stepCell(const GridLayout & layout, int from, double dx, double dy);
+
+  /* the cell nearest a point, -1 for none: where the keyboard starts */
+  int nearestCell(const GridLayout & layout, Pt p);
 }
 
 #endif

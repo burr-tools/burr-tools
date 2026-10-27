@@ -424,9 +424,104 @@ void VoxelGridItem::mousePressEvent(QMouseEvent * e) {
   }
   m_pressed = true;
   m_last = e->position();
+  m_keyCol = c.x();                    // the keys go on from here
+  m_keyRow = c.y();
+  forceActiveFocus(Qt::MouseFocusReason);
   m_editor->hover(c.x(), c.y());
   m_editor->press(c.x(), c.y(), e->button() == Qt::RightButton, e->modifiers());
   e->accept();
+}
+
+// --- the keyboard ---------------------------------------------------------------
+
+int VoxelGridItem::keyCell(void) const {
+  for (size_t i = 0; i < m_layout.cells.size(); i++)
+    if (m_layout.cells[i].col == m_keyCol && m_layout.cells[i].row == m_keyRow)
+      return int(i);
+  return -1;
+}
+
+void VoxelGridItem::setKeyCell(int index) {
+  if (!m_editor || index < 0 || size_t(index) >= m_layout.cells.size())
+    return;
+  m_keyCol = m_layout.cells[size_t(index)].col;
+  m_keyRow = m_layout.cells[size_t(index)].row;
+  m_editor->hover(m_keyCol, m_keyRow);
+  update();
+}
+
+void VoxelGridItem::focusInEvent(QFocusEvent * e) {
+  QQuickPaintedItem::focusInEvent(e);
+  relayout();
+  // the cell it had, else the hovered one, else the one in the middle
+  int i = keyCell();
+  if (i < 0 && m_editor && m_editor->hoverCol() >= 0) {
+    m_keyCol = m_editor->hoverCol();
+    m_keyRow = m_editor->hoverRow();
+    i = keyCell();
+  }
+  if (i < 0)
+    i = btui::nearestCell(m_layout, { m_layout.width / 2, m_layout.height / 2 });
+  setKeyCell(i);
+}
+
+void VoxelGridItem::focusOutEvent(QFocusEvent * e) {
+  QQuickPaintedItem::focusOutEvent(e);
+  if (m_editor && !m_hovered && !m_pressed) {
+    m_editor->setModifiers(Qt::NoModifier);
+    m_editor->hover(-1, -1);
+    update();
+  }
+}
+
+void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
+  if (!m_editor) {
+    e->ignore();
+    return;
+  }
+  relayout();
+  const int key = e->key();
+  if (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta) {
+    m_editor->setModifiers(e->modifiers());             // the quick tool's cursor and ghost
+    e->ignore();
+    return;
+  }
+  int i = keyCell();
+  if (i < 0)
+    i = btui::nearestCell(m_layout, { m_layout.width / 2, m_layout.height / 2 });
+  // layout units: y up, as the rows count
+  const Qt::KeyboardModifiers mods = e->modifiers() & ~Qt::KeypadModifier;
+  switch (key) {
+    case Qt::Key_Left:  setKeyCell(btui::stepCell(m_layout, i, -1, 0)); break;
+    case Qt::Key_Right: setKeyCell(btui::stepCell(m_layout, i, 1, 0)); break;
+    case Qt::Key_Up:    setKeyCell(btui::stepCell(m_layout, i, 0, 1)); break;
+    case Qt::Key_Down:  setKeyCell(btui::stepCell(m_layout, i, 0, -1)); break;
+    case Qt::Key_Space:
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+    case Qt::Key_Delete:
+    case Qt::Key_Backspace: {
+      if (i < 0)
+        break;
+      setKeyCell(i);
+      const bool erase = key == Qt::Key_Delete || key == Qt::Key_Backspace;
+      // one press, one undo step, the tool in effect (Delete: Erase)
+      if (m_editor->press(m_keyCol, m_keyRow, erase, erase ? Qt::NoModifier : mods))
+        m_editor->release();
+      break;
+    }
+    default:
+      e->ignore();
+      return;
+  }
+  e->accept();
+}
+
+void VoxelGridItem::keyReleaseEvent(QKeyEvent * e) {
+  const int key = e->key();
+  if (m_editor && (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta))
+    m_editor->setModifiers(e->modifiers());
+  e->ignore();
 }
 
 void VoxelGridItem::strokeTo(QPointF p) {

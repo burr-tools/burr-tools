@@ -260,7 +260,9 @@ void ViewportController::buildMesh(void) {
     m_mesh.reset();
     guarded([&] {
       auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
-      m_pick = btui::buildPickMesh(*m_shape);
+      // the pick mesh when a pick needs it: a stroke in the 2D grid never does
+      m_pick.clear();
+      m_pickDirty = true;
       const btui::Vec3 c = (mesh->boundsMin + mesh->boundsMax) * 0.5f;
       m_camera.setScene(c, std::max(0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f));
       m_mesh = std::move(mesh);
@@ -268,6 +270,7 @@ void ViewportController::buildMesh(void) {
   } else {
     m_mesh.reset();
     m_pick.clear();
+    m_pickDirty = false;
   }
   m_meshStyle = m_voxelStyle;
   updateSlab();
@@ -305,6 +308,13 @@ btui::Target3d ViewportController::targetAt(float x, float y, Qt::KeyboardModifi
   const std::optional<btui::Tool> tool = m_editor->viewportAction(mods);
   if (!s || !tool || m_layout->workspace() != LayoutController::Entities)
     return {};
+  if (m_pickDirty) {
+    m_pickDirty = false;
+    guarded([&] {
+      m_pick = btui::buildPickMesh(*s);
+      return true;
+    });
+  }
   const btui::Camera::Ray r = m_camera.rayAt(x, y);
   const btui::PickHit voxel = btui::pick(m_pick, r.origin, r.dir);
   const bool shown = slabShown();

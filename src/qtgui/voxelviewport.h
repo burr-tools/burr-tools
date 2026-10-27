@@ -37,8 +37,10 @@
  * Over it without a button the pointer and the modifiers held go to the
  * controller (pointerHover), which the main view edits from (C06): the
  * modifiers also when only they change, so a quick tool's cursor and ghost
- * appear the moment its key goes down (AC-C06-08). The cursor is the edit
- * tool's while a click would edit, the grab hand while dragging.
+ * appear the moment its key goes down (AC-C06-08) -- at most once a frame:
+ * the latest pointer and modifiers are kept and picked in updatePolish()
+ * (the Qt Quick guide's section 7). The cursor is the edit tool's while a
+ * click would edit, the grab hand while dragging.
  */
 class VoxelViewport : public QQuickRhiItem {
   Q_OBJECT
@@ -85,6 +87,7 @@ protected:
   void hoverMoveEvent(QHoverEvent * e) override;
   void hoverLeaveEvent(QHoverEvent * e) override;
   bool eventFilter(QObject * watched, QEvent * e) override;
+  void updatePolish(void) override;
 
 private:
 
@@ -93,6 +96,8 @@ private:
   QPointer<SceneController> m_controller;
   QMetaObject::Connection m_frameConnection;
   QPointF m_hover{ -1, -1 };       ///< the pointer, while over the item
+  Qt::KeyboardModifiers m_hoverMods;
+  bool m_hoverPending = false;     ///< a hover to pick at the next polish
   bool m_filtering = false;        ///< watching the modifier keys
   int m_cursorKey = -2;            ///< the cursor set: -1 none, the tool, or a grab hand (-3 orbit, -4 pan)
   QList<int> m_supported;          ///< the device's sample counts; empty until known

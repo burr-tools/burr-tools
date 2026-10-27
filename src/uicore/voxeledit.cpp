@@ -90,9 +90,11 @@ namespace btui {
   }
 
   std::optional<Tool> quickTool(Platform p, ModifierKeys m) {
-    // macOS: Command (Qt's control) is Alt's partner for Variable, Control (Qt's meta) erases
-    const bool erase = p == Platform::Mac ? m.meta : m.control;
-    const bool variable = p == Platform::Mac ? (m.alt || m.control) : m.alt;
+    /* macOS: Command (Qt's control) is Variable and Option (Qt's alt)
+     * erases -- not Control, whose click is the secondary click there
+     * (overview/04 section 6; product decision 2026-10-28) */
+    const bool erase = p == Platform::Mac ? m.alt : m.control;
+    const bool variable = p == Platform::Mac ? m.control : m.alt;
     if (erase)
       return Tool::Erase;
     if (variable)
