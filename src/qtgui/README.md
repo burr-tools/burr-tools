@@ -30,7 +30,8 @@ it can replace it.
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
 | — 3D view (P5 without editing) | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles | Done; editing in 3D (Edit button, quick tools, ghosts, cursors) arrives with P4 |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
-| P3 onward | Drawing colour, voxel editor, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
+| P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; painting with it arrives with P4 / P5 |
+| P4 onward | Voxel editor, 3D editing, inspector, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
 
 ### Deferred to the next phase
 
@@ -64,7 +65,11 @@ Pick these up with the phase named.
 | — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 |
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 audit |
-| Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the gesture wants a check by hand or a C++ test with real event timestamps | P8 |
+| Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
+| Edits that change no geometry rebuild the 3D mesh | performance guide | A rename, a weight step or a colour added rebuilds the selected shape's mesh (`puzzleEdited` carries no kind). `puzzleEdited` could say whether voxels changed | P4, with the editor's edit kinds |
+| Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
+| Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
+| Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 audit |
 | — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, elided shape names without a tooltip, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 audit |
 
@@ -114,6 +119,7 @@ editor); it is not a stable interface yet.
 | `DocumentController` | open, save, new, the window title, the undo / redo session |
 | `CommandController` | the command table (`uicore/commands`) as menus and shortcuts, per platform |
 | `LayoutController` | workspaces, card collapse, Focus 2D / 3D, the column widths |
+| `ColoursModel` | the drawing colour and the puzzle's colours: add and edit through the colour chooser, remove (asks first when solutions would go), each one `AK_COLOR_PALETTE` undo step through `btui::drawcolours` |
 | `ShapesModel`, `StatusController` | the shape list and its actions (new, duplicate, delete, rename, weight, reorder, each one undo step through `btui::shapelist`), and the status bar |
 | `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
@@ -325,6 +331,16 @@ commit holds just the images that changed.
   **Dragging a row** moves the other rows aside (150 ms, `motion.reorderMs`)
   to open the gap it drops into, in place of AC-C01-07's 2 dp drop line
   (product decision, 2026-10-27).
+- **Drawing colour** (P3): **Remove colour asks first** when a problem
+  whose shapes use the colour has solutions or a search in progress
+  (legacy clears all of those problems' solutions without asking; the same
+  rule as the shape Delete). After a remove the drawing colour is Default,
+  as C09 says (legacy kept the next colour). **Add** is refused at the
+  library's 63 colours, where legacy's Add reached an assert. **Add is
+  quick**: a preset colour at once, as the mock does (C09 asked for the
+  chooser); Edit colour… opens the platform's chooser (`ColorDialog`). The
+  palette has a row of its own under the current colour, as wide as the
+  card (C09 put it beside the name, where it had room for one swatch).
 - **Rendering** is gamma-correct; the layer slab's tint is scaled so it
   still reads like the mock's sRGB mix.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
@@ -427,3 +443,23 @@ Every phase's pull request follows what #140 settled:
   only while the list has focus (spec Rev 6.0, C01 *Keyboard*). They are in
   the command table with a scope, so they appear in Help ▸ Keyboard
   shortcuts and never fire from elsewhere.
+
+### P3 decisions
+
+- **Colours by id**, as voxels store them: 0 is Default (the piece's own
+  colour, named "Default", C0), 1 … n the puzzle's colours, named C1, C2, …
+  by their id (product decision 2026-10-27; legacy's chips made Default C1,
+  its colours C2, C3, …; OQ-8). The rules are `uicore/drawcolours`.
+- **Add is quick** (the mock's, product decision 2026-10-27): + appends the
+  first of a set of distinct preset colours the puzzle lacks (the mock's
+  five, then five more), with no chooser, and draws with it; Edit colour…
+  then changes it in the platform's chooser. As legacy's `cb_AddColor`, the
+  new colour is allowed in every problem's colour matrix. Edit keeps the
+  drawing colour.
+- **Remove** does what legacy's does (solutions of the problems using a
+  shape with that colour, then `removeColor`), asks first only when that
+  loses solutions, and leaves Default to draw with.
+- Colour edits are `AK_COLOR_PALETTE` undo steps, through
+  `DocumentController::edit(kind, …)`, which `editStructure` now calls.
+- The drawing colour is not used yet: the 2D grid and 3D editing paint with
+  it from P4 and P5 (AC-C09-02 is checked there).
