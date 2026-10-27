@@ -53,6 +53,7 @@ private slots:
   void lightingChangesTheShading();
   void darkThemeUsesTheDarkCanvas();
   void theSlabTintsItsLayer();
+  void dimmingFadesTheOtherLayersInEveryStyle();
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();
   void theStlPreviewDrawsTheMeshAndItsInsides();
@@ -73,6 +74,7 @@ class TestViewportItem : public QObject {
 private slots:
   void redrawsAtTheFinalSizeAfterTheCardGrows();
   void drawsWithTheBestMultisamplingTheDeviceHas();
+  void dimmingShowsInTheViewInEveryStyle();
 };
 
 /* The pipeline caches of the main window and the offscreen renderer. */

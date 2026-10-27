@@ -1068,6 +1068,44 @@ void TestRender::theSlabTintsItsLayer() {
   QVERIFY(a.blue() >= b.blue());
 }
 
+void TestRender::dimmingFadesTheOtherLayersInEveryStyle() {
+  // AC-C06-05 / AC-C11-08: a 6x6x2 block seen from +Z shows its layer 1;
+  // dimming around layer 0 fades it, around layer 1 leaves it as it is
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  for (const char * style : { "flat", "legacy", "stl" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    f.app->document()->editStructure(-1, [](puzzle_c & p) {
+      p.addShape(6, 6, 2);
+      p.getShape(0)->setAll(voxel_c::VX_FILLED);
+      return true;
+    });
+    f.app->shapes()->refresh();
+    f.app->shapes()->select(0);
+    ViewportController * v = f.app->viewport();
+    v->setDisplayLayerSlab(false);
+    v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+    const QImage plain = t.render(v->frame(1));
+    v->setDisplayDimOtherLayers(true);
+    f.app->editor()->setLayer(1);
+    const QImage own = t.render(v->frame(1));
+    f.app->editor()->setLayer(0);
+    const QImage other = t.render(v->frame(1));
+    saveForInspection(other, qPrintable(QStringLiteral("dim-%1").arg(QLatin1String(style))));
+    // a cell's middle, off its outline: a dimmed voxel is drawn see-through
+    // (C06: at 28 %) over what is behind it -- the canvas, or in the classic
+    // style the active layer's far faces; its own layer is drawn as it is.
+    // The picture stays opaque: the window shows no alpha.
+    const QPoint c(147, 107);
+    QVERIFY2(near(own.pixelColor(c), plain.pixelColor(c), 3), style);
+    QCOMPARE(other.pixelColor(c).alpha(), 255);
+    QVERIFY2(!near(other.pixelColor(c), plain.pixelColor(c), 30),
+             qPrintable(QStringLiteral("%1: %2 -> %3").arg(QLatin1String(style), plain.pixelColor(c).name(),
+                                                           other.pixelColor(c).name())));
+  }
+}
+
 void TestRender::everyGridTypeRenders() {
   // T-C14 / AC-C18-05 for the Entities view: one example of each grid type
   OffscreenTarget t;
@@ -1286,6 +1324,35 @@ void TestViewportItem::redrawsAtTheFinalSizeAfterTheCardGrows() {
            qPrintable(QStringLiteral("%1 pixels differ from a fresh render").arg(differing)));
   // the shape really is there, centred in the wider view
   QVERIFY(!near(after.pixelColor(360, 150), Theme::instance()->canvas(), 20));
+}
+
+void TestViewportItem::dimmingShowsInTheViewInEveryStyle() {
+  // AC-C06-05 / AC-C11-08 as the window shows it: voxels outside the active
+  // layer fade toward the canvas, in every voxel style
+  for (const char * style : { "flat", "legacy", "stl" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+    Theme::instance()->setMode(QStringLiteral("light"));
+    ViewportController * v = f.app->viewport();
+    QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+    QuickTarget t;
+    GPU_OR_SKIP(t.create(QSize(320, 240)));
+    auto * view = new VoxelViewport(t.window->contentItem());
+    view->setController(v);
+    view->setSize(QSizeF(320, 240));
+    // the front of the shell, low left: layer 0 is at the back
+    const QPoint at(95, 165);
+    const QColor plain = t.frame().pixelColor(at);
+    v->setDisplayDimOtherLayers(true);
+    const QImage dimmed = t.frame();
+    saveForInspection(dimmed, qPrintable(QStringLiteral("item-dim-%1").arg(QLatin1String(style))));
+    const QColor c = dimmed.pixelColor(at);
+    // see-through, never the window behind the view
+    QVERIFY2(!isMagenta(c) && c.alpha() == 255, style);
+    QVERIFY2(!near(c, plain, 30), qPrintable(QStringLiteral("%1: %2 -> %3")
+                                                    .arg(QLatin1String(style), plain.name(), c.name())));
+  }
 }
 
 void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {
