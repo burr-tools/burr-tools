@@ -70,6 +70,7 @@ interleaved (2026-10-10):
 | check after the first cut's final pass (2026-10-13; 5 warm runs, not interleaved, so a sanity check rather than a comparison) | 309 ms (275–433) / — | 515 ms (447–684) / — |
 | standalone (static) build, PR 140's head (2026-10-27; 15 interleaved runs, times from process creation) | 285 / 302 ms | 471 / 562 ms |
 | the same after P2 and P3 (Shapes card actions, the Drawing colour footer) | 287 / 304 ms | 481 / 572 ms (+10 ms, ~2 %; first paint unchanged. Not traced; most likely the colour footer and the two context menus the workspace now makes) |
+| P4 (the voxel editor), against P3's build, same method, the same afternoon; another program kept the machine ~30 % busy, so both are slower than the rows above | 302 / 333 ms (P3: 314 / 331) | 533 / 646 ms (P3: 510 / 612; +23 / +34 ms, ~5 %. First paint unchanged: the editor card -- tool strip, Mirror and Span, planes, layer strip, the 2D grid, Grid size -- is made with the workspace, after the first frame) |
 
 Memory at that point, release build with PelikanBurr open and idle: 116–118 MB
 working set, ~310 MB committed (much of it the Direct3D driver's), the same
