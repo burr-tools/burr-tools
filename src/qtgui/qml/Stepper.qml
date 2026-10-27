@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// PR-06 Stepper: [axis] [−] [value] [＋] in one 30 dp box. The value is
+// PR-06 Stepper: [axis] [−] [value] [＋] in one box, h28 (Minimal 26). The value is
 // typed (Enter or leaving the field commits, Esc reverts, invalid text
 // reverts), stepped with ↑ / ↓ or the wheel while focused, and with − / ＋,
 // which repeat while held. It shows `value` and asks for a new one with
@@ -23,7 +23,7 @@ Rectangle {
     readonly property alias incButton: inc
 
     implicitWidth: 112
-    implicitHeight: 30
+    implicitHeight: Theme.stepper
     radius: Theme.radiusControl
     color: Theme.panel
     border.width: input.activeFocus ? 2 : 1
@@ -56,7 +56,7 @@ Rectangle {
         id: sb
         property string sign
         implicitWidth: 22
-        implicitHeight: 26
+        implicitHeight: root.height - 2
         focusPolicy: Qt.NoFocus          // the field is the Tab stop; ↑ / ↓ step there
         autoRepeat: true
         autoRepeatDelay: 400

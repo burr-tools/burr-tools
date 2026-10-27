@@ -204,6 +204,7 @@
         32,
         24
       ],
+      "drawSwatch": 32,
       "puzzleTile": [
         96,
         50
@@ -245,6 +246,7 @@
         30,
         22
       ],
+      "drawSwatch": 26,
       "puzzleTile": [
         78,
         46
