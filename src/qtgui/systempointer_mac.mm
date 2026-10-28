@@ -45,7 +45,7 @@ namespace systempointer {
       out.fill(Qt::transparent);
       CGColorSpaceRef space = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
       CGContextRef context = CGBitmapContextCreate(out.bits(), size_t(w), size_t(h), 8, size_t(out.bytesPerLine()), space,
-                                                   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
+                                                   uint32_t(kCGImageAlphaPremultipliedFirst) | uint32_t(kCGBitmapByteOrder32Little));
       CGColorSpaceRelease(space);
       if (!context)
         return {};

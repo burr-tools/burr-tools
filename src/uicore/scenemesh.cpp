@@ -380,8 +380,8 @@ namespace btui {
      * stays whole with the voxel the mesher gave it. */
     void splitAtCellWalls(std::vector<MeshVertex> & tris, const voxel_c & shape) {
       using Poly = std::vector<MeshVertex>;
-      struct Plane { Vec3 n; float d; };                 // inside: dot(n, p) <= d
-      struct Cell { float at[3]; Vec3 lo, hi; std::vector<Plane> walls; };
+      struct Plane { Vec3 n; float d = 0; };                 // inside: dot(n, p) <= d
+      struct Cell { float at[3]{}; Vec3 lo, hi; std::vector<Plane> walls; };
       std::vector<Cell> cells;
       std::vector<float> corners;
       for (unsigned int z = 0; z < shape.getZ(); z++)
