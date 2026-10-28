@@ -45,7 +45,7 @@ below, lists them per phase).
 | Item | Spec | Why it waits | Phase |
 | :--- | :--- | :--- | :--- |
 | The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
-| Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
+| Dim other layers in the STL style, but bricks | AC-C06-05 | Bricks' merged STL faces are cut at every cell boundary (`splitAtCells`, 2026-10-28), so they dim layer by layer; the other voxel types' cells are not whole units of the drawing, and a merged face of theirs still dims as a whole | P8 |
 | Quick tool 2 (Alt+click) on KDE | AC-C06-06 | In the 2D grid and the 3D view since P5, and safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). KDE moves windows on Alt+drag by default, so there the window manager may take the click; untested on that desktop | P8 |
 | STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
 | Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 |
@@ -514,7 +514,7 @@ moves to a later phase says why in that table.
   hidden 700 ms after the pointer leaves the strip, 500 ms when it leaves
   the view; Esc or a press in the view lets go of its focus.
 - **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
-  other layers in the STL style; STL export writing in place; image export
+  other layers in the STL style (bricks done); STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the
   hardening from the final review (device loss, resize); macOS and Linux
   start-up measured; the accessibility rows -- reduced motion (done

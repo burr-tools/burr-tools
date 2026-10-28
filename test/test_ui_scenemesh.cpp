@@ -331,6 +331,29 @@ TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the vari
   CHECK(buildShapeMesh(*w, o).empty());
 }
 
+TEST_CASE("STL style: a face across several layers is cut at them, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the exporter merges a column's sides into one face; each layer gets its own pieces
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 1, 1, 3);
+  v->setAll(voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  const ShapeMesh m = buildShapeMesh(*v, o);
+  REQUIRE(m.opaque.size() % 3 == 0);
+  std::set<int> layers;
+  for (size_t i = 0; i < m.opaque.size(); i += 3) {
+    const float cz = m.opaque[i].cell[2];
+    layers.insert(int(cz));
+    for (size_t k = 0; k < 3; k++) {
+      const MeshVertex & mv = m.opaque[i + k];
+      CHECK(mv.cell[2] == cz);                              // one cell a triangle
+      CHECK(mv.pos[2] >= cz - 1e-3f);                       // and within its layer
+      CHECK(mv.pos[2] <= cz + 1.0f + 1e-3f);
+    }
+  }
+  CHECK(layers == std::set<int>{ 0, 1, 2 });
+}
+
 TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
   MeshOptions o = blue();
   o.style = VoxelStyle::Stl;
