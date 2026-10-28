@@ -42,6 +42,7 @@ public slots:
 
   void qmlEngineAvailable(QQmlEngine * engine) {
     engine->addImageProvider(QStringLiteral("icon"), new IconProvider);
+    engine->addImageProvider(QStringLiteral("editglyph"), new EditGlyphProvider);
   }
 
 private:
