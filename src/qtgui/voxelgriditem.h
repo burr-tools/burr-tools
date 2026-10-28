@@ -52,6 +52,10 @@ class VoxelGridItem : public QQuickPaintedItem {
   QML_ELEMENT
 
   Q_PROPERTY(EditorController * editor READ editor WRITE setEditor NOTIFY editorChanged FINAL)
+  /* QQuickItem's activeFocusOnTab, which Qt 6.8 does not let QML set on a
+   * type of ours ("not available in BurrTools.Ui 255.255": a property
+   * revision the module's types do not take up) */
+  Q_PROPERTY(bool tabStop READ activeFocusOnTab WRITE setActiveFocusOnTab NOTIFY activeFocusOnTabChanged FINAL)
   /* a cell's size in dp (C08: fits the area, 16 ... 120) */
   Q_PROPERTY(int cellSize READ cellSize NOTIFY cellSizeChanged FINAL)
 

@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
@@ -161,7 +162,7 @@ Card {
         Accessible.description: buttons[current] ? buttons[current].tip : ""
         Keys.onLeftPressed: move(-1)
         Keys.onRightPressed: move(+1)
-        function move(d) {
+        function move(d: int): void {
             for (let i = current + d; i >= 0 && i < count; i += d)
                 if (buttons[i] && buttons[i].enabled) {
                     picked(i)
@@ -435,7 +436,7 @@ Card {
                         BtToolTip { shown: chipMouse.containsMouse; text: chip.Accessible.name }
                     }
                     // keep the current layer's chip in view
-                    function follow() {
+                    function follow(): void {
                         positionViewAtIndex(root.editor.layerCount - 1 - root.editor.layer, ListView.Contain)
                     }
                     Connections {
@@ -454,7 +455,7 @@ Card {
                     anchors.fill: parent
                     editor: root.editor
                     // a Tab stop: arrows move a cell cursor, Space paints, Delete erases (VoxelGridItem)
-                    activeFocusOnTab: true
+                    tabStop: true
                     Accessible.role: Accessible.Table
                     Accessible.name: qsTr("2D grid: layer %1 of %2").arg(root.editor.layer + 1).arg(root.editor.layerCount)
                     Accessible.description: qsTr("Arrow keys move the cell cursor, Space or Enter applies the tool (Shift+Space: fixed), Delete erases, Page Up and Page Down change the layer")
