@@ -45,8 +45,6 @@ below, lists them per phase).
 
 | Item | Spec | Why it waits | Phase |
 | :--- | :--- | :--- | :--- |
-| The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
-| Dim other layers in the STL style, but bricks | AC-C06-05 | Bricks' merged STL faces are cut at every cell boundary (`splitAtCells`, 2026-10-28), so they dim layer by layer; the other voxel types' cells are not whole units of the drawing, and a merged face of theirs still dims as a whole | P8 |
 | Quick tool 2 (Alt+click) on KDE | AC-C06-06 | In the 2D grid and the 3D view since P5, and safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). KDE moves windows on Alt+drag by default, so there the window manager may take the click; untested on that desktop | P8 |
 | STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
 | Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 |
@@ -538,8 +536,10 @@ moves to a later phase says why in that table.
   Display menu, and O P E F (1.4 s, `CommandController::toolbarModeUsed`);
   hidden 700 ms after the pointer leaves the strip, 500 ms when it leaves
   the view; Esc or a press in the view lets go of its focus.
-- **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
-  other layers in the STL style (bricks done); STL export writing in place; image export
+- **P8 Polish and cut-over:** the OS pointer in the edit cursors (done
+  2026-10-29: the system's arrow and pointer size, `systempointer`); Dim
+  other layers in the STL style (done 2026-10-29 for every voxel type);
+  STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the
   hardening from the final review (device loss, resize); macOS and Linux
   start-up measured; the accessibility rows -- reduced motion (done
@@ -719,6 +719,33 @@ Every phase's pull request follows what #140 settled:
   the command table (`btui::isSingleCharacter`) and Settings ▸ General ▸
   Single-key shortcuts turns them all off; the shortcuts window says so.
 
+### P8 decisions (the first)
+
+- **The system's arrow in the edit cursors** (PR-20, OQ-17;
+  `systempointer`): Fixed and Variable draw their badge on the arrow the
+  system shows, snug against its upper right, with its hotspot. Windows:
+  the arrow of the user's pointer scheme or pointer colour (the `Arrow`
+  file under `HKCU\Control Panel\Cursors`, else the system's), at
+  Settings ▸ Accessibility ▸ Mouse pointer's size (`CursorBaseSize`; a
+  custom cursor is shown at its own size there), drawn on black and on
+  white to get its colour and transparency (`QImage::fromHICON` gives
+  nothing for a cursor). macOS: `NSCursor.arrowCursor`; the system
+  enlarges every cursor, ours too, by its Pointer size, so ours is drawn
+  at the default size. Linux and the BSDs: the Xcursor theme's arrow and
+  size (`XCURSOR_THEME` / `XCURSOR_SIZE`, then KDE's `kcminputrc`, then
+  GTK's `settings.ini`), read by `uicore/xcursor`. Erase and Paint follow
+  the pointer size. Anything unreadable falls back to the bundled arrow.
+  The arrow is read again when its settings change (the scheme, the size,
+  the screen's scale).
+- **Dim other layers in the STL style, every voxel type** (AC-C06-05):
+  the prism, rhombic and tetra-octa meshers merge faces across cells
+  as the brick exporter does; each face is cut by the walls of the
+  filled cells it crosses (`splitAtCellWalls`: a cell is the convex
+  polyhedron of its connection faces), each piece taking its cell.
+  Spheres' faces are each ball's own already. The cuts cost nothing
+  measurable beside the mesher, which takes ~28 s for a 10³ prism shape
+  on its own (the library's Minkowski mesher; not changed here).
+
 ### P6 decisions
 
 - **The rules are uicore's** (`btui::shapeops`): every operation is
@@ -781,9 +808,10 @@ are closed, as §2 and the mock have it.
 | This README: reduced motion still deferred, the list's 238 dp height, the palette's place, the "Tool" heading, a shape name's tooltip, the test counts | -- | Brought up to date; the agents' guide too |
 
 **Still open, knowingly.** The rows of *Deferred to the next phase*
-(the OS pointer in the edit cursors, KDE's Alt+click, the STL style's
-dimming for non-bricks, text size and high contrast, small screens, the
-screen-reader pass). AC-C08-07's "recolouring the shape in the app" has
+(KDE's Alt+click, text size and high contrast, small screens, the
+screen-reader pass; the OS pointer in the edit cursors and the STL
+style's dimming for every voxel type were done right after, see *P8
+decisions*). AC-C08-07's "recolouring the shape in the app" has
 no control in Entities -- a piece's colour is the Puzzle workspace's
 (C17, P10) -- and is checked there.
 
