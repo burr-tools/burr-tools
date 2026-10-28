@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 namespace btui {
 
@@ -108,6 +109,26 @@ namespace btui {
     if (rightButton)
       return Tool::Erase;
     return quickTool(p, m).value_or(active);
+  }
+
+  std::vector<Cell3> areaCells(const voxel_c & shape, Plane p, int layer, int c0, int r0, int c1, int r1,
+                               const Modifiers & m) {
+    const std::array<int, 3> dims{ int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+    auto inside = [&](const Cell3 & c) {
+      return c.x >= 0 && c.y >= 0 && c.z >= 0 && c.x < dims[0] && c.y < dims[1] && c.z < dims[2] &&
+             shape.validCoordinate(c.x, c.y, c.z);
+    };
+    std::set<Cell3> out;
+    for (int col = std::min(c0, c1); col <= std::max(c0, c1); col++)
+      for (int row = std::min(r0, r1); row <= std::max(r0, r1); row++) {
+        const Cell3 t = voxelAt(p, col, row, layer);
+        if (!inside(t))
+          continue;
+        for (const Cell3 & c : expand(t, dims, m))
+          if (inside(c))
+            out.insert(c);
+      }
+    return { out.begin(), out.end() };
   }
 
   std::vector<Cell3> expand(Cell3 t, std::array<int, 3> dims, const Modifiers & m) {

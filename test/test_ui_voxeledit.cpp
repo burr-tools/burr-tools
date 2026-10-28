@@ -56,6 +56,40 @@ TEST_CASE("Span then Mirror: Span Y and Mirror X on a 4-cube reach 8 cells", "[u
   }
 }
 
+TEST_CASE("an area is every cell between the drag's two corners, in the type's own cells", "[ui][voxeledit]") {
+  // legacy's rubber band (EDT_RUBBER): the corners either way round, a plane
+  // and layer, Mirror and Span, only cells of the voxel type
+  gridType_c bricks(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(bricks, 5, 4, 3);
+  const std::vector<Cell3> a = areaCells(*v, Plane::XY, 1, 3, 2, 1, 1, {});
+  CHECK(a.size() == 6);                                   // columns 1-3, rows 1-2
+  for (const Cell3 & c : a) {
+    CHECK(c.z == 1);
+    CHECK((c.x >= 1 && c.x <= 3 && c.y >= 1 && c.y <= 2));
+  }
+  CHECK(areaCells(*v, Plane::XY, 1, 1, 1, 3, 2, {}) == a);   // the other way round
+  CHECK(areaCells(*v, Plane::XY, 0, 2, 2, 2, 2, {}).size() == 1);   // a click: its cell
+  // another plane: XZ columns X, rows Z, the layer Y
+  for (const Cell3 & c : areaCells(*v, Plane::XZ, 3, 0, 0, 4, 2, {}))
+    CHECK(c.y == 3);
+  CHECK(areaCells(*v, Plane::XZ, 3, 0, 0, 4, 2, {}).size() == 15);
+  // Mirror X doubles the area's columns 0-1 into 3-4; a corner beyond the grid is clipped
+  CHECK(areaCells(*v, Plane::XY, 0, 0, 0, 1, 0, mirrorX()).size() == 4);
+  CHECK(areaCells(*v, Plane::XY, 0, 3, 0, 9, 0, {}).size() == 2);
+
+  // spheres: only the cells of the lattice (x + y + z even) between the corners
+  gridType_c spheres(gridType_c::GT_SPHERES);
+  auto s = bttest::makeVoxel(spheres, 4, 4, 4);
+  const std::vector<Cell3> sa = areaCells(*s, Plane::XY, 0, 0, 0, 3, 3, {});
+  CHECK(sa.size() == 8);
+  for (const Cell3 & c : sa)
+    CHECK(s->validCoordinate(c.x, c.y, c.z));
+  // prisms: every triangle of the rows and columns, both ways up
+  gridType_c prism(gridType_c::GT_TRIANGULAR_PRISM);
+  auto pr = bttest::makeVoxel(prism, 4, 3, 2);
+  CHECK(areaCells(*pr, Plane::XY, 0, 0, 0, 3, 1, {}).size() == 8);
+}
+
 TEST_CASE("expand drops a target outside the grid and an empty grid reaches nothing", "[ui][voxeledit]") {
   CHECK(expand({ 4, 0, 0 }, { 4, 4, 4 }, Modifiers{}).empty());
   CHECK(expand({ -1, 0, 0 }, { 4, 4, 4 }, Modifiers{}).empty());
