@@ -274,7 +274,10 @@ TestCase {
 
         mouseClick(item("entities.editor.focus2d"))
         compare(App.layout.focus, LayoutController.Focus2d)
-        tryVerify(() => Math.abs(item("entities.viewport").width - 360) < 1, 1000)
+        // the editor takes 80 % of what the 3D view's 360 dp leave, the view the rest (2026-10-28)
+        const share = win.contentItem.width - 60 - 2 * 4 - 2 * 4 - 48 - 360
+        tryVerify(() => Math.abs(item("entities.viewport").width - (360 + 0.2 * share)) < 1, 1000)
+        tryVerify(() => Math.abs(item("workspace.right").width - 0.8 * share) < 1, 1000)
         App.layout.escape()
     }
 
