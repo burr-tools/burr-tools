@@ -12,6 +12,9 @@
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
 
+#include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <map>
 #include <memory>
 #include <set>
@@ -268,6 +271,137 @@ TEST_CASE("the surface sets: outer touches the outside, cavity walls are inner",
   outer = outerVoxels(*q->getShape(0));
   CHECK_FALSE(outer[unsigned(q->getShape(0)->getIndex(2, 2, 1))]);
   CHECK(std::count(outer.begin(), outer.end(), true) == 98);
+}
+
+TEST_CASE("x2 then x3 minimizes by 6, back to the shape", "[ui][shapeops]") {
+  // AC-C03-03 with both scales: the factor is every prime that divides the
+  // blocks -- 2 and 3 -- and Minimize gives the original back
+  auto p = puzzleWith(gridType_c::GT_BRICKS, 3, 3, 3);
+  p->getShape(0)->setState(1, 1, 0, voxel_c::VX_FILLED);
+  auto orig = std::unique_ptr<voxel_c>(p->getGridType()->getVoxel(*p->getShape(0)));
+  runTask(*p, { 0 }, task::Scale2);
+  runTask(*p, { 0 }, task::Scale3);
+  CHECK(count(*p->getShape(0)) == 216);
+  CHECK(minimizeFactor(*p, { 0 }) == 6);
+  const OpResult r = runTask(*p, { 0 }, task::Minimize);
+  CHECK(r.message == "Resolution reduced ÷6");
+  CHECK(count(*p->getShape(0)) == 1);
+  CHECK(p->getShape(0)->identicalInBB(orig.get(), true));
+
+  // an empty shape has nothing to reduce, however its grid divides
+  auto e = puzzleWith(gridType_c::GT_BRICKS, 6, 6, 6);
+  const OpCheck ce = checkTask(*e, { 0 }, task::Minimize);
+  CHECK_FALSE(ce.allowed);
+  CHECK(ce.reason == "The shape is empty");
+}
+
+TEST_CASE("the outside reaches round a piece smaller than its grid, and into an open pocket", "[ui][shapeops]") {
+  // C05 Semantics: exterior space is every empty cell the outside reaches,
+  // not only the grid's edge -- a piece inside a bigger grid, a tunnel to a cavity
+  auto p = puzzleWith(gridType_c::GT_BRICKS, 5, 5, 5);
+  voxel_c & v = *p->getShape(0);
+  for (unsigned x = 1; x < 4; x++)
+    for (unsigned y = 1; y < 4; y++)
+      for (unsigned z = 1; z < 4; z++)
+        v.setState(x, y, z, voxel_c::VX_VARIABLE);
+  auto outer = outerVoxels(v);
+  CHECK(std::count(outer.begin(), outer.end(), true) == 26);
+  CHECK_FALSE(outer[unsigned(v.getIndex(2, 2, 2))]);
+  // Make fixed > Outer: the shell fixed, the core left variable
+  OpResult r = runTask(*p, { 0 }, task::FixedOuter);
+  CHECK(r.message == "26 outer voxels updated");
+  CHECK(p->getShape(0)->countState(voxel_c::VX_FILLED) == 26);
+  CHECK(p->getShape(0)->getState(2, 2, 2) == voxel_c::VX_VARIABLE);
+  r = runTask(*p, { 0 }, task::FixedOuter);                 // nothing left to change
+  CHECK_FALSE(r.changed);
+  CHECK(r.message == "No outer voxel to change");
+
+  // a cavity with a tunnel to the top is outside: its walls are outer
+  auto q = puzzleWith(gridType_c::GT_BRICKS, 5, 5, 5);
+  voxel_c & w = *q->getShape(0);
+  w.setAll(voxel_c::VX_FILLED);
+  for (unsigned z = 2; z < 5; z++)
+    w.setState(2, 2, z, voxel_c::VX_EMPTY);
+  outer = outerVoxels(w);
+  CHECK(outer[unsigned(w.getIndex(2, 2, 1))]);              // the cavity's floor
+  CHECK(outer[unsigned(w.getIndex(1, 2, 2))]);              // its wall
+  CHECK_FALSE(outer[unsigned(w.getIndex(1, 1, 1))]);        // deep inside
+  r = runTask(*q, { 0 }, task::FillHoles);                  // nothing enclosed to fill
+  CHECK(r.message == "No interior holes found");
+  // a cup: every voxel touches the outside, none is inner
+  r = runTask(*q, { 0 }, task::VariableInner);
+  CHECK(r.changed);
+  auto cup = puzzleWith(gridType_c::GT_BRICKS, 3, 3, 2);
+  cup->getShape(0)->setAll(voxel_c::VX_FILLED);
+  cup->getShape(0)->setState(1, 1, 1, voxel_c::VX_EMPTY);
+  r = runTask(*cup, { 0 }, task::VariableInner);
+  CHECK_FALSE(r.changed);
+  CHECK(r.message == "No inner voxel to change");
+}
+
+TEST_CASE("To origin and Center keep each lattice's cells: the piece moves, it does not change", "[ui][shapeops]") {
+  // legacy's per-type rules: prisms move by an even X + Y (else the
+  // triangles turn over), spheres by an even X + Y + Z, rhombic and
+  // tetra-octa shapes by whole cells (5 and 6 units)
+  struct Lattice { gridType_c::gridType t; int unit; unsigned size; };
+  for (const Lattice l : { Lattice{ gridType_c::GT_TRIANGULAR_PRISM, 2, 12 }, Lattice{ gridType_c::GT_SPHERES, 2, 12 },
+                           Lattice{ gridType_c::GT_RHOMBIC, 5, 40 }, Lattice{ gridType_c::GT_TETRA_OCTA, 6, 48 } }) {
+    INFO(bttest::gridName(l.t));
+    auto p = puzzleWith(l.t, l.size, l.size, l.size);
+    voxel_c & v = *p->getShape(0);
+    // a small piece off-centre, toward the far corner: the valid cells of a box
+    const int lo = int(l.size) / 2 + 1, hi = lo + 2 * l.unit;
+    std::set<std::array<int, 3>> before;
+    for (int x = lo; x < hi; x++)
+      for (int y = lo; y < hi - l.unit; y++)
+        for (int z = lo; z < lo + l.unit; z++)
+          if (v.validCoordinate(x, y, z)) {
+            v.setState(unsigned(x), unsigned(y), unsigned(z), voxel_c::VX_FILLED);
+            before.insert({ x, y, z });
+          }
+    REQUIRE(before.size() >= 2);
+
+    // the cells after, and the one move that takes every cell there
+    auto moved = [&](const voxel_c & s) {
+      std::set<std::array<int, 3>> after;
+      for (unsigned z = 0; z < s.getZ(); z++)
+        for (unsigned y = 0; y < s.getY(); y++)
+          for (unsigned x = 0; x < s.getX(); x++)
+            if (s.getState(x, y, z) != voxel_c::VX_EMPTY) {
+              after.insert({ int(x), int(y), int(z) });
+              CHECK(s.validCoordinate(int(x), int(y), int(z)));
+            }
+      REQUIRE(after.size() == before.size());
+      const auto & b = *before.begin(), & a = *after.begin();
+      const std::array<int, 3> d{ a[0] - b[0], a[1] - b[1], a[2] - b[2] };
+      for (const auto & c : before)
+        CHECK(after.count({ c[0] + d[0], c[1] + d[1], c[2] + d[2] }) == 1);
+      switch (l.t) {
+        case gridType_c::GT_TRIANGULAR_PRISM: CHECK((d[0] + d[1]) % 2 == 0); break;
+        case gridType_c::GT_SPHERES: CHECK((d[0] + d[1] + d[2]) % 2 == 0); break;
+        default: for (int k : d) CHECK(k % l.unit == 0); break;
+      }
+      return after;
+    };
+
+    REQUIRE(checkTask(*p, { 0 }, task::Origin).allowed);
+    CHECK(runTask(*p, { 0 }, task::Origin).changed);
+    moved(*p->getShape(0));
+    // as close to the corner as the lattice lets it
+    CHECK(int(p->getShape(0)->boundX1()) < l.unit);
+    CHECK(int(p->getShape(0)->boundY1()) < l.unit);
+    CHECK(int(p->getShape(0)->boundZ1()) < l.unit);
+
+    CHECK(runTask(*p, { 0 }, task::Center).changed);
+    moved(*p->getShape(0));
+    // the free space either side within a lattice step of even
+    const voxel_c & c = *p->getShape(0);
+    const int bounds[3][3] = { { int(c.boundX1()), int(c.boundX2()), int(c.getX()) },
+                               { int(c.boundY1()), int(c.boundY2()), int(c.getY()) },
+                               { int(c.boundZ1()), int(c.boundZ2()), int(c.getZ()) } };
+    for (const auto & b : bounds)
+      CHECK(std::abs(b[0] - (b[2] - 1 - b[1])) <= l.unit);
+  }
 }
 
 TEST_CASE("every voxel type's buttons run, and preview what they will do", "[ui][shapeops]") {

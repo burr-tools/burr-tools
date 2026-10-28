@@ -303,6 +303,15 @@ change, `just update-snapshots button` rewrites that row's references --
 both themes, all three ratios -- and only where they no longer match, so the
 commit holds just the images that changed.
 
+Every voxel type is edited end to end in `TestVoxelTypes` (the 2D grid in
+each plane the type has, by pointer and keyboard; the 3D view's slab, face
+and Erase clicks), on top of uicore's per-type rules. Time budgets
+(AC-C08-08's 16 ms and the like) use `VERIFY_BUDGET`: checked in every
+build but `just coverage`'s, whose counters slow the hot loops several-fold,
+where they are only reported. The update check takes its GitHub reply
+through `UpdateController::setFetch`, so its outcomes are tested without
+the network.
+
 ## Deviations from the spec, by decision
 
 - **Settings** live in File ▸ Settings (macOS: the application menu's

@@ -5,6 +5,7 @@
 #include "test_editor.h"
 
 #include "app.h"
+#include "coloursmodel.h"
 #include "editcursor.h"
 #include "editorcontroller.h"
 #include "statuscontroller.h"
@@ -27,6 +28,15 @@
 #include <algorithm>
 #include <memory>
 #include <vector>
+
+/* A time budget (AC-C08-08's 16 ms and the like): checked against the
+ * code as built for use, only reported in a coverage build, whose counters
+ * make the hot loops several times slower than any user sees them. */
+#ifdef BURRTOOLS_COVERAGE_BUILD
+#define VERIFY_BUDGET(ms, budget)   qInfo("%.2f ms against a %.0f ms budget: not checked in a coverage build", double(ms), double(budget))
+#else
+#define VERIFY_BUDGET(ms, budget)   QVERIFY2((ms) < (budget), qPrintable(QString::number(ms) + QStringLiteral(" ms")))
+#endif
 
 namespace {
 
@@ -413,6 +423,63 @@ void TestEdit3d::hoveringShowsTheGhostAndNamesTheTarget() {
   QVERIFY(f.app->status()->cursorText().isEmpty());
 }
 
+void TestEdit3d::theGhostTakesEachToolsLook() {
+  // C06 "Ghost preview": Fixed and Variable place cubes in the drawing
+  // colour at 55 %; a voxel they would change gets a faint "replace" at
+  // 22 %; Erase shows danger at 50 %; Paint the drawing colour at 50 %.
+  // The drawing colour is a palette colour's, or Default's -- the shape's
+  Edit3dFixture f;
+  f.fill(1, 1, 1);
+  auto ghost = [&] {
+    const SceneFrame fr = f.v->frame(1);
+    return fr.ghostFaces.empty() ? btui::Rgba8{} : fr.ghostFaces.front().color;
+  };
+  auto rgb = [](btui::Rgba8 c) { return QColor(c.r, c.g, c.b); };
+
+  f.v->pointerHover(160, 120, kErase);
+  QCOMPARE(rgb(ghost()), Theme::instance()->danger());
+  QCOMPARE(int(ghost().a), 128);
+
+  f.v->pointerHover(160, 120, Qt::ShiftModifier);       // Default: the shape's own colour
+  const btui::Rgba8 place = ghost();
+  QCOMPARE(int(place.a), 140);
+  QCOMPARE(rgb(place), f.app->viewport()->shapeColor());
+
+  // a palette colour drawn: the ghost takes it
+  f.app->colours()->addColour();
+  f.app->colours()->select(1);
+  QCOMPARE(f.editor()->drawColour(), 1);
+  f.v->pointerHover(160, 120, Qt::ShiftModifier);
+  QCOMPARE(rgb(ghost()), f.app->colours()->colourOf(1));
+
+  // Paint over the voxel, in Edit mode: its new colour at 50 %
+  f.editor()->setEditMode(true);
+  f.editor()->setTool(EditorController::Paint);
+  f.v->pointerHover(160, 120, Qt::NoModifier);
+  QCOMPARE(int(f.editor()->preview().at(0).kind), int(btui::GhostKind::Paint));
+  QCOMPARE(rgb(ghost()), f.app->colours()->colourOf(1));
+  QCOMPARE(int(ghost().a), 128);
+  f.v->pointerLeave();
+  f.editor()->setEditMode(false);
+
+  // Variable over the fixed voxel, from the 2D grid: a faint "replace"
+  f.editor()->setTool(EditorController::Variable);
+  f.editor()->setLayer(1);
+  f.editor()->hover(1, 1);
+  QCOMPARE(int(f.editor()->preview().at(0).kind), int(btui::GhostKind::Replace));
+  QCOMPARE(int(ghost().a), 56);
+  f.editor()->hover(-1, -1);
+  QVERIFY(f.v->frame(1).ghostFaces.empty());
+
+  // an empty shape with the slab hidden: the status line says where the first voxel goes
+  f.app->document()->editStructure(0, [](puzzle_c & p) { p.getShape(0)->setAll(voxel_c::VX_EMPTY); return true; });
+  f.v->setDisplayLayerSlab(false);
+  f.v->frame(1);
+  f.v->pointerHover(30, 30, Qt::ShiftModifier);
+  QVERIFY2(f.app->status()->cursorText().contains(QStringLiteral("origin")), qPrintable(f.app->status()->cursorText()));
+  f.v->pointerLeave();
+}
+
 void TestEdit3d::theFocusedViewsKeysTurnPanAndZoom() {
   // WCAG 2.1.1: every mouse gesture of the view by keys, through the command table
   Edit3dFixture f;
@@ -781,7 +848,7 @@ void TestEditor::theViewIsReadyInTimeAfterAStrokeSegment() {
   f.editor()->release();
   const double ms = double(*std::min_element(ns.begin(), ns.end())) / 1e6;
   qInfo("stroke segment to 3D frame, 16^3 half full: %.2f ms (best of 9)", ms);
-  QVERIFY2(ms < 16.0, qPrintable(QString::number(ms) + QStringLiteral(" ms")));
+  VERIFY_BUDGET(ms, 16.0);
 
   // and a 3D hover after an edit: the pick mesh made again, the target found
   std::vector<qint64> picks;
@@ -799,7 +866,7 @@ void TestEditor::theViewIsReadyInTimeAfterAStrokeSegment() {
   }
   const double pickMs = double(*std::min_element(picks.begin(), picks.end())) / 1e6;
   qInfo("edit to 3D hover target, 16^3 half full: %.2f ms (best of 5)", pickMs);
-  QVERIFY2(pickMs < 16.0, qPrintable(QString::number(pickMs) + QStringLiteral(" ms")));
+  VERIFY_BUDGET(pickMs, 16.0);
 }
 
 void TestEditor::theGridByKeyboard() {
@@ -873,5 +940,5 @@ void TestEditor::a32By32GridRedrawsInTime() {
   qInfo("32 x 32 grid: %.2f ms (best of 9)", ms);
   // next to the test binary, for a look
   img.save(QCoreApplication::applicationDirPath() + QStringLiteral("/render-grid-32.png"));
-  QVERIFY2(ms < 8.0, qPrintable(QString::number(ms) + QStringLiteral(" ms")));
+  VERIFY_BUDGET(ms, 8.0);
 }

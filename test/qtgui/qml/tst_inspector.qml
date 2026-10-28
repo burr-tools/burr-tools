@@ -199,6 +199,66 @@ TestCase {
         tryCompare(App.inspector, "previewTask", -1)
     }
 
+    // a solid 3 x 3 x 3 cube: Span X + Y fills a layer a click
+    function fillCube() {
+        App.editor.span = 3
+        for (let l = 0; l < 3; l++) {
+            App.editor.layer = l
+            clickCell(0, 0)
+        }
+        App.editor.span = 0
+        App.editor.layer = 0
+    }
+    function flashes(name, text) {
+        mouseClick(item(name))
+        tryVerify(() => status() === text, 1000, name + " said " + status() + ", not " + text)
+    }
+
+    function test_eachRepairButtonRunsItsOwnOperation() {
+        // C05: the table's six buttons and Fill, each to its own operation
+        // (T-C05-2), said in the status bar -- a solid cube: 26 outer, 1 inner
+        fillCube()
+        App.inspector.repairOpen = true
+        tryVerify(() => item("entities.repair.fillHoles").visible)
+        flashes("entities.repair.fillHoles", "No interior holes found")
+        flashes("entities.repair.variable.inner", "1 inner voxel updated")
+        flashes("entities.repair.variable.inner", "No inner voxel to change")
+        flashes("entities.repair.fixed.inner", "1 inner voxel updated")
+        flashes("entities.repair.fixed.outer", "No outer voxel to change")
+        flashes("entities.repair.variable.outer", "26 outer voxels updated")
+        flashes("entities.repair.fixed.outer", "26 outer voxels updated")
+        flashes("entities.repair.clear.outer", "No outer voxel to change")   // Default already
+        flashes("entities.repair.clear.inner", "No inner voxel to change")
+    }
+
+    function test_fitAndScaleShowTheNewSizeInTheSteppers() {
+        // T-C03-4 / AC-C03-07: after each operation the Grid size steppers
+        // show the shape's new dimensions; ×n then Minimize round trip (AC-C03-03)
+        clickCell(1, 1)
+        App.inspector.fitOpen = true
+        const x = item("entities.editor.size.x")
+        tryVerify(() => item("entities.fit.x2").visible)
+        mouseClick(item("entities.fit.x2"))
+        tryCompare(x, "value", 6)
+        mouseClick(item("entities.fit.x3"))
+        tryCompare(x, "value", 18)
+        const minimize = item("entities.fit.minimize")
+        // the states settle 120 ms after the edits pause
+        tryCompare(minimize, "hint", "Reduce resolution ÷6, same shape", 2000)
+        verify(minimize.available)
+        mouseClick(minimize)
+        tryCompare(x, "value", 3)
+        tryVerify(() => status().indexOf("÷6") >= 0)
+        mouseClick(item("entities.fit.prune"))                // the voxel's own box
+        tryCompare(x, "value", 1)
+        compare(item("entities.editor.size.z").value, 1)
+        // undone one by one: back through each size
+        App.document.undo()
+        tryCompare(x, "value", 3)
+        App.document.undo()
+        tryCompare(x, "value", 18)
+    }
+
     function test_minimalShowsIconsAndShortLabels() {
         // density.md §1-2: icon-only Transform h30, Fit's short labels h32, first-line-only rows
         App.settings.density = "minimal"

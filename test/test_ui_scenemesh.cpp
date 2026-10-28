@@ -6,6 +6,7 @@
 
 #include "../src/uicore/camera.h"
 #include "../src/uicore/scenemesh.h"
+#include "../src/uicore/voxeledit.h"
 
 #include "test_helpers.h"
 
@@ -661,6 +662,49 @@ TEST_CASE("a transform's preview: the result centred on the shape, and legacy's 
   h.clear();
   addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 0, 0 }, 0, col, 3);   // no direction: nothing
   CHECK(h.empty());
+}
+
+TEST_CASE("the slab holds its layer in every plane the voxel type has", "[ui][scenemesh]") {
+  // C06 / C08: XZ and YZ for all types but the prism (2026-10-28) -- the
+  // slab along Y or X holds that layer's cells as drawn, as the XY one does
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 5;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (const Plane plane : { Plane::XY, Plane::XZ, Plane::YZ }) {
+      if (!planeAvailable(t, plane))
+        continue;
+      const int axis = layerAxis(plane);
+      int seen = 0;
+      for (int layer = 0; layer < layerCount(*v, plane); layer++) {
+        INFO(bttest::gridName(t) << ", plane " << int(plane) << ", layer " << layer);
+        const auto only = layerCells(*v, plane, layer);
+        MeshOptions o;
+        o.style = VoxelStyle::Flat;
+        const ShapeMesh m = buildShapeMesh(*only, o);
+        if (m.opaque.empty())
+          continue;
+        seen++;
+        float lo = 1e30f, hi = -1e30f;
+        for (const MeshVertex & mv : m.opaque) {
+          lo = std::min(lo, mv.pos[axis]);
+          hi = std::max(hi, mv.pos[axis]);
+        }
+        const Box s = layerSlab(*v, plane, layer);
+        CHECK(s.min[axis] <= lo + 1e-3f);
+        CHECK(s.max[axis] >= hi - 1e-3f);
+        // across the layer it spans the grid
+        const Box g = gridBounds(*v);
+        for (int k = 0; k < 3; k++)
+          if (k != axis) {
+            CHECK(s.min[k] <= g.min[k] + 1e-3f);
+            CHECK(s.max[k] >= g.max[k] - 1e-3f);
+          }
+      }
+      INFO(bttest::gridName(t) << ", plane " << int(plane));
+      CHECK(seen >= 2);
+    }
+  }
 }
 
 TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
