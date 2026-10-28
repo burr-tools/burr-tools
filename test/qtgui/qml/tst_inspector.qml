@@ -140,6 +140,32 @@ TestCase {
         compare(repair.Accessible.name, "Repair & surface")
     }
 
+    function test_aToggleSlidesTheSectionOpenAndShut() {
+        // a header's toggle animates the body's height (Theme.durCollapse),
+        // and the list gives way as it goes; open set from elsewhere (a
+        // restored setting) does not animate
+        const fit = item("entities.inspector.fit")
+        const list = item("entities.shapes.list")
+        const shut = fit.height
+        App.inspector.fitOpen = true                          // not by its header: at once
+        const open = fit.height
+        verify(open > shut + 100)
+        App.inspector.fitOpen = false
+        compare(fit.height, shut)
+
+        const listBefore = list.height
+        mouseClick(item("entities.inspector.fit.header"))
+        verify(App.inspector.fitOpen)
+        wait(Theme.durCollapse / 3)
+        verify(fit.height > shut + 1 && fit.height < open - 1, "half way: " + fit.height)
+        tryCompare(fit, "height", open)
+        verify(list.height < listBefore)
+        mouseClick(item("entities.inspector.fit.header"))
+        wait(Theme.durCollapse / 3)
+        verify(fit.height < open - 1 && fit.height > shut + 1, "half way shut: " + fit.height)
+        tryCompare(fit, "height", shut)
+    }
+
     function test_everyControlHasItsId_data() {
         return [
             { tag: "bricks", type: 0, pads: false, scale: true,

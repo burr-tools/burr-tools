@@ -183,10 +183,32 @@ Card {
                 width: parent.width
                 spacing: 10
                 readonly property real toolWidth: Theme.minimal ? 44 : 58
+                FontMetrics {
+                    id: groupLabelMetrics
+                    font.pixelSize: Theme.fontSecondary
+                    font.weight: Font.DemiBold
+                }
                 readonly property real axisWidth: Theme.minimal ? 34 : 46
 
-                Row { // ③
-                    objectName: "entities.editor.tools"
+                Column { // ③
+                  id: toolsBlock
+                  objectName: "entities.editor.tools"
+                  spacing: 4
+                  /* Beside the placement group (a wide card) the tools take a
+                   * heading too, and the room of its group labels, so the two
+                   * rows of buttons line up; stacked they need neither */
+                  readonly property bool besidePlacement: placementBlock.y === 0 && !Theme.minimal
+                  MicroLabel {
+                      objectName: "entities.editor.tools.label"
+                      text: qsTr("Tool")
+                      visible: toolsBlock.besidePlacement
+                  }
+                  Item {
+                      width: 1
+                      height: groupLabelMetrics.height
+                      visible: toolsBlock.besidePlacement
+                  }
+                  Row {
                     spacing: 8
                     RadioStrip {
                       id: toolStrip
@@ -251,9 +273,11 @@ Card {
                              : qsTr("Area is off: each cell the pointer passes is placed. On, a drag covers a whole area")
                         onClicked: root.editor.areaMode = !root.editor.areaMode
                     }
+                  }
                 }
 
                 Column { // ④
+                    id: placementBlock
                     objectName: "entities.editor.modifiers"
                     spacing: 4
                     MicroLabel {
@@ -458,7 +482,14 @@ Card {
         }
         Section { // ⑤ the plane and layer the grid shows, below it
             objectName: "entities.editor.plane"
+            MicroLabel {
+                id: planeHeading
+                objectName: "entities.editor.plane.label"
+                text: qsTr("Editing plane")
+                visible: !Theme.minimal
+            }
             Item {
+                y: planeHeading.visible ? planeHeading.height + 6 : 0
                 width: parent.width
                 height: Theme.planeHeight
                 RadioStrip {

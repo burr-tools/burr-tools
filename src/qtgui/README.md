@@ -416,7 +416,10 @@ the network.
   mock: 60 to 250 dp). The Voxel editor's **tools and Mirror / Span** have
   fixed widths and flow, the placement group beside the tools in a wide
   card; Mirror and Span sit under a **Voxel placement** heading with a hint
-  each; the **planes** sit below the grid. **Area mode** (legacy's rubber
+  each, and beside them in a wide card the tools take a "Tool" heading so
+  the two button rows line up; the **planes** sit below the grid under an
+  "Editing plane" heading. The inspector's sections **slide** open and
+  shut when toggled (Theme.durCollapse; PR-09 shows and hides them). **Area mode** (legacy's rubber
   band, not in the spec): a toggle after the tools -- a drag spans an area
   of the type's own cells, placed on release as one undo step, Esc drops
   it; remembered, seeded from legacy's `rubberband`, off by default.

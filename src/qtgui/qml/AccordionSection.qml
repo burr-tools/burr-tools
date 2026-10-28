@@ -8,7 +8,9 @@ import BurrTools.Ui
 // `open`, persisted). Header Theme.accordionHeader high, body padding
 // 2 10 10 (Minimal 2 8 8); a 1 dp line under the section. Minimal hides
 // the summary: the header's tooltip says it then (density.md section 2).
-// Focusing the section focuses its header.
+// Focusing the section focuses its header. A toggle slides the body open or
+// shut (Theme.durCollapse); a change of its content, or of `open` from
+// elsewhere (a restored setting), does not animate.
 FocusScope {
     id: root
     property string title
@@ -18,7 +20,14 @@ FocusScope {
     readonly property alias header: headerButton
     signal toggled()
 
-    implicitHeight: headerButton.height + (open ? body.implicitHeight + body.topPadding + body.bottomPadding : 0) + 1
+    // a toggle by the header is under way: the body's height animates
+    property bool sliding: false
+    function toggle() {
+        sliding = true
+        toggled()
+    }
+
+    implicitHeight: headerButton.height + bodyClip.height + 1
 
     AbstractButton {
         id: headerButton
@@ -30,9 +39,9 @@ FocusScope {
         hoverEnabled: true
         leftPadding: Theme.minimal ? 8 : 10
         rightPadding: Theme.minimal ? 8 : 10
-        onClicked: root.toggled()
-        Keys.onReturnPressed: root.toggled()
-        Keys.onEnterPressed: root.toggled()
+        onClicked: root.toggle()
+        Keys.onReturnPressed: root.toggle()
+        Keys.onEnterPressed: root.toggle()
 
         Accessible.role: Accessible.Button
         Accessible.name: root.title
@@ -76,14 +85,30 @@ FocusScope {
         }
     }
 
-    Column {
-        id: body
-        property real topPadding: 2
-        property real bottomPadding: Theme.minimal ? 8 : 10
-        anchors { left: parent.left; right: parent.right; top: headerButton.bottom; topMargin: topPadding
-                  leftMargin: Theme.minimal ? 8 : 10; rightMargin: Theme.minimal ? 8 : 10 }
-        visible: root.open
-        spacing: 0
+    Item {
+        id: bodyClip
+        anchors { left: parent.left; right: parent.right; top: headerButton.bottom }
+        height: root.open ? body.implicitHeight + body.topPadding + body.bottomPadding : 0
+        clip: true
+        // shut, nothing in it is shown or reached by Tab
+        visible: height > 0
+        Behavior on height {
+            enabled: root.sliding
+            NumberAnimation {
+                duration: Theme.durCollapse
+                easing.type: Easing.OutCubic
+                onRunningChanged: if (!running) root.sliding = false
+            }
+        }
+
+        Column {
+            id: body
+            property real topPadding: 2
+            property real bottomPadding: Theme.minimal ? 8 : 10
+            anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: topPadding
+                      leftMargin: Theme.minimal ? 8 : 10; rightMargin: Theme.minimal ? 8 : 10 }
+            spacing: 0
+        }
     }
 
     Rectangle {
