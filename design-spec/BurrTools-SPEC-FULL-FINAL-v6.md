@@ -1570,6 +1570,8 @@ Dimensions are no longer repeated in the inspector head; the steppers are the si
 
 # C03 — Inspector ▸ Fit & scale
 
+> **Implemented (P6, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** the buttons run legacy's Size-tab commands (OQ-2: the Grid column is Prune, Center, To origin as inferred). **Apply to all shapes** (C02's switch) makes Prune, Center, To origin, Minimize and ×n act on every shape, as legacy's Size tab does (product decision 2026-10-28); "All shapes" shows beside FIT TO GRID then. **Center** is legacy's: on bricks the grid grows by a cell where the free space is odd, so the piece sits exactly centred; on the other types the lattice's parity rules. **Minimize** is legacy's: every prime that divides the shape, as often as it does, bricks only ("Not available for this voxel type" elsewhere). **×n** stops at the 1000-step grid limit (OQ-6), and works for rhombic and tetra-octa shapes too; hidden for spheres. A button that cannot run is greyed but still takes a press, which flashes its reason; the hint says it beforehand (PR-03). Minimal per density §1–2.
+
 **Phase:** P6. **Images:** `00-new-annotated.png` N22–N26, `legacy-size-tab-annotated.png` (L34–L39). **Legacy:** Size-tab icon columns "Grid" and "Shape". (The legacy Tools-tab **Grid Scale** button is **dropped** by product decision.) Summary text `Prune · Center · Scale`. Default **closed**.
 This section merges all operations that *adapt a piece to its grid or change its resolution* (previously split between the "Grid" and "Shape" icon columns of the Size tab). None of them is a plain size edit (that is C02).
 
@@ -1625,6 +1627,8 @@ Icon-to-function order for L34–L39 was inferred from the artwork and the owner
 
 # C04 — Inspector ▸ Transform (Flip · Rotate · Nudge)
 
+> **Implemented (P6, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** each button runs legacy's Transform-tab command for the voxel type (OQ-1: flip and rotate are the library's symmetry transforms, as legacy; legacy's left icon is −, its right +). Out-of-grid nudges are **blocked** with the message (OQ-7; legacy loses the voxels); an empty shape is a no-op. Per C14: bricks, rhombic and tetra-octa the 3 + 6 + 6 matrix; the prism Flip, 180° about X and Y, ±60° about Z, then a pad of six in-layer arrows and Z ±1; spheres Flip, ±90° about each axis, then a pad of four nudges up a layer, four in it, four down. **A button under the pointer or keyboard focus previews its result in the 3D view** (product decision 2026-10-28, from legacy's tool tabs): the result as a ghost in the shape's colour at 50 %, an arc about a rotation's axis, a double arrow along a mirror's normal or an arrow along a nudge, in the axis colour (danger when blocked); leaving clears it. Each button is a Tab stop. No nudge auto-repeat (optional).
+
 **Phase:** P6. **Images:** `00-new-annotated.png` N29, `legacy-transform-tab-annotated.png` (L40–L42). **Legacy:** Edit ▸ Transform tab. Summary text `Flip · Rotate · Nudge`. Default **open** — it is the first inspector section.
 
 ## Anatomy
@@ -1674,6 +1678,8 @@ The matrix above is the **Brick** layout. For Triangular Prism, Spheres and the 
 <!-- FILE: components/C05-inspector-repair-and-surface.md -->
 
 # C05 — Inspector ▸ Repair & surface (Fill holes, Surface voxels)
+
+> **Implemented (P6, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** OQ-2b verified: legacy's left icon of each pair is "inside" (Inner), the right "outside" (Outer) (`gui/tooltabs.cpp`, tasks 16–21). The surface sets follow §Semantics — walls of an enclosed cavity are **inner** (AC-C05-04; legacy's `actionOnSpace` counts them outer). Fill holes is legacy's `fillHoles`. Messages as §Semantics. Minimal shows the row titles only, the buttons icon-only with their tooltips ("Make fixed — voxels on the outer surface").
 
 **Phase:** P6. **Images:** `00-new-annotated.png` N28–N29, `legacy-tools-tab-annotated.png` (L50–L53). **Legacy:** Edit ▸ Tools tab ("Constrain" icon pairs, Fill Holes). *The legacy Grid Scale button is dropped.* Summary text `Fill · Inner / Outer`. Default **closed**.
 
@@ -3275,13 +3281,13 @@ Build the **framework-neutral controller layer** against `overview/06-ui-contrac
 
 | OQ | Resolution | Source (file:function) | Spec/Mock updated? | Date / author |
 |---|---|---|---|---|
-| OQ-1 Flip semantics |  |  |  |  |
-| OQ-2 Size-tab icon order / inner-outer pair order *(Grid Scale dropped)* |  |  |  |  |
+| OQ-1 Flip semantics | Legacy's: flip and rotate are the library's symmetry transforms per voxel type (bricks: transforms 24 / 34 / 32 flip X / Y / Z), the piece placed back in its grid; legacy's left rotate / nudge icon is −, its right + | `gui/tooltabs.cpp:ToolTab_0…4::applyTask`; `uicore/shapeops.cpp:moves` | C04 note | 2026-10 / implementation |
+| OQ-2 Size-tab icon order / inner-outer pair order *(Grid Scale dropped)* | Grid column: Minimize grid (Prune, 15), Centre (25), Origin (24); Shape column: Try to minimize (26), ×2 (22), ×3 (23). Pairs: left = inside (Inner), right = outside (Outer), tasks 16–21 (OQ-2b) | `gui/tooltabs.cpp:SizeButtons, ToolsButtons` | C03, C05 notes | 2026-10 / implementation |
 | OQ-3 *(closed — dropped by product decision)* | n/a |  |  |  |
 | OQ-4 2D plane selection, tooltips, shape context menu | One plane selector (C08). XZ/YZ for all voxel types but the triangular prism (2026-10-28). Context menu as C01 (legacy has none) | `uicore/voxeledit.cpp:planeAvailable`, `qml/ShapesCard.qml` | C08, C01 notes | 2026-10 / implementation |
 | OQ-5 Shrink below occupied voxels | Blocked with the C02 message, nothing changes | `uicore/voxeledit.cpp:resizeShape` | C02 note | 2026-10 / implementation |
 | OQ-6 Size limits | 1…1000 steps; a step is 5 voxels (rhombic), 3 (tetra-octa), else 1 | `uicore/voxeledit.h:maxGridSteps, sizeStep` | C02 note | 2026-10 / implementation |
-| OQ-7 Out-of-grid transforms |  |  |  |  |
+| OQ-7 Out-of-grid transforms | Blocked with "Blocked: the piece would leave the grid", nothing changes (legacy drops the voxels); an empty shape is a no-op | `uicore/shapeops.cpp:checkTask` | C04 note | 2026-10 / implementation |
 | OQ-8 Colour add/edit/remove | Legacy names: Default, C1, C2 …; Add = next preset at once, Edit = platform chooser; Remove reassigns to Default and asks when solutions would be lost; at most 63 colours | legacy `gui/BlockList.cpp:ColorSelector::getText`; `uicore/drawcolours.cpp` | C09 note | 2026-10 / implementation |
 | OQ-9 Legacy shortcuts / modifier-click / status glyph mapping | Legacy accelerators kept; quick tools Shift = Fixed, Alt (⌘ on macOS) = Variable, Ctrl (Option on macOS: Control-click is the secondary click) = Erase; status glyph pairs → Display menu | `uicore/commands.cpp`, `uicore/voxeledit.cpp:quickTool` | 04 note | 2026-10 / implementation |
 | OQ-10 Menu commands |  |  |  |  |
