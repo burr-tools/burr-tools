@@ -313,4 +313,28 @@ TestCase {
         App.layout.workspace = LayoutController.Puzzle
         verify(!item("entities.viewport.hint.tools").visible)
     }
+
+    // the row's words in order, the key badges' too
+    function rowText(row) {
+        let words = []
+        for (let i = 0; i < row.children.length; i++)
+            if (row.children[i].text !== undefined)
+                words.push(String(row.children[i].text).trim())
+        return words.filter(w => w.length > 0).join(" ")
+    }
+
+    function test_theHintSaysWhatEachGestureDoes() {
+        // each pair: key + gesture, then its effect (user feedback 2026-10-28)
+        compare(rowText(item("entities.viewport.hint.tools")),
+                Qt.platform.os === "osx"
+                ? "Shift +click fixed voxel · Command +click variable voxel · Option +click erase"
+                : "Shift +click fixed voxel · Alt +click variable voxel · Ctrl +click erase")
+        const nav = item("entities.viewport.hint.navigation")
+        const was = App.viewport.navMode
+        App.viewport.navMode = "orbit"
+        compare(rowText(nav), "Drag orbit · Shift +drag or middle-drag pan · Wheel zoom")
+        App.viewport.navMode = "pan"
+        compare(rowText(nav), "Drag or middle-drag pan · Shift +drag orbit · Wheel zoom")
+        App.viewport.navMode = was
+    }
 }
