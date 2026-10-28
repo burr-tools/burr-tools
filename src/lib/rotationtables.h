@@ -73,8 +73,11 @@ int rotationRadiusFor(const problem_c & problem);
  * possible for it (only cube grids with a valid result shape have them).
  *
  * Tables are immutable and shared: all solvers asking for the same settings
- * get the same object, built on the first request and freed when the last
- * user drops it; a table with a larger radius also serves smaller ones.
+ * get the same object, built on the first request; a table with a larger
+ * radius also serves smaller ones. The two most recently used sets stay
+ * alive after their last user drops them, so solving designs of one size
+ * one after another builds the tables once (releaseRotationTables frees
+ * them); others are freed with their last user.
  * Safe to call from several threads. Building takes up to a few seconds, so
  * callers do it once, before starting worker threads.
  */
@@ -84,6 +87,10 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
 /** Same, with an explicit radius; for callers without a problem and tests. */
 std::shared_ptr<const rotationGeometry::rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius);
+
+/** Stop keeping the most recently used tables alive; tables still in use
+ *  stay until their last user drops them. */
+void releaseRotationTables(void);
 
 /**
  * The pivots, relative to a piece's hotspot in doubled in-plane units, at
@@ -134,6 +141,11 @@ class rotationContext_c {
     ~rotationContext_c();
 
     const problem_c & getProblem(void) const { return problem; }
+
+    /** The problem's own table radius (rotationRadiusFor). The tables may
+     *  be larger, served from the cache; turns are only looked for within
+     *  this radius, so results do not depend on what was solved before. */
+    int radius(void) const { return problemRadius; }
 
     /** The tables; waits for them if they are still being built. */
     const rotationGeometry::rotationTables_c & tables(void) const { return *tableFuture.get(); }
@@ -210,6 +222,7 @@ class rotationContext_c {
   private:
 
     const problem_c & problem;
+    const int problemRadius;
     const rotationSettings_t settings;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> relaxedFuture;
