@@ -96,7 +96,14 @@ TestCase {
         const pair = item("entities.editor.planeAndSize")
         tryVerify(() => Math.abs(planeBlock.mapToItem(null, 0, 0).y - size.mapToItem(null, 0, 0).y) < 1)
         compare(size.mapToItem(pair, size.width, 0).x, pair.width - 12)
+        // the palette on the drawing colour's line, after its name
+        const palette = item("entities.editor.colour.palette")
+        const name = item("entities.editor.colour.name")
+        tryVerify(() => item("entities.editor.colour").inline)
+        verify(palette.mapToItem(null, 0, 0).x > name.mapToItem(null, name.width, 0).x)
+        verify(palette.mapToItem(null, 0, 0).y < name.mapToItem(null, 0, name.height).y)
         // side by side the tools take a heading too, and their buttons line up with Mirror's and Span's
+        compare(item("entities.editor.tools.label").text, "Editing tool")
         verify(item("entities.editor.tools.label").visible)
         tryVerify(() => Math.abs(item("entities.editor.tool.fixed").mapToItem(null, 0, 0).y
                                  - item("entities.editor.mirror.x").mapToItem(null, 0, 0).y) < 3)
@@ -104,6 +111,9 @@ TestCase {
         tryVerify(() => placement.mapToItem(null, 0, 0).y > tools.mapToItem(null, 0, 0).y)
         tryVerify(() => item("entities.editor.size").mapToItem(null, 0, 0).y
                         > item("entities.editor.plane").mapToItem(null, 0, 0).y + 20)   // stacked again
+        tryVerify(() => !item("entities.editor.colour").inline)                    // the palette on its own row
+        verify(item("entities.editor.colour.palette").mapToItem(null, 0, 0).y
+               > item("entities.editor.colour.name").mapToItem(null, 0, 0).y + 10)
 
         // Area: a toggle beside the tools, remembered in the settings
         const area = item("entities.editor.tool.area")

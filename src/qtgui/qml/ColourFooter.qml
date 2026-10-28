@@ -20,12 +20,21 @@ import BurrTools.Ui
 //   │ ③(●)(■)(■)(■)(■)(■)(■)(■)                 │   the palette, full width:
 //   │   (■)(■)                                  │   it wraps, 3 rows, then scrolls
 //   └───────────────────────────────────────────┘
+//   A card with room for it (Focus 2D): the palette inline, between the
+//   name and the buttons:  ① ② ③(●)(■)(■)(■) …               ④ ⑤
 //   ⑥ the colour menu (⋯, right-click a swatch, Menu key): Edit, Remove
 Rectangle {
     id: root
     objectName: "entities.editor.colour"
-    implicitHeight: header.height + 8 + row.implicitHeight + 8 + palette.implicitHeight + 16
+    implicitHeight: header.height + 8 + row.implicitHeight + (inline ? 0 : 8 + palette.implicitHeight) + 16
     color: Theme.panel
+
+    /* the palette on the drawing colour's line when the card leaves it room
+     * enough (user decision 2026-10-28): what is left beside the swatch, the
+     * name and the buttons -- their own widths, never the palette's */
+    readonly property real inlineRoom: width - 24 - Theme.drawSwatch - nameColumn.implicitWidth - addButton.implicitWidth
+                                       - moreButton.implicitWidth - 4 * 12
+    readonly property bool inline: inlineRoom >= 260
 
     readonly property int swatchSize: 26
     readonly property string paletteHelp: qsTr("Arrow keys choose, Enter edits, Delete removes, the Menu key has the rest")
@@ -222,8 +231,9 @@ Rectangle {
         }
 
         Column { // ②
+            id: nameColumn
             Layout.alignment: Theme.minimal ? Qt.AlignVCenter : Qt.AlignTop
-            Layout.fillWidth: true
+            Layout.fillWidth: !root.inline
             Layout.minimumWidth: 78
             spacing: 2
             Text {
@@ -245,7 +255,18 @@ Rectangle {
             }
         }
 
+        // inline, the palette's place on the line (it is laid over this)
+        Item {
+            id: inlineSlot
+            visible: root.inline
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignTop
+            Layout.preferredHeight: palette.implicitHeight
+            Layout.topMargin: -6                       // the palette's own padding
+        }
+
         IconButton { // ④
+            id: addButton
             objectName: "entities.editor.colour.add"
             Layout.alignment: Qt.AlignTop
             iconName: "plus"
@@ -266,8 +287,10 @@ Rectangle {
     Control { // ③
         id: palette
         objectName: "entities.editor.colour.palette"
-        anchors { left: parent.left; right: parent.right; top: row.bottom
-                  leftMargin: 6; rightMargin: 6; topMargin: 8 }
+        // its own row, or inline on the drawing colour's (inlineSlot)
+        x: root.inline ? row.x + inlineSlot.x : 6
+        y: root.inline ? row.y + inlineSlot.y : row.y + row.height + 8
+        width: root.inline ? inlineSlot.width : root.width - 12
         height: implicitHeight
         // three rows, then it scrolls
         implicitHeight: Math.min(flow.implicitHeight, 3 * root.swatchSize + 2 * flow.spacing + 2 * flow.padding)
