@@ -194,7 +194,8 @@ class rotationContext_c {
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
       SKIP_PIECES = 2,   ///< a (sub)problem had more pieces than groups can address
-      SKIP_PLANNER = 4   ///< the planner gave up on a turn (planSettings_t::budget)
+      SKIP_PLANNER = 4,  ///< the planner gave up on a turn (planSettings_t::budget)
+      SKIP_GROUPS = 8    ///< more than 16 closures: only single closures were tried, not their unions
     };
     void noteSkipped(skip_e s) { skipped.fetch_or(s, std::memory_order_relaxed); }
     unsigned int getSkipped(void) const { return skipped.load(std::memory_order_relaxed); }

@@ -1238,9 +1238,9 @@ namespace {
  * by", leaving out every closure that needs a piece outside covered, and
  * the group of all pieces (nothing moves relative to anything). With very
  * many distinct closures the pieces are loose and only the single closures
- * are returned. */
+ * are returned; tooManyClosures says so, as unions may have turned. */
 std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn,
-                                   bool * needsUncovered) {
+                                   bool * needsUncovered, bool * tooManyClosures) {
 
   const uint32_t forbidden = ~covered;
   const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
@@ -1277,8 +1277,10 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
   std::sort(seeds.begin(), seeds.end());
   seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
 
-  if (seeds.size() > 16)
+  if (seeds.size() > 16) {
+    *tooManyClosures = true;
     return seeds;
+  }
 
   std::vector<uint32_t> groups;
   for (uint32_t sel = 1; sel < (1u << seeds.size()); sel++) {
@@ -1443,10 +1445,12 @@ void movementAnalysator_c::listRotations(void) {
                 blockers[i] |= 1u << j;
           }
 
-          bool needsUncovered = false;
-          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn, &needsUncovered);
+          bool needsUncovered = false, tooManyClosures = false;
+          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn, &needsUncovered, &tooManyClosures);
           if (needsUncovered)
             rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
+          if (tooManyClosures)
+            rotation->noteSkipped(rotationContext_c::SKIP_GROUPS);
           if (groups.empty())
             continue;
 
