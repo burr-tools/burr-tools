@@ -82,9 +82,15 @@ TestCase {
         verify(item("entities.editor.placement.label").visible)
         verify(item("entities.editor.mirror.hint").text.length > 0)
 
+        verify(item("entities.editor.plane.label").visible)                       // "Editing plane"
+        verify(!item("entities.editor.tools.label").visible)                      // stacked: no Tool heading
         App.layout.toggleFocus2d()
         tryVerify(() => Math.abs(placement.mapToItem(null, 0, 0).y - tools.mapToItem(null, 0, 0).y) < 1)
         compare(item("entities.editor.tool.fixed").width, 58)                     // wider card, same buttons
+        // side by side the tools take a heading too, and their buttons line up with Mirror's and Span's
+        verify(item("entities.editor.tools.label").visible)
+        tryVerify(() => Math.abs(item("entities.editor.tool.fixed").mapToItem(null, 0, 0).y
+                                 - item("entities.editor.mirror.x").mapToItem(null, 0, 0).y) < 3)
         App.layout.toggleFocus2d()
         tryVerify(() => placement.mapToItem(null, 0, 0).y > tools.mapToItem(null, 0, 0).y)
 
