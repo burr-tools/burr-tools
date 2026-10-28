@@ -378,30 +378,48 @@ Rectangle {
         anchors { left: parent.left; bottom: parent.bottom; margins: 14 }
         spacing: 4
 
+        /* Each pair reads "key + gesture" then what it does: the gesture
+         * muted, its effect in the text colour, pairs apart by a dot (user
+         * feedback 2026-10-28: C06's "Shift click 1 fixed" read as a riddle) */
         component HintText: Text {
+            property bool effect: false
             anchors.verticalCenter: parent ? parent.verticalCenter : undefined
-            color: Theme.muted
+            color: effect ? Theme.text : Theme.muted
             font.pixelSize: Theme.fontSecondary
         }
+        component Dot: HintText { text: "  ·  " }
 
         // line 1, fixed: the quick tools (Entities)
         Row {
             objectName: "entities.viewport.hint.tools"
             visible: root.entities
-            spacing: 5
+            spacing: 4
             KeyBadge { text: "Shift" }
-            HintText { text: qsTr("click 1 fixed ·") }
+            HintText { text: qsTr("+click") }
+            HintText { effect: true; text: qsTr("fixed voxel") }
+            Dot {}
             KeyBadge { text: Qt.platform.os === "osx" ? "Command" : "Alt" }
-            HintText { text: qsTr("click 2 variable ·") }
+            HintText { text: qsTr("+click") }
+            HintText { effect: true; text: qsTr("variable voxel") }
+            Dot {}
             KeyBadge { text: Qt.platform.os === "osx" ? "Option" : "Ctrl" }
-            HintText { text: qsTr("click 3 erase") }
+            HintText { text: qsTr("+click") }
+            HintText { effect: true; text: qsTr("erase") }
         }
-        // line 2 follows the navigation mode
+        // line 2 follows the navigation mode: what a plain drag does first
         Row {
-            spacing: 5
-            HintText { text: App.viewport.navMode === "orbit" ? qsTr("Drag orbit ·") : qsTr("Drag pan ·") }
+            objectName: "entities.viewport.hint.navigation"
+            readonly property bool orbit: App.viewport.navMode === "orbit"
+            spacing: 4
+            HintText { text: parent.orbit ? qsTr("Drag") : qsTr("Drag or middle-drag") }
+            HintText { effect: true; text: parent.orbit ? qsTr("orbit") : qsTr("pan") }
+            Dot {}
             KeyBadge { text: "Shift" }
-            HintText { text: App.viewport.navMode === "orbit" ? qsTr("/ middle-drag pan · Wheel zoom") : qsTr("-drag orbit · Middle-drag pan · Wheel zoom") }
+            HintText { text: parent.orbit ? qsTr("+drag or middle-drag") : qsTr("+drag") }
+            HintText { effect: true; text: parent.orbit ? qsTr("pan") : qsTr("orbit") }
+            Dot {}
+            HintText { text: qsTr("Wheel") }
+            HintText { effect: true; text: qsTr("zoom") }
         }
     }
 
