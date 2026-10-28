@@ -25,24 +25,23 @@
 
 #include <QFile>
 #include <QKeySequence>
-#include <QSet>
 #include <QStringList>
 
 QString selfCheck(void) {
   QStringList problems;
 
-  QSet<QKeySequence> seen;
   for (const auto & c : btui::commandTable()) {
     for (auto s : CommandController::platformShortcuts(c)) {
       const QString text = QString::fromUtf8(s.data(), qsizetype(s.size()));
       QKeySequence k(text, QKeySequence::PortableText);
       if (k.count() != 1 || k[0].key() == Qt::Key_unknown)
         problems << QStringLiteral("shortcut '%1' of %2 does not parse").arg(text, QString::fromUtf8(c.key.data(), qsizetype(c.key.size())));
-      else if (seen.contains(k))
-        problems << QStringLiteral("shortcut '%1' is used twice").arg(text);
-      seen.insert(k);
     }
   }
+  // a key twice in one scope, or a window-wide one again (the Shapes list
+  // and the 3D view may share keys: they never have the focus at once)
+  for (const std::string & clash : btui::shortcutClashes(btui::currentPlatform()))
+    problems << QString::fromStdString(clash);
 
   for (const char * res : { ":/burrtools/design-tokens.json", ":/burrtools/icons/gear.svg",
                             ":/burrtools/glyphs/light/tool-fixed.svg", ":/burrtools/glyphs/dark/tool-fixed.svg" })
