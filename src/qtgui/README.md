@@ -34,6 +34,7 @@ it can replace it.
 | P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for all but prisms), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
 | P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
+| — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
 | P10 onward | Puzzle and Solver workspaces | Next (see *Next phases*); their cards are placeholders |
 
 ### Deferred to the next phase
@@ -53,7 +54,6 @@ below, lists them per phase).
 | Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 |
 | macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | P8 |
 | **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
-| — Reduced motion | spec: durations 0 under the OS setting | Camera snaps (360 ms), eased zoom, card transitions (200 ms) and BtSwitch (literal 150 ms) ignore Windows' "Show animations" and macOS's Reduce motion. Theme should read the setting (notifying), zero its duration tokens, and the camera jump straight to its target | P8 |
 | — Text size and high contrast | WCAG 1.4.4, 1.4.11 | Fonts are constant dp sizes: Windows' "Make text bigger" changes nothing, and chips/buttons have fixed heights that would clip. High-contrast themes are not detected; the tokens override them. Wants a text-scale factor on the font tokens and a high-contrast token set | P8 |
 | — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
 | — Dark-theme button text | WCAG 1.4.3 | White on the dark danger (2.71:1) and accent (2.77:1, a known XFAIL) buttons: a design-token decision (dark text, or darker tokens) | P8 |
@@ -65,7 +65,7 @@ below, lists them per phase).
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
-| — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, elided shape names without a tooltip, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
+| — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 |
 
 ## Architecture
@@ -284,9 +284,9 @@ renamed over the old one, so a crash part way leaves the old settings.
 
 | Suite | What | How it runs |
 | :--- | :--- | :--- |
-| Catch2 `[ui]` (`test/test_ui_*.cpp`, 113 cases) | `src/uicore`: command table vs legacy menus, camera, view cube, meshes and picking for every grid type, layout model, settings store, undo session, vector export, … | `just test`, no window |
-| Qt Test `test_qtgui` (17 classes, ~165 functions) | the controllers, theme, settings, icons; real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
-| Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~90 functions) | the shell, menus, settings, dialogs, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
+| Catch2 `[ui]` (`test/test_ui_*.cpp`, ~200 cases) | `src/uicore`: command table vs legacy menus, camera, view cube, meshes and picking for every grid type, layout model, settings store, undo session, vector export, … | `just test`, no window |
+| Qt Test `test_qtgui` (23 classes, ~255 functions) | the controllers, theme, settings, icons; every voxel type edited end to end and saved (`TestVoxelTypes`, `TestSaving`); real renders through an offscreen QRhi (shading, outlines, linear blending, layered translucency, tiling, the 3D view item resized, the pipeline caches) | headless; renders need a graphics backend (below) |
+| Qt Quick Test `test_qtgui_qml` (`test/qtgui/qml/tst_*.qml`, ~160 functions) | the shell, menus, settings, dialogs, the Shapes list, the Voxel editor, the inspector, the 3D view's toolbar and hint, layout at 960 dp, tooltips, accessibility and contrast, the component gallery | headless (`offscreen`), Qt Quick's software renderer |
 | Gallery snapshots | each gallery row and the glyph / icon sheets against reference images, light and dark, at device-pixel ratios 1, 1.5 and 2 | `test/qtgui/snapshots/<os>/`; tolerant diff |
 | Density tokens (`qtgui_density_tokens`) | every density token of `design-tokens.json` read by a component (through `Theme`, or the layout's metrics, which must match), or listed with the phase that builds it; Standard and Minimal with the same tokens | `scripts/check_density_tokens.py`, no build needed |
 | Performance | work counts per edit, the scene targets' graphics memory, allocations per frame (none per triangle), QML bindings left to the JS engine (`qtgui_qml_aot`, against a baseline); benchmarks and profiles as reports | Qt suites and `just qml-aot`; `just bench-ui`, `startup-time`, `profile-qml`, `heap-qt`; see `design/2026-10-08-qtgui-performance-guide.md` |
@@ -303,7 +303,16 @@ commit holds just the images that changed.
 
 Every voxel type is edited end to end in `TestVoxelTypes` (the 2D grid in
 each plane the type has, by pointer and keyboard; the 3D view's slab, face
-and Erase clicks), on top of uicore's per-type rules. Time budgets
+and Erase clicks), on top of uicore's per-type rules. **Saving** is
+tested the same way (`TestSaving`): edits through the controllers -- the
+2D grid in every plane (Fixed, Variable, a stroke, Paint, Erase, Mirror,
+an area), the 3D view (the slab, a face, quick tools, Edit mode, another
+layer), the inspector, grid size, several shapes renamed, weighted,
+duplicated, reordered and deleted, a problem's result and pieces --
+are saved, the file opened in a new App, and the whole puzzle compared
+line by line with what was there before the save; undone edits are not
+saved and a save leaves the document clean. A new kind of edit gets a
+case there. Time budgets
 (AC-C08-08's 16 ms and the like) use `VERIFY_BUDGET`: checked in every
 build but `just coverage`'s, whose counters slow the hot loops several-fold,
 where they are only reported. The update check takes its GitHub reply
@@ -318,6 +327,10 @@ the network.
   Help ▸ Keyboard shortcuts. There is no top bar: the window has the
   system's title bar and a menu bar, which can be hidden (View ▸ Show menu bar).
 - **Theme** defaults to Light, as legacy looks (spec: System).
+- **Element ids**: the collapsed side cards' expand buttons are the
+  shell's, `workspace.left.rail.expand` / `workspace.right.rail.expand`, one
+  per side for all three workspaces (C01: `entities.shapes.rail.expand`).
+  Every card's header is `<card>.header` (`entities.shapes.header`).
 - **3D view hint** (C06): each pair reads key + gesture, then its effect in
   the text colour -- "Shift +click fixed voxel", "Drag orbit", "Shift +drag
   or middle-drag pan" -- without the tool numbers (spec: "Shift click 1
@@ -358,7 +371,9 @@ the network.
   quick**: a preset colour at once, as the mock does (C09 asked for the
   chooser); Edit colour… opens the platform's chooser (`ColorDialog`). The
   palette has a row of its own under the current colour, as wide as the
-  card (C09 put it beside the name, where it had room for one swatch).
+  card (C09 put it beside the name, where it had room for one swatch); in
+  a card with room for it (Focus 2D) it sits on the colour's line, between
+  the name and the buttons.
 - **Voxel editor** (P4): **XZ and YZ for every voxel type but the
   triangular prism** (product decisions 2026-10-27 and -28): spheres,
   rhombic and tetra-octa grids look the same along X, Y and Z -- a test
@@ -418,13 +433,13 @@ the network.
   mock: 60 to 250 dp). The Voxel editor's **tools and Mirror / Span** have
   fixed widths and flow, the placement group beside the tools in a wide
   card; Mirror and Span sit under a **Voxel placement** heading with a hint
-  each, and beside them in a wide card the tools take a "Tool" heading so
+  each, and beside them in a wide card the tools take an "Editing tool" heading so
   the two button rows line up; the **planes** sit below the grid under an
   "Editing plane" heading. In a card wide enough for both (Focus 2D) each
   pair -- the tools and the placement group, the planes and the grid size
-  -- shares a row, the second block at the right edge; the tools' heading
-  there is "Editing tool", and the Drawing colour's palette moves onto the
-  colour's own line, between its name and the buttons. Focus 2D gives the
+  -- shares a row, the second block at the right edge, and the Drawing
+  colour's palette moves onto the colour's own line, between its name and
+  the buttons. Focus 2D gives the
   editor 80 % of what the 3D view's 360 dp leave and the 3D view the rest
   (C11: the editor took all of it; `kFocus2dEditorShare`). The inspector's sections **slide** open and
   shut when toggled (Theme.durCollapse; PR-09 shows and hides them). **Area mode** (legacy's rubber
@@ -724,9 +739,56 @@ Every phase's pull request follows what #140 settled:
   one -- and it follows the shape while shown (a press shows the next
   step). Its hint is drawn over everything at full strength
   (`SceneFrame::hintLines`), as legacy draws it with the depth test off.
-- **The Shapes list keeps its height** (238 dp): the inspector lies over
-  the part the rows leave free. A list that resized with its rows laid
-  out, inside a model change, rows the change had just taken away (Qt's
+- **The Shapes list's height** follows the inspector, not its rows: it
+  takes what the open sections leave, at least four rows (feedback of
+  2026-10-28). A list that resized with its own rows laid out, inside a
+  model change, rows the change had just taken away (Qt's
   "DelegateModel::cancel" warnings); no rows are made ahead off screen.
 - **QML gets the task numbers as `tasks`**, not the `Task` enum: the
   compiled QML read the enum's values (15, 16, … 40) as undefined.
+
+## Spec review of the Entities workspace (2026-10-29)
+
+The Shapes tab -- C00 to C14 and C22, the density and keyboard parts --
+read against what is built: each acceptance criterion against the code
+and the tests, the spec's element ids against the QML's `objectName`s
+both ways, and this file against the code.
+
+**Changed on purpose.** Everything under *Deviations from the spec, by
+decision* above, each with its date. In short: no top bar (the system's
+title bar, Settings in File, Light by default); C01's F2, delete
+confirmation, weight floor, chip text and drag gap; the Voxel editor's
+planes (XZ / YZ but prisms; below the grid), headings, fixed-width blocks
+and two-block rows in a wide card, Area mode, the grid's keyboard cursor;
+C09's quick Add, Remove confirmation and palette placement; the 3D view's
+slab as a 2D grid, ghosts behind voxels, the Edit button's override look
+and cursor glyph, the hint's wording, the view's keys, the Classic and STL
+styles; the inspector following Apply to all, legacy's Center and
+Minimize, blocked nudges, the 3D preview, greyed buttons that still say
+why; Focus 2D's 80 / 20 split; the rail's indicator side; density.md
+§1's sizes over the component sections'.
+
+**Spec conflicts, settled.** AC-C03-01 says the inspector's sections are
+closed by default; layout §2 opens Transform. Transform opens, the others
+are closed, as §2 and the mock have it.
+
+**Left out unintentionally, found by this review.**
+
+| Item | Spec | Now |
+| :--- | :--- | :--- |
+| No `entities.shapes.header` (no card header had an id) | C01 ids | Fixed: every card's header is `<card>.header`; `tst_shapes` checks the header's parts |
+| No test that edits survive a save -- per voxel type, 2D and 3D, several shapes, the problems that use them | AC-C01-07 "order persists after save/load", AC-C14-02, test plan | Added `TestSaving` (3 cases × 5 voxel types, 3 more); it found no fault |
+| This README: reduced motion still deferred, the list's 238 dp height, the palette's place, the "Tool" heading, a shape name's tooltip, the test counts | -- | Brought up to date; the agents' guide too |
+
+**Still open, knowingly.** The rows of *Deferred to the next phase*
+(the OS pointer in the edit cursors, KDE's Alt+click, the STL style's
+dimming for non-bricks, text size and high contrast, small screens, the
+screen-reader pass). AC-C08-07's "recolouring the shape in the app" has
+no control in Entities -- a piece's colour is the Puzzle workspace's
+(C17, P10) -- and is checked there.
+
+**Added unintentionally.** None found. The ids the QML has beyond the
+spec's are parts of a specified component (headings, the colour menu's
+items, the Display menu's rows, focus rings) or of a decision listed
+above (`entities.editor.tool.area`, `entities.viewport.toolbar.handle`,
+`entities.fit.allShapes`).
