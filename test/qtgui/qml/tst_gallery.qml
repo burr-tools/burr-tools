@@ -253,10 +253,13 @@ TestCase {
         // 3D toolbar and rail buttons: on / selected = accentSoft
         expectColors("toolbarButton", [ ["toolbarButton.on", 3, 22, soft, "toolbar button on"] ])
         expectColors("railButton", [ ["railButton.selected", 8, 4, soft, "rail button selected"] ])
-        // PR-05 segmented: panel2 track, the chosen option on panel
+        // PR-05 segmented: panel2 track; the chosen option accent-tinted with
+        // an accent edge (user decision 2026-10-28: PR-05's panel fill hardly
+        // showed on the light track)
         expectColors("segmented", [
             ["segmented.normal", 1.5, 13, panel2, "segmented track"],
-            ["segmented.normal", 4, 13, panel, "segmented option"],
+            ["segmented.normal", 2.5, 13, Theme.accent, "segmented option's edge"],
+            ["segmented.normal", 5, 13, over(Theme.accentSoft, panel2), "segmented option"],
         ])
         // PR-07 switch: off line2 track, on accent track, white knob that moves
         expectColors("switch", [
