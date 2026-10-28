@@ -420,7 +420,9 @@ the network.
   pair -- the tools and the placement group, the planes and the grid size
   -- shares a row, the second block at the right edge; the tools' heading
   there is "Editing tool", and the Drawing colour's palette moves onto the
-  colour's own line, between its name and the buttons. The inspector's sections **slide** open and
+  colour's own line, between its name and the buttons. Focus 2D gives the
+  editor 80 % of what the 3D view's 360 dp leave and the 3D view the rest
+  (C11: the editor took all of it; `kFocus2dEditorShare`). The inspector's sections **slide** open and
   shut when toggled (Theme.durCollapse; PR-09 shows and hides them). **Area mode** (legacy's rubber
   band, not in the spec): a toggle after the tools -- a drag spans an area
   of the type's own cells, placed on release as one undo step, Esc drops

@@ -57,15 +57,24 @@ TEST_CASE("focus modes override the collapse flags without changing them", "[ui]
   CHECK_FALSE(m.escape());
 }
 
-TEST_CASE("Focus 2D gives the voxel editor all remaining width", "[ui][layout]") {
+TEST_CASE("Focus 2D gives the voxel editor most of the width, the 3D view the rest", "[ui][layout]") {
+  // C11: the 3D view keeps 360 dp; the editor takes 80 % of what is left
+  // (user decision 2026-10-28: 20 % narrower than all of it), the 3D view the rest
   LayoutModel m;
   m.toggleFocus2d();
   REQUIRE(m.focus() == Focus::Focus2d);
   auto c = m.columns(1600, Density::Standard);
   CHECK(c.leftIsRail);
   CHECK_FALSE(c.rightIsRail);
-  CHECK_THAT(c.centre, WithinAbs(360, 0.01));
-  CHECK_THAT(c.right, WithinAbs(1600 - 76 - 48 - 360, 0.01));
+  const double share = 1600 - 76 - 48 - 360;            // all of it, before
+  CHECK_THAT(c.right, WithinAbs(0.8 * share, 0.01));
+  CHECK_THAT(c.centre, WithinAbs(360 + 0.2 * share, 0.01));
+  // at any width: the columns still fill the window
+  for (double w : { 960.0, 1280.0, 2560.0 }) {
+    const auto k = m.columns(w, Density::Standard);
+    CHECK_THAT(k.left + k.centre + k.right, WithinAbs(w - 60 - 2 * 4 - 2 * 4, 0.01));
+    CHECK(k.centre >= 360);
+  }
 
   // entering Focus 3D replaces it
   m.toggleFocus3d();

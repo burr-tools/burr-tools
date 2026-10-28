@@ -110,8 +110,8 @@ namespace btui {
     c.left = c.leftIsRail ? m.collapsedRail : m.leftCard;
 
     if (foc == Focus::Focus2d) {
-      c.centre = m.focus2dCentre;
-      c.right = std::max(0.0, avail - c.left - c.centre);
+      c.right = kFocus2dEditorShare * std::max(0.0, avail - c.left - m.focus2dCentre);
+      c.centre = std::max(0.0, avail - c.left - c.right);
     } else {
       c.right = c.rightIsRail ? m.collapsedRail : m.rightCard;
       c.centre = std::max(0.0, avail - c.left - c.right);
