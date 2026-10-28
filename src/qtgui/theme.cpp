@@ -20,7 +20,10 @@
  */
 #include "theme.h"
 
+#include <QtGlobal>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
 #include <QAccessibilityHints>
+#endif
 #include <QFile>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -51,8 +54,10 @@ Theme::Theme(QObject * parent) : QObject(parent) {
   if (auto * hints = QGuiApplication::styleHints()) {
     m_systemScheme = hints->colorScheme();
     // the system's reduce-motion switch, as it changes
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     if (const QAccessibilityHints * a = hints->accessibility())
       connect(a, &QAccessibilityHints::motionPreferenceChanged, this, &Theme::changed);
+#endif
     connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme s) {
       // while a forced theme is requested the platform reports that request,
       // not the operating system's choice
@@ -202,9 +207,13 @@ int Theme::motion(const QString & key) const {
 bool Theme::reducedMotion(void) const {
   if (m_motionOverride >= 0)
     return m_motionOverride != 0;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
   const QStyleHints * hints = QGuiApplication::styleHints();
   return hints && hints->accessibility() &&
          hints->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion;
+#else
+  return false;                       // Qt reads the system's setting from 6.12
+#endif
 }
 
 void Theme::setReducedMotionForTesting(int on) {
