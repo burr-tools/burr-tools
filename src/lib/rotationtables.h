@@ -156,7 +156,8 @@ class rotationContext_c {
     /** Limits that made the search skip turns, a bit set of skip_e. */
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
-      SKIP_PIECES = 2    ///< a (sub)problem had more pieces than groups can address
+      SKIP_PIECES = 2,   ///< a (sub)problem had more pieces than groups can address
+      SKIP_GROUPS = 4    ///< more than 16 closures: only single closures were tried, not their unions
     };
     void noteSkipped(skip_e s) { skipped.fetch_or(s, std::memory_order_relaxed); }
     unsigned int getSkipped(void) const { return skipped.load(std::memory_order_relaxed); }
