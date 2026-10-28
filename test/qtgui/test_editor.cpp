@@ -8,6 +8,7 @@
 #include "coloursmodel.h"
 #include "editcursor.h"
 #include "editorcontroller.h"
+#include "settingscontroller.h"
 #include "statuscontroller.h"
 #include "theme.h"
 #include "viewportcontroller.h"
@@ -18,6 +19,7 @@
 
 #include <QCoreApplication>
 #include <QElapsedTimer>
+#include <QFile>
 #include <QImage>
 #include <QMouseEvent>
 #include <QPainter>
@@ -100,6 +102,86 @@ void TestEditor::aStrokeIsOneUndoStep() {
   f.click(0, 1);
   d->undo();
   QCOMPARE(f.filled(), 0);
+}
+
+void TestEditor::anAreaIsPlacedOnReleaseAsOneStep() {
+  // legacy's rubber band: the press and the drag span an area, previewed and
+  // placed when the button goes up, one undo step; the right button erases
+  // an area; Esc (cancelArea) or another shape drops it unplaced
+  EditorFixture f(4, 4, 3);
+  EditorController * e = f.editor();
+  e->setAreaMode(true);
+  QSignalSpy preview(e, &EditorController::previewChanged);
+  QVERIFY(e->press(0, 0, false, Qt::NoModifier));
+  e->dragTo(2, 1);
+  QVERIFY(e->areaDragging());
+  QCOMPARE(f.filled(), 0);                               // nothing until the release
+  QCOMPARE(int(e->preview().size()), 6);                 // the 3D ghost shows the area
+  QVERIFY(preview.count() >= 2);
+  QVERIFY(f.app->status()->cursorText().contains(QStringLiteral("3 × 2")));
+  e->release();
+  QVERIFY(!e->areaDragging());
+  QCOMPARE(f.filled(), 6);
+  QCOMPARE(f.state(2, 1, 0), int(voxel_c::VX_FILLED));
+  f.app->document()->undo();
+  QCOMPARE(f.filled(), 0);
+  f.app->document()->redo();
+
+  // Mirror X in an area too; the right button erases what it covers
+  e->setMirror(1);
+  e->press(0, 3, false, Qt::NoModifier);
+  e->release();
+  QCOMPARE(f.filled(), 8);                               // (0,3) and its mirror (3,3)
+  e->setMirror(0);
+  e->press(0, 0, true, Qt::NoModifier);
+  e->dragTo(3, 3);
+  e->release();
+  QCOMPARE(f.filled(), 0);
+
+  // dropped: Esc, or the selection moving to another shape
+  e->press(0, 0, false, Qt::NoModifier);
+  e->dragTo(1, 1);
+  e->cancelArea();
+  QVERIFY(!e->areaDragging());
+  QVERIFY(e->preview().empty());
+  e->release();                                          // the button going up afterwards: nothing
+  QCOMPARE(f.filled(), 0);
+  f.app->shapes()->addShape();                           // selects it
+  f.app->shapes()->select(0);
+  e->press(0, 0, false, Qt::NoModifier);
+  e->dragTo(1, 1);
+  f.app->shapes()->select(1);
+  QVERIFY(!e->areaDragging());
+  e->release();
+  QCOMPARE(f.filled(), 0);
+  QCOMPARE(int(f.shape(1).countState(voxel_c::VX_FILLED)), 0);
+
+  // Area off: a drag paints each cell it passes, as before
+  e->setAreaMode(false);
+  f.app->shapes()->select(0);
+  e->press(0, 0, false, Qt::NoModifier);
+  QCOMPARE(f.filled(), 1);                               // at once
+  e->dragTo(1, 0);
+  e->release();
+  QCOMPARE(f.filled(), 2);
+}
+
+void TestEditor::areaModeIsRememberedAndSeededFromLegacy() {
+  // legacy keeps it in .burrtools.rc ("rubberband"): the first start takes it over
+  QTemporaryDir dir;
+  {
+    QFile legacy(dir.filePath(QStringLiteral("l.rc")));
+    QVERIFY(legacy.open(QIODevice::WriteOnly));
+    legacy.write("rubberband = true\n");
+  }
+  {
+    App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+    QVERIFY(app.editor()->areaMode());
+    app.editor()->setAreaMode(false);
+    QVERIFY(!app.settings()->areaMode());
+  }
+  App again(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+  QVERIFY(!again.editor()->areaMode());
 }
 
 void TestEditor::anUndoDuringADragEndsIt() {

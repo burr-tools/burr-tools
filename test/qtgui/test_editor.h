@@ -11,6 +11,8 @@ class TestEditor : public QObject {
   Q_OBJECT
 private slots:
   void aStrokeIsOneUndoStep();
+  void anAreaIsPlacedOnReleaseAsOneStep();
+  void areaModeIsRememberedAndSeededFromLegacy();
   void anUndoDuringADragEndsIt();
   void theRightButtonErasesWhateverTheToolAndModifiers();
   void theQuickToolIsCapturedAtThePress();

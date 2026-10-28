@@ -86,6 +86,7 @@ protected:
   void mouseReleaseEvent(QMouseEvent * e) override;
   void mouseUngrabEvent(void) override;
   void keyPressEvent(QKeyEvent * e) override;
+  bool event(QEvent * e) override;
   void keyReleaseEvent(QKeyEvent * e) override;
   void focusInEvent(QFocusEvent * e) override;
   void focusOutEvent(QFocusEvent * e) override;
@@ -116,6 +117,7 @@ private:
   bool m_hovered = false;
   bool m_filtering = false;
   bool m_pressed = false;
+  bool m_areaShown = false;           ///< the last paint drew a dragged area (Area mode)
   QPointF m_last;                     ///< the stroke's last point
   int m_keyCol = -1, m_keyRow = -1;   ///< the keyboard's cell, kept across layers
   std::vector<QStaticText> m_numbers;   ///< the rulers' numbers, laid out once

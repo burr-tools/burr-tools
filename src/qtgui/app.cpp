@@ -85,6 +85,9 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_shapes = new ShapesModel(m_document, this);
   m_colours = new ColoursModel(m_document, m_shapes, this);
   m_editor = new EditorController(m_document, m_shapes, m_colours, m_status, this);
+  // Area mode is remembered, as legacy's "rubberband" is
+  m_editor->setAreaMode(m_settings->areaMode());
+  connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
   m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, this);
   m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
   m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, this);

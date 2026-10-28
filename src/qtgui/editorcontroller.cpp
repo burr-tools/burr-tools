@@ -29,6 +29,7 @@
 #include "../lib/voxel.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace {
   btui::ModifierKeys keysOf(Qt::KeyboardModifiers m) {
@@ -49,14 +50,14 @@ EditorController::EditorController(DocumentController * doc, ShapesModel * shape
   connect(m_shapes, &ShapesModel::countChanged, this, &EditorController::refreshShape);
   connect(m_doc, &DocumentController::documentReplaced, this, [this] {
     // the session dropped any stroke with the old puzzle
-    m_stroking = m_rightDown = false;
+    m_stroking = m_rightDown = m_area = false;
     refreshShape();
     emit shapeChanged();         // another voxel type: the planes
   });
   connect(m_doc, &DocumentController::historyApplied, this, [this] {
     // an undo mid-drag ended the stroke (DocumentSession): the drag paints no more
     if (m_stroking) {
-      m_stroking = m_rightDown = false;
+      m_stroking = m_rightDown = m_area = false;
       emit toolChanged();
     }
     contentEdited();
@@ -197,6 +198,13 @@ void EditorController::toggleSpan(int axis) {
     setSpan(m_span ^ (1 << axis));
 }
 
+void EditorController::setAreaMode(bool on) {
+  if (on == m_areaMode)
+    return;
+  m_areaMode = on;
+  emit areaModeChanged();
+}
+
 btui::Modifiers EditorController::modifiers(void) const {
   btui::Modifiers m;
   for (int a = 0; a < 3; a++) {
@@ -287,7 +295,9 @@ void EditorController::refreshShape(void) {
   const puzzle_c & p = m_doc->session().puzzle();
   const int idx = sel >= 0 && unsigned(sel) < p.getNumberOfShapes() ? sel : -1;
   if (idx != m_shapeIndex) {
-    if (m_stroking)
+    if (m_stroking && m_area)
+      cancelArea();              // an area belongs to its shape, as a stroke does
+    else if (m_stroking)
       release();                 // a stroke belongs to its shape
     m_shapeIndex = idx;
     emit shapeChanged();
@@ -382,6 +392,8 @@ void EditorController::hover(int col, int row) {
  * 2D grid's cell, or the 3D view's target with the viewport action. */
 std::vector<btui::GhostCell> EditorController::preview(void) const {
   const voxel_c * s = shape();
+  if (s && areaDragging())
+    return guarded([&] { return btui::previewTool(*s, area(), m_strokeTool, unsigned(drawColour())); });
   if (!s || m_stroking)
     return {};
   btui::Cell3 t;
@@ -424,6 +436,15 @@ bool EditorController::press(int col, int row, bool rightButton, Qt::KeyboardMod
   m_rightDown = rightButton;
   m_stroking = true;
   m_lastCol = m_lastRow = -1;
+  if (m_areaMode) {
+    // an area: nothing changes until the release
+    m_area = true;
+    m_areaCol0 = m_areaCol1 = col;
+    m_areaRow0 = m_areaRow1 = row;
+    emit toolChanged();
+    emit previewChanged();
+    return true;
+  }
   m_doc->beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, m_shapeIndex);
   emit toolChanged();
   apply(col, row);
@@ -431,8 +452,34 @@ bool EditorController::press(int col, int row, bool rightButton, Qt::KeyboardMod
 }
 
 void EditorController::dragTo(int col, int row) {
-  if (m_stroking)
-    apply(col, row);
+  if (!m_stroking)
+    return;
+  if (m_area) {
+    if (col < 0 || row < 0 || (col == m_areaCol1 && row == m_areaRow1))
+      return;
+    m_areaCol1 = col;
+    m_areaRow1 = row;
+    m_status->setCursorText(tr("Area %1 × %2").arg(std::abs(m_areaCol1 - m_areaCol0) + 1)
+                                               .arg(std::abs(m_areaRow1 - m_areaRow0) + 1));
+    emit previewChanged();
+    return;
+  }
+  apply(col, row);
+}
+
+std::vector<btui::Cell3> EditorController::area(void) const {
+  const voxel_c * s = shape();
+  if (!s || !areaDragging())
+    return {};
+  return btui::areaCells(*s, planeValue(), m_layer, m_areaCol0, m_areaRow0, m_areaCol1, m_areaRow1, modifiers());
+}
+
+void EditorController::cancelArea(void) {
+  if (!areaDragging())
+    return;
+  m_stroking = m_rightDown = m_area = false;
+  emit toolChanged();
+  emit previewChanged();
 }
 
 void EditorController::apply(int col, int row) {
@@ -457,6 +504,22 @@ void EditorController::apply(int col, int row) {
 void EditorController::release(void) {
   if (!m_stroking)
     return;
+  if (m_area) {
+    // the area at once: one stroke, so one undo step that never merges with the next
+    const std::vector<btui::Cell3> cells = area();
+    const btui::Tool tool = m_strokeTool;
+    const unsigned colour = unsigned(drawColour());
+    const int idx = m_shapeIndex;
+    m_stroking = m_rightDown = m_area = false;
+    guarded([&] {
+      m_doc->beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, idx);
+      m_doc->strokeEdit(idx, [&](puzzle_c & p) { return btui::applyTool(*p.getShape(unsigned(idx)), cells, tool, colour); });
+      m_doc->endStroke();
+    });
+    emit toolChanged();
+    emit previewChanged();
+    return;
+  }
   m_stroking = false;
   m_rightDown = false;
   guarded([&] { m_doc->endStroke(); });
