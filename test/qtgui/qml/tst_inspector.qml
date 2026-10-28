@@ -164,6 +164,14 @@ TestCase {
         wait(Theme.durCollapse / 3)
         verify(fit.height < open - 1 && fit.height > shut + 1, "half way shut: " + fit.height)
         tryCompare(fit, "height", shut)
+
+        // the system asks for reduced motion: no slide, open and shut at once
+        Theme.setReducedMotionForTesting(1)
+        mouseClick(item("entities.inspector.fit.header"))
+        compare(fit.height, open)
+        mouseClick(item("entities.inspector.fit.header"))
+        compare(fit.height, shut)
+        Theme.setReducedMotionForTesting(-1)
     }
 
     function test_everyControlHasItsId_data() {

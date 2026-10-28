@@ -125,11 +125,15 @@ class Theme : public QObject {
   Q_PROPERTY(int toolbarHideDelay READ toolbarHideDelay NOTIFY changed FINAL)
   Q_PROPERTY(int toolbarFade READ toolbarFade NOTIFY changed FINAL)
 
-  // motion (section 6), in ms
-  Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
-  Q_PROPERTY(int durChevron READ durChevron CONSTANT FINAL)
+  /* motion (section 6), in ms; all 0 while the system asks for reduced
+   * motion (section 6: "Respect OS reduce motion by setting durations to 0") */
+  Q_PROPERTY(bool reducedMotion READ reducedMotion NOTIFY changed FINAL)
+  Q_PROPERTY(int durCollapse READ durCollapse NOTIFY changed FINAL)
+  Q_PROPERTY(int durChevron READ durChevron NOTIFY changed FINAL)
   /* list rows making room for a dragged one (the Shapes list) */
-  Q_PROPERTY(int durReorder READ durReorder CONSTANT FINAL)
+  Q_PROPERTY(int durReorder READ durReorder NOTIFY changed FINAL)
+  /* a switch's knob and track */
+  Q_PROPERTY(int durSwitch READ durSwitch NOTIFY changed FINAL)
   Q_PROPERTY(int durFlash READ durFlash CONSTANT FINAL)
   Q_PROPERTY(int tooltipDelay READ tooltipDelay CONSTANT FINAL)
 
@@ -239,11 +243,17 @@ public:
    * the view's top edge, hides this long after it leaves, fading this long */
   qreal toolbarRevealZone(void) const { return dens("toolbarAutoHide.revealZone"); }
   int toolbarHideDelay(void) const { return int(dens("toolbarAutoHide.hideDelayMs")); }
-  int toolbarFade(void) const { return int(dens("toolbarAutoHide.fadeMs")); }
+  int toolbarFade(void) const { return reducedMotion() ? 0 : int(dens("toolbarAutoHide.fadeMs")); }
 
+  /* The system's "reduce motion" (QAccessibilityHints::motionPreference),
+   * or what a test set (setReducedMotionForTesting) */
+  bool reducedMotion(void) const;
+  /* -1 follows the system again; 0 or 1 holds it off or on (tests) */
+  Q_INVOKABLE void setReducedMotionForTesting(int on);
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }
   int durReorder(void) const { return motion("reorderMs"); }
+  int durSwitch(void) const { return motion("switchMs"); }
   int durFlash(void) const { return int(num("motion.flashMs")); }
   int tooltipDelay(void) const { return int(num("motion.tooltipDelayMs")); }
 
@@ -274,6 +284,7 @@ private:
   QString m_mode = QStringLiteral("light");      // the settings' default
   bool m_dark = false;
   Qt::ColorScheme m_systemScheme = Qt::ColorScheme::Unknown;
+  int m_motionOverride = -1;                       ///< setReducedMotionForTesting
   bool m_minimal = false;
 
   QHash<QString, QColor> m_light, m_darkColors;

@@ -82,6 +82,12 @@ SceneFrame SceneController::frame(float devicePixelRatio) const {
 // --- animation -------------------------------------------------------------
 
 void SceneController::startTicking(void) {
+  // reduced motion (the system's): a snap, a turn or the eased zoom ends at once
+  if (const Theme * t = Theme::instance(); t && t->reducedMotion()) {
+    m_camera.tick(1.0e6f);
+    m_timer.stop();
+    return;
+  }
   if (!m_timer.isActive()) {
     m_clock.start();
     m_timer.start();
