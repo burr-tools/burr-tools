@@ -680,7 +680,7 @@ TEST_CASE("a ghost is its cells' every face and edge, in its style, never dimmed
     auto w = bttest::makeVoxel(g, 3, 3, 3);
     std::array<int, 3> cell{ -1, -1, -1 }, notCell{ -1, -1, -1 };
     for (int i = 0; i < 27; i++)
-      (w->validCoordinate(i % 3, i / 3 % 3, i / 9) ? cell : notCell) = { i % 3, i / 3 % 3, i / 9 };
+      (w->validCoordinate(i % 3, i / 3 % 3, i / 9) ? cell : notCell) = std::array<int, 3>{ i % 3, i / 3 % 3, i / 9 };
     faces.clear();
     lines.clear();
     addGhost(faces, lines, *w, { cell }, s);
