@@ -28,6 +28,7 @@
 #include "test_editor.h"
 #include "test_inspector.h"
 #include "test_voxeltypes.h"
+#include "test_saving.h"
 #include "test_viewport.h"
 
 #include "../../src/tools/httpget.h"
@@ -3619,6 +3620,7 @@ int main(int argc, char ** argv) {
   run(TestEdit3d());
   run(TestInspector());
   run(TestVoxelTypes());
+  run(TestSaving());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

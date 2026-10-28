@@ -36,9 +36,11 @@ if qt6_test_dep.found()
 
   test_qtgui = executable('test_qtgui',
     ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', 'test_inspector.cpp', 'test_voxeltypes.cpp',
+     'test_saving.cpp',
      '../alloccount.cpp',
      qt6.compile_moc(sources: 'test_qtgui.cpp',
-                     headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h', 'test_voxeltypes.h'],
+                     headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h', 'test_voxeltypes.h',
+                               'test_saving.h'],
                      dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
