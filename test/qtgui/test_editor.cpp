@@ -7,6 +7,7 @@
 #include "app.h"
 #include "coloursmodel.h"
 #include "editcursor.h"
+#include "systempointer.h"
 #include "iconprovider.h"
 #include "editorcontroller.h"
 #include "settingscontroller.h"
@@ -802,16 +803,16 @@ void TestEditor::editsThatChangeNoGeometryKeepTheMesh() {
 }
 
 void TestEditor::theCursorsAreComposedPerToolColourAndTheme() {
-  // PR-20 / glyph catalog ▸ Cursors
+  // PR-20 / glyph catalog ▸ Cursors, on the bundled arrow (the fallback)
   for (qreal scale : { 1.0, 1.5, 2.0 }) {
-    const auto c = editcursor::compose(btui::Tool::Fixed, QColor(Qt::red), false, scale);
+    const auto c = editcursor::compose(btui::Tool::Fixed, QColor(Qt::red), false, scale, editcursor::Pointer::Bundled);
     QCOMPARE(c.image.width(), qRound(32 * scale));
     QCOMPARE(c.image.devicePixelRatio(), scale);
     QCOMPARE(c.hotspot, QPoint(1, 1));
   }
   // the badge's inside: the drawing colour, or for Default the theme's opposite tone
   auto inside = [](btui::Tool t, const QColor & colour, bool dark) {
-    return editcursor::compose(t, colour, dark, 1).image.pixelColor(15, 3);
+    return editcursor::compose(t, colour, dark, 1, editcursor::Pointer::Bundled).image.pixelColor(15, 3);
   };
   QCOMPARE(inside(btui::Tool::Fixed, QColor(Qt::red), false), QColor(Qt::red));
   QCOMPARE(inside(btui::Tool::Fixed, QColor(), false), QColor(Qt::white));
@@ -819,7 +820,7 @@ void TestEditor::theCursorsAreComposedPerToolColourAndTheme() {
   QVERIFY(inside(btui::Tool::Variable, QColor(), false).lightness() > 240);
   // Erase and Paint: the icon alone, hotspot at its centre, something drawn there
   for (btui::Tool t : { btui::Tool::Erase, btui::Tool::Paint }) {
-    const auto c = editcursor::compose(t, QColor(Qt::blue), false, 1);
+    const auto c = editcursor::compose(t, QColor(Qt::blue), false, 1, editcursor::Pointer::Bundled);
     QCOMPARE(c.hotspot, QPoint(16, 16));
     int drawn = 0;
     for (int y = 0; y < 32; y++)
@@ -828,6 +829,52 @@ void TestEditor::theCursorsAreComposedPerToolColourAndTheme() {
     QVERIFY2(drawn > 60, qPrintable(QString::number(drawn)));
   }
   QVERIFY(!editcursor::cursor(btui::Tool::Paint, QColor(Qt::blue), true, 1).pixmap().isNull());
+}
+
+void TestEditor::theCursorsDrawOnTheSystemsArrow() {
+  // PR-20, OQ-17: Fixed and Variable are the system's own arrow with the
+  // badge at its upper right, the hotspot the arrow's; Erase and Paint
+  // follow the system's pointer size
+  const double size = systempointer::sizeFactor();
+  QVERIFY(size > 0);
+  const systempointer::Arrow os = systempointer::arrow(1);
+  if (os.image.isNull()) {
+#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+    QFAIL("the system's arrow could not be read");
+#else
+    QSKIP("no Xcursor theme with an arrow here");
+#endif
+  }
+  QVERIFY(QRect(QPoint(0, 0), os.image.size()).contains(os.hotspot));
+  // the same arrow, larger on a screen of twice the density
+  const systempointer::Arrow os2 = systempointer::arrow(2);
+  QCOMPARE(os2.image.devicePixelRatio(), 2.0);
+  // (an Xcursor theme pads each size its own way)
+  QVERIFY(std::abs(os2.image.width() - 2 * os.image.width()) <= std::max(2, os.image.width() / 2));
+
+  auto red = [](QColor c) { return c.alpha() > 200 && c.red() > 180 && c.green() < 90 && c.blue() < 90; };
+  for (const btui::Tool tool : { btui::Tool::Fixed, btui::Tool::Variable }) {
+    const auto c = editcursor::compose(tool, QColor(Qt::red), false, 1);
+    QCOMPARE(c.hotspot, os.hotspot);
+    QVERIFY(c.image.width() >= os.image.width() && c.image.height() >= os.image.height());
+    // the arrow's own pixels, unchanged where the badge is not
+    QCOMPARE(c.image.pixelColor(os.hotspot + QPoint(1, 3)), os.image.pixelColor(os.hotspot + QPoint(1, 3)));
+    // the badge right of the arrow's leftmost column, in the drawing colour
+    int badge = 0, minX = c.image.width();
+    for (int y = 0; y < c.image.height(); y++)
+      for (int x = 0; x < c.image.width(); x++)
+        if (red(c.image.pixelColor(x, y))) {
+          badge++;
+          minX = std::min(minX, x);
+        }
+    QVERIFY2(tool == btui::Tool::Variable || badge > 30, qPrintable(QString::number(badge)));
+    QVERIFY(badge > 0);
+    QVERIFY(minX > os.hotspot.x() + 3);
+  }
+  const auto erase = editcursor::compose(btui::Tool::Erase, QColor(Qt::blue), false, 1);
+  QCOMPARE(erase.image.width(), int(std::lround(32 * size)));
+  QCOMPARE(erase.hotspot, QPoint(int(std::lround(16 * size)), int(std::lround(16 * size))));
+  QVERIFY(!editcursor::cursor(btui::Tool::Fixed, QColor(Qt::red), false, 1).pixmap().isNull());
 }
 
 void TestEditor::theEditButtonShowsTheCursorsDrawing() {

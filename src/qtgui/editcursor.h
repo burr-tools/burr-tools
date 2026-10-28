@@ -29,16 +29,16 @@
 #include <QPoint>
 
 /* The edit cursors (PR-20, glyph catalog ▸ Cursors), composed at run time:
- * Fixed and Variable are the pointer with a square badge at its upper
- * right, filled with the drawing colour; Erase and Paint are their icons
- * alone, hotspot at the centre. The Default colour (an invalid QColor) is
- * drawn in the theme's contrast tones. The OS pointer is not read back:
- * the bundled arrow (resources/cursors/arrow-fallback.svg) stands in for it
- * on every platform (OQ-17's fallback).
+ * Fixed and Variable are the system's own arrow (`systempointer`) with a
+ * square badge at its upper right, filled with the drawing colour; Erase
+ * and Paint are their icons alone, hotspot at the centre. The Default
+ * colour (an invalid QColor) is drawn in the theme's contrast tones. Where
+ * the system's arrow cannot be read, the bundled one
+ * (resources/cursors/arrow-fallback.svg) stands in (OQ-17's fallback).
  *
- * Sizes follow a 32 px canvas at scale 1 (48 at 1.5, 64 at 2); `scale` is
- * the screen's device pixel ratio, the nearest the toolkit offers to the OS
- * cursor size.
+ * Sizes follow a 32 px canvas at the system's pointer size and scale 1 (48
+ * at 1.5, 64 at 2 or at Windows' pointer size 2); `scale` is the screen's
+ * device pixel ratio.
  */
 namespace editcursor {
 
@@ -47,7 +47,11 @@ namespace editcursor {
     QPoint hotspot;                ///< in logical (scale 1) pixels
   };
 
-  Composed compose(btui::Tool tool, const QColor & colour, bool dark, qreal scale);
+  /* Which arrow Fixed and Variable draw on: the system's, at its pointer
+   * size, or the bundled one at the default size (tests, the fallback) */
+  enum class Pointer { System, Bundled };
+
+  Composed compose(btui::Tool tool, const QColor & colour, bool dark, qreal scale, Pointer pointer = Pointer::System);
 
   /* compose(), cached per tool, colour, theme and scale */
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale);
