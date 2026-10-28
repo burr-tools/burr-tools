@@ -50,6 +50,8 @@ class SettingsController : public QObject {
   /* the window-wide one-character shortcuts (O, P, F, E, 1-4): WCAG 2.1.4
    * lets a user who types by voice or one finger turn them off */
   Q_PROPERTY(bool singleKeyShortcuts READ singleKeyShortcuts WRITE setSingleKeyShortcuts NOTIFY changed FINAL)
+  /* the voxel editor's Area mode (legacy "rubberband"; EditorController) */
+  Q_PROPERTY(bool areaMode READ areaMode WRITE setAreaMode NOTIFY changed FINAL)
   // Help > Check for updates, at launch too (at most daily; legacy checkForUpdates)
   Q_PROPERTY(bool checkForUpdates READ checkForUpdates WRITE setCheckForUpdates NOTIFY changed FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed FINAL)
@@ -108,6 +110,8 @@ public:
   bool tooltips(void) const;
   bool singleKeyShortcuts(void) const;
   void setSingleKeyShortcuts(bool v);
+  bool areaMode(void) const;
+  void setAreaMode(bool v);
   void setTooltips(bool v);
   bool checkForUpdates(void) const;
   void setCheckForUpdates(bool v);

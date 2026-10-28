@@ -108,6 +108,15 @@ namespace btui {
    * duplicates, inside dims. */
   std::vector<Cell3> expand(Cell3 t, std::array<int, 3> dims, const Modifiers & m);
 
+  /* Area mode (legacy's rubber band, EDT_RUBBER): the cells a drag from
+   * cell (c0, r0) to (c1, r1) of a plane's layer covers -- every cell of
+   * the voxel type whose column and row lie between them, so the area has
+   * the type's own outline (the prism's zig-zag of triangles, the spheres'
+   * circles) -- each expanded by Mirror and Span. Sorted, without
+   * duplicates, only cells of the voxel type inside the shape. */
+  std::vector<Cell3> areaCells(const voxel_c & shape, Plane p, int layer, int c0, int r0, int c1, int r1,
+                               const Modifiers & m);
+
   /* Apply a tool to cells of a shape (legacy setRecursive): Fixed and
    * Variable set the state and the colour, Erase empties (and clears the
    * colour), Paint recolours a voxel that is there and leaves empty cells

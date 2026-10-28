@@ -13,8 +13,10 @@
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/voxel.h"
 #include "../../src/uicore/commands.h"
+#include "../../src/uicore/voxeledit.h"
 
 #include <QCoreApplication>
+#include <QImage>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
@@ -54,6 +56,7 @@ namespace {
 
   struct InputGrid : VoxelGridItem {
     using VoxelGridItem::mousePressEvent;
+    using VoxelGridItem::mouseMoveEvent;
     using VoxelGridItem::mouseReleaseEvent;
   };
 
@@ -148,6 +151,87 @@ void TestVoxelTypes::paintsEveryPlaneByPointerAndKeys() {
     QCOMPARE(f.filled(), before);
   }
   QCOMPARE(planes, t == gridType_c::GT_TRIANGULAR_PRISM ? 1 : 3);
+}
+
+void TestVoxelTypes::anAreaCoversItsCellsInEveryType_data() {
+  addTypes();
+}
+
+void TestVoxelTypes::anAreaCoversItsCellsInEveryType() {
+  // Area mode (legacy's rubber band) through the grid item: a drag between
+  // two cells outlines the area in the type's own cells and places all of
+  // them on release, one undo step; Esc during a drag drops it
+  QFETCH(int, type);
+  TypeFixture f{ gridType_c::gridType(type) };
+  EditorController * e = f.editor();
+  e->setAreaMode(true);
+  InputGrid g;
+  g.setSize(QSizeF(480, 360));
+  g.setEditor(e);
+  // the first cell of the layer, and the cell farthest from it
+  QPoint from(-1, -1), to(-1, -1);
+  for (int row = 0; row < 16; row++)
+    for (int col = 0; col < 16; col++)
+      if (g.cellCentre(col, row).x() >= 0) {
+        if (from.x() < 0)
+          from = QPoint(col, row);
+        to = QPoint(col, row);
+      }
+  QVERIFY(from.x() >= 0 && to != from);
+  const std::vector<btui::Cell3> expected = btui::areaCells(f.shape(), btui::Plane::XY, 0, from.x(), from.y(),
+                                                            to.x(), to.y(), {});
+  QVERIFY(expected.size() >= 2);
+  const QColor accent = Theme::instance()->accent();
+  auto accentPixels = [&](const char * save = nullptr) {
+    QImage img(int(g.width()), int(g.height()), QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    g.paint(&p);
+    p.end();
+    if (save)                                  // next to the test binary, for a look
+      img.save(QCoreApplication::applicationDirPath() + QStringLiteral("/area-%1.png").arg(QString::fromLatin1(save)));
+    int n = 0;
+    for (int y = 0; y < img.height(); y += 2)
+      for (int x = 0; x < img.width(); x += 2) {
+        const QColor q = img.pixelColor(x, y);
+        n += std::abs(q.red() - accent.red()) < 12 && std::abs(q.green() - accent.green()) < 12 &&
+             std::abs(q.blue() - accent.blue()) < 12;
+      }
+    return n;
+  };
+  auto mouse = [&](QEvent::Type t, QPoint cell, Qt::MouseButtons held) {
+    const QPointF at = g.cellCentre(cell.x(), cell.y());
+    QMouseEvent ev(t, at, at, t == QEvent::MouseMove ? Qt::NoButton : Qt::LeftButton, held, Qt::NoModifier);
+    if (t == QEvent::MouseButtonPress)
+      g.mousePressEvent(&ev);
+    else if (t == QEvent::MouseMove)
+      g.mouseMoveEvent(&ev);
+    else
+      g.mouseReleaseEvent(&ev);
+  };
+
+  // dropped with Esc
+  mouse(QEvent::MouseButtonPress, from, Qt::LeftButton);
+  mouse(QEvent::MouseMove, to, Qt::LeftButton);
+  QVERIFY(e->areaDragging());
+  QKeyEvent esc(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
+  QCoreApplication::sendEvent(&g, &esc);
+  QVERIFY(esc.isAccepted());
+  QVERIFY(!e->areaDragging());
+  mouse(QEvent::MouseButtonRelease, to, Qt::NoButton);
+  QCOMPARE(f.filled(), 0);
+
+  // placed on release
+  e->hover(-1, -1);
+  const int idle = accentPixels();
+  mouse(QEvent::MouseButtonPress, from, Qt::LeftButton);
+  mouse(QEvent::MouseMove, to, Qt::LeftButton);
+  QVERIFY2(accentPixels(QTest::currentDataTag()) > idle + 40, "the area is outlined");
+  QCOMPARE(f.filled(), 0);
+  mouse(QEvent::MouseButtonRelease, to, Qt::NoButton);
+  QCOMPARE(f.filled(), int(expected.size()));
+  f.app->document()->undo();
+  QCOMPARE(f.filled(), 0);
 }
 
 void TestVoxelTypes::theHoveredCellIsOutlined_data() {

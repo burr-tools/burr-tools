@@ -39,6 +39,7 @@ namespace {
   const char * const kDensity     = "ui.density";
   const char * const kTooltips    = "ui.tooltips";
   const char * const kSingleKeys  = "ui.singleKeyShortcuts";
+  const char * const kAreaMode    = "editor.areaMode";
   const char * const kUpdateCheck = "update.checkAtLaunch";
   const char * const kUpdateLast  = "update.lastCheck";       // epoch seconds of the last good fetch
   const char * const kUpdateSkip  = "update.skippedVersion";  // updatecheck::packVersion; 0: none
@@ -171,6 +172,7 @@ void SettingsController::seedFromLegacy(const QString & legacyFile) {
   copyBool("reversescrollzoom", kReverse);
   copyBool("showviewcube", kViewCube);
   copyBool("displaylists", kDisplayLists);
+  copyBool("rubberband", kAreaMode);
 
   if (auto it = legacy.find("rotator"); it != legacy.end())
     if (auto b = std::get_if<bool>(&it->second))
@@ -265,6 +267,7 @@ void SettingsController::setDensity(const QString & v) {
 
 BOOL_SETTING(tooltips, setTooltips, kTooltips, true)
 BOOL_SETTING(singleKeyShortcuts, setSingleKeyShortcuts, kSingleKeys, true)
+BOOL_SETTING(areaMode, setAreaMode, kAreaMode, false)
 BOOL_SETTING(checkForUpdates, setCheckForUpdates, kUpdateCheck, true)
 BOOL_SETTING(showViewCube, setShowViewCube, kViewCube, true)
 BOOL_SETTING(reverseScroll, setReverseScroll, kReverse, false)

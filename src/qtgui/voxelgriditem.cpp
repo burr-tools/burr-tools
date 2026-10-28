@@ -41,6 +41,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
+#include <utility>
 
 namespace {
   // room for the rulers: the cell size formula's 70 x 60 dp (C08)
@@ -124,6 +126,11 @@ void VoxelGridItem::setEditor(EditorController * e) {
       update();
     });
     m_connections << connect(e, &EditorController::toolChanged, this, &VoxelGridItem::updateCursor);
+    // an area dragged in Area mode grows and shrinks with the pointer
+    m_connections << connect(e, &EditorController::previewChanged, this, [this] {
+      if (m_editor->areaDragging() || m_areaShown)
+        update();
+    });
     m_connections << connect(e, &EditorController::drawColourChanged, this, &VoxelGridItem::updateCursor);
   }
   m_layoutRevision = ~quint64(0);
@@ -289,6 +296,56 @@ void VoxelGridItem::paint(QPainter * p) {
         break;
     }
     p->strokePath(path, gapPen);
+  }
+
+  // Area mode: the dragged area's cells of this layer tinted, and their
+  // outline -- the sides no other cell of the area shares -- in accent, so
+  // the area has the voxel type's own shape (legacy drawTileCursor)
+  m_areaShown = m_editor->areaDragging();
+  if (m_areaShown) {
+    const std::vector<btui::Cell3> area = m_editor->area();
+    std::vector<const btui::GridCell *> in;
+    for (const btui::GridCell & c : m_layout.cells)
+      if (std::binary_search(area.begin(), area.end(), c.voxel))
+        in.push_back(&c);
+    p->save();
+    p->setRenderHint(QPainter::Antialiasing, true);
+    QColor tint = t->accent();
+    tint.setAlphaF(0.18f);
+    // each side by its ends rounded to 1/1024 of a cell, either way round
+    auto key = [](btui::Pt a, btui::Pt b) {
+      auto q = [](double v) { return qint64(std::llround(v * 1024.0)); };
+      std::array<qint64, 4> k{ q(a.x), q(a.y), q(b.x), q(b.y) };
+      if (std::make_pair(k[2], k[3]) < std::make_pair(k[0], k[1]))
+        k = { k[2], k[3], k[0], k[1] };
+      return k;
+    };
+    std::map<std::array<qint64, 4>, std::pair<QLineF, int>> sides;
+    QPainterPath circles;
+    for (const btui::GridCell * c : in) {
+      if (c->round) {
+        circles.addEllipse(toItem(c->centre), c->radius * m_cell, c->radius * m_cell);
+        continue;
+      }
+      QPolygonF poly;
+      for (size_t i = 0; i < c->outline.size(); i++) {
+        const btui::Pt a = c->outline[i], b = c->outline[(i + 1) % c->outline.size()];
+        poly << toItem(a);
+        auto & s = sides[key(a, b)];
+        s.first = QLineF(toItem(a), toItem(b));
+        s.second++;
+      }
+      p->setPen(Qt::NoPen);
+      p->setBrush(tint);
+      p->drawPolygon(poly);
+    }
+    p->setBrush(tint);
+    p->setPen(QPen(t->accent(), 2));
+    p->drawPath(circles);
+    for (const auto & [k, s] : sides)
+      if (s.second == 1)
+        p->drawLine(s.first);
+    p->restore();
   }
 
   // the hovered cell: a 2 dp accent outline inside it
@@ -479,6 +536,11 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
     e->ignore();
     return;
   }
+  if (e->key() == Qt::Key_Escape && m_editor->areaDragging()) {
+    m_editor->cancelArea();               // the area goes, unapplied
+    e->accept();
+    return;
+  }
   relayout();
   const int key = e->key();
   if (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta) {
@@ -564,8 +626,23 @@ void VoxelGridItem::mouseReleaseEvent(QMouseEvent * e) {
 }
 
 void VoxelGridItem::mouseUngrabEvent(void) {
-  // the window lost the mouse mid-stroke: the stroke ends as a release would
-  if (m_pressed && m_editor)
-    m_editor->release();
+  // the window lost the mouse mid-stroke: the stroke ends as a release would;
+  // an area, never seen to its end, goes unapplied
+  if (m_pressed && m_editor) {
+    if (m_editor->areaDragging())
+      m_editor->cancelArea();
+    else
+      m_editor->release();
+  }
   m_pressed = false;
+}
+
+bool VoxelGridItem::event(QEvent * e) {
+  // Esc cancels a dragged area here, before the window's Esc ladder
+  if (e->type() == QEvent::ShortcutOverride && m_editor && m_editor->areaDragging() &&
+      static_cast<QKeyEvent *>(e)->key() == Qt::Key_Escape) {
+    e->accept();
+    return true;
+  }
+  return QQuickPaintedItem::event(e);
 }

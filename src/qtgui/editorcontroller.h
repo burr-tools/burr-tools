@@ -83,6 +83,11 @@ private:
   /* Mirror and Span: a bit per axis, X 1, Y 2, Z 4 */
   Q_PROPERTY(int mirror READ mirror WRITE setMirror NOTIFY modifiersChanged FINAL)
   Q_PROPERTY(int span READ span WRITE setSpan NOTIFY modifiersChanged FINAL)
+  /* Area mode (legacy's rubber band, EDT_RUBBER): a press and a drag on the
+   * grid span an area of cells (btui::areaCells), applied on release as one
+   * undo step; off, each cell the pointer passes is painted. App keeps it
+   * in the settings. */
+  Q_PROPERTY(bool areaMode READ areaMode WRITE setAreaMode NOTIFY areaModeChanged FINAL)
   Q_PROPERTY(Plane plane READ plane WRITE setPlane NOTIFY layerChanged FINAL)
   Q_PROPERTY(int layer READ layer WRITE setLayer NOTIFY layerChanged FINAL)
   Q_PROPERTY(int layerCount READ layerCount NOTIFY layerChanged FINAL)
@@ -119,6 +124,8 @@ public:
   void setSpan(int bits);
   Q_INVOKABLE void toggleMirror(int axis);
   Q_INVOKABLE void toggleSpan(int axis);
+  bool areaMode(void) const { return m_areaMode; }
+  void setAreaMode(bool on);
 
   bool editMode(void) const { return m_editMode; }
   void setEditMode(bool on);
@@ -182,6 +189,12 @@ public:
   /* the stroke ends: one undo step if it changed anything */
   void release(void);
   bool stroking(void) const { return m_stroking; }
+  /* Area mode: an area is being dragged, and its cells (Mirror and Span
+   * included) -- the grid outlines those of its layer; cancelArea() drops
+   * it unapplied (Esc, another shape) */
+  bool areaDragging(void) const { return m_stroking && m_area; }
+  std::vector<btui::Cell3> area(void) const;
+  Q_INVOKABLE void cancelArea(void);
 
   /* "Cursor X1 Y2 · Z0" for a cell of the current plane and layer */
   QString cursorText(int col, int row) const;
@@ -226,6 +239,7 @@ signals:
   void drawColourChanged(void);
   void previewChanged(void);
   void editModeChanged(void);
+  void areaModeChanged(void);
 
 private:
 
@@ -260,6 +274,9 @@ private:
   bool m_rightDown = false;
   btui::Tool m_strokeTool = btui::Tool::Fixed;
   int m_lastCol = -1, m_lastRow = -1;      ///< the stroke's last cell
+  bool m_areaMode = false;
+  bool m_area = false;                     ///< the stroke spans an area (Area mode at the press)
+  int m_areaCol0 = 0, m_areaRow0 = 0, m_areaCol1 = 0, m_areaRow1 = 0;
 };
 
 #endif

@@ -16,6 +16,8 @@ class TestVoxelTypes : public QObject {
 private slots:
   void paintsEveryPlaneByPointerAndKeys_data();
   void paintsEveryPlaneByPointerAndKeys();
+  void anAreaCoversItsCellsInEveryType_data();
+  void anAreaCoversItsCellsInEveryType();
   void theHoveredCellIsOutlined_data();
   void theHoveredCellIsOutlined();
   void editsIn3dOnTheSlabAndOnAFace_data();
