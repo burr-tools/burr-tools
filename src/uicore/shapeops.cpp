@@ -367,6 +367,9 @@ namespace btui {
     if (task == task::Minimize) {
       if (!d.minimize)
         return { false, "Not available for this voxel type" };
+      // an empty grid divides by anything: nothing to reduce
+      if (std::all_of(vs.begin(), vs.end(), [](const voxel_c * v) { return empty(*v); }))
+        return { false, "The shape is empty" };
       if (minimizeFactor(p, shapes) <= 1)
         return { false, "Already at minimum resolution" };
       return {};
