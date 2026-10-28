@@ -33,6 +33,7 @@
 #include "../../src/tools/httpget.h"
 #include "../../src/uicore/commands.h"
 #include "../../src/uicore/shapelist.h"
+#include "../../src/lib/problem.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
@@ -400,6 +401,45 @@ class TestSettings : public QObject {
 
 private slots:
 
+  /* A settings file that is there but cannot be read (here a folder in its
+   * place) is left as it is, for the user to look at: the session runs on
+   * the defaults, changes work in memory and are said not to be saved. */
+  void anUnreadableSettingsFileIsNeverWrittenOver() {
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("s.rc"));
+    QVERIFY(QDir().mkpath(path));
+    QFile marker(path + QStringLiteral("/keep.txt"));
+    QVERIFY(marker.open(QIODevice::WriteOnly));
+    marker.close();
+    {
+      SettingsController s(path, dir.filePath(QStringLiteral("legacy.rc")));
+      QVERIFY(s.tooltips());                          // the default
+      s.setTooltips(false);
+      QVERIFY(!s.tooltips());                         // in memory
+      QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be read.*changes are not saved")));
+      s.flush();
+    }
+    QVERIFY(QFileInfo(path).isDir());
+    QVERIFY(QFileInfo::exists(path + QStringLiteral("/keep.txt")));
+  }
+
+  /* One that cannot be written (its folder is a file): said on stderr, and
+   * the program goes on with its settings in memory. */
+  void aSettingsFileThatCannotBeWrittenIsSaidAndSurvived() {
+    QTemporaryDir dir;
+    QFile blocker(dir.filePath(QStringLiteral("blocker")));
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    const QString path = dir.filePath(QStringLiteral("blocker/s.rc"));
+    QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be written")));  // the first start's seed
+    SettingsController s(path, dir.filePath(QStringLiteral("legacy.rc")));
+    s.setTooltips(false);
+    QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be written")));
+    s.flush();
+    QVERIFY(!s.tooltips());
+    QVERIFY(QFileInfo(dir.filePath(QStringLiteral("blocker"))).isFile());
+  }
+
   void seedsFromTheLegacyFileOnFirstStart() {
     Fixture f;
     f.writeLegacy("tooltips = false\n"
@@ -637,6 +677,57 @@ private slots:
     QVERIFY(reported.at(0).at(0).toString().contains(QDir::toNativeSeparators(f.file("__rescue.xmpuzzle"))));
   }
 
+  /* An edit that fails half way (an internal check in the library) has
+   * already changed the puzzle: the views are still told, so what they
+   * show is what is there; the change is an undo step back to the state
+   * before; and the error is reported, never thrown at QML. A stroke too. */
+  void anEditThatFailsHalfWayIsShownAndUndoable() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    makeModified(d);                                    // shape 0, 2x2x2, empty
+    QSignalSpy reported(f.app.get(), &App::internalError);
+    QSignalSpy edited(d, &DocumentController::puzzleEdited);
+    auto filled = [&] { return int(d->session().puzzle().getShape(0)->countState(voxel_c::VX_FILLED)); };
+
+    bool threw = false;
+    try {
+      guarded([&] {
+        d->edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, DocumentController::Change::Voxels, 0, 0, [](puzzle_c & p) {
+          p.getShape(0)->setState(0, 0, 0, voxel_c::VX_FILLED);
+          bt_te("half way");
+          return true;
+        });
+      });
+    } catch (...) {
+      threw = true;
+    }
+    QVERIFY(!threw);
+    QCOMPARE(reported.count(), 1);
+    QCOMPARE(edited.count(), 1);                        // the views follow the half-made change
+    QCOMPARE(filled(), 1);
+    QVERIFY(d->canUndo());
+    d->undo();
+    QCOMPARE(filled(), 0);                              // one step back to before it
+
+    // a stroke: each cell shown as it goes; the failing one still ends a step
+    d->beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+    d->strokeEdit(0, [](puzzle_c & p) { p.getShape(0)->setState(1, 0, 0, voxel_c::VX_FILLED); return true; });
+    guarded([&] {
+      d->strokeEdit(0, [](puzzle_c & p) {
+        p.getShape(0)->setState(1, 1, 0, voxel_c::VX_FILLED);
+        bt_te("half way");
+        return true;
+      });
+    });
+    d->endStroke();
+    QCOMPARE(reported.count(), 2);
+    QCOMPARE(filled(), 2);
+    QCOMPARE(edited.count(), 3);
+    d->undo();
+    QCOMPARE(filled(), 0);
+  }
+
   /* The rescue file goes beside the open puzzle; where that folder cannot be
    * written, beside the settings file. */
   void theRescueSaveGoesBesideThePuzzleElseBesideTheSettings() {
@@ -751,6 +842,100 @@ private slots:
     QVERIFY(!d->loadPath(QStringLiteral("examples/nope.xmpuzzle")));
     QCOMPARE(msg.count(), 1);
     QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+  }
+
+  /* A file that is there but damaged: refused with the reason, the puzzle
+   * open stays, and nothing is an internal error (the user's file is at
+   * fault, not the program). Plain XML reads as the gzip stream does. */
+  void aDamagedFileIsRefusedAndTheDocumentKept_data() {
+    QTest::addColumn<QByteArray>("content");
+    const QByteArray good =
+      "<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><colors/><shapes>"
+      "<voxel x=\"2\" y=\"1\" z=\"1\" type=\"0\">##</voxel><voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel>"
+      "</shapes><problems><problem state=\"0\"><shapes><shape id=\"1\" count=\"2\"/></shapes>"
+      "<result id=\"0\"/><bitmap/></problem></problems><comment/></puzzle>";
+    auto with = [&](const char * from, const char * to) { return QByteArray(good).replace(from, to); };
+    QTest::newRow("empty") << QByteArray();
+    QTest::newRow("not a puzzle") << QByteArray("hello, world\n");
+    QTest::newRow("cut short") << good.left(good.size() / 2);
+    QTest::newRow("another root") << with("<puzzle version=\"2\">", "<puzzles version=\"2\">");
+    QTest::newRow("unknown grid type") << with("<gridType type=\"0\"/>", "<gridType type=\"42\"/>");
+    QTest::newRow("too few voxels") << with(">##</voxel>", ">#</voxel>");
+    QTest::newRow("a piece that is no shape") << with("<shape id=\"1\"", "<shape id=\"9\"");
+    QTest::newRow("a negative size") << with("x=\"2\" y=\"1\"", "x=\"-2\" y=\"1\"");
+  }
+  void aDamagedFileIsRefusedAndTheDocumentKept() {
+    QFETCH(QByteArray, content);
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    const unsigned shapes = d->session().puzzle().getNumberOfShapes();
+    QFile file(f.file("damaged.xmpuzzle"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(content);
+    file.close();
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    QSignalSpy internal(f.app.get(), &App::internalError);
+    QVERIFY(!d->loadPath(file.fileName()));
+    QCOMPARE(msg.count(), 1);
+    QVERIFY(!msg.at(0).at(1).toString().isEmpty());
+    QCOMPARE(replaced.count(), 0);
+    QCOMPARE(internal.count(), 0);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QCOMPARE(d->session().puzzle().getNumberOfShapes(), shapes);
+  }
+
+  /* File > Import of a file that is not PuzzleSolver3D, or cut short, or
+   * not local: refused with a message, the puzzle open kept (until the
+   * loader's fix a foreign file imported as an empty puzzle) */
+  void aFailedImportIsReportedAndTheDocumentKept() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    for (const QByteArray & content : { QByteArray("<html>not a puzzle</html>\n"), QByteArray("PIECE 2,3,1\nXX\n") }) {
+      QFile file(f.file("foreign.puz"));
+      QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+      file.write(content);
+      file.close();
+      d->importFile(QUrl::fromLocalFile(file.fileName()));
+    }
+    d->importFile(QUrl(QStringLiteral("https://example.com/x.puz")));
+    QCOMPARE(msg.count(), 3);
+    QCOMPARE(msg.at(0).at(1).toString(), QStringLiteral("Could not load puzzle, sorry!"));
+    QVERIFY(msg.at(2).at(1).toString().startsWith(QStringLiteral("Could not open")));
+    QCOMPARE(replaced.count(), 0);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->modified());
+  }
+
+  /* A result naming no shape is the library's "no result set" (legacy
+   * loads it so): the file opens, the problem has no result, and editing
+   * and undo around it are no internal error. */
+  void aResultThatIsNoShapeLoadsAsNoResult() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QFile file(f.file("noresult.xmpuzzle"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><colors/><shapes>"
+               "<voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel></shapes><problems><problem state=\"0\">"
+               "<shapes><shape id=\"0\" count=\"1\"/></shapes><result id=\"7\"/><bitmap/></problem></problems>"
+               "<comment/></puzzle>");
+    file.close();
+    QSignalSpy internal(f.app.get(), &App::internalError);
+    QVERIFY(d->loadPath(file.fileName()));
+    QVERIFY(!d->session().puzzle().getProblem(0)->resultValid());
+    makeModified(d);
+    d->undo();
+    d->redo();
+    QCOMPARE(d->session().puzzle().getNumberOfShapes(), 2u);
+    QVERIFY(!d->session().puzzle().getProblem(0)->resultValid());
+    QCOMPARE(internal.count(), 0);
   }
 
   void aFailedSaveIsReported() {
