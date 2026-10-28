@@ -81,6 +81,8 @@ static void reportSkippedRotations(const rotationContext_c * context) {
          << context->tables().getRadius() << ") may have been missed\n";
   if (context->getSkipped() & rotationContext_c::SKIP_PIECES)
     cerr << "note: rotation moves were not considered in (sub)problems of more than 32 pieces\n";
+  if (context->getSkipped() & rotationContext_c::SKIP_GROUPS)
+    cerr << "note: with very many loosely blocked pieces, turns of several groups together were not tried\n";
 }
 
 class asm_cb : public assembler_cb {
