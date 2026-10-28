@@ -17,7 +17,7 @@
 namespace {
 
 /* pure turns only keep the table builds in these tests short */
-const rotationSettings_t SMALL = { { 0.081, 0 }, {} };
+const rotationSettings_t SMALL = { { 0.081, 0 }, {}, {} };
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   auto p = puzzle_c::load(path);
@@ -48,7 +48,7 @@ std::shared_ptr<rotationContext_c> pelikanContext(void) {
 TEST_CASE("rotation tables are shared per settings and freed with their last user", "[rotations]") {
 
   /* settings of its own, so tables other tests keep alive do not interfere */
-  const rotationSettings_t settings = { { 0.07, 0 }, {} };
+  const rotationSettings_t settings = { { 0.07, 0 }, {}, {} };
   releaseRotationTables();
 
   auto a = sharedRotationTables(settings, 3);
@@ -64,7 +64,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
   auto c = sharedRotationTables(settings, 4);
   CHECK(c != a);
   CHECK(c->getRadius() == 4);
-  auto d = sharedRotationTables({ { 0.05, 0 }, {} }, 3);
+  auto d = sharedRotationTables({ { 0.05, 0 }, {}, {} }, 3);
   CHECK(d != a);
 
   /* c serves everything a did, so a is not kept */
@@ -86,7 +86,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
 
 TEST_CASE("the most recently used rotation tables are kept for the next solve", "[rotations]") {
 
-  const rotationSettings_t first = { { 0.071, 0 }, {} }, second = { { 0.072, 0 }, {} }, third = { { 0.073, 0 }, {} };
+  const rotationSettings_t first = { { 0.071, 0 }, {}, {} }, second = { { 0.072, 0 }, {}, {} }, third = { { 0.073, 0 }, {}, {} };
   releaseRotationTables();
 
   /* one design after another: the second request is served by the kept set */
