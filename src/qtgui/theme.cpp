@@ -20,6 +20,7 @@
  */
 #include "theme.h"
 
+#include <QAccessibilityHints>
 #include <QFile>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -49,6 +50,9 @@ Theme::Theme(QObject * parent) : QObject(parent) {
 
   if (auto * hints = QGuiApplication::styleHints()) {
     m_systemScheme = hints->colorScheme();
+    // the system's reduce-motion switch, as it changes
+    if (const QAccessibilityHints * a = hints->accessibility())
+      connect(a, &QAccessibilityHints::motionPreferenceChanged, this, &Theme::changed);
     connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme s) {
       // while a forced theme is requested the platform reports that request,
       // not the operating system's choice
@@ -185,7 +189,20 @@ qreal Theme::dens(const QString & key) const {
 }
 
 int Theme::motion(const QString & key) const {
-  return int(num(QStringLiteral("motion.") + key));
+  return reducedMotion() ? 0 : int(num(QStringLiteral("motion.") + key));
+}
+
+bool Theme::reducedMotion(void) const {
+  if (m_motionOverride >= 0)
+    return m_motionOverride != 0;
+  const QStyleHints * hints = QGuiApplication::styleHints();
+  return hints && hints->accessibility() &&
+         hints->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion;
+}
+
+void Theme::setReducedMotionForTesting(int on) {
+  m_motionOverride = on < 0 ? -1 : (on ? 1 : 0);
+  emit changed();
 }
 
 QString Theme::monoFamily(void) const {

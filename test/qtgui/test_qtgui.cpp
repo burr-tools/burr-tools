@@ -149,6 +149,38 @@ class TestTheme : public QObject {
 
 private slots:
 
+  /* Section 6: "Respect OS reduce motion by setting durations to 0" --
+   * every duration the theme hands out, the toolbar's fade, and the 3D
+   * view's snaps, which end at once (C13: "snap instantly") */
+  void reducedMotionStopsEveryAnimation() {
+    Fixture f;
+    f.make();
+    Theme * t = Theme::instance();
+    QVERIFY(t);
+    auto restore = qScopeGuard([t] { t->setReducedMotionForTesting(-1); });
+    t->setReducedMotionForTesting(0);
+    QVERIFY(!t->reducedMotion());
+    QCOMPARE(t->durCollapse(), 200);
+    QCOMPARE(t->durChevron(), 150);
+    QCOMPARE(t->durSwitch(), 150);
+    ViewportController * v = f.app->viewport();
+    v->turn(btui::ViewCube::Arrow::Left);
+    QVERIFY(v->animating());                         // a 360 ms snap under way
+    v->tick(1000);
+
+    QSignalSpy changed(t, &Theme::changed);
+    t->setReducedMotionForTesting(1);
+    QCOMPARE(changed.count(), 1);
+    QVERIFY(t->reducedMotion());
+    for (int d : { t->durCollapse(), t->durChevron(), t->durReorder(), t->durSwitch(), t->toolbarFade() })
+      QCOMPARE(d, 0);
+    QCOMPARE(t->durFlash(), 2400);                  // how long a message stays is no motion
+    const btui::Quat before = v->camera().orientation();
+    v->turn(btui::ViewCube::Arrow::Left);
+    QVERIFY(!v->animating());                        // there at once
+    QVERIFY(btui::angleBetween(before, v->camera().orientation()) > 1.0f);
+  }
+
   void parsesTheTokenColourForms() {
     QCOMPARE(Theme::parseColor(QStringLiteral("#2f6df6")), QColor(0x2f, 0x6d, 0xf6));
     QColor c = Theme::parseColor(QStringLiteral("rgba(47,109,246,0.12)"));
