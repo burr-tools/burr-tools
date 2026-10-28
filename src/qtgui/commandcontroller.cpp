@@ -478,10 +478,10 @@ void CommandController::run(Command c) {
     case Command::WorkspaceSolver:  m_layout->setWorkspace(LayoutController::Solver); break;
     case Command::ToggleLeftCard:   m_layout->toggleLeft(); break;
     case Command::ToggleRightCard:  m_layout->toggleRight(); break;
-    case Command::ViewOrbit:        m_viewport->setNavMode(QStringLiteral("orbit")); break;
-    case Command::ViewPan:          m_viewport->setNavMode(QStringLiteral("pan")); break;
+    case Command::ViewOrbit:        m_viewport->setNavMode(QStringLiteral("orbit")); emit toolbarModeUsed(); break;
+    case Command::ViewPan:          m_viewport->setNavMode(QStringLiteral("pan")); emit toolbarModeUsed(); break;
     case Command::ViewHome:         m_viewport->home(); break;
-    case Command::ViewFit:          m_viewport->fit(); break;
+    case Command::ViewFit:          m_viewport->fit(); emit toolbarModeUsed(); break;
     case Command::LayerUp:          m_editor->layerStep(+1); break;
     case Command::LayerDown:        m_editor->layerStep(-1); break;
     case Command::ToolFixed:        m_editor->setTool(EditorController::Fixed); break;
@@ -493,7 +493,7 @@ void CommandController::run(Command c) {
     case Command::ShapeDelete:      m_shapes->requestDelete(m_shapes->selected()); break;
     case Command::ShapeMoveEarlier: m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() - 1); break;
     case Command::ShapeMoveLater:   m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() + 1); break;
-    case Command::Edit3d:           m_editor->toggleEditMode(); break;
+    case Command::Edit3d:           m_editor->toggleEditMode(); emit toolbarModeUsed(); break;
 
     // the focused 3D view: 15 degrees, 40 dp, a wheel notch; the cube's turns and faces
     case Command::ViewOrbitLeft:    m_viewport->orbitStep(-kOrbitStepDeg, 0); break;
