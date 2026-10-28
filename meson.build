@@ -455,6 +455,7 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/viewcube.cpp',
     'src/uicore/voxeledit.cpp',
     'src/uicore/windowplacement.cpp',
+    'src/uicore/xcursor.cpp',
   ],
   include_directories: inc,
   link_with: libburr_core,
@@ -481,6 +482,7 @@ uicore_test_src = [
   'test/test_ui_vocabulary.cpp',
   'test/test_ui_voxeledit.cpp',
   'test/test_ui_windowplacement.cpp',
+  'test/test_ui_xcursor.cpp',
   'test/alloccount.cpp',
   'test/bench_ui.cpp',
 ]

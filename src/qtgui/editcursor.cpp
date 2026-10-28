@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "editcursor.h"
+#include "systempointer.h"
 
 #include <QFile>
 #include <QHash>
@@ -76,10 +77,55 @@ namespace editcursor {
     }
   }
 
-  Composed compose(btui::Tool tool, const QColor & colour, bool dark, qreal scale) {
+  namespace {
+    /* the box of what an image draws, in its pixels */
+    QRect drawn(const QImage & img) {
+      int x0 = img.width(), y0 = img.height(), x1 = -1, y1 = -1;
+      for (int y = 0; y < img.height(); y++) {
+        const QRgb * row = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+        for (int x = 0; x < img.width(); x++)
+          if (qAlpha(row[x]) > 8) {
+            x0 = std::min(x0, x); x1 = std::max(x1, x);
+            y0 = std::min(y0, y); y1 = std::max(y1, y);
+          }
+      }
+      return x1 < x0 ? QRect() : QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    }
+  }
+
+  Composed compose(btui::Tool tool, const QColor & colour, bool dark, qreal scale, Pointer pointer) {
     scale = std::max<qreal>(1, scale);
-    const int px = int(std::lround(32 * scale));
+    const bool system = pointer == Pointer::System;
+    // the user's pointer size: one design pixel is `unit` device pixels
+    const double size = system ? std::clamp(systempointer::sizeFactor(), 0.5, 16.0) : 1.0;
+    const double unit = scale * size;
+    const int px = int(std::lround(32 * unit));
+    const int badgePx = int(std::lround(12 * unit));
     Composed c;
+
+    if (tool == btui::Tool::Fixed || tool == btui::Tool::Variable) {
+      const systempointer::Arrow os = system ? systempointer::arrow(scale) : systempointer::Arrow{};
+      const QRect arrowBox = os.image.isNull() ? QRect() : drawn(os.image);
+      if (arrowBox.isValid()) {
+        // the system's arrow as it is, the badge snug against its upper
+        // right: left edge at the arrow's width, top at its top
+        QImage arrow = os.image;
+        arrow.setDevicePixelRatio(1);
+        const QPoint at(arrowBox.right() + 1, arrowBox.top());
+        c.image = QImage(std::max(arrow.width(), at.x() + badgePx), std::max(arrow.height(), at.y() + badgePx),
+                         QImage::Format_ARGB32_Premultiplied);
+        c.image.fill(Qt::transparent);
+        QPainter p(&c.image);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.drawImage(0, 0, arrow);
+        render(p, badge(tool, colour, dark), QRectF(at, QSizeF(badgePx, badgePx)));
+        p.end();
+        c.hotspot = os.hotspot;
+        c.image.setDevicePixelRatio(scale);
+        return c;
+      }
+    }
+
     c.image = QImage(px, px, QImage::Format_ARGB32_Premultiplied);
     c.image.fill(Qt::transparent);
     QPainter p(&c.image);
@@ -89,13 +135,13 @@ namespace editcursor {
       case btui::Tool::Variable:
         render(p, asset("arrow-fallback.svg"), QRectF(0, 0, px, px));
         // snug against the arrow's upper right: left edge at its width, top at its top
-        render(p, badge(tool, colour, dark), QRectF(12 * scale, 0, 12 * scale, 12 * scale));
-        c.hotspot = QPoint(1, 1);
+        render(p, badge(tool, colour, dark), QRectF(12 * unit, 0, badgePx, badgePx));
+        c.hotspot = QPoint(int(std::lround(size)), int(std::lround(size)));
         break;
       case btui::Tool::Erase:
       case btui::Tool::Paint:
         render(p, icon(tool, colour, dark), QRectF(0, 0, px, px));
-        c.hotspot = QPoint(16, 16);
+        c.hotspot = QPoint(int(std::lround(16 * size)), int(std::lround(16 * size)));
         break;
     }
     p.end();
@@ -108,20 +154,11 @@ namespace editcursor {
     // drawn large, then the box of what it draws taken and fitted
     const Composed c = compose(tool, colour, dark, qreal(px) / 12.0);
     const QImage & img = c.image;
-    int x0 = img.width(), y0 = img.height(), x1 = -1, y1 = -1;
-    for (int y = 0; y < img.height(); y++) {
-      const QRgb * row = reinterpret_cast<const QRgb *>(img.constScanLine(y));
-      for (int x = 0; x < img.width(); x++)
-        if (qAlpha(row[x]) > 8) {
-          x0 = std::min(x0, x); x1 = std::max(x1, x);
-          y0 = std::min(y0, y); y1 = std::max(y1, y);
-        }
-    }
     QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
     out.fill(Qt::transparent);
-    if (x1 < x0)
+    const QRect box = drawn(img);
+    if (!box.isValid())
       return out;
-    const QRect box(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     const qreal k = qreal(px) / std::max(box.width(), box.height());
     const QSizeF size(box.width() * k, box.height() * k);
     QPainter p(&out);
@@ -134,8 +171,10 @@ namespace editcursor {
 
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale) {
     static QHash<QString, QCursor> cache;
-    const QString key = QStringLiteral("%1/%2/%3/%4").arg(int(tool)).arg(colour.isValid() ? colour.name() : QString())
-                            .arg(dark).arg(scale);
+    // the system's arrow and pointer size are part of it: the user may change them while we run
+    const QString key = QStringLiteral("%1/%2/%3/%4/%5/%6").arg(int(tool)).arg(colour.isValid() ? colour.name() : QString())
+                            .arg(dark).arg(scale).arg(systempointer::sizeFactor())
+                            .arg(systempointer::arrow(std::max<qreal>(1, scale)).image.cacheKey());
     auto it = cache.constFind(key);
     if (it != cache.constEnd())
       return *it;

@@ -110,6 +110,14 @@ if host_machine.system() == 'windows'
   qtgui_platform_deps += cxx.find_library('dwmapi')
   # the window's Direct3D 11 device, made early (earlydevice.cpp)
   qtgui_platform_deps += [cxx.find_library('d3d11'), cxx.find_library('dxgi')]
+  # the system's arrow and pointer size (systempointer.cpp)
+  qtgui_platform_deps += [cxx.find_library('user32'), cxx.find_library('advapi32')]
+endif
+# the system's arrow on macOS (systempointer_mac.mm); elsewhere systempointer.cpp
+qtgui_platform_src = ['systempointer.cpp']
+if host_machine.system() == 'darwin'
+  qtgui_platform_src += ['systempointer_mac.mm']
+  qtgui_platform_deps += [cocoa_dep]
 endif
 
 # Everything except main(), so test_qtgui can link the same code. It is
@@ -140,6 +148,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'shapesmodel.cpp',
     'statuscontroller.cpp',
     'stlexportcontroller.cpp',
+    qtgui_platform_src,
     'theme.cpp',
     'toolscontroller.cpp',
     'updatecontroller.cpp',
