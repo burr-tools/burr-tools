@@ -42,9 +42,9 @@ Item {
     id: root
     objectName: "entities.inspector"
 
-    // it lies over the free part of the Shapes list: nothing reaches the list through it
-    Rectangle { anchors.fill: parent; color: Theme.panel }
-    MouseArea { anchors.fill: parent; acceptedButtons: Qt.AllButtons; onWheel: (wheel) => wheel.accepted = true }
+    /* the height it needs for its open sections, without scrolling: the
+     * Shapes list takes what is left (ShapesCard) */
+    readonly property real neededHeight: head.height + sections.implicitHeight
 
     readonly property InspectorController insp: App.inspector
     // re-read whenever what may run changes

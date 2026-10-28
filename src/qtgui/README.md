@@ -409,6 +409,17 @@ the network.
   not show. Each Transform button is a Tab stop, in reading order. The
   nudge pad's row labels are 72 dp (the mock's 62 cut "Down layer"). No
   nudge auto-repeat (C04: optional).
+- **Feedback of 2026-10-28** (user decisions): the **Segmented** option on
+  is accent-tinted with an accent edge and text (PR-05: panel fill and a
+  shadow, which hardly showed on the light track). The **Shapes list**
+  takes what the inspector's open sections leave, at least four rows (the
+  mock: 60 to 250 dp). The Voxel editor's **tools and Mirror / Span** have
+  fixed widths and flow, the placement group beside the tools in a wide
+  card; Mirror and Span sit under a **Voxel placement** heading with a hint
+  each; the **planes** sit below the grid. **Area mode** (legacy's rubber
+  band, not in the spec): a toggle after the tools -- a drag spans an area
+  of the type's own cells, placed on release as one undo step, Esc drops
+  it; remembered, seeded from legacy's `rubberband`, off by default.
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
   design files declare 48 × 48 round a 28 × 24 drawing, which Qt stretches).
 

@@ -27,9 +27,9 @@ import BurrTools.Ui
 //   └──────────────────────────────────────────┘   Repair & surface
 //   ⑫ the row's context menu (right-click, Menu key, Shift+F10)
 //
-//   The list takes the rows' height, 60 to 250 dp with its padding (the
-//   mock's .shapes), and scrolls past that; the inspector has the rest,
-//   over the part of the list the rows leave free.
+//   The list takes the height the inspector's open sections leave, at least
+//   four rows (user decision 2026-10-28: all of it while they are closed);
+//   the inspector scrolls when even that is too little.
 //
 //   Dragging a row: it follows the pointer, and the rows between its place
 //   and the pointer slide over by one to open the gap it drops into.
@@ -129,11 +129,11 @@ Card {
         id: list
         objectName: "entities.shapes.list"
         anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
-        /* Always its full 238 (250 with the padding): the inspector covers what
-         * the rows leave free (rowsHeight). A view that resized with its rows
-         * would lay out, inside a model change, rows the change has taken away. */
-        height: 238
-        readonly property real rowsHeight: Math.max(48, Math.min(height, count * pitch - spacing))
+        /* What the inspector's open sections leave, never under four rows.
+         * Not the rows' own height: a view that resized with its rows would
+         * lay out, inside a model change, rows the change had taken away. */
+        readonly property real minHeight: 4 * pitch - spacing
+        height: Math.max(minHeight, parent.height - 12 - inspector.neededHeight)
         /* no rows made ahead off screen: they are made asynchronously, and a
          * new file's reset cancelling one is warned about; the rows are cheap */
         cacheBuffer: 0
@@ -465,8 +465,8 @@ Card {
     }
 
     Inspector { // ⑬
-        anchors { left: parent.left; right: parent.right; top: list.top; bottom: parent.bottom
-                  topMargin: list.rowsHeight + 6 }
+        id: inspector
+        anchors { left: parent.left; right: parent.right; top: list.bottom; bottom: parent.bottom; topMargin: 6 }
     }
 
     AppMenu { // ⑫

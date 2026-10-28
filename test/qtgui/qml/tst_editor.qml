@@ -29,6 +29,7 @@ TestCase {
         App.editor.span = 0
         App.editor.plane = EditorController.XY
         App.editor.applyToAll = false
+        App.editor.areaMode = false
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null, "Main.qml failed to load")
         win.width = 1600
@@ -63,6 +64,40 @@ TestCase {
         verify(p.x >= 0, "cell " + col + "," + row)
         mouseClick(g, p.x, p.y, button === undefined ? Qt.LeftButton : button,
                    modifiers === undefined ? Qt.NoModifier : modifiers)
+    }
+
+    function test_theClickControlsFlowAndThePlanesSitBelowTheGrid() {
+        // user decisions 2026-10-28: what a click does stays above the grid --
+        // the tools, Area, voxel placement -- in buttons of a fixed width that
+        // flow, so a wide card (Focus 2D) puts the placement group beside the
+        // tools; the planes sit below the grid
+        const tools = item("entities.editor.tools")
+        const placement = item("entities.editor.modifiers")
+        const grid = item("entities.editor.grid")
+        const planes = item("entities.editor.plane.group")
+        compare(item("entities.editor.tool.fixed").width, 58)
+        compare(item("entities.editor.mirror.x").width, 46)
+        verify(placement.mapToItem(null, 0, 0).y > tools.mapToItem(null, 0, 0).y)   // its own row
+        verify(planes.mapToItem(null, 0, 0).y > grid.mapToItem(null, 0, grid.height).y - 1)
+        verify(item("entities.editor.placement.label").visible)
+        verify(item("entities.editor.mirror.hint").text.length > 0)
+
+        App.layout.toggleFocus2d()
+        tryVerify(() => Math.abs(placement.mapToItem(null, 0, 0).y - tools.mapToItem(null, 0, 0).y) < 1)
+        compare(item("entities.editor.tool.fixed").width, 58)                     // wider card, same buttons
+        App.layout.toggleFocus2d()
+        tryVerify(() => placement.mapToItem(null, 0, 0).y > tools.mapToItem(null, 0, 0).y)
+
+        // Area: a toggle beside the tools, remembered in the settings
+        const area = item("entities.editor.tool.area")
+        verify(!App.editor.areaMode)
+        mouseClick(area)
+        verify(App.editor.areaMode)
+        verify(App.settings.areaMode)
+        verify(area.on)
+        mouseClick(area)
+        verify(!App.editor.areaMode)
+        verify(!App.settings.areaMode)
     }
 
     function test_theCardFollowsTheDensity_data() {

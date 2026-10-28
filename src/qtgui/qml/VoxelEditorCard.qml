@@ -4,21 +4,24 @@ import QtQuick.Layouts
 import BurrTools.Ui
 
 // C07 / C08 / C02 Voxel editor card: header with the read-only voxel type
-// chip (C14), Focus 2D and collapse; the tools, Mirror and Span, the plane
-// and layer, the 2D grid, the grid size and the Drawing colour footer (C09).
-// Sizes per density (density.md §1); Minimal shows the tools, Mirror and
-// Span and the planes as icons alone, their names in the tooltips.
+// chip (C14), Focus 2D and collapse; what a click on the grid does -- the
+// tools, Area, and voxel placement (Mirror, Span) --, the 2D grid with its
+// layer strip, the plane and layer, the grid size and the Drawing colour
+// footer (C09). Sizes per density (density.md section 1); Minimal shows the
+// tools, Mirror and Span and the planes as icons alone, their names in the
+// tooltips. The click controls have fixed widths and flow: a wider card
+// takes the placement group up beside the tools, the grid gets the height.
 //
 // Wireframe (each number marks its code below):
 //
 //   ┌──────────────────────────────────────────────┐
 //   │ Voxel editor  ①(▪ Brick)           ②[⤢] [◨] │   title, collapse: Card
 //   ├──────────────────────────────────────────────┤
-//   │ ③ [■ Fixed 1] [▨ Variable 2] [⌫ Erase 3] [◆ Paint 4] │
-//   ├──────────────────────────────────────────────┤
-//   │ ④ MIRROR [X][Y][Z]        SPAN [X][Y][Z]     │
-//   ├──────────────────────────────────────────────┤
-//   │ ⑤ [XY] [XZ] [YZ]                 Layer 1 of 4 │
+//   │ ③ [■ Fixed 1][▨ Variable 2][⌫ Erase 3][◆ Paint 4] [⬚ Area]
+//   │ ④ VOXEL PLACEMENT                            │   (beside ③ when wide)
+//   │   Mirror [X][Y][Z]      Span [X][Y][Z]       │
+//   │   also places the       fills the whole      │
+//   │   mirror image          line                 │
 //   ├────┬─────────────────────────────────────────┤
 //   │ ⑥  │ ⑦                                        │
 //   │Z ly│   3 ▢ ▢ ▢ ▢                              │
@@ -27,6 +30,8 @@ import BurrTools.Ui
 //   │ 2• │   0 ▢ ▢ ▢ ▢                              │
 //   │ 1  │     0 1 2 3                              │
 //   ├────┴─────────────────────────────────────────┤
+//   │ ⑤ [XY] [XZ] [YZ]                 Layer 1 of 4 │
+//   ├──────────────────────────────────────────────┤
 //   │ ⑧ GRID SIZE              Apply to all shapes ◯ │
 //   │   [X − 4 ＋] [Y − 4 ＋] [Z − 4 ＋]              │
 //   ├──────────────────────────────────────────────┤
@@ -168,170 +173,154 @@ Card {
         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: footer.top }
         spacing: 0
 
-        Section { // ③
-            objectName: "entities.editor.tools"
-            padH: 10
-            RadioStrip {
-              id: toolStrip
-              objectName: "entities.editor.tools.group"
-              width: parent.width
-              height: Theme.toolStrip
-              count: 4
-              current: root.editor.tool
-              buttons: toolRow.buttons
-              groupName: qsTr("Tool")
-              onPicked: (i) => root.editor.tool = i
-              contentItem: Row {
-                id: toolRow
-                spacing: 6
-                readonly property real cell: (width - 3 * spacing) / 4
-                readonly property var specs: [
-                    { glyph: "tool-fixed", caption: qsTr("Fixed"), name: "fixed",
-                      tip: qsTr("Place a fixed (solid) voxel (1)") },
-                    { glyph: "tool-variable", caption: qsTr("Variable"), name: "variable",
-                      tip: qsTr("Place a variable (optional) voxel (2)") },
-                    { glyph: "tool-erase", caption: qsTr("Erase"), name: "erase",
-                      tip: qsTr("Erase the voxel (3)") },
-                    { glyph: "tool-paint", caption: qsTr("Paint"), name: "paint",
-                      tip: qsTr("Apply the drawing colour to an existing voxel (4)") }
-                ]
-                property var buttons: []
-                Repeater {
-                    model: toolRow.specs
+        Section { // what a click on the grid does: the tool, Area, and where voxels go
+            objectName: "entities.editor.click"
+            padH: 12
+            /* Fixed-width buttons that flow: in a wider card the placement
+             * group moves up beside the tools, leaving the height to the grid */
+            Flow {
+                id: clickFlow
+                width: parent.width
+                spacing: 10
+                readonly property real toolWidth: Theme.minimal ? 44 : 58
+                readonly property real axisWidth: Theme.minimal ? 34 : 46
+
+                Row { // ③
+                    objectName: "entities.editor.tools"
+                    spacing: 8
+                    RadioStrip {
+                      id: toolStrip
+                      objectName: "entities.editor.tools.group"
+                      width: 4 * clickFlow.toolWidth + 3 * 6
+                      height: Theme.toolStrip
+                      count: 4
+                      current: root.editor.tool
+                      buttons: toolRow.buttons
+                      groupName: qsTr("Tool")
+                      onPicked: (i) => root.editor.tool = i
+                      contentItem: Row {
+                        id: toolRow
+                        spacing: 6
+                        readonly property var specs: [
+                            { glyph: "tool-fixed", caption: qsTr("Fixed"), name: "fixed",
+                              tip: qsTr("Place a fixed (solid) voxel (1)") },
+                            { glyph: "tool-variable", caption: qsTr("Variable"), name: "variable",
+                              tip: qsTr("Place a variable (optional) voxel (2)") },
+                            { glyph: "tool-erase", caption: qsTr("Erase"), name: "erase",
+                              tip: qsTr("Erase the voxel (3)") },
+                            { glyph: "tool-paint", caption: qsTr("Paint"), name: "paint",
+                              tip: qsTr("Apply the drawing colour to an existing voxel (4)") }
+                        ]
+                        property var buttons: []
+                        Repeater {
+                            model: toolRow.specs
+                            GlyphButton {
+                                required property var modelData
+                                required property int index
+                                objectName: "entities.editor.tool." + modelData.name
+                                focusPolicy: Qt.NoFocus
+                                ring: toolStrip.visualFocus && on
+                                width: clickFlow.toolWidth
+                                height: Theme.toolStrip
+                                glyphSize: Theme.minimal ? 24 : 30
+                                iconOnly: Theme.minimal
+                                glyph: modelData.glyph
+                                caption: modelData.caption
+                                keyBadge: String(index + 1)
+                                tip: modelData.tip
+                                on: root.editor.tool === index
+                                onClicked: root.editor.tool = index
+                                Component.onCompleted: { toolRow.buttons[index] = this; toolRow.buttons = toolRow.buttons }
+                            }
+                        }
+                      }
+                    }
+                    // legacy's rubber band: a drag spans an area, applied on release
                     GlyphButton {
-                        required property var modelData
-                        required property int index
-                        objectName: "entities.editor.tool." + modelData.name
-                        focusPolicy: Qt.NoFocus
-                        ring: toolStrip.visualFocus && on
-                        width: toolRow.cell
+                        objectName: "entities.editor.tool.area"
+                        toggle: true
+                        width: clickFlow.toolWidth
                         height: Theme.toolStrip
                         glyphSize: Theme.minimal ? 24 : 30
                         iconOnly: Theme.minimal
-                        glyph: modelData.glyph
-                        caption: modelData.caption
-                        keyBadge: String(index + 1)
-                        tip: modelData.tip
-                        on: root.editor.tool === index
-                        onClicked: root.editor.tool = index
-                        Component.onCompleted: { toolRow.buttons[index] = this; toolRow.buttons = toolRow.buttons }
+                        glyph: "tool-area"
+                        caption: qsTr("Area")
+                        on: root.editor.areaMode
+                        tip: root.editor.areaMode
+                             ? qsTr("Area is on: drag over the grid to cover a whole area, placed when you let go (Esc drops it)")
+                             : qsTr("Area is off: each cell the pointer passes is placed. On, a drag covers a whole area")
+                        onClicked: root.editor.areaMode = !root.editor.areaMode
                     }
                 }
-              }
-            }
-        }
 
-        Section { // ④
-            objectName: "entities.editor.modifiers"
-            Row {
-                width: parent.width
-                spacing: 14
-                Repeater {
-                    model: [
-                        { label: qsTr("Mirror"), name: "mirror", glyph: "mirror-" },
-                        { label: qsTr("Span"), name: "span", glyph: "span-" }
-                    ]
-                    Column {
-                        id: group
-                        required property var modelData
-                        width: (parent.width - 14) / 2
-                        spacing: 4
-                        readonly property bool mirror: modelData.name === "mirror"
-                        MicroLabel {
-                            objectName: "entities.editor." + group.modelData.name + ".label"
-                            text: group.modelData.label
-                            visible: !Theme.minimal
-                        }
-                        Row {
-                            spacing: 6
-                            Repeater {
-                                model: 3
-                                GlyphButton {
-                                    required property int index
-                                    readonly property string axis: root.axisNames[index]
-                                    objectName: "entities.editor." + group.modelData.name + "." + axis.toLowerCase()
-                                    toggle: true
-                                    width: (group.width - 12) / 3
-                                    height: Theme.mirrorSpan
-                                    glyphSize: Theme.minimal ? 22 : 28
-                                    iconOnly: Theme.minimal
-                                    glyph: group.modelData.glyph + axis.toLowerCase()
-                                    caption: axis
-                                    captionColor: root.axisColours[index]
-                                    on: ((group.mirror ? root.editor.mirror : root.editor.span) & (1 << index)) !== 0
-                                    // names the group too: Minimal hides its label
-                                    tip: group.mirror
-                                         ? qsTr("Mirror %1: also place a mirrored voxel across the %1 centre plane").arg(axis)
-                                         : qsTr("Span %1: fill the whole grid along %1 on each click").arg(axis)
-                                    onClicked: group.mirror ? root.editor.toggleMirror(index) : root.editor.toggleSpan(index)
+                Column { // ④
+                    objectName: "entities.editor.modifiers"
+                    spacing: 4
+                    MicroLabel {
+                        objectName: "entities.editor.placement.label"
+                        text: qsTr("Voxel placement")
+                        visible: !Theme.minimal
+                    }
+                    Row {
+                        spacing: 14
+                        Repeater {
+                            model: [
+                                { label: qsTr("Mirror"), name: "mirror", glyph: "mirror-",
+                                  hint: qsTr("also places the mirror image") },
+                                { label: qsTr("Span"), name: "span", glyph: "span-",
+                                  hint: qsTr("fills the whole line") }
+                            ]
+                            Column {
+                                id: group
+                                required property var modelData
+                                width: 3 * clickFlow.axisWidth + 2 * 6
+                                spacing: 4
+                                readonly property bool mirror: modelData.name === "mirror"
+                                Text {
+                                    objectName: "entities.editor." + group.modelData.name + ".label"
+                                    text: group.modelData.label
+                                    visible: !Theme.minimal
+                                    color: Theme.text
+                                    font.pixelSize: Theme.fontSecondary
+                                    font.weight: Font.DemiBold
+                                }
+                                Row {
+                                    spacing: 6
+                                    Repeater {
+                                        model: 3
+                                        GlyphButton {
+                                            required property int index
+                                            readonly property string axis: root.axisNames[index]
+                                            objectName: "entities.editor." + group.modelData.name + "." + axis.toLowerCase()
+                                            toggle: true
+                                            width: clickFlow.axisWidth
+                                            height: Theme.mirrorSpan
+                                            glyphSize: Theme.minimal ? 22 : 28
+                                            iconOnly: Theme.minimal
+                                            glyph: group.modelData.glyph + axis.toLowerCase()
+                                            caption: axis
+                                            captionColor: root.axisColours[index]
+                                            on: ((group.mirror ? root.editor.mirror : root.editor.span) & (1 << index)) !== 0
+                                            // names the group too: Minimal hides its label
+                                            tip: group.mirror
+                                                 ? qsTr("Mirror %1: each voxel placed also places its mirror image across the %1 centre plane").arg(axis)
+                                                 : qsTr("Span %1: each voxel placed fills the whole line along %1").arg(axis)
+                                            onClicked: group.mirror ? root.editor.toggleMirror(index) : root.editor.toggleSpan(index)
+                                        }
+                                    }
+                                }
+                                Text {
+                                    objectName: "entities.editor." + group.modelData.name + ".hint"
+                                    width: parent.width
+                                    visible: !Theme.minimal
+                                    text: group.modelData.hint
+                                    color: Theme.muted
+                                    font.pixelSize: Theme.fontMicro
+                                    wrapMode: Text.Wrap
                                 }
                             }
                         }
                     }
-                }
-            }
-        }
-
-        Section { // ⑤
-            objectName: "entities.editor.plane"
-            Item {
-                width: parent.width
-                height: Theme.planeHeight
-                RadioStrip {
-                  id: planeStrip
-                  objectName: "entities.editor.plane.group"
-                  width: 3 * Theme.planeWidth + 2 * 6
-                  height: Theme.planeHeight
-                  count: 3
-                  current: root.editor.plane
-                  buttons: planeRow.buttons
-                  groupName: qsTr("Plane")
-                  onPicked: (i) => root.editor.plane = i
-                  contentItem: Row {
-                    id: planeRow
-                    spacing: 6
-                    property var buttons: []
-                    Repeater {
-                        model: ["XY", "XZ", "YZ"]
-                        Item {
-                            id: planeCell
-                            required property string modelData
-                            required property int index
-                            width: Theme.planeWidth
-                            height: Theme.planeHeight
-                            readonly property bool available: root.editor.allPlanes || index === 0
-                            GlyphButton {
-                                anchors.fill: parent
-                                objectName: "entities.editor.plane." + planeCell.modelData.toLowerCase()
-                                focusPolicy: Qt.NoFocus
-                                ring: planeStrip.visualFocus && on
-                                enabled: planeCell.available
-                                glyphSize: Theme.minimal ? 24 : 30
-                                iconOnly: Theme.minimal
-                                glyph: "plane-" + planeCell.modelData.toLowerCase()
-                                caption: planeCell.modelData
-                                tip: qsTr("Edit the %1 plane").arg(planeCell.modelData)
-                                on: root.editor.plane === planeCell.index
-                                onClicked: root.editor.plane = planeCell.index
-                                Component.onCompleted: { planeRow.buttons[planeCell.index] = this; planeRow.buttons = planeRow.buttons }
-                            }
-                            // a disabled button has no hover: say why from here
-                            HoverHandler { id: planeHover; enabled: !planeCell.available }
-                            BtToolTip {
-                                shown: planeHover.hovered
-                                text: qsTr("%1 shapes are edited one XY layer at a time: across the prisms their layers are not alike").arg(App.document.gridTypeName)
-                            }
-                        }
-                    }
-                  }
-                }
-                Text {
-                    objectName: "entities.editor.layerLabel"
-                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-                    text: root.editor.layerCount > 0
-                          ? qsTr("Layer %1 of %2").arg(root.editor.layer + 1).arg(root.editor.layerCount) : ""
-                    color: Theme.muted
-                    font.pixelSize: Theme.fontSecondary
                 }
             }
         }
@@ -462,11 +451,75 @@ Card {
             }
         }
 
-        Rectangle { // the rule above the grid size
+        Rectangle { // the rule above the plane row
             Layout.fillWidth: true
             implicitHeight: 1
             color: Theme.line
         }
+        Section { // ⑤ the plane and layer the grid shows, below it
+            objectName: "entities.editor.plane"
+            Item {
+                width: parent.width
+                height: Theme.planeHeight
+                RadioStrip {
+                  id: planeStrip
+                  objectName: "entities.editor.plane.group"
+                  width: 3 * Theme.planeWidth + 2 * 6
+                  height: Theme.planeHeight
+                  count: 3
+                  current: root.editor.plane
+                  buttons: planeRow.buttons
+                  groupName: qsTr("Plane")
+                  onPicked: (i) => root.editor.plane = i
+                  contentItem: Row {
+                    id: planeRow
+                    spacing: 6
+                    property var buttons: []
+                    Repeater {
+                        model: ["XY", "XZ", "YZ"]
+                        Item {
+                            id: planeCell
+                            required property string modelData
+                            required property int index
+                            width: Theme.planeWidth
+                            height: Theme.planeHeight
+                            readonly property bool available: root.editor.allPlanes || index === 0
+                            GlyphButton {
+                                anchors.fill: parent
+                                objectName: "entities.editor.plane." + planeCell.modelData.toLowerCase()
+                                focusPolicy: Qt.NoFocus
+                                ring: planeStrip.visualFocus && on
+                                enabled: planeCell.available
+                                glyphSize: Theme.minimal ? 24 : 30
+                                iconOnly: Theme.minimal
+                                glyph: "plane-" + planeCell.modelData.toLowerCase()
+                                caption: planeCell.modelData
+                                tip: qsTr("Edit the %1 plane").arg(planeCell.modelData)
+                                on: root.editor.plane === planeCell.index
+                                onClicked: root.editor.plane = planeCell.index
+                                Component.onCompleted: { planeRow.buttons[planeCell.index] = this; planeRow.buttons = planeRow.buttons }
+                            }
+                            // a disabled button has no hover: say why from here
+                            HoverHandler { id: planeHover; enabled: !planeCell.available }
+                            BtToolTip {
+                                shown: planeHover.hovered
+                                text: qsTr("%1 shapes are edited one XY layer at a time: across the prisms their layers are not alike").arg(App.document.gridTypeName)
+                            }
+                        }
+                    }
+                  }
+                }
+                Text {
+                    objectName: "entities.editor.layerLabel"
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    text: root.editor.layerCount > 0
+                          ? qsTr("Layer %1 of %2").arg(root.editor.layer + 1).arg(root.editor.layerCount) : ""
+                    color: Theme.muted
+                    font.pixelSize: Theme.fontSecondary
+                }
+            }
+        }
+
         Item { // ⑧
             objectName: "entities.editor.size"
             Layout.fillWidth: true
