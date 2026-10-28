@@ -61,6 +61,13 @@ Theme::Theme(QObject * parent) : QObject(parent) {
     });
   }
 
+  /* Ask the platform for the theme's scheme now, before any window exists:
+   * the settings' "light" is this object's default too, so their setMode()
+   * changes nothing and would never ask -- and Windows drew the title bar
+   * dark on a dark system until the theme was switched once */
+  if (auto * hints = QGuiApplication::styleHints())
+    hints->setColorScheme(requestedColorScheme());
+
   updateDark();
 }
 

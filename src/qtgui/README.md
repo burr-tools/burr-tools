@@ -318,6 +318,10 @@ the network.
   Help ▸ Keyboard shortcuts. There is no top bar: the window has the
   system's title bar and a menu bar, which can be hidden (View ▸ Show menu bar).
 - **Theme** defaults to Light, as legacy looks (spec: System).
+- **3D view hint** (C06): each pair reads key + gesture, then its effect in
+  the text colour -- "Shift +click fixed voxel", "Drag orbit", "Shift +drag
+  or middle-drag pan" -- without the tool numbers (spec: "Shift click 1
+  fixed"; user feedback 2026-10-28).
 - **Variable voxels** (Flat) are 60 % opaque and the inner ones show
   through (spec: 50 %, outer surface only). The **Classic** and **STL**
   voxel styles are additions.

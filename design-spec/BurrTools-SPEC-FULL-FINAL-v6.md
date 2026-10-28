@@ -1760,6 +1760,7 @@ There is **no Zoom button** (the wheel zooms in every mode) and **no Views / Fit
 
 ### Hint (bottom-left, 14 dp inset, 12 `muted`, KeyBadges, two lines)
 Line 1 (fixed): `Shift click 1 fixed · Alt/⌘ click 2 variable · Ctrl click 3 erase`. Line 2 follows the navigation mode — Orbit: `Drag orbit · Shift/middle-drag pan · Wheel zoom`; Pan: `Drag pan · Shift-drag orbit · Middle-drag pan · Wheel zoom`. Hidden in Focus-2D. id `entities.viewport.hint`.
+> **Implemented (2026-10-28, user feedback: "Shift click 1 fixed" read as a riddle):** each pair reads *key + gesture*, then its effect in the text colour (the gesture `muted`), pairs apart by a dot; the tool numbers are left to the Edit button's badge. Line 1: `[Shift]+click fixed voxel · [Alt/⌘]+click variable voxel · [Ctrl/Option]+click erase`. Line 2 — Orbit: `Drag orbit · [Shift]+drag or middle-drag pan · Wheel zoom`; Pan: `Drag or middle-drag pan · [Shift]+drag orbit · Wheel zoom`.
 * **View cube** (top-right under the toolbar): see **C13** (Settings ▸ Show view cube). **Empty-shape message** (centre, `muted`): "Empty shape — draw in the Voxel editor".
 
 ## Navigation (mouse mapping — independent of the editing rules)
