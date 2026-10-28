@@ -5,6 +5,7 @@
 #include "test_voxeltypes.h"
 
 #include "app.h"
+#include "theme.h"
 #include "editorcontroller.h"
 #include "viewportcontroller.h"
 #include "voxelgriditem.h"
@@ -16,9 +17,11 @@
 #include <QCoreApplication>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -145,6 +148,52 @@ void TestVoxelTypes::paintsEveryPlaneByPointerAndKeys() {
     QCOMPARE(f.filled(), before);
   }
   QCOMPARE(planes, t == gridType_c::GT_TRIANGULAR_PRISM ? 1 : 3);
+}
+
+void TestVoxelTypes::theHoveredCellIsOutlined_data() {
+  addTypes();
+}
+
+void TestVoxelTypes::theHoveredCellIsOutlined() {
+  // C08 "hover outline": a 2 dp accent line inside the cell under the
+  // pointer, in the cell's own shape (a circle for spheres), and gone when
+  // the pointer leaves
+  QFETCH(int, type);
+  TypeFixture f{ gridType_c::gridType(type) };
+  InputGrid g;
+  g.setSize(QSizeF(480, 360));
+  g.setEditor(f.editor());
+  QPoint cell(-1, -1);
+  for (int row = 0; row < 16 && cell.x() < 0; row++)
+    for (int col = 0; col < 16 && cell.x() < 0; col++)
+      if (g.cellCentre(col, row).x() >= 0)
+        cell = QPoint(col, row);
+  QVERIFY(cell.x() >= 0);
+  const QPointF c = g.cellCentre(cell.x(), cell.y());
+  const QColor accent = Theme::instance()->accent();
+  // accent pixels within 40 dp of the cell's centre
+  auto accentNear = [&] {
+    QImage img(int(g.width()), int(g.height()), QImage::Format_ARGB32_Premultiplied);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    g.paint(&p);
+    p.end();
+    int n = 0;
+    for (int y = std::max(0, int(c.y()) - 40); y < std::min(img.height(), int(c.y()) + 40); y++)
+      for (int x = std::max(0, int(c.x()) - 40); x < std::min(img.width(), int(c.x()) + 40); x++) {
+        const QColor q = img.pixelColor(x, y);
+        n += std::abs(q.red() - accent.red()) < 12 && std::abs(q.green() - accent.green()) < 12 &&
+             std::abs(q.blue() - accent.blue()) < 12;
+      }
+    return n;
+  };
+  const int none = accentNear();
+  f.editor()->hover(cell.x(), cell.y());
+  const int hovered = accentNear();
+  QVERIFY2(hovered > none + 20, qPrintable(QStringLiteral("%1 accent pixels, %2 without").arg(hovered).arg(none)));
+  // the pointer gone: no outline
+  f.editor()->hover(-1, -1);
+  QCOMPARE(accentNear(), none);
 }
 
 void TestVoxelTypes::editsIn3dOnTheSlabAndOnAFace_data() {
