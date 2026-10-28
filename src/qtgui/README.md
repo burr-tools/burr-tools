@@ -416,7 +416,9 @@ the network.
   card; Mirror and Span sit under a **Voxel placement** heading with a hint
   each, and beside them in a wide card the tools take a "Tool" heading so
   the two button rows line up; the **planes** sit below the grid under an
-  "Editing plane" heading. The inspector's sections **slide** open and
+  "Editing plane" heading. In a card wide enough for both (Focus 2D) each
+  pair -- the tools and the placement group, the planes and the grid size
+  -- shares a row, the second block at the right edge. The inspector's sections **slide** open and
   shut when toggled (Theme.durCollapse; PR-09 shows and hides them). **Area mode** (legacy's rubber
   band, not in the spec): a toggle after the tools -- a drag spans an area
   of the type's own cells, placed on release as one undo step, Esc drops
