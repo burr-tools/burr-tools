@@ -168,6 +168,22 @@ TEST_CASE("the menu bar holds only menus, every legacy command in one", "[ui][co
   CHECK(plainLabel(commandInfo(Command::Quit).winLabel) == "Exit");
 }
 
+TEST_CASE("no shortcut clashes on any platform; scoped views may share keys", "[ui][commands]") {
+  // the program's --self-check runs this for its own platform; here every
+  // platform is checked on every build (macOS's Option+arrows turn the cube
+  // in the 3D view and Alt+arrows move a shape in the list)
+  for (Platform p : { Platform::Windows, Platform::Mac, Platform::Linux }) {
+    INFO(int(p));
+    CHECK(shortcutClashes(p).empty());
+  }
+  const CommandInfo * earlier = findCommand("shapes.moveEarlier");
+  const CommandInfo * turnUp = findCommand("view.turnUp");
+  REQUIRE(earlier);
+  REQUIRE(turnUp);
+  CHECK(shortcutsOn(*earlier, Platform::Mac).front() == shortcutsOn(*turnUp, Platform::Mac).front());
+  CHECK(earlier->scope != turnUp->scope);
+}
+
 TEST_CASE("access keys are unique within each menu", "[ui][commands]") {
   auto accessKey = [](std::string_view label) {
     const size_t i = label.find('&');

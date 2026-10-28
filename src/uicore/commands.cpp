@@ -22,7 +22,9 @@
 
 #include "../lib/bt_assert.h"
 
+#include <algorithm>
 #include <array>
+#include <map>
 #include <cctype>
 
 namespace btui {
@@ -287,6 +289,22 @@ namespace btui {
     if (p == Platform::Mac && !c.macShortcuts.empty())
       return c.macShortcuts;
     return c.shortcuts;
+  }
+
+  std::vector<std::string> shortcutClashes(Platform p) {
+    std::vector<std::string> out;
+    std::map<std::string_view, std::vector<Scope>> used;
+    for (const CommandInfo & c : commandTable())
+      for (std::string_view s : shortcutsOn(c, p)) {
+        std::vector<Scope> & scopes = used[s];
+        const bool clash = std::any_of(scopes.begin(), scopes.end(), [&](Scope o) {
+          return o == c.scope || o == Scope::Window || c.scope == Scope::Window;
+        });
+        if (clash)
+          out.push_back("shortcut '" + std::string(s) + "' is used twice");
+        scopes.push_back(c.scope);
+      }
+    return out;
   }
 
   std::vector<MenuEntry> menuEntries(Menu m, Platform p) {

@@ -100,8 +100,9 @@ TestCase {
         const palette = item("entities.editor.colour.palette")
         const name = item("entities.editor.colour.name")
         tryVerify(() => item("entities.editor.colour").inline)
-        verify(palette.mapToItem(null, 0, 0).x > name.mapToItem(null, name.width, 0).x)
-        verify(palette.mapToItem(null, 0, 0).y < name.mapToItem(null, 0, name.height).y)
+        // the row lays the palette's slot out on its next polish
+        tryVerify(() => palette.mapToItem(null, 0, 0).x > name.mapToItem(null, name.width, 0).x)
+        tryVerify(() => palette.mapToItem(null, 0, 0).y < name.mapToItem(null, 0, name.height).y)
         // side by side the tools take a heading too, and their buttons line up with Mirror's and Span's
         compare(item("entities.editor.tools.label").text, "Editing tool")
         verify(item("entities.editor.tools.label").visible)

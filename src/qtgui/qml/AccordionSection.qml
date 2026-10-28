@@ -45,9 +45,9 @@ FocusScope {
 
         Accessible.role: Accessible.Button
         Accessible.name: root.title
-        Accessible.description: root.summary
+        // the state in words: Accessible.expanded is Qt 6.9's (we build with 6.8)
+        Accessible.description: (root.open ? qsTr("Expanded. ") : qsTr("Collapsed. ")) + root.summary
         Accessible.expandable: true
-        Accessible.expanded: root.open
         BtToolTip { shown: Theme.minimal && (headerButton.hovered || headerButton.visualFocus); text: root.summary }
 
         background: Rectangle {

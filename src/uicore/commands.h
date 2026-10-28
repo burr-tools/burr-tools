@@ -112,6 +112,13 @@ namespace btui {
   std::string_view labelOn(const CommandInfo & c, Platform p);
   std::span<const std::string_view> shortcutsOn(const CommandInfo & c, Platform p);
 
+  /* The shortcuts that clash on a platform, one message each: a key used
+   * twice in one scope, or a window-wide key used again anywhere (it would
+   * fire first). The Shapes list and the 3D view never have the focus at
+   * once, so they may share a key (macOS: Option+arrows turn the cube,
+   * Alt+arrows move a shape). */
+  std::vector<std::string> shortcutClashes(Platform p);
+
   /* One menu's items on a platform, in order. A divider belonging to an
    * item the platform leaves out moves to the next item shown. */
   struct MenuEntry {
