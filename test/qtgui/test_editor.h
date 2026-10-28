@@ -45,6 +45,7 @@ private slots:
   void anEmptyShapeWithoutTheSlabStartsAtTheOrigin();
   void aFaceWithNothingBeyondIsOutlinedNotEdited();
   void hoveringShowsTheGhostAndNamesTheTarget();
+  void theGhostTakesEachToolsLook();
   void theFocusedViewsKeysTurnPanAndZoom();
   void singleKeyShortcutsCanBeTurnedOff();
 };

@@ -27,8 +27,10 @@
 #include "updatecontroller.h"
 #include "test_editor.h"
 #include "test_inspector.h"
+#include "test_voxeltypes.h"
 #include "test_viewport.h"
 
+#include "../../src/tools/httpget.h"
 #include "../../src/uicore/commands.h"
 #include "../../src/uicore/shapelist.h"
 #include "../../src/lib/puzzle.h"
@@ -1769,6 +1771,32 @@ class TestUpdates : public QObject {
     qputenv("BURRTOOLS_UPDATE_VERSION_OVERRIDE", version);
   }
 
+  /* GitHub's answers, canned: a release, a failure */
+  static HttpResult release(const char * tag, const char * notes = "Bug fixes") {
+    HttpResult r;
+    r.kind = HttpResult::Kind::Ok;
+    r.status = 200;
+    r.body = std::string("{\"tag_name\":\"") + tag + "\",\"html_url\":"
+             "\"https://github.com/burr-tools/burr-tools/releases/tag/" + tag + "\","
+             "\"name\":\"BurrTools " + (tag + 1) + "\",\"draft\":false,\"prerelease\":false,"
+             "\"body\":\"" + notes + "\"}";
+    return r;
+  }
+  static HttpResult failed(HttpResult::Kind kind, long status = 0, const char * error = "") {
+    HttpResult r;
+    r.kind = kind;
+    r.status = status;
+    r.error = error;
+    return r;
+  }
+  /* the controller answered with r: the check started, and finished */
+  static void answer(UpdateController * u, HttpResult r, bool manual = true) {
+    u->setFetch([r] { return r; });
+    manual ? u->checkNow() : u->checkAtLaunch();
+    QVERIFY(u->checking());
+    QTRY_VERIFY(!u->checking());
+  }
+
 private slots:
 
   void cleanup() {
@@ -1817,6 +1845,80 @@ private slots:
     installed("0.7.1-42-gabc123");                  // a development build never asks by itself
     u->checkAtLaunch();
     QVERIFY(!u->checking());
+  }
+
+  void aManualCheckSaysWhatItFound() {
+    // legacy's messages: up to date, each failure said, a newer release offered
+    installed("0.7.1");
+    Fixture f;
+    f.make();
+    UpdateController * u = f.app->updates();
+    SettingsController * s = f.app->settings();
+    QSignalSpy message(u, &UpdateController::message);
+    QSignalSpy offer(u, &UpdateController::offer);
+    auto said = [&] { return message.isEmpty() ? QString() : message.last().at(1).toString(); };
+
+    answer(u, release("v0.7.1"));
+    QCOMPARE(message.count(), 1);
+    QVERIFY2(said().contains(QStringLiteral("latest version")) && said().contains(QStringLiteral("0.7.1")), qPrintable(said()));
+    QVERIFY(s->updateLastCheck() > 0);                // a good answer is noted
+
+    answer(u, failed(HttpResult::Kind::Transport, 0, "timed out"));
+    QCOMPARE(said(), QStringLiteral("Couldn't reach GitHub: timed out"));
+    answer(u, failed(HttpResult::Kind::Status, 429));
+    QVERIFY2(said().contains(QStringLiteral("rate limited")), qPrintable(said()));
+    answer(u, failed(HttpResult::Kind::Status, 500));
+    QCOMPARE(said(), QStringLiteral("GitHub returned HTTP 500."));
+    answer(u, failed(HttpResult::Kind::TooLarge));
+    QCOMPARE(said(), QStringLiteral("Unexpected response from GitHub."));
+    HttpResult garbage = release("v0.8.1");
+    garbage.body = "not json";
+    answer(u, garbage);
+    QVERIFY2(said().startsWith(QStringLiteral("Unexpected response from GitHub:")), qPrintable(said()));
+    QCOMPARE(offer.count(), 0);
+
+    // a newer release: its heading, notes and page; a manual check offers no Skip
+    answer(u, release("v0.8.1", "Faster solver"));
+    QCOMPARE(offer.count(), 1);
+    QVERIFY(offer.at(0).at(0).toString().contains(QStringLiteral("0.8.1 is available. You have 0.7.1")));
+    QCOMPARE(offer.at(0).at(1).toString(), QStringLiteral("Faster solver"));
+    QCOMPARE(offer.at(0).at(2).toString(), QStringLiteral("https://github.com/burr-tools/burr-tools/releases/tag/v0.8.1"));
+    QVERIFY(!offer.at(0).at(3).toBool());
+    QCOMPARE(message.count(), 6);                      // and nothing said besides
+  }
+
+  void aSkippedReleaseIsOfferedAtLaunchNoMore() {
+    // the launch check offers Skip; a skipped release stays quiet at launch,
+    // a later one is offered, and Help > Check for updates still shows it
+    installed("0.7.1");
+    Fixture f;
+    f.make();
+    UpdateController * u = f.app->updates();
+    SettingsController * s = f.app->settings();
+    QSignalSpy message(u, &UpdateController::message);
+    QSignalSpy offer(u, &UpdateController::offer);
+    auto dayOld = [&] { s->setUpdateLastCheck(std::time(nullptr) - 2 * 86400); };
+
+    dayOld();
+    answer(u, release("v0.8.1"), false);
+    QCOMPARE(offer.count(), 1);
+    QVERIFY(offer.at(0).at(3).toBool());              // Skip offered
+    u->skipOffered();
+    QVERIFY(s->updateSkippedVersion() > 0);
+
+    dayOld();
+    answer(u, release("v0.8.1"), false);
+    QCOMPARE(offer.count(), 1);                       // skipped: quiet
+    dayOld();
+    answer(u, release("v0.8.2"), false);
+    QCOMPARE(offer.count(), 2);                       // a newer one is not
+    answer(u, release("v0.8.1"));
+    QCOMPARE(offer.count(), 3);                       // asked for: shown
+
+    // a launch check that fails says nothing
+    dayOld();
+    answer(u, failed(HttpResult::Kind::Transport, 0, "offline"), false);
+    QCOMPARE(message.count(), 0);
   }
 
   void onlyGitHubReleasePagesAreOpened() {
@@ -3299,6 +3401,7 @@ int main(int argc, char ** argv) {
   run(TestEditor());
   run(TestEdit3d());
   run(TestInspector());
+  run(TestVoxelTypes());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

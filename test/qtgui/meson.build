@@ -28,10 +28,17 @@ if qt6_test_dep.found()
   # not ours -- silence exactly that warning, and only for these two
   # executables, so the --werror release build is not failed by it.
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
+  # a coverage build's counters slow the hot loops several-fold: its time
+  # budgets are reported, not checked (VERIFY_BUDGET, test_editor.cpp)
+  if get_option('b_coverage')
+    qt_test_args += ['-DBURRTOOLS_COVERAGE_BUILD=1']
+  endif
 
   test_qtgui = executable('test_qtgui',
-    ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', 'test_inspector.cpp', '../alloccount.cpp',
-     qt6.compile_moc(sources: 'test_qtgui.cpp', headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h'],
+    ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', 'test_inspector.cpp', 'test_voxeltypes.cpp',
+     '../alloccount.cpp',
+     qt6.compile_moc(sources: 'test_qtgui.cpp',
+                     headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h', 'test_voxeltypes.h'],
                      dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
