@@ -371,6 +371,135 @@ namespace btui {
       }
     }
 
+    /* The prism, rhombic and tetra-octa grids' STL faces are merged across
+     * cells too, and their cells are no whole units of the drawing: each
+     * face is cut by the walls of the filled cells it crosses -- a cell is
+     * the convex polyhedron of its connection faces, as the flat mesh draws
+     * it -- and each piece takes its cell. The mesher's surface lies inside
+     * the filled cells (its gap); a face they do not cover, to rounding,
+     * stays whole with the voxel the mesher gave it. */
+    void splitAtCellWalls(std::vector<MeshVertex> & tris, const voxel_c & shape) {
+      using Poly = std::vector<MeshVertex>;
+      struct Plane { Vec3 n; float d; };                 // inside: dot(n, p) <= d
+      struct Cell { float at[3]; Vec3 lo, hi; std::vector<Plane> walls; };
+      std::vector<Cell> cells;
+      std::vector<float> corners;
+      for (unsigned int z = 0; z < shape.getZ(); z++)
+        for (unsigned int y = 0; y < shape.getY(); y++)
+          for (unsigned int x = 0; x < shape.getX(); x++) {
+            if (shape.getState(x, y, z) != voxel_c::VX_FILLED)
+              continue;
+            std::vector<std::vector<Vec3>> faces;
+            int nx, ny, nz;
+            for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
+              corners.clear();
+              shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, corners);
+              std::vector<Vec3> f;
+              for (size_t k = 0; k + 2 < corners.size(); k += 3)
+                f.push_back({ corners[k], corners[k + 1], corners[k + 2] });
+              if (f.size() >= 3)
+                faces.push_back(std::move(f));
+            }
+            if (faces.size() < 4)                         // no closed cell: leave the faces whole
+              return;
+            Cell c{ { float(x), float(y), float(z) }, { 1e30f, 1e30f, 1e30f }, { -1e30f, -1e30f, -1e30f }, {} };
+            Vec3 mid{ 0, 0, 0 };
+            int count = 0;
+            for (const auto & f : faces)
+              for (const Vec3 & v : f) {
+                mid += v;
+                count++;
+                c.lo = { std::min(c.lo.x, v.x), std::min(c.lo.y, v.y), std::min(c.lo.z, v.z) };
+                c.hi = { std::max(c.hi.x, v.x), std::max(c.hi.y, v.y), std::max(c.hi.z, v.z) };
+              }
+            mid = mid * (1.0f / float(count));
+            for (const auto & f : faces) {
+              Vec3 n = normalize(cross(f[1] - f[0], f[2] - f[0]));
+              if (length(n) < 0.5f)
+                continue;
+              if (dot(n, mid - f[0]) > 0)                 // outward
+                n = -n;
+              c.walls.push_back({ n, dot(n, f[0]) });
+            }
+            cells.push_back(std::move(c));
+          }
+      if (cells.empty())
+        return;
+
+      auto lerp = [](const MeshVertex & a, const MeshVertex & b, float t) {
+        MeshVertex m = a;
+        for (int k = 0; k < 3; k++)
+          m.pos[k] = a.pos[k] + (b.pos[k] - a.pos[k]) * t;
+        return m;
+      };
+      auto posOf = [](const MeshVertex & v) { return Vec3(v.pos[0], v.pos[1], v.pos[2]); };
+      // the part of a convex polygon inside a wall
+      auto clip = [&](const Poly & poly, const Plane & w) {
+        Poly out;
+        for (size_t i = 0; i < poly.size(); i++) {
+          const MeshVertex & a = poly[i], & b = poly[(i + 1) % poly.size()];
+          const float da = dot(w.n, posOf(a)) - w.d, db = dot(w.n, posOf(b)) - w.d;
+          if (da <= 1e-6f)
+            out.push_back(a);
+          if ((da <= 1e-6f) != (db <= 1e-6f) && std::fabs(da - db) > 1e-12f)
+            out.push_back(lerp(a, b, da / (da - db)));
+        }
+        return out;
+      };
+      auto area = [&](const Poly & poly) {
+        Vec3 sum{ 0, 0, 0 };
+        for (size_t i = 1; i + 1 < poly.size(); i++)
+          sum += cross(posOf(poly[i]) - posOf(poly[0]), posOf(poly[i + 1]) - posOf(poly[0]));
+        return 0.5f * length(sum);
+      };
+
+      std::vector<MeshVertex> out;
+      out.reserve(tris.size() * 4);
+      std::vector<std::pair<Poly, const Cell *>> pieces;
+      for (size_t i = 0; i + 2 < tris.size(); i += 3) {
+        const Poly tri{ tris[i], tris[i + 1], tris[i + 2] };
+        const Vec3 a = posOf(tri[0]), b = posOf(tri[1]), c = posOf(tri[2]);
+        const Vec3 lo{ std::min({ a.x, b.x, c.x }), std::min({ a.y, b.y, c.y }), std::min({ a.z, b.z, c.z }) };
+        const Vec3 hi{ std::max({ a.x, b.x, c.x }), std::max({ a.y, b.y, c.y }), std::max({ a.z, b.z, c.z }) };
+        const Vec3 n = normalize(cross(b - a, c - a));
+        const float whole = area(tri);
+        pieces.clear();
+        float covered = 0;
+        for (const Cell & cell : cells) {
+          if (cell.hi.x < lo.x || cell.lo.x > hi.x || cell.hi.y < lo.y || cell.lo.y > hi.y ||
+              cell.hi.z < lo.z || cell.lo.z > hi.z)
+            continue;
+          // the face's plane through the cell's box
+          const Vec3 centre = (cell.lo + cell.hi) * 0.5f, half = (cell.hi - cell.lo) * 0.5f;
+          if (std::fabs(dot(n, centre - a)) > std::fabs(n.x) * half.x + std::fabs(n.y) * half.y + std::fabs(n.z) * half.z)
+            continue;
+          Poly piece = tri;
+          for (const Plane & w : cell.walls) {
+            piece = clip(piece, w);
+            if (piece.size() < 3)
+              break;
+          }
+          const float part = piece.size() >= 3 ? area(piece) : 0.0f;
+          if (part <= whole * 1e-6f)
+            continue;
+          covered += part;
+          pieces.emplace_back(std::move(piece), &cell);
+        }
+        if (whole <= 0 || covered < whole * 0.98f) {
+          out.insert(out.end(), tri.begin(), tri.end());
+          continue;
+        }
+        for (const auto & [poly, cell] : pieces)
+          for (size_t k = 1; k + 1 < poly.size(); k++)
+            for (const MeshVertex * v : { &poly[0], &poly[k], &poly[k + 1] }) {
+              MeshVertex m = *v;
+              m.cell[0] = cell->at[0]; m.cell[1] = cell->at[1]; m.cell[2] = cell->at[2];
+              out.push_back(m);
+            }
+      }
+      tris = std::move(out);
+    }
+
     bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
       bool filled = false;
       for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
@@ -382,8 +511,19 @@ namespace btui {
       if (!poly || poly->vBegin() == poly->vEnd())
         return false;
       out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
-      if (fixed.getGridType()->getType() == gridType_c::GT_BRICKS)
-        splitAtCells(out.opaque, fixed);
+      switch (fixed.getGridType()->getType()) {
+        case gridType_c::GT_BRICKS:
+          splitAtCells(out.opaque, fixed);
+          break;
+        case gridType_c::GT_TRIANGULAR_PRISM:
+        case gridType_c::GT_RHOMBIC:
+        case gridType_c::GT_TETRA_OCTA:
+          splitAtCellWalls(out.opaque, fixed);
+          break;
+        case gridType_c::GT_SPHERES:                    // a ball's faces are its own already
+        case gridType_c::GT_NUM_GRIDS:
+          break;
+      }
       return true;
     }
   }
