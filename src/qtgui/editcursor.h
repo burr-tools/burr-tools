@@ -51,6 +51,11 @@ namespace editcursor {
 
   /* compose(), cached per tool, colour, theme and scale */
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale);
+
+  /* The same drawing as an icon (C06 "The Edit button": "the same drawing
+   * as the cursor"): cropped to what it draws and centred in a square of
+   * px device pixels, so it fills a button as a glyph does */
+  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px);
 }
 
 #endif

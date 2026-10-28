@@ -20,10 +20,14 @@
  */
 #include "iconprovider.h"
 
+#include "editcursor.h"
+
 #include <QFile>
 #include <QPainter>
 #include <QSvgRenderer>
 #include <QUrlQuery>
+
+#include <algorithm>
 
 IconProvider::IconProvider(void) : QQuickImageProvider(QQuickImageProvider::Image) {}
 
@@ -64,5 +68,20 @@ QImage IconProvider::requestImage(const QString & id, QSize * size, const QSize 
     QPainter p(&img);
     renderer.render(&p);
   }
+  return img;
+}
+
+EditGlyphProvider::EditGlyphProvider(void) : QQuickImageProvider(QQuickImageProvider::Image) {}
+
+QImage EditGlyphProvider::requestImage(const QString & id, QSize * size, const QSize & requestedSize) {
+  const qsizetype q = id.indexOf(u'?');
+  const int tool = std::clamp(id.left(q).toInt(), 0, 3);
+  const QUrlQuery query(q < 0 ? QString() : id.mid(q + 1));
+  const QString colour = query.queryItemValue(QStringLiteral("color"));
+  const bool dark = query.queryItemValue(QStringLiteral("dark")) == QLatin1String("1");
+  const int px = requestedSize.isValid() && requestedSize.width() > 0 ? requestedSize.width() : 32;
+  const QImage img = editcursor::glyph(btui::Tool(tool), colour.isEmpty() ? QColor() : QColor(u'#' + colour), dark, px);
+  if (size)
+    *size = img.size();
   return img;
 }

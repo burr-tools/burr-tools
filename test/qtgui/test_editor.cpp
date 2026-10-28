@@ -7,6 +7,7 @@
 #include "app.h"
 #include "coloursmodel.h"
 #include "editcursor.h"
+#include "iconprovider.h"
 #include "editorcontroller.h"
 #include "settingscontroller.h"
 #include "statuscontroller.h"
@@ -827,6 +828,48 @@ void TestEditor::theCursorsAreComposedPerToolColourAndTheme() {
     QVERIFY2(drawn > 60, qPrintable(QString::number(drawn)));
   }
   QVERIFY(!editcursor::cursor(btui::Tool::Paint, QColor(Qt::blue), true, 1).pixmap().isNull());
+}
+
+void TestEditor::theEditButtonShowsTheCursorsDrawing() {
+  // C06 "The Edit button": the same drawing as the cursor, its badge or
+  // drop in the drawing colour (Default: the theme's contrast), cropped to
+  // fill the button's square; served as image://editglyph/<tool>?color=&dark=
+  auto count = [](const QImage & img, auto pred) {
+    int n = 0;
+    for (int y = 0; y < img.height(); y++)
+      for (int x = 0; x < img.width(); x++)
+        n += pred(img.pixelColor(x, y));
+    return n;
+  };
+  auto red = [](QColor c) { return c.alpha() > 200 && c.red() > 180 && c.green() < 90 && c.blue() < 90; };
+  auto any = [](QColor c) { return c.alpha() > 8; };
+  for (const btui::Tool tool : { btui::Tool::Fixed, btui::Tool::Variable, btui::Tool::Erase, btui::Tool::Paint }) {
+    const QImage plain = editcursor::glyph(tool, QColor(), false, 44);
+    QCOMPARE(plain.size(), QSize(44, 44));
+    QVERIFY(count(plain, any) > 100);
+    QCOMPARE(count(plain, red), 0);
+    // fitted: it reaches two opposite edges of the square, not the 32 px cursor's corner
+    const QImage img = editcursor::glyph(tool, QColor(220, 30, 30), false, 44);
+    bool left = false, right = false, top = false, bottom = false;
+    for (int i = 0; i < 44; i++) {
+      left |= img.pixelColor(0, i).alpha() > 8;
+      right |= img.pixelColor(43, i).alpha() > 8;
+      top |= img.pixelColor(i, 0).alpha() > 8;
+      bottom |= img.pixelColor(i, 43).alpha() > 8;
+    }
+    QVERIFY((left && right) || (top && bottom));
+    if (tool != btui::Tool::Erase)                    // the eraser has no colour of its own
+      QVERIFY2(count(img, red) > 4, qPrintable(QString::number(int(tool))));
+  }
+  // the provider reads the tool, the colour and the theme from its id
+  EditGlyphProvider provider;
+  QSize size;
+  const QImage served = provider.requestImage(QStringLiteral("3?color=dc1e1e&dark=0"), &size, QSize(40, 40));
+  QCOMPARE(size, QSize(40, 40));
+  QVERIFY(count(served, red) > 4);
+  QCOMPARE(served, editcursor::glyph(btui::Tool::Paint, QColor(0xdc, 0x1e, 0x1e), false, 40));
+  QVERIFY(provider.requestImage(QStringLiteral("0?color=&dark=1"), &size, QSize(40, 40))
+          != provider.requestImage(QStringLiteral("0?color=&dark=0"), &size, QSize(40, 40)));
 }
 
 void TestEditor::theGridHitsItsCellsAndPaintsTheirVoxels() {

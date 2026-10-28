@@ -1566,6 +1566,7 @@ void TestViewportItem::theCardShowsItsCanvas() {
   GPU_OR_SKIP(t.create(QSize(480, 360)));
   QQmlEngine engine;
   engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+  engine.addImageProvider(QStringLiteral("editglyph"), new EditGlyphProvider);
   QQmlComponent c(&engine);
   c.setData("import BurrTools.Ui\nViewportCard { width: 480; height: 360 }", QUrl());
   std::unique_ptr<QObject> o(c.create());
