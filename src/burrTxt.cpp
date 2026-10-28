@@ -189,10 +189,9 @@ void usage(bool full = false) {
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -R    with -d or -x: also allow pieces to turn by 90 degrees (cube grids)\n";
-  cout << "  -m play,bevel  physical model for -R, in cube sizes (default 0.081,0):\n";
-  cout << "        gap between cubes, length a 45 degree bevel\n";
-  cout << "        cuts off each face (a puzzlecad $burr_bevel b on cubes of size s is\n";
-  cout << "        b / (1.414 s))\n";
+  cout << "  -m play,bevel  physical model for -R, in cube sizes (default 0.081,0.032): gap\n";
+  cout << "        between cubes, length a 45 degree bevel cuts off each face; from puzzlecad's\n";
+  cout << "        $burr_inset i, $burr_bevel b, $burr_scale s: play 2 i / s, bevel b / (1.414 s)\n";
   cout << "  -Q    with -R: also plan turns that no fixed path clears at this play but one\n";
   cout << "        clears with a little more (finds turns near the threshold; much slower)\n";
   cout << "  -P    with -R: print the play each disassembly needs, with optimized turn paths\n";
@@ -234,6 +233,7 @@ int main(int argv, char* args[]) {
   rotationMoves = false;
   reportPlay = false;
   bool findMinPlay = false;
+  bool turnOptions = false;   // -m, -P or -Q, which act on rotation moves
   double minPlayLo = 0, minPlayHi = 0;
   bool assemble = true;
   unsigned int problem = 0;
@@ -267,9 +267,9 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-R") == 0)
         rotationMoves = true;
       else if (strcmp(args[i], "-P") == 0)
-        reportPlay = true;
+        reportPlay = turnOptions = true;
       else if (strcmp(args[i], "-Q") == 0)
-        solverConfig.rotation.planner = true;
+        solverConfig.rotation.planner = turnOptions = true;
       else if (strcmp(args[i], "-M") == 0) {
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &minPlayLo, &minPlayHi, &rest) != 2 ||
@@ -291,6 +291,7 @@ int main(int argv, char* args[]) {
           return 1;
         }
         solverConfig.rotation.model = rotationGeometry::model_t{ play, chamfer };
+        turnOptions = true;
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -355,6 +356,11 @@ int main(int argv, char* args[]) {
     usage();
     return 1;
   }
+
+  if (turnOptions && !(rotationMoves && (disassemble || !assemble)))
+    cerr << "note: -m, -P and -Q only act with -R and -d or -x, ignoring them\n";
+  if (findMinPlay && !(rotationMoves && disassemble && assemble))
+    cerr << "note: -M only acts with -d and -R, ignoring it\n";
 
   try {
     settings = solverConfig.resolve();
