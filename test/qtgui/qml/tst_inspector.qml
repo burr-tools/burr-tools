@@ -32,6 +32,7 @@ TestCase {
         App.editor.span = 0
         App.editor.plane = EditorController.XY
         App.editor.editMode = false
+        App.editor.areaMode = false
         newBricks(0)
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null, "Main.qml failed to load")
@@ -73,18 +74,49 @@ TestCase {
         mouseClick(g, p.x, p.y)
     }
     function status() { return item("status.text").text }
+    // the inspector scrolls once its open sections outgrow it: a button is
+    // brought into view before it is clicked
+    function reveal(o) {
+        const f = item("entities.inspector.scroll")
+        const y = o.mapToItem(f.contentItem, 0, 0).y
+        if (y < f.contentY || y + o.height > f.contentY + f.height)
+            f.contentY = Math.max(0, Math.min(y - 8, f.contentHeight - f.height))
+        return o
+    }
+    // after a section opens the list shrinks and the inspector moves: laid
+    // out on the next frame, so a click waits for it
+    function press(o) {
+        waitForRendering(win.contentItem)
+        reveal(o)
+        waitForRendering(win.contentItem)
+        mouseClick(o)
+    }
 
-    function test_itSitsUnderTheListAndNamesTheShape() {
-        // the mock: the list takes its rows (60 to 250 dp), the inspector the rest
+    function test_theListTakesWhatTheSectionsLeave() {
+        // user decision 2026-10-28: with the sections closed the list has all
+        // the height but their headers; as they open it gives it up, down to
+        // four rows, and the inspector scrolls past that. The rows' count
+        // moves nothing.
         const list = item("entities.shapes.list")
         const insp = item("entities.inspector")
-        const top = insp.mapToItem(list, 0, 0).y
-        compare(top, Math.max(48, list.count * list.pitch - list.spacing) + 6)
+        App.inspector.transformOpen = false
+        tryVerify(() => Math.abs(insp.height - insp.neededHeight) < 1)
+        const total = list.height + insp.height
+        verify(list.height > 500, "the list: " + list.height)
+        App.inspector.transformOpen = true
+        tryVerify(() => Math.abs(insp.height - insp.neededHeight) < 1)
+        compare(list.height + insp.height, total)            // what one gives, the other takes
+        App.inspector.fitOpen = true
+        App.inspector.repairOpen = true
+        tryCompare(list, "height", list.minHeight)            // four rows, no fewer
+        compare(list.minHeight, 4 * list.pitch - list.spacing)
+        verify(insp.height < insp.neededHeight)                 // the inspector scrolls
+        const before = list.height
         for (let i = 0; i < 9; i++)
             App.shapes.addShape()
         tryCompare(list, "count", 10)
-        compare(insp.mapToItem(list, 0, 0).y, 238 + 6)     // 250 with the padding, then the list scrolls
-        verify(insp.height > 300)
+        compare(list.height, before)
+        // the head names the selected shape
         compare(item("entities.inspector.head.chip").text, App.viewport.shapeId)
         App.shapes.select(3)
         tryCompare(item("entities.inspector.head.chip"), "text", "S4")
@@ -143,15 +175,15 @@ TestCase {
         // AC-C04-03 / 05: a nudge to the edge goes; past it, blocked with the reason, nothing changed
         clickCell(0, 0)
         const undoable = App.document.canUndo
-        mouseClick(item("entities.transform.nudge.x.neg"))
+        press(item("entities.transform.nudge.x.neg"))
         tryVerify(() => status().indexOf("Blocked: the piece would leave the grid") >= 0)
-        mouseClick(item("entities.transform.nudge.x.pos"))
-        mouseClick(item("entities.transform.nudge.x.pos"))
-        mouseClick(item("entities.transform.nudge.x.pos"))      // at the edge now: blocked
+        press(item("entities.transform.nudge.x.pos"))
+        press(item("entities.transform.nudge.x.pos"))
+        press(item("entities.transform.nudge.x.pos"))      // at the edge now: blocked
         tryVerify(() => status().indexOf("Blocked") >= 0)
         App.document.undo()
         App.document.undo()                                   // two steps: the two that ran
-        mouseClick(item("entities.transform.nudge.x.neg"))      // back at x 0: blocked again
+        press(item("entities.transform.nudge.x.neg"))      // back at x 0: blocked again
         tryVerify(() => status().indexOf("Blocked") >= 0)
         verify(undoable)
     }
@@ -164,7 +196,7 @@ TestCase {
         tryVerify(() => !prune.available, 2000)              // the states settle after the new file's edits
         compare(prune.hint, "The shape is empty")
         compare(prune.opacity, 0.4)
-        mouseClick(prune)                                     // still pressed: the status bar says why
+        press(prune)                                     // still pressed: the status bar says why
         tryVerify(() => status().indexOf("The shape is empty") >= 0)
 
         clickCell(1, 1)
@@ -173,7 +205,7 @@ TestCase {
         const minimize = item("entities.fit.minimize")
         verify(!minimize.available)
         compare(minimize.hint, "Already at minimum resolution")
-        mouseClick(item("entities.fit.x2"))
+        press(item("entities.fit.x2"))
         tryVerify(() => minimize.available, 2000)
         compare(minimize.hint, "Reduce resolution ÷2, same shape")
         App.editor.applyToAll = true
@@ -210,7 +242,7 @@ TestCase {
         App.editor.layer = 0
     }
     function flashes(name, text) {
-        mouseClick(item(name))
+        press(item(name))
         tryVerify(() => status() === text, 1000, name + " said " + status() + ", not " + text)
     }
 
@@ -238,18 +270,18 @@ TestCase {
         App.inspector.fitOpen = true
         const x = item("entities.editor.size.x")
         tryVerify(() => item("entities.fit.x2").visible)
-        mouseClick(item("entities.fit.x2"))
+        press(item("entities.fit.x2"))
         tryCompare(x, "value", 6)
-        mouseClick(item("entities.fit.x3"))
+        press(item("entities.fit.x3"))
         tryCompare(x, "value", 18)
         const minimize = item("entities.fit.minimize")
         // the states settle 120 ms after the edits pause
         tryCompare(minimize, "hint", "Reduce resolution ÷6, same shape", 2000)
         verify(minimize.available)
-        mouseClick(minimize)
+        press(minimize)
         tryCompare(x, "value", 3)
         tryVerify(() => status().indexOf("÷6") >= 0)
-        mouseClick(item("entities.fit.prune"))                // the voxel's own box
+        press(item("entities.fit.prune"))                // the voxel's own box
         tryCompare(x, "value", 1)
         compare(item("entities.editor.size.z").value, 1)
         // undone one by one: back through each size

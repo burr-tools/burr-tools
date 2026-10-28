@@ -1189,6 +1189,8 @@ Horizontal: glyph (30) · text block (title 12.5/600 `text`; hint 11 `muted`, �
 Height 30 (small 26), padding 0×12, radius 8, 1 dp `line2` border, `panel` fill. Variants: *secondary*, *primary* (accent fill, white text, hover +8 % brightness). Used by: New shape, Restore all defaults, Done, Reset section.
 
 ## PR-05 Segmented
+> **Implemented (2026-10-28, user decision):** the option on is accent-tinted (`accentSoft`) with a 1 dp accent edge and accent text, as the selected tool and plane buttons are -- PR-05's panel fill and shadow hardly differed from the light theme's track.
+
 Track `panel2`, 1 dp `line`, radius 8, padding 2; options h24, padding 0×12, 600 weight; selected = `panel` fill + subtle shadow + `text`; others `muted`. Exactly one `on`. Left/Right keys move selection when focused. Used by: app tabs (Entities/Puzzle/Solver), Settings rotation method and appearance.
 
 ## PR-06 Stepper
@@ -1428,6 +1430,8 @@ The **Entities / Puzzle / Solver switch moves from the top bar to the vertical w
 # C01 — Shapes sidebar (list, row actions, weight, reorder, context menu, rail)
 
 > **Implemented (P2, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** `F2` stays Save (legacy); rename starts from `Enter` in the focused list, double-click, the pencil or the menu. **Delete asks first** when a problem using the shape has solutions or a running search (undo cannot bring those back; legacy never asks). Weight stops at 0. Chip text is black or white by contrast. Dragging a row moves the others aside (150 ms) to open the gap it drops into, instead of the 2 dp drop line. The collapsed rail's selected chip has the row highlight, not the ring.
+
+> **Implemented (P6, 2026-10-28, user decision):** the list takes the height the inspector's open sections leave -- all of it while they are closed -- and never less than four rows; the inspector scrolls past that.
 
 **Phase:** P2. **Images:** `01-main-light.png`, `21-shape-row-hover.png`, `20-shape-row-context-menu.png`, `05-left-collapsed.png`. **Legacy:** L10 New, L11 Delete, L12 Copy, L13 Label, L14 W+, L15 W−, L16 ←, L17 →, L18 shape list. **New ids:** N10–N15.
 
@@ -1831,6 +1835,8 @@ ids `entities.viewport.display.axes|bounds|layer|dim|persp|ortho|colourPiece|col
 
 > **Implemented (P4, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** sizes per density §1 (tool strip h48, Mirror/Span h44; Minimal icon-only, group labels hidden). Mirror/Span tooltips name their group (“Mirror X: also place a mirrored voxel across the X centre plane”, “Span X: fill the whole grid along X on each click”), since Minimal hides the labels. The header also carries the read-only voxel-type chip (C14).
 
+> **Implemented (2026-10-28, user decisions):** the tools and Mirror / Span have **fixed widths** (Standard 58 and 46 dp, Minimal 44 and 34) and **flow**: in a wider card (Focus 2D) the placement group sits beside the tools, leaving the height to the grid. Mirror and Span are under a **Voxel placement** heading with a hint each ("also places the mirror image", "fills the whole line"; Minimal: tooltips). **Area** (legacy's rubber band, `EDT_RUBBER`, missing from the spec): a toggle after the tools; on, a press and drag span an area of the type's own cells between the two corners (`btui::areaCells`: the prism's zig-zag of triangles, the spheres' circles), outlined while dragged, previewed in 3D, placed on release as one undo step with Mirror and Span; Esc drops it; the right button erases an area. Remembered, seeded from legacy's `rubberband`; off by default, as legacy.
+
 **Phase:** P4. **Images:** `23-voxel-editor-card.png`, `19-3d-mirror-span-preview.png`, `legacy-tools-tab-annotated.png` (L60–L63). **New ids:** N50–N54.
 
 ## Card structure (right card, width 400; rail 56)
@@ -1892,6 +1898,8 @@ The same `S` is used for the 3D ghost preview (C06). The whole expansion is part
 # C08 — Voxel editor: plane selector, layer strip, 2D grid
 
 > **Implemented (P4, 2026-10; deviations logged in `migration/RESOLUTIONS.md`):** **Planes** — XZ and YZ for every voxel type but the triangular prism (product decision 2026-10-28): spheres, rhombic and tetra-octa grids look the same along every axis, so their XZ/YZ layers are drawn as XY ones; prisms are edited one XY layer at a time, the disabled buttons say why. **Layer chips** 32×24 (density §1); their tooltip and name say the axis (“Z layer 3”); no Tab stops (`PgUp`/`PgDn` work anywhere in Entities). The grid has no elevation shadow; rulers number square cells only.
+
+> **Implemented (2026-10-28, user decision):** the plane selector and "Layer n of m" sit **below** the grid: everything above it says what a click does.
 
 **Phase:** P4. **Images:** `23-voxel-editor-card.png`, `03-focus-2d.png`, legacy L70 (layer slider), L71 (grid). **New ids:** N55–N57.
 

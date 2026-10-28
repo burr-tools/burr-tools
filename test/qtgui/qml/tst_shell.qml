@@ -336,11 +336,12 @@ TestCase {
                 "entities.inspector.fit.header", "entities.inspector.repair.header",
                 "entities.viewport.toolbar", "entities.viewport.surface",
                 "entities.editor.focus2d", "entities.editor.collapse",
-                // the tool strip and the planes are one stop each
-                "entities.editor.tools.group",
+                // the tool strip and the planes are one stop each; Area a toggle of its own
+                "entities.editor.tools.group", "entities.editor.tool.area",
                 "entities.editor.mirror.x", "entities.editor.mirror.y", "entities.editor.mirror.z",
                 "entities.editor.span.x", "entities.editor.span.y", "entities.editor.span.z",
-                "entities.editor.plane.group", "entities.editor.grid",
+                // the planes below the grid (user decision 2026-10-28)
+                "entities.editor.grid", "entities.editor.plane.group",
                 "entities.editor.size.applyAll",
                 "entities.editor.size.x.input", "entities.editor.size.y.input", "entities.editor.size.z.input",
                 "entities.editor.colour.info", "entities.editor.colour.add", "entities.editor.colour.more",
