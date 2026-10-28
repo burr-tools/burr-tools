@@ -418,7 +418,9 @@ the network.
   the two button rows line up; the **planes** sit below the grid under an
   "Editing plane" heading. In a card wide enough for both (Focus 2D) each
   pair -- the tools and the placement group, the planes and the grid size
-  -- shares a row, the second block at the right edge. The inspector's sections **slide** open and
+  -- shares a row, the second block at the right edge; the tools' heading
+  there is "Editing tool", and the Drawing colour's palette moves onto the
+  colour's own line, between its name and the buttons. The inspector's sections **slide** open and
   shut when toggled (Theme.durCollapse; PR-09 shows and hides them). **Area mode** (legacy's rubber
   band, not in the spec): a toggle after the tools -- a drag spans an area
   of the type's own cells, placed on release as one undo step, Esc drops

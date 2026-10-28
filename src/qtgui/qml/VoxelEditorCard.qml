@@ -206,7 +206,7 @@ Card {
                   readonly property bool besidePlacement: clickFlow.wide && !Theme.minimal
                   MicroLabel {
                       objectName: "entities.editor.tools.label"
-                      text: qsTr("Tool")
+                      text: qsTr("Editing tool")
                       visible: toolsBlock.besidePlacement
                   }
                   Item {
