@@ -88,6 +88,14 @@ TestCase {
     }
     function contextMenu() { return item("entities.shapes").contextMenu }
 
+    function test_theHeaderHasItsParts() {
+        // C01's header ids: the header, its count, + New, the collapse button
+        for (const id of ["entities.shapes.header", "entities.shapes.count", "entities.shapes.new",
+                          "entities.shapes.collapse", "entities.editor.header"])
+            verify(item(id).visible, id)
+        compare(item("entities.shapes.count").text, String(App.shapes.count))
+    }
+
     function test_actionsShowOnTheSelectedAndTheHoveredRow() {
         // AC-C01-01
         App.shapes.select(0)
