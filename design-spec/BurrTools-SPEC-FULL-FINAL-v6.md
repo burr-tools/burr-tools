@@ -1459,6 +1459,8 @@ Select, create and manage the puzzle's shapes (pieces). Every action that used t
 | `entities.shapes.row.<i>` (+ `.chip`, `.label`, `.weightBadge`, `.grip`) | row i (0-based) |
 | `entities.shapes.row.<i>.rename` `.duplicate` `.weightDown` `.weightUp` `.delete` | row actions |
 | `entities.shapes.rail`, `entities.shapes.rail.expand`, `.rail.chip.<i>`, `.rail.new` | rail |
+
+> **Implemented (review of 2026-10-29):** the header is `entities.shapes.header` (every card's header is `<card>.header`); the rail's expand button is the shell's, `workspace.left.rail.expand`, one per side for all three workspaces.
 | `entities.shapes.contextMenu` | context menu |
 
 ## Position is identity (IMPORTANT)
@@ -1617,6 +1619,7 @@ Icon-to-function order for L34–L39 was inferred from the artwork and the owner
 
 ## Acceptance criteria
 * AC-C03-01 Section order and names as above; summary text; closed by default; open state persists.
+> **Settled (review of 2026-10-29):** "closed by default" conflicts with layout §2, which opens Transform; the implementation follows §2 and the mock -- Transform open, Fit & scale and Repair & surface closed.
 * AC-C03-02 Prune/Center/To origin produce the stated results on fixtures (FX-D) and are single undo steps; disabled for empty shapes.
 * AC-C03-03 ×2 then Minimize returns the original shape and dims; likewise ×3 (round trip).
 * AC-C03-04 Minimize is disabled with the "Already at minimum resolution" hint when no uniform k-blocks exist (FX-F).

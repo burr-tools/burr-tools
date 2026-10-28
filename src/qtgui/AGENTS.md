@@ -25,15 +25,19 @@
 | `app.{h,cpp}` | `App`, the QML singleton: owns every controller, the status sentence, internal-error rescue |
 | `*controller.{h,cpp}`, `shapesmodel`, `keyboardcues`, `popupwindowstyle` | one QObject per concern (table in README); QML reaches them as `App.document`, `App.layout`, … |
 | `scenecontroller`, `viewportcontroller`, `stl/imageexportcontroller` | camera, gestures and the `SceneFrame` each view draws; `SceneController::applyStyle` is the one rule for how a voxel style is drawn |
-| `editorcontroller`, `voxelgriditem`, `editcursor` | the voxel editor: tool, Mirror and Span, plane and layer, strokes and grid size (`App.editor`); the 2D grid (QPainter); the composed edit cursors |
+| `editorcontroller`, `voxelgriditem`, `editcursor` | the voxel editor: tool, Mirror and Span, plane and layer, strokes, Area mode and grid size (`App.editor`); the 2D grid (QPainter); the composed edit cursors and the Edit button's glyph |
+| `inspectorcontroller` | the inspector (C03–C05): sections' open state, each voxel type's Transform buttons, whether an operation may run and why not, running it through `btui::shapeops`, its 3D preview |
 | `voxelviewport`, `viewcubeitem`, `scenerenderer`, `offscreenrenderer`, `pipelinecache`, `earlydevice`, `shaders/` | the 3D view on QRhi: render thread, offscreen renders, pipeline cache, shaders compiled by `qsb` |
 | `theme.{h,cpp}`, `resources/design-tokens.json` | every colour, size and duration of the spec, light and dark, Standard and Minimal |
 | `qml/` | the QML module `BurrTools.Ui`: `Main.qml` (the window), panels, `*Dialog.qml`, primitives (`Bt*`, `IconButton`, `Segmented`, …), `Gallery.qml` |
 | `qmloutlines`, `selfcheck`, `guarded.h`, `localpath.h` | developer overlay, `--self-check`, exception fence for QML entry points, file-dialog URLs to paths |
 | `meson.build`, `qml/meson.build` | sources, the moc list (`qtgui_moc_headers`: every `Q_OBJECT` header), QML files, shaders, the AOT import tree |
 
-Tests live in `../../test/qtgui/` (`test_qtgui.cpp`, `test_viewport.cpp`,
-`qml/tst_*.qml`, snapshots) and `../../test/test_ui_*.cpp` for uicore.
+Tests live in `../../test/qtgui/` (`test_qtgui.cpp`; `test_viewport.cpp`,
+`test_editor.cpp`, `test_inspector.cpp`, `test_voxeltypes.cpp` -- every
+voxel type edited end to end --, `test_saving.cpp` -- every kind of edit
+saved and read back --; `qml/tst_*.qml`; snapshots) and
+`../../test/test_ui_*.cpp` for uicore.
 
 ## Commands
 
@@ -207,15 +211,27 @@ it as part of the UI. WCAG 2.1 AA is the yardstick.
 - **Status changes are announced:** a message to the user goes through
   `App.status.flash(text)`, which the status bar announces
   (`Accessible.announce`) and keeps as its description.
-- The accessibility work still open (keyboard 3D view, reduced motion, text
-  scaling, high contrast, …) is in README's deferred table; don't re-open
-  fixed items, and add new gaps there with a reason.
+- The accessibility work still open (text scaling, high contrast, small
+  screens, the screen-reader pass, …) is in README's deferred table; don't
+  re-open fixed items (the keyboard 3D view and reduced motion are done),
+  and add new gaps there with a reason.
+- **Motion through `Theme`:** durations come from its tokens
+  (`durCollapse`, `durSwitch`, `motion()`), which are 0 while the system
+  asks for reduced motion; a literal duration or an animation that ignores
+  them breaks that.
 
 ### Tests
 
 - A behaviour change comes with a test: Qt Test (`test_qtgui.cpp`, a
   `Fixture` with a scratch settings file) for controllers; Qt Quick Test
   (`qml/tst_*.qml`) for QML behaviour; Catch2 for uicore.
+- **A new way to change the puzzle gets a save case** in `TestSaving`
+  (`test_saving.cpp`): make the edit through the controller, then
+  `saveAndReopen()` and compare `describe()` -- the whole puzzle, line by
+  line -- with the reopened file. Per voxel type where the edit differs
+  by type (`addTypes()`).
+- A spec acceptance criterion a test checks is named in the test's
+  comment (`// AC-C06-04`), so a search finds what covers it.
 - QML tests fail on any warning (`failOnWarning`). Activate the window
   before keyboard checks, and move focus with real `keyClick(Qt.Key_Tab)`:
   `forceActiveFocus` does not reliably give a control focus in the test
@@ -302,3 +318,19 @@ a test when behaviour changed without one.
 - `forceActiveFocus` in a test window can leave focus nowhere; Tab works.
 - The Qt Quick message dialogs are in-window and modal on Windows and Linux:
   count them in `modalOpen`, and dismiss them in tests.
+- A C++ enum whose values do not count up from 0 reads as `undefined` in
+  ahead-of-time compiled QML; hand QML the numbers as a map
+  (`InspectorController::tasks`).
+- A `HoverHandler` on a parent sees no hover over the 3D view (a
+  `QQuickRhiItem` that takes hover itself): put a strip item with a
+  non-blocking `HoverHandler` over the part to watch (`ViewportCard`'s
+  reveal zone).
+- A `ListView` whose height depends on its `count` resizes inside a model
+  reset and lays out rows the reset just took ("DelegateModel::cancel"
+  warnings): size it from outside, `cacheBuffer: 0`.
+- Positioners (`Row`, `Column`, `Flow`) lay their children out on the next
+  polish: a test reads their geometry after `waitForRendering` or
+  `tryVerify`, not at once.
+- Windows draws the title bar dark or light from
+  `QStyleHints::setColorScheme`; ask for the theme's scheme before the
+  first window (`Theme`'s constructor), not only when it changes.
