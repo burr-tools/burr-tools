@@ -32,7 +32,6 @@ PENDING = {
     'solverListRow': 'P11 Solver (C20)',
     'player': 'P11 Solver (disassembly player)',
     'pieceDisplay': 'P11 Solver (piece display)',
-    'toolbarAutoHide': "P12a Minimal's auto-hiding 3D toolbar (density.md section 3)",
 }
 
 # tokens one density has and the other has not, and why

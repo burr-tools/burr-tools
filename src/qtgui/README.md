@@ -26,7 +26,7 @@ it can replace it.
 | P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout since P4 |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
-| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden) | Done, except Minimal's auto-hiding 3D toolbar (see *Deferred*). An audit on 2026-10-27 found the Voxel editor ignoring the density and five smaller gaps (rail captions, "+", button and status bar sizes, the toolbar's height); fixed, and `qtgui_density_tokens` now fails on a density token no component reads |
+| P12a/b Density and keyboard | Standard and Minimal geometry, global keys, Alt to reach the menus (also with the menu bar hidden), Minimal's auto-hiding 3D toolbar | Done; the auto-hiding toolbar since 2026-10-28. An audit on 2026-10-27 found the Voxel editor ignoring the density and five smaller gaps (rail captions, "+", button and status bar sizes, the toolbar's height); fixed, and `qtgui_density_tokens` now fails on a density token no component reads |
 | — Legacy dialogs | Comment, About, Convert, Import assemblies, Status, STL / vector / image export | Ported |
 | — 3D view | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in it since P5 |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
@@ -46,7 +46,6 @@ below, lists them per phase).
 | :--- | :--- | :--- | :--- |
 | The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
 | Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
-| Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
 | Quick tool 2 (Alt+click) on KDE | AC-C06-06 | In the 2D grid and the 3D view since P5, and safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). KDE moves windows on Alt+drag by default, so there the window manager may take the click; untested on that desktop | P8 |
 | The Edit button's glyph in the drawing colour | C06 "The Edit button" | The button shows the tool's glyph as drawn (the cursor's composition is not reused); the cursor itself follows the colour | P8 |
 | STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
@@ -483,7 +482,7 @@ column is what the review of #140 asks of the phase.
 | **P5** 3D editing (rest of C06) — done | Edit mode and `E`, quick tools, ghosts under the 3D pointer (the hover preview's second source), picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) — done | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore (`btui::shapeops`), so that legacy can share it |
 | **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
-| **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
+| **P12a** — done, **P8** | Minimal's auto-hiding toolbar; then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
 
 ### Deferred work by phase
 
@@ -508,7 +507,13 @@ moves to a later phase says why in that table.
   primitives (in the gallery, with reference images).
 - **P11 Solver:** shape and colour edits refused while a solve runs
   (legacy `threadStopped()`); the solver's progress announced.
-- **P12a Density:** Minimal's auto-hiding 3D toolbar.
+- **P12a Density** — done: Minimal's auto-hiding 3D toolbar (density.md
+  section 3): hidden faded and 10 dp up with a 40 x 4 handle; shown for the
+  pointer within 72 dp of the view's top (a strip over the canvas, whose
+  own hover events would hide it from the card), keyboard focus, its open
+  Display menu, and O P E F (1.4 s, `CommandController::toolbarModeUsed`);
+  hidden 700 ms after the pointer leaves the strip, 500 ms when it leaves
+  the view; Esc or a press in the view lets go of its focus.
 - **P8 Polish and cut-over:** the OS pointer in the edit cursors; Dim
   other layers in the STL style; STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the

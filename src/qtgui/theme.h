@@ -120,6 +120,10 @@ class Theme : public QObject {
   Q_PROPERTY(double transformButton READ transformButton NOTIFY changed FINAL)
   Q_PROPERTY(double actionButtonMin READ actionButtonMin NOTIFY changed FINAL)
   Q_PROPERTY(double actionButton READ actionButton NOTIFY changed FINAL)
+  // Minimal's auto-hiding 3D toolbar (density.md section 3); 0 in Standard: always shown
+  Q_PROPERTY(double toolbarRevealZone READ toolbarRevealZone NOTIFY changed FINAL)
+  Q_PROPERTY(int toolbarHideDelay READ toolbarHideDelay NOTIFY changed FINAL)
+  Q_PROPERTY(int toolbarFade READ toolbarFade NOTIFY changed FINAL)
 
   // motion (section 6), in ms
   Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
@@ -231,6 +235,11 @@ public:
   qreal transformButton(void) const { return dens("transform"); }
   qreal actionButtonMin(void) const { return dens("actionButtonMin"); }
   qreal actionButton(void) const { return dens("actionButton"); }
+  /* Minimal's auto-hiding 3D toolbar: it shows with the pointer this near
+   * the view's top edge, hides this long after it leaves, fading this long */
+  qreal toolbarRevealZone(void) const { return dens("toolbarAutoHide.revealZone"); }
+  int toolbarHideDelay(void) const { return int(dens("toolbarAutoHide.hideDelayMs")); }
+  int toolbarFade(void) const { return int(dens("toolbarAutoHide.fadeMs")); }
 
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }

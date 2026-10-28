@@ -701,7 +701,13 @@ TestCase {
         const view = rectOf(item("entities.viewport"))
         const windowRect = { x: 0, y: 0, w: win.contentItem.width, h: win.contentItem.height }
 
-        // the toolbar inside the view, its buttons whole and apart
+        // the toolbar inside the view, its buttons whole and apart -- shown:
+        // Minimal hides it until the pointer comes near (density.md section 3)
+        if (Theme.minimal) {
+            const vp = item("entities.viewport")
+            mouseMove(vp, vp.width / 2, 20)
+            tryCompare(item("entities.viewport.toolbar"), "opacity", 1, 2000)
+        }
         const bar = rectOf(item("entities.viewport.toolbar"))
         verify(within(bar, view), "toolbar inside the viewport")
         const buttons = ["orbit", "pan", "edit", "display", "focus"].map(n => item("entities.viewport.toolbar." + n))
