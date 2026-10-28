@@ -22,7 +22,7 @@ it can replace it.
 
 | Phase | Content | State |
 | :--- | :--- | :--- |
-| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done, except the ActionButton and Accordion primitives, which the inspector needs first (see *Deferred*). The Chip came with P2; the GlyphButton, the Stepper and the composed edit cursors with P4 |
+| P0 Foundations | QML module, theme from the design tokens, QRhi 3D host, Qt Quick Test harness, primitives, component gallery with reference images | Done. The Chip came with P2; the GlyphButton, the Stepper and the composed edit cursors with P4; the ActionButton and AccordionSection with P6 |
 | P1 Shell and layout (C00, C10, C11) | Native window and title, menus, cards with rails and Focus modes, status bar | Done; the cursor readout since P4 |
 | P1b New puzzle voxel type (C14) | File ▸ New's five types, the read-only type chip | Done |
 | P7 Settings (C12), P9 Workspace rail (C15), P12c Help window (C22) | The Settings dialog with search, the rail, Help ▸ Keyboard shortcuts | Done |
@@ -33,7 +33,8 @@ it can replace it.
 | P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; the 2D grid paints with it since P4, 3D editing with P5 |
 | P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for all but prisms), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
-| P6 onward | Inspector, Puzzle and Solver workspaces | Next (see *Next phases*); the Puzzle and Solver cards are placeholders |
+| P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
+| P10 onward | Puzzle and Solver workspaces | Next (see *Next phases*); their cards are placeholders |
 
 ### Deferred to the next phase
 
@@ -43,7 +44,6 @@ below, lists them per phase).
 
 | Item | Spec | Why it waits | Phase |
 | :--- | :--- | :--- | :--- |
-| ActionButton, Accordion primitives | PR-03, PR-09 | First used by the inspector (the GlyphButton and the Stepper came with P4) | P6 |
 | The OS pointer in the edit cursors | PR-20, OQ-17 | The Fixed and Variable cursors are the bundled arrow with the badge (OQ-17's fallback) on every platform; reading the OS's own arrow and the OS cursor size (not the screen's pixel ratio) wants platform code | P8 |
 | Dim other layers in the STL style | AC-C06-05 | The STL style's faces are merged across voxels, so a face spanning several layers dims as a whole; only the active layer's own faces stay full | P8 |
 | Minimal density's auto-hiding 3D toolbar | AC-DEN-05, density §3 | The toolbar only goes compact in Minimal; showing it on pointer-at-top / Tab / O P E F and hiding it again is not built | P12a |
@@ -119,7 +119,8 @@ editor); it is not a stable interface yet.
 | `ColoursModel` | the drawing colour and the puzzle's colours: add and edit through the colour chooser, remove (asks first when solutions would go), each one `AK_COLOR_PALETTE` undo step through `btui::drawcolours` |
 | `ShapesModel`, `StatusController` | the shape list and its actions (new, duplicate, delete, rename, weight, reorder, each one undo step through `btui::shapelist`), and the status bar |
 | `EditorController` | the voxel editor: tool and quick tool, Mirror and Span, plane and layer, the 2D grid's strokes (one undo step each, `DocumentSession::beginStroke`), grid size; the cursor readout |
-| `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw (the slab from the editor's plane and layer) |
+| `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw (the slab from the editor's plane and layer, the ghosts, a Transform button's preview) |
+| `InspectorController` | the inspector: its sections' open state, the voxel type's Transform buttons, whether each operation may run and why not, running it (one undo step) through `btui::shapeops`, the 3D preview of a Transform button |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
 | `KeyboardCues`, `PopupWindowStyle` | Windows' access-key underlines; Windows 11 menu corners and borders |
 | `UpdateController` | Help ▸ Check for updates and the launch check (GitHub Releases, as legacy) |
@@ -140,7 +141,10 @@ out (`scripts/qml_import_tree.py`), so: give new C++ properties `FINAL` and
 declare reals `double` (not `qreal`), type QML properties and function
 parameters, and use `pragma ComponentBehavior: Bound` where delegates refer
 to the file's ids. `just qml-aot` counts what is left to the JavaScript
-engine; `qtgui_qml_aot` fails when the count grows.
+engine; `qtgui_qml_aot` fails when the count grows. A C++ enum whose
+values do not count up from 0 reads as undefined in compiled QML (the
+generated type information lists its names only): hand QML the numbers
+another way (`InspectorController::tasks`).
 
 ### Reading the QML
 
@@ -372,6 +376,30 @@ commit holds just the images that changed.
   glyph and badge the quick tool's), not with C06's dashed outline.
 - **The view's keys** (P5): Alt+1 … 6 for the cube's faces, Ctrl+arrows
   for its turns (Option on macOS); the spec asks for them without naming keys.
+- **Inspector** (P6, product decisions 2026-10-28): **Fit & scale follows
+  Apply to all shapes** (Grid size): Prune, Center, To origin, Minimize,
+  ×2 and ×3 act on every shape while it is on, as legacy's Size tab does
+  (C03: the selected shape only); "All shapes" shows beside the section's
+  first heading then. Transform and Repair stay per shape. **Center and
+  Minimize are legacy's**: Center on bricks grows the grid by a cell
+  where the free space is odd, so the piece sits exactly in the middle
+  (C03: floor the offset); Minimize divides by every prime that divides
+  the whole shape, as often as it does, on bricks only (legacy has no
+  scale-down for the other types; C03: the largest k ≤ 8). **A nudge out
+  of the grid is blocked** with its reason (C04, OQ-7; legacy loses the
+  voxels). **Scale** stops at the 1000-step grid limit (OQ-6; the mock:
+  64) and is hidden for spheres (C14); rhombic and tetra-octa shapes scale
+  too (the library can). **The surface sets** are the spec's (AC-C05-04:
+  the walls of an enclosed cavity are inner; legacy counts them as outer).
+  **A Transform button previews its result** in the 3D view while hovered
+  or focused -- the result as a ghost in the shape's colour, legacy's arc,
+  double arrow or arrow in the colour of the axis, danger when blocked --
+  as legacy's tool tabs do (the spec has no preview). **A greyed button
+  still takes a press** and the status bar says why; its hint (Standard)
+  or tooltip (Minimal) says so beforehand, which a disabled button could
+  not show. Each Transform button is a Tab stop, in reading order. The
+  nudge pad's row labels are 72 dp (the mock's 62 cut "Down layer"). No
+  nudge auto-repeat (C04: optional).
 - **Edit-tool glyphs**: our copies declare the size of their drawing (the
   design files declare 48 × 48 round a 28 × 24 drawing, which Qt stretches).
 
@@ -430,7 +458,7 @@ column is what the review of #140 asks of the phase.
 | **P3** Drawing colour (C09) — done | The footer, palette and menu, adding, editing and removing colours, and the `drawColour` state that P4 and P5 use | Palette edits are `AK_COLOR_PALETTE` steps. `DocumentController::editStructure` takes the kind instead of assuming `AK_ENTITIES_STRUCTURAL` |
 | **P4** Voxel editor (C07, C08, C02) — done | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
 | **P5** 3D editing (rest of C06) — done | Edit mode and `E`, quick tools, ghosts under the 3D pointer (the hover preview's second source), picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
-| **P6** Inspector (C03–C05) | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore or `src/lib`, so that legacy can share it |
+| **P6** Inspector (C03–C05) — done | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore (`btui::shapeops`), so that legacy can share it |
 | **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
 | **P12a, P8** | Minimal's auto-hiding toolbar, then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
 
@@ -453,7 +481,8 @@ moves to a later phase says why in that table.
   canvas, arrows, the cube's turns, rolls and faces); the single-key
   shortcuts as a setting (product decision 2026-10-27: window-wide, with
   Settings ▸ General ▸ Single-key shortcuts to turn them off).
-- **P6 Inspector:** the ActionButton and Accordion primitives.
+- **P6 Inspector** — done: the ActionButton and AccordionSection
+  primitives (in the gallery, with reference images).
 - **P11 Solver:** shape and colour edits refused while a solve runs
   (legacy `threadStopped()`); the solver's progress announced.
 - **P12a Density:** Minimal's auto-hiding 3D toolbar.
@@ -606,8 +635,9 @@ Every phase's pull request follows what #140 settled:
   leaving clears it. Modifiers held over the 3D view are watched while
   the pointer is there, so a quick tool's cursor, ghost and the Edit
   button's override appear the moment its key goes down.
-- **A click is one undo step** (`AK_ENTITIES_GRID_PAINT`), Mirror and
-  Span included; 3D edits leave the plane and layer alone.
+- **A click is one undo step** (`AK_ENTITIES_CLICK_3D`, which never
+  coalesces: quick clicks were merged as a 2D stroke's cells until P6),
+  Mirror and Span included; 3D edits leave the plane and layer alone.
 - **The canvas by keyboard** (WCAG 2.1.1): a Tab stop after the toolbar,
   ringed on the card's edge; a click takes no focus (C20). Its keys are
   the command table's viewport scope, listed in Help: arrows orbit 15°,
@@ -634,3 +664,30 @@ Every phase's pull request follows what #140 settled:
 - **Single-key shortcuts** (WCAG 2.1.4): O, P, F, E and 1–4 are marked in
   the command table (`btui::isSingleCharacter`) and Settings ▸ General ▸
   Single-key shortcuts turns them all off; the shortcuts window says so.
+
+### P6 decisions
+
+- **The rules are uicore's** (`btui::shapeops`): every operation is
+  legacy's tool-tab command for the voxel type (`ToolTab_0` … `_4`,
+  `applyTask`), keyed by legacy's button number, so a button runs exactly
+  what its legacy twin runs -- the lattice-parity rules of Center and To
+  origin included. The inspector adds the checks: a transform that would
+  lose voxels is refused, Minimize and the scales say why they cannot,
+  Fill and the surface tools count what they changed. `opsDescriptor`
+  gives each type's Transform buttons with their captions, tooltips and
+  ids (C14), from which the QML builds the matrix or the pads.
+- **One undo step a press** (`AK_ENTITIES_STRUCTURAL`, as legacy records
+  its tool tabs), checked again when pressed; the states the buttons show
+  are worked out again 120 ms after edits pause (a Minimize over every
+  shape tries each prime on a copy), at once for a new selection or file.
+- **The preview** (`InspectorController::preview`): one button at a time
+  owns it -- moving straight from one to the next does not clear the new
+  one -- and it follows the shape while shown (a press shows the next
+  step). Its hint is drawn over everything at full strength
+  (`SceneFrame::hintLines`), as legacy draws it with the depth test off.
+- **The Shapes list keeps its height** (238 dp): the inspector lies over
+  the part the rows leave free. A list that resized with its rows laid
+  out, inside a model change, rows the change had just taken away (Qt's
+  "DelegateModel::cancel" warnings); no rows are made ahead off screen.
+- **QML gets the task numbers as `tasks`**, not the `Task` enum: the
+  compiled QML read the enum's values (15, 16, … 40) as undefined.
