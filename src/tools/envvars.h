@@ -53,20 +53,17 @@ namespace btenv {
   };
 
   inline constexpr Variable variables[] = {
-    // the solver, read by every program that solves
+    // the solver, read by every program that solves; a malformed value is an error
     { "BURRTOOLS_THREADS", Scope::Solver, "<n>", "worker threads (default: the number of cores), read by the assembler and the disassembler pool each, so up to 2n run in all; a program's own setting (-t, Settings) wins" },
-    { "BURRTOOLS_NO_SIMD", Scope::Solver, "", "no bit-parallel or vector solver paths: the plain scalar code (benchmarking)" },
-    { "BURRTOOLS_NO_VECTOR", Scope::Solver, "", "no vector (AVX2/AVX-512/NEON) kernels; the bit-parallel paths stay (benchmarking)" },
-    { "BURRTOOLS_NO_AVX2", Scope::Solver, "", "x86-64: no AVX2 or AVX-512 kernels (benchmarking)" },
-    { "BURRTOOLS_NO_AVX512", Scope::Solver, "", "x86-64: no AVX-512 kernels; AVX2 stays (benchmarking)" },
-    { "BURRTOOLS_NO_NEON", Scope::Solver, "", "ARM: no NEON kernels (benchmarking)" },
-    { "BURRTOOLS_NO_DISASM_SIMD", Scope::Solver, "", "the disassembler's movement analysis without vector kernels (benchmarking)" },
-    { "BURRTOOLS_NO_DISASM_POOL", Scope::Solver, "", "disassemble on the solving thread instead of a pool of workers (benchmarking)" },
-    { "BURRTOOLS_NO_BUDGET", Scope::Solver, "", "no shared cap on the solver's threads: each pool takes all it asks for (benchmarking)" },
+    { "BURRTOOLS_BITPARALLEL", Scope::Solver, "0|1", "0: classical DLX instead of the bit-parallel exact cover, in both assemblers (benchmarking)" },
+    { "BURRTOOLS_VECTOR", Scope::Solver, "auto|scalar|avx2|avx512|neon", "the most of the vector instructions a run may use (default auto: what the CPU has); scalar is the portable word loop, avx2 keeps AVX2 but not AVX-512 (benchmarking)" },
+    { "BURRTOOLS_DISASM_VECTOR", Scope::Solver, "0|1", "0: the disassembler's movement analysis without vector kernels (benchmarking)" },
+    { "BURRTOOLS_DISASM_POOL", Scope::Solver, "0|1", "0: disassemble on the solving thread instead of a pool of workers (benchmarking)" },
+    { "BURRTOOLS_THREAD_BUDGET", Scope::Solver, "0|1", "0: no shared cap on the solver's threads: each pool takes all it asks for (benchmarking)" },
     { "BURRTOOLS_HUANG_MEM_MB", Scope::Solver, "<MB>", "memory budget for assembler 1's SIMD path; 0 turns that path off (benchmarking)" },
-    { "BURRTOOLS_SPLIT_FANOUT", Scope::Solver, "<n>", "assembler 0 divides a search level into at most n tasks plus one for the rest (default 16); any n >= 1 gives the same result (testing)" },
-    { "BURRTOOLS_SPLIT_BREADTH_FIRST", Scope::Solver, "", "assembler 0 queues the tasks a split makes at the back of the pool instead of the front (benchmarking)" },
-    { "BURRTOOLS_NO_DONATE", Scope::Solver, "", "running tasks no longer hand work to idle workers on demand: assembler 0 splits eagerly at pop time, assembler 1's tasks run as seeded (benchmarking)" },
+    { "BURRTOOLS_SPLIT_FANOUT", Scope::Solver, "<n>", "assembler 0 divides a search level into at most n tasks plus one for the rest (1 to 4096, default 16); any n gives the same result (testing)" },
+    { "BURRTOOLS_SPLIT_ORDER", Scope::Solver, "depth|breadth", "breadth: assembler 0 queues the tasks a split makes at the back of the pool instead of the front (benchmarking)" },
+    { "BURRTOOLS_DONATE", Scope::Solver, "0|1", "0: running tasks no longer hand work to idle workers on demand: assembler 0 splits eagerly at pop time, assembler 1's tasks run as seeded (benchmarking)" },
     { "BURRTOOLS_DONATE_EVERY", Scope::Solver, "<n>", "also donate every n search nodes whether or not a worker is waiting, so donation runs deterministically even single-threaded (testing)" },
     { "BURRTOOLS_ROT_FAMILY", Scope::Solver, "compass|wide", "the fixed paths rotation moves try: compass (8 directions, 145 paths, the default) or wide (16 directions and ramps, 881 paths: more turns, slower table build)" },
     { "BURRTOOLS_ROT_PLANNER", Scope::Solver, "0|1", "plan the turns no fixed path clears where a program does not choose (burrTxt -Q, -M do); much slower (benchmarking)" },

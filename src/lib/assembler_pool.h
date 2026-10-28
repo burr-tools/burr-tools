@@ -251,7 +251,7 @@ public:
   }
 
   /// True while at least one worker is waiting for work. Used by the
-  /// pop-time split heuristic that only runs with BURRTOOLS_NO_DONATE: a
+  /// pop-time split heuristic that only runs with BURRTOOLS_DONATE=0: a
   /// popping thread splits its task only when siblings are actually
   /// starving. Lock-protected read; called at task granularity.
   bool has_waiting_workers() const {

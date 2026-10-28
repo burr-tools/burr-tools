@@ -971,7 +971,10 @@ void mainWindow_c::cb_BtnMovementBrowser(void) {
   if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
     return;
 
-  auto mvbr = std::make_unique<movementBrowser_c>(puzzle->getProblem(prob), sol);
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+  auto mvbr = std::make_unique<movementBrowser_c>(puzzle->getProblem(prob), sol, settings);
 
   mvbr->show();
 
@@ -1114,8 +1117,12 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
   if (RotationMoves->value() != 0) par |= solveThread_c::PAR_ROTATION_MOVES;
 
-  /* with rotation moves the solver builds its tables in the background */
-  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, config.numThreads());
+  /* with rotation moves the solver builds its tables in the background;
+   * a thread count of 0 in the preferences leaves it to the environment */
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, settings);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1359,14 +1366,29 @@ void mainWindow_c::cb_DeleteAllDisasm(void) {
   updateInterface();
 }
 
-std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(const problem_c & pr) {
+bool mainWindow_c::solverSettings(solverSettings_t & out) {
+  /* a thread count of 0 in the preferences leaves it to the environment */
+  solverConfig_t solver;
+  if (config.numThreads() > 0)
+    solver.threads = config.numThreads();
+  try {
+    out = solver.resolve();
+  } catch (const std::invalid_argument & e) {
+    /* a malformed BURRTOOLS_ variable: say which, rather than guess */
+    fl_alert("%s", e.what());
+    return false;
+  }
+  return true;
+}
+
+std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(const problem_c & pr, const solverSettings_t & settings) {
   if (!RotationMoves->value())
     return nullptr;
   /* the add-disassembly actions run here on the UI thread anyway; building
    * the tables takes a moment the first time */
   fl_cursor(FL_CURSOR_WAIT);
   Fl::flush();
-  auto context = rotationContextFor(pr, defaultRotationSettings());
+  auto context = rotationContextFor(pr, settings.rotation);
   fl_cursor(FL_CURSOR_DEFAULT);
   return context;
 }
@@ -1390,7 +1412,10 @@ void mainWindow_c::cb_AddDisasm(void) {
     return;
   }
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationContextForGui(*pr));
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
@@ -1420,7 +1445,10 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
 
   puzzleHistory->markModified();
 
-  auto dis = std::make_unique<disassembler_0_c>(*pr, rotationContextForGui(*pr));
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
 
   auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);

@@ -45,10 +45,14 @@ class disassemblerNode_c;
  * neither builds nor touches anything here.
  */
 struct rotationSettings_t {
-  rotationGeometry::model_t model = {};
-  std::vector<double> amounts;       ///< shift amounts of the compass wiggles and slides
+  /** PR #50's implicit model (play 0.081, sharp edges) until physical
+   *  calibration provides better defaults */
+  rotationGeometry::model_t model = { 0.081, 0 };
+  /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
+   *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
+  std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
   /** amounts of the 16-direction extension after them, empty: compass
-   *  family only (rotationGeometry::wideExtension) */
+   *  family only (rotationGeometry::wideExtension, WIDE_AMOUNTS) */
   std::vector<double> wideAmounts = {};
   /** Turns no family path clears are planned (rotationGeometry::planTurn)
    *  if the family clears them with `slack` more play: the planner finds
@@ -63,6 +67,9 @@ struct rotationSettings_t {
 /** The +90° paths of the settings' family, in table order. */
 std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
 
+/** The wideAmounts of ROTATION_FAMILY_WIDE. */
+inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+
 /** Path families rotationConfig_t can choose. */
 enum rotationFamily_e {
   ROTATION_FAMILY_COMPASS,  ///< 8 directions, wiggles and slides, amounts 0.05 to 0.45 (145 paths)
@@ -70,23 +77,10 @@ enum rotationFamily_e {
 };
 
 /**
- * What a front end chooses for rotation moves. Every field it leaves unset
- * comes from the environment, and failing that from the default, so these
- * hyperparameters are resolved in one place and the solver only sees the
- * result, a rotationSettings_t:
- *
- * | field   | environment                          | default                   |
- * |---------|--------------------------------------|---------------------------|
- * | model   | -                                    | play 0.081, sharp edges   |
- * | family  | BURRTOOLS_ROT_FAMILY=compass or wide | compass                   |
- * | planner | BURRTOOLS_ROT_PLANNER=0 or 1         | off                       |
- * | slack   | -                                    | 0.02                      |
- *
- * The model is PR #50's implicit one until physical calibration provides
- * better defaults; the compass amounts are every 0.05 from 0.05 to 0.45
- * (see the TIC results in design/2026-10-19-rotation-moves.md). An
- * unparsable environment value is an error (bt_te), never silently the
- * default: an A/B run must not measure the same thing twice.
+ * What a front end chooses for rotation moves: the rotation part of
+ * solverConfig_t (solver_config.h), which says how unset fields are filled
+ * (environment, then rotationSettings_t's initializers) and lists the
+ * variables. resolve() is defined in solver_config.cpp with the rest.
  */
 struct rotationConfig_t {
   std::optional<rotationGeometry::model_t> model;
@@ -97,9 +91,6 @@ struct rotationConfig_t {
   rotationSettings_t resolve(void) const;
 };
 
-/** The settings used when the caller chooses nothing:
- *  rotationConfig_t{}.resolve(), i.e. environment, then defaults. */
-rotationSettings_t defaultRotationSettings(void);
 
 /** Table radius for a problem: the largest filled extent of its result and
  *  of its pieces, plus one. That covers every turn of a single piece and of

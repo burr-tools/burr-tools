@@ -369,7 +369,7 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementAnalysator_c mv(*puz);
+  movementAnalysator_c mv(*puz, settings);
 
   disassemblerNode_c * newNode = mv.findMatching(s->node, s->pieces, piece, x, y, z);
 
@@ -405,7 +405,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int /*level*/) {
 
   std::vector<disassemblerNode_c*> res;
 
-  movementAnalysator_c mv(*puz);
+  movementAnalysator_c mv(*puz, settings);
   mv.completeFind(s->node, s->pieces, &res);
 
   for (unsigned int i = 0; i < res.size(); i++)
@@ -463,7 +463,8 @@ void movementBrowser_c::cb_3dClick(void) {
 }
 
 
-movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum) : LFl_Double_Window(true) , puz(puzzle) {
+movementBrowser_c::movementBrowser_c(problem_c * puzzle, unsigned int solNum, const solverSettings_t & s) :
+  LFl_Double_Window(true), puz(puzzle), settings(s) {
 
   // LFl_Tile * tile = new LFl_Tile(0, 0, 1, 1);
 

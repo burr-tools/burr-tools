@@ -22,6 +22,7 @@
 #define __SIMD_EXACT_COVER_H__
 
 #include "bt_assert.h"
+#include "solver_config.h"
 #include "split_fanout.h"
 #include <cstdint>
 #include <vector>
@@ -313,7 +314,8 @@ public:
     std::vector<unsigned int> columns;
   };
 
-  SimdExactCover(unsigned int num_columns, unsigned int num_pieces);
+  /** settings: the vector kernels it may use (solverSettings_t::avx2 ...) */
+  SimdExactCover(unsigned int num_columns, unsigned int num_pieces, const solverSettings_t & settings);
 
   void setRequiredColumn(unsigned int col) override;
   void setRequiredColumns(const BitsetType &required);

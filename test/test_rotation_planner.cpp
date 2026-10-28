@@ -85,7 +85,7 @@ TEST_CASE("the planner finds a turn the path family misses", "[rotations]") {
   const crowellTurn_t t = packTic3();
   const planarScene_c scene = sceneOf(t, DEFAULT_MODEL);
 
-  auto tables = sharedRotationTables(defaultRotationSettings(), 5);
+  auto tables = sharedRotationTables(rotationSettings_t{}, 5);
   CHECK(tables->firstClear(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense) < 0);
 
   SECTION("widest path") {

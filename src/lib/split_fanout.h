@@ -20,7 +20,6 @@
 #define __SPLIT_FANOUT_H__
 
 #include <cstddef>
-#include <cstdlib>
 
 /**
  * Fan-out cap K for dividing one search level into tasks: a level with
@@ -30,21 +29,18 @@
  * remainder at O(depth x K) per task. Any K >= 1 is exact -- K trades
  * remainder size against how finely a resume can balance its work.
  *
- * BURRTOOLS_SPLIT_FANOUT=N overrides the default. Read once per run (never
- * per node). Tests set it low so small puzzles exercise every rest path
- * that only wide levels reach at the default.
+ * The default; solverSettings_t::splitFanout (BURRTOOLS_SPLIT_FANOUT)
+ * replaces it for a run. Tests set it low so small puzzles exercise every
+ * rest path that only wide levels reach at the default.
  */
 namespace SplitFanout {
 
 inline constexpr unsigned int kDefault = 16;
 
-/* BURRTOOLS_SPLIT_BREADTH_FIRST=1 queues assembler_0's split children at
- * the back (breadth-first order) instead of the front, for A/B
- * benchmarking the depth-first order (see AssemblyTaskPool::
- * push_tasks_front). Read once per run. */
-inline bool breadthFirstFromEnv() {
-  return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
-}
+/* solverSettings_t::splitBreadthFirst (BURRTOOLS_SPLIT_ORDER=breadth)
+ * queues assembler_0's split children at the back (breadth-first order)
+ * instead of the front, for A/B benchmarking the depth-first order (see
+ * AssemblyTaskPool::push_tasks_front). Fixed for a run. */
 
 /* Donation (split on demand): a running task, in every engine, hands the
  * unexplored part of its shallowest open level to the pool whenever a
@@ -53,25 +49,12 @@ inline bool breadthFirstFromEnv() {
  * time by depth guesses that cannot split a task found large after it
  * started. Busy workers poll the pool's hunger flag every few hundred
  * nodes; one donor claims it per waiter.
- * BURRTOOLS_NO_DONATE=1 turns it off (A/B toggle): assembler_0 then splits
- * eagerly at pop time again, assembler_1 runs its tasks as seeded. Read
- * once per run. */
-inline bool noDonateFromEnv() {
-  return std::getenv("BURRTOOLS_NO_DONATE") != nullptr;
-}
-
-/* BURRTOOLS_DONATE_EVERY=N (tests only): additionally donate every N search
- * nodes whether or not anyone is waiting, so donation paths run
- * deterministically even single-threaded. 0 / unset = only on demand. */
-inline unsigned long donateEveryFromEnv() {
-  const char * env = std::getenv("BURRTOOLS_DONATE_EVERY");
-  if (env != nullptr && *env != '\0') {
-    const long val = std::strtol(env, nullptr, 10);
-    if (val >= 1)
-      return static_cast<unsigned long>(val);
-  }
-  return 0;
-}
+ * solverSettings_t::donate = false (BURRTOOLS_DONATE=0) turns it off (A/B
+ * toggle): assembler_0 then splits eagerly at pop time again, assembler_1
+ * runs its tasks as seeded. solverSettings_t::donateEvery
+ * (BURRTOOLS_DONATE_EVERY=N, tests only) additionally donates every N
+ * search nodes whether or not anyone is waiting, so donation paths run
+ * deterministically even single-threaded. Both fixed for a run. */
 
 } // namespace SplitFanout
 
@@ -104,17 +87,6 @@ inline size_t give(size_t held, size_t root, double share) {
 } // namespace TaskUnits
 
 namespace SplitFanout {
-
-inline unsigned int fromEnv() {
-  const char * env = std::getenv("BURRTOOLS_SPLIT_FANOUT");
-  if (env != nullptr && *env != '\0') {
-    const long val = std::strtol(env, nullptr, 10);
-    if (val >= 1)
-      return val > 4096 ? 4096u : static_cast<unsigned int>(val);
-  }
-  return kDefault;
-}
-
 
 /* Divide one frame's untried branches into stop-time remainder pieces:
  * of the indices next..end-1 of the frame's active-row list that `takes`

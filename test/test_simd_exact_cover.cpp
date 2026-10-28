@@ -313,14 +313,14 @@ TEST_CASE("SimdExactCover extended solve up to 32768", "[simd][exact_cover]") {
   };
 
   const std::vector<TierSpec> tiers = {
-    {256, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover256>(c, p); }},
-    {512, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover512>(c, p); }},
-    {1024, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover1024>(c, p); }},
-    {2048, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover2048>(c, p); }},
-    {4096, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover4096>(c, p); }},
-    {8192, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover8192>(c, p); }},
-    {16384, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover16384>(c, p); }},
-    {32768, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover32768>(c, p); }},
+    {256, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover256>(c, p, solverSettings_t{}); }},
+    {512, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover512>(c, p, solverSettings_t{}); }},
+    {1024, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover1024>(c, p, solverSettings_t{}); }},
+    {2048, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover2048>(c, p, solverSettings_t{}); }},
+    {4096, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover4096>(c, p, solverSettings_t{}); }},
+    {8192, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover8192>(c, p, solverSettings_t{}); }},
+    {16384, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover16384>(c, p, solverSettings_t{}); }},
+    {32768, [](unsigned int c, unsigned int p) { return std::make_unique<SimdExactCover32768>(c, p, solverSettings_t{}); }},
   };
 
   for (const auto & tier : tiers) {
@@ -375,7 +375,7 @@ TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
   //
   // Unique solution: Row 1, 4, 5 ({C, E}, {A, D}, {B, G})
 
-  SimdExactCover256 solver(7, 3);
+  SimdExactCover256 solver(7, 3, solverSettings_t{});
 
   SimdBitset256 req;
   for (unsigned int i = 0; i < 7; i++) req.set(i);
@@ -405,7 +405,7 @@ TEST_CASE("SimdExactCover256 Knuth textbook example", "[simd][exact_cover]") {
 }
 
 TEST_CASE("SimdExactCover256 unsolvable problem", "[simd][exact_cover]") {
-  SimdExactCover256 solver(4, 2);
+  SimdExactCover256 solver(4, 2, solverSettings_t{});
 
   SimdBitset256 req;
   for (unsigned int i = 0; i < 4; i++) req.set(i);
@@ -428,7 +428,7 @@ TEST_CASE("SimdExactCover256 unsolvable problem", "[simd][exact_cover]") {
 }
 
 TEST_CASE("SimdExactCover256 stop token", "[simd][exact_cover]") {
-  SimdExactCover256 solver(3, 3);
+  SimdExactCover256 solver(3, 3, solverSettings_t{});
 
   SimdBitset256 req;
   for (unsigned int i = 0; i < 3; i++) req.set(i);
@@ -459,7 +459,7 @@ TEST_CASE("SimdExactCover512 large column cover", "[simd][exact_cover]") {
   // Row 3: piece 2 -> {350, 400}
   // Row 4: piece 0 -> {50, 150} (conflict with row 2)
 
-  SimdExactCover512 solver(401, 3);
+  SimdExactCover512 solver(401, 3, solverSettings_t{});
   SimdBitset512 req;
   req.set(50);
   req.set(150);
@@ -490,7 +490,7 @@ TEST_CASE("SimdExactCover512 large column cover", "[simd][exact_cover]") {
 }
 
 TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
-  SimdExactCover256 solver(7, 3);
+  SimdExactCover256 solver(7, 3, solverSettings_t{});
 
   SimdBitset256 req;
   for (unsigned int i = 0; i < 7; i++) req.set(i);
@@ -529,7 +529,7 @@ TEST_CASE("SimdExactCover256 solveSubtree", "[simd][exact_cover]") {
 }
 
 TEST_CASE("SimdExactCover256 concurrent solveSubtree", "[simd][exact_cover][threads]") {
-  SimdExactCover256 solver(7, 3);
+  SimdExactCover256 solver(7, 3, solverSettings_t{});
 
   SimdBitset256 req;
   for (unsigned int i = 0; i < 7; i++) req.set(i);
@@ -578,9 +578,9 @@ TEST_CASE("SimdExactCover256 bounds check assertions", "[simd][exact_cover]") {
   // Guarded: these assert via bt_assert, which compiles to ((void)0) under
   // NDEBUG so nothing is thrown there.
 #ifndef NDEBUG
-  CHECK_THROWS_AS(SimdExactCover256(257, 1), assert_exception);
+  CHECK_THROWS_AS(SimdExactCover256(257, 1, solverSettings_t{}), assert_exception);
 
-  SimdExactCover256 solver(10, 2);
+  SimdExactCover256 solver(10, 2, solverSettings_t{});
   CHECK_THROWS_AS(solver.addRow(1, 0, {10}), assert_exception);
   CHECK_THROWS_AS(solver.addRow(2, 0, {256}), assert_exception);
 
@@ -597,7 +597,7 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
   // Shape 1 (col 1): 2 pieces required
   // Shape 2 (col 2): 1 piece required
   // Voxels (cols 3..7): 5 voxels, 1 required each
-  SimdHuangCover256 solver(7, 2);
+  SimdHuangCover256 solver(7, 2, solverSettings_t{});
 
   // Column bounds
   solver.setColumnBounds(1, 2, 2, false, true, false, false); // Shape 1
@@ -642,7 +642,7 @@ TEST_CASE("SimdHuangCover256 duplicate pieces exact cover", "[simd][huang]") {
 TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover", "[simd][huang]",
                    SimdHuangCover512, SimdHuangCover1024, SimdHuangCover4096, SimdHuangCover32768) {
   unsigned int base_v = 280;
-  TestType solver(base_v + 5, 2);
+  TestType solver(base_v + 5, 2, solverSettings_t{});
 
   solver.setColumnBounds(1, 2, 2, false, true, false, false); // Shape 1
   solver.setColumnBounds(2, 1, 1, false, true, false, false); // Shape 2
@@ -708,68 +708,35 @@ TEMPLATE_TEST_CASE("SimdHuangCover extended sizes duplicate pieces exact cover",
 }
 
 
-namespace {
-
-#ifdef _WIN32
-void hc_set_env_var(const char * name, const char * value) {
-  if (value) _putenv_s(name, value);
-  else _putenv_s(name, "");
-}
-#else
-void hc_set_env_var(const char * name, const char * value) {
-  if (value) setenv(name, value, 1);
-  else unsetenv(name);
-}
-#endif
-
-struct HcScopedEnv {
-  std::string name;
-  bool hadValue;
-  std::string oldValue;
-
-  HcScopedEnv(const char * var, const char * val) : name(var) {
-    const char * existing = std::getenv(var);
-    hadValue = existing != nullptr;
-    if (hadValue) oldValue = existing;
-    hc_set_env_var(var, val);
-  }
-
-  ~HcScopedEnv() {
-    hc_set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
-  }
-};
-
-}  // namespace
-
-/* The SIMD kill switches must actually reach the kernel that runs.
+/* The vector setting must actually reach the kernel that runs.
  *
- * filterRows() tries AVX-512 before AVX2, so gating only use_avx2 on
- * BURRTOOLS_NO_AVX2 made that variable select *wider* SIMD on an AVX-512
- * host instead of falling back, leaving the scalar loop unreachable from
- * tier 512 up. Every kernel returns the same solutions, so this cannot be
- * caught by comparing results -- it needs the dispatch decision itself.
+ * filterRows() tries AVX-512 before AVX2, so gating only use_avx2 on the
+ * old BURRTOOLS_NO_AVX2 made that variable select *wider* SIMD on an
+ * AVX-512 host instead of falling back, leaving the scalar loop unreachable
+ * from tier 512 up. Every kernel returns the same solutions, so this cannot
+ * be caught by comparing results -- it needs the dispatch decision itself.
  */
-TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel",
+TEMPLATE_TEST_CASE("SimdHuangCover: the vector setting caps every kernel",
                    "[simd][huang][dispatch]",
                    SimdHuangCover256, SimdHuangCover512, SimdHuangCover1024,
                    SimdHuangCover4096, SimdHuangCover32768) {
-  SECTION("BURRTOOLS_NO_SIMD falls all the way back to scalar") {
-    HcScopedEnv env("BURRTOOLS_NO_SIMD", "1");
-    TestType solver(7, 2);
+  solverSettings_t settings;
+  SECTION("scalar falls all the way back to scalar") {
+    settings.vector = VECTOR_SCALAR;
+    TestType solver(7, 2, settings);
     CHECK(std::string(solver.activeKernel()) == "scalar");
   }
 
-  SECTION("BURRTOOLS_NO_AVX2 does not leave AVX-512 enabled") {
-    HcScopedEnv env("BURRTOOLS_NO_AVX2", "1");
-    TestType solver(7, 2);
+  SECTION("avx2 does not leave AVX-512 enabled") {
+    settings.vector = VECTOR_AVX2;
+    TestType solver(7, 2, settings);
     CHECK(std::string(solver.activeKernel()) != "avx512");
-    CHECK(std::string(solver.activeKernel()) != "avx2");
   }
 
-  SECTION("BURRTOOLS_NO_AVX512 leaves the narrower kernels alone") {
-    HcScopedEnv env("BURRTOOLS_NO_AVX512", "1");
-    TestType solver(7, 2);
-    CHECK(std::string(solver.activeKernel()) != "avx512");
+  SECTION("auto uses vectors where the CPU has them") {
+    TestType solver(7, 2, settings);
+    if (settings.avx2() || settings.neon())
+      CHECK(std::string(solver.activeKernel()) != "scalar");
   }
 }
 
@@ -784,7 +751,7 @@ TEMPLATE_TEST_CASE("SimdHuangCover: the SIMD kill switches disable every kernel"
 TEMPLATE_TEST_CASE("SimdHuangCover range pivot reports each assembly once", "[simd][huang][range]",
                    SimdHuangCover256, SimdHuangCover512) {
   // col 1: shape, exactly 2 pieces. cols 2-5: voxels, required. col 6: range.
-  TestType solver(6, 1);
+  TestType solver(6, 1, solverSettings_t{});
   solver.setColumnBounds(1, 2, 2, false, true, false, false);
   for (unsigned int v = 2; v <= 5; v++)
     solver.setColumnBounds(v, 1, 1, true, false, false, false);
@@ -829,7 +796,7 @@ TEMPLATE_TEST_CASE("SimdHuangCover applies the hole budget", "[simd][huang][hole
   // col 1: the shape, exactly one piece. cols 2,3: voxels that must be filled.
   // col 4: a variable voxel - it may stay empty, budget permitting.
   auto build = [](unsigned int budget) {
-    auto solver = std::make_unique<TestType>(4, 1);
+    auto solver = std::make_unique<TestType>(4, 1, solverSettings_t{});
     solver->setHoles(budget);
     solver->setColumnBounds(1, 1, 1, false, true, false, false);
     solver->setColumnBounds(2, 1, 1, true, false, false, false);
@@ -879,7 +846,7 @@ TEMPLATE_TEST_CASE("SimdExactCover applies the hole budget", "[simd][exact_cover
   // col 0: the piece, exactly once. cols 1,2: voxels that must be filled.
   // col 3: a variable voxel - it may stay empty, budget permitting.
   auto build = [](unsigned int budget) {
-    auto solver = std::make_unique<TestType>(4, 1);
+    auto solver = std::make_unique<TestType>(4, 1, solverSettings_t{});
     solver->setHoleBudget(budget);
     solver->setRequiredColumn(0);
     solver->setRequiredColumn(1);
@@ -929,7 +896,7 @@ TEMPLATE_TEST_CASE("SimdExactCover applies the hole budget", "[simd][exact_cover
     // root, so a budget of 0 prunes immediately and a budget of 1 admits
     // the placement with its hole.
     auto buildUncoverable = [](unsigned int budget) {
-      auto solver = std::make_unique<TestType>(4, 1);
+      auto solver = std::make_unique<TestType>(4, 1, solverSettings_t{});
       solver->setHoleBudget(budget);
       solver->setRequiredColumn(0);
       solver->setRequiredColumn(1);
@@ -964,18 +931,18 @@ TEST_CASE("SimdHuangCover: memory budget predicate follows the tier ladder", "[s
   // The motivating case from issue #92: 1e6 rows x 8 nodes at the 2048
   // tier costs ~1e6 x 384 + 8e6 x 48 = ~768 MB of rows plus alias payload,
   // where the mask-only estimate (256 MB exactly) would still fit.
-  CHECK_FALSE(huang_memory::fitsMemoryBudget(2048, 1000000, 8000000));
+  CHECK_FALSE(huang_memory::fitsMemoryBudget(2048, 1000000, 8000000, solverSettings_t{}.huangMemoryBytes));
   // ~1e5 rows at the top tier must refuse.
-  CHECK_FALSE(huang_memory::fitsMemoryBudget(32768, 100000, 800000));
+  CHECK_FALSE(huang_memory::fitsMemoryBudget(32768, 100000, 800000, solverSettings_t{}.huangMemoryBytes));
   // Small problems always fit, with margin for struct layout differences
   // across compilers (no exact-boundary asserts here).
-  CHECK(huang_memory::fitsMemoryBudget(131, 10000, 80000));
-  CHECK(huang_memory::fitsMemoryBudget(256, 100000, 500000));
-  CHECK(huang_memory::fitsMemoryBudget(2048, 100000, 500000));
+  CHECK(huang_memory::fitsMemoryBudget(131, 10000, 80000, solverSettings_t{}.huangMemoryBytes));
+  CHECK(huang_memory::fitsMemoryBudget(256, 100000, 500000, solverSettings_t{}.huangMemoryBytes));
+  CHECK(huang_memory::fitsMemoryBudget(2048, 100000, 500000, solverSettings_t{}.huangMemoryBytes));
 }
 
 TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as completed", "[simd][huang][abort]") {
-  SimdHuangCover256 solver(4, 2);
+  SimdHuangCover256 solver(4, 2, solverSettings_t{});
   solver.setColumnBounds(1, 1, 1, false, true, false, false);
   solver.setColumnBounds(2, 1, 1, false, true, false, false);
   solver.setColumnBounds(3, 1, 1, true, false, false, false);
@@ -1026,7 +993,7 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   auto makeSolver = [] {
     // Shapes 1,2 (exactly 1 each), voxels 3,4 (required). Solutions:
     // {1, 3} and {2, 4}; {1, 4} and {2, 3} conflict on voxels.
-    auto solver = std::make_unique<SimdHuangCover256>(4, 2);
+    auto solver = std::make_unique<SimdHuangCover256>(4, 2, solverSettings_t{});
     solver->setColumnBounds(1, 1, 1, false, true, false, false);
     solver->setColumnBounds(2, 1, 1, false, true, false, false);
     solver->setColumnBounds(3, 1, 1, true, false, false, false);
@@ -1117,7 +1084,7 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
  * continue falls back to full regeneration.
  */
 TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[simd][huang][resume]") {
-  auto solver = std::make_unique<SimdHuangCover256>(4, 2);
+  auto solver = std::make_unique<SimdHuangCover256>(4, 2, solverSettings_t{});
   solver->setColumnBounds(1, 1, 1, false, true, false, false);
   solver->setColumnBounds(2, 1, 1, false, true, false, false);
   solver->setColumnBounds(3, 1, 1, true, false, false, false);
@@ -1165,7 +1132,7 @@ TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[s
 TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
           "[simd][huang][resume]") {
   constexpr unsigned int N = 20;
-  SimdHuangCover256 solver(N + 1, 1);
+  SimdHuangCover256 solver(N + 1, 1, solverSettings_t{});
   solver.setColumnBounds(1, 2, 2, false, true, false, false);
   for (unsigned int v = 2; v <= N + 1; v++)
     solver.setColumnBounds(v, 0, 1, true, false, false, false);
@@ -1227,8 +1194,9 @@ TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
 TEST_CASE("SimdHuangCover: donated rests replay the monotonic shape filter",
           "[simd][huang][parallel]") {
   constexpr unsigned int N = 10, K = 6;
-  HcScopedEnv every("BURRTOOLS_DONATE_EVERY", "1");
-  SimdHuangCover256 solver(N + 1, 1);
+  solverSettings_t settings;
+  settings.donateEvery = 1;
+  SimdHuangCover256 solver(N + 1, 1, settings);
   solver.setColumnBounds(1, K, K, false, true, false, false);
   for (unsigned int v = 2; v <= N + 1; v++)
     solver.setColumnBounds(v, 0, 1, true, false, false, false);
@@ -1270,7 +1238,7 @@ TEST_CASE("SimdHuangCover: donated rests replay the monotonic shape filter",
 TEST_CASE("SimdExactCover: stop remainders with rests resume exact-once",
           "[simd][exact_cover][resume]") {
   constexpr unsigned int N = 40;
-  SimdExactCover256 solver(N + 1, 1);
+  SimdExactCover256 solver(N + 1, 1, solverSettings_t{});
   SimdBitset256 req;
   req.set(0);
   solver.setRequiredColumns(req);

@@ -54,8 +54,8 @@ bool rotationMoves;
 bool reportPlay;
 /* what the command line chooses; resolved against the environment and the
  * defaults once the arguments are read */
-rotationConfig_t rotationConfig;
-rotationSettings_t rotationSettings;
+solverConfig_t solverConfig;
+solverSettings_t settings;
 
 std::unique_ptr<disassembler_c> d;
 
@@ -70,7 +70,7 @@ static void printLevel(const std::string & level, separation_c * da, const assem
   }
   printf("level: %s, %u rotation%s", level.c_str(), rotations, rotations == 1 ? "" : "s");
   if (reportPlay) {
-    const turnPlay_t play = optimizeTurns(da, a, problem, rotationSettings);
+    const turnPlay_t play = optimizeTurns(da, a, problem, settings.rotation);
     if (play.failed)
       printf(", a turn needs more play than the planner tries");
     else
@@ -83,7 +83,7 @@ static void printLevel(const std::string & level, separation_c * da, const assem
 static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
   if (!rotationMoves)
     return nullptr;
-  auto context = rotationContextFor(problem, rotationSettings);
+  auto context = rotationContextFor(problem, settings.rotation);
   if (!context)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
   return context;
@@ -114,11 +114,11 @@ public:
   problem_c * puzzle;
   std::unique_ptr<disassemblerPool_c> pool;
 
-  asm_cb(problem_c * p, unsigned int threads) : pn(p->getNumberOfPieces()), puzzle(p) {
+  explicit asm_cb(problem_c * p) : pn(p->getNumberOfPieces()), puzzle(p) {
     if (disassemble) {
       pool = std::make_unique<disassemblerPool_c>(
         *p,
-        threads,
+        settings,
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
           if (da) {
             Solutions++;
@@ -158,10 +158,10 @@ public:
   }
 };
 
-/* whether the problem comes apart under the current rotationSettings: a
+/* whether the problem comes apart under the current rotation settings: a
  * quiet solve */
-static bool comesApart(problem_c * problem, unsigned int threads) {
-  auto assm = problem->getPuzzle().getGridType()->findAssembler(*problem);
+static bool comesApart(problem_c * problem) {
+  auto assm = problem->getPuzzle().getGridType()->findAssembler(*problem, settings);
   if (assm->createMatrix(false, false, false) != assembler_c::ERR_NONE)
     return false;
   const bool q = quiet, ps = printSolutions, pd = printDisassemble, ap = allProblems, rp = reportPlay;
@@ -169,9 +169,7 @@ static bool comesApart(problem_c * problem, unsigned int threads) {
   printSolutions = printDisassemble = allProblems = reportPlay = false;
   int solutions;
   {
-    asm_cb a(problem, threads);
-    if (threads > 0)
-      assm->setNumThreads(threads);
+    asm_cb a(problem);
     assm->assemble(&a);
     a.finish();
     solutions = a.Solutions.load();
@@ -205,7 +203,7 @@ void usage(bool full = false) {
   cout << "  -n    don't print a newline at the end of the line\n";
   cout << "  -o n  select the problem to solve\n";
   cout << "  -o all solves all problems in file\n";
-  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  cout << "  -t n  set number of worker threads for solver (0 = auto, default: BURRTOOLS_THREADS, else auto)\n";
   cout << "  -x    only redisassemble the given solutions\n";
   cout << "  -a    ask for information about the current puzzle, the next letters must be:\n";
   cout << "     s0 print solutions with the only the used pieces\n";
@@ -245,7 +243,6 @@ int main(int argv, char* args[]) {
   bool reduce = false;
   bool newline = true;
   bool ask = false;
-  unsigned int threads = 0;
   enum {
     W_NUM_SOLUTIONS,
     W_SOLUTION_PIECES,
@@ -272,7 +269,7 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-P") == 0)
         reportPlay = true;
       else if (strcmp(args[i], "-Q") == 0)
-        rotationConfig.planner = true;
+        solverConfig.rotation.planner = true;
       else if (strcmp(args[i], "-M") == 0) {
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &minPlayLo, &minPlayHi, &rest) != 2 ||
@@ -282,7 +279,7 @@ int main(int argv, char* args[]) {
         }
         findMinPlay = true;
         /* the bisection is about the play a turn really needs */
-        rotationConfig.planner = true;
+        solverConfig.rotation.planner = true;
         i++;
       }
       else if (strcmp(args[i], "-m") == 0) {
@@ -293,7 +290,7 @@ int main(int argv, char* args[]) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
-        rotationConfig.model = rotationGeometry::model_t{ play, chamfer };
+        solverConfig.rotation.model = rotationGeometry::model_t{ play, chamfer };
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -316,7 +313,7 @@ int main(int argv, char* args[]) {
           cout << "-t requires a non-negative number\n";
           return 1;
         }
-        threads = (unsigned int)t;
+        solverConfig.threads = (unsigned int)t;
         i++;
       } else if (strcmp(args[i], "-o") == 0) {
         if (strcmp(args[i+1],"all")==0)
@@ -359,7 +356,12 @@ int main(int argv, char* args[]) {
     return 1;
   }
 
-  rotationSettings = rotationConfig.resolve();
+  try {
+    settings = solverConfig.resolve();
+  } catch (const std::invalid_argument & e) {
+    cerr << e.what() << "\n";
+    return 1;
+  }
 
   auto str = openGzFile(args[filenumber]);
   if (!str) {
@@ -462,29 +464,29 @@ int main(int argv, char* args[]) {
          * apart can be bisected; then it is solved at that play below */
         const double tolerance = 0.001;
         double lo = minPlayLo, hi = minPlayHi;
-        rotationSettings.model.play = hi;
-        if (!comesApart(problem, threads)) {
+        settings.rotation.model.play = hi;
+        if (!comesApart(problem)) {
           printf("does not come apart up to play %.4f\n", hi);
           continue;
         }
-        rotationSettings.model.play = lo;
-        if (comesApart(problem, threads))
+        settings.rotation.model.play = lo;
+        if (comesApart(problem))
           hi = lo;
         while (hi - lo > tolerance) {
-          rotationSettings.model.play = 0.5 * (lo + hi);
-          if (comesApart(problem, threads))
-            hi = rotationSettings.model.play;
+          settings.rotation.model.play = 0.5 * (lo + hi);
+          if (comesApart(problem))
+            hi = settings.rotation.model.play;
           else
-            lo = rotationSettings.model.play;
+            lo = settings.rotation.model.play;
         }
-        rotationSettings.model.play = hi;
+        settings.rotation.model.play = hi;
         if (hi == minPlayLo)
           printf("comes apart from play %.4f (the lower end)\n", hi);
         else
           printf("comes apart from play %.4f (not at %.4f)\n", hi, lo);
       }
 
-      auto assm = p.getGridType()->findAssembler(*problem);
+      auto assm = p.getGridType()->findAssembler(*problem, settings);
 
       switch (assm->createMatrix(false, false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
@@ -523,10 +525,7 @@ int main(int argv, char* args[]) {
       if (allProblems)
         cout << "problem: " << problem->getName() << endl;
 
-      asm_cb a(problem, threads);
-
-      if (threads > 0)
-        assm->setNumThreads(threads);
+      asm_cb a(problem);
 
       assm->assemble(&a);
       a.finish();
@@ -545,7 +544,7 @@ int main(int argv, char* args[]) {
       problem_c * problem = p.getProblem(pr);
 
       auto context = rotationContext(*problem);
-      d = std::make_unique<disassembler_0_c>(*problem, context);
+      d = std::make_unique<disassembler_0_c>(*problem, settings, context);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
