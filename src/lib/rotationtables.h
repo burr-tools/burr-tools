@@ -44,6 +44,9 @@ class disassemblerNode_c;
  * for tables and passes an empty pointer down to its disassemblers, so it
  * neither builds nor touches anything here.
  */
+/** The wideAmounts of ROTATION_FAMILY_WIDE, the default family. */
+inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+
 struct rotationSettings_t {
   /** PR #50's implicit model (play 0.081, sharp edges) until physical
    *  calibration provides better defaults */
@@ -51,9 +54,11 @@ struct rotationSettings_t {
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
-  /** amounts of the 16-direction extension after them, empty: compass
-   *  family only (rotationGeometry::wideExtension, WIDE_AMOUNTS) */
-  std::vector<double> wideAmounts = {};
+  /** amounts of the 16-direction extension after them
+   *  (rotationGeometry::wideExtension), empty: compass family only. The
+   *  extension finds turns the compass family misses at about 2.5 times
+   *  the table cost; see design/2026-10-19-rotation-moves.md. */
+  std::vector<double> wideAmounts = WIDE_AMOUNTS;
   /** Turns no family path clears are planned (rotationGeometry::planTurn)
    *  if the family clears them with `slack` more play: the planner finds
    *  the motions the family misses near the threshold. Off by default: it
@@ -67,13 +72,10 @@ struct rotationSettings_t {
 /** The +90° paths of the settings' family, in table order. */
 std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
 
-/** The wideAmounts of ROTATION_FAMILY_WIDE. */
-inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
-
 /** Path families rotationConfig_t can choose. */
 enum rotationFamily_e {
   ROTATION_FAMILY_COMPASS,  ///< 8 directions, wiggles and slides, amounts 0.05 to 0.45 (145 paths)
-  ROTATION_FAMILY_WIDE      ///< the compass family plus 16 directions and ramps, amounts to 0.55
+  ROTATION_FAMILY_WIDE      ///< the default: compass plus 16 directions and ramps, amounts to 0.55 (881 paths)
 };
 
 /**

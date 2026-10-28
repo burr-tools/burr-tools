@@ -47,12 +47,12 @@ class TestBurrTools(unittest.TestCase):
         for _ in range(2):
             solutions = list(prob.solve(disassemble=True, rotation_moves=True))
             self.assertEqual(len(solutions), 1)
-            self.assertEqual(solutions[0].moves_text, "2.4")
+            self.assertEqual(solutions[0].moves_text, "2.3")
 
         # releasing the kept tables only means the next solve builds them again
         burrtools.release_rotation_tables()
         solutions = list(prob.solve(disassemble=True, rotation_moves=True))
-        self.assertEqual([s.moves_text for s in solutions], ["2.4"])
+        self.assertEqual([s.moves_text for s in solutions], ["2.3"])
 
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)
