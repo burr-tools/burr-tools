@@ -36,6 +36,24 @@ class TestBurrTools(unittest.TestCase):
         self.assertGreater(sol.total_moves, 0)
         self.assertEqual(len(sol.placements), 7)
 
+    def test_rotation_moves(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "AAA_most_rotations.xmpuzzle")
+        prob = burrtools.load(path).problems[0]
+
+        # without turns the single assembly does not come apart
+        self.assertEqual(list(prob.solve(disassemble=True)), [])
+
+        # twice in a row: the second solve uses the kept tables, same result
+        for _ in range(2):
+            solutions = list(prob.solve(disassemble=True, rotation_moves=True))
+            self.assertEqual(len(solutions), 1)
+            self.assertEqual(solutions[0].moves_text, "2.4")
+
+        # releasing the kept tables only means the next solve builds them again
+        burrtools.release_rotation_tables()
+        solutions = list(prob.solve(disassemble=True, rotation_moves=True))
+        self.assertEqual([s.moves_text for s in solutions], ["2.4"])
+
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)
         prob = puzzle.problems[0]

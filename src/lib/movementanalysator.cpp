@@ -1377,7 +1377,11 @@ void movementAnalysator_c::listRotations(void) {
   const rotationGeometry::rotationTables_c & tables = rotation->tables();
   /* with the planner the groups come from the relaxed tables, see below */
   const rotationGeometry::rotationTables_c & closure = rotation->closureTables();
-  const int reach = 2 * tables.getRadius();
+  /* both are asked for with the problem's radius, but either may come from
+   * the cache with a larger one: only cubes both cover can be looked up, and
+   * only within the problem's radius, so that the turns found do not depend
+   * on which tables earlier solves left in the cache */
+  const int reach = 2 * std::min({ rotation->radius(), tables.getRadius(), closure.getRadius() });
   const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
 
   std::vector<std::vector<cell_t>> world(pn);

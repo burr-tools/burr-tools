@@ -222,6 +222,34 @@ TEST_CASE("rotation moves do not grow the search node", "[rotations][disasm]") {
     CHECK(sizeof(disassemblerNode_c) == 48);
 }
 
+TEST_CASE("the planner copes with family tables larger than its relaxed ones", "[rotations][disasm]") {
+
+  /* The cache serves a request from any tables of the same settings with
+   * at least the requested radius, so a context can get family tables
+   * larger than its relaxed ones. The search must then only turn cubes
+   * both cover (it threw "cube outside the tables" before), and find what
+   * it finds with tables of the problem's own radius. */
+  auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const int radius = rotationRadiusFor(problem);
+
+  releaseRotationTables();
+  auto larger = sharedRotationTables(settings, radius + 3);
+  auto context = rotationContextFor(problem, settings);
+  REQUIRE(context != nullptr);
+  REQUIRE(context->tables().getRadius() > context->closureTables().getRadius());
+
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+  auto da = disassembler_0_c(problem, context).disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  CHECK(da->movesText() == "2.3");
+
+  releaseRotationTables();
+}
+
 TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations][disasm]") {
 
   const problem_c & problem = *aaa().puzzle->getProblem(0);

@@ -40,7 +40,8 @@ public:
                    bool reduce = false,
                    bool keep_rotations = false,
                    bool keep_mirror = false,
-                   unsigned int threads = 0);
+                   unsigned int threads = 0,
+                   bool rotation_moves = false);
   ~SolutionIterator();
 
   SolutionIterator* iter() { return this; }
@@ -64,6 +65,7 @@ private:
   bool keep_rotations;
   bool keep_mirror;
   unsigned int threads;
+  bool rotation_moves;
 
   std::unique_ptr<assembler_c> assm;
   std::unique_ptr<disassembler_c> disasm;
