@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <map>
 #include <set>
 #include <string>
 
@@ -352,6 +353,72 @@ TEST_CASE("STL style: a face across several layers is cut at them, so Dim other 
     }
   }
   CHECK(layers == std::set<int>{ 0, 1, 2 });
+}
+
+TEST_CASE("STL style: every voxel type's faces are cut at its cells' walls, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the prism, rhombic and tetra-octa meshers merge faces across cells as
+  // the brick exporter does; spheres' faces are each ball's own. Every
+  // triangle lies in the one cell it names -- the cell's extent from a
+  // shape holding that voxel alone; a cell the surface only grazes at a
+  // corner may hold a piece of the chamfer -- and every layer with a cell
+  // on the surface has pieces of its own
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  for (auto t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    INFO(bttest::gridName(t));
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 4;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (unsigned x = 0; x < n; x++)
+      for (unsigned y = 0; y < n; y++)
+        for (unsigned z = 0; z < n; z++)
+          if (v->validCoordinate(x, y, z))
+            v->setState(x, y, z, voxel_c::VX_FILLED);
+
+    // the layers with a cell on the surface, and a cell's extent
+    MeshOptions flat = blue();
+    flat.style = VoxelStyle::Flat;
+    std::set<int> surfaceLayers;
+    for (const MeshVertex & mv : buildShapeMesh(*v, flat).opaque)
+      surfaceLayers.insert(int(mv.cell[2]));
+    std::map<std::array<int, 3>, std::array<float, 6>> extent;
+    auto extentOf = [&](const std::array<int, 3> & c) {
+      auto it = extent.find(c);
+      if (it != extent.end())
+        return it->second;
+      auto one = bttest::makeVoxel(gt, n, n, n);
+      one->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_FILLED);
+      std::array<float, 6> box{ 1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f };
+      for (const MeshVertex & w : buildShapeMesh(*one, flat).opaque)
+        for (int k = 0; k < 3; k++) {
+          box[size_t(k)] = std::min(box[size_t(k)], w.pos[k]);
+          box[size_t(k) + 3] = std::max(box[size_t(k) + 3], w.pos[k]);
+        }
+      extent[c] = box;
+      return box;
+    };
+
+    const ShapeMesh m = buildShapeMesh(*v, o);
+    REQUIRE(m.opaque.size() % 3 == 0);
+    std::set<int> layers;
+    int outside = 0;
+    for (size_t i = 0; i < m.opaque.size(); i += 3) {
+      const MeshVertex * tri = &m.opaque[i];
+      const std::array<int, 3> c{ int(tri[0].cell[0]), int(tri[0].cell[1]), int(tri[0].cell[2]) };
+      layers.insert(c[2]);
+      for (int k = 0; k < 3; k++)
+        REQUIRE((tri[k].cell[0] == tri[0].cell[0] && tri[k].cell[1] == tri[0].cell[1] && tri[k].cell[2] == tri[0].cell[2]));
+      REQUIRE(v->getState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2])) == voxel_c::VX_FILLED);
+      const std::array<float, 6> box = extentOf(c);
+      for (int k = 0; k < 3; k++)
+        for (int a = 0; a < 3; a++)
+          if (tri[k].pos[a] < box[size_t(a)] - 1e-3f || tri[k].pos[a] > box[size_t(a) + 3] + 1e-3f)
+            outside++;
+    }
+    CHECK(outside == 0);
+    for (const int l : surfaceLayers)
+      CHECK(layers.count(l) == 1);
+  }
 }
 
 TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
