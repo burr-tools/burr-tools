@@ -409,7 +409,7 @@ protected:
 
 public:
 
-  assembler_1_c(const problem_c & problem);
+  assembler_1_c(const problem_c & problem, const solverSettings_t & settings);
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
@@ -422,8 +422,6 @@ public:
    * split_fanout.h); diagnostics only. */
   unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
-  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
-  unsigned int getNumThreads(void) const override { return numThreads; }
   unsigned int getRunThreads(void) const override;
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;

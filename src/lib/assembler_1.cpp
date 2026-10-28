@@ -21,7 +21,6 @@
 #include "assembler_1.h"
 #include "assembler_pool.h"
 #include "simd_huang_cover.h"
-#include "simd_config.h"
 
 #include "bt_assert.h"
 #include "problem.h"
@@ -59,23 +58,8 @@ size_t huang_memory::tierRowBytes(unsigned int num_cols) {
   return sizeof(SimdHuangCover32768::Row);
 }
 
-bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes) {
-  return num_rows * tierRowBytes(num_cols) + num_nodes * kPerNodeOverheadBytes
-    <= budgetBytes();
-}
-
-/* Effective SIMD memory budget, overridable for A/B runs near the
- * threshold without rebuilding: BURRTOOLS_HUANG_MEM_MB=<MB> replaces the
- * default, =0 disables the SIMD path via the budget entirely. Unset or
- * unparsable falls back to the default. */
-uint64_t huang_memory::budgetBytes(void) {
-  if (const char * env = std::getenv("BURRTOOLS_HUANG_MEM_MB")) {
-    char * end = nullptr;
-    unsigned long long mb = std::strtoull(env, &end, 10);
-    if (end != env && *end == '\0')
-      return mb << 20;
-  }
-  return kSimdMemoryBudgetBytes;
+bool huang_memory::fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes, uint64_t budget) {
+  return num_rows * tierRowBytes(num_cols) + num_nodes * kPerNodeOverheadBytes <= budget;
 }
 
 #define ASSEMBLER_VERSION "2.2"
@@ -316,8 +300,8 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
   colCount[col] += wg;
 }
 
-assembler_1_c::assembler_1_c(const problem_c & prob) :
-  assembler_c(),
+assembler_1_c::assembler_1_c(const problem_c & prob, const solverSettings_t & s) :
+  assembler_c(s),
   problem(prob),
   avoidTransformedAssemblies(false), avoidTransformedMirror(nullptr),
   iterations(0),
@@ -3367,9 +3351,9 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   }
 
   // Split on demand (see assemblerWorker_1::donate); toggles as in
-  // assembler_0, read once per run.
-  const bool donate = !SplitFanout::noDonateFromEnv();
-  const unsigned long donateEvery = SplitFanout::donateEveryFromEnv();
+  // assembler_0, fixed for the run.
+  const bool donate = settings.donate;
+  const unsigned long donateEvery = settings.donateEvery;
 
   auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok,
                      donate, donateEvery](std::stop_token st, unsigned int workerIdx) {
@@ -3514,7 +3498,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
 bool assembler_1_c::canUseSimd(void) const {
   if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
     return false;
-  if (!SimdConfig::isBitParallelSolverEnabled())
+  if (!settings.bitParallel)
     return false;
   if (debug)
     return false;
@@ -3538,7 +3522,7 @@ bool assembler_1_c::canUseSimd(void) const {
         for (unsigned int c = right[r]; c != r; c = right[c])
           estNodes++;
       }
-    if (!huang_memory::fitsMemoryBudget(headerNodes - 1, estRows, estNodes))
+    if (!huang_memory::fitsMemoryBudget(headerNodes - 1, estRows, estNodes, settings.huangMemoryBytes))
       return false;
   }
 
@@ -3576,21 +3560,21 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
 
   std::unique_ptr<ISimdHuangCover> solver;
   if (num_cols <= 256) {
-    solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes, settings);
   } else if (num_cols <= 512) {
-    solver = std::make_unique<SimdHuangCover512>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover512>(num_cols, num_shapes, settings);
   } else if (num_cols <= 1024) {
-    solver = std::make_unique<SimdHuangCover1024>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover1024>(num_cols, num_shapes, settings);
   } else if (num_cols <= 2048) {
-    solver = std::make_unique<SimdHuangCover2048>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover2048>(num_cols, num_shapes, settings);
   } else if (num_cols <= 4096) {
-    solver = std::make_unique<SimdHuangCover4096>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover4096>(num_cols, num_shapes, settings);
   } else if (num_cols <= 8192) {
-    solver = std::make_unique<SimdHuangCover8192>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover8192>(num_cols, num_shapes, settings);
   } else if (num_cols <= 16384) {
-    solver = std::make_unique<SimdHuangCover16384>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover16384>(num_cols, num_shapes, settings);
   } else {
-    solver = std::make_unique<SimdHuangCover32768>(num_cols, num_shapes);
+    solver = std::make_unique<SimdHuangCover32768>(num_cols, num_shapes, settings);
   }
   solver->setHoles(holes);
 

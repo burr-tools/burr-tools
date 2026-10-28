@@ -114,10 +114,10 @@ To benchmark the speedup of `SimdHuangCover` extended tiers against the DLX base
 
 
 ```bash
-# 1. Create baseline wrapper (forces DLX fallback via BURRTOOLS_NO_SIMD=1)
+# 1. Create baseline wrapper (forces DLX fallback via BURRTOOLS_BITPARALLEL=0)
 cat << 'EOF' > build/burrTxt-base
 #!/bin/sh
-exec env BURRTOOLS_NO_SIMD=1 $(dirname "$0")/burrTxt "$@"
+exec env BURRTOOLS_BITPARALLEL=0 $(dirname "$0")/burrTxt "$@"
 EOF
 chmod +x build/burrTxt-base
 

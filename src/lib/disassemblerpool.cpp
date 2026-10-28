@@ -28,16 +28,16 @@
 #include "gridtype.h"
 
 #include <chrono>
-#include <cstdlib>
 #include <algorithm>
 
 disassemblerPool_c::disassemblerPool_c(
   const problem_c & puz,
-  unsigned int requested_threads,
+  const solverSettings_t & s,
   ResultCallback cb,
   std::shared_ptr<rotationContext_c> rotations
 ) : puzzle(puz),
-    num_threads(requested_threads),
+    settings(s),
+    num_threads(s.threads),
     on_result(std::move(cb)),
     rotationContext(std::move(rotations))
 {
@@ -47,21 +47,15 @@ disassemblerPool_c::disassemblerPool_c(
     puzzle.getPuzzle().getGridType()->getSymmetries();
   }
 
-  if (std::getenv("BURRTOOLS_NO_DISASM_POOL") != nullptr) {
+  if (!settings.disassemblerPool) {
     is_inline = true;
-    inline_dis = std::make_unique<disassembler_0_c>(puzzle, rotationContext);
+    inline_dis = std::make_unique<disassembler_0_c>(puzzle, settings, rotationContext);
     return;
   }
 
   if (num_threads == 0) {
-    if (const char * env = std::getenv("BURRTOOLS_THREADS")) {
-      int t = std::atoi(env);
-      if (t > 0) num_threads = static_cast<unsigned int>(t);
-    }
-    if (num_threads == 0) {
-      num_threads = std::thread::hardware_concurrency();
-      if (num_threads == 0) num_threads = 1;
-    }
+    num_threads = std::thread::hardware_concurrency();
+    if (num_threads == 0) num_threads = 1;
   }
 
   // Sanity cap on worker threads to avoid resource exhaustion
@@ -74,7 +68,7 @@ disassemblerPool_c::disassemblerPool_c(
 
   if (num_threads == 1) {
     is_inline = true;
-    inline_dis = std::make_unique<disassembler_0_c>(puzzle, rotationContext);
+    inline_dis = std::make_unique<disassembler_0_c>(puzzle, settings, rotationContext);
     return;
   }
 
@@ -197,7 +191,7 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
 
 void disassemblerPool_c::worker_loop(std::stop_token st) {
   try {
-    disassembler_0_c dis(puzzle, rotationContext);
+    disassembler_0_c dis(puzzle, settings, rotationContext);
 
     while (!st.stop_requested()) {
       Task task;

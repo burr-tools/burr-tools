@@ -38,7 +38,6 @@
 #include <numbers>
 #include <map>
 #include <mutex>
-#include <string>
 #include <tuple>
 
 using rotationGeometry::rotationTables_c;
@@ -50,51 +49,6 @@ std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_
   return family;
 }
 
-rotationSettings_t rotationConfig_t::resolve(void) const {
-
-  auto fromEnv = [](const char * name) -> std::optional<std::string> {
-    const char * v = std::getenv(name);
-    if (!v || !*v)
-      return std::nullopt;
-    return std::string(v);
-  };
-
-  /* each field: explicit, else the environment, else the default */
-  rotationFamily_e fam = ROTATION_FAMILY_COMPASS;
-  if (family)
-    fam = *family;
-  else if (auto v = fromEnv("BURRTOOLS_ROT_FAMILY")) {
-    if (*v == "compass")
-      fam = ROTATION_FAMILY_COMPASS;
-    else if (*v == "wide")
-      fam = ROTATION_FAMILY_WIDE;
-    else
-      bt_te("BURRTOOLS_ROT_FAMILY must be compass or wide");
-  }
-
-  bool plan = false;
-  if (planner)
-    plan = *planner;
-  else if (auto v = fromEnv("BURRTOOLS_ROT_PLANNER")) {
-    if (*v != "0" && *v != "1")
-      bt_te("BURRTOOLS_ROT_PLANNER must be 0 or 1");
-    plan = (*v == "1");
-  }
-
-  rotationSettings_t s;
-  s.model = model ? *model : rotationGeometry::model_t{ 0.081, 0 };
-  s.amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
-  if (fam == ROTATION_FAMILY_WIDE)
-    s.wideAmounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
-  s.planner = plan;
-  if (slack)
-    s.slack = *slack;
-  return s;
-}
-
-rotationSettings_t defaultRotationSettings(void) {
-  return rotationConfig_t{}.resolve();
-}
 
 int rotationRadiusFor(const problem_c & problem) {
   auto extent = [](const voxel_c * v) {
