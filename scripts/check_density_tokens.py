@@ -28,10 +28,6 @@ import sys
 
 # tokens whose components are not built yet, and the phase that builds them
 PENDING = {
-    'accordionHeader': 'P6 Inspector (Accordion, C03-C05)',
-    'transform': 'P6 Inspector (transform matrix, C03)',
-    'actionButtonMin': 'P6 Inspector (ActionButton, C04-C05)',
-    'actionButton': 'P6 Inspector (ActionButton, C04-C05)',
     'puzzleTile': 'P10 Puzzle (C16)',
     'solverListRow': 'P11 Solver (C20)',
     'player': 'P11 Solver (disassembly player)',
