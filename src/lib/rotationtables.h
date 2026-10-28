@@ -48,9 +48,11 @@ class disassemblerNode_c;
 inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
 
 struct rotationSettings_t {
-  /** PR #50's implicit model (play 0.081, sharp edges) until physical
-   *  calibration provides better defaults */
-  rotationGeometry::model_t model = { 0.081, 0 };
+  /** PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
+   *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
+   *  never quite sharp, and a bevel only takes material away, so it adds
+   *  turns and never removes one. Physical calibration may change both. */
+  rotationGeometry::model_t model = { 0.081, 0.032 };
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
