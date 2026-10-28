@@ -264,8 +264,8 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
 
   /* the shortest disassembly the breadth-first search finds, with the
    * planner; changes when the default model, the path family or the
-   * planner changes (2.4 with the family alone: the planner finds a turn
-   * that saves a move) */
+   * planner changes (2.4 with the compass family alone: the planner, like
+   * the wide family, finds a turn that saves a move) */
   CHECK(da->movesText() == "2.3");
   CHECK(da->sumRotations() == 2);
 

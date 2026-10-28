@@ -154,24 +154,24 @@ TEST_CASE("rotation settings: caller, then environment, then defaults", "[config
   const rotationSettings_t d;
   CHECK(s.model.play == d.model.play);
   CHECK(s.amounts == d.amounts);
-  CHECK(s.wideAmounts.empty());
+  CHECK(s.wideAmounts == WIDE_AMOUNTS);
   CHECK_FALSE(s.planner);
-  CHECK(rotationFamily(s).size() == 145);
+  CHECK(rotationFamily(s).size() == 881);
 
   /* the environment where the caller leaves a field unset */
-  ScopedEnv wide("BURRTOOLS_ROT_FAMILY", "wide"), plan("BURRTOOLS_ROT_PLANNER", "1");
+  ScopedEnv compass("BURRTOOLS_ROT_FAMILY", "compass"), plan("BURRTOOLS_ROT_PLANNER", "1");
   s = rotationConfig_t{}.resolve();
-  CHECK(s.wideAmounts == WIDE_AMOUNTS);
+  CHECK(s.wideAmounts.empty());
   CHECK(s.planner);
-  CHECK(rotationFamily(s).size() == 881);
+  CHECK(rotationFamily(s).size() == 145);
 
   /* the caller wins */
   rotationConfig_t chosen;
-  chosen.family = ROTATION_FAMILY_COMPASS;
+  chosen.family = ROTATION_FAMILY_WIDE;
   chosen.planner = false;
   chosen.model = rotationGeometry::model_t{ 0.02, 0.05 };
   s = chosen.resolve();
-  CHECK(s.wideAmounts.empty());
+  CHECK(s.wideAmounts == WIDE_AMOUNTS);
   CHECK_FALSE(s.planner);
   CHECK(s.model.play == 0.02);
   CHECK(s.model.chamfer == 0.05);
