@@ -518,8 +518,10 @@ moves to a later phase says why in that table.
   other layers in the STL style; STL export writing in place; image export
   memory; the STL dialog after the document changes under it; the
   hardening from the final review (device loss, resize); macOS and Linux
-  start-up measured; the accessibility rows -- reduced motion, text size
-  and high contrast, small screens, dark-theme button text, remaining
+  start-up measured; the accessibility rows -- reduced motion (done
+  2026-10-28: the system's QAccessibilityHints::motionPreference sets every
+  Theme duration, the toolbar's fade and the 3D view's snaps to none), text
+  size and high contrast, small screens, dark-theme button text, remaining
   contrast, progress and errors announced, lists by keyboard, small items
   -- and the screen reader and real-system checks (the shape row's
   actions, the P2 / P3 lists and menus, the accessibility tree); the

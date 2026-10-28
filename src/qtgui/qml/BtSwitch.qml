@@ -15,13 +15,13 @@ AbstractButton {
     background: Rectangle {
         radius: 9
         color: root.checked ? Theme.accent : Theme.line2
-        Behavior on color { ColorAnimation { duration: 150 } }
+        Behavior on color { ColorAnimation { duration: Theme.durSwitch } }
         Rectangle {
             width: 14; height: 14; radius: 7
             y: 2
             x: root.checked ? parent.width - width - 2 : 2
             color: "white"
-            Behavior on x { NumberAnimation { duration: 150 } }
+            Behavior on x { NumberAnimation { duration: Theme.durSwitch } }
         }
         Rectangle {
             anchors { fill: parent; margins: -3 }
