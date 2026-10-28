@@ -161,7 +161,7 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
 
   if (rotation)
   {
-    static const char * kinds[] = { "pure", "wiggle", "slide", "planned" };
+    static const char * kinds[] = { "pure", "wiggle", "slide", "planned", "ramp" };
     static const char * axes[] = { "x", "y", "z" };
     xml.newTag("rotation");
     xml.newAttrib("axis", std::string(axes[rotation->axis]));
@@ -195,11 +195,15 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     }
     else if (rotation->path.kind != rotationGeometry::PATH_PURE)
     {
-      xml.newAttrib("du", rotation->path.dirU);
-      xml.newAttrib("dv", rotation->path.dirV);
+      xml.newAttrib("dir", rotation->path.dir);
       std::ostringstream amount;
       amount << rotation->path.amount;
       xml.newAttrib("amount", amount.str());
+      if (rotation->path.kind == rotationGeometry::PATH_RAMP)
+      {
+        xml.newAttrib("from", rotation->path.holdFrom);
+        xml.newAttrib("to", rotation->path.holdTo);
+      }
     }
     xml.endTag("rotation");
   }
@@ -231,12 +235,17 @@ stateRotation_t loadRotation(xmlParser_c & pars)
     std::string kind = pars.getAttributeValue("path");
     if (kind == "pure")
       r.path.kind = rotationGeometry::PATH_PURE;
-    else if (kind == "wiggle" || kind == "slide")
+    else if (kind == "wiggle" || kind == "slide" || kind == "ramp")
     {
-      r.path.kind = (kind == "wiggle") ? rotationGeometry::PATH_WIGGLE : rotationGeometry::PATH_SLIDE;
-      r.path.dirU = std::stoi(pars.getAttributeValue("du"));
-      r.path.dirV = std::stoi(pars.getAttributeValue("dv"));
+      r.path.kind = (kind == "wiggle") ? rotationGeometry::PATH_WIGGLE :
+                    (kind == "slide") ? rotationGeometry::PATH_SLIDE : rotationGeometry::PATH_RAMP;
+      r.path.dir = std::stoi(pars.getAttributeValue("dir"));
       r.path.amount = std::stod(pars.getAttributeValue("amount"));
+      if (r.path.kind == rotationGeometry::PATH_RAMP)
+      {
+        r.path.holdFrom = std::stoi(pars.getAttributeValue("from"));
+        r.path.holdTo = std::stoi(pars.getAttributeValue("to"));
+      }
     }
     else if (kind == "planned")
     {
@@ -257,13 +266,15 @@ stateRotation_t loadRotation(xmlParser_c & pars)
   catch (const std::logic_error &)
   {
     /* stoi and friends on a missing or malformed attribute */
-    pars.exception("rotation needs numeric pu, pv (and du, dv, amount for shifted paths)");
+    pars.exception("rotation needs numeric pu, pv (and dir, amount for shifted paths, from, to for ramps)");
   }
 
+  const bool shifted = r.path.kind == rotationGeometry::PATH_WIGGLE || r.path.kind == rotationGeometry::PATH_SLIDE ||
+                       r.path.kind == rotationGeometry::PATH_RAMP;
   if (r.axis > 2 || r.path.sense > 1 ||
-      std::abs(r.path.dirU) > 1 || std::abs(r.path.dirV) > 1 ||
-      ((r.path.kind == rotationGeometry::PATH_WIGGLE || r.path.kind == rotationGeometry::PATH_SLIDE) &&
-       ((r.path.dirU == 0 && r.path.dirV == 0) || !(r.path.amount > 0))))
+      (shifted && (r.path.dir < 0 || r.path.dir >= rotationGeometry::DIRECTIONS || !(r.path.amount > 0))) ||
+      (r.path.kind == rotationGeometry::PATH_RAMP &&
+       (r.path.holdFrom <= 0 || r.path.holdTo < r.path.holdFrom || r.path.holdTo >= 90)))
     pars.exception("rotation with an invalid axis, angle or path");
 
   if (r.path.kind == rotationGeometry::PATH_PLANNED) {

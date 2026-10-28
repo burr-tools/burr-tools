@@ -9,6 +9,7 @@
 #include "lib/puzzle.h"
 #include "lib/rotationtables.h"
 #include "lib/solvethread.h"
+#include "test_helpers.h"
 
 #include <future>
 #include <memory>
@@ -102,6 +103,51 @@ TEST_CASE("the most recently used rotation tables are kept for the next solve", 
 
   releaseRotationTables();
   CHECK(watch.expired());
+}
+
+TEST_CASE("rotation settings come from the caller, then the environment, then the defaults", "[rotations]") {
+
+  using bttest::ScopedEnv;
+  ScopedEnv family("BURRTOOLS_ROT_FAMILY", nullptr), planner("BURRTOOLS_ROT_PLANNER", nullptr);
+
+  /* defaults */
+  rotationSettings_t s = rotationConfig_t{}.resolve();
+  CHECK(s.model.play == 0.081);
+  CHECK(s.amounts.size() == 9);
+  CHECK(s.wideAmounts.empty());
+  CHECK_FALSE(s.planner);
+  CHECK(rotationFamily(s).size() == 145);
+
+  /* the environment where the caller leaves a field unset */
+  {
+    ScopedEnv wide("BURRTOOLS_ROT_FAMILY", "wide"), plan("BURRTOOLS_ROT_PLANNER", "1");
+    s = rotationConfig_t{}.resolve();
+    CHECK(s.wideAmounts.size() == 11);
+    CHECK(s.planner);
+    CHECK(rotationFamily(s).size() == 881);
+    CHECK(defaultRotationSettings().planner);
+
+    /* the caller wins */
+    rotationConfig_t chosen;
+    chosen.family = ROTATION_FAMILY_COMPASS;
+    chosen.planner = false;
+    chosen.model = rotationGeometry::model_t{ 0.02, 0.05 };
+    s = chosen.resolve();
+    CHECK(s.wideAmounts.empty());
+    CHECK_FALSE(s.planner);
+    CHECK(s.model.play == 0.02);
+    CHECK(s.model.chamfer == 0.05);
+  }
+
+  /* a typo must not silently measure the default */
+  {
+    ScopedEnv bad("BURRTOOLS_ROT_FAMILY", "Wide");
+    CHECK_THROWS(rotationConfig_t{}.resolve());
+  }
+  {
+    ScopedEnv bad("BURRTOOLS_ROT_PLANNER", "yes");
+    CHECK_THROWS(rotationConfig_t{}.resolve());
+  }
 }
 
 TEST_CASE("rotation tables exist only for cube grids", "[rotations]") {
