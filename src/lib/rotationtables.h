@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -45,21 +46,59 @@ class disassemblerNode_c;
  */
 struct rotationSettings_t {
   rotationGeometry::model_t model = {};
-  std::vector<double> amounts;   ///< shift amounts of the wiggle and slide paths
+  std::vector<double> amounts;       ///< shift amounts of the compass wiggles and slides
+  /** amounts of the 16-direction extension after them, empty: compass
+   *  family only (rotationGeometry::wideExtension) */
+  std::vector<double> wideAmounts = {};
   /** Turns no family path clears are planned (rotationGeometry::planTurn)
    *  if the family clears them with `slack` more play: the planner finds
    *  the motions the family misses near the threshold. Off by default: it
-   *  makes a solve 5 to 40 times slower. BURRTOOLS_NO_ROT_PLANNER=1 turns it
-   *  off where it is on. See design/2026-10-19-rotation-moves.md. */
+   *  makes a solve 5 to 40 times slower. See
+   *  design/2026-10-19-rotation-moves.md. */
   bool planner = false;
   double slack = 0.02;
   rotationGeometry::planSettings_t plan = {};
 };
 
-/** The settings used when the caller has no others: PR #50's implicit
- *  model (play 0.081, sharp edges) until physical calibration provides
- *  better defaults, and shift amounts every 0.05 from 0.05 to 0.45 (145
- *  paths per sense; see the TIC results in design/2026-10-19-rotation-moves.md). */
+/** The +90° paths of the settings' family, in table order. */
+std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
+
+/** Path families rotationConfig_t can choose. */
+enum rotationFamily_e {
+  ROTATION_FAMILY_COMPASS,  ///< 8 directions, wiggles and slides, amounts 0.05 to 0.45 (145 paths)
+  ROTATION_FAMILY_WIDE      ///< the compass family plus 16 directions and ramps, amounts to 0.55
+};
+
+/**
+ * What a front end chooses for rotation moves. Every field it leaves unset
+ * comes from the environment, and failing that from the default, so these
+ * hyperparameters are resolved in one place and the solver only sees the
+ * result, a rotationSettings_t:
+ *
+ * | field   | environment                          | default                   |
+ * |---------|--------------------------------------|---------------------------|
+ * | model   | -                                    | play 0.081, sharp edges   |
+ * | family  | BURRTOOLS_ROT_FAMILY=compass or wide | compass                   |
+ * | planner | BURRTOOLS_ROT_PLANNER=0 or 1         | off                       |
+ * | slack   | -                                    | 0.02                      |
+ *
+ * The model is PR #50's implicit one until physical calibration provides
+ * better defaults; the compass amounts are every 0.05 from 0.05 to 0.45
+ * (see the TIC results in design/2026-10-19-rotation-moves.md). An
+ * unparsable environment value is an error (bt_te), never silently the
+ * default: an A/B run must not measure the same thing twice.
+ */
+struct rotationConfig_t {
+  std::optional<rotationGeometry::model_t> model;
+  std::optional<rotationFamily_e> family;
+  std::optional<bool> planner;
+  std::optional<double> slack;
+
+  rotationSettings_t resolve(void) const;
+};
+
+/** The settings used when the caller chooses nothing:
+ *  rotationConfig_t{}.resolve(), i.e. environment, then defaults. */
 rotationSettings_t defaultRotationSettings(void);
 
 /** Table radius for a problem: the largest filled extent of its result and
