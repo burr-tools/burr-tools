@@ -25,6 +25,7 @@
 #include <QString>
 #include <QTimer>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 #include <map>
@@ -59,7 +60,9 @@ class InspectorController : public QObject {
 
 public:
 
-  /* legacy's numbers for the operations that are not transforms (btui::task) */
+  /* legacy's numbers for the operations that are not transforms (btui::task);
+   * QML takes them from `tasks` -- the compiled QML cannot read the values
+   * of an enum that does not count up from 0 */
   enum Task {
     Prune = 15, FixedInner = 16, FixedOuter = 17, VariableInner = 18, VariableOuter = 19,
     ClearInner = 20, ClearOuter = 21, Scale2 = 22, Scale3 = 23, Origin = 24, Center = 25,
@@ -72,6 +75,10 @@ private:
   Q_PROPERTY(bool transformOpen READ transformOpen WRITE setTransformOpen NOTIFY sectionsChanged FINAL)
   Q_PROPERTY(bool fitOpen READ fitOpen WRITE setFitOpen NOTIFY sectionsChanged FINAL)
   Q_PROPERTY(bool repairOpen READ repairOpen WRITE setRepairOpen NOTIFY sectionsChanged FINAL)
+  /* the Task numbers by name: { prune, center, origin, minimize, scale2,
+   * scale3, fillHoles, fixedInner, fixedOuter, variableInner,
+   * variableOuter, clearInner, clearOuter } */
+  Q_PROPERTY(QVariantMap tasks READ tasks CONSTANT FINAL)
   /* the voxel type's Transform buttons, as { task, kind ("flip" | "rotate" |
    * "nudge"), axis, sign, glyph, arrowDeg, layer, caption, tip, id } */
   Q_PROPERTY(QVariantList transformButtons READ transformButtons NOTIFY typeChanged FINAL)
@@ -85,6 +92,8 @@ private:
   Q_PROPERTY(int shape READ shape NOTIFY stateChanged FINAL)
   /* what Minimize divides by now (1: it cannot) */
   Q_PROPERTY(int minimizeFactor READ minimizeFactor NOTIFY stateChanged FINAL)
+  /* the Transform button the 3D view previews, -1 for none */
+  Q_PROPERTY(int previewTask READ previewTask NOTIFY previewChanged FINAL)
 
 public:
 
@@ -98,12 +107,14 @@ public:
   bool repairOpen(void) const { return m_open[2]; }
   void setRepairOpen(bool v) { setOpen(2, v); }
 
+  QVariantMap tasks(void) const;
   QVariantList transformButtons(void) const;
   bool pads(void) const;
   bool scaleShown(void) const;
   int revision(void) const { return m_revision; }
   int shape(void) const;
   int minimizeFactor(void) const { return m_minimizeFactor; }
+  int previewTask(void) const { return m_previewTask; }
 
   /* Fit & scale's and Repair's operations: may it run now, and if not why.
    * A Transform button: always (checked when pressed). */
@@ -120,6 +131,7 @@ signals:
   void sectionsChanged(void);
   void typeChanged(void);
   void stateChanged(void);
+  void previewChanged(void);
   void flashRequested(const QString & text);
 
 private:
@@ -133,6 +145,7 @@ private:
   void shapeEdited(void);
   void recompute(void);
   void refreshPreview(void);
+  void setPreviewTask(int task);
 
   SettingsController * m_settings;
   DocumentController * m_doc;

@@ -325,6 +325,15 @@ TestCase {
             { tag: "cards", rails: false, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
+                // the inspector: Transform open (its buttons row by row), the others closed
+                "entities.inspector.transform.header",
+                "entities.transform.flip.x", "entities.transform.rotate.x.neg", "entities.transform.rotate.x.pos",
+                "entities.transform.nudge.x.neg", "entities.transform.nudge.x.pos",
+                "entities.transform.flip.y", "entities.transform.rotate.y.neg", "entities.transform.rotate.y.pos",
+                "entities.transform.nudge.y.neg", "entities.transform.nudge.y.pos",
+                "entities.transform.flip.z", "entities.transform.rotate.z.neg", "entities.transform.rotate.z.pos",
+                "entities.transform.nudge.z.neg", "entities.transform.nudge.z.pos",
+                "entities.inspector.fit.header", "entities.inspector.repair.header",
                 "entities.viewport.toolbar", "entities.viewport.surface",
                 "entities.editor.focus2d", "entities.editor.collapse",
                 // the tool strip and the planes are one stop each

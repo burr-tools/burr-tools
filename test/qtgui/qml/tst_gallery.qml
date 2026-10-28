@@ -146,7 +146,7 @@ TestCase {
     // --- coverage ------------------------------------------------------------------
 
     function test_everyBuiltPrimitiveHasARow() {
-        for (const row of ["iconButton", "glyphButton", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
+        for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
                            "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
@@ -189,6 +189,9 @@ TestCase {
             { tag: "glyph button 62x48", cell: "glyphButton.normal", w: 62, h: 48 },
             { tag: "mirror / span glyph button h44", cell: "glyphButton.axis", h: 44 },
             { tag: "stepper h28", cell: "stepper.normal", h: 28 },
+            // density.md §1 (Standard): action button min-h 40, accordion header h32
+            { tag: "action button min-h 40", cell: "actionButton.normal", h: 40, w: 160 },
+            { tag: "closed accordion: its header and the 1 dp line", cell: "accordion.closed", h: 33 },
         ]
     }
     function test_sizesFollowTheTokens(data) {
@@ -302,7 +305,8 @@ TestCase {
     function test_disabledIsFortyPercent() {
         for (const name of ["iconButton.disabled", "button.disabled", "buttonPrimary.disabled",
                             "toolbarButton.disabled", "segmented.disabled", "switch.disabled", "checkBox.disabled", "checkRow.disabled",
-                            "dropdown.disabled", "numberField.disabled", "slider.disabled"])
+                            "dropdown.disabled", "numberField.disabled", "slider.disabled",
+                            "actionButton.disabled", "actionButton.unavailable"])
             compare(control(name).opacity, 0.4, name)
     }
 
@@ -337,7 +341,7 @@ TestCase {
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {
-        const rows = ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
+        const rows = ["iconButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton", "railButton",
                       "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]

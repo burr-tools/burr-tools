@@ -115,6 +115,11 @@ class Theme : public QObject {
   Q_PROPERTY(double layerChipWidth READ layerChipWidth NOTIFY changed FINAL)
   Q_PROPERTY(double layerChipHeight READ layerChipHeight NOTIFY changed FINAL)
   Q_PROPERTY(double drawSwatch READ drawSwatch NOTIFY changed FINAL)
+  // the inspector (C03, C04, C05)
+  Q_PROPERTY(double accordionHeader READ accordionHeader NOTIFY changed FINAL)
+  Q_PROPERTY(double transformButton READ transformButton NOTIFY changed FINAL)
+  Q_PROPERTY(double actionButtonMin READ actionButtonMin NOTIFY changed FINAL)
+  Q_PROPERTY(double actionButton READ actionButton NOTIFY changed FINAL)
 
   // motion (section 6), in ms
   Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
@@ -219,6 +224,13 @@ public:
   qreal layerChipHeight(void) const { return dens("layerChip.1"); }
   /* the Drawing colour footer's big swatch */
   qreal drawSwatch(void) const { return dens("drawSwatch"); }
+  /* the inspector: an accordion section's header, a Transform button, and
+   * an action button's height -- Standard's a minimum (actionButtonMin,
+   * 0 in Minimal), Minimal's fixed (actionButton, 0 in Standard) */
+  qreal accordionHeader(void) const { return dens("accordionHeader"); }
+  qreal transformButton(void) const { return dens("transform"); }
+  qreal actionButtonMin(void) const { return dens("actionButtonMin"); }
+  qreal actionButton(void) const { return dens("actionButton"); }
 
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }

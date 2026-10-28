@@ -82,6 +82,21 @@ ApplicationWindow {
         }
     }
 
+    // the PR-03 and PR-09 rows' instances
+    // five to a row inside the window; a one-line hint, so min-h 40 shows
+    component Action: ActionButton {
+        width: Theme.minimal ? implicitWidth : 160
+        glyph: "move-to-origin"; title: "To origin"; shortTitle: "Origin"
+        hint: "Corner at 0, 0, 0"
+    }
+    component Section9: AccordionSection {
+        width: 210
+        title: "Repair"; summary: "Fill · Inner / Outer"
+        open: false
+        onToggled: open = !open
+        Text { text: "Section body"; color: Theme.muted; font.pixelSize: Theme.fontSecondary }
+    }
+
     // a titled card of rows
     component Section: Column {
         id: section
@@ -217,6 +232,22 @@ ApplicationWindow {
                     Cell { kind: "disabled"; GlyphButton { glyph: "plane-yz"; caption: "YZ"; tip: "YZ"; enabled: false } }
                     Cell { kind: "axis"; GlyphButton { glyph: "mirror-x"; caption: "X"; captionColor: Theme.axisX; toggle: true; height: Theme.mirrorSpan; glyphSize: 28; tip: "Mirror X" } }
                     Cell { kind: "iconOnly"; GlyphButton { glyph: "tool-erase"; caption: "Erase"; keyBadge: "3"; tip: "Erase (3)"; iconOnly: true; height: 36; glyphSize: 24 } }
+                }
+                GalleryRow {
+                    name: "actionButton"; label: "PR-03 Action button"
+                    Cell { kind: "normal"; Action {} }
+                    Cell { kind: "hover"; Action {} }
+                    Cell { kind: "focus"; Action {} }
+                    // greyed, still pressable: the hint says why
+                    Cell { kind: "unavailable"; Action { glyph: "minimize"; title: "Minimize"; hint: "Already at minimum resolution"; available: false } }
+                    Cell { kind: "disabled"; Action { enabled: false } }
+                }
+                GalleryRow {
+                    name: "accordion"; label: "PR-09 Accordion section"
+                    Cell { kind: "open"; Section9 { open: true } }
+                    Cell { kind: "closed"; Section9 {} }
+                    Cell { kind: "hover"; Section9 {} }
+                    Cell { kind: "focus"; Section9 {} }
                 }
                 GalleryRow {
                     name: "button"; label: "PR-04 Button"

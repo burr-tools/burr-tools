@@ -87,7 +87,7 @@ InspectorController::InspectorController(SettingsController * settings, Document
   });
   connect(m_doc, &DocumentController::historyApplied, this, &InspectorController::shapeEdited);
   connect(m_doc, &DocumentController::documentReplaced, this, [this] {
-    m_previewTask = -1;
+    setPreviewTask(-1);
     m_viewport->clearTransformPreview();
     emit typeChanged();
     recompute();
@@ -117,6 +117,19 @@ const btui::OpsDescriptor & InspectorController::descriptor(void) const {
 bool InspectorController::isTransform(int task) const {
   const auto & b = descriptor().buttons;
   return std::any_of(b.begin(), b.end(), [task](const btui::TransformButton & t) { return t.task == task; });
+}
+
+QVariantMap InspectorController::tasks(void) const {
+  namespace k = btui::task;
+  return {
+    { QStringLiteral("prune"), k::Prune }, { QStringLiteral("center"), k::Center },
+    { QStringLiteral("origin"), k::Origin }, { QStringLiteral("minimize"), k::Minimize },
+    { QStringLiteral("scale2"), k::Scale2 }, { QStringLiteral("scale3"), k::Scale3 },
+    { QStringLiteral("fillHoles"), k::FillHoles },
+    { QStringLiteral("fixedInner"), k::FixedInner }, { QStringLiteral("fixedOuter"), k::FixedOuter },
+    { QStringLiteral("variableInner"), k::VariableInner }, { QStringLiteral("variableOuter"), k::VariableOuter },
+    { QStringLiteral("clearInner"), k::ClearInner }, { QStringLiteral("clearOuter"), k::ClearOuter },
+  };
 }
 
 QVariantList InspectorController::transformButtons(void) const {
@@ -224,13 +237,20 @@ void InspectorController::run(int task) {
 
 // --- the preview -------------------------------------------------------------------
 
+void InspectorController::setPreviewTask(int task) {
+  if (task == m_previewTask)
+    return;
+  m_previewTask = task;
+  emit previewChanged();
+}
+
 void InspectorController::preview(int task) {
-  m_previewTask = isTransform(task) ? task : -1;
+  setPreviewTask(isTransform(task) ? task : -1);
   refreshPreview();
 }
 
 void InspectorController::clearPreview(void) {
-  m_previewTask = -1;
+  setPreviewTask(-1);
   m_viewport->clearTransformPreview();
 }
 

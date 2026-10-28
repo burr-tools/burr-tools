@@ -5,6 +5,8 @@
 
 qtgui_qml_files = files(
   'AboutDialog.qml',
+  'AccordionSection.qml',
+  'ActionButton.qml',
   'AppMenu.qml',
   'AppMenuBar.qml',
   'AppMenuItem.qml',
@@ -35,6 +37,7 @@ qtgui_qml_files = files(
   'IconButton.qml',
   'ImageExportDialog.qml',
   'ImportAssembliesDialog.qml',
+  'Inspector.qml',
   'KeyBadge.qml',
   'KeyboardShortcutsDialog.qml',
   'Main.qml',

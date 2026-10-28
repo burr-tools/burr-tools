@@ -89,6 +89,14 @@ void TestInspector::eachVoxelTypeHasItsButtons() {
   QVERIFY(!first.value(QStringLiteral("id")).toString().isEmpty());
   QVERIFY(!first.value(QStringLiteral("tip")).toString().isEmpty());
 
+  // QML's task numbers (`tasks`) are the enum's
+  const QVariantMap tasks = i->tasks();
+  QCOMPARE(tasks.size(), 13);
+  QCOMPARE(tasks.value(QStringLiteral("prune")).toInt(), int(InspectorController::Prune));
+  QCOMPARE(tasks.value(QStringLiteral("minimize")).toInt(), int(InspectorController::Minimize));
+  QCOMPARE(tasks.value(QStringLiteral("fillHoles")).toInt(), int(InspectorController::FillHoles));
+  QCOMPARE(tasks.value(QStringLiteral("clearOuter")).toInt(), int(InspectorController::ClearOuter));
+
   QSignalSpy typeChanged(i, &InspectorController::typeChanged);
   f.app->document()->newDocument(int(gridType_c::GT_SPHERES));
   QCOMPARE(typeChanged.count(), 1);

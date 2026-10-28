@@ -22,8 +22,14 @@ import BurrTools.Ui
 //   │    ⠿  [S2]  ⑧[Cage_______]              │   renaming: a field for the label
 //   │    ...                                   │
 //   │ ⑪ No shapes -- click + New (when empty)  │
-//   └──────────────────────────────────────────┘
+//   ├──────────────────────────────────────────┤
+//   │ ⑬ the inspector (Inspector.qml)           │   Edit shape: Transform, Fit & scale,
+//   └──────────────────────────────────────────┘   Repair & surface
 //   ⑫ the row's context menu (right-click, Menu key, Shift+F10)
+//
+//   The list takes the rows' height, 60 to 250 dp with its padding (the
+//   mock's .shapes), and scrolls past that; the inspector has the rest,
+//   over the part of the list the rows leave free.
 //
 //   Dragging a row: it follows the pointer, and the rows between its place
 //   and the pointer slide over by one to open the gap it drops into.
@@ -122,7 +128,15 @@ Card {
     ListView { // ③
         id: list
         objectName: "entities.shapes.list"
-        anchors { fill: parent; margins: 6 }
+        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 6 }
+        /* Always its full 238 (250 with the padding): the inspector covers what
+         * the rows leave free (rowsHeight). A view that resized with its rows
+         * would lay out, inside a model change, rows the change has taken away. */
+        height: 238
+        readonly property real rowsHeight: Math.max(48, Math.min(height, count * pitch - spacing))
+        /* no rows made ahead off screen: they are made asynchronously, and a
+         * new file's reset cancelling one is warned about; the rows are cheap */
+        cacheBuffer: 0
         clip: true
         spacing: 2
         model: App.shapes
@@ -443,11 +457,16 @@ Card {
         Text { // ⑪
             objectName: "entities.shapes.empty"
             visible: list.count === 0
-            anchors.centerIn: parent
+            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 14 }
             text: qsTr("No shapes — click + New")
             color: Theme.muted
             font.pixelSize: Theme.fontSecondary
         }
+    }
+
+    Inspector { // ⑬
+        anchors { left: parent.left; right: parent.right; top: list.top; bottom: parent.bottom
+                  topMargin: list.rowsHeight + 6 }
     }
 
     AppMenu { // ⑫
