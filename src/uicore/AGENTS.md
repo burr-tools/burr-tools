@@ -29,7 +29,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit) — **shared with the legacy GUI** |
 | `settingsstore` | the settings file: `key = value` lines, typed reads with defaults, an atomic save |
 | `camera`, `viewcube`, `vecmath` | the 3D view's camera (orbit, pan, zoom, eased animations, projections) and the view cube's faces, edges, corners and hit testing |
-| `scenemesh` | the vertices the 3D view draws for a shape, per voxel style (Flat, Classic, STL; bricks' STL faces cut per cell), each vertex carrying its voxel; ghosts, a Transform button's result and hint; picking meshes and ray picks |
+| `scenemesh` | the vertices the 3D view draws for a shape, per voxel style (Flat, Classic, STL; STL faces cut at the cells' walls, so they dim by layer), each vertex carrying its voxel; ghosts, a Transform button's result and hint; picking meshes and ray picks |
 | `assemblyscene`, `depthsort` | whole puzzles and assemblies as scenes (image export); back-to-front order for translucent layers |
 | `palette` | the shape colours, and black or white text on them (WCAG contrast) — the colours **shared with the legacy GUI** |
 | `imagepages`, `vectorexport` | the image export's page layout; vector export (PS, EPS, TeX, PDF, SVG, PGF) |
@@ -40,6 +40,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `gridcells` | the 2D grid's cells per voxel type (squares, prism triangles, sphere circles, rhombic and tetra-octa super-cells) and hit testing |
 | `vocabulary` | the settings' and modes' fixed vocabularies (theme, density, voxel style, projection, colour view, image mode, …): one table of values and words each |
 | `windowplacement` | where the window opens: the saved place if still on a screen, else centred |
+| `xcursor` | the desktop's cursor theme on Linux and the BSDs: which theme and size (environment, KDE's and GTK's settings), where its files are (inherited themes too), and an Xcursor file's image nearest a size |
 
 Tests: `../../test/test_ui_<name>.cpp`, tagged `[ui]`, compiled into
 `test_burrtools` (`uicore_test_src` in the root `meson.build`); benchmarks in

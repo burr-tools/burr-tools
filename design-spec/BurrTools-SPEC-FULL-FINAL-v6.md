@@ -3309,7 +3309,7 @@ Build the **framework-neutral controller layer** against `overview/06-ui-contrac
 | OQ-14 New-shape defaults / delete confirm | New: empty, as big as the selected shape. Delete asks only when a problem using it has solutions or a running search (legacy never asks) | `uicore/shapelist.cpp`, `qtgui/shapesmodel.cpp` | C01 note | 2026-10 / implementation |
 | OQ-15 Weight limits |  |  |  |  |
 | OQ-16 Positional ids / cross-tab references / palette |  |  |  |  |
-| OQ-17 OS default pointer bitmap for cursor composition | Fallback used on every platform: the bundled arrow with the badge; the OS arrow and cursor size wait for P8 | `qtgui/editcursor.cpp` | — | 2026-10 / implementation |
+| OQ-17 OS default pointer bitmap for cursor composition | The system's arrow and pointer size (2026-10-29): Windows' scheme arrow at `CursorBaseSize`, drawn on black and white for colour and alpha; macOS `NSCursor.arrowCursor` (the system scales every cursor by its Pointer size); Linux the Xcursor theme's arrow at its size. The bundled arrow stays the fallback | `qtgui/systempointer.cpp`, `systempointer_mac.mm`, `uicore/xcursor.cpp`, `qtgui/editcursor.cpp` | — | 2026-10 / implementation |
 | OQ-18 File ▸ New flow, voxel type names, view-cube legacy details |  |  |  |  |
 | OQ-19 Per-voxel-type transforms/scale/mirror/planes/layers | Planes and layers: every type, XZ/YZ but for prisms; Mirror/Span on the grid's cells for every type (transforms: P6) | `uicore/gridcells.cpp`, `uicore/voxeledit.cpp:expand` | C08 note | 2026-10 / implementation |
 | OQ-20 Groups meaning/storage |  |  |  |  |
