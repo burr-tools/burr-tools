@@ -36,10 +36,11 @@ namespace btui::xcursor {
     constexpr uint32_t kMaxSide = 0x7fff;
 
     bool word(std::string_view b, size_t at, uint32_t & out) {
-      if (at > b.size() || b.size() - at < 4)
+      if (b.size() < 4 || at > b.size() - 4)
         return false;
-      out = uint32_t(uint8_t(b[at])) | uint32_t(uint8_t(b[at + 1])) << 8 |
-            uint32_t(uint8_t(b[at + 2])) << 16 | uint32_t(uint8_t(b[at + 3])) << 24;
+      const std::string_view w = b.substr(at, 4);
+      out = uint32_t(uint8_t(w[0])) | uint32_t(uint8_t(w[1])) << 8 | uint32_t(uint8_t(w[2])) << 16 |
+            uint32_t(uint8_t(w[3])) << 24;
       return true;
     }
 
