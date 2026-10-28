@@ -153,7 +153,9 @@ class solveThread_c : public assembler_cb {
 
     problem_c & puzzle;
     int parameters;
-    unsigned int numThreads;
+    /* threads, engines and toggles of the assembler and the disassembly
+     * pool, rotation settings for PAR_ROTATION_MOVES */
+    const solverSettings_t settings;
 
   public:
 
@@ -170,11 +172,10 @@ class solveThread_c : public assembler_cb {
     static const int PAR_ROTATION_MOVES =     0x80;
 
     // create all the necessary data structures to start the thread later on;
-    // threads is the worker count shared by the assembler and the
-    // disassembler pool, 0 = auto (BURRTOOLS_THREADS, else hardware_concurrency);
-    // rotation is only used with PAR_ROTATION_MOVES
-    solveThread_c(problem_c & puz, int par, unsigned int threads = 0,
-                  const rotationSettings_t & rotation = defaultRotationSettings());
+    // settings.threads is the worker count of the assembler and of the
+    // disassembler pool, each, 0 = hardware_concurrency; settings.rotation
+    // is only used with PAR_ROTATION_MOVES
+    solveThread_c(problem_c & puz, int par, const solverSettings_t & settings);
     const problem_c & getProblem(void) const { return puzzle; }
 
     /** True if the disassembly considers rotation moves: PAR_ROTATION_MOVES

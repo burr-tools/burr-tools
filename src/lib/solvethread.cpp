@@ -88,7 +88,7 @@ void solveThread_c::run(void){
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      std::unique_ptr<assembler_c> new_assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle);
+      std::unique_ptr<assembler_c> new_assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle, settings);
       a = new_assm.get();
       assm.store(a, std::memory_order_release);
 
@@ -153,9 +153,10 @@ void solveThread_c::run(void){
        *
        * The count is applied first because getRunThreads() answers from the
        * configured count; a resume can carry a different setting than the
-       * run the assembler was prepared or paused under.
+       * run the assembler was prepared or paused under. Only the count: a
+       * continued search keeps the engines it was created with.
        */
-      a->setNumThreads(numThreads);
+      a->setNumThreads(settings.threads);
       const unsigned int threads = a->getRunThreads();
       assemblyThreads.store(threads ? threads : 1, std::memory_order_relaxed);
 
@@ -243,12 +244,11 @@ void solveThread_c::run(void){
   }
 }
 
-solveThread_c::solveThread_c(problem_c & puz, int par, unsigned int threads,
-                             const rotationSettings_t & rotation) :
+solveThread_c::solveThread_c(problem_c & puz, int par, const solverSettings_t & s) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
-numThreads(threads),
+settings(s),
 sortMethod(SRT_COMPLETE_MOVES),
 liveSort(-1),
 solutionLimit(10),
@@ -272,17 +272,17 @@ assm(0)
      * context and the disassemblers skip rotation moves entirely. */
     std::shared_ptr<rotationContext_c> rotationContext;
     if (par & PAR_ROTATION_MOVES)
-      rotationContext = rotationContextFor(puz, rotation, true);
+      rotationContext = rotationContextFor(puz, settings.rotation, true);
 
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
-      numThreads,
+      settings,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       },
       std::move(rotationContext)
     );
-    if (threadBudgetEnabled() && !disasm_pool->isInline()) {
+    if (settings.threadBudget && !disasm_pool->isInline()) {
       threadBudget_ = std::make_unique<ThreadBudget>(disasm_pool->threadCount());
       disasm_pool->setBudget(threadBudget_.get());
     }

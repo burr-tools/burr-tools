@@ -264,19 +264,20 @@ private:
    * ~K per split regardless of column breadth, while keeping refinement
    * fine enough for load balance. A column with at most K rows yields one
    * task per row. K is kSplitFanout
-   * unless BURRTOOLS_SPLIT_FANOUT overrides it (see split_fanout.h); read
-   * at the start of every parallel run, before any worker exists.
+   * unless the settings' splitFanout (BURRTOOLS_SPLIT_FANOUT) replaces it
+   * (see split_fanout.h); taken at the start of every parallel run, before
+   * any worker exists.
    */
   static constexpr unsigned int kSplitFanout = SplitFanout::kDefault;
   unsigned int splitFanout = kSplitFanout;
-  // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
-  // (A/B toggle, see split_fanout.h); read with splitFanout
+  // split children queue depth-first unless the settings' splitBreadthFirst
+  // (A/B toggle, see split_fanout.h); set with splitFanout
   bool splitBreadthFirst = false;
   // donation (split on demand, DLX and SIMD workers): a running task hands
   // the untried part of its shallowest open level to the pool when a
-  // sibling waits (see assemblerWorker_c::donate). On unless
-  // BURRTOOLS_NO_DONATE; donateEvery forces a donation every N nodes
-  // (tests). Both read once per run (see split_fanout.h).
+  // sibling waits (see assemblerWorker_c::donate). On unless the
+  // settings' donate is off; donateEvery forces a donation every N nodes
+  // (tests). Both fixed per run from the settings (see split_fanout.h).
   bool donate = true;
   unsigned long donateEvery = 0;
   // donations made since construction (diagnostics and tests)
@@ -463,7 +464,7 @@ protected:
 
 public:
 
-  assembler_0_c(const problem_c & problem);
+  assembler_0_c(const problem_c & problem, const solverSettings_t & settings);
   ~assembler_0_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
@@ -476,12 +477,6 @@ public:
    * (split on demand); diagnostics only. */
   unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
-  /* clamped: the count reaches std::thread creation directly, and an
-   * unvalidated value from the CLI or the python binding would otherwise
-   * try to spawn until std::system_error or the OOM killer
-   */
-  void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
-  unsigned int getNumThreads(void) const override { return numThreads; }
   unsigned int getRunThreads(void) const override;
   errState setPosition(const char * string, const char * version) override;
   void save(xmlWriter_c & xml) const override;

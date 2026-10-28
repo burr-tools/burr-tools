@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "test_helpers.h"
 #include "lib/disassemblernode.h"
 #include "lib/disassemblerhashes.h"
 
@@ -415,11 +416,11 @@ const separation_c & cubeInCageSeparation() {
     REQUIRE(gt != nullptr);
     REQUIRE((gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE));
 
-    std::unique_ptr<assembler_c> assm(gt->findAssembler(*problem));
+    std::unique_ptr<assembler_c> assm(gt->findAssembler(*problem, bttest::settings()));
     REQUIRE(assm != nullptr);
     REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
-    disassembler_0_c disasm(*problem);
+    disassembler_0_c disasm(*problem, bttest::settings());
 
     struct StopAtFirstSolution : public assembler_cb {
       disassembler_0_c * disasm;
@@ -1063,40 +1064,7 @@ MoQuery queryFromSolution(const problem_c & problem, unsigned int p1, unsigned i
   };
 }
 
-#ifdef _WIN32
-#include <stdlib.h>
-void set_env_var(const char * name, const char * value) {
-  if (value) _putenv_s(name, value);
-  else _putenv_s(name, "");
-}
-#else
-#include <cstdlib>
-void set_env_var(const char * name, const char * value) {
-  if (value) setenv(name, value, 1);
-  else unsetenv(name);
-}
-#endif
-
-struct ScopedEnv {
-  std::string name;
-  bool hadValue;
-  std::string oldValue;
-
-  ScopedEnv(const char * var, const char * val) : name(var) {
-    const char * existing = std::getenv(var);
-    if (existing) {
-      hadValue = true;
-      oldValue = existing;
-    } else {
-      hadValue = false;
-    }
-    set_env_var(var, val);
-  }
-
-  ~ScopedEnv() {
-    set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
-  }
-};
+using bttest::ScopedSettings;
 
 } // namespace
 
@@ -1402,7 +1370,7 @@ TEST_CASE("movement analysator: stats count the move search", "[disasm][movement
       pieces.push_back(j);
   REQUIRE(pieces.size() > 1);
 
-  movementAnalysator_c analys(problem);
+  movementAnalysator_c analys(problem, bttest::settings());
 
   CHECK(analys.getStats().checkCalls == 0);
   CHECK(analys.getStats().checkSuccess == 0);
@@ -1451,7 +1419,7 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
       pieces.push_back(j);
   REQUIRE(pieces.size() > 1);
 
-  movementAnalysator_c analysA(problem);
+  movementAnalysator_c analysA(problem, bttest::settings());
   analysA.init_find(&root, pieces);
 
   disassemblerNode_c * child = nullptr;
@@ -1474,7 +1442,7 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
   }
 
   // Now run child on fresh analysB (full path from scratch)
-  movementAnalysator_c analysB(problem);
+  movementAnalysator_c analysB(problem, bttest::settings());
   analysB.init_find(child, pieces);
   std::vector<disassemblerNode_c *> successorsB;
   while (disassemblerNode_c * n = analysB.find()) {
@@ -1507,10 +1475,10 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
     delete child;
 }
 
-TEST_CASE("movement analysator: differential comparison with and without BURRTOOLS_NO_DISASM_SIMD on 9-piece Prisgon", "[disasm][movement][simd]") {
+TEST_CASE("movement analysator: differential comparison with and without BURRTOOLS_DISASM_VECTOR on 9-piece Prisgon", "[disasm][movement][simd]") {
   /* Prisgon problem 0 has 9 pieces. With n = 9, the Roy-Floyd-Warshall
      closure in movementanalysator.cpp exercises the AVX2 vector loop (x + 8 <= n).
-     Verify that running with SIMD enabled and with BURRTOOLS_NO_DISASM_SIMD=1
+     Verify that running with SIMD enabled and with BURRTOOLS_DISASM_VECTOR=0
      produces identical successor node sets. */
   problem_c & problem = prisgonProblem();
   REQUIRE(problem.getNumberOfSavedSolutions() > 0);
@@ -1527,8 +1495,9 @@ TEST_CASE("movement analysator: differential comparison with and without BURRTOO
 
   std::vector<disassemblerNode_c *> simdNodes;
   {
-    ScopedEnv env("BURRTOOLS_NO_DISASM_SIMD", nullptr);
-    movementAnalysator_c analysSimd(problem);
+    ScopedSettings env;
+    env->disassemblerVector = true;
+    movementAnalysator_c analysSimd(problem, bttest::settings());
     analysSimd.init_find(&root, pieces);
     while (disassemblerNode_c * n = analysSimd.find()) {
       simdNodes.push_back(n);
@@ -1537,8 +1506,9 @@ TEST_CASE("movement analysator: differential comparison with and without BURRTOO
 
   std::vector<disassemblerNode_c *> scalarNodes;
   {
-    ScopedEnv env("BURRTOOLS_NO_DISASM_SIMD", "1");
-    movementAnalysator_c analysScalar(problem);
+    ScopedSettings env;
+    env->disassemblerVector = false;
+    movementAnalysator_c analysScalar(problem, bttest::settings());
     analysScalar.init_find(&root, pieces);
     while (disassemblerNode_c * n = analysScalar.find()) {
       scalarNodes.push_back(n);
