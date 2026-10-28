@@ -48,6 +48,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
 
   /* settings of its own, so tables other tests keep alive do not interfere */
   const rotationSettings_t settings = { { 0.07, 0 }, {} };
+  releaseRotationTables();
 
   auto a = sharedRotationTables(settings, 3);
   REQUIRE(a != nullptr);
@@ -65,10 +66,41 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
   auto d = sharedRotationTables({ { 0.05, 0 }, {} }, 3);
   CHECK(d != a);
 
-  /* the cache does not keep tables alive: no singleton lifetime */
+  /* c serves everything a did, so a is not kept */
   std::weak_ptr<const rotationGeometry::rotationTables_c> watch = a;
   a.reset();
   b.reset();
+  CHECK(watch.expired());
+
+  /* the two most recent sets (d, c) outlive their users until released */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watchC = c, watchD = d;
+  c.reset();
+  d.reset();
+  CHECK_FALSE(watchC.expired());
+  CHECK_FALSE(watchD.expired());
+  releaseRotationTables();
+  CHECK(watchC.expired());
+  CHECK(watchD.expired());
+}
+
+TEST_CASE("the most recently used rotation tables are kept for the next solve", "[rotations]") {
+
+  const rotationSettings_t first = { { 0.071, 0 }, {} }, second = { { 0.072, 0 }, {} }, third = { { 0.073, 0 }, {} };
+  releaseRotationTables();
+
+  /* one design after another: the second request is served by the kept set */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watch = sharedRotationTables(first, 2);
+  REQUIRE_FALSE(watch.expired());
+  CHECK(sharedRotationTables(first, 2) == watch.lock());
+
+  /* a third set of settings pushes out the least recently used one */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watchSecond = sharedRotationTables(second, 2);
+  CHECK(sharedRotationTables(first, 2) == watch.lock());   // first is now the most recent
+  sharedRotationTables(third, 2);
+  CHECK_FALSE(watch.expired());
+  CHECK(watchSecond.expired());
+
+  releaseRotationTables();
   CHECK(watch.expired());
 }
 

@@ -68,6 +68,11 @@ bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
   return a.model.play == b.model.play && a.model.chamfer == b.model.chamfer && a.amounts == b.amounts;
 }
 
+/* Tables kept alive after their last solver is done, most recent first:
+ * solving one design after another (GUI, Python) then builds them once.
+ * Two, so that a solve with the planner keeps both of its sets. */
+constexpr size_t KEPT_TABLES = 2;
+
 typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_t;
 
 /* The tables shared between solvers, and the background builds no context
@@ -79,6 +84,7 @@ typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_
 struct shared_t {
   std::mutex mutex;
   std::vector<cacheEntry_t> cache;
+  std::vector<std::shared_ptr<const rotationTables_c>> kept;
   std::mutex parkedMutex;
   std::vector<tableFuture_t> parked;
 };
@@ -97,12 +103,22 @@ void park(tableFuture_t f) {
   s.parked.push_back(std::move(f));
 }
 
+/* with shared().mutex held */
+void keep(const std::shared_ptr<const rotationTables_c> & tables) {
+  std::vector<std::shared_ptr<const rotationTables_c>> & kept = shared().kept;
+  std::erase(kept, tables);
+  kept.insert(kept.begin(), tables);
+  if (kept.size() > KEPT_TABLES)
+    kept.pop_back();
+}
+
 }
 
 std::shared_ptr<const rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius) {
 
   std::vector<cacheEntry_t> & cache = shared().cache;
+  std::vector<std::shared_ptr<const rotationTables_c>> & kept = shared().kept;
 
   /* Building under the lock keeps two solvers from building the same
    * tables twice; requests for other settings wait, which is rare. */
@@ -112,12 +128,28 @@ sharedRotationTables(const rotationSettings_t & settings, int radius) {
 
   for (const cacheEntry_t & e : cache)
     if (e.radius >= radius && sameSettings(e.settings, settings))
-      if (auto tables = e.tables.lock())
+      if (auto tables = e.tables.lock()) {
+        keep(tables);
         return tables;
+      }
 
   auto tables = std::make_shared<const rotationTables_c>(settings.model, radius, settings.amounts);
+
+  /* the new tables serve every request smaller ones of the same settings
+   * did, so those need not be kept */
+  for (const cacheEntry_t & e : cache)
+    if (sameSettings(e.settings, settings))
+      if (auto smaller = e.tables.lock())
+        std::erase(kept, smaller);
+
   cache.push_back({ settings, radius, tables });
+  keep(tables);
   return tables;
+}
+
+void releaseRotationTables(void) {
+  std::lock_guard<std::mutex> lock(shared().mutex);
+  shared().kept.clear();
 }
 
 std::shared_ptr<const rotationTables_c>
@@ -133,6 +165,7 @@ rotationContext_c::rotationContext_c(const problem_c & p, const rotationSettings
                                      std::shared_future<std::shared_ptr<const rotationTables_c>> tables,
                                      std::shared_future<std::shared_ptr<const rotationTables_c>> relaxed) :
   problem(p),
+  problemRadius(rotationRadiusFor(p)),
   settings(s),
   tableFuture(std::move(tables)),
   relaxedFuture(std::move(relaxed))
