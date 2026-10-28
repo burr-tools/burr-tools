@@ -192,19 +192,43 @@ namespace rotationGeometry {
     PATH_PURE,    ///< plain quarter turn about the pivot
     PATH_WIGGLE,  ///< quarter turn with an offset amount·(cos θ + sin θ - 1)/(√2 - 1) along a direction
     PATH_SLIDE,   ///< shift by amount along a direction, quarter turn, shift back
-    PATH_PLANNED  ///< any polyline, found by planTurn for one scene
+    PATH_PLANNED, ///< any polyline, found by planTurn for one scene
+    PATH_RAMP     ///< shift out linearly until holdFrom degrees, hold until holdTo, back by 90
   };
+
+  /** In-plane shift directions, in sixteenths of a full turn counter-
+   *  clockwise from +u: even ones are the 8 compass directions. */
+  constexpr int DIRECTIONS = 16;
 
   /** Names one path of a family; the path follows from it, see makePath. */
   struct pathSpec_t {
     pathKind_e kind = PATH_PURE;
     unsigned int sense = 0;   ///< 0 = +90°, 1 = -90°, as in quarterTurn
-    int dirU = 0, dirV = 0;   ///< one of the 8 compass directions, in-plane, unused for PATH_PURE
+    int dir = 0;              ///< shift direction, 0 to DIRECTIONS - 1, unused for PATH_PURE
     double amount = 0;        ///< shift distance in cells, unused for PATH_PURE
     /** the waypoints of a PATH_PLANNED path, from the identity pose to the
      *  quarter turn of sense */
     std::vector<pose_t> waypoints = {};
+    /** PATH_RAMP: the shift is reached at holdFrom and held until holdTo
+     *  (degrees turned, 0 < holdFrom <= holdTo < 90) */
+    int holdFrom = 0, holdTo = 0;
   };
+
+  /** The unit vector of a shift direction (exact for the compass ones). */
+  void directionVector(int dir, double * u, double * v);
+
+  /** The compass family of fixed paths, ordered by how much a move
+   *  disturbs: the pure turn, then per amount (ascending) the 8 wiggles and
+   *  the 8 slides; +90° only, rotationTables_c adds the mirrored -90°. */
+  std::vector<pathSpec_t> compassFamily(const std::vector<double> & amounts);
+
+  /** The paths the 16-direction family adds to compassFamily(compass) for
+   *  the amounts `wide`: wiggles and slides in every direction the compass
+   *  family lacks, and ramps out by 15° and held to 45°, out by 45° and held
+   *  to 75° (its reverse), and the tent (out by 45° and straight back), per
+   *  amount in all 16 directions. See design/2026-10-19-rotation-moves.md,
+   *  "The motions" and "Corpus results". */
+  std::vector<pathSpec_t> wideExtension(const std::vector<double> & compass, const std::vector<double> & wide);
 
   /** The waypoints of a path. Wiggles are polylines of WIGGLE_SEGMENTS
    *  segments; the polyline, not the smooth profile, is the motion that is
@@ -255,7 +279,8 @@ namespace rotationGeometry {
    * grid of planSettings_t, shortcut, and its clearance certified on the
    * polyline itself (planarScene_c::minClearance). The play the turn needs
    * is at most model play - clearance; with `upper`, at least model play -
-   * upper (for shifts up to maxShift). See design/2026-10-19-rotation-moves.md.
+   * upper (for shifts up to maxShift). See design/2026-10-19-rotation-moves.md,
+   * "The planner" and "The play a puzzle needs".
    *
    * The grid maps onto itself when the turn is seen from its end, so the
    * reverse turn meets the same cells.
@@ -352,14 +377,6 @@ namespace rotationGeometry {
       friend class rotationTables_c;
   };
 
-  /**
-   * The family of fixed rotation paths a rotation move may use, one
-   * pathTable_c each, ordered by how much the move disturbs: the pure turn
-   * first, then per amount (ascending) the 8 wiggles and the 8 slides.
-   *
-   * Only the +90° tables for the directions (1,0) and (1,1) are computed
-   * with the checker, all others are turned and mirrored copies.
-   */
   /** The cells occupied by static cubes, as a dense bitmap over their
    *  bounding box: built once per group of turning pieces and then queried
    *  for every pivot, axis, sense and path. */
@@ -381,11 +398,21 @@ namespace rotationGeometry {
       std::vector<bool> bits;
   };
 
+  /**
+   * The family of fixed rotation paths a rotation move may use, one
+   * pathTable_c each, in the family's order (firstClear returns the first
+   * clear one, which a move records).
+   *
+   * Only the +90° tables for directions 0 to 3 (sixteenths) are computed
+   * with the checker, all others are turned and mirrored copies.
+   */
   class rotationTables_c {
 
     public:
 
-      rotationTables_c(const model_t & model, int radius, const std::vector<double> & amounts);
+      /** The tables of a family of +90° paths, in its order; the -90°
+       *  paths are their mirror images. */
+      rotationTables_c(const model_t & model, int radius, const std::vector<pathSpec_t> & family);
 
       int getRadius(void) const { return radius; }
 

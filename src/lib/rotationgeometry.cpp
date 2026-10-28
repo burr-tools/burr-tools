@@ -390,15 +390,28 @@ path_t makePath(const pathSpec_t & spec) {
     return spec.waypoints;
   }
 
-  if ((spec.dirU == 0 && spec.dirV == 0) || std::abs(spec.dirU) > 1 || std::abs(spec.dirV) > 1 || !(spec.amount > 0))
-    bt_te("makePath: shifts need a compass direction and a positive amount");
+  if (spec.dir < 0 || spec.dir >= DIRECTIONS || !(spec.amount > 0))
+    bt_te("makePath: shifts need a direction and a positive amount");
 
-  const double len = std::hypot((double)spec.dirU, (double)spec.dirV);
-  const double su = spec.amount * spec.dirU / len;
-  const double sv = spec.amount * spec.dirV / len;
+  double su, sv;
+  directionVector(spec.dir, &su, &sv);
+  su *= spec.amount;
+  sv *= spec.amount;
 
   if (spec.kind == PATH_SLIDE)
     return { { 0, 0, 0 }, { 0, su, sv }, { end, su, sv }, { end, 0, 0 } };
+
+  if (spec.kind == PATH_RAMP) {
+    if (spec.holdFrom <= 0 || spec.holdTo < spec.holdFrom || spec.holdTo >= 90)
+      bt_te("makePath: a ramp needs 0 < holdFrom <= holdTo < 90");
+    /* reversed (reversePath), out by a and held to b is out by 90 - b and
+     * held to 90 - a, in the other sense: families hold both */
+    path_t path = { { 0, 0, 0 }, { end * spec.holdFrom / 90, su, sv } };
+    if (spec.holdTo > spec.holdFrom)
+      path.push_back({ end * spec.holdTo / 90, su, sv });
+    path.push_back({ end, 0, 0 });
+    return path;
+  }
 
   /* The shift follows the bulge of a square turning about its centre: its
    * extent along an axis grows by cos θ + sin θ - 1 (in half sides), 0 at
@@ -417,6 +430,46 @@ path_t makePath(const pathSpec_t & spec) {
   /* exactly back on the lattice, cos(π/2) is not quite 0 */
   path.back() = { end, 0, 0 };
   return path;
+}
+
+void directionVector(int dir, double * u, double * v) {
+  bt_assert(dir >= 0 && dir < DIRECTIONS);
+  /* the compass directions as before 16 directions, (1, 1) / √2 and not
+   * cos 45°, which may differ in the last bit */
+  static const int compass[8][2] = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 } };
+  if (dir % 2 == 0) {
+    const double len = std::hypot((double)compass[dir / 2][0], (double)compass[dir / 2][1]);
+    *u = compass[dir / 2][0] / len;
+    *v = compass[dir / 2][1] / len;
+  } else {
+    const double a = 2 * std::numbers::pi * dir / DIRECTIONS;
+    *u = std::cos(a);
+    *v = std::sin(a);
+  }
+}
+
+std::vector<pathSpec_t> compassFamily(const std::vector<double> & amounts) {
+  std::vector<pathSpec_t> family = { { PATH_PURE, 0, 0, 0 } };
+  for (double amount : amounts)
+    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE })
+      for (int dir = 0; dir < DIRECTIONS; dir += 2)
+        family.push_back({ kind, 0, dir, amount });
+  return family;
+}
+
+std::vector<pathSpec_t> wideExtension(const std::vector<double> & compass, const std::vector<double> & wide) {
+  std::vector<pathSpec_t> family;
+  for (double amount : wide) {
+    const bool inCompass = std::find(compass.begin(), compass.end(), amount) != compass.end();
+    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE })
+      for (int dir = 0; dir < DIRECTIONS; dir++)
+        if (!inCompass || dir % 2)
+          family.push_back({ kind, 0, dir, amount });
+    for (auto [from, to] : { std::pair{ 45, 45 }, std::pair{ 15, 45 }, std::pair{ 45, 75 } })
+      for (int dir = 0; dir < DIRECTIONS; dir++)
+        family.push_back({ PATH_RAMP, 0, dir, amount, {}, from, to });
+  }
+  return family;
 }
 
 pose_t poseAt(const path_t & path, double t) {
@@ -1012,8 +1065,7 @@ bool pathTable_c::blocked(const std::vector<cell_t> & moving, const std::vector<
 pathTable_c pathTable_c::turned(void) const {
 
   pathSpec_t s = spec;
-  s.dirU = -spec.dirV;
-  s.dirV = spec.dirU;
+  s.dir = (spec.dir + DIRECTIONS / 4) % DIRECTIONS;
 
   pathTable_c t(radius, s);
   for (int du = -2 * radius; du <= 2 * radius; du++)
@@ -1027,7 +1079,7 @@ pathTable_c pathTable_c::mirrored(void) const {
 
   pathSpec_t s = spec;
   s.sense = 1 - spec.sense;
-  s.dirV = -spec.dirV;
+  s.dir = (DIRECTIONS - spec.dir) % DIRECTIONS;
 
   pathTable_c t(radius, s);
   for (int du = -2 * radius; du <= 2 * radius; du++)
@@ -1037,18 +1089,35 @@ pathTable_c pathTable_c::mirrored(void) const {
   return t;
 }
 
-rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<double> & amounts) :
+rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<pathSpec_t> & family) :
   radius(r)
 {
-  /* the tables computed with the checker: the pure turn and, per amount
-   * and kind, directions (1,0) and (1,1); they are independent, so they
-   * are built in parallel */
-  std::vector<pathSpec_t> specs = { { PATH_PURE, 0, 0, 0, 0 } };
-  for (double amount : amounts)
-    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE }) {
-      specs.push_back({ kind, 0, 1, 0, amount });
-      specs.push_back({ kind, 0, 1, 1, amount });
-    }
+  /* the tables computed with the checker: each path's direction reduced
+   * to the first quarter (0 to 3), once per distinct path; they are
+   * independent, so they are built in parallel. The others are turned
+   * copies: turning the whole scene about the pivot commutes with the
+   * motion. */
+  auto baseOf = [](pathSpec_t s) {
+    if (s.kind != PATH_PURE)
+      s.dir %= DIRECTIONS / 4;
+    return s;
+  };
+  auto sameSpec = [](const pathSpec_t & a, const pathSpec_t & b) {
+    return a.kind == b.kind && a.dir == b.dir && a.amount == b.amount && a.holdFrom == b.holdFrom && a.holdTo == b.holdTo;
+  };
+  std::vector<pathSpec_t> specs;
+  std::vector<size_t> baseIndex;
+  for (const pathSpec_t & s : family) {
+    if (s.sense != 0 || s.kind == PATH_PLANNED)
+      bt_te("rotationTables_c: a family holds fixed +90° paths");
+    const pathSpec_t b = baseOf(s);
+    size_t i = 0;
+    while (i < specs.size() && !sameSpec(specs[i], b))
+      i++;
+    if (i == specs.size())
+      specs.push_back(b);
+    baseIndex.push_back(i);
+  }
 
   std::vector<std::optional<pathTable_c>> built(specs.size());
   {
@@ -1064,22 +1133,13 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
     work();
   }
 
-  tables[0].push_back(std::move(*built[0]));
-
-  size_t base = 1;
-  for (size_t a = 0; a < amounts.size(); a++)
-    for (int kind = 0; kind < 2; kind++, base += 2) {
-      /* the 8 compass directions counter-clockwise from (1,0) alternate
-       * between turned copies of (1,0) and of (1,1) */
-      pathTable_c axisDir = std::move(*built[base]);
-      pathTable_c diagonal = std::move(*built[base + 1]);
-      for (int k = 0; k < 4; k++) {
-        tables[0].push_back(axisDir);
-        tables[0].push_back(diagonal);
-        axisDir = axisDir.turned();
-        diagonal = diagonal.turned();
-      }
-    }
+  for (size_t i = 0; i < family.size(); i++) {
+    pathTable_c t = *built[baseIndex[i]];
+    if (family[i].kind != PATH_PURE)
+      for (int k = 0; k < family[i].dir / (DIRECTIONS / 4); k++)
+        t = t.turned();
+    tables[0].push_back(std::move(t));
+  }
 
   for (const pathTable_c & t : tables[0])
     tables[1].push_back(t.mirrored());
@@ -1234,10 +1294,10 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occup
    * is the first clear one */
   const size_t n = tables[sense].size();
   const uint64_t lastWord = (n % 64) ? (uint64_t(1) << (n % 64)) - 1 : ~uint64_t(0);
-  uint64_t local[8];
+  uint64_t local[16];
   std::vector<uint64_t> heap;
   uint64_t * blocked = local;
-  if (words > 8) {
+  if (words > 16) {
     heap.assign(words, 0);
     blocked = heap.data();
   } else

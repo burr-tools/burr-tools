@@ -37,12 +37,62 @@
 #include <numbers>
 #include <map>
 #include <mutex>
+#include <string>
 #include <tuple>
 
 using rotationGeometry::rotationTables_c;
 
+std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings) {
+  std::vector<rotationGeometry::pathSpec_t> family = rotationGeometry::compassFamily(settings.amounts);
+  for (rotationGeometry::pathSpec_t & s : rotationGeometry::wideExtension(settings.amounts, settings.wideAmounts))
+    family.push_back(std::move(s));
+  return family;
+}
+
+rotationSettings_t rotationConfig_t::resolve(void) const {
+
+  auto fromEnv = [](const char * name) -> std::optional<std::string> {
+    const char * v = std::getenv(name);
+    if (!v || !*v)
+      return std::nullopt;
+    return std::string(v);
+  };
+
+  /* each field: explicit, else the environment, else the default */
+  rotationFamily_e fam = ROTATION_FAMILY_COMPASS;
+  if (family)
+    fam = *family;
+  else if (auto v = fromEnv("BURRTOOLS_ROT_FAMILY")) {
+    if (*v == "compass")
+      fam = ROTATION_FAMILY_COMPASS;
+    else if (*v == "wide")
+      fam = ROTATION_FAMILY_WIDE;
+    else
+      bt_te("BURRTOOLS_ROT_FAMILY must be compass or wide");
+  }
+
+  bool plan = false;
+  if (planner)
+    plan = *planner;
+  else if (auto v = fromEnv("BURRTOOLS_ROT_PLANNER")) {
+    if (*v != "0" && *v != "1")
+      bt_te("BURRTOOLS_ROT_PLANNER must be 0 or 1");
+    plan = (*v == "1");
+  }
+
+  rotationSettings_t s;
+  s.model = model ? *model : rotationGeometry::model_t{ 0.081, 0 };
+  s.amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
+  if (fam == ROTATION_FAMILY_WIDE)
+    s.wideAmounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+  s.planner = plan;
+  if (slack)
+    s.slack = *slack;
+  return s;
+}
+
 rotationSettings_t defaultRotationSettings(void) {
-  return { { 0.081, 0 }, { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 } };
+  return rotationConfig_t{}.resolve();
 }
 
 int rotationRadiusFor(const problem_c & problem) {
@@ -64,7 +114,8 @@ struct cacheEntry_t {
 };
 
 bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
-  return a.model.play == b.model.play && a.model.chamfer == b.model.chamfer && a.amounts == b.amounts;
+  return a.model.play == b.model.play && a.model.chamfer == b.model.chamfer &&
+         a.amounts == b.amounts && a.wideAmounts == b.wideAmounts;
 }
 
 /* Tables kept alive after their last solver is done, most recent first:
@@ -101,7 +152,7 @@ sharedRotationTables(const rotationSettings_t & settings, int radius) {
         return tables;
       }
 
-  auto tables = std::make_shared<const rotationTables_c>(settings.model, radius, settings.amounts);
+  auto tables = std::make_shared<const rotationTables_c>(settings.model, radius, rotationFamily(settings));
 
   /* the new tables serve every request smaller ones of the same settings
    * did, so those need not be kept */
@@ -342,7 +393,7 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
     return tables().table(sense, index).getSpec();
   std::lock_guard<std::mutex> lock(planMutex);
   bt_assert(index - family < plannedPaths.size());
-  return { rotationGeometry::PATH_PLANNED, sense, 0, 0, 0, *plannedPaths[index - family] };
+  return { rotationGeometry::PATH_PLANNED, sense, 0, 0, *plannedPaths[index - family] };
 }
 
 std::shared_ptr<rotationContext_c>
@@ -360,9 +411,8 @@ rotationContextFor(const problem_c & problem, const rotationSettings_t & setting
     return ready.get_future().share();
   };
 
-  const bool planner = settings.planner && !getenv("BURRTOOLS_NO_ROT_PLANNER");
   std::shared_future<std::shared_ptr<const rotationTables_c>> relaxed;
-  if (planner) {
+  if (settings.planner) {
     rotationSettings_t r = settings;
     r.model.play += settings.slack;
     relaxed = tablesOf(r);
@@ -434,7 +484,7 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
       continue;   // keep the recorded path, it is certified at this play
 
     stateRotation_t nr = *r;
-    nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, 0, best.path };
+    nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, best.path };
     nr.inverse = false;
     st->setRotation(nr);
   }

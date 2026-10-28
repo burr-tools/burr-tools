@@ -52,7 +52,10 @@ bool printSolutions;
 bool quiet;
 bool rotationMoves;
 bool reportPlay;
-rotationSettings_t rotationSettings = defaultRotationSettings();
+/* what the command line chooses; resolved against the environment and the
+ * defaults once the arguments are read */
+rotationConfig_t rotationConfig;
+rotationSettings_t rotationSettings;
 
 std::unique_ptr<disassembler_c> d;
 
@@ -269,7 +272,7 @@ int main(int argv, char* args[]) {
       else if (strcmp(args[i], "-P") == 0)
         reportPlay = true;
       else if (strcmp(args[i], "-Q") == 0)
-        rotationSettings.planner = true;
+        rotationConfig.planner = true;
       else if (strcmp(args[i], "-M") == 0) {
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &minPlayLo, &minPlayHi, &rest) != 2 ||
@@ -279,7 +282,7 @@ int main(int argv, char* args[]) {
         }
         findMinPlay = true;
         /* the bisection is about the play a turn really needs */
-        rotationSettings.planner = true;
+        rotationConfig.planner = true;
         i++;
       }
       else if (strcmp(args[i], "-m") == 0) {
@@ -290,7 +293,7 @@ int main(int argv, char* args[]) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
-        rotationSettings.model = { play, chamfer };
+        rotationConfig.model = rotationGeometry::model_t{ play, chamfer };
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -355,6 +358,8 @@ int main(int argv, char* args[]) {
     usage();
     return 1;
   }
+
+  rotationSettings = rotationConfig.resolve();
 
   auto str = openGzFile(args[filenumber]);
   if (!str) {

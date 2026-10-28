@@ -194,7 +194,7 @@ TEST_CASE("a planned rotation path survives saving and loading exactly", "[rotat
   st.set(1, 1, 2, 3);
   st.setTrans(0, 0);
   st.setTrans(1, 5);
-  stateRotation_t r = { t.axis, 1, 3, { PATH_PLANNED, t.sense, 0, 0, 0, plan.path }, { 1 }, false };
+  stateRotation_t r = { t.axis, 1, 3, { PATH_PLANNED, t.sense, 0, 0, plan.path }, { 1 }, false };
   st.setRotation(r);
 
   std::ostringstream out;
@@ -218,6 +218,57 @@ TEST_CASE("a planned rotation path survives saving and loading exactly", "[rotat
     CHECK(p.waypoints[i].dv == plan.path[i].dv);
   }
   CHECK(makePath(p).size() == plan.path.size());
+}
+
+TEST_CASE("fixed rotation paths of every kind survive saving and loading", "[rotations]") {
+
+  auto roundTrip = [](const pathSpec_t & spec) {
+    state_c st(2);
+    st.set(0, 0, 0, 0);
+    st.set(1, 1, 2, 3);
+    st.setRotation({ 2, 1, 3, spec, { 1 }, false });
+    std::ostringstream out;
+    {
+      xmlWriter_c xml(out);
+      st.save(xml, 2);
+    }
+    std::istringstream in(out.str());
+    xmlParser_c pars(in);
+    pars.nextTag();
+    state_c loaded(pars, 2);
+    REQUIRE(loaded.getRotation() != nullptr);
+    return loaded.getRotation()->path;
+  };
+
+  for (const pathSpec_t & spec : { pathSpec_t{ PATH_PURE, 1, 0, 0 }, pathSpec_t{ PATH_WIGGLE, 0, 3, 0.25 },
+                                   pathSpec_t{ PATH_SLIDE, 1, 14, 0.5 }, pathSpec_t{ PATH_RAMP, 0, 9, 0.55, {}, 45, 75 } }) {
+    const pathSpec_t p = roundTrip(spec);
+    INFO("kind " << spec.kind);
+    CHECK(p.kind == spec.kind);
+    CHECK(p.sense == spec.sense);
+    if (spec.kind != PATH_PURE) {
+      CHECK(p.dir == spec.dir);
+      CHECK(p.amount == spec.amount);
+      CHECK(p.holdFrom == spec.holdFrom);
+      CHECK(p.holdTo == spec.holdTo);
+    }
+  }
+
+  /* a ramp that does not ramp is rejected on loading, the same one with
+   * its hold in order is not */
+  auto load = [](int from, int to) {
+    std::ostringstream xml;
+    xml << "<state><dx>0 1</dx><dy>0 2</dy><dz>0 3</dz>"
+        << "<rotation axis=\"2\" pu=\"1\" pv=\"3\" path=\"ramp\" sense=\"0\" pieces=\"1\" "
+        << "dir=\"1\" amount=\"0.2\" from=\"" << from << "\" to=\"" << to << "\"/></state>";
+    std::istringstream in(xml.str());
+    xmlParser_c pars(in);
+    pars.nextTag();
+    state_c st(pars, 2);
+  };
+  CHECK_NOTHROW(load(30, 60));
+  CHECK_THROWS(load(60, 30));
+  CHECK_THROWS(load(0, 30));
 }
 
 TEST_CASE("a state with a truncated path or an impossible orientation is rejected on loading", "[rotations]") {
