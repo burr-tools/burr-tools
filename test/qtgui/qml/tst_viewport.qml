@@ -237,7 +237,12 @@ TestCase {
         verify(App.editor.editMode)
         App.editor.tool = EditorController.Erase
         compare(edit.badge, "3")
-        compare(edit.glyphName, "edit-tool-erase")
+        verify(edit.glyphSource.toString().startsWith("image://editglyph/2?"))       // Erase's drawing
+        // a palette colour drawn: the icon's badge or drop takes it, as the cursor does
+        App.colours.addColour()
+        App.colours.select(1)
+        verify(edit.glyphSource.toString().indexOf("color=" + App.colours.drawRgb.toString().slice(1)) > 0)
+        App.colours.select(0)
         // a quick tool held over the view looks as Edit mode does (product
         // decision 2026-10-27): lit, no outline of its own
         App.editor.editMode = false

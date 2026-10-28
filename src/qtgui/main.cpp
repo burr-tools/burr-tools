@@ -347,6 +347,7 @@ int main(int argc, char ** argv) {
 
   QQmlApplicationEngine engine;
   engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+  engine.addImageProvider(QStringLiteral("editglyph"), new EditGlyphProvider);
   QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &qapp,
                    [] { QCoreApplication::exit(2); }, Qt::QueuedConnection);
   // --gallery: the component gallery (every primitive in every state)

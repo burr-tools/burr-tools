@@ -27,6 +27,7 @@ private slots:
   void layerDotsFollowTheVoxels();
   void editsThatChangeNoGeometryKeepTheMesh();
   void theCursorsAreComposedPerToolColourAndTheme();
+  void theEditButtonShowsTheCursorsDrawing();
   void theGridHitsItsCellsAndPaintsTheirVoxels();
   void theGridPaintsAStrokeWithoutGaps();
   void a32By32GridRedrawsInTime();

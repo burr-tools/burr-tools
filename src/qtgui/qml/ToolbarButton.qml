@@ -8,7 +8,8 @@ import BurrTools.Ui
 AbstractButton {
     id: root
     property string iconName
-    property string glyphName        // a coloured glyph instead of a UI icon (the Edit button)
+    property string glyphName        // a coloured glyph instead of a UI icon
+    property url glyphSource         // an image instead (the Edit button: image://editglyph/...)
     property string caption
     property string tip
     property bool on: false
@@ -58,7 +59,7 @@ AbstractButton {
                 width: 22
                 height: 22
                 Icon {
-                    visible: root.glyphName.length === 0
+                    visible: root.glyphName.length === 0 && root.glyphSource.toString().length === 0
                     anchors.centerIn: parent
                     name: root.iconName
                     size: 20
@@ -69,6 +70,16 @@ AbstractButton {
                     anchors.centerIn: parent
                     name: root.glyphName
                     size: 22
+                }
+                Image {
+                    objectName: "glyphImage"
+                    visible: root.glyphSource.toString().length > 0
+                    anchors.centerIn: parent
+                    width: 22
+                    height: 22
+                    sourceSize: Qt.size(22, 22)
+                    source: root.glyphSource
+                    smooth: true
                 }
             }
             Text {

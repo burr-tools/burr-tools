@@ -26,6 +26,7 @@
 #include <QPixmap>
 #include <QSvgRenderer>
 
+#include <algorithm>
 #include <cmath>
 
 namespace editcursor {
@@ -100,6 +101,35 @@ namespace editcursor {
     p.end();
     c.image.setDevicePixelRatio(scale);
     return c;
+  }
+
+  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px) {
+    px = std::max(1, px);
+    // drawn large, then the box of what it draws taken and fitted
+    const Composed c = compose(tool, colour, dark, qreal(px) / 12.0);
+    const QImage & img = c.image;
+    int x0 = img.width(), y0 = img.height(), x1 = -1, y1 = -1;
+    for (int y = 0; y < img.height(); y++) {
+      const QRgb * row = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+      for (int x = 0; x < img.width(); x++)
+        if (qAlpha(row[x]) > 8) {
+          x0 = std::min(x0, x); x1 = std::max(x1, x);
+          y0 = std::min(y0, y); y1 = std::max(y1, y);
+        }
+    }
+    QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
+    out.fill(Qt::transparent);
+    if (x1 < x0)
+      return out;
+    const QRect box(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    const qreal k = qreal(px) / std::max(box.width(), box.height());
+    const QSizeF size(box.width() * k, box.height() * k);
+    QPainter p(&out);
+    p.setRenderHint(QPainter::SmoothPixmapTransform);
+    QImage part = img.copy(box);
+    part.setDevicePixelRatio(1);
+    p.drawImage(QRectF(QPointF((px - size.width()) / 2, (px - size.height()) / 2), size), part);
+    return out;
   }
 
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale) {
