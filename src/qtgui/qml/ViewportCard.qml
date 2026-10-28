@@ -25,6 +25,8 @@ import BurrTools.Ui
 //   │ ⑥ [Shift] click 1 fixed · [Alt] click 2 variable · …  │
 //   │   Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
 //   └───────────────────────────────────────────────────────┘
+//   ⑧ Minimal: the toolbar hidden, a handle where it is (density.md
+//     section 3); the pointer near the top, Tab, its menu or O P E F show it
 Rectangle {
     id: root
     objectName: "entities.viewport"
@@ -43,6 +45,71 @@ Rectangle {
         z: -2
         radius: root.radius
         color: Theme.canvas
+    }
+
+    // --- Minimal's auto-hiding toolbar (density.md section 3, AC-DEN-05) ---
+    readonly property bool autoHide: Theme.toolbarRevealZone > 0
+    // the pointer within the reveal zone of the top edge, held for the hide delay after it leaves
+    property bool pointerNear: false
+    // a mode key (O P E F) shows it a moment
+    property bool modeFlash: false
+    readonly property bool toolbarShown: !autoHide || pointerNear || modeFlash || toolbar.activeFocus
+                                         || toolbarHover.hovered || displayMenu.visible
+    // hide later: 700 ms after the pointer leaves the zone, 500 ms after it leaves the view
+    function pointerAway(leftView: bool) {
+        if (!pointerNear)
+            return
+        hideTimer.interval = leftView ? Theme.toolbarHideDelay - 200 : Theme.toolbarHideDelay
+        hideTimer.restart()
+    }
+    Timer { id: hideTimer; onTriggered: root.pointerNear = false }
+    Timer { id: flashTimer; interval: 1400; onTriggered: root.modeFlash = false }
+    /* The reveal zone along the top edge, over the canvas (which takes the
+     * hover events below it): a non-blocking HoverHandler, so the canvas
+     * still gets hover and presses. Left through the view's own edge, the
+     * pointer has left the view: the shorter delay. */
+    Item {
+        id: revealZone
+        objectName: "entities.viewport.revealZone"
+        anchors { left: parent.left; right: parent.right; top: parent.top }
+        height: Theme.toolbarRevealZone
+        visible: root.autoHide
+        z: 5
+        property point last
+        HoverHandler {
+            id: zoneHover
+            blocking: false
+            onPointChanged: if (hovered) revealZone.last = point.position
+            onHoveredChanged: {
+                if (hovered) {
+                    hideTimer.stop()
+                    root.pointerNear = true
+                } else {
+                    const p = revealZone.last
+                    root.pointerAway(p.y < 4 || p.x < 4 || p.x > revealZone.width - 4)
+                }
+            }
+        }
+    }
+    // a press in the view lets go of the toolbar's keyboard focus, so it can hide
+    PointHandler {
+        enabled: root.autoHide
+        onActiveChanged: if (active && toolbar.activeFocus && !toolbarHover.hovered) toolbar.focus = false
+    }
+    Connections {
+        target: App.commands
+        enabled: root.autoHide
+        function onToolbarModeUsed() {
+            root.modeFlash = true
+            flashTimer.restart()
+        }
+    }
+    // a density switch starts it afresh
+    onAutoHideChanged: {
+        pointerNear = false
+        modeFlash = false
+        hideTimer.stop()
+        flashTimer.stop()
     }
 
     readonly property bool entities: App.layout.workspace === LayoutController.Entities
@@ -87,6 +154,24 @@ Rectangle {
         radius: 10
         color: Theme.panel
         border.color: Theme.line
+        // hidden: faded out and up 10 dp (density.md section 3)
+        opacity: root.toolbarShown ? 1 : 0
+        transform: Translate {
+            y: root.toolbarShown ? 0 : -10
+            Behavior on y { NumberAnimation { duration: Theme.toolbarFade; easing.type: Easing.OutCubic } }
+        }
+        Behavior on opacity { NumberAnimation { duration: Theme.toolbarFade; easing.type: Easing.OutCubic } }
+        HoverHandler { id: toolbarHover }
+        // Esc lets go of it (Minimal), before the window's Esc ladder
+        Keys.onShortcutOverride: (event) => { if (root.autoHide && event.key === Qt.Key_Escape) event.accepted = true }
+        Keys.onEscapePressed: (event) => {
+            if (root.autoHide) {
+                toolbar.focus = false             // let it hide
+                event.accepted = true
+            } else {
+                event.accepted = false
+            }
+        }
 
         /* One roving Tab stop (overview/04 section 5): <- / -> move between
          * the shown buttons, Enter or Space presses the one ringed; the
@@ -211,6 +296,18 @@ Rectangle {
                 onClicked: App.layout.toggleFocus3d()
             }
         }
+    }
+
+    Rectangle { // ⑧
+        objectName: "entities.viewport.toolbar.handle"
+        anchors { top: parent.top; topMargin: 4; horizontalCenter: parent.horizontalCenter }
+        width: 40
+        height: 4
+        radius: 2
+        color: Theme.muted
+        opacity: root.toolbarShown ? 0 : 0.45
+        visible: root.autoHide
+        Behavior on opacity { NumberAnimation { duration: Theme.toolbarFade } }
     }
 
     VoxelViewport { // ①

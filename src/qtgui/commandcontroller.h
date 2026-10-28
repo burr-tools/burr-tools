@@ -146,6 +146,9 @@ signals:
   void stlExportRequested(void);
   void vectorExportRequested(void);
   void imageExportRequested(void);
+  /* a key of the 3D toolbar's modes ran (O, P, E, F): Minimal's auto-hiding
+   * toolbar shows a moment (density.md section 3) */
+  void toolbarModeUsed(void);
 
 private:
 

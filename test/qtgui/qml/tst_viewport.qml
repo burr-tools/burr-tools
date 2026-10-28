@@ -19,6 +19,7 @@ TestCase {
         App.layout.rightCollapsed = false
         App.viewport.navMode = "orbit"
         App.settings.showViewCube = true
+        App.settings.density = "standard"
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null)
         win.width = 1600
@@ -153,6 +154,69 @@ TestCase {
             m.close()
         }
         tryVerify(() => !win.modalOpen, 1000)
+    }
+
+    function test_minimalHidesTheToolbarUntilItIsWanted() {
+        // AC-DEN-05 (density.md section 3): in Minimal the toolbar is hidden
+        // -- faded, up 10 dp, a 40 x 4 handle in its place -- and shows for the
+        // pointer near the top, keyboard focus, its open menu and the mode
+        // keys; it hides 700 ms after the pointer leaves the zone. Standard
+        // always shows it.
+        activate()                                        // the puzzle's comment out of the way
+        const card = item("entities.viewport")
+        const toolbar = item("entities.viewport.toolbar")
+        const handle = item("entities.viewport.toolbar.handle")
+        verify(!card.autoHide)
+        compare(toolbar.opacity, 1)
+        verify(!handle.visible)
+        App.settings.density = "minimal"
+        compare(Theme.toolbarRevealZone, 72)
+        verify(card.autoHide)
+        mouseMove(card, card.width / 2, card.height / 2)
+        tryCompare(toolbar, "opacity", 0)
+        verify(handle.visible)
+        compare(handle.width, 40)
+
+        // the pointer near the top edge
+        mouseMove(card, card.width / 2, 60)
+        tryCompare(toolbar, "opacity", 1)
+        mouseMove(card, card.width / 2, card.height / 2)
+        wait(Theme.toolbarHideDelay / 2)
+        compare(toolbar.opacity, 1)                       // not before the delay
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // its menu open keeps it
+        mouseMove(card, card.width / 2, 60)
+        tryCompare(toolbar, "opacity", 1)
+        mouseClick(item("entities.viewport.toolbar.display"))
+        mouseMove(card, card.width / 2, card.height / 2)
+        wait(Theme.toolbarHideDelay + 300)
+        compare(toolbar.opacity, 1)
+        mouseClick(item("entities.viewport.toolbar.display"))   // the menu goes
+        // the open menu had the hover; the pointer's next move tells the zone it left
+        mouseMove(card, card.width / 2 + 10, card.height / 2)
+        verify(!item("entities.viewport.toolbar.display").on)
+        verify(!toolbar.activeFocus)                    // a click on a button pins nothing
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // keyboard focus, then Esc lets go of it
+        toolbar.forceActiveFocus(Qt.TabFocusReason)
+        verify(toolbar.activeFocus)
+        tryCompare(toolbar, "opacity", 1)
+        keyClick(Qt.Key_Escape)
+        verify(!toolbar.activeFocus)
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // a mode key shows it a moment
+        App.commands.trigger("view.pan")
+        tryCompare(toolbar, "opacity", 1)
+        tryCompare(toolbar, "opacity", 0, 3000)
+        App.viewport.navMode = "orbit"
+
+        // back to Standard: shown, no handle
+        App.settings.density = "standard"
+        tryCompare(toolbar, "opacity", 1)
+        verify(!handle.visible)
     }
 
     function test_theEditButtonAndEToggleEditMode() {
