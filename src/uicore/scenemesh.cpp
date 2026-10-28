@@ -301,6 +301,76 @@ namespace btui {
      * (voxel_c::getSTLMesh; it falls back to the flat mesh itself when a
      * mesher fails). False when even that is not to be had, and the caller
      * draws the voxels flat instead. */
+    /* Bricks' STL faces are merged across voxels -- a column's side is one
+     * face -- so a face would dim as a whole under Dim other layers. Cut at
+     * every cell boundary it crosses (bricks: whole units of the grid), each
+     * piece takes the cell it lies in: its centre, nudged inward from the
+     * face, rounded down. */
+    void splitAtCells(std::vector<MeshVertex> & tris, const voxel_c & shape) {
+      const int dims[3] = { int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+      using Poly = std::vector<MeshVertex>;
+      auto lerp = [](const MeshVertex & a, const MeshVertex & b, float t) {
+        MeshVertex m = a;
+        for (int k = 0; k < 3; k++)
+          m.pos[k] = a.pos[k] + (b.pos[k] - a.pos[k]) * t;
+        return m;
+      };
+      // the part of a convex polygon on one side of pos[axis] = at
+      auto clip = [&](const Poly & poly, int axis, float at, bool below) {
+        Poly out;
+        for (size_t i = 0; i < poly.size(); i++) {
+          const MeshVertex & a = poly[i], & b = poly[(i + 1) % poly.size()];
+          const float da = a.pos[axis] - at, db = b.pos[axis] - at;
+          const bool ina = below ? da <= 0 : da >= 0, inb = below ? db <= 0 : db >= 0;
+          if (ina)
+            out.push_back(a);
+          if (ina != inb && std::fabs(da - db) > 1e-9f)
+            out.push_back(lerp(a, b, da / (da - db)));
+        }
+        return out;
+      };
+      std::vector<Poly> polys;
+      for (size_t i = 0; i + 2 < tris.size(); i += 3)
+        polys.push_back({ tris[i], tris[i + 1], tris[i + 2] });
+      for (int axis = 0; axis < 3; axis++) {
+        std::vector<Poly> next;
+        for (Poly & poly : polys) {
+          float lo = 1e30f, hi = -1e30f;
+          for (const MeshVertex & v : poly) {
+            lo = std::min(lo, v.pos[axis]);
+            hi = std::max(hi, v.pos[axis]);
+          }
+          Poly rest = std::move(poly);
+          for (int k = int(std::floor(lo + 1e-4f)) + 1; float(k) < hi - 1e-4f; k++) {
+            Poly part = clip(rest, axis, float(k), true);
+            if (part.size() >= 3)
+              next.push_back(std::move(part));
+            rest = clip(rest, axis, float(k), false);
+          }
+          if (rest.size() >= 3)
+            next.push_back(std::move(rest));
+        }
+        polys = std::move(next);
+      }
+      tris.clear();
+      for (const Poly & poly : polys) {
+        Vec3 c{ 0, 0, 0 };
+        for (const MeshVertex & v : poly)
+          c += Vec3(v.pos[0], v.pos[1], v.pos[2]);
+        c = c * (1.0f / float(poly.size()));
+        const Vec3 n{ poly[0].normal[0], poly[0].normal[1], poly[0].normal[2] };
+        float cell[3];
+        for (int k = 0; k < 3; k++)
+          cell[k] = float(std::clamp(int(std::floor(c[k] - n[k] * 1e-3f)), 0, dims[k] - 1));
+        for (size_t i = 1; i + 1 < poly.size(); i++)
+          for (const MeshVertex * v : { &poly[0], &poly[i], &poly[i + 1] }) {
+            MeshVertex m = *v;
+            m.cell[0] = cell[0]; m.cell[1] = cell[1]; m.cell[2] = cell[2];
+            tris.push_back(m);
+          }
+      }
+    }
+
     bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
       bool filled = false;
       for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
@@ -312,6 +382,8 @@ namespace btui {
       if (!poly || poly->vBegin() == poly->vEnd())
         return false;
       out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
+      if (fixed.getGridType()->getType() == gridType_c::GT_BRICKS)
+        splitAtCells(out.opaque, fixed);
       return true;
     }
   }
