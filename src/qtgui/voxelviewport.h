@@ -47,6 +47,10 @@ class VoxelViewport : public QQuickRhiItem {
   QML_ELEMENT
 
   Q_PROPERTY(SceneController * controller READ controller WRITE setController NOTIFY controllerChanged FINAL)
+  /* QQuickItem's activeFocusOnTab, which Qt 6.8 does not let QML set on a
+   * type of ours ("not available in BurrTools.Ui 255.255": a property
+   * revision the module's types do not take up) */
+  Q_PROPERTY(bool tabStop READ activeFocusOnTab WRITE setActiveFocusOnTab NOTIFY activeFocusOnTabChanged FINAL)
 
 public:
 

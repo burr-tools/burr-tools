@@ -279,7 +279,8 @@ void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
   e->hover(1, 2);
   QVERIFY(e->preview().empty());              // Fixed over the same fixed voxel: no change
   changed.clear();
-  e->setModifiers(Qt::ControlModifier);
+  // the Erase quick tool: Ctrl, Option on macOS (Qt's Alt)
+  e->setModifiers(btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
   QVERIFY(changed.count() > 0);
   p = e->preview();
   QCOMPARE(p.size(), size_t(1));

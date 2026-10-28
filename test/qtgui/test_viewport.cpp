@@ -36,6 +36,7 @@
 #include "../../src/lib/gridtype.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/voxel.h"
+#include "../../src/uicore/commands.h"
 #include "../alloccount.h"
 
 #include <QCoreApplication>
@@ -764,7 +765,8 @@ void TestRender::hoveringTheGridDrawsTheGhost() {
   // Ctrl: Erase on the voxel below, in the danger colour
   e->setLayer(1);
   e->hover(1, 1);
-  e->setModifiers(Qt::ControlModifier);
+  // the Erase quick tool: Ctrl, Option on macOS (Qt's Alt; its Control is Command)
+  e->setModifiers(btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
   const QImage erased = t.render(v->frame(1));
   saveForInspection(erased, "ghost-erase");
   const QColor r = erased.pixelColor(c);

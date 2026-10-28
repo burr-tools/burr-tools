@@ -216,6 +216,14 @@ struct SceneRenderer::Impl {
 
   GrowBuffer overlayVbuf, lineVbuf;
   std::vector<LineVertex> lineVertices;          // rebuilt every frame, its storage kept
+  /* the mesh's own lines (the variable voxels' dashed edges), uploaded only
+   * when the mesh, the screen's ratio or the light model changes: thousands
+   * of them, a copy every frame would cost megabytes */
+  std::unique_ptr<QRhiBuffer> edgeVbuf;
+  quint32 edgeCount = 0;
+  bool edgesStale = true;
+  float edgeDpr = 0;
+  bool edgeLinear = false;
 
   void createShared(void);
   bool ensureSceneTarget(QSize size);
@@ -529,6 +537,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   if (f.meshRevision != d->meshRev || f.mesh != d->meshUploaded) {
     d->meshRev = f.meshRevision;
     d->meshUploaded = f.mesh;
+    d->edgesStale = true;
     d->opaqueCount = d->translucentCount = 0;
     d->meshVbuf.reset();
     if (f.mesh && !f.mesh->empty()) {
@@ -652,14 +661,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
                              f.ghostFaces.data());
   }
 
-  /* the frame's lines, then the mesh's own (the variable voxels' dashed
-   * edges), whose black was chosen for blending in sRGB: in linear light
-   * the same darkening takes more of it, as the face outline's strength */
-  std::vector<LineVertex> & lv = d->lineVertices;
-  lv.clear();
-  const size_t meshEdges = f.mesh && !f.xray ? f.mesh->edges.size() : 0;
-  lv.reserve((f.lines.size() + meshEdges + 2 * (f.ghostLines.size() + f.hintLines.size())) * 6);
-  auto addLine = [&](const btui::LineSeg & s, std::uint8_t alpha) {
+  auto addLine = [&](std::vector<LineVertex> & to, const btui::LineSeg & s, std::uint8_t alpha) {
     const float corners[6][2] = { { 0, -1 }, { 1, -1 }, { 1, 1 }, { 0, -1 }, { 1, 1 }, { 0, 1 } };
     for (const auto & c : corners) {
       LineVertex v;
@@ -672,28 +674,52 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
       v.style[1] = s.dashDp * f.devicePixelRatio;
       v.style[2] = s.gapDp * f.devicePixelRatio;
       v.style[3] = 0;
-      lv.push_back(v);
+      to.push_back(v);
     }
   };
-  for (const btui::LineSeg & s : f.lines)
-    addLine(s, s.color.a);
-  const quint32 frameLineCount = quint32(lv.size());
-  for (size_t i = 0; i < meshEdges; i++) {
-    const btui::LineSeg & s = f.mesh->edges[i];
-    const float a = s.color.a / 255.0f;
-    addLine(s, std::uint8_t(std::lround(255.0f * (d->linear ? 1.0f - std::pow(1.0f - a, 2.2f) : a))));
+
+  /* the mesh's own lines (the variable voxels' dashed edges), whose black
+   * was chosen for blending in sRGB: in linear light the same darkening
+   * takes more of it, as the face outline's strength */
+  if (d->edgesStale || d->edgeDpr != float(f.devicePixelRatio) || d->edgeLinear != d->linear) {
+    d->edgesStale = false;
+    d->edgeDpr = float(f.devicePixelRatio);
+    d->edgeLinear = d->linear;
+    d->edgeVbuf.reset();
+    d->edgeCount = 0;
+    if (f.mesh && !f.mesh->edges.empty()) {
+      std::vector<LineVertex> ev;
+      ev.reserve(f.mesh->edges.size() * 6);
+      for (const btui::LineSeg & s : f.mesh->edges) {
+        const float a = s.color.a / 255.0f;
+        addLine(ev, s, std::uint8_t(std::lround(255.0f * (d->linear ? 1.0f - std::pow(1.0f - a, 2.2f) : a))));
+      }
+      const quint32 bytes = quint32(ev.size() * sizeof(LineVertex));
+      d->edgeVbuf.reset(rhi->newBuffer(QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer, bytes));
+      d->edgeVbuf->create();
+      u->uploadStaticBuffer(d->edgeVbuf.get(), 0, bytes, ev.data());
+      d->edgeCount = quint32(ev.size());
+    }
   }
-  const quint32 edgeLineCount = quint32(lv.size()) - frameLineCount;
+  const quint32 edgeLineCount = f.xray ? 0 : d->edgeCount;
+
+  // the frame's lines
+  std::vector<LineVertex> & lv = d->lineVertices;
+  lv.clear();
+  lv.reserve((f.lines.size() + 2 * (f.ghostLines.size() + f.hintLines.size())) * 6);
+  for (const btui::LineSeg & s : f.lines)
+    addLine(lv, s, s.color.a);
+  const quint32 frameLineCount = quint32(lv.size());
   const quint32 lineCount = frameLineCount;
   /* the ghosts' outlines and the hint, then the same for where voxels hide
    * them: the outlines faint, the hint as strong */
   for (const auto * list : { &f.ghostLines, &f.hintLines })
     for (const btui::LineSeg & s : *list)
-      addLine(s, s.color.a);
+      addLine(lv, s, s.color.a);
   for (const btui::LineSeg & s : f.ghostLines)
-    addLine(s, std::uint8_t(std::lround(s.color.a * kGhostHidden)));
+    addLine(lv, s, std::uint8_t(std::lround(s.color.a * kGhostHidden)));
   for (const btui::LineSeg & s : f.hintLines)
-    addLine(s, s.color.a);
+    addLine(lv, s, s.color.a);
   const quint32 ghostLineCount = quint32((f.ghostLines.size() + f.hintLines.size()) * 6);
   if (!lv.empty()) {
     const quint32 bytes = quint32(lv.size() * sizeof(LineVertex));
@@ -779,7 +805,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     cb->setGraphicsPipeline(d->lines.get());
     cb->setViewport(vp);
     cb->setShaderResources();
-    const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), frameLineCount * quint32(sizeof(LineVertex)));
+    const QRhiCommandBuffer::VertexInput vi(d->edgeVbuf.get(), 0);
     cb->setVertexInput(0, 1, &vi);
     cb->draw(edgeLineCount);
   }
@@ -818,7 +844,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     cb->draw(ghostCount);
   }
   if (ghostLineCount) {
-    const quint32 first = (frameLineCount + edgeLineCount) * quint32(sizeof(LineVertex));
+    const quint32 first = frameLineCount * quint32(sizeof(LineVertex));
     const QRhiCommandBuffer::VertexInput visible(d->lineVbuf.buf.get(), first);
     const QRhiCommandBuffer::VertexInput hidden(d->lineVbuf.buf.get(), first + ghostLineCount * quint32(sizeof(LineVertex)));
     cb->setGraphicsPipeline(d->linesHidden.get());

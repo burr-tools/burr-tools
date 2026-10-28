@@ -329,7 +329,7 @@ Rectangle {
                                 : qsTr("Drag to pan, Shift-drag to orbit, middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
         // Tab reaches it (a click does not take the focus: C20); its keys are
         // the command table's viewport scope (Help ▸ Keyboard shortcuts)
-        activeFocusOnTab: true
+        tabStop: true
         Keys.onShortcutOverride: (event) => {
             if (App.commands.keyInScope("viewport", event.key, event.modifiers) !== "")
                 event.accepted = true

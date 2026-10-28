@@ -1,3 +1,4 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -33,13 +34,13 @@ Rectangle {
     property bool invalid: false
     Timer { id: invalidTimer; interval: 600; onTriggered: root.invalid = false }
 
-    function ask(v) {
+    function ask(v: int): void {
         const c = Math.max(from, Math.min(to, v))
         if (c !== value)
             committed(c)
     }
 
-    function commitText() {
+    function commitText(): void {
         const v = parseInt(input.text)
         if (isNaN(v) || String(v) !== input.text.trim()) {
             invalid = true
