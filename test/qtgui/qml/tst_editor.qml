@@ -87,12 +87,23 @@ TestCase {
         App.layout.toggleFocus2d()
         tryVerify(() => Math.abs(placement.mapToItem(null, 0, 0).y - tools.mapToItem(null, 0, 0).y) < 1)
         compare(item("entities.editor.tool.fixed").width, 58)                     // wider card, same buttons
+        // the placement group at the right edge, the space between them filler
+        const click = item("entities.editor.click")
+        tryVerify(() => Math.abs(placement.mapToItem(click, placement.width, 0).x - (click.width - 12)) < 1.5)
+        // the planes and the grid size on one row too, the grid size at the right edge
+        const planeBlock = item("entities.editor.plane")
+        const size = item("entities.editor.size")
+        const pair = item("entities.editor.planeAndSize")
+        tryVerify(() => Math.abs(planeBlock.mapToItem(null, 0, 0).y - size.mapToItem(null, 0, 0).y) < 1)
+        compare(size.mapToItem(pair, size.width, 0).x, pair.width - 12)
         // side by side the tools take a heading too, and their buttons line up with Mirror's and Span's
         verify(item("entities.editor.tools.label").visible)
         tryVerify(() => Math.abs(item("entities.editor.tool.fixed").mapToItem(null, 0, 0).y
                                  - item("entities.editor.mirror.x").mapToItem(null, 0, 0).y) < 3)
         App.layout.toggleFocus2d()
         tryVerify(() => placement.mapToItem(null, 0, 0).y > tools.mapToItem(null, 0, 0).y)
+        tryVerify(() => item("entities.editor.size").mapToItem(null, 0, 0).y
+                        > item("entities.editor.plane").mapToItem(null, 0, 0).y + 20)   // stacked again
 
         // Area: a toggle beside the tools, remembered in the settings
         const area = item("entities.editor.tool.area")
