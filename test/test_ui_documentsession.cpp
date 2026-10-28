@@ -76,6 +76,13 @@ TEST_CASE("a failed load leaves the current document alone", "[ui][document]") {
   CHECK_FALSE(bad.ok);
   CHECK(bad.error.starts_with("load error: "));
   CHECK(d.puzzle().getNumberOfShapes() == shapes);
+
+  // a folder is there but is no file: refused, nothing changed
+  auto folder = d.load("examples");
+  CHECK_FALSE(folder.ok);
+  CHECK_FALSE(folder.error.empty());
+  CHECK(d.puzzle().getNumberOfShapes() == shapes);
+  CHECK(d.fileName() == std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
 }
 
 TEST_CASE("saveAs appends the extension, adopts the name and round-trips", "[ui][document]") {

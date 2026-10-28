@@ -847,6 +847,22 @@ TestCase {
         App.document.newDocument(0)
     }
 
+    function test_anInternalErrorIsShownAndHoldsTheWindow() {
+        // App::handleInternalError's report: the message (where the rescue
+        // file went) in front of everything, the window's commands held
+        // until it is closed, which ends the program -- so not closed here
+        App.internalError("A check failed.
+
+The puzzle was saved as X.")
+        const d = dialog("shell.internalError")
+        tryVerify(() => d.visible, 2000)
+        compare(d.text, "A check failed.
+
+The puzzle was saved as X.")
+        verify(win.modalOpen)
+        verify(App.commands.blocked)                    // the window's shortcuts are off behind it
+    }
+
     function test_commentDialogWritesOnlyOnOk() {
         App.document.newDocument(0)
         App.commands.trigger("editcomment")

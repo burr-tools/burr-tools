@@ -663,6 +663,7 @@ ApplicationWindow {
         active: false
         sourceComponent: Component {
             MessageDialog {
+                objectName: "shell.internalError"
                 title: qsTr("BurrTools — internal error")
                 buttons: MessageDialog.Ok
                 onAccepted: { win.quitApproved = true; Qt.quit() }
