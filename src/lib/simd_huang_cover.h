@@ -172,8 +172,8 @@ public:
   virtual unsigned int getNumShapes() const = 0;
 
   /** Which filterRows() kernel this instance will dispatch to: "avx512",
-   *  "avx2", "neon" or "scalar". Exposed so the BURRTOOLS_NO_* kill switches
-   *  are testable -- every kernel computes the same answer, so a result
+   *  "avx2", "neon" or "scalar". Exposed so the vector setting
+   *  (solverSettings_t::vector) is testable -- every kernel computes the same answer, so a result
    *  comparison cannot tell which one actually ran.
    */
   virtual const char * activeKernel() const = 0;
@@ -205,7 +205,9 @@ public:
     bool is_hole = false;
   };
 
-  SimdHuangCover(unsigned int num_columns, unsigned int num_shapes);
+  /** settings: the vector kernels it may use, and the fan-out and
+   *  donation of parallelSolve */
+  SimdHuangCover(unsigned int num_columns, unsigned int num_shapes, const solverSettings_t & settings);
 
   void setColumnBounds(
     unsigned int col,
@@ -290,11 +292,15 @@ private:
   [[maybe_unused]] bool use_avx2 = false;
   [[maybe_unused]] bool use_avx512 = false;
 
-  /* Gate use_neon on SimdConfig like the other kernels, so the kill switches
-   * select the scalar loop instead of silently benchmarking one kernel
-   * against itself.
+  /* Gate use_neon on the settings like the other kernels, so the vector
+   * setting selects the scalar loop instead of silently benchmarking one
+   * kernel against itself.
    */
   [[maybe_unused]] bool use_neon = false;
+  /* splitting of parallelSolve, from the settings */
+  unsigned int fanout = 16;
+  bool donate = true;
+  unsigned long donateEvery = 0;
 
   struct StopTrace;
   struct Donor;
@@ -588,16 +594,7 @@ using SimdHuangCover32768 = SimdHuangCover<SimdBitset32768>;
  */
 namespace huang_memory {
 
-/** Refuse-the-SIMD-path budget: SIMD buys speed, never capability, so
- * erring toward DLX past this is always safe. Desktop-class floor,
- * deliberately conservative.
- *
- * Scope note: the gate caps the matrix only (rows x tier bytes + nodes x
- * per-node overhead). Per-task state is not counted: generateTasks() copies
- * the whole SearchContext per SubtreeTask, including col_weights/col_counts
- * (2 x (num_columns + 1) x 4 B) and the level-0 active rows. That state is
- * bounded by tasks x columns, not by this budget. */
-inline constexpr uint64_t kSimdMemoryBudgetBytes = 256ULL << 20;
+/* The refuse-the-SIMD-path budget is solverSettings_t::huangMemoryBytes. */
 
 /** voxel_mask bytes per row at the tier covering num_cols. Thresholds
  * mirror the createSimdSolver() ladder exactly. */
@@ -617,10 +614,8 @@ inline size_t tierMaskBytes(unsigned int num_cols) {
 inline constexpr size_t kPerNodeOverheadBytes = 2 * sizeof(unsigned int) + 40;
 
 size_t tierRowBytes(unsigned int num_cols);
-bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes);
-/** Effective budget in bytes: kSimdMemoryBudgetBytes unless
- * BURRTOOLS_HUANG_MEM_MB overrides it (defined in assembler_1.cpp). */
-uint64_t budgetBytes();
+/** budget: solverSettings_t::huangMemoryBytes */
+bool fitsMemoryBudget(unsigned int num_cols, uint64_t num_rows, uint64_t num_nodes, uint64_t budget);
 
 } // namespace huang_memory
 

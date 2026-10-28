@@ -148,7 +148,15 @@ void SolutionIterator::worker_run(std::stop_token st) {
       puzzle->getShape(i)->initHotspot();
     }
 
-    assm = gt->findAssembler(*problem);
+    // threads=0 (the default) leaves the count to BURRTOOLS_THREADS, else
+    // every core; everything else from the environment, then the defaults
+    solverConfig_t config;
+    if (threads > 0) {
+      config.threads = threads;
+    }
+    const solverSettings_t settings = config.resolve();
+
+    assm = gt->findAssembler(*problem, settings);
     if (!assm) {
       push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"}, st);
       return;
@@ -189,17 +197,13 @@ void SolutionIterator::worker_run(std::stop_token st) {
       // builds them once.
       std::shared_ptr<rotationContext_c> rotation;
       if (rotation_moves) {
-        rotation = rotationContextFor(*problem, defaultRotationSettings());
+        rotation = rotationContextFor(*problem, settings.rotation);
       }
-      disasm = std::make_unique<disassembler_0_c>(*problem, std::move(rotation));
+      disasm = std::make_unique<disassembler_0_c>(*problem, settings, std::move(rotation));
     }
 
     unsigned int asm_count{0};
     unsigned int sol_count{0};
-
-    if (threads > 0) {
-      assm->setNumThreads(threads);
-    }
 
     assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       if (st.stop_requested()) {

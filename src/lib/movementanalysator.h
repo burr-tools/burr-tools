@@ -35,6 +35,7 @@ class voxel_c;
 
 #include "rotationgeometry.h"
 #include "rotationtables.h"
+#include "solver_config.h"
 
 /**
  * this class is can do analysis of movements within a puzzle.
@@ -68,13 +69,9 @@ class movementAnalysator_c {
     unsigned int piecenumber;
     std::vector<unsigned int> planar_block;
 
-    /* RFW kernel selection, resolved once per disassembly run via
-     * selectKernels() (called from disassemble()/completeFind entry points)
-     * rather than per closureFull() call: closureFull() runs once per
-     * search node, and the getenv()s behind the SimdConfig predicates are
-     * pure overhead in that loop. Per-run evaluation keeps full runtime
-     * toggleability (env changes take effect on the next run), which the
-     * ScopedEnv-based tests and the A/B benchmarking protocol rely on.
+    /* RFW kernel selection, from the settings at construction: CPU
+     * detection and the vector toggles never run in closureFull(), which
+     * runs once per search node.
      */
     bool use_avx512_kernel = false;
     bool use_avx2_kernel = false;
@@ -192,9 +189,10 @@ class movementAnalysator_c {
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
      * many positions. Rotation moves are considered iff rotationTables is
-     * given (see rotationContextFor).
+     * given (see rotationContextFor). The settings choose the closure
+     * kernels (disassemblerVector and the vector instructions).
      */
-    movementAnalysator_c(const problem_c & puz,
+    movementAnalysator_c(const problem_c & puz, const solverSettings_t & settings,
                          std::shared_ptr<rotationContext_c> rotationContext = nullptr);
 
     /** The rotation tables in use, nullptr when rotation moves are off. */
@@ -210,13 +208,6 @@ class movementAnalysator_c {
      */
     void init_find(disassemblerNode_c * nd, const std::vector<unsigned int> & pieces);
     disassemblerNode_c * find(void);
-
-    /* Resolve which RFW closure kernel to use for the upcoming run from CPU
-     * detection and the SimdConfig toggles (see simd_config.h). Called once
-     * per run by disassemble() and completeFind(); closureFull() only reads
-     * the cached members.
-     */
-    void selectKernels(void);
 
     void completeFind(disassemblerNode_c * searchnode, const std::vector<unsigned int> & pieces, std::vector<disassemblerNode_c*> * result);
 
