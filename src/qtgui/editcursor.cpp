@@ -171,10 +171,18 @@ namespace editcursor {
 
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale) {
     static QHash<QString, QCursor> cache;
-    // the system's arrow and pointer size are part of it: the user may change them while we run
+    /* the system's arrow and pointer size are part of it: the user may change
+     * them while we run. The arrow by its pixels, not its cacheKey(): macOS
+     * draws a new image on every call, which would never hit. Erase and
+     * Paint do not draw it. */
+    size_t arrowKey = 0;
+    if (tool == btui::Tool::Fixed || tool == btui::Tool::Variable) {
+      const QImage a = systempointer::arrow(std::max<qreal>(1, scale)).image;
+      if (!a.isNull())
+        arrowKey = qHashBits(a.constBits(), size_t(a.sizeInBytes()), size_t(a.width()));
+    }
     const QString key = QStringLiteral("%1/%2/%3/%4/%5/%6").arg(int(tool)).arg(colour.isValid() ? colour.name() : QString())
-                            .arg(dark).arg(scale).arg(systempointer::sizeFactor())
-                            .arg(systempointer::arrow(std::max<qreal>(1, scale)).image.cacheKey());
+                            .arg(dark).arg(scale).arg(systempointer::sizeFactor()).arg(arrowKey);
     auto it = cache.constFind(key);
     if (it != cache.constEnd())
       return *it;
