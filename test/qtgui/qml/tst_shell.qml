@@ -314,8 +314,11 @@ TestCase {
             keyClick(Qt.Key_Tab)
             const f = win.activeFocusItem
             verify(f !== null, "Tab left the focus nowhere after " + stops.map(s => s.name).join(", "))
-            if (f === win.contentItem)
-                continue                                   // not yet in the chain
+            // not yet in the chain: the root, or (Qt before 6.12) the focus
+            // scope that forceActiveFocus left the focus on (the workspace's
+            // Loader), which takes none from Tab
+            if (f === win.contentItem || (stops.length === 0 && !f.activeFocusOnTab))
+                continue
             if (stops.length > 0 && f === stops[0].item)
                 break
             stops.push({ item: f, name: f.objectName })
