@@ -28,6 +28,10 @@ if qt6_test_dep.found()
   # not ours -- silence exactly that warning, and only for these two
   # executables, so the --werror release build is not failed by it.
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
+  # the modules' defines meson leaves out for Qt's frameworks (meson.build)
+  if qt_module_defines.length() > 0
+    qt_test_args += ['-DQT_TESTLIB_LIB', '-DQT_QMLTEST_LIB']
+  endif
   # a coverage build's counters and the sanitizers' checks slow the hot
   # loops several-fold: their time budgets are reported, not checked
   # (VERIFY_BUDGET, test_editor.cpp)
