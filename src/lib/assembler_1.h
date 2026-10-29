@@ -122,6 +122,9 @@ private:
 
   // tasks donated by running workers to idle siblings (diagnostics, tests)
   std::atomic<unsigned long> donations{0};
+  // of those, the ones a donated piece gave from its own root frame (tests:
+  // the frame it resumes between two rows must stay divisible)
+  std::atomic<unsigned long> redonations{0};
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);

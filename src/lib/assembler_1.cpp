@@ -2112,6 +2112,7 @@ class assemblerWorker_1 {
   assembler_1_c::SubtreeTask_1 * curTask = nullptr;
   size_t rootUnits = 0;
   unsigned int curBase = 0;
+  bool curIsPiece = false;  // curTask is a donated piece: top 5 at its root
 
   void cover_column_only(int col) {
     right[left[col]] = right[col];
@@ -2650,6 +2651,8 @@ public:
     curTask = &task;
     rootUnits = task.units;
     curBase = base;
+    curIsPiece = !task.task_stack.empty() && task.task_stack.size() == base &&
+                 task.task_stack.back() == 5;
     cut.assign(task.task_stack.size() + 1, 0);
     for (unsigned int c : task.cuts)
       cut[c] = 1;
@@ -2804,6 +2807,8 @@ public:
         cut.resize(i + 1, 0);
       cut[i] = 1;
       parent.donations.fetch_add(1, std::memory_order_relaxed);
+      if (level == 0 && curIsPiece)
+        parent.redonations.fetch_add(1, std::memory_order_relaxed);
       std::vector<assembler_1_c::SubtreeTask_1> one;
       one.push_back(std::move(piece));
       donatePool->push_tasks(std::move(one));

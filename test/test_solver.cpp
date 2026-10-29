@@ -3801,6 +3801,10 @@ struct Assembler1UnitsTestAccess {
     const size_t total = assm.totalTasks.load(std::memory_order_relaxed);
     return total > 0 && assm.completedTasks.load(std::memory_order_relaxed) == total;
   }
+
+  static unsigned long redonations(const assembler_1_c & assm) {
+    return assm.redonations.load(std::memory_order_relaxed);
+  }
 };
 
 /* Split on demand in assembler_1 (Huang, and A1-DLX with the DLX engine
@@ -3892,6 +3896,34 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       CHECK(resumed == baseline);
     }
   }
+}
+
+/* A donated A1-DLX piece resumes its root frame between two rows (top 5),
+ * so the rows after the current one are its root level's children and must
+ * be counted as such. When they were not, the first of them took the whole
+ * share, the root level had nothing left, and the piece could never donate
+ * from it again: every donation then came from deeper, smaller frames.
+ * Results stay right either way, so only this counter can tell: with the
+ * bug it is 0 by construction, without it about half of all donations.
+ * Two threads, because one runs A1-DLX serially.
+ */
+TEST_CASE("a donated A1-DLX piece donates again from its root frame",
+          "[assembler][parallel]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+  ScopedEnv every("BURRTOOLS_DONATE_EVERY", "1");
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  RecordingAssemblerCallback cb;
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(2);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assm.assemble(&cb);
+  REQUIRE(assm.getDonations() > 0);
+  CHECK(Assembler1UnitsTestAccess::redonations(assm) > 0);
+  CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
 }
 
 /* A0-SIMD divide-at-stop with SIMD rests on a real puzzle.
