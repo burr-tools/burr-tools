@@ -137,6 +137,10 @@ TestCase {
             return
         App.settings.theme = theme
         wait(250)
+        // a loaded runner can leave the 150 ms animation unfinished after a fixed
+        // wait; the off switch's track is the slowest thing to follow the theme
+        const track = control("switch.off").background
+        tryVerify(() => near(track.color, Theme.line2, 1), 5000)
     }
 
     function themes() {
