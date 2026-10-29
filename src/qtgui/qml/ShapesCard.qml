@@ -40,6 +40,10 @@ Card {
     collapseIcon: "panelL"
     collapseObjectName: "entities.shapes.collapse"
     onCollapseClicked: App.layout.leftCollapsed = true
+    /* hidden (collapsed to its rail), it keeps no focus: a focus scope
+     * remembers its focused child, and Qt before 6.12 gives the window's
+     * focus back to it, unseen, before anything else */
+    onVisibleChanged: if (!visible) list.focus = false
 
     readonly property AppMenu contextMenu: shapeMenu      // for tests: a popup is no child item
     readonly property string weightTip: qsTr("in the Solver, heavier shapes stay in place and lighter ones move")
