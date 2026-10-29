@@ -212,7 +212,11 @@ bar; Windows says Exit and Linux Quit.
 
 - A native window: the system's title bar ("File name - BurrTools" on
   Windows, the document name on macOS), placement remembered and kept on a
-  screen.
+  screen. A dark theme darkens it on a light desktop too: Windows and macOS
+  through Qt's colour scheme; Linux X11 through `_GTK_THEME_VARIANT`, KDE
+  through its colour scheme (`windowframe`). A light theme leaves a dark
+  desktop's frame dark. GNOME on Wayland is out of reach: Qt's Adwaita
+  decoration follows the desktop's scheme alone.
 - macOS uses its system menu bar and native menus. Elsewhere the menu bar
   is drawn in the theme, its popups are windows of their own (rounded and
   bordered by the system on Windows 11), and View ▸ Show menu bar can move
