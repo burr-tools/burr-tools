@@ -23,6 +23,8 @@
 #include <QtGlobal>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
 #include <QAccessibilityHints>
+#else
+#include "systemmotion.h"
 #endif
 #include <QFile>
 #include <QFontDatabase>
@@ -41,8 +43,12 @@ namespace {
 }
 Theme::~Theme() {
   // instance() must not outlive the theme it hands out
-  if (s_instance == this)
+  if (s_instance == this) {
     s_instance = nullptr;
+#if QT_VERSION < QT_VERSION_CHECK(6, 12, 0)
+    systemmotion::watch({});
+#endif
+  }
 }
 
 Theme::Theme(QObject * parent) : QObject(parent) {
@@ -57,6 +63,10 @@ Theme::Theme(QObject * parent) : QObject(parent) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
     if (const QAccessibilityHints * a = hints->accessibility())
       connect(a, &QAccessibilityHints::motionPreferenceChanged, this, &Theme::changed);
+#else
+    // before 6.12 Qt does not read it: the platform's own (systemmotion)
+    if (s_instance == this)
+      systemmotion::watch([this] { emit changed(); });
 #endif
     connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme s) {
       // while a forced theme is requested the platform reports that request,
@@ -212,7 +222,9 @@ bool Theme::reducedMotion(void) const {
   return hints && hints->accessibility() &&
          hints->accessibility()->motionPreference() == Qt::MotionPreference::ReducedMotion;
 #else
-  return false;                       // Qt reads the system's setting from 6.12
+  /* Qt reads the system's setting from 6.12, through the platform: as
+   * there, the offscreen one (the tests) has no system to ask */
+  return QGuiApplication::platformName() != QLatin1String("offscreen") && systemmotion::reduced() == 1;
 #endif
 }
 
