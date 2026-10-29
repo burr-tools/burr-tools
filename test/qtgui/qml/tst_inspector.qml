@@ -153,16 +153,24 @@ TestCase {
         App.inspector.fitOpen = false
         compare(fit.height, shut)
 
+        /* the heights it goes through until it reaches `to`: watched, not
+         * sampled once, as a slow machine starts the animation late */
+        function slide(to: real): bool {
+            let between = false
+            for (let i = 0; i < 400 && Math.abs(fit.height - to) > 0.5; i++) {
+                between = between || (fit.height > shut + 1 && fit.height < open - 1)
+                wait(5)
+            }
+            return between
+        }
         const listBefore = list.height
         mouseClick(item("entities.inspector.fit.header"))
         verify(App.inspector.fitOpen)
-        wait(Theme.durCollapse / 3)
-        verify(fit.height > shut + 1 && fit.height < open - 1, "half way: " + fit.height)
+        verify(slide(open), "it slides open")
         tryCompare(fit, "height", open)
         verify(list.height < listBefore)
         mouseClick(item("entities.inspector.fit.header"))
-        wait(Theme.durCollapse / 3)
-        verify(fit.height < open - 1 && fit.height > shut + 1, "half way shut: " + fit.height)
+        verify(slide(shut), "it slides shut")
         tryCompare(fit, "height", shut)
 
         // the system asks for reduced motion: no slide, open and shut at once

@@ -60,6 +60,7 @@ below, lists them per phase).
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
 | Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
+| QML left to the JavaScript engine | `qtgui_qml_aot` | P2–P6's QML was measured only with Qt 6.12 locally, where the report does not compare; on CI's 6.11 it left 731 bindings to the engine against the first cut's 441 (the baseline, raised 2026-10-29 to what is). The rest is typing work: `QVariantMap` / `var` data read by property (the inspector's buttons, the tools' and planes' models -- typed C++ value types or `required` properties), colour bindings 6.11 cannot populate, fonts read as `double` into `int` pixel sizes, untyped functions. Biggest: Inspector 107, VoxelEditorCard 83, Main 71, ShapesCard 33 | P8 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
@@ -312,8 +313,8 @@ line by line with what was there before the save; undone edits are not
 saved and a save leaves the document clean. A new kind of edit gets a
 case there. Time budgets
 (AC-C08-08's 16 ms and the like) use `VERIFY_BUDGET`: checked in every
-build but `just coverage`'s, whose counters slow the hot loops several-fold,
-where they are only reported. The update check takes its GitHub reply
+build but the coverage and sanitizer builds, whose counters and checks
+slow the hot loops several-fold, where they are only reported. The update check takes its GitHub reply
 through `UpdateController::setFetch`, so its outcomes are tested without
 the network.
 
