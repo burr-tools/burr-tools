@@ -92,6 +92,15 @@ bool CommandController::menuBarHideable(void) {
   return !menuItemsOwnShortcuts();
 }
 
+// macOS: Command (Qt's "Ctrl") is Variable and Option (Qt's "Alt") erases
+QString CommandController::variableKeyName(void) {
+  return btui::currentPlatform() == btui::Platform::Mac ? QStringLiteral("Command") : QStringLiteral("Alt");
+}
+
+QString CommandController::eraseKeyName(void) {
+  return btui::currentPlatform() == btui::Platform::Mac ? QStringLiteral("Option") : QStringLiteral("Ctrl");
+}
+
 std::span<const std::string_view> CommandController::platformShortcuts(const btui::CommandInfo & c) {
   return btui::shortcutsOn(c, btui::currentPlatform());
 }
@@ -348,7 +357,7 @@ namespace {
 QVariantList CommandController::shortcutHelp(void) const {
   using btui::Command;
   const QString shift = keyCaps("Shift").value(0);
-  // the quick tools' keys (btui::quickTool): Alt (Option), Ctrl (Control on macOS)
+  // the quick tools' keys (btui::quickTool)
   const bool mac = btui::currentPlatform() == btui::Platform::Mac;
   // macOS: Command (Qt's "Ctrl") and Option (Qt's "Alt")
   const QString variableKey = modifierCap(mac ? "Ctrl" : "Alt");
