@@ -27,7 +27,18 @@ AbstractButton {
     rightPadding: compact ? 9 : 8
     topPadding: compact ? 2 : 3
     bottomPadding: compact ? 2 : 3
-    focusPolicy: Qt.StrongFocus
+    /* one of a group that is a single Tab stop (RovingFocus): Tab stops on
+     * the group's chosen button alone, the arrows move between them */
+    property RovingFocus roving: null
+    focusPolicy: roving === null || roving.stop === root ? Qt.StrongFocus : Qt.ClickFocus
+    Component.onCompleted: if (roving !== null) roving.join(root)
+    Component.onDestruction: if (roving !== null) roving.leave(root)
+    onActiveFocusChanged: if (activeFocus && roving !== null) roving.current = root
+    Keys.onPressed: (event) => {
+        if (roving !== null && (event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier
+                && roving.navigate(root, event.key))
+            event.accepted = true
+    }
     hoverEnabled: true
 
     Accessible.role: Accessible.Button

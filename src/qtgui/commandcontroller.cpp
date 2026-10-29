@@ -372,6 +372,9 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("Full screen (toggle)"), keysOf({ Command::FullScreen })),
     row(tr("Step back: close dialog → close menu → exit focus mode"), { QVariant(alt({ QStringLiteral("Esc") })) }),
     row(tr("Move keyboard focus between controls"), { QVariant(alt({ QStringLiteral("Tab") })), QVariant(alt({ shift, QStringLiteral("Tab") })) }),
+    // a group of buttons that is one Tab stop (RovingFocus, the radio strips)
+    row(tr("Move within a group of buttons (tools, Mirror, Span, the inspector's sections)"),
+        { QVariant(alt(keyCaps("Left"))), QVariant(alt(keyCaps("Right"))), QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
     row(tr("Activate the focused button, switch or chip"), { QVariant(alt({ QStringLiteral("Enter") })), QVariant(alt({ QStringLiteral("Space") })) }),
   };
   /* the one-letter and number keys stop with Settings ▸ General ▸
@@ -413,6 +416,17 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("Erase, whatever the tool"), { QVariant(alt({}, tr("Right-click or right-drag"))) }),
   };
 
+  // with the 2D grid focused (VoxelGridItem::keyPressEvent), or the layer strip beside it
+  QVariantList grid2d{
+    row(tr("Move the cell cursor"),
+        { QVariant(alt(keyCaps("Left"))), QVariant(alt(keyCaps("Right"))), QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
+    row(tr("Apply the tool to the cell"), { QVariant(alt({ QStringLiteral("Space") })), QVariant(alt({ QStringLiteral("Enter") })) }),
+    row(tr("Place a fixed voxel, whatever the tool"), { QVariant(alt({ shift, QStringLiteral("Space") })) }),
+    row(tr("Erase the cell"), { QVariant(alt(keyCaps("Del"))), QVariant(alt(keyCaps("Backspace"))) }),
+    row(tr("Next / previous layer"), { QVariant(alt(keyCaps("Shift+Up"))), QVariant(alt(keyCaps("Shift+Down"))) }),
+    row(tr("Next / previous layer, the layer strip focused"), { QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
+  };
+
   // with the list focused (C01 Keyboard)
   QVariantList shapesList{
     row(tr("Select the previous / next shape"), { QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
@@ -435,6 +449,7 @@ QVariantList CommandController::shortcutHelp(void) const {
     group(tr("3D view"), tr("every workspace"), view3d),
     group(tr("3D view, focused"), tr("Tab to the 3D view"), view3dFocused),
     group(tr("Entities"), tr("voxel editor"), entities),
+    group(tr("2D grid, focused"), tr("Tab to the voxel editor's grid"), grid2d),
     group(tr("Shapes list"), tr("Entities, with the list focused"), shapesList),
     group(tr("Dialogs and menus"), QString(), dialogs),
   };
