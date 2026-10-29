@@ -421,6 +421,12 @@ void VoxelGridItem::updateCursor(void) {
   setCursor(editcursor::cursor(btui::Tool(int(m_editor->toolInEffect())), m_editor->cursorColour(), t->dark(), scale));
 }
 
+void VoxelGridItem::itemChange(ItemChange change, const ItemChangeData & value) {
+  QQuickPaintedItem::itemChange(change, value);
+  if (change == ItemDevicePixelRatioHasChanged)
+    updateCursor();
+}
+
 void VoxelGridItem::hoverAt(QPointF p) {
   if (!m_editor)
     return;

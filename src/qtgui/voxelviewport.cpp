@@ -212,7 +212,8 @@ void VoxelViewport::updateCursor(void) {
   const QColor colour = m_controller ? m_controller->editCursorColour() : QColor();
   const Theme * t = Theme::instance();
   // the tool's cursor follows the drawing colour and the theme: compose it again when one changes
-  const int full = key >= 0 ? key * 1000003 + int(colour.rgba() % 1000003) * 2 + (t && t->dark()) : key;
+  const quint64 full = (quint64(key + 8) << 40) |
+                       (key >= 0 ? (quint64(colour.rgba()) << 1) | quint64(t && t->dark()) : 0);
   if (full == m_cursorKey)
     return;
   m_cursorKey = full;
@@ -224,6 +225,14 @@ void VoxelViewport::updateCursor(void) {
     setCursor(editcursor::cursor(btui::Tool(key), colour, t->dark(), window() ? window()->effectiveDevicePixelRatio() : 1.0));
   else
     unsetCursor();
+}
+
+void VoxelViewport::itemChange(ItemChange change, const ItemChangeData & value) {
+  QQuickRhiItem::itemChange(change, value);
+  if (change == ItemDevicePixelRatioHasChanged) {
+    m_cursorKey = 0;
+    updateCursor();
+  }
 }
 
 /* the grab went before the release: without this the gesture would stay

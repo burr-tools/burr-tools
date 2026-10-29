@@ -97,6 +97,8 @@ protected:
   /* Shift, Alt and Ctrl pressed or released over the grid change the
    * quick tool at once, without a pointer move */
   bool eventFilter(QObject * watched, QEvent * e) override;
+  /* a move to a screen of another scale composes the edit cursor again */
+  void itemChange(ItemChange change, const ItemChangeData & value) override;
 
 private:
 
