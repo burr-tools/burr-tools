@@ -48,9 +48,8 @@ below, lists them per phase).
 | Quick tool 2 (Alt+click) on KDE | AC-C06-06 | In the 2D grid and the 3D view since P5, and safe with the Alt menu keys (a tap opens menus; Alt held through a click does not). KDE moves windows on Alt+drag by default, so there the window manager may take the click; untested on that desktop | P8 |
 | STL export writes in place | legacy `stlExporter_c::write` (`src/lib`) | It opens the target before building the mesh and ignores write errors: a failing export can leave a truncated file. The library's writer, shared with legacy; the document save no longer has this flaw | P8 |
 | Image export memory | `ImageExportController::drawPicture` | Large pages with supersampling need gigabytes and fail late with "could not be drawn"; meshes are built twice per picture (performance guide, P3) | P8 |
-| STL dialog after the document changes under it | `StlExportController` | Keeps the exporter of the grid it opened with; only reachable when a file opens while the modal dialog is up (macOS Finder) | P8 |
 | Hardening from the final review | `earlydevice.cpp`, `scenerenderer.cpp`, `main.cpp` | A device loss's reset of the early D3D device is queued to the GUI thread (could race the render thread re-creating its QRhi); the composite pipeline is matched to the render pass by pointer (an address reused after a resize would pass); the early device and pipeline-cache settings are handed to the window after it is shown (safe while its first expose arrives later, as on Windows). None reproduced; each wants a device-loss or resize test under the debug layer | P8 |
-| macOS and Linux start-up | performance guide | Measured on Windows only; the plan is in the guide | P8 |
+| Linux start-up | performance guide | Measured on Windows and macOS only (macOS 15, Apple Silicon, 2026-10-29: `just startup-time` ~0.4 s cold and warm beyond its fixed 1.5 s wait); the plan is in the guide | P8 |
 | **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
 | — Text size and high contrast | WCAG 1.4.4, 1.4.11 | Fonts are constant dp sizes: Windows' "Make text bigger" changes nothing, and chips/buttons have fixed heights that would clip. High-contrast themes are not detected; the tokens override them. Wants a text-scale factor on the font tokens and a high-contrast token set | P8 |
 | — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
@@ -293,9 +292,11 @@ renamed over the old one, so a crash part way leaves the old settings.
 Render tests use Direct3D's WARP rasteriser on Windows and Mesa's lavapipe
 (software Vulkan) on Linux CI, so they need no GPU. Where no backend can be
 made they skip, unless `BURRTOOLS_REQUIRE_GPU_TESTS` is set, as in CI.
-Reference images exist for Windows; on other platforms the snapshot checks
-skip and CI uploads the grabs, to be committed as that platform's references
-(`just update-snapshots` writes them locally). After an intended visual
+Reference images exist for Windows and macOS (CI fails on a missing one
+there); on Linux the snapshot checks skip and CI uploads the grabs, to be
+committed as its references (`just update-snapshots` writes them locally).
+The macOS ones match a local Apple Silicon Mac and the CI runner alike, so
+`just update-snapshots` on a Mac writes them. After an intended visual
 change, `just update-snapshots button` rewrites that row's references --
 both themes, all three ratios -- and only where they no longer match, so the
 commit holds just the images that changed.
@@ -541,10 +542,11 @@ moves to a later phase says why in that table.
   2026-10-29: the system's arrow and pointer size, `systempointer`); Dim
   other layers in the STL style (done 2026-10-29 for every voxel type);
   STL export writing in place; image export
-  memory; the STL dialog after the document changes under it; the
-  hardening from the final review (device loss, resize); macOS and Linux
+  memory; the
+  hardening from the final review (device loss, resize); Linux
   start-up measured; the accessibility rows -- reduced motion (done
-  2026-10-28: the system's QAccessibilityHints::motionPreference sets every
+  2026-10-28: the system's QAccessibilityHints::motionPreference from Qt
+  6.12, before it macOS's and Windows' own switch (`systemmotion`), sets every
   Theme duration, the toolbar's fade and the 3D view's snaps to none), text
   size and high contrast, small screens, dark-theme button text, remaining
   contrast, progress and errors announced, lists by keyboard, small items
