@@ -2009,8 +2009,9 @@ public:
 
     // SIMD rests are never split (shouldSplit): their skip indexes the
     // SIMD frame's candidate order, which this DLX enumeration does not
-    // share.
-    bt_assert(task.restSkip == 0);
+    // share. Checked in release too: splitting one would search it whole.
+    if (task.restSkip != 0)
+      bt_te("assembler_0_c::splitPrefix: SIMD rest task");
 
     unsigned int maxPrefix =
         parent.piecenumber > 1 ? parent.piecenumber - 1 : 1u;
@@ -2571,7 +2572,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                   task.share / static_cast<float>(remainder.pieces.size());
               for (const auto &rp : remainder.pieces) {
                 SubtreeTask piece;
-                bt_assert(rp.nodes.size() >= task.prefix.size());
+                // Checked in release too: a shorter piece would drop part
+                // of the task's prefix and widen its territory.
+                if (rp.nodes.size() < task.prefix.size())
+                  bt_te("assembler_0_c: SIMD remainder piece shorter than its task's prefix");
                 for (size_t k = 0; k < rp.nodes.size(); k++) {
                   if (k < task.prefix.size())
                     piece.prefix.push_back(task.prefix[k]);
@@ -2646,8 +2650,11 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
                 continue;
               }
             }
-            // SIMD rests exist only under a pinned SIMD remainder.
-            bt_assert(task.restSkip == 0);
+            // SIMD rests exist only under a pinned SIMD remainder (and
+            // setPosition() refuses them otherwise). Checked in release
+            // too: the DLX search would take the rest as a whole subtree.
+            if (task.restSkip != 0)
+              bt_te("assembler_0_c: SIMD rest task in a DLX run");
             beginTask(slot, task);
             const bool exhausted = worker.searchSubtree(task, slot);
             // An interrupted task is divided into exact continuation tasks

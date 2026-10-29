@@ -192,6 +192,11 @@ private:
    * save() for cross-session resume, like parallelTasks.
    */
   std::vector<HuangSeed> pendingHuangPrefixes;
+  /* The solver setPosition() built to check that the restored seeds
+   * replay; the resumed run takes it instead of building a second one.
+   * Set only together with restored seeds, and dropped with them.
+   */
+  std::unique_ptr<ISimdHuangCover> restoredSimdSolver;
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing. save() records

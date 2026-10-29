@@ -1084,8 +1084,11 @@ void SimdHuangCover<BitsetType>::StopTrace::finalize(
         piece.pivotShape[k] = k < taskPivots.size() ? taskPivots[k] : 0;
       } else {
         // Every step below the root was chosen by a frame that unwound
-        // through its stop check and recorded its pivot.
-        bt_assert(k < pivotKnown.size() && pivotKnown[k]);
+        // through its stop check and recorded its pivot. Checked in release
+        // too: a guessed pivot replays without the monotonic shape filter
+        // and re-reports permutations of identical pieces.
+        if (k >= pivotKnown.size() || !pivotKnown[k])
+          bt_te("SimdHuangCover::StopTrace::finalize: pivot of a remainder step not recorded");
         piece.pivotShape[k] = k < pivots.size() ? pivots[k] : 0;
       }
     }
