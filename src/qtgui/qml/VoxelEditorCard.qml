@@ -405,12 +405,12 @@ Card {
                     boundsBehavior: Flickable.StopAtBounds
                     model: root.editor.layerCount
                     // a Tab stop: ↑ / ↓ go a layer up or down, as the chips stand
-                    activeFocusOnTab: root.editor.layerCount > 0
-                    Keys.onUpPressed: root.editor.layerStep(1)
-                    Keys.onDownPressed: root.editor.layerStep(-1)
+                    activeFocusOnTab: App.editor.layerCount > 0
+                    Keys.onUpPressed: App.editor.layerStep(1)
+                    Keys.onDownPressed: App.editor.layerStep(-1)
                     Accessible.role: Accessible.List
-                    Accessible.name: qsTr("%1 layer %2 of %3").arg(root.editor.layerAxisName)
-                                     .arg(root.editor.layer + 1).arg(root.editor.layerCount)
+                    Accessible.name: qsTr("%1 layer %2 of %3").arg(App.editor.layerAxisName)
+                                     .arg(App.editor.layer + 1).arg(App.editor.layerCount)
                     Accessible.description: qsTr("Up and Down arrows change the layer")
                     // highest layer at the top
                     delegate: Rectangle {

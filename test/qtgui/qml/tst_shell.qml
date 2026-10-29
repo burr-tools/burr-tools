@@ -331,21 +331,17 @@ TestCase {
             { tag: "cards", rails: false, order: [
                 "rail-entities", "rail-puzzle", "rail-solver",
                 "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
-                // the inspector: Transform open (its buttons row by row), the others closed
-                "entities.inspector.transform.header",
-                "entities.transform.flip.x", "entities.transform.rotate.x.neg", "entities.transform.rotate.x.pos",
-                "entities.transform.nudge.x.neg", "entities.transform.nudge.x.pos",
-                "entities.transform.flip.y", "entities.transform.rotate.y.neg", "entities.transform.rotate.y.pos",
-                "entities.transform.nudge.y.neg", "entities.transform.nudge.y.pos",
-                "entities.transform.flip.z", "entities.transform.rotate.z.neg", "entities.transform.rotate.z.pos",
-                "entities.transform.nudge.z.neg", "entities.transform.nudge.z.pos",
+                // the inspector: Transform open, its buttons one stop (RovingFocus:
+                // the arrows move between them), the others closed
+                "entities.inspector.transform.header", "entities.transform.flip.x",
                 "entities.inspector.fit.header", "entities.inspector.repair.header",
                 "entities.viewport.toolbar", "entities.viewport.surface",
                 "entities.editor.focus2d", "entities.editor.collapse",
                 // the tool strip and the planes are one stop each; Area a toggle of its own
                 "entities.editor.tools.group", "entities.editor.tool.area",
-                "entities.editor.mirror.x", "entities.editor.mirror.y", "entities.editor.mirror.z",
-                "entities.editor.span.x", "entities.editor.span.y", "entities.editor.span.z",
+                // Mirror and Span one stop each (← / → between X, Y, Z), then the
+                // layer strip, on its current layer's chip (the top one here)
+                "entities.editor.mirror.x", "entities.editor.span.x", "entities.editor.layer.8",
                 // the planes below the grid (user decision 2026-10-28)
                 "entities.editor.grid", "entities.editor.plane.group",
                 "entities.editor.size.applyAll",
@@ -376,6 +372,10 @@ TestCase {
             m.close()
         }
         App.shapes.select(0)
+        // the sections' open state persists: set here, whatever ran before
+        App.inspector.transformOpen = true
+        App.inspector.fitOpen = false
+        App.inspector.repairOpen = false
         App.layout.leftCollapsed = data.rails
         App.layout.rightCollapsed = data.rails
         wait(400)                                          // the columns' animation
