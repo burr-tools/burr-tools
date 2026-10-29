@@ -231,12 +231,15 @@ TestCase {
     function activate() {
         // the file's own messages first (its comment, an unfinished search):
         // modal, they would take the keys
-        for (let i = 0; i < 5; i++) {
-            wait(50)
+        // until none is up and none is waiting: the next opens a callLater after
+        // the last closed, and not at all before the first frame
+        for (let i = 0; i < 100; i++) {
             const m = findChild(win, "shell.message")
-            if (m === null || !m.visible)
+            if (m !== null && m.visible)
+                m.close()
+            else if (win.pendingMessages.length === 0)
                 break
-            m.close()
+            wait(50)
         }
         win.requestActivate()
         tryVerify(() => win.active, 3000)

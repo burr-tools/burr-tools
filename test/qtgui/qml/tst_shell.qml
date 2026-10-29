@@ -515,10 +515,13 @@ TestCase {
     function test_tooltipsWaitHalfASecondAndFollowTheSetting() {
         const orbit = item("entities.viewport.toolbar.orbit")
         const tip = orbit.toolTip
+        const t0 = Date.now()
         mouseMove(orbit, orbit.width / 2, orbit.height / 2)
         verify(orbit.hovered)
         wait(Theme.tooltipDelay / 2)
-        verify(!tip.opened, "shown before the delay")
+        // a stalled runner may have let the delay pass: then it is rightly shown
+        if (Date.now() - t0 < Theme.tooltipDelay)
+            verify(!tip.opened, "shown before the delay")
         tryVerify(() => tip.opened, 2000)
         compare(tip.text, "Orbit: drag to rotate the view (O)")
 
