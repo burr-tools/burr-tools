@@ -156,15 +156,23 @@ ApplicationWindow {
             lastToggle = null               // the keyboard moved on to something else
         }
     }
-    function keepToggleFocus(slot: Item) {
-        const t = lastToggle
-        if (t === null || t.visible)
-            return                          // not hidden by this swap
-        let p = t.parent
+    function within(item: Item, slot: Item): bool {
+        let p = item.parent
         while (p !== null && p !== slot)
             p = p.parent
-        if (p === null)
-            return                          // the other side's
+        return p !== null
+    }
+    function keepToggleFocus(slot: Item) {
+        const t = lastToggle
+        const toggled = t !== null && !t.visible && within(t, slot)
+        /* or the focus was elsewhere in the card the swap hid (a shortcut or
+         * a menu collapsed it): it would stay on an item no one sees, and
+         * Tab would start from there */
+        const f = win.activeFocusItem
+        const stranded = !toggled && f !== null && !f.visible && within(f, slot)
+        if (!toggled && !stranded)
+            return                          // not hidden by this swap, or the other side's
+        const visual = toggled ? lastToggleVisual : false
         for (let i = 0; i < slot.children.length; i++) {
             const c = slot.children[i]
             if (!c.visible)
@@ -173,7 +181,7 @@ ApplicationWindow {
             const card = c as Card
             const target = rail !== null ? rail.expandButton : card !== null ? card.collapseButton : null
             if (target !== null && target.visible) {
-                target.forceActiveFocus(lastToggleVisual ? Qt.TabFocusReason : Qt.MouseFocusReason)
+                target.forceActiveFocus(visual ? Qt.TabFocusReason : Qt.MouseFocusReason)
                 return
             }
         }

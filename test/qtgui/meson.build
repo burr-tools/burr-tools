@@ -28,10 +28,11 @@ if qt6_test_dep.found()
   # not ours -- silence exactly that warning, and only for these two
   # executables, so the --werror release build is not failed by it.
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
-  # a coverage build's counters slow the hot loops several-fold: its time
-  # budgets are reported, not checked (VERIFY_BUDGET, test_editor.cpp)
-  if get_option('b_coverage')
-    qt_test_args += ['-DBURRTOOLS_COVERAGE_BUILD=1']
+  # a coverage build's counters and the sanitizers' checks slow the hot
+  # loops several-fold: their time budgets are reported, not checked
+  # (VERIFY_BUDGET, test_editor.cpp)
+  if get_option('b_coverage') or get_option('b_sanitize') != 'none'
+    qt_test_args += ['-DBURRTOOLS_INSTRUMENTED_BUILD=1']
   endif
 
   test_qtgui = executable('test_qtgui',
