@@ -698,8 +698,19 @@ if host_machine.system() == 'darwin' and qt_build_rpath != ''
   endif
 endif
 
+# Qt found through qmake as frameworks (macOS without pkg-config) gets no
+# -DQT_<MODULE>_LIB from meson, which its .pc files and its non-framework
+# qmake path both add. Without QT_GUI_LIB, <QTest> leaves out its GUI half
+# (qWaitForWindowExposed, the QWindow mouse and key events) and test_qtgui
+# does not compile. The tests add QtTest's own (test/qtgui/meson.build).
+qt_module_defines = []
+if host_machine.system() == 'darwin' and qt6_dep.found() and qt6_dep.type_name() == 'config-tool'
+  qt_module_defines = ['-DQT_CORE_LIB', '-DQT_GUI_LIB', '-DQT_QML_LIB', '-DQT_QUICK_LIB',
+                       '-DQT_QUICKCONTROLS2_LIB', '-DQT_SVG_LIB']
+endif
+
 # what every Qt target compiles with
-qt_cpp_args = qt_macos_args + qt_private_args
+qt_cpp_args = qt_macos_args + qt_private_args + qt_module_defines
 
 if qt6_dep.found()
   subdir('src/qtgui')
