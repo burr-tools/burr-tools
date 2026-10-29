@@ -110,13 +110,13 @@ if host_machine.system() == 'windows'
   qtgui_platform_deps += cxx.find_library('dwmapi')
   # the window's Direct3D 11 device, made early (earlydevice.cpp)
   qtgui_platform_deps += [cxx.find_library('d3d11'), cxx.find_library('dxgi')]
-  # the system's arrow and pointer size (systempointer.cpp)
+  # the system's arrow and pointer size (systempointer.cpp), its reduce motion (systemmotion.cpp)
   qtgui_platform_deps += [cxx.find_library('user32'), cxx.find_library('advapi32')]
 endif
-# the system's arrow on macOS (systempointer_mac.mm); elsewhere systempointer.cpp
-qtgui_platform_src = ['systempointer.cpp']
+# the system's arrow and reduce motion on macOS (*_mac.mm); elsewhere the .cpp
+qtgui_platform_src = ['systemmotion.cpp', 'systempointer.cpp']
 if host_machine.system() == 'darwin'
-  qtgui_platform_src += ['systempointer_mac.mm']
+  qtgui_platform_src += ['systemmotion_mac.mm', 'systempointer_mac.mm']
   qtgui_platform_deps += [cocoa_dep]
 endif
 
