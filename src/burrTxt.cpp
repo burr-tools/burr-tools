@@ -292,6 +292,23 @@ int main(int argv, char* args[]) {
     return 0;
   }
 
+  /* not every space grid has a solver, and fewer still have a disassembler:
+   * building one for such a grid fails on the missing movement cache inside
+   * a worker, where nothing catches it */
+  const unsigned int caps = p.getGridType()->getCapabilities();
+
+  if (assemble && !(caps & gridType_c::CAP_ASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have an assembler (yet)\n";
+    return 2;
+  }
+
+  if ((disassemble || !assemble) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
+    if (assemble)
+      cout << "drop -d to just assemble the puzzle\n";
+    return 2;
+  }
+
   if (allProblems)
     {
       firstProblem = 0;
