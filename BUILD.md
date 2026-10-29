@@ -55,10 +55,11 @@ above is enough for a working X11 build (`libx11-dev` arrives through
 - **Wayland**: if FLTK finds the Wayland packages it builds the Wayland
   backend (together with X11 when X11 is present), and then it *requires*
   the X11 extras above. Install `libwayland-dev wayland-protocols
-  libxkbcommon-dev libdecor-0-dev libpango1.0-dev libdbus-1-dev` plus the
-  X11 extras to get it. Install only some of the Wayland packages and
-  FLTK silently builds without Wayland; install them all but not the
-  X11 extras and the configure step stops with an error.
+  libxkbcommon-dev libdecor-0-dev libpango1.0-dev libdbus-1-dev
+  libegl-dev` plus the X11 extras to get it. If the core Wayland
+  packages are missing FLTK silently builds without Wayland. If they are
+  present but the X11 extras or `libegl-dev` are not, the configure step
+  stops with an error.
 
 ```bash
 # X11 extras
@@ -66,7 +67,7 @@ sudo apt-get install -y libxext-dev libxft-dev libxinerama-dev \
     libxcursor-dev libxfixes-dev libxrender-dev
 # Wayland (also needs the X11 extras)
 sudo apt-get install -y libwayland-dev wayland-protocols libxkbcommon-dev \
-    libdecor-0-dev libpango1.0-dev libdbus-1-dev
+    libdecor-0-dev libpango1.0-dev libdbus-1-dev libegl-dev
 ```
 
 #### Optional tools (Linux)
