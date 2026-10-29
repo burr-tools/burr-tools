@@ -155,7 +155,7 @@ TestCase {
 
         /* the heights it goes through until it reaches `to`: watched, not
          * sampled once, as a slow machine starts the animation late */
-        function slide(to: real): bool {
+        function slide(to) {                              // untyped: Qt 6.8 types no nested function
             let between = false
             for (let i = 0; i < 400 && Math.abs(fit.height - to) > 0.5; i++) {
                 between = between || (fit.height > shut + 1 && fit.height < open - 1)

@@ -47,6 +47,10 @@ Card {
     collapseIcon: "panelR"
     collapseObjectName: "entities.editor.collapse"
     onCollapseClicked: App.layout.rightCollapsed = true
+    /* hidden (collapsed to its rail), it keeps no focus: a focus scope
+     * remembers its focused child, and Qt before 6.12 gives the window's
+     * focus back to it, unseen, before anything else */
+    onVisibleChanged: if (!visible) grid.focus = false
 
     readonly property var editor: App.editor
     readonly property var axisColours: [Theme.axisX, Theme.axisY, Theme.axisZ]
