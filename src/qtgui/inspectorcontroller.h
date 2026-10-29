@@ -153,7 +153,7 @@ private:
   EditorController * m_editor;
   ViewportController * m_viewport;
 
-  bool m_open[3] = { true, false, false };
+  bool m_open[3] = { false, false, false };
   struct Check {
     bool allowed = true;
     QString reason;

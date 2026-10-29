@@ -423,8 +423,8 @@ the network.
   as legacy's tool tabs do (the spec has no preview). **A greyed button
   still takes a press** and the status bar says why; its hint (Standard)
   or tooltip (Minimal) says so beforehand, which a disabled button could
-  not show. Each Transform button is a Tab stop, in reading order. The
-  nudge pad's row labels are 72 dp (the mock's 62 cut "Down layer"). No
+  not show. An open section's buttons are one Tab stop (see the feedback
+  of 2026-10-29). The nudge pad's row labels are 72 dp (the mock's 62 cut "Down layer"). No
   nudge auto-repeat (C04: optional).
 - **Feedback of 2026-10-28** (user decisions): the **Segmented** option on
   is accent-tinted with an accent edge and text (PR-05: panel fill and a
@@ -799,8 +799,9 @@ why; Focus 2D's 80 / 20 split; the rail's indicator side; density.md
 §1's sizes over the component sections'.
 
 **Spec conflicts, settled.** AC-C03-01 says the inspector's sections are
-closed by default; layout §2 opens Transform. Transform opens, the others
-are closed, as §2 and the mock have it.
+closed by default; layout §2 opens Transform. All three start closed, as
+AC-C03-01 has it (user decision 2026-10-29; Transform first opened, as §2
+and the mock have it).
 
 **Left out unintentionally, found by this review.**
 
