@@ -466,7 +466,8 @@ Card {
                     HoverHandler { id: gridHover }
                     BtToolTip {
                         shown: gridHover.hovered && !root.editor.stroking
-                        text: qsTr("Click or drag: active tool (Shift fixed · Alt variable · Ctrl erase) · Right-click or right-drag: erase")
+                        text: qsTr("Click or drag: active tool (Shift fixed · %1 variable · %2 erase) · Right-click or right-drag: erase")
+                              .arg(App.commands.variableKeyName).arg(App.commands.eraseKeyName)
                     }
                 }
                 // the keyboard's focus on the grid
