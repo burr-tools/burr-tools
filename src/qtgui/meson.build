@@ -119,6 +119,14 @@ if host_machine.system() == 'darwin'
   qtgui_platform_src += ['systemmotion_mac.mm', 'systempointer_mac.mm']
   qtgui_platform_deps += [cocoa_dep]
 endif
+# Linux and the BSDs: the frame dark with the theme on X11 (windowframe.cpp,
+# _GTK_THEME_VARIANT), with libxcb's headers; KDE's scheme needs none
+if host_machine.system() not in ['windows', 'darwin']
+  xcb_dep = dependency('xcb', required: false)
+  if xcb_dep.found()
+    qtgui_platform_deps += declare_dependency(compile_args: '-DBURRTOOLS_HAVE_XCB=1', dependencies: xcb_dep)
+  endif
+endif
 
 # Everything except main(), so test_qtgui can link the same code. It is
 # linked with link_whole: the QML module's type registration and compiled
@@ -156,6 +164,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'viewportcontroller.cpp',
     'voxelgriditem.cpp',
     'voxelviewport.cpp',
+    'windowframe.cpp',
     httpget_files,
     updatecheck_files,
     qtgui_shader_src,
