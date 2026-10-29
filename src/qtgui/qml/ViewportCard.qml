@@ -261,7 +261,8 @@ Rectangle {
                 override: App.editor.quickHeld3d
                 tip: override ? qsTr("Quick tool — %1 (%2).").arg(toolName).arg(toolNo)
                    : App.editor.editMode ? qsTr("Click edits with the active tool. Press E to leave edit mode.")
-                   : qsTr("3D edit mode — %1 (%2). Press E to turn edit mode on; or hold Shift/Alt/Ctrl while clicking.").arg(toolName).arg(toolNo)
+                   : qsTr("3D edit mode — %1 (%2). Press E to turn edit mode on; or hold Shift/%3/%4 while clicking.")
+                         .arg(toolName).arg(toolNo).arg(App.commands.variableKeyName).arg(App.commands.eraseKeyName)
                 compact: root.compact
                 onClicked: App.editor.toggleEditMode()
             }
@@ -398,11 +399,11 @@ Rectangle {
             HintText { text: qsTr("+click") }
             HintText { effect: true; text: qsTr("fixed voxel") }
             Dot {}
-            KeyBadge { text: Qt.platform.os === "osx" ? "Command" : "Alt" }
+            KeyBadge { text: App.commands.variableKeyName }
             HintText { text: qsTr("+click") }
             HintText { effect: true; text: qsTr("variable voxel") }
             Dot {}
-            KeyBadge { text: Qt.platform.os === "osx" ? "Option" : "Ctrl" }
+            KeyBadge { text: App.commands.eraseKeyName }
             HintText { text: qsTr("+click") }
             HintText { effect: true; text: qsTr("erase") }
         }

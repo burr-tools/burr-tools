@@ -59,6 +59,10 @@ class CommandController : public QObject {
   /* View > Show menu bar exists: not on macOS, whose menu bar is the
    * system's and stays */
   Q_PROPERTY(bool menuBarHideable READ menuBarHideable CONSTANT FINAL)
+  /* the quick tools' keys by name, for hints and tooltips (btui::quickTool):
+   * Alt and Ctrl; on macOS Command and Option */
+  Q_PROPERTY(QString variableKeyName READ variableKeyName CONSTANT FINAL)
+  Q_PROPERTY(QString eraseKeyName READ eraseKeyName CONSTANT FINAL)
 
 public:
 
@@ -71,6 +75,8 @@ public:
   void setBlocked(bool b);
   static bool menuItemsOwnShortcuts(void);
   static bool menuBarHideable(void);
+  static QString variableKeyName(void);
+  static QString eraseKeyName(void);
 
   /* [{ key, label }] left to right; labels as the platform shows them */
   Q_INVOKABLE QVariantList menuBar(void) const;
