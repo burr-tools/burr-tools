@@ -267,8 +267,12 @@ TestCase {
         tryCompare(App.inspector, "previewTask", -1)
         flip.forceActiveFocus(Qt.TabFocusReason)
         tryCompare(App.inspector, "previewTask", 13)
-        keyClick(Qt.Key_Tab)
-        tryCompare(App.inspector, "previewTask", 9)            // rotate.y.neg, the next stop
+        keyClick(Qt.Key_Right)
+        tryCompare(App.inspector, "previewTask", 9)            // rotate.y.neg, the next in the group
+        keyClick(Qt.Key_Tab)                                   // the group is one stop: Tab leaves it
+        tryCompare(App.inspector, "previewTask", -1)
+        flip.forceActiveFocus(Qt.TabFocusReason)
+        tryCompare(App.inspector, "previewTask", 13)
         item("entities.shapes.list").forceActiveFocus()
         tryCompare(App.inspector, "previewTask", -1)
     }

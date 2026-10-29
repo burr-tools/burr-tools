@@ -142,7 +142,7 @@ Item {
         implicitWidth: 40
         implicitHeight: Math.min(32, Theme.transformButton)
         // in the Transform section's one Tab stop, as a GlyphButton with `roving`
-        focusPolicy: transformKeys.stop === pb ? Qt.StrongFocus : Qt.ClickFocus
+        focusPolicy: transformKeys.stop === pb || activeFocus ? Qt.StrongFocus : Qt.ClickFocus
         Component.onCompleted: transformKeys.join(pb)
         Component.onDestruction: transformKeys.leave(pb)
         onActiveFocusChanged: if (activeFocus) transformKeys.current = pb
