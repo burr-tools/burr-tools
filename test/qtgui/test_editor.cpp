@@ -25,6 +25,7 @@
 #include <QImage>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QGuiApplication>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -34,15 +35,23 @@
 #include <vector>
 
 /* A time budget (AC-C08-08's 16 ms and the like): checked against the
- * code as built for use, only reported in a coverage build, whose counters
- * make the hot loops several times slower than any user sees them. */
-#ifdef BURRTOOLS_COVERAGE_BUILD
-#define VERIFY_BUDGET(ms, budget)   qInfo("%.2f ms against a %.0f ms budget: not checked in a coverage build", double(ms), double(budget))
+ * code as built for use, only reported in a coverage or sanitizer build,
+ * whose counters and checks make the hot loops several times slower than
+ * any user sees them. */
+#ifdef BURRTOOLS_INSTRUMENTED_BUILD
+#define VERIFY_BUDGET(ms, budget)   qInfo("%.2f ms against a %.0f ms budget: not checked in an instrumented build", double(ms), double(budget))
 #else
 #define VERIFY_BUDGET(ms, budget)   QVERIFY2((ms) < (budget), qPrintable(QString::number(ms) + QStringLiteral(" ms")))
 #endif
 
 namespace {
+
+  /* The quick tools' keys in Qt's terms (C06, overview/04 §6): Alt picks
+   * Variable and Ctrl erases; on macOS Command picks Variable and Option
+   * erases, which Qt calls Control and Alt there */
+  const bool kMac = btui::currentPlatform() == btui::Platform::Mac;
+  const Qt::KeyboardModifiers kVariable = kMac ? Qt::ControlModifier : Qt::AltModifier;
+  const Qt::KeyboardModifiers kErase = kMac ? Qt::AltModifier : Qt::ControlModifier;
 
   /* an App with one empty brick shape of the given size, selected */
   struct EditorFixture {
@@ -218,15 +227,15 @@ void TestEditor::theRightButtonErasesWhateverTheToolAndModifiers() {
 void TestEditor::theQuickToolIsCapturedAtThePress() {
   // AC-C08-10: Alt places variable voxels for the whole stroke, whatever is held later
   EditorFixture f;
-  f.editor()->press(0, 0, false, Qt::AltModifier);
+  f.editor()->press(0, 0, false, kVariable);
   QCOMPARE(f.editor()->toolInEffect(), EditorController::Variable);
-  f.editor()->setModifiers(Qt::ControlModifier);
+  f.editor()->setModifiers(kErase);
   f.editor()->dragTo(1, 0);
   f.editor()->release();
   QCOMPARE(f.variable(), 2);
   QCOMPARE(f.editor()->tool(), EditorController::Fixed);
   // Ctrl erases (Control on macOS)
-  f.click(0, 0, btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
+  f.click(0, 0, kErase);
   QCOMPARE(f.variable(), 1);
   f.click(2, 0, Qt::ShiftModifier);
   QCOMPARE(f.filled(), 1);
@@ -236,7 +245,7 @@ void TestEditor::theToolInEffectFollowsTheModifiersHeldOverTheGrid() {
   EditorFixture f;
   EditorController * e = f.editor();
   QSignalSpy tool(e, &EditorController::toolChanged);
-  e->setModifiers(Qt::ShiftModifier | Qt::AltModifier);
+  e->setModifiers(Qt::ShiftModifier | kVariable);
   QCOMPARE(e->toolInEffect(), EditorController::Fixed);       // not over the grid: the tool
   e->hover(1, 2);
   QCOMPARE(e->toolInEffect(), EditorController::Variable);    // Alt beats Shift
@@ -279,14 +288,13 @@ void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
   e->hover(1, 2);
   QVERIFY(e->preview().empty());              // Fixed over the same fixed voxel: no change
   changed.clear();
-  // the Erase quick tool: Ctrl, Option on macOS (Qt's Alt)
-  e->setModifiers(btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
+  e->setModifiers(kErase);
   QVERIFY(changed.count() > 0);
   p = e->preview();
   QCOMPARE(p.size(), size_t(1));
   QVERIFY(p[0].kind == btui::GhostKind::Erase);
   // Alt (Variable) would change it: replaced
-  e->setModifiers(Qt::AltModifier);
+  e->setModifiers(kVariable);
   QVERIFY(e->preview()[0].kind == btui::GhostKind::Replace);
   e->setModifiers(Qt::NoModifier);
 
@@ -303,9 +311,6 @@ void TestEditor::theHoverPreviewIsWhatAClickWouldDo() {
 }
 
 namespace {
-
-  // Ctrl erases (Option on macOS)
-  const Qt::KeyboardModifiers kErase = btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier;
 
   /* a 3x3x3 brick shape seen from +Z, framed: the view's middle (160, 120)
    * is over cell column (1, 1) */
@@ -352,7 +357,7 @@ void TestEdit3d::aClickEditsWithAQuickToolOrInEditMode() {
   QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_EMPTY));
   QCOMPARE(f.state(1, 1, 1), int(voxel_c::VX_FILLED));
 
-  f.click3d(Qt::AltModifier);                            // Variable
+  f.click3d(kVariable);                                  // Variable
   QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_VARIABLE));
   f.click3d(kErase);                                     // Erase: the voxel under the pointer
   QCOMPARE(f.state(1, 1, 2), int(voxel_c::VX_EMPTY));
@@ -840,7 +845,13 @@ void TestEditor::theCursorsDrawOnTheSystemsArrow() {
   QVERIFY(size > 0);
   const systempointer::Arrow os = systempointer::arrow(1);
   if (os.image.isNull()) {
-#if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
+#if defined(Q_OS_MACOS)
+    // AppKit draws NSCursor's image only with an application of its own,
+    // which the offscreen platform does not make
+    if (QGuiApplication::platformName() == QLatin1String("offscreen"))
+      QSKIP("macOS offscreen: NSCursor has no image without an NSApplication");
+    QFAIL("the system's arrow could not be read");
+#elif defined(Q_OS_WIN)
     QFAIL("the system's arrow could not be read");
 #else
     QSKIP("no Xcursor theme with an arrow here");
@@ -935,7 +946,7 @@ void TestEditor::theGridHitsItsCellsAndPaintsTheirVoxels() {
   QVERIFY(g.cellCentre(0, 0).y() > g.cellCentre(0, 2).y());
 
   f.click(0, 0);                                        // Default: the shape's colour
-  f.click(1, 0, Qt::AltModifier);                       // variable
+  f.click(1, 0, kVariable);                             // variable
   QImage img(360, 500, QImage::Format_ARGB32_Premultiplied);
   img.fill(Qt::transparent);
   {

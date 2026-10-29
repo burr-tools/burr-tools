@@ -181,7 +181,8 @@ TestCase {
             { tag: "rail button 52x50", cell: "railButton.normal", w: 52, h: 50 },
             // PR-08: shape chip h26, min 34 (header 28); count badge h20; weight badge h18
             { tag: "shape chip 34x26", cell: "chip.shape", w: 34, h: 26 },
-            { tag: "header chip 28x26", cell: "chip.header", w: 28, h: 26 },
+            // "S1" is 28 wide in Windows' UI font; a wider fallback font (Linux CI) grows it
+            { tag: "header chip 28x26", cell: "chip.header", h: 26, minW: 28 },
             { tag: "wide shape chip grows", cell: "chip.wide", h: 26, minW: 35 },
             { tag: "count badge h20", cell: "chip.count", h: 20, minW: 24 },
             { tag: "weight badge h18", cell: "chip.weight", h: 18 },

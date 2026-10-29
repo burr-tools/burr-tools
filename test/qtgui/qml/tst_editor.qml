@@ -272,7 +272,8 @@ TestCase {
         App.document.redo()
         clickCell(1, 0, Qt.RightButton)                      // right-click erases
         compare(voxels(), 3)
-        clickCell(1, 1, Qt.LeftButton, Qt.AltModifier)       // Alt: variable
+        // Alt: variable (Command on macOS, Qt's Control there)
+        clickCell(1, 1, Qt.LeftButton, Qt.platform.os === "osx" ? Qt.ControlModifier : Qt.AltModifier)
         compare(variables(), 1)
         verify(item("entities.editor.layer.1.dot").visible)
     }
