@@ -345,8 +345,8 @@ TestCase {
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {
-        const rows = ["iconButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton", "railButton",
-                      "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+        const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
+                      "railButton", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []

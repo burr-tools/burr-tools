@@ -986,8 +986,23 @@ jobs:
 
     # The render tests try Metal and skip where the runner offers none (not
     # yet known for these VMs; the test log says which backend was used).
+    # The gallery's reference images exist for macOS
+    # (test/qtgui/snapshots/macos), so a missing one fails too.
     - name: Test
+      env:
+        BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
       run: meson test -C build-qt --suite fast --print-errorlogs
+
+    # The suites run offscreen, where AppKit draws no NSCursor image and the
+    # system-arrow test skips: run it once on the window server, so
+    # systempointer_mac.mm is exercised, not only compiled. The other test
+    # classes report the function as not found, so the exit status says
+    # nothing: TestEditor's own line does.
+    - name: The system's arrow (cocoa)
+      run: |
+        ./build-qt/test/qtgui/test_qtgui -platform cocoa theCursorsDrawOnTheSystemsArrow > "$RUNNER_TEMP/arrow.txt" 2>&1 || true
+        grep 'TestEditor::' "$RUNNER_TEMP/arrow.txt"
+        grep -q 'PASS   : TestEditor::theCursorsDrawOnTheSystemsArrow()' "$RUNNER_TEMP/arrow.txt"
 
     - name: Upload the test log
       if: failure()
@@ -997,9 +1012,9 @@ jobs:
         path: build-qt/meson-logs/testlog.txt
         if-no-files-found: ignore
 
-    # no macOS reference images yet: the grabs, to commit as snapshots/macos
-    - name: Upload gallery grabs
-      if: always()
+    # grabs that did not match their reference, with the reference and a diff
+    - name: Upload gallery differences
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: gallery-snapshots-macos

@@ -53,7 +53,7 @@ Some of the estimates below can now be checked against measurements
 | Memory "often 2–4× RmlUi's" | 116 MB working set, ~310 MB committed (much of it the Direct3D driver's); no RmlUi build to compare with |
 | "Tens of megabytes of DLLs" | The standalone Windows program, Qt linked in, is ~50 MB |
 | An extra full-viewport texture pass | Kept, and used: the scene is drawn into a linear-light multisampled target and composited to sRGB in that pass |
-| Screenshot tests "easy" | Gallery reference images for every primitive, both themes, three pixel ratios, on Windows CI; render tests on WARP and lavapipe |
+| Screenshot tests "easy" | Gallery reference images for every primitive, both themes, three pixel ratios, on Windows and macOS CI; render tests on WARP and lavapipe |
 
 The two-week spike in both frameworks was not run; the Qt build was
 grown directly from the controller layer.
