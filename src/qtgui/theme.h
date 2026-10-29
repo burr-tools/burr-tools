@@ -245,8 +245,9 @@ public:
   int toolbarHideDelay(void) const { return int(dens("toolbarAutoHide.hideDelayMs")); }
   int toolbarFade(void) const { return reducedMotion() ? 0 : int(dens("toolbarAutoHide.fadeMs")); }
 
-  /* The system's "reduce motion" (QAccessibilityHints::motionPreference),
-   * or what a test set (setReducedMotionForTesting) */
+  /* The system's "reduce motion" (QAccessibilityHints::motionPreference;
+   * before Qt 6.12 `systemmotion`), or what a test set
+   * (setReducedMotionForTesting) */
   bool reducedMotion(void) const;
   /* -1 follows the system again; 0 or 1 holds it off or on (tests) */
   Q_INVOKABLE void setReducedMotionForTesting(int on);
