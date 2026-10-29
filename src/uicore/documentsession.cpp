@@ -220,6 +220,7 @@ namespace btui {
   bool DocumentSession::save(void) {
     if (fname.empty())
       return false;
+    splitStroke();
     if (!writePuzzle(*puz, fname))
       return false;
     hist->markSaved();
@@ -228,6 +229,7 @@ namespace btui {
 
   bool DocumentSession::saveAs(const std::filesystem::path & file) {
     std::filesystem::path target = withPuzzleExtension(file);
+    splitStroke();
     if (!writePuzzle(*puz, target))
       return false;
     fname = target;
@@ -277,6 +279,15 @@ namespace btui {
       return false;
     stroking = false;
     return hist->endStroke(puz.get(), strokeShape);
+  }
+
+  void DocumentSession::splitStroke(void) {
+    if (!stroking)
+      return;
+    const puzzleHistory_c::actionKind_e kind = strokeKind;
+    const unsigned int shape = strokeShape;
+    endStroke();
+    beginStroke(kind, shape);
   }
 
   void DocumentSession::record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {

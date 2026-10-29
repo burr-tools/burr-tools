@@ -148,7 +148,9 @@ namespace btui {
        * changes the puzzle as edit() does, without a step of its own; the
        * stroke is recorded at its end if any of them changed anything. An
        * edit(), undo, redo or another document ends an open stroke first, so
-       * what it painted so far is a step of its own and is never lost.
+       * what it painted so far is a step of its own and is never lost. A
+       * save during a stroke splits it there: the part saved is one step, the
+       * rest of the drag the next, so an undo back to the save reads clean.
        * Outside a stroke, strokeEdit() is an edit() of the stroke kind.
        */
       void beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);
@@ -173,6 +175,9 @@ namespace btui {
       void setUndoDepth(unsigned int depth);
 
     private:
+
+      /* an open stroke so far as one undo step, the stroke going on (a save) */
+      void splitStroke(void);
 
       /* the current state as one undo step */
       void record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);

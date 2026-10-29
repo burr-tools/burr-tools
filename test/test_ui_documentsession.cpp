@@ -354,6 +354,27 @@ TEST_CASE("an undo, an edit or another document during a stroke ends it first", 
   CHECK_FALSE(d.canUndo());
 }
 
+TEST_CASE("a save during a stroke splits it: an undo back to the save reads clean", "[ui][document]") {
+  TempDir t;
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.strokeEdit(fill(0));
+  d.strokeEdit(fill(1));
+  REQUIRE(d.saveAs(t.path / "mid"));
+  CHECK(d.inStroke());
+  CHECK_FALSE(d.isModified());
+  d.strokeEdit(fill(2));
+  CHECK(d.endStroke());
+  CHECK(d.isModified());
+  d.undo();                       // the rest of the drag
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 2);
+  CHECK_FALSE(d.isModified());    // the file holds just this
+  d.undo();                       // the part before the save
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
+  CHECK(d.isModified());
+}
+
 TEST_CASE("strokeEdit outside a stroke is an edit of its own", "[ui][document]") {
   DocumentSession d;
   oneShape(d);
