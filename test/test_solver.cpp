@@ -4239,24 +4239,26 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
   }
 }
 
-/* getFinished() has to switch progress sources BACK when a run is not
- * parallel, not merely switch them over when it is. A solve aborted on the
- * parallel path leaves completedTasks and totalTasks holding that run's
- * numbers; if the flag selecting the task-based source is never cleared, a
- * resume with one thread reports that abandoned run's ratio -- a constant,
- * wrong number -- for the whole of the serial search.
+/* A solve aborted on the parallel path leaves completedTasks and totalTasks
+ * holding that run's numbers. A resume with one thread used to go serial, and
+ * getFinished() had to switch back to the serial source for it, or it reported
+ * the abandoned run's ratio, a constant, for the whole of the serial search.
  *
- * Clearing the flag alone is not enough, which is why this test was written
- * first: getFinished() has two task-ratio branches gated on two pieces of
- * state, and clearing only the flag moves the stale value from the first
- * branch to the second. It failed with bit-identical values either way.
+ * The run no longer goes serial: the abort leaves a pool remainder, and a
+ * remainder resumes on the task-based path at any width (willRunParallel()).
+ * The ratio after the resume is therefore the same task list's, carried
+ * forward, and it may equal the paused one: the resume stops at its first
+ * assembly, and when the parallel run had already completed every task up to
+ * the one holding it, no task completes in between. Which tasks the parallel
+ * abort leaves depends on timing (6/39 to 15/39 here; 15/39 on a slow CI
+ * runner, equal to where the resume stops), so the case asserts that the
+ * resumed run stays on this list and does not go back, not that it moves.
  *
- * The check is made after both runs have been stopped, from the main thread
- * with nothing else alive, so it is deterministic and adds no sampling thread:
- * the stale ratio is exactly the value getFinished() would keep returning, and
- * the serial estimate reproduces it only by coincidence.
+ * The serial runs that remain (createMatrix(), setPosition() of a serial
+ * position) reset the progress state themselves; assemble() still switches
+ * the source off for a non-parallel run as a backstop.
  */
-TEST_CASE("Huang progress leaves the task-based source when a run is not parallel",
+TEST_CASE("Huang progress stays task-based when a remainder resumes on one thread",
           "[assembler][parallel][progress]") {
   ScopedNoSimd dlxPath;
 
@@ -4271,7 +4273,7 @@ TEST_CASE("Huang progress leaves the task-based source when a run is not paralle
 
   /* a parallel run, stopped from the callback so the abort is deterministic.
    * Tasks that had already drained when the abort landed are counted, so
-   * completedTasks is non-zero and the stale ratio is too.
+   * completedTasks is non-zero and so is the ratio.
    */
   int parallelAssemblies = 0;
   assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
@@ -4280,22 +4282,24 @@ TEST_CASE("Huang progress leaves the task-based source when a run is not paralle
   });
   REQUIRE(parallelAssemblies == 1);
 
-  const float stale = assm.getFinished();
-  INFO("stale parallel ratio: " << stale);
-  REQUIRE(stale > 0.0f);
-  REQUIRE(stale < 1.0f);
+  const float paused = assm.getFinished();
+  INFO("paused parallel ratio: " << paused);
+  REQUIRE(paused > 0.0f);
+  REQUIRE(paused < 1.0f);
 
-  /* resume single-threaded and stop it the same way */
+  /* resume single-threaded and stop it the same way: one worker, inline */
   assm.setNumThreads(1);
-  int serialAssemblies = 0;
+  CHECK(assm.getRunThreads() == 1);
+  int resumedAssemblies = 0;
   assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
-    serialAssemblies++;
+    resumedAssemblies++;
     return false;
   });
-  REQUIRE(serialAssemblies == 1);
+  REQUIRE(resumedAssemblies == 1);
 
-  INFO("progress after the serial resume: " << assm.getFinished());
-  CHECK(assm.getFinished() != stale);
+  INFO("progress after the single-threaded resume: " << assm.getFinished());
+  CHECK(assm.getFinished() >= paused);
+  CHECK(assm.getFinished() < 1.0f);
 }
 
 /* The Huang twin of the assembler_0 resume case: completedTasks is only ever
