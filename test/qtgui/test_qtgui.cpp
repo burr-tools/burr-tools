@@ -277,7 +277,7 @@ private slots:
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
-                          "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "StatusBar.qml",
+                          "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
       if (f != QLatin1String("BtDialog.qml"))     // the frame the dialogs share
