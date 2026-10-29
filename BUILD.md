@@ -34,7 +34,7 @@ is always built from source, never taken from the system, which is why
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y meson ninja-build cmake build-essential \
+sudo apt-get install -y meson ninja-build cmake build-essential pkg-config \
     libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev \
     python3 python3-dev
 ```
