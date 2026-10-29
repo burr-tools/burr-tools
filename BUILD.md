@@ -28,9 +28,9 @@ brew install cppcheck llvm just
 ### Linux
 
 Install the required dependencies. FLTK 1.4, Manifold, Catch2 and
-pybind11 are built automatically from the wraps in `subprojects/` (a
-system FLTK is used if one happens to be installed, otherwise it is
-built from source, which is why `cmake` is required).
+pybind11 are built automatically from the wraps in `subprojects/` (FLTK
+is always built from source, never taken from the system, which is why
+`cmake` is required; a system `libfltk1.3-dev` is ignored).
 
 ```bash
 sudo apt-get update

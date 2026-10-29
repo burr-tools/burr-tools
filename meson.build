@@ -272,66 +272,61 @@ endif
 
 gdiplus_dep = dependency('', required: false)
 
-fltk_dep = cxx.find_library('fltk', required: false)
-fltkgl_dep = cxx.find_library('fltk_gl', required: false)
-fltkimages_dep = cxx.find_library('fltk_images', required: false)
 fltkpng_dep = dependency('', required: false)
 fltkz_dep = dependency('', required: false)
 
-if not fltk_dep.found()
-  # fetch and build fltk from source
-  cmake = import('cmake')
-  
-  # Configure CMake to skip test programs that require fluid
-  cmake_opts = cmake.subproject_options()
-  cmake_opts.set_override_option('werror', 'false')
+# Always build the vendored FLTK 1.4 (subprojects/fltk.wrap): the code needs 1.4,
+# and a system FLTK 1.3 (libfltk1.3-dev) must never be picked up instead.
+cmake = import('cmake')
+
+# Configure CMake to skip test programs that require fluid
+cmake_opts = cmake.subproject_options()
+cmake_opts.set_override_option('werror', 'false')
+cmake_opts.add_cmake_defines({
+  'FLTK_BUILD_TEST': 'OFF',
+  'FLTK_BUILD_EXAMPLES': 'OFF'
+})
+
+# FLTK is a CMake subproject and so inherits neither the global nor the project
+# arguments that carry the deployment target. Without this, libfltk.a objects
+# are built for the host's macOS version and linking them into a binary that
+# declares an older minimum produces "built for newer macOS version" warnings -
+# and a binary that claims a compatibility it does not have.
+if host_machine.system() == 'darwin'
   cmake_opts.add_cmake_defines({
-    'FLTK_BUILD_TEST': 'OFF',
-    'FLTK_BUILD_EXAMPLES': 'OFF'
+    'CMAKE_OSX_DEPLOYMENT_TARGET': macos_deployment_target
   })
-  
-  # FLTK is a CMake subproject and so inherits neither the global nor the project
-  # arguments that carry the deployment target. Without this, libfltk.a objects
-  # are built for the host's macOS version and linking them into a binary that
-  # declares an older minimum produces "built for newer macOS version" warnings -
-  # and a binary that claims a compatibility it does not have.
-  if host_machine.system() == 'darwin'
-    cmake_opts.add_cmake_defines({
-      'CMAKE_OSX_DEPLOYMENT_TARGET': macos_deployment_target
-    })
-  endif
-
-  if host_machine.system() == 'windows'
-    gdiplus_dep = cxx.find_library('gdiplus')
-
-    # For Windows cross-compilation, disable optional dependencies that might
-    # pull in system headers
-    cmake_opts.add_cmake_defines({
-      'FLTK_USE_SYSTEM_LIBJPEG': 'OFF',
-      'FLTK_USE_SYSTEM_LIBPNG': 'OFF',
-      'FLTK_USE_SYSTEM_ZLIB': 'OFF',
-      'FLTK_OPTION_CAIRO': 'OFF',
-      'CMAKE_FIND_ROOT_PATH_MODE_INCLUDE': 'ONLY',
-      'CMAKE_FIND_ROOT_PATH_MODE_LIBRARY': 'ONLY'
-    })
-  endif
-  
-  fltk_proj = cmake.subproject('fltk', options: cmake_opts)
-  fltk_dep = fltk_proj.dependency('fltk')
-  fltkgl_dep = fltk_proj.dependency('fltk_gl')
-  fltkimages_dep = fltk_proj.dependency('fltk_images')
-
-  # On Windows, FLTK builds bundled PNG and zlib libraries when we disable system libraries
-  # These need to be linked separately
-  if host_machine.system() == 'windows'
-    fltkpng_dep = fltk_proj.dependency('fltk_png')
-    fltkz_dep = fltk_proj.dependency('fltk_z')
-  else
-    fltkpng_dep = dependency('', required: false)
-    fltkz_dep = dependency('', required: false)
-  endif
 endif
 
+if host_machine.system() == 'windows'
+  gdiplus_dep = cxx.find_library('gdiplus')
+
+  # For Windows cross-compilation, disable optional dependencies that might
+  # pull in system headers
+  cmake_opts.add_cmake_defines({
+    'FLTK_USE_SYSTEM_LIBJPEG': 'OFF',
+    'FLTK_USE_SYSTEM_LIBPNG': 'OFF',
+    'FLTK_USE_SYSTEM_ZLIB': 'OFF',
+    'FLTK_OPTION_CAIRO': 'OFF',
+    'CMAKE_FIND_ROOT_PATH_MODE_INCLUDE': 'ONLY',
+    'CMAKE_FIND_ROOT_PATH_MODE_LIBRARY': 'ONLY'
+  })
+endif
+
+fltk_proj = cmake.subproject('fltk', options: cmake_opts)
+fltk_dep = fltk_proj.dependency('fltk')
+fltkgl_dep = fltk_proj.dependency('fltk_gl')
+fltkimages_dep = fltk_proj.dependency('fltk_images')
+
+# On Windows, FLTK builds bundled PNG and zlib libraries when we disable system libraries
+# These need to be linked separately
+if host_machine.system() == 'windows'
+  fltkpng_dep = fltk_proj.dependency('fltk_png')
+  fltkz_dep = fltk_proj.dependency('fltk_z')
+else
+  fltkpng_dep = dependency('', required: false)
+  fltkz_dep = dependency('', required: false)
+endif
 
 # The legacy Windows binaries are linked fully static so they run without
 # shipping any DLLs. The Qt GUI (src/qtgui) does not get these: it links Qt's
