@@ -38,7 +38,7 @@
 namespace btui {
 
   template <class E> struct Term {
-    E value;
+    E value{};
     std::string_view word;
   };
 
