@@ -887,6 +887,9 @@ void TestEditor::theCursorsDrawOnTheSystemsArrow() {
   QCOMPARE(erase.image.width(), int(std::lround(32 * size)));
   QCOMPARE(erase.hotspot, QPoint(int(std::lround(16 * size)), int(std::lround(16 * size))));
   QVERIFY(!editcursor::cursor(btui::Tool::Fixed, QColor(Qt::red), false, 1).pixmap().isNull());
+  // composed once for the same arrow, though macOS draws a new image of it on every call
+  QCOMPARE(editcursor::cursor(btui::Tool::Fixed, QColor(Qt::red), false, 1).pixmap().cacheKey(),
+           editcursor::cursor(btui::Tool::Fixed, QColor(Qt::red), false, 1).pixmap().cacheKey());
 }
 
 void TestEditor::theEditButtonShowsTheCursorsDrawing() {

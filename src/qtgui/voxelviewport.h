@@ -92,6 +92,8 @@ protected:
   void hoverLeaveEvent(QHoverEvent * e) override;
   bool eventFilter(QObject * watched, QEvent * e) override;
   void updatePolish(void) override;
+  /* a move to a screen of another scale composes the edit cursor again */
+  void itemChange(ItemChange change, const ItemChangeData & value) override;
 
 private:
 
@@ -103,7 +105,7 @@ private:
   Qt::KeyboardModifiers m_hoverMods;
   bool m_hoverPending = false;     ///< a hover to pick at the next polish
   bool m_filtering = false;        ///< watching the modifier keys
-  int m_cursorKey = -2;            ///< the cursor set: -1 none, the tool, or a grab hand (-3 orbit, -4 pan)
+  quint64 m_cursorKey = 0;         ///< the cursor set (updateCursor): none, the tool, or a grab hand; 0 before any
   QList<int> m_supported;          ///< the device's sample counts; empty until known
 };
 
