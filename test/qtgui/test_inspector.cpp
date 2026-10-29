@@ -54,21 +54,22 @@ namespace {
 }
 
 void TestInspector::theSectionsRememberWhetherTheyAreOpen() {
-  // contract section 5: Transform open, the others closed, until changed; kept in the settings
+  // AC-C03-01: every section closed until opened (user decision 2026-10-29); kept in the settings
   QTemporaryDir dir;
   const QString s = dir.filePath(QStringLiteral("s.rc")), l = dir.filePath(QStringLiteral("l.rc"));
   {
     App app(s, l);
     InspectorController * i = app.inspector();
-    QVERIFY(i->transformOpen());
+    QVERIFY(!i->transformOpen());
     QVERIFY(!i->fitOpen());
     QVERIFY(!i->repairOpen());
     QSignalSpy changed(i, &InspectorController::sectionsChanged);
-    i->setTransformOpen(false);
+    i->setFitOpen(true);
+    i->setFitOpen(false);
     i->setRepairOpen(true);
-    QCOMPARE(changed.count(), 2);
+    QCOMPARE(changed.count(), 3);
     i->setRepairOpen(true);
-    QCOMPARE(changed.count(), 2);
+    QCOMPARE(changed.count(), 3);
   }
   App app(s, l);
   QVERIFY(!app.inspector()->transformOpen());

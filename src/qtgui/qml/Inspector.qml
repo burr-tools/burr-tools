@@ -6,9 +6,9 @@ import QtQuick.Layouts
 import BurrTools.Ui
 
 // The inspector under the Shapes list (P6): what is done to the whole
-// selected shape, in three accordion sections (PR-09) whose open state
-// persists -- C04 Transform (open by default), C03 Fit & scale, C05 Repair
-// & surface. App.inspector runs each operation as one undo step, or says
+// selected shape, in three accordion sections (PR-09), closed until
+// opened, whose open state persists -- C04 Transform, C03 Fit & scale, C05
+// Repair & surface. App.inspector runs each operation as one undo step, or says
 // in the status bar why it cannot; a greyed button still takes the press
 // and its hint or tooltip names the reason.
 //
@@ -38,6 +38,8 @@ import BurrTools.Ui
 //
 // A Transform button under the pointer or the keyboard focus previews its
 // result in the 3D view (App.inspector.preview); leaving it clears that.
+// An open section's buttons are one Tab stop (RovingFocus): the arrows
+// move between them.
 Item {
     id: root
     objectName: "entities.inspector"
@@ -69,6 +71,11 @@ Item {
         }
     }
     Component.onDestruction: insp.clearPreview()
+
+    // each section's buttons, one Tab stop
+    RovingFocus { id: transformKeys }
+    RovingFocus { id: fitKeys }
+    RovingFocus { id: repairKeys }
 
     // the nudge pad's rows: spheres a row per layer, the prism's in-plane
     // arrows two by two, then the buttons along Z
@@ -112,6 +119,7 @@ Item {
         id: tb
         required property var spec
         objectName: "entities.transform." + spec.id
+        roving: transformKeys
         glyph: spec.glyph
         caption: spec.caption
         tip: spec.tip
@@ -133,7 +141,15 @@ Item {
         objectName: "entities.transform." + spec.id
         implicitWidth: 40
         implicitHeight: Math.min(32, Theme.transformButton)
-        focusPolicy: Qt.StrongFocus
+        // in the Transform section's one Tab stop, as a GlyphButton with `roving`
+        focusPolicy: transformKeys.stop === pb ? Qt.StrongFocus : Qt.ClickFocus
+        Component.onCompleted: transformKeys.join(pb)
+        Component.onDestruction: transformKeys.leave(pb)
+        onActiveFocusChanged: if (activeFocus) transformKeys.current = pb
+        Keys.onPressed: (event) => {
+            if ((event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier && transformKeys.navigate(pb, event.key))
+                event.accepted = true
+        }
         hoverEnabled: true
         Accessible.role: Accessible.Button
         Accessible.name: spec.tip
@@ -384,6 +400,7 @@ Item {
                     readonly property real half: (width - spacing) / 2
                     ActionButton {
                         objectName: "entities.fit.prune"
+                        roving: fitKeys
                         width: Theme.minimal ? implicitWidth : parent.width
                         glyph: "prune-grid"
                         title: qsTr("Prune grid to fit piece")
@@ -394,6 +411,7 @@ Item {
                     }
                     ActionButton {
                         objectName: "entities.fit.center"
+                        roving: fitKeys
                         width: Theme.minimal ? implicitWidth : fitFlow.half
                         glyph: "center-on-grid"
                         title: qsTr("Center")
@@ -403,6 +421,7 @@ Item {
                     }
                     ActionButton {
                         objectName: "entities.fit.origin"
+                        roving: fitKeys
                         width: Theme.minimal ? implicitWidth : fitFlow.half
                         glyph: "move-to-origin"
                         title: qsTr("To origin")
@@ -424,6 +443,7 @@ Item {
                         readonly property real half: (width - spacing) / 2
                         ActionButton {
                             objectName: "entities.fit.minimize"
+                            roving: fitKeys
                             width: Theme.minimal ? implicitWidth : parent.width
                             glyph: "minimize"
                             title: qsTr("Minimize")
@@ -439,6 +459,7 @@ Item {
                                 id: scaleButton
                                 required property var modelData
                                 objectName: "entities.fit.x" + modelData.n
+                                roving: fitKeys
                                 width: Theme.minimal ? implicitWidth : scaleFlow.half
                                 // Minimal: the glyph and the caption side by side, as wide as they are
                                 implicitWidth: Theme.minimal ? glyphSize + 6 + captionWidth.advanceWidth + 16 : 62
@@ -476,6 +497,7 @@ Item {
                 Item { width: 1; height: 2 }
                 ActionButton {
                     objectName: "entities.repair.fillHoles"
+                    roving: repairKeys
                     width: Theme.minimal ? implicitWidth : parent.width
                     glyph: "fill-holes"
                     title: qsTr("Fill interior holes")
@@ -528,6 +550,7 @@ Item {
                                                         ["variable", qsTr("Make variable"), root.tasks.variableInner],
                                                         ["clear", qsTr("Clear colour"), root.tasks.clearInner]][rowNo]
                             objectName: "entities.repair." + row[0] + (outer ? ".outer" : ".inner")
+                            roving: repairKeys
                             Layout.row: rowNo
                             Layout.column: outer ? 2 : 1
                             Layout.preferredWidth: Theme.minimal ? 52 : 66

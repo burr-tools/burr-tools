@@ -12,6 +12,9 @@ import BurrTools.Ui
 // tools, Mirror and Span and the planes as icons alone, their names in the
 // tooltips. The click controls have fixed widths and flow: a wider card
 // takes the placement group up beside the tools, the grid gets the height.
+// Keyboard: the tools, Mirror, Span, the layer strip and the planes are a
+// Tab stop each, the arrows moving within; on the grid Shift+↑ / ↓ change
+// the layer.
 //
 // Wireframe (each number marks its code below):
 //
@@ -50,7 +53,7 @@ Card {
     /* hidden (collapsed to its rail), it keeps no focus: a focus scope
      * remembers its focused child, and Qt before 6.12 gives the window's
      * focus back to it, unseen, before anything else */
-    onVisibleChanged: if (!visible) grid.focus = false
+    onVisibleChanged: if (!visible) { grid.focus = false; layers.focus = false }
 
     readonly property var editor: App.editor
     readonly property var axisColours: [Theme.axisX, Theme.axisY, Theme.axisZ]
@@ -313,6 +316,8 @@ Card {
                                 width: 3 * clickFlow.axisWidth + 2 * 6
                                 spacing: 4
                                 readonly property bool mirror: modelData.name === "mirror"
+                                // the group's three toggles, one Tab stop: ← / → between them
+                                RovingFocus { id: axisKeys }
                                 Text {
                                     objectName: "entities.editor." + group.modelData.name + ".label"
                                     text: group.modelData.label
@@ -329,6 +334,7 @@ Card {
                                             required property int index
                                             readonly property string axis: root.axisNames[index]
                                             objectName: "entities.editor." + group.modelData.name + "." + axis.toLowerCase()
+                                            roving: axisKeys
                                             toggle: true
                                             width: clickFlow.axisWidth
                                             height: Theme.mirrorSpan
@@ -391,12 +397,21 @@ Card {
                 }
                 ListView {
                     id: layers
+                    objectName: "entities.editor.layers.list"
                     anchors { top: stripHeader.bottom; topMargin: 6; bottom: parent.bottom; bottomMargin: 6
                               left: parent.left; right: parent.right }
                     clip: true
                     spacing: 4
                     boundsBehavior: Flickable.StopAtBounds
                     model: root.editor.layerCount
+                    // a Tab stop: ↑ / ↓ go a layer up or down, as the chips stand
+                    activeFocusOnTab: root.editor.layerCount > 0
+                    Keys.onUpPressed: root.editor.layerStep(1)
+                    Keys.onDownPressed: root.editor.layerStep(-1)
+                    Accessible.role: Accessible.List
+                    Accessible.name: qsTr("%1 layer %2 of %3").arg(root.editor.layerAxisName)
+                                     .arg(root.editor.layer + 1).arg(root.editor.layerCount)
+                    Accessible.description: qsTr("Up and Down arrows change the layer")
                     // highest layer at the top
                     delegate: Rectangle {
                         id: chip
@@ -437,7 +452,7 @@ Card {
                             hoverEnabled: true
                             onClicked: root.editor.layer = chip.layerNo
                         }
-                        BtToolTip { shown: chipMouse.containsMouse; text: chip.Accessible.name }
+                        BtToolTip { shown: chipMouse.containsMouse || (chip.current && layers.activeFocus); text: chip.Accessible.name }
                     }
                     // keep the current layer's chip in view
                     function follow(): void {
@@ -447,6 +462,15 @@ Card {
                         target: root.editor
                         function onLayerChanged() { layers.follow() }
                     }
+                }
+                // the keyboard's focus on the strip, as on the grid
+                Rectangle {
+                    objectName: "entities.editor.layers.focusRing"
+                    anchors.fill: parent
+                    visible: layers.activeFocus
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.accent
                 }
             }
 
@@ -462,7 +486,7 @@ Card {
                     tabStop: true
                     Accessible.role: Accessible.Table
                     Accessible.name: qsTr("2D grid: layer %1 of %2").arg(root.editor.layer + 1).arg(root.editor.layerCount)
-                    Accessible.description: qsTr("Arrow keys move the cell cursor, Space or Enter applies the tool (Shift+Space: fixed), Delete erases, Page Up and Page Down change the layer")
+                    Accessible.description: qsTr("Arrow keys move the cell cursor, Space or Enter applies the tool (Shift+Space: fixed), Delete erases, Shift+Up and Shift+Down or Page Up and Page Down change the layer")
                     HoverHandler { id: gridHover }
                     BtToolTip {
                         shown: gridHover.hovered && !root.editor.stroking

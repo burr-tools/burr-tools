@@ -47,6 +47,7 @@ qtgui_qml_files = files(
   'ProblemList.qml',
   'RadioCard.qml',
   'RailButton.qml',
+  'RovingFocus.qml',
   'SearchField.qml',
   'Segmented.qml',
   'SettingsDialog.qml',

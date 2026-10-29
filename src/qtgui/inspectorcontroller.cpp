@@ -36,7 +36,8 @@
 
 namespace {
   const char * const kOpenKeys[3] = { "inspector.open.transform", "inspector.open.fit", "inspector.open.repair" };
-  constexpr bool kOpenDefaults[3] = { true, false, false };
+  // all closed until opened (AC-C03-01; user decision 2026-10-29)
+  constexpr bool kOpenDefaults[3] = { false, false, false };
 
   /* the operations whose state the buttons show, worked out once per change */
   constexpr int kChecked[] = { btui::task::Prune, btui::task::Origin, btui::task::Center, btui::task::Minimize,

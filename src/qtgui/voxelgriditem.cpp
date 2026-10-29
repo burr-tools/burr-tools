@@ -559,6 +559,12 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
     i = btui::nearestCell(m_layout, { m_layout.width / 2, m_layout.height / 2 });
   // layout units: y up, as the rows count
   const Qt::KeyboardModifiers mods = e->modifiers() & ~Qt::KeypadModifier;
+  // Shift+Up / Down: a layer up or down, the cell cursor kept
+  if ((key == Qt::Key_Up || key == Qt::Key_Down) && mods == Qt::ShiftModifier) {
+    m_editor->layerStep(key == Qt::Key_Up ? 1 : -1);
+    e->accept();
+    return;
+  }
   switch (key) {
     case Qt::Key_Left:  setKeyCell(btui::stepCell(m_layout, i, -1, 0)); break;
     case Qt::Key_Right: setKeyCell(btui::stepCell(m_layout, i, 1, 0)); break;
