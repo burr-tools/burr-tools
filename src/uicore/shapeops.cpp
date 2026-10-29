@@ -78,8 +78,10 @@ namespace btui {
         case gridType_c::GT_SPHERES: return spheres;
         case gridType_c::GT_RHOMBIC: return rhombic;
         case gridType_c::GT_TETRA_OCTA: return tetra;
-        default: return bricks;
+        case gridType_c::GT_BRICKS:
+        case gridType_c::GT_NUM_GRIDS: return bricks;
       }
+      return bricks;
     }
 
     const Move * moveOf(G t, int task) {
@@ -124,7 +126,8 @@ namespace btui {
         case gridType_c::GT_TETRA_OCTA:
           dx = -(int(s.boundX1()) / 6) * 6; dy = -(int(s.boundY1()) / 6) * 6; dz = -(int(s.boundZ1()) / 6) * 6;
           break;
-        default:
+        case gridType_c::GT_BRICKS:
+        case gridType_c::GT_NUM_GRIDS:
           break;
       }
       s.translate(dx, dy, dz, 0);
@@ -264,8 +267,10 @@ namespace btui {
       case gridType_c::GT_SPHERES: return spheres;
       case gridType_c::GT_RHOMBIC: return rhombic;
       case gridType_c::GT_TETRA_OCTA: return tetra;
-      default: return bricks;
+      case gridType_c::GT_BRICKS:
+      case gridType_c::GT_NUM_GRIDS: return bricks;
     }
+    return bricks;
   }
 
   // --- running ---------------------------------------------------------------------
