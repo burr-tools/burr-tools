@@ -30,6 +30,7 @@
 #include "iconprovider.h"
 #include "selfcheck.h"
 #include "theme.h"
+#include "windowframe.h"
 
 #include "../lib/bt_assert.h"
 #include "../tools/envvars.h"
@@ -394,6 +395,8 @@ int main(int argc, char ** argv) {
 
   auto * mainWindow = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
   earlyDevice.adopt(mainWindow);
+  // Linux: the window manager's title bar dark with a dark theme (windowframe.h)
+  windowframe::follow(mainWindow);
   QmlOutlines::installIfAsked(mainWindow);
   trace.mark("graphics device handed to the window");
   // ready: the puzzle opened, if any, has its mesh in the 3D view
