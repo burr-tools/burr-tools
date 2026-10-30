@@ -3794,6 +3794,138 @@ TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
   }
 }
 
+struct Assembler1UnitsTestAccess {
+  /* After a finished run every unit the run started with is completed:
+   * donations and stops only move units between tasks. */
+  static bool unitsConserved(const assembler_1_c & assm) {
+    const size_t total = assm.totalTasks.load(std::memory_order_relaxed);
+    return total > 0 && assm.completedTasks.load(std::memory_order_relaxed) == total;
+  }
+
+  static unsigned long redonations(const assembler_1_c & assm) {
+    return assm.redonations.load(std::memory_order_relaxed);
+  }
+};
+
+/* Split on demand in assembler_1 (Huang, and A1-DLX with the DLX engine
+ * forced). Same shape as "donated work is searched exactly once": forced
+ * donations, every run -- uninterrupted, and stopped + restored -- must
+ * reproduce the baseline as a multiset, and the completed progress units
+ * must equal the total (a donation that leaks or double-counts units
+ * misses it; getFinished() cannot tell, it reports 1 for any completed
+ * search).
+ * CubeInCage has identical pieces, so donated seeds must carry the pivot
+ * bits that make their replay apply the monotonic shape filter;
+ * SolidSixPieceBurrs has a range column and stops deep.
+ */
+TEST_CASE("assembler_1 donated work is searched exactly once",
+          "[assembler][resume][save][parallel]") {
+  struct Case { const char * path; bool dlx; unsigned int threads; const char * every; };
+  const Case cases[] = {
+    {"examples/CubeInCage.xmpuzzle", false, 1, "1"},
+    {"examples/CubeInCage.xmpuzzle", false, 4, "5"},
+    {"examples/PiecesOfEight.xmpuzzle", false, 4, "3"},
+    {"examples/SolidSixPieceBurrs.xmpuzzle", false, 4, "50"},
+    {"examples/CubeInCage.xmpuzzle", true, 2, "1"},
+    {"examples/CubeInCage.xmpuzzle", true, 4, "7"},
+    {"examples/CubeInCage.xmpuzzle", true, 4, "61"},
+    {"examples/PiecesOfEight.xmpuzzle", true, 4, "3"},
+  };
+  for (const auto & c : cases) {
+    INFO(c.path << (c.dlx ? " DLX" : " Huang") << ", " << c.threads << " threads, every " << c.every);
+    ScopedEnv noSimd("BURRTOOLS_NO_SIMD", c.dlx ? "1" : nullptr);
+    auto p = puzzle_c::load(c.path);
+    REQUIRE(p != nullptr);
+    auto problem = p->getProblem(0);
+    REQUIRE(problem != nullptr);
+
+    std::multiset<std::string> baseline;
+    {
+      ScopedEnv noDonate("BURRTOOLS_NO_DONATE", "1");
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(4);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      baseline = std::move(cb.fingerprints);
+    }
+    REQUIRE(baseline.size() > 3);
+
+    ScopedEnv every("BURRTOOLS_DONATE_EVERY", c.every);
+    {
+      RecordingAssemblerCallback cb;
+      assembler_1_c assm(*problem);
+      assm.setNumThreads(c.threads);
+      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      assm.assemble(&cb);
+      CHECK(assm.getDonations() > 0);
+      CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
+      CHECK(cb.fingerprints == baseline);
+    }
+
+    for (unsigned int stopAfter : {2u, static_cast<unsigned int>(baseline.size() / 2)}) {
+      INFO("stop after " << stopAfter);
+      RecordingAssemblerCallback cb1, cb2;
+      std::string state;
+      {
+        assembler_1_c assm(*problem);
+        assm.setNumThreads(c.threads);
+        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        unsigned int seen = 0;
+        assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
+          cb1.assembly(std::move(a));
+          return ++seen < stopAfter;
+        });
+        std::ostringstream str;
+        xmlWriter_c xml(str);
+        assm.save(xml);
+        state = str.str();
+      }
+      {
+        assembler_1_c restored(*problem);
+        restored.setNumThreads(c.threads);
+        REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        std::string payload = extractAssemblerContent(state);
+        REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
+                == assembler_c::ERR_NONE);
+        restored.assemble(&cb2);
+        CHECK(Assembler1UnitsTestAccess::unitsConserved(restored));
+      }
+      std::multiset<std::string> resumed = cb1.fingerprints;
+      resumed.insert(cb2.fingerprints.begin(), cb2.fingerprints.end());
+      CHECK(resumed == baseline);
+    }
+  }
+}
+
+/* A donated A1-DLX piece resumes its root frame between two rows (top 5),
+ * so the rows after the current one are its root level's children and must
+ * be counted as such. When they were not, the first of them took the whole
+ * share, the root level had nothing left, and the piece could never donate
+ * from it again: every donation then came from deeper, smaller frames.
+ * Results stay right either way, so only this counter can tell: with the
+ * bug it is 0 by construction, without it about half of all donations.
+ * Two threads, because one runs A1-DLX serially.
+ */
+TEST_CASE("a donated A1-DLX piece donates again from its root frame",
+          "[assembler][parallel]") {
+  ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
+  ScopedEnv every("BURRTOOLS_DONATE_EVERY", "1");
+  auto p = puzzle_c::load("examples/CubeInCage.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+
+  RecordingAssemblerCallback cb;
+  assembler_1_c assm(*problem);
+  assm.setNumThreads(2);
+  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  assm.assemble(&cb);
+  REQUIRE(assm.getDonations() > 0);
+  CHECK(Assembler1UnitsTestAccess::redonations(assm) > 0);
+  CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
+}
+
 /* A0-SIMD divide-at-stop with SIMD rests on a real puzzle.
  *
  * A SIMD frame with more remaining branches than the fan-out cap leaves a
@@ -3946,8 +4078,8 @@ TEST_CASE("assembler_1 pool write-back resumes exact-once",
 /* Number of saved A1-DLX pool tasks whose written-back frontier is in
  * state 4 (see the test below). Payload (format 2.2): interrupted flag,
  * seven serial-stack vectors, ptype, then for ptype 1 the task count and
- * per task five stack vectors (task_stack first) plus baseDepth; a vector
- * is its length followed by its entries. */
+ * per task five stack vectors (task_stack first), baseDepth and the cuts
+ * vector; a vector is its length followed by its entries. */
 static unsigned int a1DlxTopFourTasks(const std::string & state) {
   std::istringstream in(extractAssemblerContent(state));
   auto readVector = [&in]() {
@@ -3974,6 +4106,7 @@ static unsigned int a1DlxTopFourTasks(const std::string & state) {
       readVector();
     unsigned int baseDepth = 0;
     in >> baseDepth;
+    readVector();  // cuts
     if (!taskStack.empty() && taskStack.back() == 4)
       topFour++;
   }

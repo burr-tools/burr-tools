@@ -393,6 +393,7 @@ bool SimdHuangCover<BitsetType>::taskFromSeed(
   task.pivot_shape = seed.pivotShape;
   task.pivot_shape.resize(seed.prefix.size(), 0);
   task.rest_skip = seed.restSkip;
+  task.units = seed.units;
   return true;
 }
 
@@ -671,13 +672,17 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::atomic<size_t> &completed_tasks,
   ThreadBudget *budget,
   const std::vector<HuangSeed> *resume_seeds,
-  std::vector<HuangSeed> *salvaged_seeds
+  std::vector<HuangSeed> *salvaged_seeds,
+  std::atomic<unsigned long> *donations
 ) const {
   // One token for the whole run: workers share it for cancellation checks,
   // and a worker that throws fires the source so siblings stop promptly.
   std::stop_token stop = runStop.get_token();
-  // Stop-time fan-out (see StopTrace), fixed for the whole run.
+  // Stop-time fan-out (see StopTrace) and donation toggles, fixed for the
+  // whole run.
   const unsigned int fanout = SplitFanout::fromEnv();
+  const bool donate = !SplitFanout::noDonateFromEnv();
+  const unsigned long donateEvery = SplitFanout::donateEveryFromEnv();
   std::vector<SubtreeTask> tasks;
   if (resume_seeds != nullptr && !resume_seeds->empty()) {
     // Incremental continue: rebuild pool tasks by replaying the salvaged
@@ -696,12 +701,12 @@ void SimdHuangCover<BitsetType>::parallelSolve(
     generateTasks(target_tasks, tasks);
   }
 
-  // A resume keeps the paused run's counters (as the DLX path does): the
-  // seeds are exactly the tasks it left uncompleted, already counted in
-  // total_tasks (in-flight ones via the salvage bump, the pool remainder
-  // from the start), so resetting here would drop the bar back to 0.
+  // Counters are in progress units (see TaskUnits). A resume keeps the
+  // paused run's counters (as the DLX path does): the seeds carry exactly
+  // the units the paused run had not completed, so resetting here would
+  // drop the bar back to 0.
   if (resume_seeds == nullptr || resume_seeds->empty()) {
-    total_tasks.store(tasks.size(), std::memory_order_relaxed);
+    total_tasks.store(tasks.size() * TaskUnits::kWhole, std::memory_order_relaxed);
     completed_tasks.store(0, std::memory_order_relaxed);
   }
 
@@ -719,8 +724,8 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   // Non-terminating pool (see assembler_pool.h): a worker that finds the
   // queue empty waits for quiescence, so siblings blocked in
   // disassemblerPool_c::submit() still have a live crew searching when they
-  // wake. No dynamic splitting here -- Huang subtrees run as seeded, skew
-  // absorbed at task granularity.
+  // wake. Running tasks split on demand: a worker whose siblings wait hands
+  // part of its task to the pool (see donateFrame).
   AssemblyTaskPool<SubtreeTask> pool;
   pool.seed(std::move(tasks));
   pool.setBudget(budget);
@@ -752,6 +757,19 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           trace.fanout = fanout;
           trace.rootRestSkip = t.rest_skip;
           t.ctx.trace = &trace;
+          Donor donor{&pool, &t, t.units,
+                      donateEvery > 0 ? donateEvery : 256, donateEvery > 0, donations};
+          if (donate) {
+            const size_t frames = t.ctx.scratch_active_rows.size();
+            t.ctx.donor = &donor;
+            t.ctx.root_depth = t.depth;
+            t.ctx.donate_scan_from = t.depth;
+            t.ctx.next_donate_poll = t.ctx.local_iterations + donor.interval;
+            t.ctx.frame_col.assign(frames, 0);
+            t.ctx.frame_count.assign(frames, 0);
+            t.ctx.frame_next.assign(frames, 0);
+            t.ctx.frame_end.assign(frames, 0);
+          }
 
           // Drain per-solution remainders to the shared counter as they
           // arise, so live readers observe advancing iterations (see the
@@ -769,6 +787,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           };
           search(t.depth, t.ctx, flushingCb, stop, task_iter, t.rest_skip);
           t.ctx.trace = nullptr;
+          t.ctx.donor = nullptr;
 
           flushIterations(t.ctx, task_iter);
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
@@ -776,18 +795,25 @@ void SimdHuangCover<BitsetType>::parallelSolve(
             // Fully searched, every solution delivered -- even if a stop
             // landed after the last branch (the trace is exact, unlike
             // re-reading the token).
-            completed_tasks.fetch_add(1, std::memory_order_relaxed);
+            completed_tasks.fetch_add(t.units, std::memory_order_relaxed);
           } else if (salvaged_seeds != nullptr) {
             // Interrupted: the pieces partition the task's unexplored
-            // territory, so the task's unit transfers to them.
+            // territory, so the task's units divide among them, at least
+            // one each (see TaskUnits; the total grows only if the task
+            // holds fewer units than pieces).
             trace.finalize(t.pivot_shape);
             const size_t n = trace.pieces.size();
+            if (t.units < n) {
+              total_tasks.fetch_add(n - t.units, std::memory_order_relaxed);
+              t.units = n;
+            }
+            for (size_t k = 0; k < n; k++)
+              trace.pieces[k].units = t.units / n + (k < t.units % n ? 1 : 0);
             {
               std::lock_guard<std::mutex> lock(salvage_mutex);
               for (auto &piece : trace.pieces)
                 salvaged_seeds->push_back(std::move(piece));
             }
-            total_tasks.fetch_add(n - 1, std::memory_order_relaxed);
           }
         } catch (...) {
           pool.finishTask();
@@ -852,6 +878,11 @@ void SimdHuangCover<BitsetType>::search(
   if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);
     ctx.flushed_iterations += 256;
+  }
+  if (ctx.donor != nullptr && ctx.local_iterations >= ctx.next_donate_poll) {
+    ctx.next_donate_poll = ctx.local_iterations + ctx.donor->interval;
+    if (ctx.donor->forced || ctx.donor->pool->wants_work())
+      donateFrame(depth, ctx);
   }
 
   // Goal check: are all conditions fulfilled?
@@ -1002,7 +1033,27 @@ void SimdHuangCover<BitsetType>::search(
    */
   bt_assert(depth + 1 < ctx.scratch_active_rows.size());
 
-  for (size_t i = start; i < curr_active.size(); i++) {
+  // With a donor the frame registers itself, and the loop end lives in ctx
+  // so a donation from a deeper node can cut it (see donateFrame).
+  size_t end = curr_active.size();
+  if (ctx.donor != nullptr) {
+    // The branching is the pivot's candidate count, col_counts (a weight
+    // sum for the range column, an estimate either way); min_metric weighs
+    // shape pivots by their remaining need, so it is no count. A rest (start > 0, root frame only)
+    // owns only the candidates from start on, and its units stand for
+    // those: count them, once per task.
+    unsigned int owned = ctx.col_counts[best_col];
+    for (size_t j = 0; j < start && owned > 0; j++)
+      if (coversPivot(rows[curr_active[j]], best_col))
+        owned--;
+    ctx.frame_col[depth] = best_col;
+    ctx.frame_count[depth] = owned;
+    ctx.frame_next[depth] = start;
+    ctx.frame_end[depth] = end;
+    if (depth < ctx.donate_scan_from)
+      ctx.donate_scan_from = depth;
+  }
+  for (size_t i = start; i < end; i++) {
     const uint32_t r_idx = curr_active[i];
     const auto &cand = rows[r_idx];
 
@@ -1026,7 +1077,11 @@ void SimdHuangCover<BitsetType>::search(
     filterRows(curr_active, r_idx, cand.voxel_mask, cand.shape_id, shape_full,
                filter_monotonic, cand.shape_row_idx, has_range, max_allowed_range, next_active);
 
+    if (ctx.donor != nullptr)
+      ctx.frame_next[depth] = i + 1;
     search(depth + 1, ctx, callback, stop, iterations);
+    if (ctx.donor != nullptr)
+      end = ctx.frame_end[depth];
 
     // Backtrack (zero heap allocation, zero pointer re-linking)
     ctx.current_solution.pop_back();
@@ -1037,12 +1092,103 @@ void SimdHuangCover<BitsetType>::search(
 
     if (stop.stop_requested()) {
       // This branch is done (the child returned); the ones after it are
-      // untouched. Stop path only: nothing here runs per node.
+      // untouched up to the loop end (a donation may have lowered it).
+      // Stop path only: nothing here runs per node.
       if (ctx.trace != nullptr)
-        recordFrame(depth, best_col, i + 1, ctx);
+        recordFrame(depth, best_col, i + 1, end, ctx);
       return;
     }
   }
+}
+
+/* What a worker needs to donate from inside search(): the pool, the
+ * running task (its units shrink by what it gives away), the units it
+ * started with (donation estimates are fractions of that), and the poll
+ * interval. */
+template <typename BitsetType>
+struct SimdHuangCover<BitsetType>::Donor {
+  AssemblyTaskPool<SubtreeTask> *pool;
+  SubtreeTask *task;
+  size_t rootUnits;
+  uint64_t interval;
+  bool forced;
+  std::atomic<unsigned long> *count;  // donations made (diagnostics), nullable
+};
+
+template <typename BitsetType>
+void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
+                                             SearchContext &ctx) const {
+  // Shallowest first: the biggest untried chunk, so donations stay rare.
+  // Frames within two placements of the bottom are not worth the handoff;
+  // the bottom is the minimum piece count, or the depth bound when the
+  // minimums say nothing (every shape optional).
+  Donor &donor = *ctx.donor;
+  const unsigned int bottom = total_min_pieces > 0 ? total_min_pieces : searchDepthBound();
+  double weight = 1.0;
+  for (unsigned int d = ctx.root_depth; d < depth; d++) {
+    if (d + 2 >= bottom)
+      break;
+    const double count = ctx.frame_count[d] ? ctx.frame_count[d] : 1.0;
+    if (d < ctx.donate_scan_from) {
+      // known closed (see SearchContext): only its weight matters
+      weight /= count;
+      continue;
+    }
+    const auto &active = ctx.scratch_active_rows[d];
+    const unsigned int col = ctx.frame_col[d];
+    const size_t next = ctx.frame_next[d];
+    const size_t end = ctx.frame_end[d];
+    // Pivot candidates only: fitsBounds() would see the deeper placements'
+    // weights here, not the frame's, and with identical pieces those fill
+    // the very shape the frame branches on. A candidate that does not fit
+    // at the frame is skipped when the rest replays the frame's own state,
+    // so overcounting costs at most an empty rest.
+    unsigned int remaining = 0;
+    for (size_t j = next; j < end; j++)
+      if (coversPivot(rows[active[j]], col))
+        remaining++;
+    if (remaining > 0) {
+      // the frame stays open unless the donation below goes through
+      ctx.donate_scan_from = d;
+      // scratch_active_rows[d] re-derives identically from the replayed
+      // path, so index `next` names the same branch on resume (as for
+      // stop-time rests); frame k chose step k, so its pivot kind is the
+      // seed's pivot bit there.
+      HuangSeed seed;
+      seed.prefix.assign(ctx.current_solution.begin(), ctx.current_solution.begin() + d);
+      seed.pivotShape.assign(d, 0);
+      for (unsigned int k = 0; k < d; k++)
+        seed.pivotShape[k] = k < ctx.root_depth
+            ? (k < donor.task->pivot_shape.size() ? donor.task->pivot_shape[k] : 0)
+            : (columns[ctx.frame_col[k]].is_shape ? 1 : 0);
+      seed.restSkip = static_cast<uint32_t>(next);
+      const size_t units = TaskUnits::give(donor.task->units, donor.rootUnits,
+                                           weight * remaining / count);
+      if (units == 0)
+        return;
+      seed.units = units;
+      SubtreeTask piece;
+      if (!taskFromSeed(seed, piece))
+        return;
+      // one donor per waiter: the pool's hunger flag goes to whoever claims
+      // it first, and only once there is something to give
+      if (!donor.forced && !donor.pool->claim_work())
+        return;
+      ctx.frame_end[d] = next;
+      ctx.donate_scan_from = d + 1;
+      donor.task->units -= units;
+      if (donor.count != nullptr)
+        donor.count->fetch_add(1, std::memory_order_relaxed);
+      std::vector<SubtreeTask> one;
+      one.push_back(std::move(piece));
+      donor.pool->push_tasks(std::move(one));
+      return;
+    }
+    weight /= count;
+  }
+  // every live frame above the donation floor is closed
+  ctx.donate_scan_from = std::max(ctx.donate_scan_from,
+                                  std::min(depth, bottom > 2 ? bottom - 2 : 0u));
 }
 
 template <typename BitsetType>
@@ -1050,6 +1196,7 @@ void SimdHuangCover<BitsetType>::recordFrame(
   unsigned int depth,
   unsigned int best_col,
   size_t next,
+  size_t end,
   SearchContext &ctx
 ) const {
   StopTrace &trace = *ctx.trace;
@@ -1060,7 +1207,7 @@ void SimdHuangCover<BitsetType>::recordFrame(
   // would still have taken. scratch_active_rows[depth] is intact: deeper
   // frames only write deeper levels.
   const auto &curr_active = ctx.scratch_active_rows[depth];
-  SplitFanout::emitFrame(curr_active, next, curr_active.size(), trace.fanout,
+  SplitFanout::emitFrame(curr_active, next, end, trace.fanout,
     [&](uint32_t r) { return coversPivot(rows[r], best_col) && fitsBounds(rows[r], ctx); },
     [&](size_t j, bool rest) {
       if (rest) {

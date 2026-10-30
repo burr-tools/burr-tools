@@ -110,7 +110,21 @@ private:
      * touched by write-back.
      */
     unsigned int baseDepth = 0;
+    /* Stack indices of frames whose remaining rows were donated (split on
+     * demand): such a frame ends after its current row. Saved with the
+     * stacks, so a written-back task keeps them.
+     */
+    std::vector<unsigned int> cuts;
+    // progress units this task carries (see TaskUnits); not saved -- a
+    // task read from a file is a whole one
+    size_t units = TaskUnits::kWhole;
   };
+
+  // tasks donated by running workers to idle siblings (diagnostics, tests)
+  std::atomic<unsigned long> donations{0};
+  // of those, the ones a donated piece gave from its own root frame (tests:
+  // the frame it resumes between two rows must stay divisible)
+  std::atomic<unsigned long> redonations{0};
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
@@ -123,6 +137,13 @@ private:
   std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
 
   friend class assemblerWorker_1;
+
+  /* grants test/test_solver.cpp read access to totalTasks/completedTasks,
+   * to assert that donations and stops conserve progress units directly
+   * (getFinished() reports 1 for any completed search, whatever the
+   * counters say).
+   */
+  friend struct Assembler1UnitsTestAccess;
 
   std::vector<SubtreeTask_1> parallelTasks;
 
@@ -397,6 +418,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers donated to idle siblings so far (see
+   * split_fanout.h); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }

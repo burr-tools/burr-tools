@@ -1,7 +1,7 @@
-# Split on demand (assembler_0)
+# Split on demand
 
-Status: implemented for assembler_0 (DLX and SIMD workers). Huang and
-A1-DLX follow separately.
+Status: implemented for every engine: assembler_0 (DLX and SIMD
+workers, sections 3-4) and assembler_1 (Huang and DLX, sections 8-10).
 
 ## 1. Problem
 
@@ -175,11 +175,114 @@ prefix-depth guess, with no cost where it does not help.
 - "chunked splitting ..." pins the pop-time splitter, so it runs with
   `BURRTOOLS_NO_DONATE=1`.
 
-## 8. Not covered here
+## 8. assembler_1: progress units
 
-- **Huang** (A1 default) has no runtime splitting at all. Its progress
-  counts tasks as equal units, so a donation would need fractional task
-  units first.
-- **A1-DLX** keeps five explicit stacks. A donation there means handing
-  over the remaining rows of a state-3/4 frame, which needs its own
-  write-back-style task.
+assembler_1's progress counts tasks: completed tasks plus the in-flight
+fraction of each running one, over the task total. A donation that added
+a task would make the bar step back. So the counters (`totalTasks`,
+`completedTasks`, and the Huang solver's pair) count **units**: a
+generated or restored task holds `TaskUnits::kWhole` (2^20), a donation
+moves units from the donor to the piece, and a stop divides a task's
+units among its pieces. The total only grows at a stop that cuts a task
+into more pieces than it has units.
+
+**Invariant: every outstanding task holds at least one unit.** Completed
+units reach the total only when no work is left, and `solvethread`
+treats a full bar as a finished search. A 0-unit piece would let it
+finish with that piece unsearched. An earlier draft that rounded small
+shares down to 0 units did exactly that: the chained-stop Huang test lost
+two assemblies on SolidSixPieceBurrs. A donor therefore gives units only
+while it holds two or more and keeps at least one (`TaskUnits::give`).
+
+Units are bookkeeping, not territory: they are not saved (a restored
+task is a whole one), and `HuangSeed::operator==` ignores them.
+
+## 9. Huang
+
+Huang's recursion is the SIMD exact cover shape, so donation is too. A
+per-depth frame registry (pivot column, candidate count, first untried
+index, loop end) lets a deeper node cut the shallowest frame with untried
+pivot candidates. The frame's remaining branches become a rest seed:
+path, pivot bits and restSkip = the first untried index. `taskFromSeed`
+replays the seed into a pool task.
+
+- **Pivot bits.** Steps inside the task's prefix take the task's own bits;
+  a step chosen by a live frame takes that frame's pivot kind. With a
+  wrong bit the replay drops the monotonic shape filter and the rest
+  re-enumerates permutations of identical pieces. The unit test
+  "donated rests replay the monotonic shape filter" (one shape needed six
+  times, C(10, 6) = 210) reports 350 with the bits zeroed.
+- **Existence check.** It uses `coversPivot` only. `fitsBounds` would see
+  the deeper placements' weights, and with identical pieces those fill
+  the very shape the frame branches on, so it would hide every sibling.
+  A candidate that does not fit at the frame is skipped when the rest
+  replays the frame's own state, so overcounting costs at most an empty
+  rest.
+- **Units.** The piece's units are the structural estimate (product of
+  1/branching above the frame, times remaining/branching at it) of the
+  donor's units at pop, clamped by `TaskUnits::give`. Huang publishes no
+  in-flight fraction, so nothing else depends on the estimate. The
+  branching is the pivot's candidate count (`col_counts`), not the MRV
+  metric, which weighs shape pivots by their remaining need. A rest's root
+  frame counts only the candidates from its restSkip on, as in
+  `SimdExactCover`.
+- **Claim and scan.** As in `SimdExactCover`: the donor claims the pool's
+  hunger flag only once it has a piece, and frames found closed are not
+  rescanned until they re-register.
+
+## 10. A1-DLX
+
+The DLX walk keeps five explicit stacks. A frame in state 5 has placed a
+row and descended; when its child returns, case 5 undoes the row's hides
+and case 6 moves on to the next row.
+
+- **The piece.** The donated task is the stacks truncated just after that
+  frame, top 5:
+  - task_stack and next_row_stack up to the frame;
+  - column_stack holds one entry per state-1 frame;
+  - rows holds one entry per state-5 frame;
+  - hidden_rows keeps everything before the next frame's first segment
+    marker, which is two 0-led segments per state-5 frame (asserted).
+
+  `restoreMatrix()` replays a top 5 whole, so the receiver runs cases 5
+  and 6 itself on the frame's own matrix. baseDepth = frame + 1 ends the
+  task when the frame pops.
+- **The cut.** The donor sets `cut[frame]`, and its case 6 then ends the
+  frame after the current row. The cut is part of the territory, so
+  `SubtreeTask_1::cuts` is written back and saved, as part of format 2.2
+  (unreleased, so no version bump; only the saving version resumes).
+- **Progress.** The tracker follows every frame of the territory. For a
+  written-back task, `seedTracker()` gives the restored ancestor frames
+  their levels, with their current child as the active slot. The piece
+  receives floor(tracker share x units at pop) of the frame's
+  unattributed share, and the tracker gives that share away. The donor's
+  published slot (done x units at pop) therefore never exceeds the units
+  it still holds, so the handoff at finish never over-reports. A share
+  too small for one unit is not donated.
+
+## 11. Tests (assembler_1)
+
+- "assembler_1 donated work is searched exactly once": Huang and DLX
+  (forced), CubeInCage (identical pieces), PiecesOfEight and
+  SolidSixPieceBurrs (range), 1 to 4 threads, forced donation every 1 to
+  61 nodes. Uninterrupted runs and stopped + restored runs must equal the
+  baseline as a multiset, the completed units must equal the total, and
+  donations must occur. `getFinished()` cannot stand in for the unit
+  check: it reports 1 for any completed search. Mutation checks:
+  - Huang: dropping the cut (runaway duplication), recording stop
+    branches past the loop end, or not taking the donated units off the
+    donor fails it.
+  - A1-DLX: dropping the cut, not writing the cuts back, keeping deeper
+    frames' hidden-row segments in the piece, or not taking the donated
+    units off the donor fails it.
+- The solver suite passes with forced donation (every 1/7/200 on the
+  default engines, every 1/9/300 with DLX forced). The failures it shows
+  are exactly those without donation, i.e. env-forced mismatches.
+## 12. Limits
+
+- A1-DLX donates only state-5 frames: the rows after a placed row. A
+  state-2 frame (the empty-row-set child in progress, rows still ahead)
+  is not donated; its rows become donatable once the frame reaches them.
+- No engine donates within two levels of the bottom (A0: two pieces
+  before the last; Huang: two placements before the minimum piece
+  count, or the depth bound when no shape has a minimum).
