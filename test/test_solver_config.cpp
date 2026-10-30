@@ -171,12 +171,9 @@ TEST_CASE("rotation settings: caller, then environment, then defaults", "[config
   rotationConfig_t chosen;
   chosen.family = ROTATION_FAMILY_WIDE;
   chosen.planner = false;
-  chosen.model = rotationGeometry::model_t{ 0.02, 0.05 };
   s = chosen.resolve();
   CHECK(s.wideAmounts == WIDE_AMOUNTS);
   CHECK_FALSE(s.planner);
-  CHECK(s.model.play == 0.02);
-  CHECK(s.model.chamfer == 0.05);
 }
 
 TEST_CASE("rotation settings: a malformed variable is an error", "[config]") {

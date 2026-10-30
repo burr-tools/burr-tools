@@ -111,7 +111,6 @@ struct solverSettings_t {
  * | donate             | BURRTOOLS_DONATE=0\|1                             |
  * | donateEvery        | BURRTOOLS_DONATE_EVERY=N                          |
  * | threadBudget       | BURRTOOLS_THREAD_BUDGET=0\|1                      |
- * | rotation.model     | -                                                 |
  * | rotation.family    | BURRTOOLS_ROT_FAMILY=compass\|wide                |
  * | rotation.planner   | BURRTOOLS_ROT_PLANNER=0\|1                        |
  * | rotation.slack     | -                                                 |
