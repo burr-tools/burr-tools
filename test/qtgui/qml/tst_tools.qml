@@ -201,7 +201,10 @@ TestCase {
         field.text = "20"
         field.editingFinished()
         compare(stl.parameter(0).value, 20)
-        compare(field.text, "20.00")
+        compare(field.text, "20")           // four significant digits, as the legacy field
+        // bevel and offset follow the unit size (the rotation model's pieces)
+        compare(inside(d, "export.stl.param.field.4").text, "0.81")
+        verify(inside(d, "export.stl.modelNote").text.indexOf("checked for") >= 0)
         verify(stl.volumeText !== before)
         verify(inside(d, "export.stl.param.field.0") === field)    // the field stayed
 
