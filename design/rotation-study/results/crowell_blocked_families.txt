@@ -1,0 +1,157 @@
+diag.cpp FAM=1 on the 17 blocked steps of results/crowell_blocked_steps.txt (2026-10-28,
+play 0.081, sharp). 'best' is the certified smallest clearance (minClearance, eps 1e-3) of
+the family's best path; 'needs' = 0.081 - best, an upper bound on the play that path needs.
+
+== TriumviraTIC step 10
+  planned: clearance 0.0772 (needs 0.0038): [0.0 0.000 0.000] [6.0 0.090 0.070] [11.0 0.150 0.060] [21.0 0.220 0.080] [40.5 0.220 0.170] [52.0 0.150 0.170] [59.5 0.080 0.120] [73.5 0.020 0.050] [81.0 0.010 0.010] [90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0106 -> needs 0.0916  (bulge phi 45.0 a 0.25)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0106 -> needs 0.0916  (bulge phi 45.0 a 0.25)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0001 -> needs 0.0811  (bulge phi 37.5 a 0.25)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best  0.0345 -> needs 0.0465  (plateau 15-45 phi 45.0 a 0.25)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0345 -> needs 0.0465  (plateau 15-45 phi 45.0 a 0.25)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0345 -> needs 0.0465  (plateau 15-45 phi 45.0 a 0.25)
+
+== HypnoTIC step 3
+  planned: clearance -0.0067 (needs 0.0877): [-0.0 0.000 0.000] [-27.0 0.010 0.330] [-53.5 0.010 0.200] [-62.0 0.090 0.200] [-64.0 0.090 0.200] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0300 -> needs 0.1110  (bulge phi 90.0 a 0.25)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0300 -> needs 0.1110  (bulge phi 90.0 a 0.25)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0300 -> needs 0.1110  (bulge phi 90.0 a 0.25)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0287 -> needs 0.1097  (plateau 5-55 phi 90.0 a 0.30)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0154 -> needs 0.0964  (plateau 5-45 phi 75.0 a 0.35)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0300 -> needs 0.1110  (bulge phi 90.0 a 0.25)
+
+== MysTIC step 11
+  planned: clearance 0.0027 (needs 0.0783): [-0.0 0.000 0.000] [-23.0 0.080 0.070] [-61.0 0.200 0.200] [-76.5 0.190 0.020] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0045 -> needs 0.0855  (bulge phi 45.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0045 -> needs 0.0855  (bulge phi 45.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0045 -> needs 0.0855  (bulge phi 45.0 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best  0.0059 -> needs 0.0751  (plateau 45-45 phi 45.0 a 0.20)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0059 -> needs 0.0751  (plateau 45-45 phi 45.0 a 0.20)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0059 -> needs 0.0751  (plateau 45-45 phi 45.0 a 0.20)
+
+== TacTICian step 12
+  planned: clearance -0.0038 (needs 0.0848): [-0.0 0.000 0.000] [-15.0 0.420 -0.090] [-20.5 0.160 -0.090] [-25.5 0.090 -0.090] [-27.5 0.090 -0.080] [-35.0 0.500 -0.100] [-45.5 0.500 -0.110] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0103 -> needs 0.0913  (bulge phi 315.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0103 -> needs 0.0913  (bulge phi 315.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0103 -> needs 0.0913  (bulge phi 315.0 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0043 -> needs 0.0853  (plateau 35-65 phi 315.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0043 -> needs 0.0853  (plateau 35-65 phi 315.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0073 -> needs 0.0883  (plateau 45-45 phi 315.0 a 0.20)
+
+== PackTIC_3 step 21
+  planned: clearance 0.0306 (needs 0.0504): [-0.0 0.000 0.000] [-29.5 -0.170 0.170] [-38.0 -0.170 0.160] [-42.0 -0.160 0.150] [-44.0 -0.150 0.140] [-44.5 0.470 0.140] [-68.0 0.470 0.140] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0105 -> needs 0.0915  (bulge phi 90.0 a 0.10)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0105 -> needs 0.0915  (bulge phi 90.0 a 0.10)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0105 -> needs 0.0915  (bulge phi 90.0 a 0.10)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0103 -> needs 0.0913  (plateau 15-65 phi 90.0 a 0.10)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0065 -> needs 0.0875  (plateau 45-45 phi 105.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0103 -> needs 0.0913  (plateau 15-65 phi 90.0 a 0.10)
+
+== PackTIC_5 step 4
+  planned: clearance 0.0294 (needs 0.0516): [-0.0 0.000 0.000] [-31.0 0.210 0.060] [-43.5 0.220 -0.010] [-45.5 0.210 0.000] [-50.5 0.210 0.060] [-56.0 0.210 0.100] [-88.0 0.070 0.060] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0103 -> needs 0.0913  (slide phi 45.0 a 0.10)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0103 -> needs 0.0913  (slide phi 45.0 a 0.10)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best  0.0025 -> needs 0.0785  (bulge phi 22.5 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0103 -> needs 0.0913  (plateau 15-65 phi 45.0 a 0.10)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0049 -> needs 0.0761  (plateau 15-45 phi 15.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0025 -> needs 0.0785  (bulge phi 22.5 a 0.15)
+
+== SyntheTIC_3 step 8
+  planned: clearance -0.0029 (needs 0.0839): [-0.0 0.000 0.000] [-18.5 0.500 0.130] [-53.0 0.500 0.190] [-62.5 0.230 0.080] [-62.5 0.120 0.080] [-62.5 0.090 0.080] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0102 -> needs 0.0912  (bulge phi 45.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0102 -> needs 0.0912  (bulge phi 45.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0102 -> needs 0.0912  (bulge phi 45.0 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0043 -> needs 0.0853  (plateau 15-55 phi 45.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0043 -> needs 0.0853  (plateau 15-55 phi 45.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0073 -> needs 0.0883  (plateau 45-45 phi 45.0 a 0.20)
+
+== TritanIC_2 step 8
+  planned: clearance 0.0136 (needs 0.0674): [0.0 0.000 0.000] [48.0 0.240 0.140] [69.0 -0.020 0.160] [90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0106 -> needs 0.0916  (bulge phi 45.0 a 0.25)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0106 -> needs 0.0916  (bulge phi 45.0 a 0.25)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0102 -> needs 0.0912  (bulge phi 52.5 a 0.25)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0129 -> needs 0.0939  (plateau 45-65 phi 90.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0082 -> needs 0.0892  (plateau 25-65 phi 52.5 a 0.20)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0106 -> needs 0.0916  (bulge phi 45.0 a 0.25)
+
+== TritanIC_6 step 19
+  planned: clearance -0.0056 (needs 0.0866): [-0.0 0.000 0.000] [-21.0 0.160 -0.050] [-59.5 0.140 -0.150] [-62.5 0.160 -0.150] [-63.0 0.160 -0.150] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0158 -> needs 0.0968  (bulge phi 315.0 a 0.25)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0158 -> needs 0.0968  (bulge phi 315.0 a 0.25)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0153 -> needs 0.0963  (bulge phi 322.5 a 0.25)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0138 -> needs 0.0948  (plateau 5-45 phi 315.0 a 0.35)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0098 -> needs 0.0908  (plateau 5-55 phi 322.5 a 0.30)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0138 -> needs 0.0948  (plateau 45-45 phi 315.0 a 0.35)
+
+== CagedCubeJr_1 step 12
+  planned: clearance -0.0122 (needs 0.0932): [-0.0 0.000 0.000] [-34.5 0.090 -0.090] [-42.5 0.100 -0.100] [-54.0 0.180 -0.100] [-55.0 0.220 -0.090] [-55.0 0.130 -0.090] [-55.5 0.090 -0.090] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0234 -> needs 0.1044  (bulge phi 315.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0234 -> needs 0.1044  (bulge phi 315.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0234 -> needs 0.1044  (bulge phi 315.0 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0183 -> needs 0.0993  (plateau 45-45 phi 315.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0183 -> needs 0.0993  (plateau 45-45 phi 315.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0183 -> needs 0.0993  (plateau 45-45 phi 315.0 a 0.15)
+
+== CagedCubeJr_2 step 16
+  planned: clearance -0.0064 (needs 0.0874): [-0.0 0.000 0.000] [-24.0 0.170 -0.110] [-46.5 0.260 -0.130] [-52.0 0.350 -0.100] [-53.5 0.370 -0.100] [-62.0 0.500 -0.030] [-75.0 0.500 -0.010] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0234 -> needs 0.1044  (bulge phi 315.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0234 -> needs 0.1044  (bulge phi 315.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0192 -> needs 0.1002  (bulge phi 322.5 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0183 -> needs 0.0993  (plateau 5-45 phi 315.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0183 -> needs 0.0993  (plateau 5-45 phi 315.0 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0183 -> needs 0.0993  (plateau 45-45 phi 315.0 a 0.15)
+
+== CagedCubeJr_4 step 6
+  planned: clearance 0.0212 (needs 0.0598): [0.0 0.000 0.000] [23.5 -0.130 0.040] [29.5 -0.130 0.030] [35.5 -0.130 0.050] [43.0 -0.140 0.130] [46.5 -0.140 -0.010] [46.5 -0.140 -0.100] [48.0 -0.130 -0.120] [53.5 -0.130 -0.060] [56.0 -0.120 -0.040] [79.5 -0.120 -0.040] [90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0103 -> needs 0.0913  (slide phi 180.0 a 0.10)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0103 -> needs 0.0913  (slide phi 180.0 a 0.10)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0103 -> needs 0.0913  (slide phi 180.0 a 0.10)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0103 -> needs 0.0913  (plateau 5-55 phi 180.0 a 0.10)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0098 -> needs 0.0908  (plateau 45-45 phi 217.5 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0103 -> needs 0.0913  (plateau 15-65 phi 180.0 a 0.10)
+
+== HolopTIC step 11
+  planned: clearance 0.0613 (needs 0.0197): [-0.0 0.000 0.000] [-12.0 0.170 0.060] [-17.0 0.190 0.000] [-24.0 0.210 -0.030] [-40.0 0.220 -0.030] [-65.0 0.120 0.500] [-75.5 0.050 0.500] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0029 -> needs 0.0839  (bulge phi 0.0 a 0.20)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0029 -> needs 0.0839  (bulge phi 0.0 a 0.20)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best  0.0042 -> needs 0.0768  (bulge phi 345.0 a 0.20)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best  0.0393 -> needs 0.0417  (plateau 25-45 phi 0.0 a 0.25)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0466 -> needs 0.0344  (plateau 15-45 phi 352.5 a 0.20)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0358 -> needs 0.0452  (plateau 15-45 phi 0.0 a 0.20)
+
+== TemplarCross step 13
+  planned: clearance 0.0309 (needs 0.0501): [-0.0 0.000 0.000] [-22.5 0.220 -0.140] [-39.5 0.440 -0.180] [-46.0 0.500 -0.130] [-53.0 0.500 -0.060] [-59.0 0.500 -0.010] [-72.5 0.500 0.030] [-90.0 0.440 0.000] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0103 -> needs 0.0913  (slide phi 270.0 a 0.10)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0103 -> needs 0.0913  (slide phi 270.0 a 0.10)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0103 -> needs 0.0913  (slide phi 270.0 a 0.10)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0103 -> needs 0.0913  (plateau 35-90 phi 270.0 a 0.10)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0098 -> needs 0.0908  (plateau 5-45 phi 307.5 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0103 -> needs 0.0913  (plateau 15-65 phi 270.0 a 0.10)
+
+== GemTIC step 15
+  planned: clearance 0.0763 (needs 0.0047): [0.0 0.000 0.000] [15.5 0.500 0.110] [28.0 0.360 0.410] [32.0 0.290 0.420] [34.5 0.260 0.420] [35.5 0.260 0.440] [73.5 0.200 0.360] [82.0 0.090 0.190] [90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0146 -> needs 0.0956  (bulge phi 45.0 a 0.35)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0146 -> needs 0.0956  (bulge phi 45.0 a 0.35)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best  0.0300 -> needs 0.0510  (bulge phi 60.0 a 0.40)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0154 -> needs 0.0964  (plateau 15-75 phi 45.0 a 0.35)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0706 -> needs 0.0104  (plateau 45-55 phi 60.0 a 0.55)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0304 -> needs 0.0506  (plateau 45-45 phi 67.5 a 0.55)
+
+== StarTIC_1 step 15
+  planned: clearance -0.0129 (needs 0.0939): [-0.0 0.000 0.000] [-20.5 -0.200 0.140] [-24.5 -0.260 0.170] [-26.5 -0.270 0.170] [-34.0 -0.250 0.260] [-36.0 -0.230 0.280] [-43.5 -0.150 0.280] [-51.0 -0.100 0.280] [-58.5 -0.070 0.280] [-72.5 -0.060 0.280] [-90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0331 -> needs 0.1141  (bulge phi 90.0 a 0.15)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0331 -> needs 0.1141  (bulge phi 90.0 a 0.15)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best -0.0331 -> needs 0.1141  (bulge phi 90.0 a 0.15)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0383 -> needs 0.1193  (plateau 45-55 phi 90.0 a 0.15)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best -0.0315 -> needs 0.1125  (plateau 45-90 phi 97.5 a 0.15)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best -0.0331 -> needs 0.1141  (bulge phi 90.0 a 0.15)
+
+== TIC_Box_III step 23
+  planned: clearance 0.0448 (needs 0.0362): [0.0 0.000 0.000] [1.5 0.500 -0.020] [29.5 0.320 -0.220] [62.5 0.150 -0.380] [64.0 0.150 -0.360] [73.5 0.080 -0.450] [82.0 0.050 -0.390] [90.0 0.000 0.000]
+  8 dirs, bulge + slide, 0.05-0.45      144 paths  best -0.0157 -> needs 0.0967  (bulge phi 315.0 a 0.35)
+  8 dirs, bulge + slide, 0.05-0.6       192 paths  best -0.0157 -> needs 0.0967  (bulge phi 315.0 a 0.35)
+  48 dirs, bulge + slide, 0.05-0.6     1152 paths  best  0.0189 -> needs 0.0621  (bulge phi 292.5 a 0.50)
+  8 dirs, plateaus, 0.05-0.6           2880 paths  best -0.0093 -> needs 0.0903  (plateau 15-55 phi 315.0 a 0.35)
+  48 dirs, plateaus, 0.05-0.6         17280 paths  best  0.0110 -> needs 0.0700  (plateau 15-65 phi 300.0 a 0.35)
+  16 dirs, 4 profiles, 0.1-0.55         640 paths  best  0.0189 -> needs 0.0621  (bulge phi 292.5 a 0.50)
+
