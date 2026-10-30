@@ -481,7 +481,8 @@ rotationContextFor(const problem_c & problem, const rotationSettings_t & given, 
 namespace {
 
 void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & problem,
-                 const rotationSettings_t & settings, turnPlay_t & result) {
+                 const rotationSettings_t & settings, const optimizeControl_t & control, turnPlay_t & result,
+                 size_t & turn) {
 
   using rotationGeometry::cell_t;
   const gridType_c * gt = problem.getPuzzle().getGridType();
@@ -505,6 +506,10 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     const stateRotation_t * r = st->getRotation();
     if (!r)
       continue;
+    if (control.stop && control.stop->load(std::memory_order_relaxed)) {
+      result.stopped = true;
+      return;
+    }
     result.rotations = true;
 
     const state_c * before = s->getState(i - 1);
@@ -522,14 +527,31 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     int hx, hy, hz;
     rotationGeometry::pivotOf(r->axis, r->pivotU, r->pivotV, &hx, &hy, &hz);
 
-    const rotationGeometry::playBound_t pb =
-      rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.plan);
-    if (!pb.found) {
-      result.failed = true;
-      continue;
+    const size_t thisTurn = turn++;
+
+    /* the recorded path, certified in the frame it was recorded in
+     * (inverted, the other pieces followed it) */
+    const rotationGeometry::planarScene_c recorded(r->inverse ? stat : moving, r->inverse ? moving : stat,
+                                                   r->axis, hx, hy, hz, settings.model);
+    const bool turnsAtModel =
+      recorded.certifyPath(rotationGeometry::makePath(r->path)) == rotationGeometry::PATH_CLEAR;
+
+    if (control.measure) {
+      /* when the recorded path is clear at the model's play, the turn needs
+       * no more, whatever the planner finds */
+      const rotationGeometry::playBound_t pb =
+        rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.plan,
+                                       0.0005, 0.4, turnsAtModel);
+      result.proven.push_back(pb.path);
+      if (!pb.found) {
+        result.failed = true;
+        if (control.done)
+          control.done->fetch_add(1, std::memory_order_relaxed);
+        continue;
+      }
+      result.upper = std::max(result.upper, pb.upper);
+      result.lower = std::max(result.lower, pb.lower);
     }
-    result.upper = std::max(result.upper, pb.upper);
-    result.lower = std::max(result.lower, pb.lower);
 
     /* the path with the most room at the model's play */
     rotationGeometry::planSettings_t widest = settings.plan;
@@ -538,25 +560,50 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     widest.widest = true;
     const rotationGeometry::planarScene_c scene(moving, stat, r->axis, hx, hy, hz, settings.model);
     const rotationGeometry::turnPlan_t best = rotationGeometry::planTurn(scene, sense, widest);
-    if (!best.found || best.clearance < 0 || scene.certifyPath(best.path) != rotationGeometry::PATH_CLEAR)
-      continue;   // keep the recorded path, it is certified at this play
+    if (control.done)
+      control.done->fetch_add(1, std::memory_order_relaxed);
+    rotationGeometry::path_t chosen;
+    if (best.found && best.clearance >= 0 && scene.certifyPath(best.path) == rotationGeometry::PATH_CLEAR)
+      chosen = best.path;
+    else if (control.measure)
+      continue;   // measuring: the recorded path stays, the model's play is where it was found
+    else {
+      /* Re-planning, the play changed. The grid's conservative bound can
+       * miss a path that is clear by a hair: a path proven before stands in
+       * when it is certified at this play, else the recorded one does. */
+      const std::vector<rotationGeometry::path_t> * proven = control.proven;
+      if (proven && thisTurn < proven->size() && !(*proven)[thisTurn].empty() &&
+          scene.certifyPath((*proven)[thisTurn]) == rotationGeometry::PATH_CLEAR)
+        chosen = (*proven)[thisTurn];
+      else {
+        if (!turnsAtModel)
+          result.failed = true;
+        continue;
+      }
+    }
 
     stateRotation_t nr = *r;
-    nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, best.path };
+    nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, chosen };
     nr.inverse = false;
     st->setRotation(nr);
   }
 
-  if (s->editRemoved())
-    optimizeRec(s->editRemoved(), a, problem, settings, result);
-  if (s->editLeft())
-    optimizeRec(s->editLeft(), a, problem, settings, result);
+  if (s->editRemoved() && !result.stopped)
+    optimizeRec(s->editRemoved(), a, problem, settings, control, result, turn);
+  if (s->editLeft() && !result.stopped)
+    optimizeRec(s->editLeft(), a, problem, settings, control, result, turn);
 }
 
 }
 
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings) {
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+                         const optimizeControl_t & control) {
   turnPlay_t result;
-  optimizeRec(s, a, problem, rotationSettingsFor(problem, settings), result);
+  rotationSettings_t used = rotationSettingsFor(problem, settings);
+  if (control.model)
+    used.model = *control.model;
+  used.plan.stop = control.stop;
+  size_t turn = 0;
+  optimizeRec(s, a, problem, used, control, result, turn);
   return result;
 }
