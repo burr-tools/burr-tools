@@ -4070,8 +4070,13 @@ void mainWindow_c::CreateProblemTab(void) {
       RotationPlay = new LFl_Value_Input(1, 0, 1, 1);
       new LFl_Box(" Bevel ", 2, 0, 1, 1);
       RotationBevel = new LFl_Value_Input(3, 0, 1, 1);
-      RotationPlay->tooltip(" Gap between neighbouring cubes, in cube sizes, saved with the puzzle: rotation moves are checked against it and the STL export makes it. From puzzlecad: 2 $burr_inset / $burr_scale ");
-      RotationBevel->tooltip(" Length a 45 degree bevel cuts off each cube face, in cube sizes, saved with the puzzle. From puzzlecad: $burr_bevel / (1.414 $burr_scale) ");
+      RotationPlay->tooltip(" Gap between neighbouring cubes, in cube sizes, saved with the puzzle: rotation\n"
+                            " moves are checked against it and the STL export makes it. From puzzlecad:\n"
+                            " 2 $burr_inset / $burr_scale. The default 0.002 is made for slides: turns usually\n"
+                            " need more (around 0.05 with sharp edges, less with a bevel) ");
+      RotationBevel->tooltip(" Length a 45 degree bevel cuts off each cube face, in cube sizes, saved with the\n"
+                             " puzzle. From puzzlecad: $burr_bevel / (1.414 $burr_scale). A bevel lets pieces\n"
+                             " turn with less play: around 0.1 at the 0.01 play of a 3D print ");
       for (Fl_Value_Input * in : { RotationPlay, RotationBevel }) {
         in->step(0.001);
         in->bounds(0, 1);
@@ -4295,7 +4300,11 @@ void mainWindow_c::CreateSolveTab(void) {
     KeepRotations->clear_visible_focus();
 
     RotationMoves = new LFl_Check_Button("Rotation Moves", 0, 3, 1, 1);
-    RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only) ");
+    RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only).\n"
+                           " Turns are checked for the Play and Bevel beside it. Their defaults are the\n"
+                           " STL export's, made for slides; turns usually need more clearance: a play\n"
+                           " around 0.05 with sharp edges, or a bevel around 0.1 at the 0.01 play of a\n"
+                           " 3D print. Optimize Turns measures what a solution needs. ");
     RotationMoves->clear_visible_focus();
 
 

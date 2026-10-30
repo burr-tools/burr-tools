@@ -232,7 +232,8 @@ void usage(bool full = false) {
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
   cout << "  -R    with -d or -x: also allow pieces to turn by 90 degrees (cube grids)\n";
   cout << "  -m play,bevel  physical model for -R, in cube sizes, in place of the one the file\n";
-  cout << "        stores (else 0.081,0.032): gap between cubes, length a 45 degree bevel cuts\n";
+  cout << "        stores (else 0.002,0.03, the STL export's, made for slides; turns usually\n";
+  cout << "        need more, see -M): gap between cubes, length a 45 degree bevel cuts\n";
   cout << "        off each face; from puzzlecad's $burr_inset i, $burr_bevel b, $burr_scale s:\n";
   cout << "        play 2 i / s, bevel b / (1.414 s)\n";
   cout << "  -Q    with -R: also plan turns that no fixed path clears at this play but one\n";
@@ -527,6 +528,9 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
       whatIf.reset();
+      if (rotationMoves && disassemble && minimize == MIN_NONE && !p.getRotationModel())
+        cerr << "note: turns are checked for the default play 0.002 and bevel 0.03, made for slides;"
+                " turns usually need more: set them with -m, or find them with -M\n";
 
       if (minimize != MIN_NONE && rotationMoves && disassemble) {
         /* more play or more bevel only takes material away and so only adds

@@ -245,7 +245,7 @@ void ViewportController::buildMesh(void) {
     opt.style = m_voxelStyle;
     opt.piece = btui::pieceColor(m_shapeIndex);
     opt.colors = colourView() == QLatin1String("voxel") ? btui::ColorMode::Voxel : btui::ColorMode::Piece;
-    opt.stlModel = rotationModelForShape(p, unsigned(m_shapeIndex));
+    opt.stlModel = storedRotationModelForShape(p, unsigned(m_shapeIndex));
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
       p.getColor(i, &r, &g, &b);

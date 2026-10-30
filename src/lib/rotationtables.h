@@ -52,11 +52,12 @@ inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.
 
 struct rotationSettings_t {
   /** The model of a puzzle that stores none (puzzle_c::getRotationModel):
-   *  PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
-   *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
-   *  never quite sharp, and a bevel only takes material away, so it adds
-   *  turns and never removes one. Physical calibration may change both. */
-  rotationGeometry::model_t model = { 0.081, 0.032 };
+   *  the STL export's defaults from before rotation moves (offset 0.01 mm,
+   *  bevel 0.3 mm on 10 mm cubes), so a puzzle that never turns exports
+   *  and draws as it always did. Turns usually need more clearance than
+   *  that; the GUI and burrTxt say so, and Optimize Turns / burrTxt -M
+   *  find what a puzzle needs. */
+  rotationGeometry::model_t model = { 0.002, 0.03 };
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
@@ -331,6 +332,11 @@ rotationGeometry::model_t rotationModelOf(const problem_c & problem);
 /** The model the pieces of a shape are checked for: the puzzle's, else the
  *  default. */
 std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & puzzle, unsigned int shape);
+
+/** The same, but only a stored model: nothing while the puzzle stores none.
+ *  The 3D views' STL style draws such pieces; without one a shape keeps the
+ *  view's own look. */
+std::optional<rotationGeometry::model_t> storedRotationModelForShape(const puzzle_c & puzzle, unsigned int shape);
 
 /** For an STL export dialog: whether the exporter's bevel and offset make
  *  the pieces the turns were checked for (`expected`, from

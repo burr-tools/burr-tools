@@ -323,8 +323,9 @@ class voxelFrame_c : public Fl_Gl_Window {
     void * wheelUser = nullptr;
 
     std::vector<shapeInfo> shapes;
-    /* the model the entries added next take (addSpace): the shown problem's,
-     * or that of the problems using the shown shape; cleared with them */
+    /* the model the entries added next take (addSpace): the one the shown
+     * problem stores, or the problems using the shown shape all store;
+     * cleared with them */
     std::optional<rotationGeometry::model_t> spaceModel;
 
     colorMode colors;
