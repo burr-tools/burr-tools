@@ -1,0 +1,1178 @@
+{
+ "BioTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "1.1.1.12.10.3",
+    "rot": 9,
+    "t": 0.14,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.33,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1234
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "1.1.1.12.10.3",
+    "rot": 9,
+    "t": 0.2,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.55,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1016
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "1.1.1.12.10.3",
+    "rot": 9,
+    "t": 0.35,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.91,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1016
+  }
+ },
+ "CagedCube_1": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "12.6.5.4.4",
+    "rot": 4,
+    "t": 0.28,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.8,
+    "skipped": false
+   },
+   "minPlay": 0.06,
+   "minBevel": 0.1813
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "12.6.5.4.4",
+    "rot": 4,
+    "t": 0.46,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.16,
+    "skipped": false
+   },
+   "minPlay": 0.0646,
+   "minBevel": 0.1969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "12.6.5.4.4",
+    "rot": 4,
+    "t": 0.72,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.94,
+    "skipped": false
+   },
+   "minPlay": 0.0646,
+   "minBevel": 0.1969
+  }
+ },
+ "ElfTIC": {
+  "sine": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.11,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.33,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1641
+  },
+  "bulge": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.37,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1641
+  },
+  "bulge6": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.17,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.57,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1641
+  }
+ },
+ "FantasTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "7.7.12.4",
+    "rot": 7,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.31,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "7.7.12.4",
+    "rot": 7,
+    "t": 0.14,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.38,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "7.7.12.4",
+    "rot": 7,
+    "t": 0.21,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.58,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  }
+ },
+ "GalacTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "1.1.3.5.6.20",
+    "rot": 11,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.34,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "1.1.3.5.6.20",
+    "rot": 11,
+    "t": 0.14,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.38,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "1.1.3.5.6.20",
+    "rot": 11,
+    "t": 0.21,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.6,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  }
+ },
+ "HypnoTIC": {
+  "sine": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.09,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.32,
+    "skipped": false
+   },
+   "minPlay": 0.0987,
+   "minBevel": 0.1391
+  },
+  "bulge": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.101,
+   "minBevel": 0.1422
+  },
+  "bulge6": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.16,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.58,
+    "skipped": false
+   },
+   "minPlay": 0.101,
+   "minBevel": 0.1422
+  }
+ },
+ "LocomoTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 0.11,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.32,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 0.13,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.4,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 0.17,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.59,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  }
+ },
+ "LunaTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.32,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.39,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 0.19,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.58,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  }
+ },
+ "MagellanTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "10.3.10.16.3",
+    "rot": 9,
+    "t": 0.49,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.66,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.2547
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "10.3.10.16.3",
+    "rot": 9,
+    "t": 0.48,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.61,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.2547
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "10.3.10.14.4",
+    "rot": 10,
+    "t": 1.19,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.44,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.2125
+  }
+ },
+ "NotchedTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "13.7.2.2.2",
+    "rot": 2,
+    "t": 0.19,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "13.7.3.3.2",
+    "rot": 2,
+    "t": 0.54,
+    "skipped": false
+   },
+   "minPlay": 0.0043,
+   "minBevel": 0.0016
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "13.7.2.2.2",
+    "rot": 2,
+    "t": 0.18,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "13.7.3.3.2",
+    "rot": 2,
+    "t": 0.58,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "13.7.2.2.2",
+    "rot": 2,
+    "t": 0.32,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "13.7.3.3.2",
+    "rot": 2,
+    "t": 0.96,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "PackTIC_7": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "1.3.12.4",
+    "rot": 7,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "1.3.12.4",
+    "rot": 7,
+    "t": 0.15,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.51,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "1.3.12.4",
+    "rot": 7,
+    "t": 0.18,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.56,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  }
+ },
+ "PedanTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "1.1.2.26.6",
+    "rot": 11,
+    "t": 0.16,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0672
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "1.1.2.26.6",
+    "rot": 11,
+    "t": 0.22,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.1.2.26.6",
+    "rot": 11,
+    "t": 0.52,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0641
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "1.1.2.26.5",
+    "rot": 11,
+    "t": 0.25,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.1.2.26.5",
+    "rot": 11,
+    "t": 0.56,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0641
+  }
+ },
+ "SkepTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "4.2.4.5",
+    "rot": 6,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "10.3.8.3",
+    "rot": 5,
+    "t": 0.35,
+    "skipped": false
+   },
+   "minPlay": 0.0066,
+   "minBevel": 0.0016
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "4.2.4.5",
+    "rot": 6,
+    "t": 0.16,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "10.3.7.3",
+    "rot": 5,
+    "t": 0.5,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "4.2.4.5",
+    "rot": 6,
+    "t": 0.18,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "10.3.5.3",
+    "rot": 5,
+    "t": 0.57,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "StarTIC_2": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "8.7.2.3.3",
+    "rot": 5,
+    "t": 0.23,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.66,
+    "skipped": false
+   },
+   "minPlay": 0.0237,
+   "minBevel": 0.0609
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "8.7.2.3.3",
+    "rot": 5,
+    "t": 0.28,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "8.7.3.3.3",
+    "rot": 4,
+    "t": 0.84,
+    "skipped": false
+   },
+   "minPlay": 0.0136,
+   "minBevel": 0.0047
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "8.7.2.3.3",
+    "rot": 5,
+    "t": 0.43,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "8.7.3.3.3",
+    "rot": 5,
+    "t": 1.0,
+    "skipped": false
+   },
+   "minPlay": 0.0074,
+   "minBevel": 0.0016
+  }
+ },
+ "ThreeTIC": {
+  "sine": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.11,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.37,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1641
+  },
+  "bulge": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.1,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1406
+  },
+  "bulge6": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.24,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.81,
+    "skipped": false
+   },
+   "minPlay": 0.0925,
+   "minBevel": 0.1406
+  }
+ },
+ "TriumviraTIC": {
+  "sine": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.35,
+    "skipped": false
+   },
+   "minPlay": 0.0894,
+   "minBevel": 0.3359
+  },
+  "bulge": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.11,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.33,
+    "skipped": false
+   },
+   "minPlay": 0.0832,
+   "minBevel": 0.3141
+  },
+  "bulge6": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.24,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.75,
+    "skipped": false
+   },
+   "minPlay": 0.0832,
+   "minBevel": 0.3141
+  }
+ },
+ "TwisTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "3.2.31.3",
+    "rot": 16,
+    "t": 0.17,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.1172
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "3.2.31.3",
+    "rot": 16,
+    "t": 0.18,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.36,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "3.2.31.3",
+    "rot": 16,
+    "t": 0.27,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.55,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0969
+  }
+ },
+ "ocTIC": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "7.4.3",
+    "rot": 3,
+    "t": 0.13,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.4.4",
+    "rot": 3,
+    "t": 0.39,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "7.4.3",
+    "rot": 3,
+    "t": 0.13,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.4.3",
+    "rot": 3,
+    "t": 0.39,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "7.3.3",
+    "rot": 3,
+    "t": 0.19,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.3.3",
+    "rot": 3,
+    "t": 0.59,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "scRIBble": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "10.5",
+    "rot": 4,
+    "t": 0.3,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.86,
+    "skipped": false
+   },
+   "minPlay": 0.0716,
+   "minBevel": 0.1406
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "10.5",
+    "rot": 4,
+    "t": 0.29,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.91,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.1438
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "10.5",
+    "rot": 4,
+    "t": 0.46,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.35,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.1438
+  }
+ },
+ "tRIBe": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "7.8",
+    "rot": 6,
+    "t": 0.28,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.85,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.1125
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "7.8",
+    "rot": 6,
+    "t": 0.29,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.82,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0938
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "7.7",
+    "rot": 5,
+    "t": 0.41,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.31,
+    "skipped": false
+   },
+   "minPlay": 0.0554,
+   "minBevel": 0.0938
+  }
+ },
+ "tRIBes": {
+  "sine": {
+   "default": {
+    "solved": true,
+    "level": "9.11",
+    "rot": 5,
+    "t": 0.33,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.15,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1031
+  },
+  "bulge": {
+   "default": {
+    "solved": true,
+    "level": "9.11",
+    "rot": 5,
+    "t": 0.25,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.84,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0875
+  },
+  "bulge6": {
+   "default": {
+    "solved": true,
+    "level": "9.11",
+    "rot": 5,
+    "t": 0.53,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.83,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0875
+  }
+ }
+}

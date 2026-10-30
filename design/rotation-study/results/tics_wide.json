@@ -1,0 +1,800 @@
+{
+ "BioTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "1.1.1.12.10.3",
+    "rot": 9,
+    "t": 0.23,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.44,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1016
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "1.1.1.11.10.3",
+    "rot": 9,
+    "t": 1.15,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 2.48,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.1016
+  }
+ },
+ "CagedCube_1": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "12.6.5.4.4",
+    "rot": 4,
+    "t": 0.62,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.11,
+    "skipped": false
+   },
+   "minPlay": 0.0646,
+   "minBevel": 0.1672
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "12.6.5.4.4",
+    "rot": 4,
+    "t": 3.25,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 5.48,
+    "skipped": false
+   },
+   "minPlay": 0.0569,
+   "minBevel": 0.15
+  }
+ },
+ "ElfTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "11.3",
+    "rot": 3,
+    "t": 0.34,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.46,
+    "skipped": false
+   },
+   "minPlay": 0.0631,
+   "minBevel": 0.1063
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "10.3",
+    "rot": 3,
+    "t": 1.4,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 2.66,
+    "skipped": false
+   },
+   "minPlay": 0.0492,
+   "minBevel": 0.1063
+  }
+ },
+ "FantasTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "7.7.12.4",
+    "rot": 7,
+    "t": 0.6,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.87,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "7.7.12.4",
+    "rot": 5,
+    "t": 2.92,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 5.3,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  }
+ },
+ "GalacTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "1.1.3.5.6.20",
+    "rot": 11,
+    "t": 0.41,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.67,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "1.1.3.5.6.16",
+    "rot": 11,
+    "t": 1.7,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 2.98,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0969
+  }
+ },
+ "HypnoTIC": {
+  "compass": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.24,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.65,
+    "skipped": false
+   },
+   "minPlay": 0.0894,
+   "minBevel": 0.1359
+  },
+  "wide": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.24,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 2.66,
+    "skipped": false
+   },
+   "minPlay": 0.0871,
+   "minBevel": 0.1359
+  }
+ },
+ "LocomoTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 0.24,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 0.95,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 1.13,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "17.7.4",
+    "rot": 2,
+    "t": 2.62,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  }
+ },
+ "LunaTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 0.35,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 0.87,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "7.2.2.6",
+    "rot": 2,
+    "t": 1.39,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.2.3.6",
+    "rot": 2,
+    "t": 2.67,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  }
+ },
+ "MagellanTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "10.3.10.16.3",
+    "rot": 9,
+    "t": 0.7,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.53,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.2344
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "9.3.10.14.4",
+    "rot": 10,
+    "t": 2.11,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 4.28,
+    "skipped": false
+   },
+   "minPlay": 0.0724,
+   "minBevel": 0.2125
+  }
+ },
+ "NotchedTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "13.7.2.2.2",
+    "rot": 2,
+    "t": 0.34,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "13.7.3.3.2",
+    "rot": 2,
+    "t": 1.16,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "13.7.2.2.2",
+    "rot": 2,
+    "t": 2.04,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "13.7.3.3.2",
+    "rot": 2,
+    "t": 3.72,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "PackTIC_7": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "1.3.12.3",
+    "rot": 7,
+    "t": 0.55,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.3.12.4",
+    "rot": 7,
+    "t": 0.95,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "1.3.12.3",
+    "rot": 7,
+    "t": 3.03,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.3.12.3",
+    "rot": 7,
+    "t": 5.62,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  }
+ },
+ "PedanTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "1.1.2.26.5",
+    "rot": 11,
+    "t": 0.27,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.1.2.26.6",
+    "rot": 11,
+    "t": 1.29,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0641
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "1.1.2.26.5",
+    "rot": 11,
+    "t": 1.3,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "1.1.2.26.5",
+    "rot": 11,
+    "t": 2.44,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0641
+  }
+ },
+ "SkepTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "4.2.4.5",
+    "rot": 6,
+    "t": 0.32,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "10.3.6.3",
+    "rot": 6,
+    "t": 0.78,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "4.2.3.5",
+    "rot": 6,
+    "t": 1.5,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "10.3.6.3",
+    "rot": 6,
+    "t": 2.99,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "StarTIC_2": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "8.7.2.3.3",
+    "rot": 5,
+    "t": 0.86,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "8.7.3.3.3",
+    "rot": 4,
+    "t": 1.84,
+    "skipped": false
+   },
+   "minPlay": 0.0113,
+   "minBevel": 0.0016
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "8.7.2.3.3",
+    "rot": 5,
+    "t": 1.88,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "8.7.3.3.3",
+    "rot": 5,
+    "t": 4.11,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "ThreeTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "7.9",
+    "rot": 5,
+    "t": 0.32,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.57,
+    "skipped": false
+   },
+   "minPlay": 0.0631,
+   "minBevel": 0.1063
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "7.8",
+    "rot": 5,
+    "t": 3.29,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 5.31,
+    "skipped": false
+   },
+   "minPlay": 0.0438,
+   "minBevel": 0.1063
+  }
+ },
+ "TriumviraTIC": {
+  "compass": {
+   "default": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.61,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 0.65,
+    "skipped": false
+   },
+   "minPlay": 0.0832,
+   "minBevel": 0.3141
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "16.2",
+    "rot": 4,
+    "t": 1.86,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 3.49,
+    "skipped": false
+   },
+   "minPlay": 0.0453,
+   "minBevel": 0.0875
+  }
+ },
+ "TwisTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "3.2.31.3",
+    "rot": 16,
+    "t": 0.6,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "3.2.31.4",
+    "rot": 16,
+    "t": 0.62,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "3.2.28.3",
+    "rot": 16,
+    "t": 1.28,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "3.2.31.3",
+    "rot": 16,
+    "t": 2.44,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0453
+  }
+ },
+ "ocTIC": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "7.4.3",
+    "rot": 3,
+    "t": 0.28,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.4.3",
+    "rot": 3,
+    "t": 0.76,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "7.3.3",
+    "rot": 3,
+    "t": 1.12,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.3.3",
+    "rot": 3,
+    "t": 2.58,
+    "skipped": false
+   },
+   "minPlay": 0.0028,
+   "minBevel": 0.0016
+  }
+ },
+ "scRIBble": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "9.5",
+    "rot": 4,
+    "t": 0.55,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.5,
+    "skipped": false
+   },
+   "minPlay": 0.06,
+   "minBevel": 0.0953
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "9.4",
+    "rot": 4,
+    "t": 3.1,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 5.55,
+    "skipped": false
+   },
+   "minPlay": 0.0252,
+   "minBevel": 0.0703
+  }
+ },
+ "tRIBe": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "7.8",
+    "rot": 6,
+    "t": 0.93,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.8",
+    "rot": 6,
+    "t": 1.32,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0438
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "7.7",
+    "rot": 6,
+    "t": 3.2,
+    "skipped": false
+   },
+   "printed": {
+    "solved": true,
+    "level": "7.7",
+    "rot": 6,
+    "t": 6.0,
+    "skipped": false
+   },
+   "minPlay": 0.036,
+   "minBevel": 0.0438
+  }
+ },
+ "tRIBes": {
+  "compass": {
+   "default": {
+    "solved": true,
+    "level": "9.11",
+    "rot": 5,
+    "t": 0.53,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 1.17,
+    "skipped": false
+   },
+   "minPlay": 0.0608,
+   "minBevel": 0.0875
+  },
+  "wide": {
+   "default": {
+    "solved": true,
+    "level": "8.10",
+    "rot": 5,
+    "t": 2.93,
+    "skipped": false
+   },
+   "printed": {
+    "solved": false,
+    "level": null,
+    "rot": null,
+    "t": 5.65,
+    "skipped": false
+   },
+   "minPlay": 0.0422,
+   "minBevel": 0.0875
+  }
+ }
+}
