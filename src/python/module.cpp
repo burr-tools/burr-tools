@@ -112,6 +112,10 @@ PYBIND11_MODULE(burrtools, m) {
     .def("set_piece_range", py::overload_cast<const PyShape &, unsigned int, unsigned int>(&PyProblem::set_piece_range_shape), py::arg("shape"), py::arg("min_count"), py::arg("max_count"), "Set min and max piece count for a shape")
     .def("get_piece_min", &PyProblem::get_piece_min, py::arg("shape_index"), "Get minimum piece count for a shape index")
     .def("get_piece_max", &PyProblem::get_piece_max, py::arg("shape_index"), "Get maximum piece count for a shape index")
+    .def_property("rotation_model", &PyProblem::get_rotation_model, &PyProblem::set_rotation_model,
+                  "(play, bevel) of the pieces for rotation moves, in cube sizes, saved with the problem: "
+                  "the gap between cubes and the length a 45 degree bevel cuts off each face. Reads the "
+                  "default while none is set; set None to go back to it")
     .def("solve", &PyProblem::solve,
          py::arg("disassemble") = true,
          py::arg("reduce") = false,
