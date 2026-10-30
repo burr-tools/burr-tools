@@ -46,6 +46,32 @@ inline bool breadthFirstFromEnv() {
   return std::getenv("BURRTOOLS_SPLIT_BREADTH_FIRST") != nullptr;
 }
 
+/* Donation (split on demand): a running assembler_0 task, on the DLX and
+ * the SIMD workers alike, hands the unexplored part of its shallowest open
+ * level to the pool whenever a sibling is waiting for work, and stops
+ * before that part itself. Tasks are thereby split where the work actually
+ * is, instead of eagerly at pop time by depth guesses that cannot split a
+ * task found large after it started. Busy workers poll the pool's hunger
+ * flag every few hundred nodes; one donor claims it per waiter.
+ * BURRTOOLS_NO_DONATE=1 restores the eager pop-time splitting on both (A/B
+ * toggle). Read once per run. */
+inline bool noDonateFromEnv() {
+  return std::getenv("BURRTOOLS_NO_DONATE") != nullptr;
+}
+
+/* BURRTOOLS_DONATE_EVERY=N (tests only): additionally donate every N search
+ * nodes whether or not anyone is waiting, so donation paths run
+ * deterministically even single-threaded. 0 / unset = only on demand. */
+inline unsigned long donateEveryFromEnv() {
+  const char * env = std::getenv("BURRTOOLS_DONATE_EVERY");
+  if (env != nullptr && *env != '\0') {
+    const long val = std::strtol(env, nullptr, 10);
+    if (val >= 1)
+      return static_cast<unsigned long>(val);
+  }
+  return 0;
+}
+
 inline unsigned int fromEnv() {
   const char * env = std::getenv("BURRTOOLS_SPLIT_FANOUT");
   if (env != nullptr && *env != '\0') {
