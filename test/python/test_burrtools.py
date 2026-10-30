@@ -40,6 +40,9 @@ class TestBurrTools(unittest.TestCase):
     def test_rotation_moves(self):
         path = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "AAA_most_rotations.xmpuzzle")
         prob = burrtools.load(path).problems[0]
+        # the model these expectations were found at (the default is the
+        # STL export's tight one, made for slides)
+        prob.rotation_model = (0.081, 0.032)
 
         # without turns the single assembly does not come apart
         self.assertEqual(list(prob.solve(disassemble=True)), [])
@@ -60,11 +63,12 @@ class TestBurrTools(unittest.TestCase):
         puzzle = burrtools.load(path)
         prob = puzzle.problems[0]
 
-        # the default until one is set: play 0.081 with puzzlecad's bevel
-        self.assertEqual(prob.rotation_model, (0.081, 0.032))
+        # the default until one is set: the STL export's play and bevel
+        self.assertEqual(prob.rotation_model, (0.002, 0.03))
 
         # the stored model reaches the solver: with the tight play of a
-        # printed copy the pieces come apart differently than at the default
+        # printed copy the pieces come apart differently than at 0.081 (2.3,
+        # test_rotation_moves)
         prob.rotation_model = (0.0126, 0.0317)
         self.assertEqual(prob.rotation_model, (0.0126, 0.0317))
         solutions = list(prob.solve(disassemble=True, rotation_moves=True))
@@ -79,7 +83,7 @@ class TestBurrTools(unittest.TestCase):
         with self.assertRaises(ValueError):
             prob.rotation_model = (0.1, 0.5)
         prob.rotation_model = None
-        self.assertEqual(prob.rotation_model, (0.081, 0.032))
+        self.assertEqual(prob.rotation_model, (0.002, 0.03))
 
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)

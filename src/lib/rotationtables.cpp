@@ -376,6 +376,20 @@ std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & 
   return found ? found : rotationSettings_t{}.model;
 }
 
+std::optional<rotationGeometry::model_t> storedRotationModelForShape(const puzzle_c & puzzle, unsigned int shape) {
+  std::optional<rotationGeometry::model_t> found;
+  for (unsigned int p = 0; p < puzzle.getNumberOfProblems(); p++) {
+    const problem_c & problem = *puzzle.getProblem(p);
+    if (problem.getShapeMaximum(shape) == 0)
+      continue;
+    const std::optional<rotationGeometry::model_t> & m = problem.getRotationModel();
+    if (!m || (found && (found->play != m->play || found->chamfer != m->chamfer)))
+      return std::nullopt;
+    found = m;
+  }
+  return found;
+}
+
 stlModelState_t stlModelState(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected) {
   stlModelState_t state;
   const std::optional<rotationGeometry::model_t> now = stl.currentModel();

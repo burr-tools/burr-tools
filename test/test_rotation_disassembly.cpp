@@ -37,9 +37,13 @@ namespace {
 /* the default settings with the planner on (it is off by default), and
  * with enough slack to reach the planned turn of AAA_most_rotations, which
  * the default slack of 0.02 does not: so its disassembly has a planned
- * path, which the replay and animation tests then cover */
+ * path, which the replay and animation tests then cover. The model is
+ * play 0.081 with a bevel of 0.032 (PR #50's play, puzzlecad's bevel),
+ * which these tests were written for; the default is the STL export's
+ * tight one, made for slides. */
 rotationSettings_t withPlanner(void) {
   rotationSettings_t s = rotationSettings_t{};
+  s.model = { 0.081, 0.032 };
   s.planner = true;
   s.slack = 0.04;
   return s;
