@@ -286,12 +286,15 @@ class assembly_c;
 /** What optimizeTurns found. */
 struct turnPlay_t {
   bool rotations = false;   ///< the disassembly turns at all
-  /** every turn is proven possible at this play (along its recorded path)... */
-  double needs = 0;
-  /** ...and some turn is proven impossible below this (for shifts up to
-   *  the planner's maxShift), 0 if nothing could be proven */
-  double atLeast = 0;
-  /** a turn needed more than the planner's largest play: needs is not valid */
+  /** upper bound: every turn is proven possible at this play, along its
+   *  recorded path, so the disassembly works at it */
+  double upper = 0;
+  /** lower bound: some turn is proven impossible below this (for shifts up
+   *  to the planner's maxShift), so this disassembly does not work below
+   *  it; another disassembly of the puzzle might. 0 if nothing could be
+   *  proven */
+  double lower = 0;
+  /** a turn needed more than the planner's largest play: upper is not valid */
   bool failed = false;
 };
 

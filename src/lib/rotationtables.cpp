@@ -431,8 +431,8 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
       result.failed = true;
       continue;
     }
-    result.needs = std::max(result.needs, pb.needs);
-    result.atLeast = std::max(result.atLeast, pb.atLeast);
+    result.upper = std::max(result.upper, pb.upper);
+    result.lower = std::max(result.lower, pb.lower);
 
     /* the path with the most room at the model's play */
     rotationGeometry::planSettings_t widest = settings.plan;

@@ -642,7 +642,7 @@ playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<c
   }
 
   result.found = true;
-  result.needs = hi;
+  result.upper = hi;
 
   /* A proof for the lower end. No motion has more clearance than the
    * optimistic bound u at play hi, and taking play away costs every
@@ -652,7 +652,7 @@ playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<c
     opt.floor = -1;
     opt.upper = true;
     const double u = planTurn(sceneAt(hi), sense, opt).upper;
-    result.atLeast = std::max(0.0, std::min(hi, hi - u));
+    result.lower = std::max(0.0, std::min(hi, hi - u));
   }
   return result;
 }

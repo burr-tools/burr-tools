@@ -162,11 +162,11 @@ TEST_CASE("required play: proven possible above, impossible below", "[rotations]
   const playBound_t pb = requiredPlay(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense, SHARP_MODEL, quickSettings(), 0.002);
   REQUIRE(pb.found);
   /* the default grid gives 0.057; the coarse one a little more */
-  CHECK(pb.needs > 0.045);
-  CHECK(pb.needs < 0.075);
-  CHECK(pb.atLeast > 0.02);
-  CHECK(pb.atLeast <= pb.needs);
-  CHECK(sceneOf(t, { pb.needs, 0 }).certifyPath(pb.path) == PATH_CLEAR);
+  CHECK(pb.upper > 0.045);
+  CHECK(pb.upper < 0.075);
+  CHECK(pb.lower > 0.02);
+  CHECK(pb.lower <= pb.upper);
+  CHECK(sceneOf(t, { pb.upper, 0 }).certifyPath(pb.path) == PATH_CLEAR);
 }
 
 TEST_CASE("more play adds at least as much clearance along a path", "[rotations]") {

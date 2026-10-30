@@ -291,12 +291,13 @@ namespace rotationGeometry {
   /** The play a quarter turn needs, see requiredPlay. */
   struct playBound_t {
     bool found = false;
-    /** the turn is proven possible at this play, along `path` */
-    double needs = 0;
+    /** upper bound: the turn is proven possible at this play, along `path` */
+    double upper = 0;
     path_t path;
-    /** and proven impossible (for shifts up to maxShift) below this; 0 if
+    /** lower bound: proven impossible below this, for every motion with
+     *  shifts up to maxShift (a wilder one could still get through); 0 if
      *  nothing could be proven */
-    double atLeast = 0;
+    double lower = 0;
   };
 
   /**

@@ -4,6 +4,7 @@
 
 #include "lib/assembler_0.h"
 #include "lib/assembly.h"
+#include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
@@ -734,4 +735,42 @@ TEST_CASE("problem: another rotation model makes the solutions unknown", "[probl
   SolvingFixture noEdit = solved();
   noEdit.problem->clearRotationModel();
   CHECK(noEdit.problem->getSolveState() == SS_SOLVED);
+}
+
+TEST_CASE("solution: the measured play is saved with the solution", "[problem][rotations]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  const gridType_c & gt = *f.puzzle->getGridType();
+  f.problem->addSolution(assemblyAtX(gt, { 0, 1 }));
+  f.problem->addSolution(assemblyAtX(gt, { 3, 0 }));
+  f.problem->finishedSolving();
+
+  solution_c * s = f.problem->getSavedSolution(0);
+  CHECK_FALSE(s->getPlay());
+  CHECK_THROWS(s->setPlay({ 0.05, 0.06, 0.03 }));  // lower above upper
+  CHECK_THROWS(s->setPlay({ 1.0, 0.5, 0.03 }));
+  CHECK_THROWS(s->setPlay({ 0.05, 0.02, -0.01 }));
+  CHECK_FALSE(s->getPlay());
+  s->setPlay({ 0.0616, 0.0348, 0.032 });
+
+  auto p = reloadEdited(*f.puzzle, [](std::string &) {});
+  const problem_c * pr = p->getProblem(0);
+  REQUIRE(pr->getNumberOfSavedSolutions() == 2);
+  REQUIRE(pr->getSavedSolution(0)->getPlay());
+  CHECK(pr->getSavedSolution(0)->getPlay()->upper == 0.0616);
+  CHECK(pr->getSavedSolution(0)->getPlay()->lower == 0.0348);
+  CHECK(pr->getSavedSolution(0)->getPlay()->bevel == 0.032);
+  CHECK_FALSE(pr->getSavedSolution(1)->getPlay());
+
+  /* a new disassembly drops the play measured for the old one */
+  s->setDisassembly(std::unique_ptr<separation_c>());
+  CHECK_FALSE(s->getPlay());
+
+  /* in a file, all three or none, and valid */
+  s->setPlay({ 0.0616, 0.0348, 0.032 });
+  for (auto [from, to] : { std::pair{ " playBevel=\"0.032\"", "" },
+                           { "playLower=\"0.0348\"", "playLower=\"0.07\"" },
+                           { "playUpper=\"0.0616\"", "playUpper=\"high\"" } }) {
+    INFO(from << " -> " << to);
+    CHECK_THROWS(reloadEdited(*f.puzzle, [&](std::string & text) { replaceOnce(text, from, to); }));
+  }
 }
