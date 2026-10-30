@@ -240,7 +240,7 @@ std::unique_ptr<assembler_c> gridType_c::findAssembler(const problem_c & p, cons
 stlExporter_c * gridType_c::getStlExporter(void) const
 {
   switch (type) {
-    case GT_BRICKS:           return new stlExporter_0_c();
+    case GT_BRICKS:           return new stlExporter_0_c(true);
     case GT_TRIANGULAR_PRISM: return new stlExporter_0_c();
     case GT_SPHERES:          return new stlExporter_2_c();
     case GT_RHOMBIC:          return new stlExporter_0_c();
