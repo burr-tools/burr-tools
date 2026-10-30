@@ -30,10 +30,13 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 class problem_c;
+class puzzle_c;
+class stlExporter_c;
 class disassemblerNode_c;
 
 /**
@@ -320,6 +323,20 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
  * themselves.
  */
 rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
+
+/** The model a problem's rotation moves are checked for: its puzzle's, else
+ *  the default (rotationSettings_t::model). */
+rotationGeometry::model_t rotationModelOf(const problem_c & problem);
+
+/** The model the pieces of a shape are checked for: the puzzle's, else the
+ *  default. */
+std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & puzzle, unsigned int shape);
+
+/** For an STL export dialog: whether the exporter's bevel and offset make
+ *  the pieces the turns were checked for (`expected`, from
+ *  rotationModelOf or rotationModelForShape; nothing when the problems
+ *  disagree). Empty when the exporter does not make cubes. */
+std::string stlModelNote(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not
