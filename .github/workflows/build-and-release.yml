@@ -26,7 +26,7 @@ jobs:
       run: sudo apt-get update
     
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev cppcheck
+      run: sudo apt-get install -y meson ninja-build build-essential libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev cppcheck
     
     - name: Install just
       uses: extractions/setup-just@v2
@@ -116,7 +116,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
+      run: sudo apt-get install -y clang meson ninja-build build-essential libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
     - name: Setup build directory
       env:
@@ -156,7 +156,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
+      run: sudo apt-get install -y meson ninja-build build-essential libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
     - name: Install just
       uses: extractions/setup-just@v2
@@ -186,7 +186,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+        sudo apt-get install -y ninja-build build-essential cmake libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
           xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
@@ -325,7 +325,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install dependencies
-      run: sudo apt-get install -y libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr
+      run: sudo apt-get install -y meson ninja-build build-essential libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr
 
     - name: Install just
       uses: extractions/setup-just@v2
@@ -379,7 +379,7 @@ jobs:
     # that GUI needs (Ubuntu's is older).
     - name: Install dependencies
       run: |
-        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+        sudo apt-get install -y ninja-build build-essential cmake libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
           xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
@@ -681,7 +681,7 @@ jobs:
         submodules: recursive
     
     - name: Install dependencies
-      run: brew install meson ninja boost
+      run: brew install meson ninja
     
     - name: Install just
       uses: extractions/setup-just@v2
