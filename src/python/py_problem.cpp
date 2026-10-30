@@ -22,7 +22,7 @@ problem_c * PyProblem::get_problem() const {
 }
 
 std::pair<double, double> PyProblem::get_rotation_model() const {
-  const rotationGeometry::model_t m = get_problem()->getRotationModel().value_or(rotationSettings_t{}.model);
+  const rotationGeometry::model_t m = rotationModelOf(*get_problem());
   return { m.play, m.chamfer };
 }
 

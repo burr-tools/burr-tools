@@ -455,7 +455,7 @@ void mainWindow_c::cb_RotationModel(void) {
   problem_c * pr = puzzle->getProblem(prob);
 
   const rotationGeometry::model_t model = { RotationPlay->value(), RotationBevel->value() };
-  const rotationGeometry::model_t now = pr->getRotationModel().value_or(rotationSettings_t{}.model);
+  const rotationGeometry::model_t now = rotationModelOf(*pr);
   if (model.play == now.play && model.chamfer == now.chamfer)
     return;
 
@@ -3325,7 +3325,7 @@ void mainWindow_c::updateInterface(void) {
 
       /* the problem's model, else the default; not while a solve reads it */
       {
-        const rotationGeometry::model_t model = pr->getRotationModel().value_or(rotationSettings_t{}.model);
+        const rotationGeometry::model_t model = rotationModelOf(*pr);
         RotationPlay->value(model.play);
         RotationBevel->value(model.chamfer);
         if (ggt->getGridType()->getType() == gridType_c::GT_BRICKS && !assmThread) {

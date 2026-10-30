@@ -28,7 +28,10 @@ class stlExporter_0_c : public stlExporter_c {
 
   public:
 
-    stlExporter_0_c(void) : bevel(0.3), cube_scale(10), cube_scale_y(0), cube_scale_z(0), shrink(0.01), interiorChamfers(true) {}
+    /* cubes: it exports the cube grid, whose pieces can make rotation
+     * moves, so bevel and offset can come from a model (followModel) */
+    explicit stlExporter_0_c(bool cubes = false) : bevel(0.3), cube_scale(10), cube_scale_y(0), cube_scale_z(0), shrink(0.01),
+      interiorChamfers(true), cubes(cubes) {}
 
     virtual Polyhedron * getMesh(const voxel_c & v) const;
     virtual unsigned int numParameters(void) const { return 6; }
@@ -37,6 +40,9 @@ class stlExporter_0_c : public stlExporter_c {
     virtual void setParameter(unsigned int idx, double value);
     virtual const char * getParameterTooltip(unsigned int idx) const;
     virtual parameterTypes getParameterType(unsigned int idx) const;
+    bool followModel(const rotationGeometry::model_t & model) override;
+    bool followsModel(void) const override { return following.has_value(); }
+    std::optional<rotationGeometry::model_t> currentModel(void) const override;
 
   private:
 
@@ -46,6 +52,11 @@ class stlExporter_0_c : public stlExporter_c {
     double cube_scale_z;  // unit size in z direction, 0 = same as cube_scale
     double shrink;
     bool interiorChamfers;   // chamfer the concave edges too
+    bool cubes;
+    /* the model bevel and offset follow (followModel), until set by hand */
+    std::optional<rotationGeometry::model_t> following;
+
+    void applyModel(void);
 
     /* the cube grid: the per-vertex lookup mesher (cubepoly.h); the
      * other grids: the Minkowski mesher (minkmesh.h); scale_y/scale_z as

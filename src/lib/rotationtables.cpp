@@ -26,12 +26,14 @@
 #include "gridtype.h"
 #include "problem.h"
 #include "puzzle.h"
+#include "stl.h"
 #include "symmetries.h"
 #include "voxel.h"
 
 #include <algorithm>
 #include <array>
 #include <climits>
+#include <cstdio>
 #include <cmath>
 #include <cstdlib>
 #include <numbers>
@@ -354,6 +356,41 @@ rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettin
   if (problem.getRotationModel())
     settings.model = *problem.getRotationModel();
   return settings;
+}
+
+rotationGeometry::model_t rotationModelOf(const problem_c & problem) {
+  return problem.getRotationModel().value_or(rotationSettings_t{}.model);
+}
+
+std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & puzzle, unsigned int shape) {
+  std::optional<rotationGeometry::model_t> found;
+  for (unsigned int p = 0; p < puzzle.getNumberOfProblems(); p++) {
+    const problem_c & problem = *puzzle.getProblem(p);
+    if (problem.getShapeMaximum(shape) == 0)
+      continue;
+    const rotationGeometry::model_t m = rotationModelOf(problem);
+    if (found && (found->play != m.play || found->chamfer != m.chamfer))
+      return std::nullopt;
+    found = m;
+  }
+  return found ? found : rotationSettings_t{}.model;
+}
+
+std::string stlModelNote(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected) {
+  const std::optional<rotationGeometry::model_t> now = stl.currentModel();
+  if (!now)
+    return "";
+  char text[200];
+  if (!expected)
+    snprintf(text, sizeof(text), "Play %.4f, bevel %.4f. The problems using this shape check rotation "
+             "moves for different play and bevel.", now->play, now->chamfer);
+  else if (std::abs(now->play - expected->play) < 1e-6 && std::abs(now->chamfer - expected->chamfer) < 1e-6)
+    snprintf(text, sizeof(text), "Play %.4f, bevel %.4f: the pieces rotation moves are checked for.",
+             now->play, now->chamfer);
+  else
+    snprintf(text, sizeof(text), "Play %.4f, bevel %.4f, but rotation moves are checked for play %.4f, "
+             "bevel %.4f.", now->play, now->chamfer, expected->play, expected->chamfer);
+  return text;
 }
 
 std::shared_ptr<rotationContext_c>
