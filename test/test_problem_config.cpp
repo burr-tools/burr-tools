@@ -666,3 +666,72 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
   CHECK(pr->getSolveState() == SS_SOLVING);
   CHECK_FALSE(pr->canStartSolving());
 }
+
+/* ------------------------------------------------------------------ */
+/* the rotation model                                                  */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("problem: the rotation model is saved with the problem", "[problem][rotations]") {
+  Fixture f = makeFixture(1);
+  CHECK_FALSE(f.problem->getRotationModel());
+
+  /* unset, nothing is written */
+  auto plain = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("rotationPlay") == std::string::npos);
+  });
+  CHECK_FALSE(plain->getProblem(0)->getRotationModel());
+
+  f.problem->setRotationModel({ 0.0126, 0.0317 });
+  auto p = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("rotationPlay=\"0.0126\"") != std::string::npos);
+    CHECK(text.find("rotationBevel=\"0.0317\"") != std::string::npos);
+  });
+  REQUIRE(p->getProblem(0)->getRotationModel());
+  CHECK(p->getProblem(0)->getRotationModel()->play == 0.0126);
+  CHECK(p->getProblem(0)->getRotationModel()->chamfer == 0.0317);
+
+  /* a copied problem keeps it */
+  problem_c copy(f.problem, *f.puzzle);
+  REQUIRE(copy.getRotationModel());
+  CHECK(copy.getRotationModel()->play == 0.0126);
+
+  f.problem->clearRotationModel();
+  CHECK_FALSE(f.problem->getRotationModel());
+}
+
+TEST_CASE("problem: an invalid rotation model is refused, in a file and by the setter",
+          "[problem][rotations]") {
+  Fixture f = makeFixture(1);
+  CHECK_THROWS(f.problem->setRotationModel({ 0, 0.03 }));
+  CHECK_THROWS(f.problem->setRotationModel({ 1, 0 }));
+  CHECK_THROWS(f.problem->setRotationModel({ 0.08, -0.01 }));
+  CHECK_THROWS(f.problem->setRotationModel({ 0.08, 0.46 }));
+  CHECK_FALSE(f.problem->getRotationModel());
+
+  f.problem->setRotationModel({ 0.05, 0.03 });
+  for (auto [from, to] : { std::pair{ "rotationPlay=\"0.05\"", "rotationPlay=\"0\"" },
+                           { "rotationPlay=\"0.05\"", "rotationPlay=\"0.05x\"" },
+                           { "rotationPlay=\"0.05\"", "" },
+                           { "rotationBevel=\"0.03\"", "rotationBevel=\"0.6\"" } }) {
+    INFO(from << " -> " << to);
+    CHECK_THROWS(reloadEdited(*f.puzzle, [&](std::string & text) { replaceOnce(text, from, to); }));
+  }
+}
+
+TEST_CASE("problem: another rotation model makes the solutions unknown", "[problem][rotations]") {
+  auto solved = [] {
+    SolvingFixture f = makeSolvingFixture(1, 1);
+    f.problem->finishedSolving();
+    REQUIRE(f.problem->getSolveState() == SS_SOLVED);
+    return f;
+  };
+
+  SolvingFixture set = solved();
+  set.problem->setRotationModel({ 0.081, 0.032 });
+  CHECK(set.problem->getSolveState() == SS_UNKNOWN);
+
+  /* clearing a model that is not there is no edit */
+  SolvingFixture noEdit = solved();
+  noEdit.problem->clearRotationModel();
+  CHECK(noEdit.problem->getSolveState() == SS_SOLVED);
+}

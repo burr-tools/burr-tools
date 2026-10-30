@@ -125,8 +125,6 @@ rotationSettings_t rotationConfig_t::resolve(void) const {
 
   /* the defaults are the initializers; choices and the environment on top */
   rotationSettings_t s;
-  if (model)
-    s.model = *model;
   if (fam == ROTATION_FAMILY_COMPASS)
     s.wideAmounts.clear();
   s.planner = flag("BURRTOOLS_ROT_PLANNER", planner, s.planner);
