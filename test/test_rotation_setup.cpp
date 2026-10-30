@@ -248,12 +248,18 @@ TEST_CASE("a shape's pieces are checked for the puzzle's model", "[rotations][st
   REQUIRE(rotationModelForShape(puzzle, other));
   CHECK(rotationModelForShape(puzzle, other)->play == def.play);
 
+  /* the views draw stored models only */
+  CHECK_FALSE(storedRotationModelForShape(puzzle, piece));
+  CHECK_FALSE(storedRotationModelForShape(puzzle, other));
+
   /* the pieces are the puzzle's: every problem and shape has them */
   puzzle.setRotationModel({ 0.0126, 0.05 });
   CHECK(rotationModelOf(a).chamfer == 0.05);
   CHECK(rotationModelOf(b).chamfer == 0.05);
   REQUIRE(rotationModelForShape(puzzle, piece));
   CHECK(rotationModelForShape(puzzle, piece)->play == 0.0126);
+  REQUIRE(storedRotationModelForShape(puzzle, piece));
+  CHECK(storedRotationModelForShape(puzzle, piece)->chamfer == 0.05);
 
   /* the export dialog's note */
   std::unique_ptr<stlExporter_c> stl(puzzle.getGridType()->getStlExporter());

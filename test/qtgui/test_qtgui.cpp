@@ -2270,24 +2270,25 @@ private slots:
     auto value = [s](int i) { return s->parameter(i).value(QStringLiteral("value")).toDouble(); };
     enum { UNIT = 0, BEVEL = 3, OFFSET = 4 };
 
-    // the default model at 10 mm: play 0.081 is 2 x 0.405 mm, bevel 0.032 is 0.32 mm
-    QCOMPARE(value(OFFSET), 0.405);
-    QCOMPARE(value(BEVEL), 0.32);
-    QCOMPARE(s->parameter(OFFSET).value(QStringLiteral("text")).toString(), QStringLiteral("0.405"));
+    // the default model at 10 mm: play 0.002 is 2 x 0.01 mm, bevel 0.03 is 0.3 mm,
+    // the export's values from before rotation moves
+    QVERIFY(qAbs(value(OFFSET) - 0.01) < 1e-12);
+    QVERIFY(qAbs(value(BEVEL) - 0.3) < 1e-12);
+    QCOMPARE(s->parameter(OFFSET).value(QStringLiteral("text")).toString(), QStringLiteral("0.01"));
     QVERIFY(s->modelNote().contains(QLatin1String("the pieces rotation moves are checked for")));
 
     // they follow the unit size; a field committed unchanged keeps them following
     s->setParameter(UNIT, 20);
-    QVERIFY(qAbs(value(OFFSET) - 0.81) < 1e-9);
+    QVERIFY(qAbs(value(OFFSET) - 0.02) < 1e-9);
     s->setParameter(BEVEL, value(BEVEL));
     s->setParameter(UNIT, 10);
-    QVERIFY(qAbs(value(OFFSET) - 0.405) < 1e-9);
+    QVERIFY(qAbs(value(OFFSET) - 0.01) < 1e-9);
 
     // set by hand, they stay, and the note says what was checked
     s->setParameter(OFFSET, 0.1);
     s->setParameter(UNIT, 20);
     QCOMPARE(value(OFFSET), 0.1);
-    QVERIFY(s->modelNote().contains(QLatin1String("but rotation moves are checked for play 0.0810")));
+    QVERIFY(s->modelNote().contains(QLatin1String("but rotation moves are checked for play 0.0020")));
   }
 
   void aNewExporterFollowsTheRotationModel() {
