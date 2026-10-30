@@ -659,3 +659,25 @@ TEST_CASE("stl export: only the cube grid's exporter follows a rotation model", 
     CHECK_FALSE(stl->currentModel());
   }
 }
+
+TEST_CASE("stl look: the cube grid draws pieces of the rotation model's play and bevel",
+          "[stl][rotations]") {
+  gridType_c cubes(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v(cubes.getVoxel(1, 1, 1, voxel_c::VX_FILLED));
+
+  auto lowest = [](const Polyhedron & p) {
+    double lo = 1e9;
+    for (auto it = p.vBegin(); it != p.vEnd(); ++it)
+      lo = std::min(lo, double((*it)->position().x()));
+    return lo;
+  };
+
+  /* each face play / 2 into its cell, whatever the view's own gap is */
+  const std::unique_ptr<Polyhedron> wide(v->getSTLMeshFor({ 0.2, 0.05 }));
+  const std::unique_ptr<Polyhedron> tight(v->getSTLMeshFor({ 0.02, 0.05 }));
+  REQUIRE(wide);
+  REQUIRE(tight);
+  CHECK(lowest(*wide) == Approx(0.1).margin(1e-6));
+  CHECK(lowest(*tight) == Approx(0.01).margin(1e-6));
+  CHECK(volume(*wide) < volume(*tight));
+}

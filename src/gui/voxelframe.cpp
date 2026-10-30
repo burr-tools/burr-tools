@@ -28,6 +28,7 @@
 #include "platform.h"
 
 #include "../lib/voxel.h"
+#include "../lib/rotationtables.h"
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/assembly.h"
@@ -516,7 +517,7 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
       }
       else if (curStyle == styleSTL)
       {
-        shape->poly = shape->shape->getSTLMesh();
+        shape->poly = shape->stlModel ? shape->shape->getSTLMeshFor(*shape->stlModel) : shape->shape->getSTLMesh();
       }
       else
       {
@@ -1131,6 +1132,7 @@ unsigned int voxelFrame_c::addSpace(const voxel_c * vx) {
   i.list = 0;
   i.pickPoly = 0;
   i.poly = 0;
+  i.stlModel = spaceModel;
 
   shapes.push_back(i);
 
@@ -1150,6 +1152,7 @@ void voxelFrame_c::clearSpaces(void) {
   }
 
   shapes.clear();
+  spaceModel.reset();
   previewShapeIndex = -1;
 
   entryGrid = nullptr;
@@ -1299,6 +1302,7 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
 
   hideMarker();
   clearSpaces();
+  spaceModel = rotationModelForShape(*puz, shapeNum);
   unsigned int num = addSpace(puz->getGridType()->getVoxel(puz->getShape(shapeNum)));
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
@@ -1405,6 +1409,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
   if (puz && problem < puz->getNumberOfProblems()) {
 
     const problem_c * pr = puz->getProblem(problem);
+    spaceModel = rotationModelOf(*pr);
 
     float diagonal = 1;
 
@@ -1532,6 +1537,9 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
    * count than the problem cannot be drawn, so it is shown as empty, like a
    * missing solution, rather than read out of bounds.
    */
+  if (puz)
+    spaceModel = rotationModelOf(*puz);
+
   if (puz &&
       (solNum < puz->getNumberOfSavedSolutions()) &&
       (puz->getSavedSolution(solNum)->getAssembly()->placementCount() == puz->getNumberOfPieces())) {
@@ -1605,6 +1613,8 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
 
   hideMarker();
   clearSpaces();
+  if (puz)
+    spaceModel = rotationModelOf(*puz);
 
   if (puz) {
 
@@ -1669,6 +1679,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   {
     // not proper number of shapes in there, letes start from fresh
     clearSpaces();
+    spaceModel = rotationModelOf(*puz);
 
     placeOnly = false;
   }
