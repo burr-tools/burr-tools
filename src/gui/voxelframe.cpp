@@ -1302,7 +1302,7 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
 
   hideMarker();
   clearSpaces();
-  spaceModel = rotationModelForShape(*puz, shapeNum);
+  spaceModel = storedRotationModelForShape(*puz, shapeNum);
   unsigned int num = addSpace(puz->getGridType()->getVoxel(puz->getShape(shapeNum)));
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);
@@ -1409,7 +1409,7 @@ void voxelFrame_c::showProblem(const puzzle_c * puz, unsigned int problem, unsig
   if (puz && problem < puz->getNumberOfProblems()) {
 
     const problem_c * pr = puz->getProblem(problem);
-    spaceModel = rotationModelOf(*pr);
+    spaceModel = pr->getPuzzle().getRotationModel();
 
     float diagonal = 1;
 
@@ -1538,7 +1538,7 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
    * missing solution, rather than read out of bounds.
    */
   if (puz)
-    spaceModel = rotationModelOf(*puz);
+    spaceModel = puz->getPuzzle().getRotationModel();
 
   if (puz &&
       (solNum < puz->getNumberOfSavedSolutions()) &&
@@ -1614,7 +1614,7 @@ void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * 
   hideMarker();
   clearSpaces();
   if (puz)
-    spaceModel = rotationModelOf(*puz);
+    spaceModel = puz->getPuzzle().getRotationModel();
 
   if (puz) {
 
@@ -1679,7 +1679,7 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
   {
     // not proper number of shapes in there, letes start from fresh
     clearSpaces();
-    spaceModel = rotationModelOf(*puz);
+    spaceModel = puz->getPuzzle().getRotationModel();
 
     placeOnly = false;
   }

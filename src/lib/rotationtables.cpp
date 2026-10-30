@@ -406,6 +406,10 @@ std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & 
   return puzzle.getRotationModel().value_or(rotationSettings_t{}.model);
 }
 
+std::optional<rotationGeometry::model_t> storedRotationModelForShape(const puzzle_c & puzzle, unsigned int /*shape*/) {
+  return puzzle.getRotationModel();
+}
+
 stlModelState_t stlModelState(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected) {
   stlModelState_t state;
   const std::optional<rotationGeometry::model_t> now = stl.currentModel();
