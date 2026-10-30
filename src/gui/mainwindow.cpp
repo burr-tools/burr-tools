@@ -445,6 +445,29 @@ void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
 }
 
 static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolProbSel(static_cast<LBlockListGroup_c*>(o)); }
+
+static void cb_RotationModel_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_RotationModel(); }
+void mainWindow_c::cb_RotationModel(void) {
+
+  const unsigned int prob = solutionProblem->getSelection();
+  if (prob >= puzzle->getNumberOfProblems() || assmThread)
+    return;
+  problem_c * pr = puzzle->getProblem(prob);
+
+  const rotationGeometry::model_t model = { RotationPlay->value(), RotationBevel->value() };
+  const rotationGeometry::model_t now = pr->getRotationModel().value_or(rotationSettings_t{}.model);
+  if (model.play == now.play && model.chamfer == now.chamfer)
+    return;
+
+  if (!problem_c::validRotationModel(model))
+    fl_message("The play must be above 0 and below 1, the bevel at least 0 and below half a cube.");
+  else {
+    /* another model is an edit: the solutions become unknown */
+    pr->setRotationModel(model);
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  }
+  updateInterface();
+}
 void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -1122,7 +1145,15 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, settings);
+
+  /* a fresh solve with turns stores the model it uses, so the file says
+   * which pieces its disassemblies are for */
+  problem_c * solved = puzzle->getProblem(prob);
+  if ((par & solveThread_c::PAR_ROTATION_MOVES) && !solved->getRotationModel() &&
+      solved->getSolveState() == SS_UNSOLVED)
+    solved->setRotationModel(rotationSettingsFor(*solved, settings.rotation).model);
+
+  assmThread = std::make_unique<solveThread_c>(*solved, par, settings);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -2512,6 +2543,27 @@ void mainWindow_c::rememberFollow(problem_c * pr, unsigned int idx) {
   }
 }
 
+/* the play a solution's disassembly was measured to need (burrTxt -P -w),
+ * for the moves line: it works at the upper end, not below the lower; the
+ * tooltip has the details and the bevel they hold at */
+static std::string playText(const solution_c * s) {
+  if (!s->getPlay())
+    return "";
+  char text[40];
+  snprintf(text, sizeof(text), ", play %.3f..%.3f", s->getPlay()->lower, s->getPlay()->upper);
+  return text;
+}
+
+static std::string movesTooltip(const solution_c * s) {
+  if (!s->getPlay())
+    return " Steps for complete disassembly ";
+  char text[200];
+  snprintf(text, sizeof(text), " Steps for complete disassembly. It works at play %.4f; no motion the "
+           "planner tries works below %.4f. Both at bevel %.4f ",
+           s->getPlay()->upper, s->getPlay()->lower, s->getPlay()->bevel);
+  return text;
+}
+
 void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
   disassemble.reset();
@@ -2551,8 +2603,10 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       const auto * dis = pr->getSavedSolution(num)->getDisassembly();
-      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")";
+      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")" +
+                              playText(pr->getSavedSolution(num));
       MovesInfo->value(levelText.c_str());
+      MovesInfo->copy_tooltip(movesTooltip(pr->getSavedSolution(num)).c_str());
 
       disassemble = std::make_unique<disasmToMoves_c>(pr->getSavedSolution(num)->getDisassembly(),
                                       2*getResultShape(*pr)->getBiggestDimension(),
@@ -2576,8 +2630,10 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       const auto * disInfo = pr->getSavedSolution(num)->getDisassemblyInfo();
-      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")";
+      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")" +
+                              playText(pr->getSavedSolution(num));
       MovesInfo->value(levelText.c_str());
+      MovesInfo->copy_tooltip(movesTooltip(pr->getSavedSolution(num)).c_str());
 
       if (prob < puzzle->getNumberOfProblems()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
       View3D->getView()->updateVisibility(PcVis);
@@ -3265,6 +3321,20 @@ void mainWindow_c::updateInterface(void) {
       else {
         RotationMoves->deactivate();
         RotationMoves->value(0);
+      }
+
+      /* the problem's model, else the default; not while a solve reads it */
+      {
+        const rotationGeometry::model_t model = pr->getRotationModel().value_or(rotationSettings_t{}.model);
+        RotationPlay->value(model.play);
+        RotationBevel->value(model.chamfer);
+        if (ggt->getGridType()->getType() == gridType_c::GT_BRICKS && !assmThread) {
+          RotationPlay->activate();
+          RotationBevel->activate();
+        } else {
+          RotationPlay->deactivate();
+          RotationBevel->deactivate();
+        }
       }
 
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE &&
@@ -4202,6 +4272,24 @@ void mainWindow_c::CreateSolveTab(void) {
     RotationMoves = new LFl_Check_Button("Rotation Moves", 0, 3, 1, 1);
     RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only) ");
     RotationMoves->clear_visible_focus();
+
+    {
+      layouter_c * m = new layouter_c(1, 3, 1, 1);
+      new LFl_Box("Play ", 0, 0, 1, 1);
+      RotationPlay = new LFl_Value_Input(1, 0, 1, 1);
+      new LFl_Box(" Bevel ", 2, 0, 1, 1);
+      RotationBevel = new LFl_Value_Input(3, 0, 1, 1);
+      RotationPlay->tooltip(" Gap between neighbouring cubes, in cube sizes, saved with the problem. From puzzlecad: 2 $burr_inset / $burr_scale ");
+      RotationBevel->tooltip(" Length a 45 degree bevel cuts off each cube face, in cube sizes, saved with the problem. From puzzlecad: $burr_bevel / (1.414 $burr_scale) ");
+      for (Fl_Value_Input * in : { RotationPlay, RotationBevel }) {
+        in->step(0.001);
+        in->bounds(0, 1);
+        in->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
+        in->callback(cb_RotationModel_stub, this);
+        static_cast<LFl_Value_Input*>(in)->weight(1, 0);
+      }
+      m->end();
+    }
 
     o->end();
 
