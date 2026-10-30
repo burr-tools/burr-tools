@@ -298,7 +298,9 @@ struct turnPlay_t {
    *  it; another disassembly of the puzzle might. 0 if nothing could be
    *  proven */
   double lower = 0;
-  /** a turn needed more than the planner's largest play: upper is not valid */
+  /** a turn needed more than the planner's largest play: upper is not
+   *  valid; re-planning (optimizeControl_t::measure false): a turn got no
+   *  path proven at the model's play and kept one that is not */
   bool failed = false;
   /** stopped (optimizeControl_t::stop) before every turn was done: nothing valid */
   bool stopped = false;

@@ -912,7 +912,22 @@ TEST_CASE("optimizeTurns reports its progress, stops when asked, and can only re
     control.measure = false;
     const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
     CHECK(play.upper == 0);
+    CHECK_FALSE(play.failed);
     CHECK(copy.sumRotations() == turns);
+    CHECK(copy.movesText() == found->movesText());
+  }
+
+  /* re-planning with a planner that finds no path: the kept paths are not
+   * proven at the model's play, and that is reported */
+  {
+    separation_c copy(found);
+    rotationSettings_t pure = settings;
+    pure.plan.maxShift = 0;
+    pure.plan.steps = 2;
+    optimizeControl_t control;
+    control.measure = false;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, pure, control);
+    CHECK(play.failed);
     CHECK(copy.movesText() == found->movesText());
   }
 }

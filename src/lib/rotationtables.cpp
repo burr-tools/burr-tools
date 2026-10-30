@@ -523,8 +523,14 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
       rotationGeometry::planTurn(rotationGeometry::planarScene_c(moving, stat, r->axis, hx, hy, hz, settings.model), sense, widest);
     if (control.done)
       control.done->fetch_add(1, std::memory_order_relaxed);
-    if (!best.found || best.clearance < 0)
-      continue;   // keep the recorded path, it is certified at this play
+    if (!best.found || best.clearance < 0) {
+      /* measuring, the recorded path is certified at this play and stays.
+       * Re-planning after the play changed, it was certified at another
+       * play, which proves nothing at this one. */
+      if (!control.measure)
+        result.failed = true;
+      continue;
+    }
 
     stateRotation_t nr = *r;
     nr.path = { rotationGeometry::PATH_PLANNED, sense, 0, 0, best.path };

@@ -59,6 +59,7 @@
 #include "assmimportwindow.h"
 #include "bulkrangewindow.h"
 #include "stlexportsolution.h"
+#include "optimizeturns.h"
 
 #include "LFl_Tile.h"
 
@@ -960,6 +961,58 @@ void mainWindow_c::cb_ExportSolutionSTL(void) {
   w.show();
   while (w.visible())
     Fl::wait();
+}
+
+/* the selected solution's disassembly, if it turns pieces: what Optimize
+ * Turns works on */
+static const separation_c * turningDisassembly(const problem_c * pr, int sol) {
+  if (sol < 0 || unsigned(sol) >= pr->getNumberOfSavedSolutions())
+    return nullptr;
+  const separation_c * da = pr->getSavedSolution(sol)->getDisassembly();
+  return (da && da->sumRotations() > 0) ? da : nullptr;
+}
+
+static void cb_OptimizeTurns_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_OptimizeTurns(); }
+void mainWindow_c::cb_OptimizeTurns(void) {
+
+  unsigned int prob = solutionProblem->getSelection();
+  if (prob >= puzzle->getNumberOfProblems() || assmThread)
+    return;
+  problem_c * pr = puzzle->getProblem(prob);
+  const int sol = (int)SolutionSel->value() - 1;
+  if (!turningDisassembly(pr, sol))
+    return;
+
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+
+  std::unique_ptr<separation_c> optimized;
+  solutionPlay_t play;
+  bool modelChanged;
+  {
+    optimizeTurnsWindow_c w(pr, pr->getSavedSolution(sol), settings.rotation);
+    w.show();
+    while (w.visible())
+      Fl::wait();
+    optimized = w.takeDisassembly();
+    play = w.play();
+    modelChanged = w.changedModel();
+  }
+
+  /* the window worked on a copy; the solution takes it only now that the
+   * animation no longer reads the old one (activateSolution below) */
+  if (optimized) {
+    solution_c * s = pr->getSavedSolution(sol);
+    s->setDisassembly(std::move(optimized));
+    s->setPlay(play);
+  }
+  if (modelChanged)
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  else if (optimized)
+    puzzleHistory->markModified();
+  activateSolution(prob, sol);
+  updateInterface();
 }
 
 static void cb_BtnPlacementBrowser_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnPlacementBrowser(); }
@@ -3362,6 +3415,11 @@ void mainWindow_c::updateInterface(void) {
       {
         BtnExportSolutionSTL->deactivate();
       }
+
+      if (!assmThread && turningDisassembly(pr, (int)SolutionSel->value() - 1))
+        BtnOptimizeTurns->activate();
+      else
+        BtnOptimizeTurns->deactivate();
     } else {
 
       // no valid problem available, hide all information
@@ -4294,7 +4352,7 @@ void mainWindow_c::CreateSolveTab(void) {
                              " $burr_bevel / (1.414 $burr_scale). A bevel lets pieces turn with less play:\n"
                              " around 0.1 at the 0.01 play of a 3D print ");
       for (Fl_Value_Input * in : { RotationPlay, RotationBevel }) {
-        in->step(0.001);
+        in->step(0.0001);
         in->bounds(0, 1);
         in->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
         in->callback(cb_RotationModel_stub, this);
@@ -4568,6 +4626,12 @@ void mainWindow_c::CreateSolveTab(void) {
         " Export every piece type of the currently selected solution to individual STL files ",
         cb_ExportSolutionSTL_stub, this);
     static_cast<LFlatButton_c*>(BtnExportSolutionSTL)->weight(1, 0);
+
+    BtnOptimizeTurns = new LFlatButton_c(1, 0, 1, 1, "Optimize Turns",
+        " Measure the play the selected solution's turns need, give them the paths with the most room, "
+        "and offer that play as the problem's ",
+        cb_OptimizeTurns_stub, this);
+    static_cast<LFlatButton_c*>(BtnOptimizeTurns)->weight(1, 0);
 
     o->end();
 
