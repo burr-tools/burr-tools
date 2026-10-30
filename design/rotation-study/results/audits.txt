@@ -1,0 +1,30 @@
+Audit of rotations PR #50's Classic engine accepted (scripts/audit.js,
+scripts/audit2.js), sharp cubes. "family": a path of our 65-path family is
+clear; "bigAmount": only amounts 0.5-0.8 are; "otherMotion": the grid search
+over (theta, du, dv) found a path and certified it; "gridUncertified": the
+grid found a path with clearance >= 0.002 at its grid points but no shortcut
+of it could be certified; "noMotion": the grid found nothing.
+
+ThreeTIC (BTFiles/Andrew Crowell/4x4x4_TICs/3PieceTICs), 1000 rotations,
+node audit.js threetic_pr50_accepted.txt 0.081:
+{"total":1000,"noSense":0,"family":848,"bigAmount":0,"otherMotion":152,"gridUncertified":0,"noMotion":0}
+first examples of otherMotion (path: [theta deg, du, dv] waypoints):
+{"p":[0,-3,5],"a":0,"s":0,"maxd":0.32,"path":[[0,0,0],[25.5,0.25,-0.175],[42,0.25,-0.2],[81,0.225,-0.2],[90,0,0]],"nm":20}
+{"p":[0,-3,5],"a":0,"s":1,"maxd":0.32,"path":[[0,0,0],[-30,0.25,-0.15],[-43.5,0.25,-0.2],[-90,0.25,-0.2],[-90,0,0]],"nm":20}
+{"p":[0,-5,1],"a":0,"s":0,"maxd":0.32,"path":[[0,0,0],[25.5,-0.25,0.175],[42,-0.25,0.2],[81,-0.225,0.2],[90,0,0]],"nm":20}
+{"p":[0,-5,1],"a":0,"s":1,"maxd":0.32,"path":[[0,0,0],[-30,-0.25,0.15],[-43.5,-0.25,0.2],[-90,-0.25,0.2],[-90,0,0]],"nm":20}
+
+node audit2.js threetic_pr50_accepted.txt 0.081 0.05 (shift vectors every
+0.05 up to 0.45, 252 vectors, for the 152 the family misses):
+{"missed":152,"slide":0,"wiggle":86,"plateau":86,"any":86}
+
+GemTIC (BTFiles/Andrew Crowell/5x5x5_TICs/OtherShapes), 45 rotations,
+node audit.js gemtic_pr50_accepted.txt <play>:
+play 0.081: {"total":45,"noSense":0,"family":43,"bigAmount":0,"otherMotion":0,"gridUncertified":2,"noMotion":0}
+play 0.083: {"total":45,"noSense":0,"family":43,"bigAmount":0,"otherMotion":0,"gridUncertified":2,"noMotion":0}
+play 0.085: {"total":45,"noSense":0,"family":43,"bigAmount":0,"otherMotion":2,"gridUncertified":0,"noMotion":0}
+play 0.09:  {"total":45,"noSense":0,"family":43,"bigAmount":0,"otherMotion":2,"gridUncertified":0,"noMotion":0}
+play 0.1:   {"total":45,"noSense":0,"family":43,"bigAmount":0,"otherMotion":2,"gridUncertified":0,"noMotion":0}
+Ours takes GemTIC apart from play 0.101 (crowell.jsonl minPlay); with
+amounts every 0.05 (145 paths) or every 0.0125 (449 paths) it still does
+not at play 0.081.
