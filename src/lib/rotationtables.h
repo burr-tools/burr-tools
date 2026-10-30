@@ -303,6 +303,33 @@ struct turnPlay_t {
   double lower = 0;
   /** a turn needed more than the planner's largest play: upper is not valid */
   bool failed = false;
+  /** stopped (optimizeControl_t::stop) before every turn was done: nothing valid */
+  bool stopped = false;
+  /** measuring: per turn, in the order optimizeTurns visits them, a path
+   *  of the turning pieces (their own sense, not inverted) proven at the
+   *  turn's measured play, empty if the planner gave none; re-planning for
+   *  a smaller play takes it when its search finds nothing better
+   *  (optimizeControl_t::proven) */
+  std::vector<rotationGeometry::path_t> proven;
+};
+
+/** How optimizeTurns runs, for a front end that shows its progress. */
+struct optimizeControl_t {
+  /** set from another thread to stop, within a planner run at the latest */
+  const std::atomic<bool> * stop = nullptr;
+  /** counts the turns done (separation_c::sumRotations of them in all) */
+  std::atomic<unsigned int> * done = nullptr;
+  /** false: only re-plan each turn's path, with the most room at the
+   *  model's play (after the play changed), without measuring the play */
+  bool measure = true;
+  /** plan for this model instead of the problem's: a front end re-plans
+   *  for a play before making it the problem's */
+  std::optional<rotationGeometry::model_t> model;
+  /** re-planning: paths proven before (turnPlay_t::proven of a measuring
+   *  run on the same disassembly). The planner's grid can miss a path that
+   *  is clear by a hair, so a turn it finds none for takes this one, or
+   *  keeps its recorded one, when that is certified at the model's play */
+  const std::vector<rotationGeometry::path_t> * proven = nullptr;
 };
 
 /**
@@ -314,7 +341,8 @@ struct turnPlay_t {
  * bisection of planner runs per turn), meant for the few disassemblies that
  * are reported. See design/2026-10-19-rotation-moves.md.
  */
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+                         const optimizeControl_t & control = {});
 
 /**
  * The settings a problem's rotation moves use: the given ones with the

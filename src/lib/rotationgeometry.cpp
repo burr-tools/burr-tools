@@ -607,7 +607,7 @@ bool validModel(const model_t & model) {
 playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                          unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense,
                          const model_t & model, const planSettings_t & settings,
-                         double tolerance, double maxPlay) {
+                         double tolerance, double maxPlay, bool turnsAtModel) {
 
   playBound_t result;
 
@@ -642,6 +642,8 @@ playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<c
     if (t.found && t.clearance >= 0) {
       hi = model.play;
       result.path = t.path;
+    } else if (turnsAtModel) {
+      hi = model.play;   // proven by the caller's path; look below it
     } else {
       lo = model.play;
       /* more play must leave the cube larger than its chamfer */
@@ -747,10 +749,11 @@ enum searchMode_e {
  * which the optimistic bound needs (a continuous path can cross there).
  * Returns the smallest value along the path found (the bottleneck; for
  * SEARCH_WIDEST the largest possible), -inf if the end is unreachable or
- * more than budget cells were evaluated (then *exhausted is set). */
+ * more than budget cells were evaluated or stop was set (then *exhausted
+ * is set). */
 double gridSearch(const planarScene_c & scene, const planGrid_t & g, gridBuffers_t & buf, searchMode_e mode,
                   double bonus, double floor, bool diagonals, std::vector<uint32_t> * cells,
-                  size_t budget = SIZE_MAX, bool * exhausted = nullptr) {
+                  size_t budget = SIZE_MAX, bool * exhausted = nullptr, const std::atomic<bool> * stop = nullptr) {
 
   buf.prepare((size_t)(g.steps + 1) * g.side * g.side);
 
@@ -780,7 +783,7 @@ double gridSearch(const planarScene_c & scene, const planGrid_t & g, gridBuffers
   }
 
   while (!heap.empty()) {
-    if (buf.touched.size() > budget) {
+    if (buf.touched.size() > budget || (stop && stop->load(std::memory_order_relaxed))) {
       if (exhausted)
         *exhausted = true;
       break;
@@ -930,7 +933,8 @@ turnPlan_t planTurn(const planarScene_c & scene, unsigned int sense, const planS
   }
 
   if (settings.upper) {
-    plan.upper = gridSearch(scene, g, fine, SEARCH_WIDEST, cellMargin(scene, g), settings.floor, true, nullptr);
+    plan.upper = gridSearch(scene, g, fine, SEARCH_WIDEST, cellMargin(scene, g), settings.floor, true, nullptr,
+                            SIZE_MAX, nullptr, settings.stop);
     if (plan.upper < settings.floor)
       return plan;
   }
@@ -938,7 +942,7 @@ turnPlan_t planTurn(const planarScene_c & scene, unsigned int sense, const planS
   auto run = [&](searchMode_e mode, double floor) {
     std::vector<uint32_t> cells;
     const size_t budget = settings.widest ? SIZE_MAX : settings.budget;
-    if (gridSearch(scene, g, fine, mode, 0, floor, false, &cells, budget, &plan.gaveUp) == -std::numeric_limits<double>::infinity())
+    if (gridSearch(scene, g, fine, mode, 0, floor, false, &cells, budget, &plan.gaveUp, settings.stop) == -std::numeric_limits<double>::infinity())
       return false;
     path_t full;
     for (uint32_t c : cells)
