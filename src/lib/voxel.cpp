@@ -21,6 +21,9 @@
 
 #include "voxel.h"
 #include "minkmesh.h"
+#include "cubepoly.h"
+#include "gridtype.h"
+#include "rotationgeometry.h"
 
 #include "../tools/xml.h"
 
@@ -1121,6 +1124,18 @@ Polyhedron * voxel_c::getWireframeMesh(void) const
 Polyhedron * voxel_c::getFlatMesh(void) const
 {
   return getMeshInternal(0, 0, false);
+}
+
+Polyhedron * voxel_c::getSTLMeshFor(const rotationGeometry::model_t & model) const
+{
+  if (getGridType()->getType() == gridType_c::GT_BRICKS)
+  {
+    std::string err;
+    if (Polyhedron * p = cubePolyhedron(*this, 0.5 * model.play, model.chamfer, true, err))
+      return p;
+    fprintf(stderr, "cube chamfer mesher failed for play %g, bevel %g: %s\n", model.play, model.chamfer, err.c_str());
+  }
+  return getSTLMesh();
 }
 
 Polyhedron * voxel_c::getSTLMesh(void) const
