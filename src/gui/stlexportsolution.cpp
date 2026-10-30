@@ -31,6 +31,8 @@
 #include "../lib/gridtype.h"
 #include "../lib/voxel.h"
 #include "../lib/bt_assert.h"
+#include "../lib/rotationtables.h"
+#include "stlexport.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -55,15 +57,29 @@ namespace stlExportSolutionImpl {
     Fl_Widget * w;
   };
 
+  static bool isDouble(const Param & p)
+  {
+    return p.type == stlExporter_c::PAR_TYP_DOUBLE || p.type == stlExporter_c::PAR_TYP_POS_DOUBLE;
+  }
+
+  /* only the doubles whose text was edited go to the exporter (see
+   * stlParameterText), then every double shows the exporter's value */
   static void applyParams(stlExporter_c * stl,
                           const std::vector<std::unique_ptr<Param>> & params)
   {
+    std::vector<std::string> shown;
+    for (unsigned int i = 0; i < stl->numParameters(); i++)
+      shown.push_back(stlParameterText(*stl, i));
+
     for (unsigned int i = 0; i < stl->numParameters(); i++) {
       switch (params[i]->type) {
         case stlExporter_c::PAR_TYP_DOUBLE:
-        case stlExporter_c::PAR_TYP_POS_DOUBLE:
-          stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
+        case stlExporter_c::PAR_TYP_POS_DOUBLE: {
+          const char * text = static_cast<LFl_Float_Input*>(params[i]->w)->value();
+          if (shown[i] != text)
+            stl->setParameter(i, atof(text));
           break;
+        }
         case stlExporter_c::PAR_TYP_POS_INTEGER:
           stl->setParameter(i, atoi(static_cast<LFl_Int_Input*>(params[i]->w)->value()));
           break;
@@ -74,6 +90,14 @@ namespace stlExportSolutionImpl {
           bt_assert(0);
       }
     }
+
+    for (unsigned int i = 0; i < stl->numParameters(); i++)
+      if (isDouble(*params[i])) {
+        LFl_Float_Input * in = static_cast<LFl_Float_Input*>(params[i]->w);
+        const std::string text = stlParameterText(*stl, i);
+        if (text != in->value())
+          in->value(text.c_str());
+      }
   }
 
   /* Return a filesystem-safe version of a shape name: replace anything
@@ -119,6 +143,13 @@ using namespace stlExportSolutionImpl;
 static void cb_Export_stub    (Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Export(); }
 static void cb_Abort_stub     (Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Abort(); }
 static void cb_FileChooser_stub(Fl_Widget*, void* v){ ((stlExportSolution_c*)v)->cb_FileChooser(); }
+static void cb_Parameter_stub (Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Parameter(); }
+
+void stlExportSolution_c::cb_Parameter(void)
+{
+  applyParams(stl.get(), params);
+  modelNote->copy_label(stlModelNote(*stl, rotationModelOf(*puzzle->getProblem(prob))).c_str());
+}
 
 void stlExportSolution_c::cb_Abort(void) { hide(); }
 
@@ -236,6 +267,8 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
 
   stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
   bt_assert(stl);
+  /* the pieces this problem's rotation moves are checked for */
+  stl->followModel(rotationModelOf(*p->getProblem(prob)));
 
   /* --- STL parameters frame (row 0) --- */
   {
@@ -251,8 +284,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
           (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
           (new LFl_Box(1, i))->setMinimumSize(5, 0);
           LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-          char val[16]; snprintf(val, 16, "%2.2f", stl->getParameter(i));
-          in->value(val); in->weight(1, 0);
+          in->value(stlParameterText(*stl, i).c_str()); in->weight(1, 0);
           inp->w = in;
           break;
         }
@@ -276,8 +308,15 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
           bt_assert(0);
       }
       inp->w->tooltip(stl->getParameterTooltip(i));
+      inp->w->callback(cb_Parameter_stub, this);
       params.push_back(std::move(inp));
     }
+
+    modelNote = new LFl_Box(0, stl->numParameters(), 3, 1);
+    modelNote->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+    modelNote->labelsize(12);
+    modelNote->setMinimumSize(220, 32);
+    modelNote->copy_label(stlModelNote(*stl, rotationModelOf(*p->getProblem(prob))).c_str());
 
     fr->end();
   }
