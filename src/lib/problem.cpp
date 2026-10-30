@@ -31,8 +31,6 @@
 #include "../tools/xml.h"
 
 #include <algorithm>
-#include <locale>
-#include <sstream>
 
 #include <stdio.h>
 
@@ -100,28 +98,6 @@ problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
   // likely give a new name any way
 }
 
-namespace {
-
-/* The rotation model in the file: ten significant digits, enough for any
- * play or bevel someone measures, and short (0.081, not
- * 0.081000000000000003); the classic locale keeps the decimal point. */
-std::string formatModelValue(double v) {
-  std::ostringstream out;
-  out.imbue(std::locale::classic());
-  out.precision(10);
-  out << v;
-  return out.str();
-}
-
-bool parseModelValue(const std::string & text, double * v) {
-  std::istringstream in(text);
-  in.imbue(std::locale::classic());
-  in >> *v;
-  return !text.empty() && !in.fail() && in.peek() == std::char_traits<char>::eof();
-}
-
-}
-
 void problem_c::save(xmlWriter_c & xml) const
 {
   xml.newTag("problem");
@@ -142,8 +118,8 @@ void problem_c::save(xmlWriter_c & xml) const
     xml.newAttrib("maxHoles", maxHoles);
 
   if (rotationModel) {
-    xml.newAttrib("rotationPlay", formatModelValue(rotationModel->play));
-    xml.newAttrib("rotationBevel", formatModelValue(rotationModel->chamfer));
+    xml.newAttrib("rotationPlay", xmlDouble(rotationModel->play));
+    xml.newAttrib("rotationBevel", xmlDouble(rotationModel->chamfer));
   }
 
   xml.newTag("shapes"); // for historical reasons, parts are saved in an XML-tag called shapes
@@ -261,7 +237,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
     const std::string bevel = pars.getAttributeValue("rotationBevel");
     if (play.length() || bevel.length()) {
       rotationGeometry::model_t model;
-      if (!parseModelValue(play, &model.play) || !parseModelValue(bevel, &model.chamfer) ||
+      if (!xmlParseDouble(play, &model.play) || !xmlParseDouble(bevel, &model.chamfer) ||
           !validRotationModel(model))
         pars.exception("rotationPlay and rotationBevel must both be given, with 0 < play < 1 "
                        "and 0 <= bevel < half a cube");
@@ -1140,7 +1116,7 @@ void problem_c::sortSolutions(int by) {
 
 bool problem_c::validRotationModel(const rotationGeometry::model_t & model)
 {
-  return model.play > 0 && model.play < 1 && model.chamfer >= 0 && model.chamfer < 0.5 * (1 - model.play);
+  return rotationGeometry::validModel(model);
 }
 
 void problem_c::setRotationModel(const rotationGeometry::model_t & model)

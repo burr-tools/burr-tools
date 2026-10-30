@@ -28,6 +28,14 @@
 
 #include <stdlib.h>
 
+namespace {
+
+bool validPlay(const solutionPlay_t & p) {
+  return p.lower >= 0 && p.lower <= p.upper && p.upper < 1 && p.bevel >= 0;
+}
+
+}
+
 solution_c::solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separation_c> t, unsigned int solNum) :
   assembly(std::move(assm)), tree(std::move(t)), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(solNum) {}
 
@@ -78,6 +86,20 @@ solution_c::solution_c(xmlParser_c & pars, unsigned int pieces, const gridType_c
   str = pars.getAttributeValue("solNum");
   if (str.length())
     solutionNum = atoi(str.c_str());
+
+  {
+    const std::string upper = pars.getAttributeValue("playUpper");
+    const std::string lower = pars.getAttributeValue("playLower");
+    const std::string bevel = pars.getAttributeValue("playBevel");
+    if (upper.length() || lower.length() || bevel.length()) {
+      solutionPlay_t p;
+      if (!xmlParseDouble(upper, &p.upper) || !xmlParseDouble(lower, &p.lower) ||
+          !xmlParseDouble(bevel, &p.bevel) || !validPlay(p))
+        pars.exception("playUpper, playLower and playBevel must all be given, "
+                       "with 0 <= playLower <= playUpper < 1 and playBevel >= 0");
+      play = p;
+    }
+  }
 
   do {
     int state = pars.nextTag();
@@ -140,6 +162,12 @@ void solution_c::save(xmlWriter_c & xml) const
   if ((tree || treeInfo) && solutionNum)
     xml.newAttrib("solNum", solutionNum);
 
+  if (play) {
+    xml.newAttrib("playUpper", xmlDouble(play->upper));
+    xml.newAttrib("playLower", xmlDouble(play->lower));
+    xml.newAttrib("playBevel", xmlDouble(play->bevel));
+  }
+
   assembly->save(xml);
 
   if (tree) {            tree->save(xml);
@@ -188,12 +216,21 @@ void solution_c::setDisassembly(separation_c * sep)
 {
   tree.reset(sep);
   treeInfo.reset();
+  play.reset();
 }
 
 void solution_c::setDisassembly(std::unique_ptr<separation_c> sep)
 {
   tree = std::move(sep);
   treeInfo.reset();
+  play.reset();
+}
+
+void solution_c::setPlay(const solutionPlay_t & p)
+{
+  if (!validPlay(p))
+    bt_te("solution_c::setPlay: needs 0 <= lower <= upper < 1 and bevel >= 0");
+  play = p;
 }
 
 
