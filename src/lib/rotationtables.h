@@ -48,7 +48,8 @@ class disassemblerNode_c;
 inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
 
 struct rotationSettings_t {
-  /** PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
+  /** The model of a problem that stores none (problem_c::getRotationModel):
+   *  PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
    *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
    *  never quite sharp, and a bevel only takes material away, so it adds
    *  turns and never removes one. Physical calibration may change both. */
@@ -87,7 +88,6 @@ enum rotationFamily_e {
  * variables. resolve() is defined in solver_config.cpp with the rest.
  */
 struct rotationConfig_t {
-  std::optional<rotationGeometry::model_t> model;
   std::optional<rotationFamily_e> family;
   std::optional<bool> planner;
   std::optional<double> slack;
@@ -308,6 +308,15 @@ struct turnPlay_t {
  * are reported. See design/2026-10-19-rotation-moves.md.
  */
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
+
+/**
+ * The settings a problem's rotation moves use: the given ones with the
+ * problem's own model when it stores one (problem_c::getRotationModel).
+ * The model describes the pieces, so it belongs to the puzzle; the rest
+ * is how the solver searches. rotationContextFor and optimizeTurns apply
+ * it themselves.
+ */
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not

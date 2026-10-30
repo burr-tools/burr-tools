@@ -26,10 +26,13 @@
 #include "disassembly.h"
 #include "puzzle.h"
 #include "solution.h"
+#include "rotationtables.h"
 
 #include "../tools/xml.h"
 
 #include <algorithm>
+#include <locale>
+#include <sstream>
 
 #include <stdio.h>
 
@@ -88,12 +91,35 @@ problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
     parts.push_back(std::make_unique<part_c>(orig->parts[i].get()));
 
   maxHoles = orig->maxHoles;
+  rotationModel = orig->rotationModel;
 
   // solutions are NOT copied including the fields assm, solve state is set to unsolved
   // number of solutions and time to find them are unknown...
 
   // the name is also left intentionally empty because the user will
   // likely give a new name any way
+}
+
+namespace {
+
+/* The rotation model in the file: ten significant digits, enough for any
+ * play or bevel someone measures, and short (0.081, not
+ * 0.081000000000000003); the classic locale keeps the decimal point. */
+std::string formatModelValue(double v) {
+  std::ostringstream out;
+  out.imbue(std::locale::classic());
+  out.precision(10);
+  out << v;
+  return out.str();
+}
+
+bool parseModelValue(const std::string & text, double * v) {
+  std::istringstream in(text);
+  in.imbue(std::locale::classic());
+  in >> *v;
+  return !text.empty() && !in.fail() && in.peek() == std::char_traits<char>::eof();
+}
+
 }
 
 void problem_c::save(xmlWriter_c & xml) const
@@ -114,6 +140,11 @@ void problem_c::save(xmlWriter_c & xml) const
 
   if (maxHoles != 0xFFFFFFFF)
     xml.newAttrib("maxHoles", maxHoles);
+
+  if (rotationModel) {
+    xml.newAttrib("rotationPlay", formatModelValue(rotationModel->play));
+    xml.newAttrib("rotationBevel", formatModelValue(rotationModel->chamfer));
+  }
 
   xml.newTag("shapes"); // for historical reasons, parts are saved in an XML-tag called shapes
 
@@ -224,6 +255,19 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   std::string str = pars.getAttributeValue("maxHoles");
   if (str.length())
     maxHoles = atoi(str.c_str());
+
+  {
+    const std::string play = pars.getAttributeValue("rotationPlay");
+    const std::string bevel = pars.getAttributeValue("rotationBevel");
+    if (play.length() || bevel.length()) {
+      rotationGeometry::model_t model;
+      if (!parseModelValue(play, &model.play) || !parseModelValue(bevel, &model.chamfer) ||
+          !validRotationModel(model))
+        pars.exception("rotationPlay and rotationBevel must both be given, with 0 < play < 1 "
+                       "and 0 <= bevel < half a cube");
+      rotationModel = model;
+    }
+  }
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -1092,6 +1136,43 @@ void problem_c::sortSolutions(int by) {
     case 2: stable_sort(solutions.begin(), solutions.end(), comp_2_moves   ); break;
     case 3: stable_sort(solutions.begin(), solutions.end(), comp_3_pieces  ); break;
   }
+}
+
+bool problem_c::validRotationModel(const rotationGeometry::model_t & model)
+{
+  return model.play > 0 && model.play < 1 && model.chamfer >= 0 && model.chamfer < 0.5 * (1 - model.play);
+}
+
+void problem_c::setRotationModel(const rotationGeometry::model_t & model)
+{
+  if (!validRotationModel(model))
+    bt_te("problem_c::setRotationModel: needs 0 < play < 1 and 0 <= bevel < half a cube");
+  if (rotationModel && rotationModel->play == model.play && rotationModel->chamfer == model.chamfer)
+    return;
+  dropTurnsFor(model);
+  editProblem();
+  rotationModel = model;
+}
+
+void problem_c::clearRotationModel(void)
+{
+  if (!rotationModel)
+    return;
+  dropTurnsFor(rotationSettings_t{}.model);
+  editProblem();
+  rotationModel.reset();
+}
+
+void problem_c::dropTurnsFor(const rotationGeometry::model_t & next)
+{
+  const rotationGeometry::model_t now = rotationModel.value_or(rotationSettings_t{}.model);
+  /* more play and more bevel only remove material, so turns stay clear */
+  if (next.play >= now.play && next.chamfer >= now.chamfer)
+    return;
+  auto guard = lockSolutions();
+  for (auto & s : solutions)
+    if (s->getDisassembly() && s->getDisassembly()->sumRotations() > 0)
+      s->setDisassembly(nullptr);
 }
 
 void problem_c::editProblem(void)

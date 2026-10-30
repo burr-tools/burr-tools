@@ -21,6 +21,7 @@
 
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include <optional>
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
@@ -55,6 +56,8 @@ bool reportPlay;
 /* what the command line chooses; resolved against the environment and the
  * defaults once the arguments are read */
 solverConfig_t solverConfig;
+/* -m: the model of the pieces, in place of what the puzzle file stores */
+std::optional<rotationGeometry::model_t> cliModel;
 solverSettings_t settings;
 
 std::unique_ptr<disassembler_c> d;
@@ -286,11 +289,11 @@ int main(int argv, char* args[]) {
         double play, chamfer;
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &play, &chamfer, &rest) != 2 ||
-            !(play > 0 && play < 1 && chamfer >= 0 && chamfer < 0.5 * (1 - play))) {
+            !problem_c::validRotationModel({ play, chamfer })) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
-        solverConfig.rotation.model = rotationGeometry::model_t{ play, chamfer };
+        cliModel = rotationGeometry::model_t{ play, chamfer };
         turnOptions = true;
         i++;
       }
@@ -366,12 +369,6 @@ int main(int argv, char* args[]) {
     settings = solverConfig.resolve();
   } catch (const std::invalid_argument & e) {
     cerr << e.what() << "\n";
-    return 1;
-  }
-
-  /* the end of -M must leave the cubes larger than their bevel */
-  if (findMinPlay && !rotationGeometry::validModel({ minPlayHi, settings.rotation.model.chamfer })) {
-    printf("-M: bevel %.4f leaves no cube at play %.4f\n", settings.rotation.model.chamfer, minPlayHi);
     return 1;
   }
 
@@ -470,28 +467,38 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem ; pr++) {
 
       problem_c * problem = p.getProblem(pr);
+      if (cliModel)
+        problem->setRotationModel(*cliModel);
 
       if (findMinPlay && rotationMoves && disassemble) {
         /* more play only adds turns, so the play at which the puzzle comes
          * apart can be bisected; then it is solved at that play below */
         const double tolerance = 0.001;
         double lo = minPlayLo, hi = minPlayHi;
-        settings.rotation.model.play = hi;
+        const double bevel = rotationSettingsFor(*problem, settings.rotation).model.chamfer;
+        /* the end of -M must leave the cubes larger than this problem's bevel */
+        if (!problem_c::validRotationModel({ hi, bevel })) {
+          printf("-M: bevel %.4f leaves no cube at play %.4f\n", bevel, hi);
+          continue;
+        }
+        auto playIs = [problem, bevel](double play) { problem->setRotationModel({ play, bevel }); };
+        playIs(hi);
         if (!comesApart(problem)) {
           printf("does not come apart up to play %.4f\n", hi);
           continue;
         }
-        settings.rotation.model.play = lo;
+        playIs(lo);
         if (comesApart(problem))
           hi = lo;
         while (hi - lo > tolerance) {
-          settings.rotation.model.play = 0.5 * (lo + hi);
+          const double mid = 0.5 * (lo + hi);
+          playIs(mid);
           if (comesApart(problem))
-            hi = settings.rotation.model.play;
+            hi = mid;
           else
-            lo = settings.rotation.model.play;
+            lo = mid;
         }
-        settings.rotation.model.play = hi;
+        playIs(hi);
         if (hi == minPlayLo)
           printf("comes apart from play %.4f (the lower end)\n", hi);
         else
