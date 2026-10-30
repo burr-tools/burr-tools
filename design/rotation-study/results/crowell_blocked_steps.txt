@@ -1,0 +1,17 @@
+4x4x4_TICs/3PieceTICs/TriumviraTIC_SolutionFile.xmpuzzle 10
+4x4x4_TICs/5PieceTICs/HypnoTIC_SolutionFile.xmpuzzle 3
+4x4x4_TICs/5PieceTICs/MysTIC_SolutionFile.xmpuzzle 11
+4x4x4_TICs/6PieceTICs/TacTICian_SolutionFile.xmpuzzle 12
+4x4x4_TICs/PackTICs/PackTIC_3_SolutionFile.xmpuzzle 21
+4x4x4_TICs/PackTICs/PackTIC_5_SolutionFile.xmpuzzle 4
+4x4x4_TICs/SyntheTICs/SyntheTIC_3_SolutionFile.xmpuzzle 8
+5x5x5_TICs/3_Pieces/TritanIC_2_SolutionFile.xmpuzzle 8
+5x5x5_TICs/3_Pieces/TritanIC_6_SolutionFile.xmpuzzle 19
+5x5x5_TICs/CagedCubes/CagedCubeJr_1_SolutionFile.xmpuzzle 12
+5x5x5_TICs/CagedCubes/CagedCubeJr_2_SolutionFile.xmpuzzle 16
+5x5x5_TICs/CagedCubes/CagedCubeJr_4_SolutionFile.xmpuzzle 6
+5x5x5_TICs/Cubes/HolopTIC_SolutionFile.xmpuzzle 11
+5x5x5_TICs/Cubes/TemplarCross_SolutionFile.xmpuzzle 13
+5x5x5_TICs/OtherShapes/GemTIC_SolutionFile.xmpuzzle 15
+5x5x5_TICs/StarTICs/StarTIC_1_SolutionFile.xmpuzzle 15
+5x5x5_TICs/TIC_Boxes/TIC_Box_III_SolutionFile.xmpuzzle 23
