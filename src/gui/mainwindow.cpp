@@ -466,6 +466,7 @@ void mainWindow_c::cb_RotationModel(void) {
     disassemble.reset();
     puzzle->setRotationModel(model);
     puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+    /* the view's STL style draws the pieces of this model */
     activateSolution(solutionProblem->getSelection(), (int)SolutionSel->value()-1);
   }
   updateInterface();

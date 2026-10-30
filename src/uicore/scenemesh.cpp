@@ -278,7 +278,7 @@ namespace btui {
       if (!filled)
         return true;                                  // nothing to draw
 
-      const std::unique_ptr<Polyhedron> poly(fixed.getSTLMesh());
+      const std::unique_ptr<Polyhedron> poly(opt.stlModel ? fixed.getSTLMeshFor(*opt.stlModel) : fixed.getSTLMesh());
       if (!poly || poly->vBegin() == poly->vEnd())
         return false;
       out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
