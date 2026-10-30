@@ -22,6 +22,7 @@
 #define __SOLUTION_H__
 
 #include <memory>
+#include <optional>
 
 class assembly_c;
 class separation_c;
@@ -30,6 +31,18 @@ class xmlParser_c;
 class xmlWriter_c;
 class gridType_c;
 class disassembly_c;
+
+/**
+ * What was proven about the play a disassembly with rotation moves needs
+ * (optimizeTurns, burrTxt -P): it works at play `upper`, and some turn is
+ * impossible below `lower` for the motions the planner searches. Both hold
+ * at the bevel `bevel`, the problem's at the time.
+ */
+struct solutionPlay_t {
+  double upper = 0;
+  double lower = 0;
+  double bevel = 0;
+};
 
 /**
  * This class stores the information for one solution for a
@@ -60,6 +73,9 @@ class solution_c
    */
   unsigned int assemblyNum;
   unsigned int solutionNum;
+
+  /* the play the disassembly was measured to need, if it was */
+  std::optional<solutionPlay_t> play;
 
 public:
 
@@ -103,10 +119,15 @@ public:
   /** get the solution number (0 if this solution has no disassembly */
   unsigned int getSolutionNumber(void) const { return solutionNum; }
 
+  /** the play the disassembly needs, if it was measured */
+  const std::optional<solutionPlay_t> & getPlay(void) const { return play; }
+  /** record it; throws unless 0 <= lower <= upper < 1 and bevel >= 0 */
+  void setPlay(const solutionPlay_t & p);
+
   /** remove an existing disassembly, and replace it by disassembly information */
   void removeDisassembly(void);
   /** add a new disassembly to this solution, deleting an old one, in
-   * case such an old exists
+   * case such an old exists; a measured play goes with the old one
    */
   void setDisassembly(separation_c * sep);
   void setDisassembly(std::unique_ptr<separation_c> sep);
