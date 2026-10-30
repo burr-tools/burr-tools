@@ -1004,8 +1004,12 @@ TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as complet
   );
 
   CHECK(stopSrc.stop_requested());
+  // A stopped run never reads as finished. Completion is decided by the
+  // stop trace, not the token: the task that delivered the stopping
+  // solution may have had nothing else left (its root is that leaf) and
+  // then counts as completed -- but never the one the stop cut short.
   CHECK(completed_tasks.load() < total_tasks.load());
-  CHECK(completed_tasks.load() == 0);
+  CHECK(completed_tasks.load() <= 1);
 }
 
 /* Stopped Huang parallel runs salvage resumable prefixes (issue #111).
@@ -1035,8 +1039,8 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   };
 
   auto runCollect = [](SimdHuangCover256 & solver, std::stop_source & stopSrc,
-                       const std::vector<std::vector<unsigned int>> * seeds,
-                       std::vector<std::vector<unsigned int>> * salvaged) {
+                       const std::vector<HuangSeed> * seeds,
+                       std::vector<HuangSeed> * salvaged) {
     std::vector<std::vector<unsigned int>> sols;
     std::atomic<unsigned long> iterations{0};
     std::atomic<size_t> total_tasks{0};
@@ -1067,7 +1071,7 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   // Stop after the first solution: salvage must be non-empty...
   auto solver = makeSolver();
   std::vector<std::vector<unsigned int>> first;
-  std::vector<std::vector<unsigned int>> salvaged;
+  std::vector<HuangSeed> salvaged;
   {
     std::stop_source stopSrc;
     std::atomic<unsigned long> iterations{0};
@@ -1075,11 +1079,12 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
     std::atomic<size_t> completed_tasks{0};
     solver->parallelSolve(
       1,
-      [&](const std::vector<unsigned int> & s) {
+      [&](const std::vector<unsigned int> & s, bool & consumed) {
         std::vector<unsigned int> sorted = s;
         std::sort(sorted.begin(), sorted.end());
         first.push_back(sorted);
         stopSrc.request_stop();
+        consumed = true;
         return false;
       },
       stopSrc, iterations, total_tasks, completed_tasks,
@@ -1088,46 +1093,18 @@ TEST_CASE("SimdHuangCover: stopped parallelSolve salvages seeds for resume", "[s
   REQUIRE(first.size() == 1);
   CHECK(!salvaged.empty());
 
-  // Resume from only the salvaged prefixes whose subtree does NOT contain
-  // the reported solution (drop any prefix fully contained in first[0]):
-  // the rest must then equal the full set minus first. Without seeding the
-  // resume regenerates everything and re-reports first, failing the check;
-  // with it, remaining subtrees are searched exactly once.
-  const std::vector<unsigned int> &firstSol = first[0];
-  std::vector<std::vector<unsigned int>> seeds;
-  for (const auto &prefix : salvaged) {
-    bool containsFirst = true;
-    for (unsigned int node : prefix) {
-      if (std::find(firstSol.begin(), firstSol.end(), node) == firstSol.end()) {
-        containsFirst = false;
-        break;
-      }
-    }
-    if (!containsFirst)
-      seeds.push_back(prefix);
-  }
-  INFO("at least one salvaged subtree must lie outside the first solution");
-  CHECK(!seeds.empty());
-
-  // ...and resuming from the seeds reproduces the full multiset.
+  // Resume directly from all salvaged seeds: they hold only unexplored
+  // territory, so first[0] is not reported again (no dedup needed).
   std::vector<std::vector<unsigned int>> rest;
   {
     std::stop_source stopSrc2;
-    rest = runCollect(*solver, stopSrc2, &seeds, nullptr);
+    rest = runCollect(*solver, stopSrc2, &salvaged, nullptr);
   }
-  // Union as a SET: the salvaged in-flight task re-searches its whole
-  // subtree, so the already-reported first solution may appear again --
-  // that overlap is inherent to prefix granularity and dedups upstairs
-  // (emittedSignatures). What must hold is completeness: every solution
-  // appears at least once, i.e. nothing was lost to the salvage.
-  std::vector<std::vector<unsigned int>> resumed = first;
-  resumed.insert(resumed.end(), rest.begin(), rest.end());
-  std::sort(resumed.begin(), resumed.end());
-  resumed.erase(std::unique(resumed.begin(), resumed.end()), resumed.end());
-  CHECK(resumed == full);
-  // Seeding pinned: the remaining subtrees exclude the first solution, so
-  // a resume that regenerates instead of seeding would re-report it.
-  CHECK(std::find(rest.begin(), rest.end(), firstSol) == rest.end());
+  REQUIRE(rest.size() == 1);
+  CHECK(rest[0] != first[0]);
+  std::vector<std::vector<unsigned int>> combined = {first[0], rest[0]};
+  std::sort(combined.begin(), combined.end());
+  CHECK(combined == full);
 }
 
 /* Stop before the first pop salvages the seeds verbatim (issue #111).
@@ -1150,8 +1127,9 @@ TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[s
   solver->addRow(3, 1, 2, 0, 0, {2, 4}, {1, 1});
   solver->addRow(4, 1, 2, 1, 0, {2, 3}, {1, 1});
 
-  const std::vector<std::vector<unsigned int>> seeds = {{1}, {2}};
-  std::vector<std::vector<unsigned int>> salvaged;
+  const std::vector<HuangSeed> seeds = {HuangSeed{.prefix = {1}, .pivotShape = {0}},
+                                        HuangSeed{.prefix = {2}, .pivotShape = {0}}};
+  std::vector<HuangSeed> salvaged;
   std::stop_source stopSrc;
   stopSrc.request_stop();          // stop before anything is popped
   std::atomic<unsigned long> iterations{0};
@@ -1167,3 +1145,119 @@ TEST_CASE("SimdHuangCover: pre-stopped seeded parallelSolve salvages seeds", "[s
   CHECK(salvaged == seeds);
 }
 
+
+/* A salvaged seed must replay to exactly the subtree its task covered.
+ *
+ * search() and generateTasks() apply the monotonic filter when they branch
+ * on a shape column: after placing row r of a shape that still needs more
+ * copies, later copies are restricted to higher shape_row_idx, so the
+ * identical pieces {a, b} are enumerated once, not as (a, b) and (b, a).
+ * A seed holds only the placed node ids; replaying it without that filter
+ * reopens the lower-indexed rows and enumerates the permutations again in
+ * a sibling seed's territory.
+ *
+ * Setup: one shape needed twice, 20 single-voxel placements into optional
+ * voxels -- the shape column is the only pivot, so every branch is a shape
+ * branch. 20 depth-1 tasks reach the generation target (16) without a
+ * second level, so a pre-stopped run salvages exactly those 20 seeds. A
+ * resume from them must report each 2-subset once: C(20, 2) = 190.
+ */
+TEST_CASE("SimdHuangCover: salvaged seeds replay the monotonic shape filter",
+          "[simd][huang][resume]") {
+  constexpr unsigned int N = 20;
+  SimdHuangCover256 solver(N + 1, 1);
+  solver.setColumnBounds(1, 2, 2, false, true, false, false);
+  for (unsigned int v = 2; v <= N + 1; v++)
+    solver.setColumnBounds(v, 0, 1, true, false, false, false);
+  for (unsigned int i = 0; i < N; i++)
+    solver.addRow(i + 1, 0, 1, i, 0, {1, i + 2}, {1, 1});
+
+  auto run = [&](std::stop_source & stopSrc, const std::vector<HuangSeed> * seeds,
+                 std::vector<HuangSeed> * salvaged) {
+    std::vector<std::vector<unsigned int>> sols;
+    std::atomic<unsigned long> iterations{0};
+    std::atomic<size_t> total_tasks{0};
+    std::atomic<size_t> completed_tasks{0};
+    solver.parallelSolve(
+      1,
+      [&](const std::vector<unsigned int> & s) {
+        std::vector<unsigned int> sorted = s;
+        std::sort(sorted.begin(), sorted.end());
+        sols.push_back(sorted);
+        return true;
+      },
+      stopSrc, iterations, total_tasks, completed_tasks,
+      nullptr, seeds, salvaged);
+    return sols;
+  };
+
+  {
+    std::stop_source stopSrc;
+    auto full = run(stopSrc, nullptr, nullptr);
+    REQUIRE(full.size() == N * (N - 1) / 2);
+  }
+
+  std::vector<HuangSeed> salvaged;
+  {
+    std::stop_source stopSrc;
+    stopSrc.request_stop();
+    auto none = run(stopSrc, nullptr, &salvaged);
+    REQUIRE(none.empty());
+  }
+  REQUIRE(salvaged.size() == N);
+
+  std::stop_source stopSrc;
+  auto resumed = run(stopSrc, &salvaged, nullptr);
+  std::set<std::vector<unsigned int>> distinct(resumed.begin(), resumed.end());
+  CHECK(distinct.size() == N * (N - 1) / 2);
+  CHECK(resumed.size() == N * (N - 1) / 2);
+}
+
+/* SimdExactCover's stop remainder partitions the unexplored subtree,
+ * rests included.
+ *
+ * One required column (0) and 40 rows {0, i}: every row alone is a
+ * solution, all 40 branch from the root frame -- wider than the default
+ * fan-out cap (SplitFanout::kDefault),
+ * so a stop there emits 16 singletons plus one rest. Driving every piece
+ * through solveSubtree with a callback that stops after each delivered
+ * solution chains stops through rests of rests; the delivered solutions
+ * must be exactly the 40 rows, each once, with nothing left over.
+ */
+TEST_CASE("SimdExactCover: stop remainders with rests resume exact-once",
+          "[simd][exact_cover][resume]") {
+  constexpr unsigned int N = 40;
+  SimdExactCover256 solver(N + 1, 1);
+  SimdBitset256 req;
+  req.set(0);
+  solver.setRequiredColumns(req);
+  for (unsigned int i = 1; i <= N; i++)
+    solver.addRow(i, 0, {0, i});
+
+  using Remainder = ISimdExactCover::SubtreeRemainder;
+  std::vector<Remainder::Piece> queue{Remainder::Piece{}};  // the whole search
+  std::multiset<unsigned int> delivered;
+  unsigned int runs = 0, rests = 0;
+  while (!queue.empty()) {
+    REQUIRE(++runs < 10 * N);  // must terminate
+    Remainder::Piece piece = std::move(queue.back());
+    queue.pop_back();
+    std::stop_source stopSrc;
+    std::atomic<uint64_t> iterations{0};
+    Remainder rem;
+    solver.solveSubtree(piece.nodes, [&](const std::vector<unsigned int> &sol) {
+      REQUIRE(sol.size() == 1);
+      delivered.insert(sol[0]);
+      stopSrc.request_stop();
+      return false;
+    }, stopSrc.get_token(), iterations, &rem, piece.restSkip);
+    for (auto &p : rem.pieces) {
+      if (p.restSkip != 0)
+        rests++;
+      queue.push_back(std::move(p));
+    }
+  }
+  CHECK(rests > 0);
+  CHECK(delivered.size() == N);
+  CHECK(std::set<unsigned int>(delivered.begin(), delivered.end()).size() == N);
+}

@@ -274,10 +274,10 @@ public:
 
   /**
    * Move all still-queued tasks out for an in-session resume. Active
-   * (half-searched) tasks are NOT included: the worker re-queues its current
-   * task when it notices the abort, so the continue re-searches it from
-   * scratch with already-reported assemblies suppressed via the
-   * emittedSignatures dedup under callbackMutex.
+   * (half-searched) tasks are NOT included: the worker re-queues the
+   * unexplored remainder of its current task when it notices the abort
+   * (divided pieces or written-back live stacks), so the continue
+   * re-walks nothing.
    */
   std::vector<TaskType> drain() {
     std::vector<TaskType> rest;

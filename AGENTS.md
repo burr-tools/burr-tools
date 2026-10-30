@@ -143,6 +143,8 @@ Caveats: snapshots from different machines are not comparable (absolute times de
 
 Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:
 
+The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) apply to fresh runs only: a resumed search keeps the engine that saved its remainder, because the remainder's tasks are only valid for that engine.
+
 | Environment Variable | Effect | Purpose |
 | :--- | :--- | :--- |
 | `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
@@ -154,7 +156,7 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and by the disassembly pool, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 | `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
-| `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and stop-time remainders emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
+| `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
 | `BURRTOOLS_SPLIT_BREADTH_FIRST=1` | Queues assembler_0's dynamically split child tasks at the back of the pool (breadth-first order) instead of the front (depth-first, the default). | A/B the depth-first order: queue/remainder size (breadth-first grows towards every node of the split depth on wide puzzles) and long-tail wall time. |
 
 ### Running an Interleaved A/B Benchmark
