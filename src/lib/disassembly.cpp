@@ -231,6 +231,8 @@ stateRotation_t loadRotation(xmlParser_c & pars)
       unsigned int p;
       while (pcs >> p)
         r.pieces.push_back(p);
+      if (!pcs.eof())
+        pars.exception("rotation pieces must be numbers");
     }
     std::string kind = pars.getAttributeValue("path");
     if (kind == "pure")
@@ -272,7 +274,7 @@ stateRotation_t loadRotation(xmlParser_c & pars)
   const bool shifted = r.path.kind == rotationGeometry::PATH_WIGGLE || r.path.kind == rotationGeometry::PATH_SLIDE ||
                        r.path.kind == rotationGeometry::PATH_RAMP;
   if (r.axis > 2 || r.path.sense > 1 ||
-      (shifted && (r.path.dir < 0 || r.path.dir >= rotationGeometry::DIRECTIONS || !(r.path.amount > 0))) ||
+      (shifted && (r.path.dir < 0 || r.path.dir >= rotationGeometry::DIRECTIONS || !(r.path.amount > 0) || !(r.path.amount <= 1))) ||
       (r.path.kind == rotationGeometry::PATH_RAMP &&
        (r.path.holdFrom <= 0 || r.path.holdTo < r.path.holdFrom || r.path.holdTo >= 90)))
     pars.exception("rotation with an invalid axis, angle or path");

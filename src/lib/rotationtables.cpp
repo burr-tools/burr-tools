@@ -389,12 +389,19 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
   return { rotationGeometry::PATH_PLANNED, sense, 0, 0, *plannedPaths[index - family] };
 }
 
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings) {
+  if (problem.getRotationModel())
+    settings.model = *problem.getRotationModel();
+  return settings;
+}
+
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background) {
+rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background) {
 
   if (problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
     return nullptr;
 
+  const rotationSettings_t settings = rotationSettingsFor(problem, given);
   const int radius = rotationRadiusFor(problem);
   auto tablesOf = [background, radius](const rotationSettings_t & s) {
     if (background)
@@ -494,6 +501,6 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
 
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings) {
   turnPlay_t result;
-  optimizeRec(s, a, problem, settings, result);
+  optimizeRec(s, a, problem, rotationSettingsFor(problem, settings), result);
   return result;
 }

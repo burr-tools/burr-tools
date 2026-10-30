@@ -312,4 +312,20 @@ TEST_CASE("a state with a truncated path or an impossible orientation is rejecte
 
   CHECK_NOTHROW(load("<dt>0 5</dt>"));
   CHECK_THROWS(load("<dt>0 300</dt>"));
+
+  /* a shift too far to be a path of any family, and a garbled piece list */
+  auto slide = [](const std::string & amount, const std::string & pieces) {
+    return "<rotation axis=\"z\" pu=\"1\" pv=\"3\" path=\"slide\" angle=\"90\" pieces=\"" + pieces +
+           "\" dir=\"1\" amount=\"" + amount + "\"/>";
+  };
+  CHECK_NOTHROW(load(slide("0.2", "1")));
+  CHECK_THROWS(load(slide("inf", "1")));
+  CHECK_THROWS(load(slide("1e300", "1")));
+  CHECK_THROWS(load(slide("0.2", "1 x")));
+
+  /* the axis is a letter, the angle 90 or -90 degrees */
+  const std::string pure = "<rotation pu=\"1\" pv=\"3\" path=\"pure\" pieces=\"1\" ";
+  CHECK_NOTHROW(load(pure + "axis=\"x\" angle=\"-90\"/>"));
+  CHECK_THROWS(load(pure + "axis=\"2\" angle=\"90\"/>"));
+  CHECK_THROWS(load(pure + "axis=\"z\" angle=\"45\"/>"));
 }
