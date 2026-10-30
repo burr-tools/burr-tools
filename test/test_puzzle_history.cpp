@@ -501,6 +501,34 @@ TEST_CASE("colour palette is captured and restored on undo", "[gui][history]") {
   CHECK(b == 0);
 }
 
+TEST_CASE("removing a colour is a palette step that keeps the shapes' renumbered voxels", "[gui][history]") {
+  /* Legacy cb_RemoveColor and the new GUI record a colour removal as
+   * AK_COLOR_PALETTE. puzzle_c::removeColor renumbers the voxels of every
+   * shape (the removed colour becomes 0, the later ids move down), so the
+   * step must copy the shapes: a snapshot sharing the step before's kept
+   * the old ids, and undo then redo restored voxels of a colour that no
+   * longer existed. */
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzle->addColor(255, 0, 0);                 // id 1
+  puzzle->addColor(0, 255, 0);                 // id 2
+  voxel_c * v = puzzle->getShape(0);
+  v->setState(0, voxel_c::VX_FILLED);
+  v->setColor(0, 2);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->removeColor(1);                      // id 2 becomes 1
+  h.record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE, puzzleHistory_c::NO_SHAPE);
+  REQUIRE(puzzle->getShape(0)->getColor(0) == 1);
+
+  h.undo(puzzle.get());
+  CHECK(puzzle->colorNumber() == 2);
+  CHECK(puzzle->getShape(0)->getColor(0) == 2);
+  h.redo(puzzle.get());
+  CHECK(puzzle->colorNumber() == 1);
+  CHECK(puzzle->getShape(0)->getColor(0) == 1);   // was 2: a colour that no longer exists
+}
+
 // ---------------------------------------------------------------------------
 // Extended snapshot: problem name
 // ---------------------------------------------------------------------------

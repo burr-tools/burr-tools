@@ -19,6 +19,7 @@
   <file>icons/gear.svg</file>
   <file>icons/grip-dots.svg</file>
   <file>icons/grip.svg</file>
+  <file>icons/info.svg</file>
   <file>icons/minus.svg</file>
   <file>icons/more-horizontal.svg</file>
   <file>icons/more.svg</file>
@@ -81,6 +82,7 @@
   <file>glyphs/light/surface-fixed-outer.svg</file>
   <file>glyphs/light/surface-variable-inner.svg</file>
   <file>glyphs/light/surface-variable-outer.svg</file>
+  <file>glyphs/light/tool-area.svg</file>
   <file>glyphs/light/tool-erase.svg</file>
   <file>glyphs/light/tool-fixed.svg</file>
   <file>glyphs/light/tool-paint.svg</file>
@@ -126,6 +128,7 @@
   <file>glyphs/dark/surface-fixed-outer.svg</file>
   <file>glyphs/dark/surface-variable-inner.svg</file>
   <file>glyphs/dark/surface-variable-outer.svg</file>
+  <file>glyphs/dark/tool-area.svg</file>
   <file>glyphs/dark/tool-erase.svg</file>
   <file>glyphs/dark/tool-fixed.svg</file>
   <file>glyphs/dark/tool-paint.svg</file>

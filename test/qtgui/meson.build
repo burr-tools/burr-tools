@@ -28,10 +28,25 @@ if qt6_test_dep.found()
   # not ours -- silence exactly that warning, and only for these two
   # executables, so the --werror release build is not failed by it.
   qt_test_args = cxx.get_supported_arguments('-Wno-sfinae-incomplete')
+  # the modules' defines meson leaves out for Qt's frameworks (meson.build)
+  if qt_module_defines.length() > 0
+    qt_test_args += ['-DQT_TESTLIB_LIB', '-DQT_QMLTEST_LIB']
+  endif
+  # a coverage build's counters and the sanitizers' checks slow the hot
+  # loops several-fold: their time budgets are reported, not checked
+  # (VERIFY_BUDGET, test_editor.cpp)
+  if get_option('b_coverage') or get_option('b_sanitize') != 'none'
+    qt_test_args += ['-DBURRTOOLS_INSTRUMENTED_BUILD=1']
+  endif
 
   test_qtgui = executable('test_qtgui',
-    ['test_qtgui.cpp', 'test_viewport.cpp', '../alloccount.cpp',
-     qt6.compile_moc(sources: 'test_qtgui.cpp', headers: 'test_viewport.h', dependencies: qt6_test_dep)],
+    ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', 'test_inspector.cpp', 'test_voxeltypes.cpp',
+     'test_saving.cpp',
+     '../alloccount.cpp',
+     qt6.compile_moc(sources: 'test_qtgui.cpp',
+                     headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h', 'test_voxeltypes.h',
+                               'test_saving.h'],
+                     dependencies: qt6_test_dep)],
     include_directories: [inc, include_directories('../../src/qtgui')],
     link_whole: libburr_qtgui,
     # the shaders' Direct3D form (src/qtgui/meson.build, -Ddxbc)
@@ -88,6 +103,14 @@ if qt6_test_dep.found()
     suite: 'fast',
     timeout: 180,
     workdir: meson.project_source_root())
+
+  # every density token (density.md section 1) read by a component or listed
+  # with the phase that builds it (scripts/check_density_tokens.py)
+  test('qtgui_density_tokens', python3,
+    args: [meson.project_source_root() / 'scripts' / 'check_density_tokens.py',
+           '--root', meson.project_source_root()],
+    suite: 'fast',
+    timeout: 30)
 
   # how many bindings qmlcachegen leaves to the JavaScript engine, against a
   # baseline that may only go down (scripts/qml_aot_report.py; `just qml-aot`)

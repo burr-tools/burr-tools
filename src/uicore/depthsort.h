@@ -41,7 +41,8 @@ namespace btui {
   public:
     /* Indices of the triangles whose centres are given, three per triangle
      * (vertex `base + 3 i` onward for triangle i), farthest first as seen
-     * through `view` (which looks down -z). Fills `out`, reusing its storage. */
+     * through `view` (which looks down -z); triangles at the same depth keep
+     * their order. Fills `out`, reusing its storage. */
     void sort(const std::vector<Vec3> & centres, const Mat4 & view, std::uint32_t base,
               std::vector<std::uint32_t> & out);
 

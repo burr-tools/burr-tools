@@ -150,10 +150,10 @@ TestCase {
     // --- coverage ------------------------------------------------------------------
 
     function test_everyBuiltPrimitiveHasARow() {
-        for (const row of ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
+        for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
                            "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
-                           "keyBadge", "card"])
+                           "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
     }
 
@@ -172,7 +172,7 @@ TestCase {
     function test_sizesFollowTheTokens_data() {
         return [
             { tag: "icon button 28", cell: "iconButton.normal", w: 28, h: 28 },
-            { tag: "button h30", cell: "button.normal", h: 30 },
+            { tag: "button h28 (density.md section 1)", cell: "button.normal", h: 28 },
             { tag: "small button h26", cell: "button.small", h: 26 },
             { tag: "3D toolbar button 48x44", cell: "toolbarButton.normal", w: 48, h: 44 },
             { tag: "compact toolbar button 34", cell: "toolbarButton.compact", w: 34, h: 34 },
@@ -183,6 +183,20 @@ TestCase {
             { tag: "check row h30", cell: "checkRow.normal", h: 30 },
             { tag: "number field h30", cell: "numberField.normal", h: 30 },
             { tag: "rail button 52x50", cell: "railButton.normal", w: 52, h: 50 },
+            // PR-08: shape chip h26, min 34 (header 28); count badge h20; weight badge h18
+            { tag: "shape chip 34x26", cell: "chip.shape", w: 34, h: 26 },
+            // "S1" is 28 wide in Windows' UI font; a wider fallback font (Linux CI) grows it
+            { tag: "header chip 28x26", cell: "chip.header", h: 26, minW: 28 },
+            { tag: "wide shape chip grows", cell: "chip.wide", h: 26, minW: 35 },
+            { tag: "count badge h20", cell: "chip.count", h: 20, minW: 24 },
+            { tag: "weight badge h18", cell: "chip.weight", h: 18 },
+            // density.md §1 (Standard): tool strip h48, mirror / span h44, stepper h28
+            { tag: "glyph button 62x48", cell: "glyphButton.normal", w: 62, h: 48 },
+            { tag: "mirror / span glyph button h44", cell: "glyphButton.axis", h: 44 },
+            { tag: "stepper h28", cell: "stepper.normal", h: 28 },
+            // density.md §1 (Standard): action button min-h 40, accordion header h32
+            { tag: "action button min-h 40", cell: "actionButton.normal", h: 40, w: 160 },
+            { tag: "closed accordion: its header and the 1 dp line", cell: "accordion.closed", h: 33 },
         ]
     }
     function test_sizesFollowTheTokens(data) {
@@ -244,10 +258,13 @@ TestCase {
         // 3D toolbar and rail buttons: on / selected = accentSoft
         expectColors("toolbarButton", [ ["toolbarButton.on", 3, 22, soft, "toolbar button on"] ])
         expectColors("railButton", [ ["railButton.selected", 8, 4, soft, "rail button selected"] ])
-        // PR-05 segmented: panel2 track, the chosen option on panel
+        // PR-05 segmented: panel2 track; the chosen option accent-tinted with
+        // an accent edge (user decision 2026-10-28: PR-05's panel fill hardly
+        // showed on the light track)
         expectColors("segmented", [
             ["segmented.normal", 1.5, 13, panel2, "segmented track"],
-            ["segmented.normal", 4, 13, panel, "segmented option"],
+            ["segmented.normal", 2.5, 13, Theme.accent, "segmented option's edge"],
+            ["segmented.normal", 5, 13, over(Theme.accentSoft, panel2), "segmented option"],
         ])
         // PR-07 switch: off line2 track, on accent track, white knob that moves
         expectColors("switch", [
@@ -296,7 +313,8 @@ TestCase {
     function test_disabledIsFortyPercent() {
         for (const name of ["iconButton.disabled", "button.disabled", "buttonPrimary.disabled",
                             "toolbarButton.disabled", "segmented.disabled", "switch.disabled", "checkBox.disabled", "checkRow.disabled",
-                            "dropdown.disabled", "numberField.disabled", "slider.disabled"])
+                            "dropdown.disabled", "numberField.disabled", "slider.disabled",
+                            "actionButton.disabled", "actionButton.unavailable"])
             compare(control(name).opacity, 0.4, name)
     }
 
@@ -322,7 +340,8 @@ TestCase {
         // a 1 dp border must still read as its colour, not a blur of it
         useTheme(data.theme)
         const line2 = Theme.line2
-        expectColors("button", [8, 15, 22].map(y => ["button.normal", 0.25, y, line2, "button border at y " + y]))
+        // the straight part of a 28 dp button with radius 8
+        expectColors("button", [9, 14, 19].map(y => ["button.normal", 0.25, y, line2, "button border at y " + y]))
         const d = control("dropdown.normal")
         expectColors("dropdown", [ ["dropdown.normal", d.width - 0.25, 15, line2, "dropdown right border"] ])
     }
@@ -330,10 +349,10 @@ TestCase {
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {
-        const rows = ["iconButton", "button", "buttonPrimary", "toolbarButton", "railButton",
-                      "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+        const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
+                      "railButton", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
-                      "keyBadge", "card", "glyphs", "icons"]
+                      "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []
         for (const t of ["light", "dark"])
             for (const r of rows)

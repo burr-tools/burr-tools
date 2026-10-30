@@ -25,9 +25,16 @@
 #include "statuscontroller.h"
 #include "theme.h"
 #include "updatecontroller.h"
+#include "test_editor.h"
+#include "test_inspector.h"
+#include "test_voxeltypes.h"
+#include "test_saving.h"
 #include "test_viewport.h"
 
+#include "../../src/tools/httpget.h"
 #include "../../src/uicore/commands.h"
+#include "../../src/uicore/shapelist.h"
+#include "../../src/lib/problem.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
@@ -143,6 +150,38 @@ class TestTheme : public QObject {
 
 private slots:
 
+  /* Section 6: "Respect OS reduce motion by setting durations to 0" --
+   * every duration the theme hands out, the toolbar's fade, and the 3D
+   * view's snaps, which end at once (C13: "snap instantly") */
+  void reducedMotionStopsEveryAnimation() {
+    Fixture f;
+    f.make();
+    Theme * t = Theme::instance();
+    QVERIFY(t);
+    auto restore = qScopeGuard([t] { t->setReducedMotionForTesting(-1); });
+    t->setReducedMotionForTesting(0);
+    QVERIFY(!t->reducedMotion());
+    QCOMPARE(t->durCollapse(), 200);
+    QCOMPARE(t->durChevron(), 150);
+    QCOMPARE(t->durSwitch(), 150);
+    ViewportController * v = f.app->viewport();
+    v->turn(btui::ViewCube::Arrow::Left);
+    QVERIFY(v->animating());                         // a 360 ms snap under way
+    v->tick(1000);
+
+    QSignalSpy changed(t, &Theme::changed);
+    t->setReducedMotionForTesting(1);
+    QCOMPARE(changed.count(), 1);
+    QVERIFY(t->reducedMotion());
+    for (int d : { t->durCollapse(), t->durChevron(), t->durReorder(), t->durSwitch(), t->toolbarFade() })
+      QCOMPARE(d, 0);
+    QCOMPARE(t->durFlash(), 2400);                  // how long a message stays is no motion
+    const btui::Quat before = v->camera().orientation();
+    v->turn(btui::ViewCube::Arrow::Left);
+    QVERIFY(!v->animating());                        // there at once
+    QVERIFY(btui::angleBetween(before, v->camera().orientation()) > 1.0f);
+  }
+
   void parsesTheTokenColourForms() {
     QCOMPARE(Theme::parseColor(QStringLiteral("#2f6df6")), QColor(0x2f, 0x6d, 0xf6));
     QColor c = Theme::parseColor(QStringLiteral("rgba(47,109,246,0.12)"));
@@ -238,7 +277,7 @@ private slots:
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
-                          "ViewportCard.qml", "VoxelEditorCard.qml", "StatusBar.qml",
+                          "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
       if (f != QLatin1String("BtDialog.qml"))     // the frame the dialogs share
@@ -361,10 +400,25 @@ private slots:
     QCOMPARE(t->topBar(), 36.0);
     QCOMPARE(t->workspaceRail(), 60.0);
     QCOMPARE(t->collapsedRail(), 48.0);
+    QCOMPARE(t->toolStrip(), 48.0);
+    QCOMPARE(t->planeWidth(), 54.0);
+    QCOMPARE(t->planeHeight(), 46.0);
+    QCOMPARE(t->layerChipWidth(), 32.0);
+    QCOMPARE(t->drawSwatch(), 32.0);
+    QCOMPARE(t->button(), 28.0);
+    QCOMPARE(t->statusBarFont(), 11.5);
     t->setDensity(QStringLiteral("minimal"));
     QCOMPARE(t->topBar(), 32.0);
     QCOMPARE(t->workspaceRail(), 44.0);
     QCOMPARE(t->cardRadius(), 0.0);
+    QCOMPARE(t->toolStrip(), 36.0);
+    QCOMPARE(t->mirrorSpan(), 32.0);
+    QCOMPARE(t->planeWidth(), 38.0);
+    QCOMPARE(t->layerChipHeight(), 22.0);
+    QCOMPARE(t->stepper(), 26.0);
+    QCOMPARE(t->drawSwatch(), 26.0);
+    QCOMPARE(t->button(), 26.0);
+    QCOMPARE(t->statusBarFont(), 11.0);
     t->setDensity(QStringLiteral("standard"));
 
     // anything that is not light or dark means "system"
@@ -379,6 +433,45 @@ class TestSettings : public QObject {
   Q_OBJECT
 
 private slots:
+
+  /* A settings file that is there but cannot be read (here a folder in its
+   * place) is left as it is, for the user to look at: the session runs on
+   * the defaults, changes work in memory and are said not to be saved. */
+  void anUnreadableSettingsFileIsNeverWrittenOver() {
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("s.rc"));
+    QVERIFY(QDir().mkpath(path));
+    QFile marker(path + QStringLiteral("/keep.txt"));
+    QVERIFY(marker.open(QIODevice::WriteOnly));
+    marker.close();
+    {
+      SettingsController s(path, dir.filePath(QStringLiteral("legacy.rc")));
+      QVERIFY(s.tooltips());                          // the default
+      s.setTooltips(false);
+      QVERIFY(!s.tooltips());                         // in memory
+      QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be read.*changes are not saved")));
+      s.flush();
+    }
+    QVERIFY(QFileInfo(path).isDir());
+    QVERIFY(QFileInfo::exists(path + QStringLiteral("/keep.txt")));
+  }
+
+  /* One that cannot be written (its folder is a file): said on stderr, and
+   * the program goes on with its settings in memory. */
+  void aSettingsFileThatCannotBeWrittenIsSaidAndSurvived() {
+    QTemporaryDir dir;
+    QFile blocker(dir.filePath(QStringLiteral("blocker")));
+    QVERIFY(blocker.open(QIODevice::WriteOnly));
+    blocker.close();
+    const QString path = dir.filePath(QStringLiteral("blocker/s.rc"));
+    QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be written")));  // the first start's seed
+    SettingsController s(path, dir.filePath(QStringLiteral("legacy.rc")));
+    s.setTooltips(false);
+    QTest::ignoreMessage(QtWarningMsg, QRegularExpression(QStringLiteral("could not be written")));
+    s.flush();
+    QVERIFY(!s.tooltips());
+    QVERIFY(QFileInfo(dir.filePath(QStringLiteral("blocker"))).isFile());
+  }
 
   void seedsFromTheLegacyFileOnFirstStart() {
     Fixture f;
@@ -617,6 +710,57 @@ private slots:
     QVERIFY(reported.at(0).at(0).toString().contains(QDir::toNativeSeparators(f.file("__rescue.xmpuzzle"))));
   }
 
+  /* An edit that fails half way (an internal check in the library) has
+   * already changed the puzzle: the views are still told, so what they
+   * show is what is there; the change is an undo step back to the state
+   * before; and the error is reported, never thrown at QML. A stroke too. */
+  void anEditThatFailsHalfWayIsShownAndUndoable() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    makeModified(d);                                    // shape 0, 2x2x2, empty
+    QSignalSpy reported(f.app.get(), &App::internalError);
+    QSignalSpy edited(d, &DocumentController::puzzleEdited);
+    auto filled = [&] { return int(d->session().puzzle().getShape(0)->countState(voxel_c::VX_FILLED)); };
+
+    bool threw = false;
+    try {
+      guarded([&] {
+        d->edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, DocumentController::Change::Voxels, 0, 0, [](puzzle_c & p) {
+          p.getShape(0)->setState(0, 0, 0, voxel_c::VX_FILLED);
+          bt_te("half way");
+          return true;
+        });
+      });
+    } catch (...) {
+      threw = true;
+    }
+    QVERIFY(!threw);
+    QCOMPARE(reported.count(), 1);
+    QCOMPARE(edited.count(), 1);                        // the views follow the half-made change
+    QCOMPARE(filled(), 1);
+    QVERIFY(d->canUndo());
+    d->undo();
+    QCOMPARE(filled(), 0);                              // one step back to before it
+
+    // a stroke: each cell shown as it goes; the failing one still ends a step
+    d->beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+    d->strokeEdit(0, [](puzzle_c & p) { p.getShape(0)->setState(1, 0, 0, voxel_c::VX_FILLED); return true; });
+    guarded([&] {
+      d->strokeEdit(0, [](puzzle_c & p) {
+        p.getShape(0)->setState(1, 1, 0, voxel_c::VX_FILLED);
+        bt_te("half way");
+        return true;
+      });
+    });
+    d->endStroke();
+    QCOMPARE(reported.count(), 2);
+    QCOMPARE(filled(), 2);
+    QCOMPARE(edited.count(), 3);
+    d->undo();
+    QCOMPARE(filled(), 0);
+  }
+
   /* The rescue file goes beside the open puzzle; where that folder cannot be
    * written, beside the settings file. */
   void theRescueSaveGoesBesideThePuzzleElseBesideTheSettings() {
@@ -731,6 +875,100 @@ private slots:
     QVERIFY(!d->loadPath(QStringLiteral("examples/nope.xmpuzzle")));
     QCOMPARE(msg.count(), 1);
     QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+  }
+
+  /* A file that is there but damaged: refused with the reason, the puzzle
+   * open stays, and nothing is an internal error (the user's file is at
+   * fault, not the program). Plain XML reads as the gzip stream does. */
+  void aDamagedFileIsRefusedAndTheDocumentKept_data() {
+    QTest::addColumn<QByteArray>("content");
+    const QByteArray good =
+      "<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><colors/><shapes>"
+      "<voxel x=\"2\" y=\"1\" z=\"1\" type=\"0\">##</voxel><voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel>"
+      "</shapes><problems><problem state=\"0\"><shapes><shape id=\"1\" count=\"2\"/></shapes>"
+      "<result id=\"0\"/><bitmap/></problem></problems><comment/></puzzle>";
+    auto with = [&](const char * from, const char * to) { return QByteArray(good).replace(from, to); };
+    QTest::newRow("empty") << QByteArray();
+    QTest::newRow("not a puzzle") << QByteArray("hello, world\n");
+    QTest::newRow("cut short") << good.left(good.size() / 2);
+    QTest::newRow("another root") << with("<puzzle version=\"2\">", "<puzzles version=\"2\">");
+    QTest::newRow("unknown grid type") << with("<gridType type=\"0\"/>", "<gridType type=\"42\"/>");
+    QTest::newRow("too few voxels") << with(">##</voxel>", ">#</voxel>");
+    QTest::newRow("a piece that is no shape") << with("<shape id=\"1\"", "<shape id=\"9\"");
+    QTest::newRow("a negative size") << with("x=\"2\" y=\"1\"", "x=\"-2\" y=\"1\"");
+  }
+  void aDamagedFileIsRefusedAndTheDocumentKept() {
+    QFETCH(QByteArray, content);
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    const unsigned shapes = d->session().puzzle().getNumberOfShapes();
+    QFile file(f.file("damaged.xmpuzzle"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write(content);
+    file.close();
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    QSignalSpy internal(f.app.get(), &App::internalError);
+    QVERIFY(!d->loadPath(file.fileName()));
+    QCOMPARE(msg.count(), 1);
+    QVERIFY(!msg.at(0).at(1).toString().isEmpty());
+    QCOMPARE(replaced.count(), 0);
+    QCOMPARE(internal.count(), 0);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QCOMPARE(d->session().puzzle().getNumberOfShapes(), shapes);
+  }
+
+  /* File > Import of a file that is not PuzzleSolver3D, or cut short, or
+   * not local: refused with a message, the puzzle open kept (until the
+   * loader's fix a foreign file imported as an empty puzzle) */
+  void aFailedImportIsReportedAndTheDocumentKept() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    for (const QByteArray & content : { QByteArray("<html>not a puzzle</html>\n"), QByteArray("PIECE 2,3,1\nXX\n") }) {
+      QFile file(f.file("foreign.puz"));
+      QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+      file.write(content);
+      file.close();
+      d->importFile(QUrl::fromLocalFile(file.fileName()));
+    }
+    d->importFile(QUrl(QStringLiteral("https://example.com/x.puz")));
+    QCOMPARE(msg.count(), 3);
+    QCOMPARE(msg.at(0).at(1).toString(), QStringLiteral("Could not load puzzle, sorry!"));
+    QVERIFY(msg.at(2).at(1).toString().startsWith(QStringLiteral("Could not open")));
+    QCOMPARE(replaced.count(), 0);
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->modified());
+  }
+
+  /* A result naming no shape is the library's "no result set" (legacy
+   * loads it so): the file opens, the problem has no result, and editing
+   * and undo around it are no internal error. */
+  void aResultThatIsNoShapeLoadsAsNoResult() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QFile file(f.file("noresult.xmpuzzle"));
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    file.write("<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><colors/><shapes>"
+               "<voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel></shapes><problems><problem state=\"0\">"
+               "<shapes><shape id=\"0\" count=\"1\"/></shapes><result id=\"7\"/><bitmap/></problem></problems>"
+               "<comment/></puzzle>");
+    file.close();
+    QSignalSpy internal(f.app.get(), &App::internalError);
+    QVERIFY(d->loadPath(file.fileName()));
+    QVERIFY(!d->session().puzzle().getProblem(0)->resultValid());
+    makeModified(d);
+    d->undo();
+    d->redo();
+    QCOMPARE(d->session().puzzle().getNumberOfShapes(), 2u);
+    QVERIFY(!d->session().puzzle().getProblem(0)->resultValid());
+    QCOMPARE(internal.count(), 0);
   }
 
   void aFailedSaveIsReported() {
@@ -1424,7 +1662,7 @@ private slots:
     auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
 
     std::vector<std::unique_ptr<AnySignal>> spies;
-    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->settings() })
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes() })
       spies.push_back(std::make_unique<AnySignal>(o));
     auto happened = [&] {
       int n = int(links.urls.size());
@@ -1443,7 +1681,13 @@ private slots:
       if (key == QLatin1String("view.orbit"))
         a->viewport()->setNavMode(QStringLiteral("pan"));
       if (key == QLatin1String("editor.layerDown"))
-        a->viewport()->setLayer(1);
+        a->editor()->setLayer(1);
+      // another tool than the one the key picks
+      if (key.startsWith(QLatin1String("editor.tool.")))
+        a->editor()->setTool(key == QLatin1String("editor.tool.fixed") ? EditorController::Paint : EditorController::Fixed);
+      // a shape with one before it
+      if (key.startsWith(QLatin1String("shapes.")))
+        a->shapes()->select(1);
       for (auto & s : spies)
         s->clear();
       links.urls.clear();
@@ -1468,11 +1712,11 @@ private slots:
     CommandController * c = a->commands();
     QVERIFY(a->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
     a->layout()->setWorkspace(LayoutController::Solver);
-    const int layer = a->viewport()->layer();
+    const int layer = a->editor()->layer();
     QVERIFY(!c->isEnabled(QStringLiteral("editor.layerUp")));
     c->trigger(QStringLiteral("editor.layerUp"));
     c->trigger(QStringLiteral("editor.layerDown"));
-    QCOMPARE(a->viewport()->layer(), layer);
+    QCOMPARE(a->editor()->layer(), layer);
     QVERIFY(!c->isEnabled(QStringLiteral("no.such.command")));
     AnySignal any(c);
     c->trigger(QStringLiteral("no.such.command"));
@@ -1745,6 +1989,32 @@ class TestUpdates : public QObject {
     qputenv("BURRTOOLS_UPDATE_VERSION_OVERRIDE", version);
   }
 
+  /* GitHub's answers, canned: a release, a failure */
+  static HttpResult release(const char * tag, const char * notes = "Bug fixes") {
+    HttpResult r;
+    r.kind = HttpResult::Kind::Ok;
+    r.status = 200;
+    r.body = std::string("{\"tag_name\":\"") + tag + "\",\"html_url\":"
+             "\"https://github.com/burr-tools/burr-tools/releases/tag/" + tag + "\","
+             "\"name\":\"BurrTools " + (tag + 1) + "\",\"draft\":false,\"prerelease\":false,"
+             "\"body\":\"" + notes + "\"}";
+    return r;
+  }
+  static HttpResult failed(HttpResult::Kind kind, long status = 0, const char * error = "") {
+    HttpResult r;
+    r.kind = kind;
+    r.status = status;
+    r.error = error;
+    return r;
+  }
+  /* the controller answered with r: the check started, and finished */
+  static void answer(UpdateController * u, HttpResult r, bool manual = true) {
+    u->setFetch([r] { return r; });
+    manual ? u->checkNow() : u->checkAtLaunch();
+    QVERIFY(u->checking());
+    QTRY_VERIFY(!u->checking());
+  }
+
 private slots:
 
   void cleanup() {
@@ -1793,6 +2063,80 @@ private slots:
     installed("0.7.1-42-gabc123");                  // a development build never asks by itself
     u->checkAtLaunch();
     QVERIFY(!u->checking());
+  }
+
+  void aManualCheckSaysWhatItFound() {
+    // legacy's messages: up to date, each failure said, a newer release offered
+    installed("0.7.1");
+    Fixture f;
+    f.make();
+    UpdateController * u = f.app->updates();
+    SettingsController * s = f.app->settings();
+    QSignalSpy message(u, &UpdateController::message);
+    QSignalSpy offer(u, &UpdateController::offer);
+    auto said = [&] { return message.isEmpty() ? QString() : message.last().at(1).toString(); };
+
+    answer(u, release("v0.7.1"));
+    QCOMPARE(message.count(), 1);
+    QVERIFY2(said().contains(QStringLiteral("latest version")) && said().contains(QStringLiteral("0.7.1")), qPrintable(said()));
+    QVERIFY(s->updateLastCheck() > 0);                // a good answer is noted
+
+    answer(u, failed(HttpResult::Kind::Transport, 0, "timed out"));
+    QCOMPARE(said(), QStringLiteral("Couldn't reach GitHub: timed out"));
+    answer(u, failed(HttpResult::Kind::Status, 429));
+    QVERIFY2(said().contains(QStringLiteral("rate limited")), qPrintable(said()));
+    answer(u, failed(HttpResult::Kind::Status, 500));
+    QCOMPARE(said(), QStringLiteral("GitHub returned HTTP 500."));
+    answer(u, failed(HttpResult::Kind::TooLarge));
+    QCOMPARE(said(), QStringLiteral("Unexpected response from GitHub."));
+    HttpResult garbage = release("v0.8.1");
+    garbage.body = "not json";
+    answer(u, garbage);
+    QVERIFY2(said().startsWith(QStringLiteral("Unexpected response from GitHub:")), qPrintable(said()));
+    QCOMPARE(offer.count(), 0);
+
+    // a newer release: its heading, notes and page; a manual check offers no Skip
+    answer(u, release("v0.8.1", "Faster solver"));
+    QCOMPARE(offer.count(), 1);
+    QVERIFY(offer.at(0).at(0).toString().contains(QStringLiteral("0.8.1 is available. You have 0.7.1")));
+    QCOMPARE(offer.at(0).at(1).toString(), QStringLiteral("Faster solver"));
+    QCOMPARE(offer.at(0).at(2).toString(), QStringLiteral("https://github.com/burr-tools/burr-tools/releases/tag/v0.8.1"));
+    QVERIFY(!offer.at(0).at(3).toBool());
+    QCOMPARE(message.count(), 6);                      // and nothing said besides
+  }
+
+  void aSkippedReleaseIsOfferedAtLaunchNoMore() {
+    // the launch check offers Skip; a skipped release stays quiet at launch,
+    // a later one is offered, and Help > Check for updates still shows it
+    installed("0.7.1");
+    Fixture f;
+    f.make();
+    UpdateController * u = f.app->updates();
+    SettingsController * s = f.app->settings();
+    QSignalSpy message(u, &UpdateController::message);
+    QSignalSpy offer(u, &UpdateController::offer);
+    auto dayOld = [&] { s->setUpdateLastCheck(std::time(nullptr) - 2 * 86400); };
+
+    dayOld();
+    answer(u, release("v0.8.1"), false);
+    QCOMPARE(offer.count(), 1);
+    QVERIFY(offer.at(0).at(3).toBool());              // Skip offered
+    u->skipOffered();
+    QVERIFY(s->updateSkippedVersion() > 0);
+
+    dayOld();
+    answer(u, release("v0.8.1"), false);
+    QCOMPARE(offer.count(), 1);                       // skipped: quiet
+    dayOld();
+    answer(u, release("v0.8.2"), false);
+    QCOMPARE(offer.count(), 2);                       // a newer one is not
+    answer(u, release("v0.8.1"));
+    QCOMPARE(offer.count(), 3);                       // asked for: shown
+
+    // a launch check that fails says nothing
+    dayOld();
+    answer(u, failed(HttpResult::Kind::Transport, 0, "offline"), false);
+    QCOMPARE(message.count(), 0);
   }
 
   void onlyGitHubReleasePagesAreOpened() {
@@ -1897,6 +2241,445 @@ private slots:
     QCOMPARE(m->data(m->index(0), ShapesModel::VariableRole).toInt(), int(s->countState(voxel_c::VX_VARIABLE)));
   }
 
+  void theListsActionsAreUndoStepsThatSelectAndRenumber() {
+    // C01: each action one undo step, the selection on the shape it leaves,
+    // and the status bar told when shapes were renumbered
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    StatusController * status = f.app->status();
+    const puzzle_c & p = d->session().puzzle();
+    const int n = m->count();
+    QVERIFY(n >= 3);
+    auto label = [&](int row) { return m->data(m->index(row), ShapesModel::LabelRole).toString(); };
+
+    // New: as big as the selected shape, appended and selected
+    m->select(1);
+    m->addShape();
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(m->selected(), n);
+    QCOMPARE(p.getShape(unsigned(n))->getX(), p.getShape(1)->getX());
+    QVERIFY(d->canUndo());
+    d->undo();
+    QCOMPARE(m->count(), n);
+
+    // Duplicate: appended, a copy, selected
+    m->renameShape(1, QStringLiteral("Arm"));
+    QCOMPARE(label(1), QStringLiteral("Arm"));
+    m->duplicateShape(1);
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(m->selected(), n);
+    QCOMPARE(label(n), QStringLiteral("Arm"));
+
+    // weight: steps, stops at 0
+    const int w = m->data(m->index(n), ShapesModel::WeightRole).toInt();
+    m->changeWeight(n, +1);
+    QCOMPARE(m->data(m->index(n), ShapesModel::WeightRole).toInt(), w + 1);
+    m->changeWeight(n, -1000);
+    QCOMPARE(m->data(m->index(n), ShapesModel::WeightRole).toInt(), 0);
+    QSignalSpy edited(d, &DocumentController::puzzleEdited);
+    m->changeWeight(n, -1);
+    QCOMPARE(edited.count(), 0);                        // nothing changed, no undo step
+
+    // a move renumbers; the selection follows the shape
+    m->moveShape(n, 0);
+    QCOMPARE(m->selected(), 0);
+    QCOMPARE(label(0), QStringLiteral("Arm"));
+    QCOMPARE(label(2), QStringLiteral("Arm"));
+    QCOMPARE(status->text(), QStringLiteral("Order changed — shapes renumbered S1…S%1").arg(n + 1));
+
+    // a delete renumbers the later ones and selects the one now in its place
+    m->deleteShape(0);
+    QCOMPARE(m->count(), n);
+    QCOMPARE(m->selected(), 0);
+    QCOMPARE(label(1), QStringLiteral("Arm"));
+    QCOMPARE(status->text(), QStringLiteral("Shape S1 deleted — later shapes renumbered S1…S%1").arg(n));
+    // the last one renumbers nothing; deleted while selected, its neighbour is
+    m->select(n - 1);
+    m->deleteShape(n - 1);
+    QCOMPARE(m->selected(), n - 2);
+    QCOMPARE(status->text(), QStringLiteral("Shape S%1 deleted").arg(n));
+
+    // rows that are no shape do nothing
+    edited.clear();
+    for (int row : { -1, m->count() }) {
+      m->duplicateShape(row);
+      m->deleteShape(row);
+      m->renameShape(row, QStringLiteral("x"));
+      m->moveShape(row, 0);
+      m->changeWeight(row, 1);
+    }
+    QCOMPARE(edited.count(), 0);
+
+    // undo walks it all back, one step each
+    while (d->canUndo())
+      d->undo();
+    QCOMPARE(m->count(), n);
+    QVERIFY(label(1) != QStringLiteral("Arm"));
+  }
+
+  void deletingAnotherRowKeepsTheSelectionOnItsShape() {
+    // a row's own trash button deletes a row that is not selected: the
+    // selected shape stays selected (a row up when it came after), with one
+    // selectedChanged for the end state
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const puzzle_c & p = f.app->document()->session().puzzle();
+    m->select(4);
+    const voxel_c * selected = p.getShape(4);
+    QSignalSpy changed(m, &ShapesModel::selectedChanged);
+    m->deleteShape(1);
+    QCOMPARE(m->selected(), 3);
+    QCOMPARE(p.getShape(3), selected);
+    QCOMPARE(changed.count(), 1);
+
+    changed.clear();
+    m->deleteShape(m->count() - 1);                   // after it: it stays
+    QCOMPARE(m->selected(), 3);
+    QCOMPARE(changed.count(), 0);
+  }
+
+  void renameAndWeightUpdateTheirRowAlone() {
+    // one row, its label roles: no other delegate re-reads, no voxel recount
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    QSignalSpy data(m, &QAbstractItemModel::dataChanged);
+    m->renameShape(2, QStringLiteral("Arm"));
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(0).toModelIndex().row(), 2);
+    QCOMPARE(data.first().at(1).toModelIndex().row(), 2);
+    const QList<int> labelRoles{ ShapesModel::LabelRole, ShapesModel::WeightRole };
+    QCOMPARE(data.first().at(2).value<QList<int>>(), labelRoles);
+    data.clear();
+    m->changeWeight(2, +1);
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(2).value<QList<int>>(), labelRoles);
+    // and undo, which may change anything, refreshes them all
+    data.clear();
+    f.app->document()->undo();
+    QCOMPARE(data.count(), 1);
+    QCOMPARE(data.first().at(0).toModelIndex().row(), 0);
+  }
+
+  void shapeActionsRedo() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const int n = m->count();
+    auto label = [&](int row) { return m->data(m->index(row), ShapesModel::LabelRole).toString(); };
+    const QString first = label(0);
+    m->moveShape(0, 2);
+    m->duplicateShape(2);
+    m->deleteShape(1);
+    const int afterAll = m->count();
+    while (d->canUndo())
+      d->undo();
+    QCOMPARE(m->count(), n);
+    QCOMPARE(label(0), first);
+    d->redo();
+    QCOMPARE(label(2), first);
+    d->redo();
+    QCOMPARE(m->count(), n + 1);
+    QCOMPARE(label(n), first);
+    d->redo();
+    QCOMPARE(m->count(), afterAll);
+    QVERIFY(!d->canRedo());
+  }
+
+  void deleteKeepsOneShape() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ShapesModel * m = f.app->shapes();
+    QVERIFY(!m->canDelete());
+    m->addShape();
+    QCOMPARE(m->count(), 1);
+    QVERIFY(!m->canDelete());
+    m->requestDelete(0);
+    m->deleteShape(0);
+    QCOMPARE(m->count(), 1);
+    QSignalSpy can(m, &ShapesModel::countChanged);
+    m->addShape();
+    QVERIFY(m->canDelete());
+    QCOMPARE(can.count(), 1);
+    QVERIFY(d->canUndo());
+  }
+
+  void deleteAsksFirstOnlyWhenSolutionsWouldBeLost() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/SolidSixPieceBurrs.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    const puzzle_c & p = d->session().puzzle();
+    int used = -1;
+    for (int s = 0; s < m->count() && used < 0; s++)
+      if (btui::deleteLosesSolutions(p, s))
+        used = s;
+    QVERIFY(used >= 0);
+    const int n = m->count();
+
+    QSignalSpy ask(m, &ShapesModel::deleteConfirmRequested);
+    m->requestDelete(used);
+    QCOMPARE(ask.count(), 1);
+    QCOMPARE(ask.first().at(0).toInt(), used);
+    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("S%1").arg(used + 1));
+    QCOMPARE(m->count(), n);                            // nothing yet: QML asks
+    m->deleteShape(used);                               // the answer
+    QCOMPARE(m->count(), n - 1);
+
+    // a shape no problem uses goes at once
+    m->addShape();
+    ask.clear();
+    m->requestDelete(m->count() - 1);
+    QCOMPARE(ask.count(), 0);
+    QCOMPARE(m->count(), n - 1);
+  }
+
+  void theListsKeysWorkOnlyInTheirScope() {
+    Fixture f;
+    f.make();
+    CommandController * c = f.app->commands();
+    const QString list = QStringLiteral("shapesList");
+#ifdef Q_OS_MACOS
+    QCOMPARE(c->keyInScope(list, Qt::Key_Backspace, 0), QStringLiteral("shapes.delete"));
+#endif
+    QCOMPARE(c->keyInScope(list, Qt::Key_Delete, 0), QStringLiteral("shapes.delete"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Return, 0), QStringLiteral("shapes.rename"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Enter, Qt::KeypadModifier), QStringLiteral("shapes.rename"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_D, Qt::ControlModifier), QStringLiteral("shapes.duplicate"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Up, Qt::AltModifier), QStringLiteral("shapes.moveEarlier"));
+    QCOMPARE(c->keyInScope(list, Qt::Key_Down, Qt::AltModifier | Qt::KeypadModifier), QStringLiteral("shapes.moveLater"));
+    // F2 is Save, the window's; plain arrows are the list's own navigation
+    QVERIFY(c->keyInScope(list, Qt::Key_F2, 0).isEmpty());
+    QVERIFY(c->keyInScope(list, Qt::Key_Up, 0).isEmpty());
+    QVERIFY(c->keyInScope(QStringLiteral("elsewhere"), Qt::Key_Delete, 0).isEmpty());
+
+    // and none of them is bound window-wide
+    for (const QVariant & v : c->shortcuts())
+      QVERIFY(!v.toMap().value(QStringLiteral("key")).toString().startsWith(QLatin1String("shapes.")));
+
+    // they act on the selected shape, in Entities only
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    m->select(0);
+    QVERIFY(!c->isEnabled(QStringLiteral("shapes.moveEarlier")));
+    QVERIFY(c->isEnabled(QStringLiteral("shapes.moveLater")));
+    c->trigger(QStringLiteral("shapes.moveLater"));
+    QCOMPARE(m->selected(), 1);
+    QSignalSpy rename(m, &ShapesModel::renameRequested);
+    c->trigger(QStringLiteral("shapes.rename"));
+    QCOMPARE(rename.count(), 1);
+    QCOMPARE(rename.first().at(0).toInt(), 1);
+    f.app->layout()->setWorkspace(LayoutController::Puzzle);
+    for (const char * key : { "shapes.rename", "shapes.duplicate", "shapes.delete", "shapes.moveEarlier", "shapes.moveLater" })
+      QVERIFY2(!c->isEnabled(QString::fromLatin1(key)), key);
+  }
+
+  void theColourListFollowsTheDocument() {
+    // C09: Default first, always; a new document starts drawing with it
+    Fixture f;
+    f.make();
+    ColoursModel * c = f.app->colours();
+    QCOMPARE(c->count(), 1);
+    QCOMPARE(c->drawColour(), 0);
+    QCOMPARE(c->drawName(), QStringLiteral("Default"));
+    QVERIFY(!c->drawRgb().isValid());                 // the shape's colour
+    QVERIFY(c->canAdd());
+    QCOMPARE(c->data(c->index(0), ColoursModel::IsDefaultRole).toBool(), true);
+    c->select(5);
+    QCOMPARE(c->drawColour(), 0);                     // clamped
+  }
+
+  void addIsQuickAndEditGoesThroughTheChooserAsUndoSteps() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    QSignalSpy chooser(c, &ColoursModel::chooserRequested);
+
+    // Add: the first preset at once, no chooser, and drawn with
+    c->addColour();
+    QCOMPARE(chooser.count(), 0);
+    QCOMPARE(c->count(), 2);
+    QCOMPARE(c->drawColour(), 1);
+    QCOMPARE(c->drawName(), QStringLiteral("C1"));
+    const QColor first(0xef, 0x44, 0x44);
+    QCOMPARE(c->drawRgb(), first);
+    c->addColour();
+    QVERIFY(c->colourOf(2) != first);                 // the next preset, a different one
+
+    // Edit: Default cannot be edited; a colour can, starting from its own
+    c->requestEdit(0);
+    QCOMPARE(chooser.count(), 0);
+    c->requestEdit(1);
+    QCOMPARE(chooser.count(), 1);
+    QCOMPARE(chooser.last().at(1).value<QColor>(), first);
+    c->chooseColour(QColor(0, 0, 255));
+    QCOMPARE(c->colourOf(1), QColor(0, 0, 255));
+
+    // a cancelled chooser changes nothing, and a late answer is ignored
+    c->requestEdit(1);
+    c->cancelChoose();
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->colourOf(1), QColor(0, 0, 255));
+
+    // each was one undo step; undoing the adds leaves Default to draw with
+    d->undo();
+    QCOMPARE(c->colourOf(1), first);
+    d->undo();
+    d->undo();
+    QCOMPARE(c->count(), 1);
+    QCOMPARE(c->drawColour(), 0);
+  }
+
+  void theChooserIsCancelledWhenTheColoursChangeUnderIt() {
+    // Edit's chooser is up for C1; an undo renumbers the colours: the answer
+    // would go to another colour, so the chooser is closed and the answer
+    // dropped. The same when the document is replaced.
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    c->addColour();
+    c->addColour();
+    const QColor second = c->colourOf(2);
+    QSignalSpy cancelled(c, &ColoursModel::chooserCancelled);
+    c->requestEdit(2);
+    d->undo();                                        // C2 goes
+    QCOMPARE(cancelled.count(), 1);
+    c->chooseColour(QColor(1, 2, 3));                 // the late answer
+    QCOMPARE(c->colourOf(1), QColor(0xef, 0x44, 0x44));
+    d->redo();
+    QCOMPARE(c->colourOf(2), second);
+
+    c->requestEdit(1);
+    d->newDocument(0);
+    QCOMPARE(cancelled.count(), 2);
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->count(), 1);
+
+    // an edit that renumbers nothing leaves it up
+    c->addColour();
+    c->requestEdit(1);
+    f.app->shapes()->addShape();
+    QCOMPARE(cancelled.count(), 2);
+    c->chooseColour(QColor(1, 2, 3));
+    QCOMPARE(c->colourOf(1), QColor(1, 2, 3));
+  }
+
+  void theDrawingColourSignalsOnlyWhenItChanges() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ColoursModel * c = f.app->colours();
+    ShapesModel * m = f.app->shapes();
+    c->addColour();
+    QSignalSpy draw(c, &ColoursModel::drawColourChanged);
+    QSignalSpy rows(c, &QAbstractItemModel::dataChanged);
+    m->renameShape(0, QStringLiteral("Arm"));         // a shape edit: nothing of the colours
+    m->changeWeight(1, +1);
+    QCOMPARE(draw.count(), 0);
+    QCOMPARE(rows.count(), 0);
+    // Default shows the selected shape's colour: a new selection is a change
+    c->select(0);
+    draw.clear();
+    m->select(1);
+    QCOMPARE(draw.count(), 1);
+    QCOMPARE(c->drawShown(), ShapesModel::chipColor(1));
+    // an Edit changes that colour's row alone
+    c->requestEdit(1);
+    c->chooseColour(QColor(9, 9, 9));
+    QCOMPARE(rows.count(), 1);
+    QCOMPARE(rows.first().at(0).toModelIndex().row(), 1);
+  }
+
+  void removingAColourIsAnnouncedAndRedoes() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    ColoursModel * c = f.app->colours();
+    StatusController * status = f.app->status();
+    c->addColour();
+    c->addColour();
+    const QColor second = c->colourOf(2);
+    c->removeColour(1);
+    QCOMPARE(status->text(), QStringLiteral("Colour C1 removed — C2 is now C1"));
+    QCOMPARE(c->colourOf(1), second);                 // C2 is C1 now
+    c->removeColour(1);
+    QCOMPARE(status->text(), QStringLiteral("Colour C1 removed"));
+    d->undo();
+    d->undo();
+    QCOMPARE(c->count(), 3);
+    d->redo();
+    QCOMPARE(c->count(), 2);
+    QCOMPARE(c->colourOf(1), second);
+  }
+
+  void aPuzzleHasAtMost63Colours() {
+    Fixture f;
+    f.make();
+    ColoursModel * c = f.app->colours();
+    for (int i = 0; i < 63; i++)
+      c->addColour();
+    QCOMPARE(c->count(), 64);
+    QVERIFY(!c->canAdd());
+    QSignalSpy edited(f.app->document(), &DocumentController::puzzleEdited);
+    c->addColour();                                   // refused, no assert
+    QCOMPARE(c->count(), 64);
+    QCOMPARE(edited.count(), 0);
+  }
+
+  void removeAsksFirstOnlyWhenSolutionsWouldBeLost() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/SolidSixPieceBurrs.xmpuzzle")));
+    ColoursModel * c = f.app->colours();
+    const int before = c->count();
+    // two new colours: the first on a voxel of every shape, the second on none
+    c->addColour();
+    c->addColour();
+    const int used = before, unused = before + 1;
+    d->edit(puzzleHistory_c::AK_COLOR_PALETTE, 0, [&](puzzle_c & p) {
+      for (unsigned s = 0; s < p.getNumberOfShapes(); s++)
+        for (unsigned j = 0; j < p.getShape(s)->getXYZ(); j++)
+          if (p.getShape(s)->getState(j) != voxel_c::VX_EMPTY) {
+            p.getShape(s)->setColor(j, unsigned(used));
+            break;
+          }
+      return true;
+    });
+
+    QSignalSpy ask(c, &ColoursModel::removeConfirmRequested);
+    c->select(unused);
+    c->requestRemove(unused);                         // goes at once
+    QCOMPARE(ask.count(), 0);
+    QCOMPARE(c->count(), before + 1);
+    QCOMPARE(c->drawColour(), 0);                     // C09: back to Default
+
+    c->requestRemove(used);
+    QCOMPARE(ask.count(), 1);
+    QCOMPARE(ask.first().at(0).toInt(), used);
+    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("C%1").arg(used));
+    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML asks
+    c->removeColour(used);                            // the answer
+    QCOMPARE(c->count(), before);
+
+    c->requestRemove(0);                              // Default cannot go
+    c->removeColour(0);
+    QCOMPARE(c->count(), before);
+  }
+
   void statusTextIsTheLegacySentence() {
     Fixture f;
     f.make();
@@ -1925,6 +2708,18 @@ private slots:
     QCOMPARE(s.cursorText(), QStringLiteral("Cursor X1 Y2 · Z0"));
     s.setCursorText(QString());
     QVERIFY(s.cursorText().isEmpty());
+  }
+
+  void aNewDocumentEndsTheFlash() {
+    // a message about the old document does not stay over the new one
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    f.app->shapes()->deleteShape(0);
+    QVERIFY(f.app->status()->flashing());
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QVERIFY(!f.app->status()->flashing());
+    QVERIFY(f.app->status()->text().startsWith(QStringLiteral("Shape <b>S1</b>")));
   }
 
   void aFlashReplacesTheTextThenReverts() {
@@ -2821,6 +3616,11 @@ int main(int argc, char ** argv) {
   run(TestStlExport());
   run(TestImageExport());
   run(TestViewportController());
+  run(TestEditor());
+  run(TestEdit3d());
+  run(TestInspector());
+  run(TestVoxelTypes());
+  run(TestSaving());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

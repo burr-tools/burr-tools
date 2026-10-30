@@ -70,6 +70,8 @@ class Theme : public QObject {
   Q_PROPERTY(QColor axisY READ axisY NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisZ READ axisZ NOTIFY changed FINAL)
   Q_PROPERTY(QColor danger READ danger NOTIFY changed FINAL)
+  /* danger as text on panel and panel2 (a menu's Delete): >= 4.5:1 on both */
+  Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed FINAL)
   Q_PROPERTY(QColor scrim READ scrim NOTIFY changed FINAL)
 
   // type scale (design-tokens.md section 2), in dp
@@ -101,10 +103,37 @@ class Theme : public QObject {
   Q_PROPERTY(double button READ button NOTIFY changed FINAL)
   Q_PROPERTY(double toolbarButtonWidth READ toolbarButtonWidth NOTIFY changed FINAL)
   Q_PROPERTY(double toolbarButtonHeight READ toolbarButtonHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double stepper READ stepper NOTIFY changed FINAL)
+  Q_PROPERTY(double segmentedButton READ segmentedButton NOTIFY changed FINAL)
+  Q_PROPERTY(double statusBarFont READ statusBarFont NOTIFY changed FINAL)
+  // the Voxel editor (C07, C08, C09)
+  Q_PROPERTY(double toolStrip READ toolStrip NOTIFY changed FINAL)
+  Q_PROPERTY(double mirrorSpan READ mirrorSpan NOTIFY changed FINAL)
+  Q_PROPERTY(double planeWidth READ planeWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double planeHeight READ planeHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double layerStrip READ layerStrip NOTIFY changed FINAL)
+  Q_PROPERTY(double layerChipWidth READ layerChipWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double layerChipHeight READ layerChipHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double drawSwatch READ drawSwatch NOTIFY changed FINAL)
+  // the inspector (C03, C04, C05)
+  Q_PROPERTY(double accordionHeader READ accordionHeader NOTIFY changed FINAL)
+  Q_PROPERTY(double transformButton READ transformButton NOTIFY changed FINAL)
+  Q_PROPERTY(double actionButtonMin READ actionButtonMin NOTIFY changed FINAL)
+  Q_PROPERTY(double actionButton READ actionButton NOTIFY changed FINAL)
+  // Minimal's auto-hiding 3D toolbar (density.md section 3); 0 in Standard: always shown
+  Q_PROPERTY(double toolbarRevealZone READ toolbarRevealZone NOTIFY changed FINAL)
+  Q_PROPERTY(int toolbarHideDelay READ toolbarHideDelay NOTIFY changed FINAL)
+  Q_PROPERTY(int toolbarFade READ toolbarFade NOTIFY changed FINAL)
 
-  // motion (section 6), in ms
-  Q_PROPERTY(int durCollapse READ durCollapse CONSTANT FINAL)
-  Q_PROPERTY(int durChevron READ durChevron CONSTANT FINAL)
+  /* motion (section 6), in ms; all 0 while the system asks for reduced
+   * motion (section 6: "Respect OS reduce motion by setting durations to 0") */
+  Q_PROPERTY(bool reducedMotion READ reducedMotion NOTIFY changed FINAL)
+  Q_PROPERTY(int durCollapse READ durCollapse NOTIFY changed FINAL)
+  Q_PROPERTY(int durChevron READ durChevron NOTIFY changed FINAL)
+  /* list rows making room for a dragged one (the Shapes list) */
+  Q_PROPERTY(int durReorder READ durReorder NOTIFY changed FINAL)
+  /* a switch's knob and track */
+  Q_PROPERTY(int durSwitch READ durSwitch NOTIFY changed FINAL)
   Q_PROPERTY(int durFlash READ durFlash CONSTANT FINAL)
   Q_PROPERTY(int tooltipDelay READ tooltipDelay CONSTANT FINAL)
 
@@ -157,6 +186,7 @@ public:
   QColor axisY(void) const { return col("axisY"); }
   QColor axisZ(void) const { return col("axisZ"); }
   QColor danger(void) const { return col("danger"); }
+  QColor dangerText(void) const { return col("dangerText"); }
   QColor scrim(void) const { return col("scrim"); }
 
   qreal fontDialogTitle(void) const { return num("font.dialogTitle"); }
@@ -190,9 +220,41 @@ public:
   qreal button(void) const { return dens("button"); }
   qreal toolbarButtonWidth(void) const { return dens("toolbarButton.0"); }
   qreal toolbarButtonHeight(void) const { return dens("toolbarButton.1"); }
+  qreal stepper(void) const { return dens("stepper"); }
+  qreal segmentedButton(void) const { return dens("segmentedButton"); }
+  qreal statusBarFont(void) const { return dens("statusBarFont"); }
+  qreal toolStrip(void) const { return dens("toolStrip"); }
+  qreal mirrorSpan(void) const { return dens("mirrorSpan"); }
+  qreal planeWidth(void) const { return dens("plane.0"); }
+  qreal planeHeight(void) const { return dens("plane.1"); }
+  qreal layerStrip(void) const { return dens("layerStrip"); }
+  qreal layerChipWidth(void) const { return dens("layerChip.0"); }
+  qreal layerChipHeight(void) const { return dens("layerChip.1"); }
+  /* the Drawing colour footer's big swatch */
+  qreal drawSwatch(void) const { return dens("drawSwatch"); }
+  /* the inspector: an accordion section's header, a Transform button, and
+   * an action button's height -- Standard's a minimum (actionButtonMin,
+   * 0 in Minimal), Minimal's fixed (actionButton, 0 in Standard) */
+  qreal accordionHeader(void) const { return dens("accordionHeader"); }
+  qreal transformButton(void) const { return dens("transform"); }
+  qreal actionButtonMin(void) const { return dens("actionButtonMin"); }
+  qreal actionButton(void) const { return dens("actionButton"); }
+  /* Minimal's auto-hiding 3D toolbar: it shows with the pointer this near
+   * the view's top edge, hides this long after it leaves, fading this long */
+  qreal toolbarRevealZone(void) const { return dens("toolbarAutoHide.revealZone"); }
+  int toolbarHideDelay(void) const { return int(dens("toolbarAutoHide.hideDelayMs")); }
+  int toolbarFade(void) const { return reducedMotion() ? 0 : int(dens("toolbarAutoHide.fadeMs")); }
 
+  /* The system's "reduce motion" (QAccessibilityHints::motionPreference;
+   * before Qt 6.12 `systemmotion`), or what a test set
+   * (setReducedMotionForTesting) */
+  bool reducedMotion(void) const;
+  /* -1 follows the system again; 0 or 1 holds it off or on (tests) */
+  Q_INVOKABLE void setReducedMotionForTesting(int on);
   int durCollapse(void) const { return motion("columnMs"); }
   int durChevron(void) const { return motion("chevronMs"); }
+  int durReorder(void) const { return motion("reorderMs"); }
+  int durSwitch(void) const { return motion("switchMs"); }
   int durFlash(void) const { return int(num("motion.flashMs")); }
   int tooltipDelay(void) const { return int(num("motion.tooltipDelayMs")); }
 
@@ -223,6 +285,7 @@ private:
   QString m_mode = QStringLiteral("light");      // the settings' default
   bool m_dark = false;
   Qt::ColorScheme m_systemScheme = Qt::ColorScheme::Unknown;
+  int m_motionOverride = -1;                       ///< setReducedMotionForTesting
   bool m_minimal = false;
 
   QHash<QString, QColor> m_light, m_darkColors;

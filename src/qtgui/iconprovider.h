@@ -46,4 +46,14 @@ public:
   static QByteArray tintedSvg(const QString & name, const QString & color);
 };
 
+/* The 3D Edit button's icon (C06): the edit cursor's own drawing for a
+ * tool, its badge or drop in the drawing colour, as editcursor::glyph()
+ * makes it. QML asks for "image://editglyph/<tool 0-3>?color=<hex, empty
+ * for Default>&dark=<0|1>" at the size it shows it. */
+class EditGlyphProvider : public QQuickImageProvider {
+public:
+  EditGlyphProvider(void);
+  QImage requestImage(const QString & id, QSize * size, const QSize & requestedSize) override;
+};
+
 #endif

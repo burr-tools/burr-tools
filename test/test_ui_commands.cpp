@@ -32,17 +32,88 @@ TEST_CASE("command keys are unique and every command is findable by key", "[ui][
   CHECK(findCommand("no.such.command") == nullptr);
 }
 
-TEST_CASE("no two commands share a shortcut on the same platform", "[ui][commands]") {
+TEST_CASE("no two commands share a shortcut on the same platform and in the same scope", "[ui][commands]") {
   for (bool mac : { false, true }) {
-    std::set<std::string_view> seen;
+    std::set<std::pair<Scope, std::string_view>> seen;
     for (const auto & c : commandTable()) {
       auto list = (mac && !c.macShortcuts.empty()) ? c.macShortcuts : c.shortcuts;
       for (auto s : list) {
         INFO((mac ? "mac " : "portable ") << s << " on " << c.key);
-        CHECK(seen.insert(s).second);
+        CHECK(seen.insert({ c.scope, s }).second);
       }
     }
   }
+}
+
+TEST_CASE("the focused 3D view has keys for the mouse's every gesture and the cube's views", "[ui][commands]") {
+  // WCAG 2.1.1: orbit, pan, zoom, the cube's 90 degree turns, rolls and faces
+  const Command view[] = {
+    Command::ViewOrbitLeft, Command::ViewOrbitRight, Command::ViewOrbitUp, Command::ViewOrbitDown,
+    Command::ViewPanLeft, Command::ViewPanRight, Command::ViewPanUp, Command::ViewPanDown,
+    Command::ViewZoomIn, Command::ViewZoomOut,
+    Command::ViewTurnLeft, Command::ViewTurnRight, Command::ViewTurnUp, Command::ViewTurnDown,
+    Command::ViewRollLeft, Command::ViewRollRight,
+    Command::ViewFront, Command::ViewBack, Command::ViewLeft, Command::ViewRight, Command::ViewTop, Command::ViewBottom,
+  };
+  for (Command c : view) {
+    const CommandInfo & i = commandInfo(c);
+    INFO(i.key);
+    CHECK(i.scope == Scope::Viewport);
+    CHECK(i.menu == Menu::None);
+    for (Platform p : { Platform::Windows, Platform::Mac, Platform::Linux })
+      CHECK_FALSE(shortcutsOn(i, p).empty());
+  }
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewOrbitLeft), Platform::Linux)[0]) == "Left");
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewPanUp), Platform::Linux)[0]) == "Shift+Up");
+  // macOS keeps Control+arrows for its spaces
+  CHECK(std::string(shortcutsOn(commandInfo(Command::ViewTurnLeft), Platform::Mac)[0]) == "Alt+Left");
+  // E toggles 3D edit mode, anywhere (C06, AC-C06-07)
+  CHECK(commandInfo(Command::Edit3d).scope == Scope::Window);
+  CHECK(std::string(commandInfo(Command::Edit3d).shortcuts[0]) == "E");
+}
+
+TEST_CASE("single character shortcuts are told from the others", "[ui][commands]") {
+  // WCAG 2.1.4: the window's single-character keys can be turned off
+  for (const char * s : { "O", "P", "F", "E", "1", "+", "-", "=" })
+    CHECK(isSingleCharacter(s));
+  for (const char * s : { "Home", "PgUp", "Ctrl+S", "Shift+Left", "F2", "Del", "Alt+1", "" })
+    CHECK_FALSE(isSingleCharacter(s));
+  std::set<std::string_view> single;
+  for (const auto & c : commandTable())
+    if (c.scope == Scope::Window)
+      for (auto s : c.shortcuts)
+        if (isSingleCharacter(s))
+          single.insert(c.key);
+  CHECK(single == std::set<std::string_view>{ "view.orbit", "view.pan", "view.fit", "view.edit3d", "editor.tool.fixed",
+                                               "editor.tool.variable", "editor.tool.erase", "editor.tool.paint" });
+}
+
+TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[ui][commands]") {
+  const Command list[] = { Command::ShapeRename, Command::ShapeDuplicate, Command::ShapeDelete,
+                           Command::ShapeMoveEarlier, Command::ShapeMoveLater };
+  for (Command c : list) {
+    const CommandInfo & i = commandInfo(c);
+    INFO(i.key);
+    CHECK(i.scope == Scope::ShapesList);
+    CHECK(i.menu == Menu::None);
+    CHECK_FALSE(i.shortcuts.empty());
+  }
+  // every other command is the window's, but the focused 3D view's
+  for (const auto & c : commandTable())
+    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list) && c.scope != Scope::Viewport)
+      CHECK(c.scope == Scope::Window);
+
+  auto first = [](Command c, Platform p) { return std::string(shortcutsOn(commandInfo(c), p)[0]); };
+  CHECK(first(Command::ShapeRename, Platform::Windows) == "Enter");
+  CHECK(first(Command::ShapeRename, Platform::Mac) == "Return");   // ↩, not the keypad's ⌤
+  CHECK(first(Command::ShapeDuplicate, Platform::Windows) == "Ctrl+D");
+  CHECK(first(Command::ShapeDelete, Platform::Windows) == "Del");
+  CHECK(first(Command::ShapeDelete, Platform::Mac) == "Backspace");
+  CHECK(first(Command::ShapeMoveEarlier, Platform::Linux) == "Alt+Up");
+  CHECK(first(Command::ShapeMoveLater, Platform::Linux) == "Alt+Down");
+  // the spec's F2 rename is not taken: F2 is legacy's Save
+  for (auto s : commandInfo(Command::ShapeRename).shortcuts)
+    CHECK(s != "F2");
 }
 
 TEST_CASE("the legacy shortcuts survive and Toggle 3D's F4 is gone", "[ui][commands]") {
@@ -95,6 +166,22 @@ TEST_CASE("the menu bar holds only menus, every legacy command in one", "[ui][co
   CHECK(plainLabel(commandInfo(Command::About).label).rfind("About", 0) == 0);
   CHECK(plainLabel(commandInfo(Command::Quit).label) == "Quit");
   CHECK(plainLabel(commandInfo(Command::Quit).winLabel) == "Exit");
+}
+
+TEST_CASE("no shortcut clashes on any platform; scoped views may share keys", "[ui][commands]") {
+  // the program's --self-check runs this for its own platform; here every
+  // platform is checked on every build (macOS's Option+arrows turn the cube
+  // in the 3D view and Alt+arrows move a shape in the list)
+  for (Platform p : { Platform::Windows, Platform::Mac, Platform::Linux }) {
+    INFO(int(p));
+    CHECK(shortcutClashes(p).empty());
+  }
+  const CommandInfo * earlier = findCommand("shapes.moveEarlier");
+  const CommandInfo * turnUp = findCommand("view.turnUp");
+  REQUIRE(earlier);
+  REQUIRE(turnUp);
+  CHECK(shortcutsOn(*earlier, Platform::Mac).front() == shortcutsOn(*turnUp, Platform::Mac).front());
+  CHECK(earlier->scope != turnUp->scope);
 }
 
 TEST_CASE("access keys are unique within each menu", "[ui][commands]") {

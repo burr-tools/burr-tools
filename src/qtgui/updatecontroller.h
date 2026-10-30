@@ -25,9 +25,11 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
+#include <functional>
 #include <memory>
 
 class SettingsController;
+struct HttpResult;
 
 /* Help ▸ Check for updates, and the same check at launch (at most daily,
  * Settings ▸ General ▸ Check for updates at launch): legacy's update check
@@ -67,6 +69,11 @@ public:
    * BURRTOOLS_UPDATE_VERSION_OVERRIDE (testing) */
   static QString installedVersion(void);
 
+  /* How a check fetches GitHub's latest release: httpGet() unless set.
+   * Tests hand it a canned reply; it runs on the worker thread. */
+  using Fetch = std::function<HttpResult(void)>;
+  void setFetch(Fetch f) { m_fetch = std::move(f); }
+
 signals:
 
   void checkingChanged(void);
@@ -87,6 +94,7 @@ private:
   std::shared_ptr<Shared> m_inFlight;
   bool m_manual = false;
   int m_offered = 0;              ///< the offered release, packed (skipOffered)
+  Fetch m_fetch;                  ///< empty: httpGet()
   QTimer m_poll;
 };
 

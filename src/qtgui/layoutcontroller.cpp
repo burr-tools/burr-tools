@@ -45,7 +45,7 @@ LayoutController::LayoutController(SettingsController * settings, QObject * pare
 }
 
 btui::Density LayoutController::density(void) const {
-  return m_settings->density() == QLatin1String("minimal") ? btui::Density::Minimal : btui::Density::Standard;
+  return m_settings->densityValue();
 }
 
 btui::ColumnWidths LayoutController::columns(void) const {

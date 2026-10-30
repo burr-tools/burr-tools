@@ -112,12 +112,16 @@ ApplicationWindow {
     function shown(dialog: Loader): bool { return dialog.status === Loader.Ready && (dialog.item as Dialog).visible }
     // the message dialogs (unsaved changes, messages, an internal error) too
     function messageShown(dialog: Loader): bool { return dialog.status === Loader.Ready && (dialog.item as MessageDialog).visible }
+    // the colour chooser (Edit colour): while it is up nothing may renumber the colours
+    function chooserShown(): bool { return colourDialog.status === Loader.Ready && (colourDialog.item as ColorDialog).visible }
     readonly property bool modalOpen: shown(newDialog) || shown(commentDialog) || shown(aboutDialog)
                                       || shown(settingsDialog) || shown(noticeDialog)
                                       || shown(convertDialog) || shown(importAssembliesDialog)
                                       || shown(statusDialog) || shown(stlDialog)
                                       || shown(vectorDialog) || shown(imageDialog)
                                       || shown(shortcutsDialog) || shown(updateDialog)
+                                      || shown(deleteShapeDialog) || shown(removeColourDialog)
+                                      || chooserShown()
                                       || messageShown(discardDialog) || messageShown(messageDialog)
                                       || messageShown(internalErrorDialog)
     function showDialog(dialog: Loader) {
@@ -152,15 +156,23 @@ ApplicationWindow {
             lastToggle = null               // the keyboard moved on to something else
         }
     }
-    function keepToggleFocus(slot: Item) {
-        const t = lastToggle
-        if (t === null || t.visible)
-            return                          // not hidden by this swap
-        let p = t.parent
+    function within(item: Item, slot: Item): bool {
+        let p = item.parent
         while (p !== null && p !== slot)
             p = p.parent
-        if (p === null)
-            return                          // the other side's
+        return p !== null
+    }
+    function keepToggleFocus(slot: Item) {
+        const t = lastToggle
+        const toggled = t !== null && !t.visible && within(t, slot)
+        /* or the focus was elsewhere in the card the swap hid (a shortcut or
+         * a menu collapsed it): it would stay on an item no one sees, and
+         * Tab would start from there */
+        const f = win.activeFocusItem
+        const stranded = !toggled && f !== null && !f.visible && within(f, slot)
+        if (!toggled && !stranded)
+            return                          // not hidden by this swap, or the other side's
+        const visual = toggled ? lastToggleVisual : false
         for (let i = 0; i < slot.children.length; i++) {
             const c = slot.children[i]
             if (!c.visible)
@@ -169,7 +181,7 @@ ApplicationWindow {
             const card = c as Card
             const target = rail !== null ? rail.expandButton : card !== null ? card.collapseButton : null
             if (target !== null && target.visible) {
-                target.forceActiveFocus(lastToggleVisual ? Qt.TabFocusReason : Qt.MouseFocusReason)
+                target.forceActiveFocus(visual ? Qt.TabFocusReason : Qt.MouseFocusReason)
                 return
             }
         }
@@ -191,7 +203,7 @@ ApplicationWindow {
             required property var modelData
             sequences: modelData.sequences
             context: Qt.WindowShortcut
-            enabled: !win.modalOpen
+            enabled: !win.modalOpen && (!modelData.singleKey || App.settings.singleKeyShortcuts)
             onActivated: App.commands.trigger(modelData.key)
         }
     }
@@ -428,6 +440,21 @@ ApplicationWindow {
                                 title: body.ws === LayoutController.Entities ? qsTr("Voxel editor")
                                      : body.ws === LayoutController.Puzzle ? qsTr("Selected piece") : qsTr("Solutions")
                                 onExpandClicked: App.layout.rightCollapsed = false
+                                // the drawing colour (C09), Default as the shape's
+                                Rectangle {
+                                    objectName: "entities.editor.colour.rail"
+                                    visible: body.ws === LayoutController.Entities
+                                    width: 28
+                                    height: 28
+                                    radius: 7
+                                    color: App.colours.drawShown.valid ? App.colours.drawShown : Theme.panel2
+                                    border.width: 1
+                                    border.color: Theme.line2
+                                    Accessible.role: Accessible.StaticText
+                                    Accessible.name: qsTr("Drawing colour: %1").arg(App.colours.drawName)
+                                    HoverHandler { id: railColourHover }
+                                    BtToolTip { shown: railColourHover.hovered; text: qsTr("Drawing colour: %1").arg(App.colours.drawName) }
+                                }
                             }
                         }
                     }
@@ -459,6 +486,46 @@ ApplicationWindow {
     Loader { id: imageDialog; active: false; source: "ImageExportDialog.qml" }
     Loader { id: shortcutsDialog; active: false; source: "KeyboardShortcutsDialog.qml" }
     Loader { id: updateDialog; active: false; source: "UpdateDialog.qml" }
+    // questions before a change undo cannot fully take back
+    Loader {
+        id: deleteShapeDialog
+        active: false
+        sourceComponent: Component {
+            ConfirmDialog {
+                objectName: "entities.shapes.deleteDialog"
+                onConfirmed: App.shapes.deleteShape(subject)
+            }
+        }
+    }
+    Loader {
+        id: removeColourDialog
+        active: false
+        sourceComponent: Component {
+            ConfirmDialog {
+                objectName: "entities.editor.colour.removeDialog"
+                onConfirmed: App.colours.removeColour(subject)
+            }
+        }
+    }
+
+    function closeConfirmations() {
+        for (const l of [deleteShapeDialog, removeColourDialog])
+            if (shown(l))
+                (l.item as Dialog).close()
+    }
+
+    // the colour chooser for Edit colour (C09): the platform's own
+    Loader {
+        id: colourDialog
+        active: false
+        sourceComponent: Component {
+            ColorDialog {
+                objectName: "entities.editor.colour.chooser"
+                onAccepted: App.colours.chooseColour(selectedColor)
+                onRejected: App.colours.cancelChoose()
+            }
+        }
+    }
 
     Loader {
         id: noticeDialog
@@ -604,6 +671,7 @@ ApplicationWindow {
         active: false
         sourceComponent: Component {
             MessageDialog {
+                objectName: "shell.internalError"
                 title: qsTr("BurrTools — internal error")
                 buttons: MessageDialog.Ok
                 onAccepted: { win.quitApproved = true; Qt.quit() }
@@ -621,6 +689,9 @@ ApplicationWindow {
             d.open()
         }
         function onNewFileTypeRequested() { win.showDialog(newDialog) }
+        // a question about a row or a colour id is void once those may have changed
+        function onDocumentReplaced() { win.closeConfirmations() }
+        function onHistoryApplied() { win.closeConfirmations() }
         function onOpenFileRequested() { win.showFileDialog(openDialog) }
         function onImportFileRequested() { win.showFileDialog(importDialog) }
         function onSaveAsRequested() { win.showFileDialog(saveDialog) }
@@ -647,6 +718,42 @@ ApplicationWindow {
                 win.restoreVisibility = win.visibility
                 win.showFullScreen()
             }
+        }
+    }
+
+    // a delete that would lose solutions asks first (ShapesModel::requestDelete)
+    Connections {
+        target: App.shapes
+        function onDeleteConfirmRequested(row: int, idText: string) {
+            deleteShapeDialog.active = true
+            const d = deleteShapeDialog.item as ConfirmDialog
+            d.subject = row
+            d.ask(qsTr("Delete %1?").arg(idText),
+                  qsTr("A problem that uses %1 has solutions or a search in progress. Deleting %1 removes it from those problems and deletes their solutions that use it. Undo brings the shape back, but not the solutions.").arg(idText),
+                  qsTr("Delete"))
+        }
+    }
+    Connections {
+        target: App.colours
+        // the colours changed under the chooser: its answer would go to another
+        function onChooserCancelled() {
+            if (win.chooserShown())
+                (colourDialog.item as ColorDialog).close()
+        }
+        function onChooserRequested(title: string, initial: color) {
+            colourDialog.active = true
+            const d = colourDialog.item as ColorDialog
+            d.title = title
+            d.selectedColor = initial
+            d.open()
+        }
+        function onRemoveConfirmRequested(id: int, name: string) {
+            removeColourDialog.active = true
+            const d = removeColourDialog.item as ConfirmDialog
+            d.subject = id
+            d.ask(qsTr("Remove colour %1?").arg(name),
+                  qsTr("A problem whose shapes use %1 has solutions or a search in progress. Removing %1 deletes all of those problems' solutions, and its voxels take the shape's colour. Undo brings the colour back, but not the solutions.").arg(name),
+                  qsTr("Remove"))
         }
     }
 

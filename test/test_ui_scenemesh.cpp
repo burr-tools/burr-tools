@@ -6,6 +6,7 @@
 
 #include "../src/uicore/camera.h"
 #include "../src/uicore/scenemesh.h"
+#include "../src/uicore/voxeledit.h"
 
 #include "test_helpers.h"
 
@@ -15,6 +16,9 @@
 #include "../src/tools/xml.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <map>
 #include <set>
 #include <string>
 
@@ -233,9 +237,10 @@ TEST_CASE("flat style: variable voxels are slightly see-through with a dashed ou
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   REQUIRE_FALSE(m.translucent.empty());
+  CHECK(m.edges.size() == 12);                       // the dashed outline: lines, one per edge
   for (const auto & vert : m.translucent) {
     CHECK(vert.cell[0] == 1.0f);
-    CHECK(vert.edge[3] == 1.0f);                     // dashed
+    CHECK(vert.edge[3] == 0.0f);                     // no dashes drawn by the face itself
     CHECK(vert.color.a == 153);                      // 60 %
     CHECK(vert.color.b == 255);                      // its colour, not legacy's black marker
   }
@@ -327,6 +332,95 @@ TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the vari
   CHECK(buildShapeMesh(*w, o).empty());
 }
 
+TEST_CASE("STL style: a face across several layers is cut at them, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the exporter merges a column's sides into one face; each layer gets its own pieces
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 1, 1, 3);
+  v->setAll(voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  const ShapeMesh m = buildShapeMesh(*v, o);
+  REQUIRE(m.opaque.size() % 3 == 0);
+  std::set<int> layers;
+  for (size_t i = 0; i < m.opaque.size(); i += 3) {
+    const float cz = m.opaque[i].cell[2];
+    layers.insert(int(cz));
+    for (size_t k = 0; k < 3; k++) {
+      const MeshVertex & mv = m.opaque[i + k];
+      CHECK(mv.cell[2] == cz);                              // one cell a triangle
+      CHECK(mv.pos[2] >= cz - 1e-3f);                       // and within its layer
+      CHECK(mv.pos[2] <= cz + 1.0f + 1e-3f);
+    }
+  }
+  CHECK(layers == std::set<int>{ 0, 1, 2 });
+}
+
+TEST_CASE("STL style: every voxel type's faces are cut at its cells' walls, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the prism, rhombic and tetra-octa meshers merge faces across cells as
+  // the brick exporter does; spheres' faces are each ball's own. Every
+  // triangle lies in the one cell it names -- the cell's extent from a
+  // shape holding that voxel alone; a cell the surface only grazes at a
+  // corner may hold a piece of the chamfer -- and every layer with a cell
+  // on the surface has pieces of its own
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  for (auto t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    INFO(bttest::gridName(t));
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 4;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (unsigned x = 0; x < n; x++)
+      for (unsigned y = 0; y < n; y++)
+        for (unsigned z = 0; z < n; z++)
+          if (v->validCoordinate(x, y, z))
+            v->setState(x, y, z, voxel_c::VX_FILLED);
+
+    // the layers with a cell on the surface, and a cell's extent
+    MeshOptions flat = blue();
+    flat.style = VoxelStyle::Flat;
+    std::set<int> surfaceLayers;
+    for (const MeshVertex & mv : buildShapeMesh(*v, flat).opaque)
+      surfaceLayers.insert(int(mv.cell[2]));
+    std::map<std::array<int, 3>, std::array<float, 6>> extent;
+    auto extentOf = [&](const std::array<int, 3> & c) {
+      auto it = extent.find(c);
+      if (it != extent.end())
+        return it->second;
+      auto one = bttest::makeVoxel(gt, n, n, n);
+      one->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_FILLED);
+      std::array<float, 6> box{ 1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f };
+      for (const MeshVertex & w : buildShapeMesh(*one, flat).opaque)
+        for (int k = 0; k < 3; k++) {
+          box[size_t(k)] = std::min(box[size_t(k)], w.pos[k]);
+          box[size_t(k) + 3] = std::max(box[size_t(k) + 3], w.pos[k]);
+        }
+      extent[c] = box;
+      return box;
+    };
+
+    const ShapeMesh m = buildShapeMesh(*v, o);
+    REQUIRE(m.opaque.size() % 3 == 0);
+    std::set<int> layers;
+    int outside = 0;
+    for (size_t i = 0; i < m.opaque.size(); i += 3) {
+      const MeshVertex * tri = &m.opaque[i];
+      const std::array<int, 3> c{ int(tri[0].cell[0]), int(tri[0].cell[1]), int(tri[0].cell[2]) };
+      layers.insert(c[2]);
+      for (int k = 0; k < 3; k++)
+        REQUIRE((tri[k].cell[0] == tri[0].cell[0] && tri[k].cell[1] == tri[0].cell[1] && tri[k].cell[2] == tri[0].cell[2]));
+      REQUIRE(v->getState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2])) == voxel_c::VX_FILLED);
+      const std::array<float, 6> box = extentOf(c);
+      for (int k = 0; k < 3; k++)
+        for (int a = 0; a < 3; a++)
+          if (tri[k].pos[a] < box[size_t(a)] - 1e-3f || tri[k].pos[a] > box[size_t(a) + 3] + 1e-3f)
+            outside++;
+    }
+    CHECK(outside == 0);
+    for (const int l : surfaceLayers)
+      CHECK(layers.count(l) == 1);
+  }
+}
+
 TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
   MeshOptions o = blue();
   o.style = VoxelStyle::Stl;
@@ -401,6 +495,49 @@ TEST_CASE("picking a cube from outside finds the voxel and face under the ray", 
   CHECK_FALSE(pick(pm, { 1.5f, 0.5f, 10 }, { 0, 0, -1 }).hit);
 }
 
+TEST_CASE("the fast pick mesh picks what the library's flat mesh does, for every voxel type", "[ui][scenemesh]") {
+  // rays from every side through a scattered shape (variable voxels among
+  // the fixed ones) meet the same voxel and face in both
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int x = 0; x < 6; x++)
+      for (int y = 0; y < 6; y++)
+        for (int z = 0; z < 6; z++)
+          if (v->validCoordinate(x, y, z) && (x * 7 + y * 3 + z * 5) % 4 != 0)
+            v->setState(unsigned(x), unsigned(y), unsigned(z),
+                        (x + y + z) % 5 == 0 ? voxel_c::VX_VARIABLE : voxel_c::VX_FILLED);
+    const auto fast = buildPickMesh(*v);
+    const auto slow = buildPickMeshFromFlatMesh(*v);
+    REQUIRE(!fast.empty());
+    float cx, cy, cz;
+    v->calculateSize(&cx, &cy, &cz);
+    int compared = 0, hits = 0;
+    const Vec3 dirs[6] = { { 0, 0, -1 }, { 0, 0, 1 }, { 0, -1, 0 }, { 0, 1, 0 }, { -1, 0, 0 }, { 1, 0, 0 } };
+    for (const Vec3 & d : dirs)
+      for (int i = 0; i < 12; i++)
+        for (int j = 0; j < 12; j++) {
+          // a grid of rays across the box, off the cells' edges
+          const float u = (i + 0.37f) / 12.0f, w = (j + 0.61f) / 12.0f;
+          Vec3 o{ u * cx, w * cy, w * cz };
+          if (d.z != 0) o = { u * cx, w * cy, d.z < 0 ? cz + 5 : -5 };
+          if (d.y != 0) o = { u * cx, d.y < 0 ? cy + 5 : -5, w * cz };
+          if (d.x != 0) o = { d.x < 0 ? cx + 5 : -5, u * cy, w * cz };
+          const PickHit a = pick(fast, o, d), b = pick(slow, o, d);
+          compared++;
+          CHECK(a.hit == b.hit);
+          if (a.hit && b.hit) {
+            hits++;
+            CHECK(std::abs(a.t - b.t) < 1e-3f);
+            CHECK(a.voxel == b.voxel);
+            CHECK(a.face == b.face);
+          }
+        }
+    CHECK(hits > compared / 4);
+  }
+}
+
 TEST_CASE("picking works through the camera on an example of every grid", "[ui][scenemesh]") {
   // one example per grid type from examples/; a ray through the centre of the
   // view of a framed, non-empty shape always meets it
@@ -456,6 +593,39 @@ TEST_CASE("the layer slab is one layer thick and spans the grid", "[ui][scenemes
   CHECK(layerCount(*v, Plane::YZ) == 4);
 }
 
+TEST_CASE("the layer slab holds every voxel of its layer as drawn, of every voxel type", "[ui][scenemesh]") {
+  // the spheres of one layer reach into the next (centres sqrt(0.5) apart,
+  // radius 0.5): the slab is as thick as they are, not as the layer step
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int layer = 0; layer < 6; layer++) {
+      INFO(bttest::gridName(t) << ", layer " << layer);
+      auto only = bttest::makeVoxel(gt, 6, 6, 6);
+      for (int x = 0; x < 6; x++)
+        for (int y = 0; y < 6; y++)
+          if (only->validCoordinate(x, y, layer))
+            only->setState(unsigned(x), unsigned(y), unsigned(layer), voxel_c::VX_FILLED);
+      MeshOptions o;
+      o.style = VoxelStyle::Flat;
+      const ShapeMesh m = buildShapeMesh(*only, o);
+      if (m.opaque.empty())
+        continue;
+      float lo = 1e30f, hi = -1e30f;
+      for (const MeshVertex & mv : m.opaque) {
+        lo = std::min(lo, mv.pos[2]);
+        hi = std::max(hi, mv.pos[2]);
+      }
+      const Box s = layerSlab(*v, Plane::XY, layer);
+      CHECK(s.min.z <= lo + 1e-3f);
+      CHECK(s.max.z >= hi - 1e-3f);
+      // and no thicker than they are
+      CHECK(s.min.z >= lo - 0.02f);
+      CHECK(s.max.z <= hi + 0.02f);
+    }
+  }
+}
+
 TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the grid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 4, 3, 5);
@@ -473,4 +643,198 @@ TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the 
   REQUIRE(axes.size() == 3);
   CHECK_THAT(axes[0].b.x, WithinAbs(4.7, 1e-5));
   CHECK_THAT(axes[2].b.z, WithinAbs(5.7, 1e-5));
+}
+
+TEST_CASE("a ghost is its cells' every face and edge, in its style, never dimmed", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  v->setAll(voxel_c::VX_FILLED);              // the shape's voxels hide no face of a ghost
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 140 }, Rgba8{ 1, 2, 3, 255 }, 2.0f, 5.0f, 4.0f };
+  addGhost(faces, lines, *v, { { 1, 1, 1 } }, s);
+  CHECK(faces.size() == 36);                  // 6 faces, 2 triangles each
+  REQUIRE(lines.size() == 12);
+  for (const MeshVertex & m : faces) {
+    CHECK(m.color == s.fill);
+    CHECK(m.cell[0] < -1000);
+    CHECK(m.pos[0] >= 1.0f - 1e-5f);
+    CHECK(m.pos[0] <= 2.0f + 1e-5f);
+  }
+  for (const LineSeg & l : lines) {
+    CHECK(l.color == s.outline);
+    CHECK(l.widthDp == 2.0f);
+    CHECK(l.dashDp == 5.0f);
+  }
+  // two neighbours: both cubes whole, their shared edges once
+  faces.clear();
+  lines.clear();
+  addGhost(faces, lines, *v, { { 0, 0, 0 }, { 1, 0, 0 } }, s);
+  CHECK(faces.size() == 72);
+  CHECK(lines.size() == 20);
+  // every voxel type has a ghost; none for no cells, nor for a coordinate
+  // that is no cell of the type
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c g(t);
+    auto w = bttest::makeVoxel(g, 3, 3, 3);
+    std::array<int, 3> cell{ -1, -1, -1 }, notCell{ -1, -1, -1 };
+    for (int i = 0; i < 27; i++)
+      (w->validCoordinate(i % 3, i / 3 % 3, i / 9) ? cell : notCell) = std::array<int, 3>{ i % 3, i / 3 % 3, i / 9 };
+    faces.clear();
+    lines.clear();
+    addGhost(faces, lines, *w, { cell }, s);
+    CHECK(faces.size() >= 12);
+    const size_t n = faces.size();
+    addGhost(faces, lines, *w, {}, s);
+    addGhost(faces, lines, *w, { notCell, { 7, 0, 0 } }, s);
+    CHECK(faces.size() == n);
+  }
+}
+
+TEST_CASE("a transform's preview: the result centred on the shape, and legacy's hint", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 4, 2, 2);
+  auto r = bttest::makeVoxel(gt, 2, 4, 2);    // as a turn about Z leaves it
+  r->setState(0, 0, 0, voxel_c::VX_FILLED);
+  r->setState(1, 3, 1, voxel_c::VX_VARIABLE);
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 128 }, Rgba8{ 1, 2, 3, 255 } };
+  addResultGhost(faces, lines, *v, r.get(), s);
+  CHECK(faces.size() == 72);                  // both voxels, fixed and variable
+  // the result's box (2 x 4 x 2) centred on the shape's (4 x 2 x 2): x from 1, y from -1
+  float lo[3] = { 1e9f, 1e9f, 1e9f };
+  for (const MeshVertex & m : faces)
+    for (int k = 0; k < 3; k++)
+      lo[k] = std::min(lo[k], m.pos[k]);
+  CHECK_THAT(lo[0], WithinAbs(1.0, 1e-4));
+  CHECK_THAT(lo[1], WithinAbs(-1.0, 1e-4));
+  CHECK_THAT(lo[2], WithinAbs(0.0, 1e-4));
+  faces.clear();
+  addResultGhost(faces, lines, *v, nullptr, s);   // blocked: no ghost
+  CHECK(faces.empty());
+
+  // legacy's radius: min(0.4 * the box's half diagonal + 0.5, 2)
+  CHECK_THAT(transformHintRadius(*v), WithinAbs(0.4 * std::sqrt(24.0) / 2 + 0.5, 1e-4));
+  CHECK(transformHintRadius(*bttest::makeVoxel(gt, 20, 20, 20)) == 2.0f);
+
+  const Vec3 c{ 2, 1, 1 };
+  const float rad = 1.5f;
+  const Rgba8 col{ 255, 0, 0, 255 };
+  auto within = [&](const std::vector<LineSeg> & ls) {
+    for (const LineSeg & l : ls)
+      for (Vec3 p : { l.a, l.b })
+        if (length(p - c) > rad + 1e-4f)
+          return false;
+    return true;
+  };
+  // a rotation: an arc of 32 strokes about the axis, in its plane, and a head of 2
+  std::vector<LineSeg> h;
+  addTransformHint(h, c, rad, TransformHint::Rotate, { 0, 0, 1 }, 90, col, 3);
+  REQUIRE(h.size() == 34);
+  for (int i = 0; i < 32; i++) {
+    CHECK_THAT(h[size_t(i)].a.z, WithinAbs(1.0, 1e-5));
+    CHECK_THAT(length(h[size_t(i)].a - c), WithinAbs(rad, 1e-4));
+  }
+  CHECK(h[0].color == col);
+  CHECK(h[0].widthDp == 3.0f);
+  // a mirror: the shaft along the normal and a head at each end; a nudge one head
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Mirror, { 2, 0, 0 }, 0, col, 3);
+  REQUIRE(h.size() == 5);
+  CHECK_THAT(h[0].a.x, WithinAbs(c.x - rad, 1e-5));
+  CHECK_THAT(h[0].b.x, WithinAbs(c.x + rad, 1e-5));
+  CHECK(within(h));
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 1, 0 }, 0, col, 3);
+  CHECK(h.size() == 3);
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 0, 0 }, 0, col, 3);   // no direction: nothing
+  CHECK(h.empty());
+}
+
+TEST_CASE("the slab holds its layer in every plane the voxel type has", "[ui][scenemesh]") {
+  // C06 / C08: XZ and YZ for all types but the prism (2026-10-28) -- the
+  // slab along Y or X holds that layer's cells as drawn, as the XY one does
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 5;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (const Plane plane : { Plane::XY, Plane::XZ, Plane::YZ }) {
+      if (!planeAvailable(t, plane))
+        continue;
+      const int axis = layerAxis(plane);
+      int seen = 0;
+      for (int layer = 0; layer < layerCount(*v, plane); layer++) {
+        INFO(bttest::gridName(t) << ", plane " << int(plane) << ", layer " << layer);
+        const auto only = layerCells(*v, plane, layer);
+        MeshOptions o;
+        o.style = VoxelStyle::Flat;
+        const ShapeMesh m = buildShapeMesh(*only, o);
+        if (m.opaque.empty())
+          continue;
+        seen++;
+        float lo = 1e30f, hi = -1e30f;
+        for (const MeshVertex & mv : m.opaque) {
+          lo = std::min(lo, mv.pos[axis]);
+          hi = std::max(hi, mv.pos[axis]);
+        }
+        const Box s = layerSlab(*v, plane, layer);
+        CHECK(s.min[axis] <= lo + 1e-3f);
+        CHECK(s.max[axis] >= hi - 1e-3f);
+        // across the layer it spans the grid
+        const Box g = gridBounds(*v);
+        for (int k = 0; k < 3; k++)
+          if (k != axis) {
+            CHECK(s.min[k] <= g.min[k] + 1e-3f);
+            CHECK(s.max[k] >= g.max[k] - 1e-3f);
+          }
+      }
+      INFO(bttest::gridName(t) << ", plane " << int(plane));
+      CHECK(seen >= 2);
+    }
+  }
+}
+
+TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
+  // the outline dashes run along an edge as one line, the same seen from
+  // both faces that meet there, not restarting in every triangle
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(2, 0, 0, voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Flat;
+  ShapeMesh m = buildShapeMesh(*v, o);
+  // two unit cubes side by side: 8 edges along X, 4 across at each of x = 0, 1, 2
+  REQUIRE(m.edges.size() == 20);
+  std::set<std::array<float, 6>> seen;
+  for (const LineSeg & e : m.edges) {
+    CHECK(e.dashDp > 0);
+    CHECK(e.gapDp > 0);
+    CHECK(e.color.a < 255);
+    CHECK(std::abs(length(e.b - e.a) - 1.0f) < 1e-4f);
+    std::array<float, 6> k{ e.a.x, e.a.y, e.a.z, e.b.x, e.b.y, e.b.z };
+    std::array<float, 6> r{ e.b.x, e.b.y, e.b.z, e.a.x, e.a.y, e.a.z };
+    CHECK(seen.count(r) == 0);
+    CHECK(seen.insert(k).second);
+  }
+  // their faces carry no outline of their own; the fixed voxel's still do
+  for (const auto & vert : m.translucent)
+    for (int i = 0; i < 3; i++)
+      CHECK(vert.edge[i] > 0.5f);
+  bool fixedOutlined = false;
+  for (const auto & vert : m.opaque)
+    fixedOutlined |= vert.edge[0] < 1.5f;     // the side opposite corner 0 is a polygon side
+  CHECK(fixedOutlined);
+
+  // no variable voxel, no lines; the other styles draw none either
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  CHECK(buildShapeMesh(*v, o).edges.empty());
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  o.style = VoxelStyle::Legacy;
+  CHECK(buildShapeMesh(*v, o).edges.empty());
 }

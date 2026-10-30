@@ -189,7 +189,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -382,7 +382,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -791,7 +791,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ninja-build build-essential cmake libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 imagemagick
         pip install --user "meson>=1.7"
 
@@ -986,8 +986,23 @@ jobs:
 
     # The render tests try Metal and skip where the runner offers none (not
     # yet known for these VMs; the test log says which backend was used).
+    # The gallery's reference images exist for macOS
+    # (test/qtgui/snapshots/macos), so a missing one fails too.
     - name: Test
+      env:
+        BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
       run: meson test -C build-qt --suite fast --print-errorlogs
+
+    # The suites run offscreen, where AppKit draws no NSCursor image and the
+    # system-arrow test skips: run it once on the window server, so
+    # systempointer_mac.mm is exercised, not only compiled. The other test
+    # classes report the function as not found, so the exit status says
+    # nothing: TestEditor's own line does.
+    - name: The system's arrow (cocoa)
+      run: |
+        ./build-qt/test/qtgui/test_qtgui -platform cocoa theCursorsDrawOnTheSystemsArrow > "$RUNNER_TEMP/arrow.txt" 2>&1 || true
+        grep 'TestEditor::' "$RUNNER_TEMP/arrow.txt"
+        grep -q 'PASS   : TestEditor::theCursorsDrawOnTheSystemsArrow()' "$RUNNER_TEMP/arrow.txt"
 
     - name: Upload the test log
       if: failure()
@@ -997,9 +1012,9 @@ jobs:
         path: build-qt/meson-logs/testlog.txt
         if-no-files-found: ignore
 
-    # no macOS reference images yet: the grabs, to commit as snapshots/macos
-    - name: Upload gallery grabs
-      if: always()
+    # grabs that did not match their reference, with the reference and a diff
+    - name: Upload gallery differences
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: gallery-snapshots-macos

@@ -19,6 +19,7 @@ TestCase {
         App.layout.rightCollapsed = false
         App.viewport.navMode = "orbit"
         App.settings.showViewCube = true
+        App.settings.density = "standard"
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null)
         win.width = 1600
@@ -47,8 +48,8 @@ TestCase {
         }
         for (const n of ["zoom", "views", "fit"])
             compare(findChild(win.contentItem, "entities.viewport.toolbar." + n), null)
-        // editing in 3D arrives with the editing phase
-        verify(!item("entities.viewport.toolbar.edit").enabled)
+        // Edit mode (P5): a toggle
+        verify(item("entities.viewport.toolbar.edit").enabled)
     }
 
     function test_orbitAndPanAreARadioPair() {
@@ -132,5 +133,208 @@ TestCase {
         compare(item("entities.viewport.toolbar.orbit").width, 34)
         App.layout.escape()
         compare(item("entities.viewport.toolbar.orbit").width, Theme.toolbarButtonWidth)
+    }
+
+    function cleanup() {
+        App.editor.editMode = false
+        App.editor.tool = EditorController.Fixed
+        App.settings.singleKeyShortcuts = true
+    }
+
+    // keys reach the window's shortcuts only while it is the active one
+    // and while no modal is up: the puzzle's comment comes up as a message
+    function activate() {
+        win.requestActivate()
+        tryVerify(() => win.active, 3000)
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                break
+            m.close()
+        }
+        tryVerify(() => !win.modalOpen, 1000)
+    }
+
+    function test_minimalHidesTheToolbarUntilItIsWanted() {
+        // AC-DEN-05 (density.md section 3): in Minimal the toolbar is hidden
+        // -- faded, up 10 dp, a 40 x 4 handle in its place -- and shows for the
+        // pointer near the top, keyboard focus, its open menu and the mode
+        // keys; it hides 700 ms after the pointer leaves the zone. Standard
+        // always shows it.
+        activate()                                        // the puzzle's comment out of the way
+        const card = item("entities.viewport")
+        const toolbar = item("entities.viewport.toolbar")
+        const handle = item("entities.viewport.toolbar.handle")
+        verify(!card.autoHide)
+        compare(toolbar.opacity, 1)
+        verify(!handle.visible)
+        App.settings.density = "minimal"
+        compare(Theme.toolbarRevealZone, 72)
+        verify(card.autoHide)
+        mouseMove(card, card.width / 2, card.height / 2)
+        tryCompare(toolbar, "opacity", 0)
+        verify(handle.visible)
+        compare(handle.width, 40)
+
+        // the pointer near the top edge
+        mouseMove(card, card.width / 2, 60)
+        tryCompare(toolbar, "opacity", 1)
+        mouseMove(card, card.width / 2, card.height / 2)
+        wait(Theme.toolbarHideDelay / 2)
+        compare(toolbar.opacity, 1)                       // not before the delay
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // its menu open keeps it
+        mouseMove(card, card.width / 2, 60)
+        tryCompare(toolbar, "opacity", 1)
+        mouseClick(item("entities.viewport.toolbar.display"))
+        mouseMove(card, card.width / 2, card.height / 2)
+        wait(Theme.toolbarHideDelay + 300)
+        compare(toolbar.opacity, 1)
+        mouseClick(item("entities.viewport.toolbar.display"))   // the menu goes
+        // the open menu had the hover; the pointer's next move tells the zone it left
+        mouseMove(card, card.width / 2 + 10, card.height / 2)
+        verify(!item("entities.viewport.toolbar.display").on)
+        verify(!toolbar.activeFocus)                    // a click on a button pins nothing
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // keyboard focus, then Esc lets go of it
+        toolbar.forceActiveFocus(Qt.TabFocusReason)
+        verify(toolbar.activeFocus)
+        tryCompare(toolbar, "opacity", 1)
+        keyClick(Qt.Key_Escape)
+        verify(!toolbar.activeFocus)
+        tryCompare(toolbar, "opacity", 0, 2000)
+
+        // a mode key shows it a moment
+        App.commands.trigger("view.pan")
+        tryCompare(toolbar, "opacity", 1)
+        tryCompare(toolbar, "opacity", 0, 3000)
+        App.viewport.navMode = "orbit"
+
+        // back to Standard: shown, no handle
+        App.settings.density = "standard"
+        tryCompare(toolbar, "opacity", 1)
+        verify(!handle.visible)
+    }
+
+    function test_theEditButtonAndEToggleEditMode() {
+        // AC-C06-07 / 09: the button and E latch Edit mode; the button shows
+        // the tool, on in Edit mode, and its tooltip says what a click does
+        activate()
+        const edit = item("entities.viewport.toolbar.edit")
+        verify(!App.editor.editMode)
+        verify(edit.tip.indexOf("Press E to turn edit mode on") >= 0)
+        compare(edit.badge, String(App.editor.toolInEffect + 1))
+        mouseClick(edit)
+        verify(App.editor.editMode)
+        verify(edit.on)
+        verify(edit.tip.indexOf("Press E to leave edit mode") >= 0)
+        keyClick(Qt.Key_E)
+        verify(!App.editor.editMode)
+        keyClick(Qt.Key_E)
+        verify(App.editor.editMode)
+        App.editor.tool = EditorController.Erase
+        compare(edit.badge, "3")
+        verify(edit.glyphSource.toString().startsWith("image://editglyph/2?"))       // Erase's drawing
+        // a palette colour drawn: the icon's badge or drop takes it, as the cursor does
+        App.colours.addColour()
+        App.colours.select(1)
+        verify(edit.glyphSource.toString().indexOf("color=" + App.colours.drawRgb.toString().slice(1)) > 0)
+        App.colours.select(0)
+        // a quick tool held over the view looks as Edit mode does (product
+        // decision 2026-10-27): lit, no outline of its own
+        App.editor.editMode = false
+        edit.override = true
+        verify(edit.lit)
+        compare(findChild(edit, "override"), null)
+        edit.override = Qt.binding(() => App.editor.quickHeld3d)
+    }
+
+    function test_singleKeyShortcutsCanBeTurnedOff() {
+        // WCAG 2.1.4: Settings ▸ General ▸ Single-key shortcuts
+        activate()
+        App.settings.singleKeyShortcuts = false
+        keyClick(Qt.Key_P)
+        compare(App.viewport.navMode, "orbit")
+        keyClick(Qt.Key_E)
+        verify(!App.editor.editMode)
+        keyClick(Qt.Key_2)
+        compare(App.editor.tool, EditorController.Fixed)
+        App.settings.singleKeyShortcuts = true
+        keyClick(Qt.Key_P)
+        compare(App.viewport.navMode, "pan")
+        keyClick(Qt.Key_E)
+        verify(App.editor.editMode)
+    }
+
+    function test_tabReachesTheCanvasAndRingsTheCard() {
+        // WCAG 2.1.1 / 2.4.7: the canvas is a Tab stop after the toolbar,
+        // ringed on the card's edge, and its keys are the viewport's
+        activate()
+        const canvas = item("entities.viewport.surface")
+        const ring = item("entities.viewport.focusRing")
+        verify(canvas.activeFocusOnTab)
+        verify(!ring.visible)
+        item("entities.viewport.toolbar").forceActiveFocus(Qt.TabFocusReason)
+        keyClick(Qt.Key_Tab)
+        verify(canvas.activeFocus)
+        verify(ring.visible)
+        // a key of its own, not the window's: O stays the window's orbit mode
+        App.viewport.navMode = "pan"
+        keyClick(Qt.Key_O)
+        compare(App.viewport.navMode, "orbit")
+        keyClick(Qt.Key_Left)                              // orbits; the shapes list is not involved
+        compare(App.shapes.selected, App.shapes.selected)
+        // a click in the view takes no focus (C20)
+        item("entities.viewport.toolbar").forceActiveFocus(Qt.TabFocusReason)
+        mouseClick(canvas, 300, 300)
+        verify(!canvas.activeFocus)
+    }
+
+    function test_nothingOpaqueCoversTheCanvas() {
+        // a child with a negative z is drawn behind its parent's own fill:
+        // the canvas, below the toolbar, must not be under an opaque card
+        const canvas = item("entities.viewport.surface")
+        const card = item("entities.viewport")
+        verify(canvas.parent === card)
+        if (canvas.z < 0)
+            compare(card.color.a, 0)
+        // and every sibling drawn below it is below in z too
+        for (const c of card.children)
+            if (c !== canvas && c.visible && c.z < 0)
+                verify(c.z < canvas.z, c.objectName + " drawn over the canvas")
+    }
+
+    function test_theHintNamesTheQuickTools() {
+        // C06 hint line 1, in Entities
+        verify(item("entities.viewport.hint.tools").visible)
+        App.layout.workspace = LayoutController.Puzzle
+        verify(!item("entities.viewport.hint.tools").visible)
+    }
+
+    // the row's words in order, the key badges' too
+    function rowText(row) {
+        let words = []
+        for (let i = 0; i < row.children.length; i++)
+            if (row.children[i].text !== undefined)
+                words.push(String(row.children[i].text).trim())
+        return words.filter(w => w.length > 0).join(" ")
+    }
+
+    function test_theHintSaysWhatEachGestureDoes() {
+        // each pair: key + gesture, then its effect (user feedback 2026-10-28)
+        compare(rowText(item("entities.viewport.hint.tools")),
+                Qt.platform.os === "osx"
+                ? "Shift +click fixed voxel · Command +click variable voxel · Option +click erase"
+                : "Shift +click fixed voxel · Alt +click variable voxel · Ctrl +click erase")
+        const nav = item("entities.viewport.hint.navigation")
+        const was = App.viewport.navMode
+        App.viewport.navMode = "orbit"
+        compare(rowText(nav), "Drag orbit · Shift +drag or middle-drag pan · Wheel zoom")
+        App.viewport.navMode = "pan"
+        compare(rowText(nav), "Drag or middle-drag pan · Shift +drag orbit · Wheel zoom")
+        App.viewport.navMode = was
     }
 }

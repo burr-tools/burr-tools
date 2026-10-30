@@ -26,6 +26,7 @@
       "axisY": "#2fa85a",
       "axisZ": "#2f6df6",
       "danger": "#d92d20",
+      "dangerText": "#b42318",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "dark": {
@@ -44,6 +45,7 @@
       "axisY": "#4bd17f",
       "axisZ": "#5b9bff",
       "danger": "#ff7066",
+      "dangerText": "#ff7066",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "glyph": {
@@ -153,6 +155,7 @@
   "motion": {
     "columnMs": 200,
     "chevronMs": 150,
+    "reorderMs": 150,
     "switchMs": 150,
     "flashMs": 2400,
     "tooltipDelayMs": 500
@@ -171,6 +174,7 @@
     "standard": {
       "topBar": 36,
       "statusBar": 24,
+      "statusBarFont": 11.5,
       "workspaceRail": 60,
       "leftCard": 320,
       "rightCard": 340,
@@ -201,6 +205,7 @@
         32,
         24
       ],
+      "drawSwatch": 32,
       "puzzleTile": [
         96,
         50
@@ -212,6 +217,7 @@
     "minimal": {
       "topBar": 32,
       "statusBar": 22,
+      "statusBarFont": 11,
       "workspaceRail": 44,
       "leftCard": 264,
       "rightCard": 320,
@@ -242,6 +248,7 @@
         30,
         22
       ],
+      "drawSwatch": 26,
       "puzzleTile": [
         78,
         46

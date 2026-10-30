@@ -438,6 +438,8 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/commands.cpp',
     'src/uicore/depthsort.cpp',
     'src/uicore/documentsession.cpp',
+    'src/uicore/drawcolours.cpp',
+    'src/uicore/gridcells.cpp',
     'src/uicore/imagepages.cpp',
     'src/uicore/layoutmodel.cpp',
     'src/uicore/palette.cpp',
@@ -445,10 +447,14 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/puzzletools.cpp',
     'src/uicore/scenemesh.cpp',
     'src/uicore/settingsstore.cpp',
+    'src/uicore/shapelist.cpp',
+    'src/uicore/shapeops.cpp',
     'src/uicore/vecmath.cpp',
     'src/uicore/vectorexport.cpp',
     'src/uicore/viewcube.cpp',
+    'src/uicore/voxeledit.cpp',
     'src/uicore/windowplacement.cpp',
+    'src/uicore/xcursor.cpp',
   ],
   include_directories: inc,
   link_with: libburr_core,
@@ -461,14 +467,21 @@ uicore_test_src = [
   'test/test_ui_commands.cpp',
   'test/test_ui_depthsort.cpp',
   'test/test_ui_documentsession.cpp',
+  'test/test_ui_drawcolours.cpp',
+  'test/test_ui_gridcells.cpp',
   'test/test_ui_layoutmodel.cpp',
   'test/test_ui_palette.cpp',
   'test/test_ui_puzzletools.cpp',
   'test/test_ui_scenemesh.cpp',
   'test/test_ui_settingsstore.cpp',
+  'test/test_ui_shapelist.cpp',
+  'test/test_ui_shapeops.cpp',
   'test/test_ui_vectorexport.cpp',
   'test/test_ui_viewcube.cpp',
+  'test/test_ui_vocabulary.cpp',
+  'test/test_ui_voxeledit.cpp',
   'test/test_ui_windowplacement.cpp',
+  'test/test_ui_xcursor.cpp',
   'test/alloccount.cpp',
   'test/bench_ui.cpp',
 ]
@@ -487,6 +500,7 @@ endif
 test_burrtools = executable('test_burrtools',
   ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_exact_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'test/test_thread_protocol.cpp', 'src/gui/solveprogresscache.cpp',
     'test/test_puzzle_history.cpp',
+    'test/test_ps3dloader.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
     'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
   include_directories: inc,
@@ -691,8 +705,19 @@ if host_machine.system() == 'darwin' and qt_build_rpath != ''
   endif
 endif
 
+# Qt found through qmake as frameworks (macOS without pkg-config) gets no
+# -DQT_<MODULE>_LIB from meson, which its .pc files and its non-framework
+# qmake path both add. Without QT_GUI_LIB, <QTest> leaves out its GUI half
+# (qWaitForWindowExposed, the QWindow mouse and key events) and test_qtgui
+# does not compile. The tests add QtTest's own (test/qtgui/meson.build).
+qt_module_defines = []
+if host_machine.system() == 'darwin' and qt6_dep.found() and qt6_dep.type_name() == 'config-tool'
+  qt_module_defines = ['-DQT_CORE_LIB', '-DQT_GUI_LIB', '-DQT_QML_LIB', '-DQT_QUICK_LIB',
+                       '-DQT_QUICKCONTROLS2_LIB', '-DQT_SVG_LIB']
+endif
+
 # what every Qt target compiles with
-qt_cpp_args = qt_macos_args + qt_private_args
+qt_cpp_args = qt_macos_args + qt_private_args + qt_module_defines
 
 if qt6_dep.found()
   subdir('src/qtgui')

@@ -21,21 +21,25 @@
 #include "viewportcontroller.h"
 
 #include "documentcontroller.h"
+#include "editorcontroller.h"
 #include "guarded.h"
 #include "layoutcontroller.h"
 #include "localpath.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
+#include "statuscontroller.h"
 #include "theme.h"
 
 #include "../uicore/palette.h"
 #include "../uicore/vectorexport.h"
+#include "../uicore/vocabulary.h"
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QThread>
 
 #include <algorithm>
@@ -55,14 +59,12 @@ namespace {
              std::uint8_t(std::clamp(c.alphaF() * alpha, 0.0f, 1.0f) * 255.0f + 0.5f) };
   }
 
-  btui::Plane planeOf(int p) {
-    return p == 1 ? btui::Plane::XZ : (p == 2 ? btui::Plane::YZ : btui::Plane::XY);
-  }
+  QString word(std::string_view w) { return QString::fromLatin1(w.data(), qsizetype(w.size())); }
 }
 
 ViewportController::ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                                       LayoutController * layout, QObject * parent) :
-  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout)
+                                       LayoutController * layout, EditorController * editor, QObject * parent) :
+  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor)
 {
   /* the camera, lighting and voxel style follow the settings in
    * SceneController, connected first; Settings ▸ Voxel style changes the
@@ -87,7 +89,20 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   connect(m_shapes, &ShapesModel::countChanged, this, &ViewportController::refreshShape);
   connect(m_doc, &DocumentController::documentReplaced, this, &ViewportController::refreshShape);
   connect(m_doc, &DocumentController::historyApplied, this, &ViewportController::refreshShape);
-  connect(m_doc, &DocumentController::puzzleEdited, this, &ViewportController::refreshShape);
+  connect(m_doc, &DocumentController::puzzleEdited, this,
+          [this](int, DocumentController::Change c) { edited(c); });
+  // the slab follows the editor's plane and layer, the ghosts its hover preview
+  connect(m_editor, &EditorController::layerChanged, this, [this] {
+    updateSlab();
+    emit frameChanged();
+  });
+  connect(m_editor, &EditorController::previewChanged, this, &ViewportController::frameChanged);
+  connect(this, &SceneController::clicked, this, &ViewportController::click);
+  // Edit mode, the tool or Mirror / Span changed under a still pointer: the target follows
+  connect(m_editor, &EditorController::editModeChanged, this, [this] {
+    if (m_editor->over3d())
+      pointerHover(m_hoverX, m_hoverY, QGuiApplication::queryKeyboardModifiers());
+  });
 
   refreshShape();
   buildMesh();
@@ -109,8 +124,12 @@ void ViewportController::setDisplay(const char * key, bool & option, bool v) {
   emit frameChanged();
 }
 
+QString ViewportController::navMode(void) const {
+  return word(btui::kNavModes.word(m_pan ? btui::NavMode::Pan : btui::NavMode::Orbit));
+}
+
 void ViewportController::setNavMode(const QString & m) {
-  const bool pan = (m == QLatin1String("pan"));
+  const bool pan = btui::kNavModes.parse(m.toStdString()) == btui::NavMode::Pan;
   if (pan == m_pan)
     return;
   m_pan = pan;
@@ -123,67 +142,39 @@ void ViewportController::setDisplayLayerSlab(bool v) { setDisplay(kSlab, m_displ
 void ViewportController::setDisplayDimOtherLayers(bool v) { setDisplay(kDim, m_display.dim, v); }
 
 QString ViewportController::projection(void) const {
-  return m_settings->stringValue(QString::fromLatin1(kProjection), QStringLiteral("perspective"));
+  return word(btui::kProjections.word(
+      btui::kProjections.parse(m_settings->stringValue(QString::fromLatin1(kProjection), QString()).toStdString())));
 }
 
 void ViewportController::setProjection(const QString & p) {
-  const QString v = (p == QLatin1String("orthographic")) ? p : QStringLiteral("perspective");
-  if (v == projection())
+  const btui::Camera::Projection v = btui::kProjections.parse(p.toStdString());
+  const QString w = word(btui::kProjections.word(v));
+  if (w == projection())
     return;
-  m_settings->setStringValue(QString::fromLatin1(kProjection), v);
-  m_camera.setProjection(v == QLatin1String("orthographic") ? btui::Camera::Projection::Orthographic
-                                                            : btui::Camera::Projection::Perspective);
+  m_settings->setStringValue(QString::fromLatin1(kProjection), w);
+  m_camera.setProjection(v);
   emit optionsChanged();
   emit frameChanged();
 }
 
+btui::ColorMode ViewportController::colourViewValue(void) const {
+  return btui::kColourViews.parse(m_settings->stringValue(QString::fromLatin1(kColourView), QString()).toStdString());
+}
+
 QString ViewportController::colourView(void) const {
-  return m_settings->stringValue(QString::fromLatin1(kColourView), QStringLiteral("piece"));
+  return word(btui::kColourViews.word(colourViewValue()));
 }
 
 void ViewportController::setColourView(const QString & v) {
-  const QString c = (v == QLatin1String("voxel")) ? v : QStringLiteral("piece");
-  if (c == colourView())
+  const btui::ColorMode c = btui::kColourViews.parse(v.toStdString());
+  if (c == colourViewValue())
     return;
-  m_settings->setStringValue(QString::fromLatin1(kColourView), c);
+  m_settings->setStringValue(QString::fromLatin1(kColourView), word(btui::kColourViews.word(c)));
   // the STL style draws in the shape's colour alone: nothing to rebuild (a
   // later switch of style rebuilds, and reads the colours then)
   if (m_voxelStyle != btui::VoxelStyle::Stl)
     scheduleMesh();
   emit optionsChanged();
-}
-
-int ViewportController::layerCount(void) const {
-  return m_shape ? btui::layerCount(*m_shape, planeOf(m_plane)) : 0;
-}
-
-void ViewportController::clampLayer(void) {
-  const int n = layerCount();
-  m_layer = n > 0 ? std::clamp(m_layer, 0, n - 1) : 0;
-}
-
-void ViewportController::setPlane(int p) {
-  p = std::clamp(p, 0, 2);
-  if (p == m_plane)
-    return;
-  m_plane = p;
-  clampLayer();     // C08: keep the layer, clamped to the new plane's count
-  emit layerChanged();
-  emit frameChanged();
-}
-
-void ViewportController::setLayer(int l) {
-  const int n = layerCount();
-  l = n > 0 ? std::clamp(l, 0, n - 1) : 0;
-  if (l == m_layer)
-    return;
-  m_layer = l;
-  emit layerChanged();
-  emit frameChanged();
-}
-
-void ViewportController::layerStep(int delta) {
-  setLayer(m_layer + delta);
 }
 
 bool ViewportController::editorVisible(void) const { return m_layout->editorVisible(); }
@@ -212,10 +203,26 @@ void ViewportController::refreshShape(void) {
   const int sel = m_shapes->selected();
   m_shape = (sel >= 0 && unsigned(sel) < p.getNumberOfShapes()) ? p.getShape(unsigned(sel)) : nullptr;
   m_shapeIndex = m_shape ? sel : -1;
-  clampLayer();
   emit sceneChanged();
-  emit layerChanged();
   scheduleMesh();
+}
+
+/* An edit rebuilds the mesh only when it changed what the mesh shows: a
+ * rename or a weight does not, a colour only in the voxel colour view. */
+void ViewportController::edited(DocumentController::Change change) {
+  switch (change) {
+    case DocumentController::Change::Structure:
+    case DocumentController::Change::Voxels:
+      refreshShape();
+      break;
+    case DocumentController::Change::Label:
+      emit sceneChanged();       // the view tag's label
+      break;
+    case DocumentController::Change::Palette:
+      if (colourViewValue() == btui::ColorMode::Voxel && m_voxelStyle != btui::VoxelStyle::Stl)
+        scheduleMesh();
+      break;
+  }
 }
 
 void ViewportController::scheduleMesh(void) {
@@ -243,7 +250,7 @@ void ViewportController::buildMesh(void) {
     btui::MeshOptions opt;
     opt.style = m_voxelStyle;
     opt.piece = btui::pieceColor(m_shapeIndex);
-    opt.colors = colourView() == QLatin1String("voxel") ? btui::ColorMode::Voxel : btui::ColorMode::Piece;
+    opt.colors = colourViewValue();
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
       p.getColor(i, &r, &g, &b);
@@ -253,18 +260,137 @@ void ViewportController::buildMesh(void) {
     m_mesh.reset();
     guarded([&] {
       auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*m_shape, opt));
+      // the pick mesh when a pick needs it: a stroke in the 2D grid never does
+      m_pick.clear();
+      m_pickDirty = true;
       const btui::Vec3 c = (mesh->boundsMin + mesh->boundsMax) * 0.5f;
       m_camera.setScene(c, std::max(0.5f, btui::length(mesh->boundsMax - mesh->boundsMin) * 0.5f));
       m_mesh = std::move(mesh);
     });
   } else {
     m_mesh.reset();
+    m_pick.clear();
+    m_pickDirty = false;
   }
   m_meshStyle = m_voxelStyle;
+  updateSlab();
   m_meshRevision++;
 
   emit sceneChanged();      // emptyShape follows the mesh
   emit frameChanged();
+}
+
+/* From the editor's shape, which it reads from the puzzle as it is: on the
+ * editor's layerChanged after an edit, m_shape may not be refreshed yet */
+void ViewportController::updateSlab(void) {
+  const btui::Plane plane = m_editor->planeValue();
+  const voxel_c * s = m_editor->shape();
+  m_hasSlab = s && btui::layerCount(*s, plane) > 0;
+  m_layerPick.clear();
+  m_layerPickDirty = true;
+  if (m_hasSlab)
+    m_hasSlab = guarded([&] {
+      m_slab = btui::layerSlab(*s, plane, m_editor->layer());
+      return true;
+    });
+}
+
+bool ViewportController::slabShown(void) const {
+  return m_display.slab && m_hasSlab && editorVisible();
+}
+
+// --- 3D editing (C06) ------------------------------------------------------------
+
+btui::Target3d ViewportController::targetAt(float x, float y, Qt::KeyboardModifiers mods) {
+  if (m_meshDirty)
+    buildMesh();           // pick against the shape as it is
+  const voxel_c * s = m_editor->shape();
+  const std::optional<btui::Tool> tool = m_editor->viewportAction(mods);
+  if (!s || !tool || m_layout->workspace() != LayoutController::Entities)
+    return {};
+  if (m_pickDirty) {
+    m_pickDirty = false;
+    guarded([&] {
+      m_pick = btui::buildPickMesh(*s);
+      return true;
+    });
+  }
+  const btui::Camera::Ray r = m_camera.rayAt(x, y);
+  const btui::PickHit voxel = btui::pick(m_pick, r.origin, r.dir);
+  const bool shown = slabShown();
+  if (shown && m_layerPickDirty) {
+    m_layerPickDirty = false;
+    guarded([&] {
+      m_layerPick = btui::buildPickMesh(*btui::layerCells(*s, m_editor->planeValue(), m_editor->layer()));
+      return true;
+    });
+  }
+  const btui::PickHit slab = shown ? btui::pick(m_layerPick, r.origin, r.dir) : btui::PickHit{};
+  return guarded([&] { return btui::target3d(*s, *tool, voxel, slab, shown); });
+}
+
+void ViewportController::pointerHover(float x, float y, Qt::KeyboardModifiers mods) {
+  m_hoverX = x;
+  m_hoverY = y;
+  if (navigating() || x < 0)
+    return;
+  const btui::Target3d t = targetAt(x, y, mods);
+  m_editor->hover3d(t, mods);
+
+  // the status bar names the target (C06; product decision 2026-10-27)
+  const btui::PlaneAxes a = btui::planeAxes(m_editor->planeValue());
+  auto cell = [&](const btui::Cell3 & c) {
+    return tr("X%1 Y%2 Z%3").arg(c.x).arg(c.y).arg(c.z);
+  };
+  QString text;
+  switch (t.source) {
+    case btui::TargetSource::Face:
+      text = tr("Cursor %1").arg(cell(t.cell));
+      break;
+    case btui::TargetSource::Slab:
+      text = tr("Cursor %1 · in the active layer (%2%3)").arg(cell(t.cell))
+                 .arg(QChar::fromLatin1(btui::axisLetter(a.layer))).arg(m_editor->layer());
+      break;
+    case btui::TargetSource::Origin:
+      text = tr("Cursor %1 · the first voxel goes to the origin").arg(cell(t.cell));
+      break;
+    case btui::TargetSource::Rejected:
+      text = tr("Outside the grid: nothing to place here");
+      break;
+    case btui::TargetSource::None:
+      break;
+  }
+  if (StatusController * st = m_editor->status())
+    st->setCursorText(text);
+}
+
+void ViewportController::pointerLeave(void) {
+  m_hoverX = m_hoverY = -1;
+  if (m_editor->over3d()) {
+    m_editor->leave3d();
+    if (StatusController * st = m_editor->status())
+      st->setCursorText(QString());
+  }
+}
+
+void ViewportController::navigationStarted(void) {
+  // a drag navigates: no ghost while it lasts (C06 hover_preview)
+  m_editor->leave3d();
+}
+
+void ViewportController::click(float x, float y, Qt::KeyboardModifiers mods) {
+  const btui::Target3d t = targetAt(x, y, mods);
+  m_editor->click3d(t, mods);
+  // the voxels changed under the pointer: what it now points at
+  pointerHover(x, y, mods);
+}
+
+int ViewportController::editCursorTool(void) const {
+  return m_editor->viewportActive() ? int(m_editor->toolInEffect()) : -1;
+}
+
+QColor ViewportController::editCursorColour(void) const {
+  return m_editor->cursorColour();
 }
 
 SceneFrame ViewportController::frame(float devicePixelRatio) const {
@@ -290,18 +416,116 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
     btui::addBoxEdges(f.lines, btui::gridBounds(*m_shape), rgba(t->line2()), 1.0f, 4.0f, 4.0f);
 
   // the slab and dimming only while the voxel editor shows the layer (C06)
-  if (editorVisible() && layerCount() > 0) {
-    if (m_display.slab) {
-      const btui::Box slab = btui::layerSlab(*m_shape, planeOf(m_plane), m_layer);
-      btui::addBoxFaces(f.overlayFaces, slab, rgba(t->accent(), 0.11f));
-      btui::addBoxEdges(f.lines, slab, rgba(t->accent()), 1.8f);
+  const btui::Plane plane = m_editor->planeValue();
+  const int layer = m_editor->layer();
+  if (editorVisible() && btui::layerCount(*m_shape, plane) > 0) {
+    if (m_display.slab && m_hasSlab) {
+      btui::addBoxFaces(f.overlayFaces, m_slab, rgba(t->accent(), 0.11f));
+      btui::addBoxEdges(f.lines, m_slab, rgba(t->accent()), 1.8f);
     }
     if (m_display.dim) {
-      f.dimAxis = btui::layerAxis(planeOf(m_plane));
-      f.dimLayer = float(m_layer);
+      f.dimAxis = btui::layerAxis(plane);
+      f.dimLayer = float(layer);
     }
   }
+  addGhosts(f);
+  addTransformPreview(f);
   return f;
+}
+
+// --- Transform preview (C04) ---------------------------------------------------
+
+void ViewportController::setTransformPreview(TransformPreview p) {
+  m_transform = std::move(p);
+  emit frameChanged();
+}
+
+void ViewportController::clearTransformPreview(void) {
+  if (!m_transform)
+    return;
+  m_transform.reset();
+  emit frameChanged();
+}
+
+void ViewportController::addTransformPreview(SceneFrame & f) const {
+  const Theme * t = Theme::instance();
+  if (!m_transform || !m_shape || !t)
+    return;
+  const TransformPreview & p = *m_transform;
+  const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
+  const QColor piece = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  guarded([&] {
+    btui::addResultGhost(f.ghostFaces, f.ghostLines, *m_shape, p.result.get(),
+                         { rgba(piece, 0.5f), rgba(t->accent()), 1.5f });
+  });
+  if (!p.hint)
+    return;
+  // legacy's colour: the axis the change mostly runs along
+  const float ax = std::fabs(p.axis.x), ay = std::fabs(p.axis.y), az = std::fabs(p.axis.z);
+  const QColor c = p.blocked ? t->danger() : ax >= ay && ax >= az ? t->axisX() : ay >= az ? t->axisY() : t->axisZ();
+  const btui::Box g = btui::gridBounds(*m_shape);
+  btui::addTransformHint(f.hintLines, (g.min + g.max) * 0.5f, btui::transformHintRadius(*m_shape), p.kind, p.axis,
+                         p.angleDeg, rgba(c), 3.0f);
+}
+
+/* The editor's hover preview as ghosts (C06 "Ghost preview"): Fixed and
+ * Variable place cubes in the drawing colour at 55 % outlined in accent,
+ * dashed for Variable; a voxel they would change gets a faint dashed
+ * "replace" overlay; Erase shows danger over the voxels, Paint the drawing
+ * colour at 50 %. */
+void ViewportController::addGhosts(SceneFrame & f) const {
+  const Theme * t = Theme::instance();
+  if (!m_shape || !t)
+    return;
+  // a Fixed or Variable press on a face whose far side is outside the grid:
+  // the face outlined, dashed danger, and no ghost (C06)
+  const btui::Target3d & target = m_editor->target3d();
+  if (m_editor->over3d() && m_editor->viewportActive() && target.source == btui::TargetSource::Rejected)
+    btui::addFaceOutline(f.ghostLines, m_pick, target.voxel, target.face,
+                         { rgba(t->danger()), rgba(t->danger()), 2.5f, 5.0f, 4.0f });
+  const std::vector<btui::GhostCell> ghosts = m_editor->preview();
+  if (ghosts.empty())
+    return;
+
+  // the drawing colour: the voxel colour, or Default's -- the shape's own
+  QColor draw;
+  const int c = m_editor->drawColour();
+  const puzzle_c & p = m_doc->session().puzzle();
+  if (c > 0 && unsigned(c) <= p.colorNumber()) {
+    unsigned char r, g, b;
+    p.getColor(unsigned(c) - 1, &r, &g, &b);
+    draw = QColor(r, g, b);
+  } else {
+    const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
+    draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  }
+  const bool variable = m_editor->toolInEffect() == EditorController::Variable;
+
+  for (const btui::GhostKind kind : { btui::GhostKind::Place, btui::GhostKind::Replace, btui::GhostKind::Erase,
+                                      btui::GhostKind::Paint }) {
+    std::vector<std::array<int, 3>> cells;
+    for (const btui::GhostCell & g : ghosts)
+      if (g.kind == kind)
+        cells.push_back({ g.cell.x, g.cell.y, g.cell.z });
+    if (cells.empty())
+      continue;
+    btui::GhostStyle s;
+    switch (kind) {
+      case btui::GhostKind::Place:
+        s = { rgba(draw, 0.55f), rgba(t->accent()), 2.0f, variable ? 5.0f : 0.0f, variable ? 4.0f : 0.0f };
+        break;
+      case btui::GhostKind::Replace:
+        s = { rgba(draw, 0.22f), rgba(t->accent()), 1.5f, 5.0f, 4.0f };
+        break;
+      case btui::GhostKind::Erase:
+        s = { rgba(t->danger(), 0.5f), rgba(t->danger()), 2.0f };
+        break;
+      case btui::GhostKind::Paint:
+        s = { rgba(draw, 0.5f), rgba(t->accent()), 2.0f };
+        break;
+    }
+    guarded([&] { btui::addGhost(f.ghostFaces, f.ghostLines, *m_shape, cells, s); });
+  }
 }
 
 // --- vector export -----------------------------------------------------------

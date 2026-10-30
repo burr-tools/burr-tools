@@ -24,6 +24,7 @@
 #include "palette.h"
 #include "vecmath.h"
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -46,7 +47,10 @@ class Polyhedron;
  */
 namespace btui {
 
-  struct Rgba8 { std::uint8_t r = 0, g = 0, b = 0, a = 255; };
+  struct Rgba8 {
+    std::uint8_t r = 0, g = 0, b = 0, a = 255;
+    bool operator==(const Rgba8 &) const = default;
+  };
 
   /* the scene's light direction, in view space (C13); the renderer and the
    * vector export both shade with it */
@@ -96,9 +100,23 @@ namespace btui {
     float variableAlpha = 0.6f;
   };
 
+  /* A line for the overlay pass: drawn as a screen-space quad of widthDp,
+   * dashed when dashDp > 0. */
+  struct LineSeg {
+    Vec3 a, b;
+    Rgba8 color;
+    float widthDp = 1;
+    float dashDp = 0, gapDp = 0;
+  };
+
   struct ShapeMesh {
     std::vector<MeshVertex> opaque;       ///< fixed voxels, triangles
     std::vector<MeshVertex> translucent;  ///< variable voxels, triangles, alpha from MeshOptions
+    /* The flat style's variable voxels: their faces' sides as dashed lines,
+     * each once. Dashes drawn as lines run evenly along an edge, the same
+     * on both faces that meet there; the face shader's outline dashes
+     * could not (they restart in every triangle). */
+    std::vector<LineSeg> edges;
     Vec3 boundsMin, boundsMax;            ///< the shape's drawing-space box, [0, calculateSize]
     bool empty(void) const { return opaque.empty() && translucent.empty(); }
   };
@@ -133,7 +151,17 @@ namespace btui {
     std::int32_t face = 0;
   };
 
+  /* What a ray is picked against: every voxel's faces toward an empty cell
+   * or out of the grid (variable voxels count as voxels), fanned into
+   * triangles. Built from the cells' faces as the flat style draws them --
+   * fast, ~ the visible mesh's cost; spheres, whose drawn surface is not
+   * their cells' faces, from the library's flat mesh. */
   std::vector<PickTriangle> buildPickMesh(const voxel_c & shape);
+
+  /* the same from the library's flat mesh (voxel_c::getFlatMesh), for every
+   * voxel type: the reference the fast one is tested against -- it costs a
+   * hundred times more on a large shape */
+  std::vector<PickTriangle> buildPickMeshFromFlatMesh(const voxel_c & shape);
 
   /* the front-most triangle the ray meets (legacy: smallest depth) */
   PickHit pick(const std::vector<PickTriangle> & mesh, Vec3 origin, Vec3 dir);
@@ -158,23 +186,47 @@ namespace btui {
    * drawing-space mapping. */
   Box layerSlab(const voxel_c & shape, Plane p, int layer);
 
-  /* A line for the overlay pass: drawn as a screen-space quad of widthDp,
-   * dashed when dashDp > 0. */
-  struct LineSeg {
-    Vec3 a, b;
-    Rgba8 color;
-    float widthDp = 1;
-    float dashDp = 0, gapDp = 0;
-  };
-
   /* the 12 edges of a box */
   void addBoxEdges(std::vector<LineSeg> & out, const Box & b, Rgba8 color, float widthDp, float dashDp = 0, float gapDp = 0);
 
   /* the six faces of a box as triangles (36 vertices), one flat colour */
   void addBoxFaces(std::vector<MeshVertex> & out, const Box & b, Rgba8 color);
 
+  /* Ghosts (C06's hover preview): cells of a shape's grid as faces in `fill`
+   * and their edges as lines in `outline`, every face whatever is next to
+   * it. Made by the flat style's builder, so a ghost has its voxel type's
+   * shape; spheres have no edges. Never dimmed. */
+  struct GhostStyle {
+    Rgba8 fill, outline;
+    float widthDp = 2, dashDp = 0, gapDp = 0;
+  };
+  void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style, Vec3 offset = {});
+
+  /* The outline of one voxel face as picking sees it (C06: a face whose
+   * far side is outside the grid, outlined): the sides of its triangles
+   * that no other of its triangles shares, in the style's outline. */
+  void addFaceOutline(std::vector<LineSeg> & lines, const std::vector<PickTriangle> & pick, std::uint32_t voxel,
+                      std::int32_t face, const GhostStyle & style);
+
   /* the axes from the origin, reaching 0.7 of a cell beyond the grid (C06) */
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp);
+
+  /* A Transform button's hover preview (C04; legacy previewTransform):
+   * every voxel of `result` as a ghost, its box centred where `shape`'s is
+   * -- a rotation that swaps the grid's sizes turns about the middle, as
+   * legacy draws it -- and none when result is null (the task is blocked). */
+  void addResultGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                      const voxel_c * result, const GhostStyle & style);
+
+  /* Its hint, legacy's: an arc with an arrowhead around a rotation's axis
+   * (sweeping the angle, 60°-300°), a double arrow along a mirror's plane
+   * normal, an arrow along a nudge's direction -- centred on `centre`,
+   * `radius` legacy's min(0.4 * the shape's radius + 0.5, 2). */
+  enum class TransformHint { Rotate, Mirror, Nudge };
+  float transformHintRadius(const voxel_c & shape);
+  void addTransformHint(std::vector<LineSeg> & out, Vec3 centre, float radius, TransformHint kind, Vec3 axis,
+                        float angleDeg, Rgba8 color, float widthDp);
 }
 
 #endif
