@@ -1140,6 +1140,7 @@ TEST_CASE("optimizeTurns reports its progress, stops when asked, and can only re
     control.measure = false;
     const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
     CHECK(play.upper == 0);
+    CHECK_FALSE(play.failed);
     CHECK(copy.sumRotations() == turns);
     CHECK(copy.movesText() == found->movesText());
   }
