@@ -333,7 +333,20 @@ std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & 
 /** For an STL export dialog: whether the exporter's bevel and offset make
  *  the pieces the turns were checked for (`expected`, from
  *  rotationModelOf or rotationModelForShape; nothing when the problems
- *  disagree). Empty when the exporter does not make cubes. */
+ *  disagree). */
+struct stlModelState_t {
+  enum match_e {
+    NO_CUBES,      ///< the exporter does not make cubes: nothing to say
+    UNDECIDED,     ///< the problems using the shape check different models
+    MATCHES,       ///< the pieces are the ones the turns are checked for
+    DIFFERS        ///< they are not: `now` against `expected`
+  } match = NO_CUBES;
+  rotationGeometry::model_t now, expected;
+};
+stlModelState_t stlModelState(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected);
+
+/** stlModelState as an English sentence, for the FLTK dialogs (the Qt one
+ *  formats it with its translations); empty for NO_CUBES */
 std::string stlModelNote(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected);
 
 /**
