@@ -300,6 +300,19 @@ struct turnPlay_t {
   double lower = 0;
   /** a turn needed more than the planner's largest play: upper is not valid */
   bool failed = false;
+  /** stopped (optimizeControl_t::stop) before every turn was done: nothing valid */
+  bool stopped = false;
+};
+
+/** How optimizeTurns runs, for a front end that shows its progress. */
+struct optimizeControl_t {
+  /** set from another thread to stop between two turns */
+  const std::atomic<bool> * stop = nullptr;
+  /** counts the turns done (separation_c::sumRotations of them in all) */
+  std::atomic<unsigned int> * done = nullptr;
+  /** false: only re-plan each turn's path, with the most room at the
+   *  model's play (after the play changed), without measuring the play */
+  bool measure = true;
 };
 
 /**
@@ -311,7 +324,8 @@ struct turnPlay_t {
  * bisection of planner runs per turn), meant for the few disassemblies that
  * are reported. See design/2026-10-19-rotation-moves.md.
  */
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+                         const optimizeControl_t & control = {});
 
 /**
  * The settings a problem's rotation moves use: the given ones with the

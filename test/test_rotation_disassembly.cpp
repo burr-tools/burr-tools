@@ -866,3 +866,53 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
   CHECK(compared >= 2 * (parts - 1));
   CHECK(withTurns > 0);
 }
+
+TEST_CASE("optimizeTurns reports its progress, stops when asked, and can only re-plan",
+          "[rotations][disasm]") {
+
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const separation_c * found = aaa().withRotations.get();
+  REQUIRE(found != nullptr);
+  const unsigned int turns = found->sumRotations();
+  REQUIRE(turns > 0);
+  const assembly_c * assembly = aaa().assemblies[0].get();
+
+  /* every turn counted, and bounds measured */
+  {
+    separation_c copy(found);
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(done == turns);
+    CHECK_FALSE(play.stopped);
+    CHECK(play.rotations);
+    CHECK(play.upper > 0);
+    CHECK(play.lower <= play.upper);
+  }
+
+  /* stopped before the first turn: nothing done, nothing valid */
+  {
+    separation_c copy(found);
+    std::atomic<bool> stop{ true };
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.stop = &stop;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(play.stopped);
+    CHECK(done == 0);
+  }
+
+  /* re-planning only: every turn gets a path, no play is measured */
+  {
+    separation_c copy(found);
+    optimizeControl_t control;
+    control.measure = false;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(play.upper == 0);
+    CHECK(copy.sumRotations() == turns);
+    CHECK(copy.movesText() == found->movesText());
+  }
+}

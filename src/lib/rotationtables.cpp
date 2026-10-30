@@ -456,7 +456,7 @@ rotationContextFor(const problem_c & problem, const rotationSettings_t & given, 
 namespace {
 
 void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & problem,
-                 const rotationSettings_t & settings, turnPlay_t & result) {
+                 const rotationSettings_t & settings, const optimizeControl_t & control, turnPlay_t & result) {
 
   using rotationGeometry::cell_t;
   const gridType_c * gt = problem.getPuzzle().getGridType();
@@ -480,6 +480,10 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     const stateRotation_t * r = st->getRotation();
     if (!r)
       continue;
+    if (control.stop && control.stop->load(std::memory_order_relaxed)) {
+      result.stopped = true;
+      return;
+    }
     result.rotations = true;
 
     const state_c * before = s->getState(i - 1);
@@ -497,14 +501,18 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     int hx, hy, hz;
     rotationGeometry::pivotOf(r->axis, r->pivotU, r->pivotV, &hx, &hy, &hz);
 
-    const rotationGeometry::playBound_t pb =
-      rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.plan);
-    if (!pb.found) {
-      result.failed = true;
-      continue;
+    if (control.measure) {
+      const rotationGeometry::playBound_t pb =
+        rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.plan);
+      if (!pb.found) {
+        result.failed = true;
+        if (control.done)
+          control.done->fetch_add(1, std::memory_order_relaxed);
+        continue;
+      }
+      result.upper = std::max(result.upper, pb.upper);
+      result.lower = std::max(result.lower, pb.lower);
     }
-    result.upper = std::max(result.upper, pb.upper);
-    result.lower = std::max(result.lower, pb.lower);
 
     /* the path with the most room at the model's play */
     rotationGeometry::planSettings_t widest = settings.plan;
@@ -513,6 +521,8 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     widest.widest = true;
     const rotationGeometry::turnPlan_t best =
       rotationGeometry::planTurn(rotationGeometry::planarScene_c(moving, stat, r->axis, hx, hy, hz, settings.model), sense, widest);
+    if (control.done)
+      control.done->fetch_add(1, std::memory_order_relaxed);
     if (!best.found || best.clearance < 0)
       continue;   // keep the recorded path, it is certified at this play
 
@@ -522,16 +532,17 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
     st->setRotation(nr);
   }
 
-  if (s->editRemoved())
-    optimizeRec(s->editRemoved(), a, problem, settings, result);
-  if (s->editLeft())
-    optimizeRec(s->editLeft(), a, problem, settings, result);
+  if (s->editRemoved() && !result.stopped)
+    optimizeRec(s->editRemoved(), a, problem, settings, control, result);
+  if (s->editLeft() && !result.stopped)
+    optimizeRec(s->editLeft(), a, problem, settings, control, result);
 }
 
 }
 
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings) {
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+                         const optimizeControl_t & control) {
   turnPlay_t result;
-  optimizeRec(s, a, problem, rotationSettingsFor(problem, settings), result);
+  optimizeRec(s, a, problem, rotationSettingsFor(problem, settings), control, result);
   return result;
 }
