@@ -233,7 +233,7 @@ TEST_CASE("a shape's pieces are checked for the puzzle's model", "[rotations][st
 
   puzzle_c puzzle(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
   const unsigned int piece = puzzle.addShape(1, 1, 1);
-  const unsigned int other = puzzle.addShape(2, 1, 1);
+  puzzle.addShape(2, 1, 1);   // a shape no problem uses: the pieces are the same
   problem_c & a = *puzzle.getProblem(puzzle.addProblem());
   problem_c & b = *puzzle.getProblem(puzzle.addProblem());
   a.setShapeMaximum(piece, 1);
@@ -242,34 +242,23 @@ TEST_CASE("a shape's pieces are checked for the puzzle's model", "[rotations][st
   const rotationGeometry::model_t def = rotationSettings_t{}.model;
   CHECK(rotationModelOf(a).play == def.play);
 
-  /* both problems at the default, and a shape no problem uses */
-  REQUIRE(rotationModelForShape(puzzle, piece));
-  CHECK(rotationModelForShape(puzzle, piece)->chamfer == def.chamfer);
-  REQUIRE(rotationModelForShape(puzzle, other));
-  CHECK(rotationModelForShape(puzzle, other)->play == def.play);
-
   /* the views draw stored models only */
-  CHECK_FALSE(storedRotationModelForShape(puzzle, piece));
-  CHECK_FALSE(storedRotationModelForShape(puzzle, other));
+  CHECK_FALSE(puzzle.getRotationModel());
 
   /* the pieces are the puzzle's: every problem and shape has them */
   puzzle.setRotationModel({ 0.0126, 0.05 });
   CHECK(rotationModelOf(a).chamfer == 0.05);
   CHECK(rotationModelOf(b).chamfer == 0.05);
-  REQUIRE(rotationModelForShape(puzzle, piece));
-  CHECK(rotationModelForShape(puzzle, piece)->play == 0.0126);
-  REQUIRE(storedRotationModelForShape(puzzle, piece));
-  CHECK(storedRotationModelForShape(puzzle, piece)->chamfer == 0.05);
+  CHECK(rotationModelOf(puzzle).play == 0.0126);
 
   /* the export dialog's note */
   std::unique_ptr<stlExporter_c> stl(puzzle.getGridType()->getStlExporter());
   stl->followModel({ 0.0126, 0.05 });
-  CHECK(stlModelNote(*stl, rotationModelForShape(puzzle, piece)).find("the pieces rotation moves are checked for")
+  CHECK(stlModelNote(*stl, rotationModelOf(puzzle)).find("the pieces rotation moves are checked for")
         != std::string::npos);
   stl->setParameter(4, 1.0);
-  CHECK(stlModelNote(*stl, rotationModelForShape(puzzle, piece)).find("but rotation moves are checked for play 0.0126")
+  CHECK(stlModelNote(*stl, rotationModelOf(puzzle)).find("but rotation moves are checked for play 0.0126")
         != std::string::npos);
-  CHECK(stlModelNote(*stl, std::nullopt).find("different play and bevel") != std::string::npos);
 
   gridType_c rhombic(gridType_c::GT_RHOMBIC);
   std::unique_ptr<stlExporter_c> other_grid(rhombic.getStlExporter());

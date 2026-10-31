@@ -130,9 +130,8 @@ private:
 
   void rebuild(void);
   void makeExporter(void);
-  /* bevel and offset from the model the shape's pieces are checked for
-   * (rotationModelForShape): when the exporter is new (start), else only
-   * while it still follows one */
+  /* bevel and offset from the puzzle's pieces (rotationModelOf): when the
+   * exporter is new (start), else only while it still follows them */
   void followShapeModel(bool start);
   void documentChanged(void);
 
