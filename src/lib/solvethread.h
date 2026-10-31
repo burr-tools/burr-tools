@@ -181,6 +181,10 @@ class solveThread_c : public assembler_cb {
      *  was given and the problem has rotation tables (cube grids). */
     bool rotationMoves(void) const;
 
+    /** Limits that made the disassembly skip rotation moves, a bit set of
+     *  rotationContext_c::skip_e; 0 without rotation moves. */
+    unsigned int rotationsSkipped(void) const;
+
   private:
 
     int sortMethod;

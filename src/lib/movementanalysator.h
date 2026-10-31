@@ -24,6 +24,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <unordered_map>
 
 class problem_c;
 class disassemblerNode_c;
@@ -33,6 +34,7 @@ class countingNodeHash;
 class voxel_c;
 
 #include "rotationgeometry.h"
+#include "rotationtables.h"
 
 /**
  * this class is can do analysis of movements within a puzzle.
@@ -132,30 +134,56 @@ class movementAnalysator_c {
     stats_s stats;
 
     /**
-     * Tables for rotation moves, shared read-only with all other
-     * disassemblers of the solve. Empty when rotation moves are off, in
-     * which case no rotation code runs at all.
+     * Rotation moves: tables and caches shared with all other disassemblers
+     * of the solve. Empty when rotation moves are off, in which case no
+     * rotation code runs at all.
      */
-    std::shared_ptr<const rotationGeometry::rotationTables_c> rotations;
+    std::shared_ptr<rotationContext_c> rotation;
 
     /* Rotation phase of find() (state 3), only entered with tables: all
      * rotation moves of the search node are generated at once on entry and
      * then handed out one per call. */
     const problem_c * rotationProblem = nullptr;
-    std::vector<const voxel_c *> pieceVoxels;          ///< shape of every piece
-    /* cells of piece p in orientation t relative to its hotspot, built lazily */
+    std::vector<const voxel_c *> partVoxels;      ///< shape of every part
+    std::vector<unsigned int> piecePart;          ///< part of every piece
+    /* cells of part p in orientation t relative to its hotspot, built lazily */
     std::vector<std::vector<std::vector<rotationGeometry::cell_t>>> hotspotCells;
     std::vector<disassemblerNode_c *> rotationNodes;
     size_t nextRotation = 0;
     bool rotationsListed = false;
 
-    /* Groups of turning pieces are enumerated exhaustively, 2^(n-1) - 1 per
-     * node; beyond this many pieces in a (sub)problem no rotation moves are
-     * generated until a smarter group enumeration exists. */
-    static constexpr unsigned int MAX_ROTATION_PIECES = 16;
+    /* Pieces of a (sub)problem are bitmask bits; beyond this many no
+     * rotation moves are generated. */
+    static constexpr unsigned int MAX_ROTATION_PIECES = 32;
 
-    const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int piece, unsigned int trans);
+    /* The pivots at which piece j blocks piece i on every path (see
+     * blockingPivots) live in the context's cache, shared by all workers;
+     * this is the worker's own lock-free first level in front of it, with
+     * the sets the full shared cache refused. Cleared when it grows large. */
+    static constexpr size_t MAX_LOCAL_PAIRS = size_t(1) << 20;
+    std::unordered_map<rotationPairKey_t, const rotationPivotSet_t *, rotationPairKeyHash_t> localPairs;
+    std::vector<std::unique_ptr<rotationPivotSet_t>> ownPairs;
+
+    /* the cubes of a part in an orientation in the in-plane frame of an
+     * axis, relative to the hotspot and sorted by layer, with their
+     * footprint: what blockingPivots pairs up on a cache miss */
+    struct planeCells_t {
+      struct cube_t {
+        int layer, u, v;
+        bool operator<(const cube_t & o) const { return layer < o.layer; }
+      };
+      std::vector<cube_t> cubes;
+      int umin = 0, umax = 0, vmin = 0, vmax = 0;
+    };
+    /* [part][trans * 3 + axis], built lazily */
+    std::vector<std::vector<planeCells_t>> planeCellCache;
+
+    const std::vector<rotationGeometry::cell_t> & cellsAroundHotspot(unsigned int part, unsigned int trans);
+    const planeCells_t & planeCells(unsigned int part, unsigned int trans, unsigned int axis);
+    std::unique_ptr<rotationPivotSet_t> computeBlockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
+    const rotationPivotSet_t * blockingPivots(unsigned int i, unsigned int j, unsigned int axis, unsigned int sense);
     void listRotations(void);
+    void addRotationNode(uint32_t group, unsigned int axis, unsigned int sense, int pu, int pv, int path, bool inverse);
     void clearRotations(void);
 
   public:
@@ -164,13 +192,13 @@ class movementAnalysator_c {
      * construct the analyser for this concrete problem.
      * This can not be changed, once you done that but you can analyse
      * many positions. Rotation moves are considered iff rotationTables is
-     * given (see rotationTablesFor).
+     * given (see rotationContextFor).
      */
     movementAnalysator_c(const problem_c & puz,
-                         std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr);
+                         std::shared_ptr<rotationContext_c> rotationContext = nullptr);
 
     /** The rotation tables in use, nullptr when rotation moves are off. */
-    const rotationGeometry::rotationTables_c * getRotationTables(void) const { return rotations.get(); }
+    rotationContext_c * getRotationContext(void) const { return rotation.get(); }
     ~movementAnalysator_c(void);
 
     /* you use either the 2 functions below, or completeFind
