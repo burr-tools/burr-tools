@@ -4,6 +4,7 @@
 #include "py_shape.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,8 @@ public:
 
   std::string get_comment() const;
   void set_comment(const std::string & com);
+  std::pair<double, double> get_rotation_model() const;
+  void set_rotation_model(const std::optional<std::pair<double, double>> & model);
 
   unsigned int get_num_shapes() const;
   unsigned int get_num_problems() const;

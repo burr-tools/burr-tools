@@ -389,12 +389,22 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
   return { rotationGeometry::PATH_PLANNED, sense, 0, 0, *plannedPaths[index - family] };
 }
 
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings) {
+  if (problem.getPuzzle().getRotationModel())
+    settings.model = *problem.getPuzzle().getRotationModel();
+  return settings;
+}
+
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background) {
+rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background,
+                   const std::optional<rotationGeometry::model_t> & model) {
 
   if (problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
     return nullptr;
 
+  rotationSettings_t settings = rotationSettingsFor(problem, given);
+  if (model)
+    settings.model = *model;
   const int radius = rotationRadiusFor(problem);
   auto tablesOf = [background, radius](const rotationSettings_t & s) {
     if (background)
@@ -465,8 +475,8 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
       result.failed = true;
       continue;
     }
-    result.needs = std::max(result.needs, pb.needs);
-    result.atLeast = std::max(result.atLeast, pb.atLeast);
+    result.upper = std::max(result.upper, pb.upper);
+    result.lower = std::max(result.lower, pb.lower);
 
     /* the path with the most room at the model's play */
     rotationGeometry::planSettings_t widest = settings.plan;
@@ -494,6 +504,6 @@ void optimizeRec(separation_c * s, const assembly_c * a, const problem_c & probl
 
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings) {
   turnPlay_t result;
-  optimizeRec(s, a, problem, settings, result);
+  optimizeRec(s, a, problem, rotationSettingsFor(problem, settings), result);
   return result;
 }

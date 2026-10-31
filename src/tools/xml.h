@@ -355,4 +355,13 @@ class xmlParser_c
 };
 
 
+/** A double for an attribute: the shortest text of 10 to 17 significant
+ *  digits that reads back exactly (0.081, not 0.081000000000000003), since
+ *  turns are certified at the exact value; the classic locale keeps the
+ *  decimal point. */
+std::string xmlDouble(double value);
+
+/** Read what xmlDouble wrote: false unless the whole text is one number. */
+bool xmlParseDouble(const std::string & text, double * value);
+
 #endif

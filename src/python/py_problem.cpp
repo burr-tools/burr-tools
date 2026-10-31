@@ -3,6 +3,7 @@
 #include "py_shape.h"
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include "lib/rotationtables.h"
 
 #include <stdexcept>
 

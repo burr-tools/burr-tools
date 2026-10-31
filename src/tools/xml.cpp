@@ -22,6 +22,7 @@
 
 #include <string.h>
 
+#include <locale>
 #include <sstream>
 
 static const int RESIZE_BUFFER = 16;
@@ -1182,3 +1183,26 @@ void xmlParser_c::skipSubTree()
 
 
 
+
+std::string xmlDouble(double value) {
+  /* the fewest digits from 10 up that read back as exactly this value */
+  std::string text;
+  for (int digits = 10; digits <= 17; digits++) {
+    std::ostringstream out;
+    out.imbue(std::locale::classic());
+    out.precision(digits);
+    out << value;
+    text = out.str();
+    double back;
+    if (xmlParseDouble(text, &back) && back == value)
+      break;
+  }
+  return text;
+}
+
+bool xmlParseDouble(const std::string & text, double * value) {
+  std::istringstream in(text);
+  in.imbue(std::locale::classic());
+  in >> *value;
+  return !text.empty() && !in.fail() && in.peek() == std::char_traits<char>::eof();
+}

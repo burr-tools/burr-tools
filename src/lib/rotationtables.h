@@ -44,16 +44,24 @@ class disassemblerNode_c;
  * for tables and passes an empty pointer down to its disassemblers, so it
  * neither builds nor touches anything here.
  */
+/** The wideAmounts of ROTATION_FAMILY_WIDE, the default family. */
+inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+
 struct rotationSettings_t {
-  /** PR #50's implicit model (play 0.081, sharp edges) until physical
-   *  calibration provides better defaults */
-  rotationGeometry::model_t model = { 0.081, 0 };
+  /** The model of a puzzle that stores none (puzzle_c::getRotationModel):
+   *  PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
+   *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
+   *  never quite sharp, and a bevel only takes material away, so it adds
+   *  turns and never removes one. Physical calibration may change both. */
+  rotationGeometry::model_t model = { 0.081, 0.032 };
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
-  /** amounts of the 16-direction extension after them, empty: compass
-   *  family only (rotationGeometry::wideExtension, WIDE_AMOUNTS) */
-  std::vector<double> wideAmounts = {};
+  /** amounts of the 16-direction extension after them
+   *  (rotationGeometry::wideExtension), empty: compass family only. The
+   *  extension finds turns the compass family misses at about 2.5 times
+   *  the table cost; see design/2026-10-19-rotation-moves.md. */
+  std::vector<double> wideAmounts = WIDE_AMOUNTS;
   /** Turns no family path clears are planned (rotationGeometry::planTurn)
    *  if the family clears them with `slack` more play: the planner finds
    *  the motions the family misses near the threshold. Off by default: it
@@ -67,13 +75,10 @@ struct rotationSettings_t {
 /** The +90° paths of the settings' family, in table order. */
 std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
 
-/** The wideAmounts of ROTATION_FAMILY_WIDE. */
-inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
-
 /** Path families rotationConfig_t can choose. */
 enum rotationFamily_e {
   ROTATION_FAMILY_COMPASS,  ///< 8 directions, wiggles and slides, amounts 0.05 to 0.45 (145 paths)
-  ROTATION_FAMILY_WIDE      ///< the compass family plus 16 directions and ramps, amounts to 0.55
+  ROTATION_FAMILY_WIDE      ///< the default: compass plus 16 directions and ramps, amounts to 0.55 (881 paths)
 };
 
 /**
@@ -83,7 +88,6 @@ enum rotationFamily_e {
  * variables. resolve() is defined in solver_config.cpp with the rest.
  */
 struct rotationConfig_t {
-  std::optional<rotationGeometry::model_t> model;
   std::optional<rotationFamily_e> family;
   std::optional<bool> planner;
   std::optional<double> slack;
@@ -285,12 +289,15 @@ class assembly_c;
 /** What optimizeTurns found. */
 struct turnPlay_t {
   bool rotations = false;   ///< the disassembly turns at all
-  /** every turn is proven possible at this play (along its recorded path)... */
-  double needs = 0;
-  /** ...and some turn is proven impossible below this (for shifts up to
-   *  the planner's maxShift), 0 if nothing could be proven */
-  double atLeast = 0;
-  /** a turn needed more than the planner's largest play: needs is not valid */
+  /** upper bound: every turn is proven possible at this play, along its
+   *  recorded path, so the disassembly works at it */
+  double upper = 0;
+  /** lower bound: some turn is proven impossible below this (for shifts up
+   *  to the planner's maxShift), so this disassembly does not work below
+   *  it; another disassembly of the puzzle might. 0 if nothing could be
+   *  proven */
+  double lower = 0;
+  /** a turn needed more than the planner's largest play: upper is not valid */
   bool failed = false;
 };
 
@@ -306,13 +313,25 @@ struct turnPlay_t {
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
 
 /**
+ * The settings a problem's rotation moves use: the given ones with the
+ * puzzle's model when it stores one (puzzle_c::getRotationModel). The model
+ * describes the pieces, so it belongs to the puzzle; the rest is how the
+ * solver searches. rotationContextFor and optimizeTurns apply it
+ * themselves.
+ */
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
+
+/**
  * A rotation context for a problem, or nullptr when rotation moves are not
  * possible for it (only cube grids with a valid result shape have them).
  * With background set, the tables are built on another thread and the
  * first disassembler that needs them waits; otherwise they are built (or
- * taken from the cache) before returning.
+ * taken from the cache) before returning. model: check against these
+ * pieces instead of the puzzle's, for a what-if question (burrTxt -M); it
+ * is an argument, never stored, so the question does not change the pieces.
  */
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false);
+rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false,
+                   const std::optional<rotationGeometry::model_t> & model = std::nullopt);
 
 #endif

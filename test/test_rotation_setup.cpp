@@ -17,7 +17,7 @@
 namespace {
 
 /* pure turns only keep the table builds in these tests short */
-const rotationSettings_t SMALL = { { 0.081, 0 }, {} };
+const rotationSettings_t SMALL = { { 0.081, 0 }, {}, {} };
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   auto p = puzzle_c::load(path);
@@ -48,7 +48,7 @@ std::shared_ptr<rotationContext_c> pelikanContext(void) {
 TEST_CASE("rotation tables are shared per settings and freed with their last user", "[rotations]") {
 
   /* settings of its own, so tables other tests keep alive do not interfere */
-  const rotationSettings_t settings = { { 0.07, 0 }, {} };
+  const rotationSettings_t settings = { { 0.07, 0 }, {}, {} };
   releaseRotationTables();
 
   auto a = sharedRotationTables(settings, 3);
@@ -64,7 +64,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
   auto c = sharedRotationTables(settings, 4);
   CHECK(c != a);
   CHECK(c->getRadius() == 4);
-  auto d = sharedRotationTables({ { 0.05, 0 }, {} }, 3);
+  auto d = sharedRotationTables({ { 0.05, 0 }, {}, {} }, 3);
   CHECK(d != a);
 
   /* c serves everything a did, so a is not kept */
@@ -86,7 +86,7 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
 
 TEST_CASE("the most recently used rotation tables are kept for the next solve", "[rotations]") {
 
-  const rotationSettings_t first = { { 0.071, 0 }, {} }, second = { { 0.072, 0 }, {} }, third = { { 0.073, 0 }, {} };
+  const rotationSettings_t first = { { 0.071, 0 }, {}, {} }, second = { { 0.072, 0 }, {}, {} }, third = { { 0.073, 0 }, {}, {} };
   releaseRotationTables();
 
   /* one design after another: the second request is served by the kept set */
@@ -130,6 +130,33 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
 
   auto hex = loadPuzzle("examples/HexSticks.xmpuzzle");
   CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
+}
+
+TEST_CASE("the puzzle's stored model wins over the settings' default, a what-if model over both", "[rotations]") {
+
+  auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  problem_c & problem = *puzzle->getProblem(0);
+
+  auto plain = rotationContextFor(problem, SMALL);
+  REQUIRE(plain != nullptr);
+  CHECK(plain->getSettings().model.play == SMALL.model.play);
+  CHECK(plain->getSettings().model.chamfer == SMALL.model.chamfer);
+
+  puzzle->setRotationModel({ 0.06, 0.04 });
+  auto stored = rotationContextFor(problem, SMALL);
+  REQUIRE(stored != nullptr);
+  CHECK(stored->getSettings().model.play == 0.06);
+  CHECK(stored->getSettings().model.chamfer == 0.04);
+  /* the rest of the settings are the solver's */
+  CHECK(stored->getSettings().amounts == SMALL.amounts);
+  CHECK(rotationSettingsFor(problem, SMALL).model.chamfer == 0.04);
+
+  /* a what-if question passes its pieces and does not store them */
+  auto whatIf = rotationContextFor(problem, SMALL, false, rotationGeometry::model_t{ 0.03, 0.02 });
+  REQUIRE(whatIf != nullptr);
+  CHECK(whatIf->getSettings().model.play == 0.03);
+  CHECK(whatIf->getSettings().model.chamfer == 0.02);
+  CHECK(puzzle->getRotationModel()->play == 0.06);
 }
 
 TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {

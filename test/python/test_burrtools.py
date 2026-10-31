@@ -1,5 +1,6 @@
 import unittest
 import os
+import tempfile
 import burrtools
 
 class TestBurrTools(unittest.TestCase):
@@ -47,12 +48,39 @@ class TestBurrTools(unittest.TestCase):
         for _ in range(2):
             solutions = list(prob.solve(disassemble=True, rotation_moves=True))
             self.assertEqual(len(solutions), 1)
-            self.assertEqual(solutions[0].moves_text, "2.4")
+            self.assertEqual(solutions[0].moves_text, "2.3")
 
         # releasing the kept tables only means the next solve builds them again
         burrtools.release_rotation_tables()
         solutions = list(prob.solve(disassemble=True, rotation_moves=True))
-        self.assertEqual([s.moves_text for s in solutions], ["2.4"])
+        self.assertEqual([s.moves_text for s in solutions], ["2.3"])
+
+    def test_rotation_model(self):
+        path = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "AAA_most_rotations.xmpuzzle")
+        puzzle = burrtools.load(path)
+        prob = puzzle.problems[0]
+
+        # the pieces belong to the puzzle: the default until one is set,
+        # play 0.081 with puzzlecad's bevel
+        self.assertEqual(puzzle.rotation_model, (0.081, 0.032))
+
+        # the stored model reaches the solver: with the tight play of a
+        # printed copy the pieces come apart differently than at the default
+        puzzle.rotation_model = (0.0126, 0.0317)
+        self.assertEqual(puzzle.rotation_model, (0.0126, 0.0317))
+        solutions = list(prob.solve(disassemble=True, rotation_moves=True))
+        self.assertEqual([s.moves_text for s in solutions], ["6.4"])
+
+        # saved with the puzzle
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = os.path.join(tmp, "model.xmpuzzle")
+            puzzle.save(saved)
+            self.assertEqual(burrtools.load(saved).rotation_model, (0.0126, 0.0317))
+
+        with self.assertRaises(ValueError):
+            puzzle.rotation_model = (0.1, 0.5)
+        puzzle.rotation_model = None
+        self.assertEqual(puzzle.rotation_model, (0.081, 0.032))
 
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)

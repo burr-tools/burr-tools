@@ -26,6 +26,7 @@
  */
 #include "assembler.h"
 #include "bt_assert.h"
+#include "rotationgeometry.h"
 
 #include <stdint.h>
 #include <vector>
@@ -33,6 +34,7 @@
 #include <string>
 #include <mutex>
 #include <atomic>
+#include <optional>
 
 #include <stdint.h>
 
@@ -188,6 +190,7 @@ private:
    * the value 0xFFFFFFFF is used for undefined maximum number
    */
   unsigned int maxHoles;
+
 
   /** called, when the problem gets changed */
   void editProblem(void);
@@ -390,6 +393,16 @@ public:
   void setMaxHoles(unsigned int value) { bt_assert(value < 0xFFFFFFFF); maxHoles = value; }
   /** invalidate the value */
   void setMaxHolesInvalid(void) { maxHoles = 0xFFFFFFFF; }
+
+  /** The puzzle's pieces changed (puzzle_c::setRotationModel): the
+   *  solutions become unknown, and when the pieces got tighter (less play
+   *  or a smaller bevel, which adds material) the disassemblies that turn
+   *  are dropped (their assemblies stay): their turns were only proven for
+   *  the old pieces. A disassembly kept only as information cannot tell
+   *  whether it turns and stays. */
+  void piecesChanged(bool tighter);
+  /** drop the disassemblies that turn (see piecesChanged) */
+  void dropTurningDisassemblies(void);
   //@}
 
   /**

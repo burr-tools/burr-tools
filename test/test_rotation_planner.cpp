@@ -20,7 +20,15 @@ using namespace rotationGeometry;
 
 namespace {
 
-const model_t DEFAULT_MODEL = { 0.081, 0 };
+/* PR #50's sharp model, which the Crowell scenes below were measured at;
+ * the default bevel would let the family clear some of them */
+const model_t SHARP_MODEL = { 0.081, 0 };
+
+rotationSettings_t sharpSettings(void) {
+  rotationSettings_t s;
+  s.model = SHARP_MODEL;
+  return s;
+}
 
 /* Coarser than the default grid, to keep the cases quick in the dev build;
  * the scenes below are chosen to be decided at this resolution too. */
@@ -33,7 +41,7 @@ planSettings_t quickSettings(void) {
 
 /* Step 21 of Andrew Crowell's PackTIC_3 solution file: piece d turns -90°
  * about X out of piece a. No path of the default family gets through at
- * play 0.081, but a motion with an asymmetric shift does; the planner found
+ * play 0.081 with sharp edges, but a motion with an asymmetric shift does; the planner found
  * it needs play 0.057 (and none below 0.041). */
 struct crowellTurn_t {
   std::vector<cell_t> moving, stat;
@@ -83,9 +91,9 @@ std::vector<cell_t> turned(const crowellTurn_t & t) {
 TEST_CASE("the planner finds a turn the path family misses", "[rotations]") {
 
   const crowellTurn_t t = packTic3();
-  const planarScene_c scene = sceneOf(t, DEFAULT_MODEL);
+  const planarScene_c scene = sceneOf(t, SHARP_MODEL);
 
-  auto tables = sharedRotationTables(rotationSettings_t{}, 5);
+  auto tables = sharedRotationTables(sharpSettings(), 5);
   CHECK(tables->firstClear(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense) < 0);
 
   SECTION("widest path") {
@@ -113,7 +121,7 @@ TEST_CASE("the planner finds a turn the path family misses", "[rotations]") {
   SECTION("the reverse turn, from the end, with the path run backwards") {
     const turnPlan_t plan = planTurn(scene, t.sense, quickSettings());
     REQUIRE(plan.found);
-    const planarScene_c back(turned(t), t.stat, t.axis, t.hx, t.hy, t.hz, DEFAULT_MODEL);
+    const planarScene_c back(turned(t), t.stat, t.axis, t.hx, t.hy, t.hz, SHARP_MODEL);
     const path_t r = reversePath(plan.path);
     CHECK(r.front().theta == 0);
     CHECK(r.back().theta == 0.5 * std::numbers::pi);
@@ -124,7 +132,7 @@ TEST_CASE("the planner finds a turn the path family misses", "[rotations]") {
 
 TEST_CASE("the planner's fast mode finds a turn with almost no room", "[rotations]") {
   const crowellTurn_t t = mysTic();
-  const planarScene_c scene = sceneOf(t, DEFAULT_MODEL);
+  const planarScene_c scene = sceneOf(t, SHARP_MODEL);
   planSettings_t fast;   // the default grid: this one needs it
   fast.widest = false;
   fast.floor = 0;
@@ -140,7 +148,7 @@ TEST_CASE("an impossible turn is ruled out with a proof", "[rotations]") {
   const std::vector<cell_t> moving = { { 0, 0, 0 } };
   const std::vector<cell_t> stat = { { 1, 0, 0 }, { 1, -1, 0 }, { 0, -1, 0 }, { -1, -1, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 1, 1, 0 }, { -1, 1, 0 } };
   /* pivot at the corner (0.5, 0.5): the cube would land on (0, 1) or (1, 0) */
-  const planarScene_c scene(moving, stat, 2, 1, 1, 0, DEFAULT_MODEL);
+  const planarScene_c scene(moving, stat, 2, 1, 1, 0, SHARP_MODEL);
   planSettings_t s = quickSettings();
   s.floor = 0;
   s.upper = true;
@@ -161,14 +169,14 @@ TEST_CASE("required play stays below the play a bevel allows", "[rotations]") {
 
 TEST_CASE("required play: proven possible above, impossible below", "[rotations]") {
   const crowellTurn_t t = packTic3();
-  const playBound_t pb = requiredPlay(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense, DEFAULT_MODEL, quickSettings(), 0.002);
+  const playBound_t pb = requiredPlay(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense, SHARP_MODEL, quickSettings(), 0.002);
   REQUIRE(pb.found);
   /* the default grid gives 0.057; the coarse one a little more */
-  CHECK(pb.needs > 0.045);
-  CHECK(pb.needs < 0.075);
-  CHECK(pb.atLeast > 0.02);
-  CHECK(pb.atLeast <= pb.needs);
-  CHECK(sceneOf(t, { pb.needs, 0 }).certifyPath(pb.path) == PATH_CLEAR);
+  CHECK(pb.upper > 0.045);
+  CHECK(pb.upper < 0.075);
+  CHECK(pb.lower > 0.02);
+  CHECK(pb.lower <= pb.upper);
+  CHECK(sceneOf(t, { pb.upper, 0 }).certifyPath(pb.path) == PATH_CLEAR);
 }
 
 TEST_CASE("more play adds at least as much clearance along a path", "[rotations]") {
@@ -196,7 +204,7 @@ TEST_CASE("more play adds at least as much clearance along a path", "[rotations]
 
 TEST_CASE("a planned rotation path survives saving and loading exactly", "[rotations]") {
   const crowellTurn_t t = packTic3();
-  const turnPlan_t plan = planTurn(sceneOf(t, DEFAULT_MODEL), t.sense, quickSettings());
+  const turnPlan_t plan = planTurn(sceneOf(t, SHARP_MODEL), t.sense, quickSettings());
   REQUIRE(plan.found);
 
   state_c st(2);
@@ -304,4 +312,20 @@ TEST_CASE("a state with a truncated path or an impossible orientation is rejecte
 
   CHECK_NOTHROW(load("<dt>0 5</dt>"));
   CHECK_THROWS(load("<dt>0 300</dt>"));
+
+  /* a shift too far to be a path of any family, and a garbled piece list */
+  auto slide = [](const std::string & amount, const std::string & pieces) {
+    return "<rotation axis=\"z\" pu=\"1\" pv=\"3\" path=\"slide\" angle=\"90\" pieces=\"" + pieces +
+           "\" dir=\"1\" amount=\"" + amount + "\"/>";
+  };
+  CHECK_NOTHROW(load(slide("0.2", "1")));
+  CHECK_THROWS(load(slide("inf", "1")));
+  CHECK_THROWS(load(slide("1e300", "1")));
+  CHECK_THROWS(load(slide("0.2", "1 x")));
+
+  /* the axis is a letter, the angle 90 or -90 degrees */
+  const std::string pure = "<rotation pu=\"1\" pv=\"3\" path=\"pure\" pieces=\"1\" ";
+  CHECK_NOTHROW(load(pure + "axis=\"x\" angle=\"-90\"/>"));
+  CHECK_THROWS(load(pure + "axis=\"2\" angle=\"90\"/>"));
+  CHECK_THROWS(load(pure + "axis=\"z\" angle=\"45\"/>"));
 }

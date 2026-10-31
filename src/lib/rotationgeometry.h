@@ -38,7 +38,8 @@
  * Physical model: every cube is an axis-aligned cube of side 1 - play,
  * centred in its grid cell, whose edges parallel to the rotation axis are
  * beveled at 45° by chamfer. play = 0.081, chamfer = 0 is the model the
- * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly.
+ * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly; the solver's
+ * default adds puzzlecad's bevel (rotationSettings_t::model).
  */
 namespace rotationGeometry {
 
@@ -82,7 +83,7 @@ namespace rotationGeometry {
   void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense);
 
   struct model_t {
-    double play = 0;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
+    double play = 0;     ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
     /** 45° bevel of the cube edges parallel to the rotation axis: the length
      *  cut off each adjacent face, so the bevel face is chamfer·√2 wide. A
      *  puzzlecad $burr_bevel b on cubes of size s is b / (√2 s). Printed
@@ -305,12 +306,13 @@ namespace rotationGeometry {
   /** The play a quarter turn needs, see requiredPlay. */
   struct playBound_t {
     bool found = false;
-    /** the turn is proven possible at this play, along `path` */
-    double needs = 0;
+    /** upper bound: the turn is proven possible at this play, along `path` */
+    double upper = 0;
     path_t path;
-    /** and proven impossible (for shifts up to maxShift) below this; 0 if
+    /** lower bound: proven impossible below this, for every motion with
+     *  shifts up to maxShift (a wilder one could still get through); 0 if
      *  nothing could be proven */
-    double atLeast = 0;
+    double lower = 0;
   };
 
   /**

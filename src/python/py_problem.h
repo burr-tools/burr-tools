@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <utility>
 #include <string>
 
 class puzzle_c;
@@ -27,6 +29,8 @@ public:
   void set_piece_range(unsigned int shape_idx, unsigned int min_count, unsigned int max_count);
   void set_piece_range_shape(const PyShape & shape, unsigned int min_count, unsigned int max_count);
   unsigned int get_piece_min(unsigned int shape_idx) const;
+  /* (play, bevel) of the model rotation moves use: the stored one, else the default */
+  /* store a model, or with nullopt go back to the default */
   unsigned int get_piece_max(unsigned int shape_idx) const;
 
   std::unique_ptr<SolutionIterator> solve(bool disassemble = true,
