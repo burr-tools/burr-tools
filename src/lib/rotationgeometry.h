@@ -22,6 +22,7 @@
 #define __ROTATION_GEOMETRY_H__
 
 #include <cmath>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -35,7 +36,8 @@
  * exactly to 2D: per axial layer, moving squares against static squares.
  *
  * Physical model: every cube is an axis-aligned cube of side 1 - play,
- * centred in its grid cell, with sharp edges. play = 0.081 is the model the
+ * centred in its grid cell, whose edges parallel to the rotation axis are
+ * beveled at 45° by chamfer. play = 0.081, chamfer = 0 is the model the
  * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly.
  */
 namespace rotationGeometry {
@@ -81,6 +83,17 @@ namespace rotationGeometry {
 
   struct model_t {
     double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
+    /** 45° bevel of the cube edges parallel to the rotation axis: the length
+     *  cut off each adjacent face, so the bevel face is chamfer·√2 wide. A
+     *  puzzlecad $burr_bevel b on cubes of size s is b / (√2 s). Printed
+     *  cubes are beveled on all 12 edges; every cross-section of such a
+     *  cube lies inside the octagon checked here, so for separate cubes the
+     *  check is conservative. A printed piece is one body, though: the
+     *  gaps of width play between its own cubes are solid and its concave
+     *  edges filled, which the separate cubes checked here leave open. A
+     *  static corner passing such a joint can reach up to about play / 2
+     *  into the printed piece on a motion certified clear. */
+    double chamfer = 0;
   };
 
   /** Pose of the moving group: rotate by theta (radians, right-handed about
@@ -139,9 +152,18 @@ namespace rotationGeometry {
 
       std::vector<layer_t> layers;
       double half;     // half side of the cube
+      double chamfer;  // 45° cut of the square's corners
       double rho;
+      double inRadius;   // of a cube: centres closer than twice this overlap
+      double outRadius;  // of a cube: clearance >= centre distance - 2·outRadius
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
+      /** The decision certifySegment needs at pose p, using the exact
+       *  clearance only where the cubes' in- and circumcircles do not settle
+       *  it: -1 if a pair overlaps, 1 if every pair is at least margin
+       *  apart, 0 otherwise. The same decision as comparing clearance(p)
+       *  with 0 and margin. For 0, *cl is clearance(p). */
+      int classify(const pose_t & p, double margin, double * cl) const;
   };
 
   /** The pose that undoes p: the motion of the static pieces relative to
@@ -159,7 +181,7 @@ namespace rotationGeometry {
   /** Kinds of rotation path, see rotationTables_c. */
   enum pathKind_e {
     PATH_PURE,    ///< plain quarter turn about the pivot
-    PATH_WIGGLE,  ///< quarter turn with an offset amount·sin(πt) along a direction
+    PATH_WIGGLE,  ///< quarter turn with an offset amount·(cos θ + sin θ - 1)/(√2 - 1) along a direction
     PATH_SLIDE    ///< shift by amount along a direction, quarter turn, shift back
   };
 
@@ -172,7 +194,8 @@ namespace rotationGeometry {
   };
 
   /** The waypoints of a path. Wiggles are polylines of WIGGLE_SEGMENTS
-   *  segments; the polyline, not the sine, is the motion that is checked. */
+   *  segments; the polyline, not the smooth profile, is the motion that is
+   *  checked. */
   path_t makePath(const pathSpec_t & spec);
 
   constexpr int WIGGLE_SEGMENTS = 16;
@@ -321,6 +344,17 @@ namespace rotationGeometry {
        * tables, which is the common case in a dense puzzle. Indexed like
        * pathTable_c entries. */
       std::vector<std::vector<std::pair<int, int>>> blockedByAll[2];
+      /* Per sense and moving offset (indexed like pathTable_c entries), the
+       * static offsets that block some but not every path, each with the
+       * paths it blocks as a bitset of `words` 64-bit words, the most
+       * blocking first. firstClear ORs the bitsets of the occupied offsets
+       * instead of walking the tables one by one, so its cost hardly depends
+       * on the number of paths. Entry e owns the pairs from pairStart[e] to
+       * pairStart[e + 1]. */
+      unsigned int words = 0;
+      std::vector<uint32_t> pairStart[2];
+      std::vector<std::pair<int, int>> pairOffset[2];
+      std::vector<uint64_t> pairBits[2];
 
       /* pivotsBlockedAt, indexed by (du + inverseReach) * (2 inverseReach + 1)
        * + dv + inverseReach; empty outside */

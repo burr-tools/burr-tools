@@ -656,7 +656,7 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
   REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
@@ -786,7 +786,7 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081 }, { 0.2 } });
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
   REQUIRE(context != nullptr);
   const unsigned int orientations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 
@@ -840,11 +840,21 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
    * as the rest turning the other way. That rest is generally not in the
    * path family (an inverted wiggle or slide turns its shift along), and
    * its footprint decides pivots and reach: searched only as the rest,
-   * PelikanBurr came apart in 5, 6 or 7 turns depending on the piece order. */
-  std::set<std::pair<std::string, unsigned int>> results;
-  const unsigned int parts = puzzle_c::load("examples/PelikanBurr.xmpuzzle")->getProblem(0)->getNumberOfParts();
+   * PelikanBurr came apart in 5, 6 or 7 turns depending on the piece order.
+   *
+   * The disassembly itself may still depend on the order: when several
+   * move sequences are equally short, the search keeps the first it finds.
+   * What must not depend on it is which turns a search state offers. So for
+   * every piece order, walk the states reachable by translations (they keep
+   * piece 0 as the frame), written in the original piece order relative to
+   * the original first piece, and count their distinct rotation moves; a
+   * state reached under several orders must offer as many under each. */
+  const char * file = "examples/AAA_most_rotations.xmpuzzle";
+  const unsigned int parts = puzzle_c::load(file)->getProblem(0)->getNumberOfParts();
+  std::vector<std::map<config_t, size_t>> turnsAt(parts);
+
   for (unsigned int first = 0; first < parts; first++) {
-    auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+    auto puzzle = puzzle_c::load(file);
     REQUIRE(puzzle != nullptr);
     problem_c & problem = *puzzle->getProblem(0);
     /* exchangeParts swaps neighbours: bubble the part to the front */
@@ -853,19 +863,61 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
     auto context = rotationContextFor(problem, defaultRotationSettings());
     REQUIRE(context != nullptr);
 
-    unsigned int solved = 0;
-    for (const auto & a : assembleAll(problem)) {
-      /* the assembly that comes apart with translations alone */
-      if (!disassembler_0_c(problem).disassemble(a.get()))
-        continue;
-      std::unique_ptr<separation_c> da = disassembler_0_c(problem, context).disassemble(a.get());
-      REQUIRE(da != nullptr);
-      results.insert({ da->movesText(), da->sumRotations() });
-      solved++;
+    /* it comes apart only with turns, so states reached by translations
+     * offer some */
+    auto assemblies = assembleAll(problem);
+    REQUIRE(assemblies.size() == 1);
+    const std::unique_ptr<assembly_c> & assembly = assemblies[0];
+    CHECK(disassembler_0_c(problem, context).disassemble(assembly.get()) != nullptr);
+
+    /* piece p of this order is original piece orig(p) */
+    auto orig = [&](unsigned int p) { return p == 0 ? first : (p <= first ? p - 1 : p); };
+    auto normalized = [&](const disassemblerNode_c * n) {
+      const std::vector<std::vector<cell_t>> w = worldCells(problem, n);
+      std::vector<std::vector<cell_t>> o(w.size());
+      for (unsigned int i = 0; i < w.size(); i++)
+        o[orig(i)] = w[i];
+      return configOf(o);
+    };
+
+    movementAnalysator_c analysator(problem, context);
+    std::vector<unsigned int> pieces;
+    for (unsigned int i = 0; i < assembly->placementCount(); i++)
+      pieces.push_back(i);
+
+    std::vector<disassemblerNode_c *> nodes = { new disassemblerNode_c(assembly.get()) };
+    std::set<config_t> seen = { normalized(nodes[0]) };
+    for (size_t at = 0; at < nodes.size(); at++) {
+      std::vector<disassemblerNode_c *> found;
+      analysator.completeFind(nodes[at], pieces, &found);
+      std::set<config_t> turns;
+      for (disassemblerNode_c * n : found)
+        if (n->isRotation())
+          turns.insert(normalized(n));
+      turnsAt[first][normalized(nodes[at])] = turns.size();
+      for (disassemblerNode_c * n : found)
+        if (!n->isRotation() && !n->is_separation() && nodes.size() < 400 && seen.insert(normalized(n)).second)
+          nodes.push_back(n);
+        else if (n->decRefCount())
+          delete n;
     }
-    CHECK(solved == 1);
+    for (disassemblerNode_c * n : nodes)
+      if (n->decRefCount())
+        delete n;
   }
-  for (const auto & [level, turns] : results)
-    UNSCOPED_INFO("level " << level << ", " << turns << " turns");
-  CHECK(results.size() == 1);
+
+  size_t compared = 0, withTurns = 0;
+  for (unsigned int first = 1; first < parts; first++)
+    for (const auto & [state, turns] : turnsAt[first]) {
+      auto it = turnsAt[0].find(state);
+      if (it == turnsAt[0].end())
+        continue;
+      INFO("piece order " << first);
+      CHECK(turns == it->second);
+      compared++;
+      withTurns += (turns > 0);
+    }
+  /* the orders must share enough states, and some of them must offer turns */
+  CHECK(compared >= 2 * (parts - 1));
+  CHECK(withTurns > 0);
 }

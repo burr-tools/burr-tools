@@ -23,6 +23,7 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -100,31 +101,57 @@ double segmentPointDistance2(double px, double py,
 }
 
 /* Signed distance between the axis-aligned square at (su, sv) and the square
- * at (mu, mv) turned by theta, both with half side h: their distance when
- * apart, minus the penetration depth when overlapping. For convex polygons
- * the separating axis test over all edge normals yields the exact
- * penetration depth. */
+ * at (mu, mv) turned by theta, both with half side h and their corners cut
+ * at 45° by k (an octagon, a square when k is 0): their distance when apart,
+ * minus the penetration depth when overlapping. For convex polygons the
+ * separating axis test over all edge normals yields the exact penetration
+ * depth. */
 double squareSignedDistance(double su, double sv, double mu, double mv,
-                            double c, double s, double h) {
+                            double c, double s, double h, double k) {
 
-  double sp[4][2], mp[4][2];
+  /* corners counter-clockwise, two per corner of the square when cut */
   static const int sg[4][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+  double loc[8][2];
+  int n = 0;
   for (int i = 0; i < 4; i++) {
-    sp[i][0] = su + h * sg[i][0];
-    sp[i][1] = sv + h * sg[i][1];
-    mp[i][0] = mu + h * (sg[i][0] * c - sg[i][1] * s);
-    mp[i][1] = mv + h * (sg[i][0] * s + sg[i][1] * c);
+    const double x = h * sg[i][0], y = h * sg[i][1];
+    if (k > 0) {
+      /* entering the corner along the previous edge, leaving along the next */
+      const bool horizontalIn = (sg[i][0] != sg[i][1]);
+      loc[n][0] = horizontalIn ? x - sg[i][0] * k : x;
+      loc[n][1] = horizontalIn ? y : y - sg[i][1] * k;
+      n++;
+      loc[n][0] = horizontalIn ? x : x - sg[i][0] * k;
+      loc[n][1] = horizontalIn ? y - sg[i][1] * k : y;
+      n++;
+    } else {
+      loc[n][0] = x;
+      loc[n][1] = y;
+      n++;
+    }
   }
 
-  const double normals[4][2] = { { 1, 0 }, { 0, 1 }, { c, s }, { -s, c } };
+  double sp[8][2], mp[8][2];
+  for (int i = 0; i < n; i++) {
+    sp[i][0] = su + loc[i][0];
+    sp[i][1] = sv + loc[i][1];
+    mp[i][0] = mu + loc[i][0] * c - loc[i][1] * s;
+    mp[i][1] = mv + loc[i][0] * s + loc[i][1] * c;
+  }
+
+  /* edge normals of both polygons; opposite edges share one */
+  const double r = std::numbers::sqrt2 / 2;
+  const double normals[8][2] = { { 1, 0 }, { 0, 1 }, { c, s }, { -s, c },
+                                 { r, r }, { r, -r }, { r * (c - s), r * (s + c) }, { r * (c + s), r * (s - c) } };
+  const int nn = (k > 0) ? 8 : 4;
   double depth = std::numeric_limits<double>::max();
   bool apart = false;
-  for (int k = 0; k < 4 && !apart; k++) {
+  for (int j = 0; j < nn && !apart; j++) {
     double smin = std::numeric_limits<double>::max(), smax = -smin;
     double mmin = smin, mmax = -smin;
-    for (int i = 0; i < 4; i++) {
-      double ds = sp[i][0] * normals[k][0] + sp[i][1] * normals[k][1];
-      double dm = mp[i][0] * normals[k][0] + mp[i][1] * normals[k][1];
+    for (int i = 0; i < n; i++) {
+      double ds = sp[i][0] * normals[j][0] + sp[i][1] * normals[j][1];
+      double dm = mp[i][0] * normals[j][0] + mp[i][1] * normals[j][1];
       smin = std::min(smin, ds); smax = std::max(smax, ds);
       mmin = std::min(mmin, dm); mmax = std::max(mmax, dm);
     }
@@ -139,9 +166,9 @@ double squareSignedDistance(double su, double sv, double mu, double mv,
     return -depth;
 
   double dist2 = std::numeric_limits<double>::max();
-  for (int i = 0; i < 4; i++)
-    for (int j = 0; j < 4; j++) {
-      int j2 = (j + 1) & 3;
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < n; j++) {
+      int j2 = (j + 1) % n;
       dist2 = std::min(dist2, segmentPointDistance2(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]));
       dist2 = std::min(dist2, segmentPointDistance2(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
     }
@@ -160,7 +187,12 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
                              unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
                              const model_t & model) :
   half(0.5 * (1.0 - model.play)),
-  rho(0)
+  chamfer(model.chamfer),
+  rho(0),
+  /* the octagon's inner radius is the smaller distance to an axis face or
+   * a bevel face, its outer radius that of a bevel end point */
+  inRadius(std::min(half, (2 * half - model.chamfer) / std::numbers::sqrt2)),
+  outRadius(std::hypot(half, half - model.chamfer))
 {
   if (axis > 2)
     bt_te("planarScene_c: axis must be 0 to 2");
@@ -168,8 +200,8 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
    * a corner it shares with a diagonal neighbour touches it all the way: no
    * finite check can prove that clear, every such turn would come out
    * undecided. Real pieces always have play. */
-  if (!(model.play > 0 && half > 0))
-    bt_te("planarScene_c: needs 0 < play < 1");
+  if (!(model.play > 0 && model.chamfer >= 0 && half > 0 && model.chamfer < half))
+    bt_te("planarScene_c: needs play > 0, chamfer >= 0 and a cube larger than its chamfer");
 
   double pu, pv;
   inPlane(0.5 * pivotHx, 0.5 * pivotHy, 0.5 * pivotHz, axis, &pu, &pv);
@@ -220,11 +252,46 @@ double planarScene_c::clearance(const pose_t & p) const {
         const double bound = best + reach;
         if (bound >= 0 && du * du + dv * dv >= bound * bound)
           continue;
-        best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half));
+        best = std::min(best, squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer));
       }
     }
 
   return best;
+}
+
+int planarScene_c::classify(const pose_t & p, double margin, double * clOut) const {
+
+  const double c = std::cos(p.theta);
+  const double s = std::sin(p.theta);
+  /* Each cube contains its in-circle and lies in its circumcircle, so
+   * centres closer than 2·inRadius overlap, and centres at least
+   * 2·outRadius + margin apart are at least margin apart. */
+  const double inner = 2 * inRadius;
+  const double outer = 2 * outRadius + margin;
+
+  /* pairs skipped below are at least margin apart, so when some pair is
+   * closer, the smallest computed clearance is the clearance */
+  double best = margin;
+  for (const layer_t & l : layers)
+    for (const square_t & m : l.moving) {
+      double mu = m.u * c - m.v * s + p.du;
+      double mv = m.u * s + m.v * c + p.dv;
+      for (const square_t & st : l.stat) {
+        double du = mu - st.u, dv = mv - st.v;
+        double d2 = du * du + dv * dv;
+        if (d2 < inner * inner)
+          return -1;
+        if (d2 >= outer * outer)
+          continue;
+        double cl = squareSignedDistance(st.u, st.v, mu, mv, c, s, half, chamfer);
+        if (cl < 0)
+          return -1;
+        best = std::min(best, cl);
+      }
+    }
+
+  *clOut = best;
+  return (best < margin) ? 0 : 1;
 }
 
 bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const {
@@ -243,20 +310,24 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
     pose_t p = { a.theta + sm * (b.theta - a.theta),
                  a.du + sm * (b.du - a.du),
                  a.dv + sm * (b.dv - a.dv) };
-    double cl = clearance(p);
+    double cl;
+    int c = classify(p, 0.5 * (s1 - s0) * lipschitz, &cl);
 
-    if (cl < 0) {
+    if (c < 0) {
       *v = PATH_BLOCKED;
       return false;
     }
-    if (cl >= 0.5 * (s1 - s0) * lipschitz)
+    if (c > 0)
       continue;
     if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT) {
       *v = PATH_UNDECIDED;
       return false;
     }
-    todo.push_back({ s0, sm });
-    todo.push_back({ sm, s1 });
+    /* the clearance still proves sm ± cl / lipschitz clear: split only
+     * what lies outside */
+    const double w = cl / lipschitz;
+    todo.push_back({ s0, sm - w });
+    todo.push_back({ sm + w, s1 });
   }
 
   return true;
@@ -302,13 +373,21 @@ path_t makePath(const pathSpec_t & spec) {
   if (spec.kind == PATH_SLIDE)
     return { { 0, 0, 0 }, { 0, su, sv }, { end, su, sv }, { end, 0, 0 } };
 
+  /* The shift follows the bulge of a square turning about its centre: its
+   * extent along an axis grows by cos θ + sin θ - 1 (in half sides), 0 at
+   * both ends and largest at 45°. With amount equal to a cube's own bulge
+   * the cube's leading face stays on the plane it started on, i.e. its
+   * corner glides along the neighbour it rubs against. The profile is
+   * symmetric in t and 1 - t, so a reversed wiggle is a wiggle of the
+   * other sense. */
   path_t path;
   for (int k = 0; k <= WIGGLE_SEGMENTS; k++) {
     double t = (double)k / WIGGLE_SEGMENTS;
-    double w = std::sin(std::numbers::pi * t);
+    double th = 0.5 * std::numbers::pi * t;
+    double w = (std::cos(th) + std::sin(th) - 1) / (std::numbers::sqrt2 - 1);
     path.push_back({ end * t, w * su, w * sv });
   }
-  /* exactly back on the lattice, sin(π) is not quite 0 */
+  /* exactly back on the lattice, cos(π/2) is not quite 0 */
   path.back() = { end, 0, 0 };
   return path;
 }
@@ -552,6 +631,39 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
     }
   }
 
+  /* the other blockers with the set of paths each blocks, for firstClear */
+  const size_t n = tables[0].size();
+  words = (unsigned int)((n + 63) / 64);
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    const size_t entries = tables[sense][0].table.size();
+    pairStart[sense].assign(entries + 1, 0);
+    for (size_t e = 0; e < entries; e++) {
+      std::map<std::pair<int, int>, std::vector<uint64_t>> paths;
+      for (size_t i = 0; i < n; i++)
+        for (const auto & off : tables[sense][i].table[e]) {
+          std::vector<uint64_t> & b = paths[off];
+          if (b.empty())
+            b.assign(words, 0);
+          b[i / 64] |= uint64_t(1) << (i % 64);
+        }
+      std::vector<std::pair<size_t, std::pair<int, int>>> partial;
+      for (const auto & [off, b] : paths) {
+        size_t count = 0;
+        for (uint64_t w : b)
+          count += (size_t)std::popcount(w);
+        if (count < n)
+          partial.push_back({ count, off });
+      }
+      std::stable_sort(partial.begin(), partial.end(), [](const auto & a, const auto & b) { return a.first > b.first; });
+      for (const auto & p : partial) {
+        pairOffset[sense].push_back(p.second);
+        const std::vector<uint64_t> & b = paths[p.second];
+        pairBits[sense].insert(pairBits[sense].end(), b.begin(), b.end());
+      }
+      pairStart[sense][e + 1] = (uint32_t)pairOffset[sense].size();
+    }
+  }
+
   /* the inverse: static cube relative to moving cube -> moving cube offsets */
   const int w = 4 * r + 1;
   for (unsigned int sense = 0; sense < 2; sense++)
@@ -647,17 +759,40 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occup
       if (occupied(m.layer, su, sv))
         return -1;
 
-  for (size_t i = 0; i < tables[sense].size(); i++) {
-    bool blocked = false;
-    for (size_t k = 0; k < cubes.size() && !blocked; k++)
-      for (const auto & [su, sv] : tables[sense][i].table[cubes[k].entry])
-        if (occupied(cubes[k].layer, su, sv)) {
-          blocked = true;
-          break;
-        }
-    if (!blocked)
+  /* OR the paths every occupied blocker blocks; the first path left over
+   * is the first clear one */
+  const size_t n = tables[sense].size();
+  const uint64_t lastWord = (n % 64) ? (uint64_t(1) << (n % 64)) - 1 : ~uint64_t(0);
+  uint64_t local[8];
+  std::vector<uint64_t> heap;
+  uint64_t * blocked = local;
+  if (words > 8) {
+    heap.assign(words, 0);
+    blocked = heap.data();
+  } else
+    std::fill(local, local + words, 0);
+  auto allBlocked = [&]() {
+    for (unsigned int w = 0; w + 1 < words; w++)
+      if (blocked[w] != ~uint64_t(0))
+        return false;
+    return (blocked[words - 1] & lastWord) == lastWord;
+  };
+
+  for (const movingCube_t & m : cubes)
+    for (uint32_t j = pairStart[sense][m.entry]; j < pairStart[sense][m.entry + 1]; j++) {
+      const auto & [su, sv] = pairOffset[sense][j];
+      if (!occupied(m.layer, su, sv))
+        continue;
+      const uint64_t * b = &pairBits[sense][(size_t)j * words];
+      for (unsigned int w = 0; w < words; w++)
+        blocked[w] |= b[w];
+      if (allBlocked())
+        return -1;
+    }
+
+  for (size_t i = 0; i < n; i++)
+    if (!((blocked[i / 64] >> (i % 64)) & 1))
       return (int)i;
-  }
   return -1;
 }
 

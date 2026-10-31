@@ -1,0 +1,21 @@
+BioTIC  | -R: level: 1R0.1R0.1R0.8R4.7R3.1R2 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+CagedCube_1  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+ElfTIC  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+FantasTIC  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+GalacTIC  | -R: level: 1R0.1R0.3R0.4R1.3R4.12R8 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+HypnoTIC  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+LocomoTIC  | -R: level: 16R1.7R0.3R1 1 1 solutions   | -C: level: 16R1.7R0.3R1 1 assemblies and 1 solutions  
+LunaTIC  | -R: level: 12R1.2R0.1R1 1 1 solutions   | -C: level: 12R1.2R0.2R1 1 assemblies and 1 solutions  
+MagellanTIC  | -R:  | -C: level: 14R1.4R0.8R4.12R4.2R2 1 1 solutions  
+NotchedTIC  | -R: level: 13R0.7R0.2R1.2R1.2R0 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+PackTIC_7  | -R: level: 1R0.3R0.7R5.2R2 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+PedanTIC  | -R: level: 1R0.1R0.2R0.18R8.2R3 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+SkepTIC  | -R: level: 12R1.2R1.1R4 1 1 solutions   | -C: level: 12R1.2R1.4R4 1 assemblies and 1 solutions  
+StarTIC_2  | -R: level: 7R1.6R1.2R1.2R1.2R1 1 1 solutions   | -C: level: 7R1.6R1.2R1.2R1.2R1 1 assemblies and 1 solutions  
+ThreeTIC  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+TriumviraTIC  | -R: 1 0 solutions   | -C: 1 assemblies and 0 solutions  
+TwisTIC  | -R: level: 3R0.2R0.16R14.1R2 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+ocTIC  | -R: level: 8R0.1R2.2R1 1 1 solutions   | -C: level: 8R0.2R2.2R1 1 assemblies and 1 solutions  
+scRIBble  | -R: level: 7R2.3R2 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+tRIBe  | -R: level: 5R2.3R4 1 1 solutions   | -C: 1 assemblies and 0 solutions  
+tRIBes  | -R: level: 8R1.7R4 1 1 solutions   | -C: level: 8R1.7R4 1 assemblies and 1 solutions  
