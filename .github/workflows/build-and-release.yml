@@ -12,6 +12,23 @@ on:
 permissions:
   contents: write
 
+# A newer run cancels the older runs of its pull request or branch, queued or
+# running. Restacking pushes every PR of a stack at once, and without this
+# the superseded runs keep their places in the queue ahead of the current
+# ones. The group is the PR, not the commit, so the duplicate run GitHub
+# sometimes starts for one push is cancelled too.
+#
+# This includes master, deliberately: a push to master cancels the master run
+# still going, docs deployment and ccache save included. The newer run tests
+# a commit that contains the older one and deploys and saves in its place;
+# merging a stack pushes to master once per PR, and only the last push's
+# result matters. What is lost is which of those merges broke master, if one
+# did. A manual run of master is in the same group. Tags have a group each
+# (the ref), so a release run is never cancelled by a push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
