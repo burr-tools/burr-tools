@@ -4125,10 +4125,12 @@ static unsigned int a1DlxTopFourTasks(const std::string & state) {
  * (25 shapes, 6 placed) reaches such stops on the DLX pool path for most
  * stop points; the union of stopped and resumed run must equal the
  * uninterrupted baseline. Three full DLX runs (~8 s on a 4-core laptop),
- * hence the slow suite ([stress]).
+ * hence the slow suite ([stress]). Coverage runs skip it ([nocoverage]):
+ * instrumented, it takes 11 minutes even with its threads on one CPU, and
+ * it covers no line the other cases leave out (2 branches, 2026-10-31).
  */
 TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
-          "[assembler][resume][save][stress]") {
+          "[assembler][resume][save][stress][nocoverage]") {
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
   auto p = puzzle_c::load("examples/SolidSixPieceBurrs.xmpuzzle");
   REQUIRE(p != nullptr);

@@ -185,6 +185,10 @@ gcovr_qtgui := "--filter 'src/qtgui/'"
 # needs the render tests' platform set up as the qt-linux CI job does.
 # areas="qtgui" runs the Qt GUI's suites alone: CI's coverage-qt job reports
 # only that figure, the coverage job measures the other two.
+# The library's cases run one process each, each pinned to a CPU
+# (scripts/test-cases-pinned.sh): the coverage build's atomic counters are
+# slow when a case's threads run on different CPUs. Cases tagged
+# [nocoverage] are too slow instrumented for what they add.
 _coverage-tests areas="all": setup-cov
     #!/usr/bin/env bash
     set -euo pipefail
@@ -198,7 +202,7 @@ _coverage-tests areas="all": setup-cov
             exit 1
         fi
     else
-        ./build-cov/test_burrtools '~[ui]'
+        ./scripts/test-cases-pinned.sh ./build-cov/test_burrtools '~[ui]~[nocoverage]' --reporter compact
         gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
         ./build-cov/test_burrtools '[ui]'
     fi
