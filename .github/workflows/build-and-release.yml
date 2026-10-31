@@ -287,9 +287,14 @@ jobs:
           -Dqt_gui=${{ needs.changes.outputs.qt == 'true' && 'enabled' || 'disabled' }} -Dpython=disabled
         ninja -C build-asan
 
+    # MINK_STRESS=1: one random shape per grid and setting in "Minkowski
+    # mesher: random shapes", not three -- a memory error in the mesher shows
+    # on any of them, and the jobs without sanitizers build all three. Under
+    # ASan the case took over 3 minutes.
     - name: Unit tests, leaks included
       if: needs.changes.outputs.core == 'true'
       env:
+        MINK_STRESS: '1'
         ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
       run: ./build-asan/test_burrtools --reporter compact
