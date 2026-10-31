@@ -12,6 +12,15 @@ on:
 permissions:
   contents: write
 
+# A new push to a pull request cancels its runs still queued or running:
+# restacking pushes every PR of a stack at once, and without this the
+# superseded runs keep their places in the queue ahead of the current ones.
+# The group is the PR, not the commit, so the duplicate run GitHub sometimes
+# starts for one push is cancelled too. master and tags are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
@@ -30,6 +39,16 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    # Meson compiles through ccache when it finds it. The cache is saved per
+    # job, from master only: the repository's caches are capped at 10 GB,
+    # and per-PR copies (up to 1 GB each) evicted master's within hours. A
+    # pull request restores master's, whose objects most of its build shares.
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
     
     - name: Setup build directory
       # -Db_ndebug=true is load-bearing, not cosmetic: without it Meson
@@ -118,10 +137,17 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
+    # ccache named here: meson adds it only to compilers it finds itself
     - name: Setup build directory
       env:
-        CC: clang
-        CXX: clang++
+        CC: ccache clang
+        CXX: ccache clang++
       run: meson setup build-clang --buildtype=release --werror
 
     - name: Build
@@ -143,6 +169,8 @@ jobs:
   # pool hanging the runner rather than failing it.
   tsan-parallel:
     name: ThreadSanitizer (parallel solver)
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -161,6 +189,12 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
     - name: Build with ThreadSanitizer
       run: just build-tsan
 
@@ -175,6 +209,8 @@ jobs:
   # leaks are checked in test_burrtools only.
   sanitizers:
     name: Sanitizers (ASan + UBSan)
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.qt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -193,7 +229,9 @@ jobs:
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
+    # The Qt GUI only where the changes job builds it (see there)
     - name: Install Qt
+      if: needs.changes.outputs.qt == 'true'
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.8.*'
@@ -205,19 +243,28 @@ jobs:
         icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
         echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+        max-size: 1G   # debug objects with the Qt GUI
+
     - name: Build with ASan and UBSan
       run: |
         meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
-          -Dqt_gui=enabled -Dpython=disabled
+          -Dqt_gui=${{ needs.changes.outputs.qt == 'true' && 'enabled' || 'disabled' }} -Dpython=disabled
         ninja -C build-asan
 
     - name: Unit tests, leaks included
+      if: needs.changes.outputs.core == 'true'
       env:
         ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
       run: ./build-asan/test_burrtools --reporter compact
 
     - name: Qt GUI suites
+      if: needs.changes.outputs.qt == 'true'
       env:
         ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
@@ -240,11 +287,31 @@ jobs:
   # can break this job with spec/** untouched -- and the justfile is
   # touched far more often than the specs. Gate the expensive job on all
   # paths that can change its outcome.
-  spec-changes:
-    name: Detect spec changes
+  #
+  # The Qt GUI's jobs (qt-*, coverage-qt, the Qt suites in sanitizers) are
+  # gated too: a pull request into a branch other than master -- a PR in
+  # the middle of a stack -- builds the Qt GUI only when it touches the Qt
+  # GUI or what it is built from besides the library. Everything else
+  # always builds it: a PR into master, pushes, tags and manual runs. A
+  # library change that breaks the Qt GUI is thus caught at the latest when
+  # its stack's bottom PR targets master, or on master itself.
+  #
+  # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
+  # in sanitizers, coverage -- run when a pull request touches what that
+  # binary is built from or loads (core), whatever its base: unlike the Qt
+  # GUI's, those inputs can be listed exactly. (test_envvars also scans
+  # src/gui, src/qtgui, scripts and bench; the build jobs, which always run,
+  # run it too.)
+  changes:
+    name: Detect changed areas
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # the PR's own base, below
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
+      qt: ${{ steps.qt.outputs.build }}
+      core: ${{ steps.core.outputs.test }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -259,16 +326,75 @@ jobs:
             - 'spec/**'
             - 'justfile'
             - '.github/workflows/build-and-release.yml'
+          core:
+            - 'src/lib/**'
+            - 'src/tools/**'
+            - 'src/halfedge/**'
+            - 'src/uicore/**'
+            - 'src/gui/solveprogresscache.*'
+            - 'test/*'
+            - 'test/data/**'
+            - 'test/known_good/**'
+            - 'test/malformed/**'
+            - 'examples/**'
+            - 'subprojects/**'
+            - 'meson.build'
+            - 'meson.options'
+            - 'justfile'
+            - 'scripts/test-cases-pinned.sh'
+            - '.github/workflows/build-and-release.yml'
+          qt:
+            - 'src/qtgui/**'
+            - 'src/uicore/**'
+            - 'test/qtgui/**'
+            - 'meson.build'
+            - 'meson.options'
+            - 'scripts/package-qt.sh'
+            - 'justfile'
+            - '.github/workflows/build-and-release.yml'
+    # The PR's base from the API: for a PR in a GitHub stack, base_ref names
+    # the stack's base (master), not the PR below it (seen on #189).
+    - name: Decide whether the Qt GUI is built
+      id: qt
+      env:
+        EVENT: ${{ github.event_name }}
+        PR: ${{ github.event.pull_request.number }}
+        DEFAULT: ${{ github.event.repository.default_branch }}
+        CHANGED: ${{ steps.filter.outputs.qt }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        BASE=
+        if [ "$EVENT" = pull_request ]; then
+          BASE=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .base.ref)
+        fi
+        if [ "$EVENT" != pull_request ] || [ "$BASE" = "$DEFAULT" ] || [ "$CHANGED" = true ]; then
+          echo "build=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::Qt GUI not built: this PR targets $BASE, not $DEFAULT, and touches no Qt GUI paths"
+          echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Decide whether test_burrtools's own jobs run
+      id: core
+      env:
+        EVENT: ${{ github.event_name }}
+        CHANGED: ${{ steps.filter.outputs.core }}
+      run: |
+        if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
+          echo "test=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::tsan-parallel, coverage and the sanitizers' unit tests skipped: no library, test or build input changed"
+          echo "test=false" >> "$GITHUB_OUTPUT"
+        fi
 
   # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
   # the defect class TSan cannot see — lost wakeups, hangs, token leaks —
   # at the protocol level, before those shapes reach the C++ implementation.
   spec:
     name: TLA+ protocol specs
-    needs: spec-changes
+    needs: changes
     # Tags and manual dispatches have no diff base for the filter, so they
     # run unconditionally; PRs and pushes run only on spec/** changes.
-    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.spec-changes.outputs.spec == 'true'
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.spec == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -309,9 +435,10 @@ jobs:
   # C++. `coverage-report` puts both in one comment, the Qt GUI's part only
   # when its job got that far.
   coverage:
+    needs: changes
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/master') && needs.changes.outputs.core == 'true'
     outputs:
       html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
     steps:
@@ -329,6 +456,12 @@ jobs:
 
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
 
     # Configured without the Qt GUI, even where a Qt is found. `shell: bash`
     # sets pipefail, so a gcovr failure is not masked by tee's exit status.
@@ -360,9 +493,10 @@ jobs:
         path: coverage-html/
 
   coverage-qt:
+    needs: changes
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/master') && needs.changes.outputs.qt == 'true'
     outputs:
       html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
     steps:
@@ -406,8 +540,17 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+        max-size: 1G   # debug objects with the Qt GUI
+
     # The Qt suites' render tests run as in qt-linux: Vulkan on Mesa's
-    # lavapipe, test_qtgui as "xcb" on Xvfb.
+    # lavapipe, test_qtgui as "xcb" on Xvfb. Only the Qt suites run (areas
+    # qtgui): the report takes this job's Qt GUI figure alone, the coverage
+    # job measures the library and src/uicore.
     - name: Report coverage and generate HTML report
       shell: bash
       env:
@@ -417,7 +560,7 @@ jobs:
         VK_LOADER_DEBUG: error
       run: |
         meson setup build-cov -Db_coverage=true -Dqt_gui=enabled
-        xvfb-run -a just coverage-html | tee coverage-summary.txt
+        xvfb-run -a just coverage-html qtgui | tee coverage-summary.txt
 
     - name: Upload the coverage summary
       uses: actions/upload-artifact@v4
@@ -442,7 +585,7 @@ jobs:
 
   coverage-report:
     runs-on: ubuntu-latest
-    needs: [coverage, coverage-qt]
+    needs: [changes, coverage, coverage-qt]
     if: always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/master')
     permissions:
       contents: read
@@ -456,17 +599,24 @@ jobs:
         pattern: coverage-summary*
         path: summaries
 
-    # No report without the library's figure. The Qt GUI's is the block from
-    # its "== Qt GUI" line on, in the Qt job's summary.
+    # No report without the library's figure, unless the coverage job was
+    # skipped as unaffected (changes). The Qt GUI's is the block from its
+    # "== Qt GUI" line on, in the Qt job's summary.
     - name: Build the coverage report body
       env:
         HTML_URL: ${{ needs.coverage.outputs.html-url }}
         HTML_QT_URL: ${{ needs.coverage-qt.outputs.html-url }}
+        QT_BUILT: ${{ needs.changes.outputs.qt }}
+        CORE_TESTED: ${{ needs.changes.outputs.core }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         lib=summaries/coverage-summary/coverage-summary.txt
         qt=summaries/coverage-summary-qt/coverage-summary.txt
-        if [ ! -f "$lib" ]; then
+        if [ "$CORE_TESTED" != true ] && [ ! -f "$qt" ]; then
+          echo "No coverage measured: this PR touches neither the library's nor the Qt GUI's inputs." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        if [ "$CORE_TESTED" = true ] && [ ! -f "$lib" ]; then
           echo "::warning::no coverage summary: the coverage job failed"
           exit 0
         fi
@@ -477,13 +627,22 @@ jobs:
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(== |lines:|functions:|branches:)' "$lib"
+          if [ -f "$lib" ]; then
+            grep -E '^(== |lines:|functions:|branches:)' "$lib"
+          fi
           if [ -f "$qt" ]; then
             sed -n '/^== Qt GUI/,$p' "$qt" | grep -E '^(== |lines:|functions:|branches:)'
           fi
           echo '```'
           echo
-          if [ ! -f "$qt" ]; then
+          if [ "$CORE_TESTED" != true ]; then
+            echo "The library's and src/uicore's figures are not measured: this PR touches no library, test or build input."
+            echo
+          fi
+          if [ "$QT_BUILT" != true ]; then
+            echo "The Qt GUI's figure is not measured: this PR targets a branch other than master and touches no Qt GUI paths."
+            echo
+          elif [ ! -f "$qt" ]; then
             echo "The Qt GUI's figure is missing: the coverage-qt job did not finish ([run]($RUN_URL))."
             echo
           fi
@@ -616,12 +775,22 @@ jobs:
     
     - name: Install dependencies
       run: sudo apt-get install -y meson ninja-build mingw-w64 wine
-    
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
+    # ccache through a second cross file, which overrides the first's
+    # compilers: meson adds ccache only to compilers it finds itself.
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
       # / live bt_assert checks (~15-30% solver overhead, see the Linux job
       # comment and design/2026-09-24-benchmark-speedup-analysis.md §7).
-      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
+      run: |
+        printf "[binaries]\nc = ['ccache', 'x86_64-w64-mingw32-gcc']\ncpp = ['ccache', 'x86_64-w64-mingw32-g++']\n" > ccache-mingw64.txt
+        meson setup build-win --cross-file cross-mingw64.txt --cross-file ccache-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
     
     - name: Build
       run: ninja -C build-win
@@ -685,6 +854,12 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
     
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
@@ -778,6 +953,8 @@ jobs:
   # job does not pick these up: its download pattern names only the legacy builds.
   qt-linux:
     name: Qt GUI (Linux)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -801,6 +978,12 @@ jobs:
         version: '6.8.*'
         modules: 'qtshadertools'
         cache: true
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
 
     - name: Build
       run: |
@@ -869,11 +1052,18 @@ jobs:
 
   qt-windows:
     name: Qt GUI (Windows, MSYS2 UCRT64)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: windows-latest
     timeout-minutes: 90
     defaults:
       run:
         shell: msys2 {0}
+    # MSYS2's own ccache (see build-linux for why), its directory cached by
+    # hand: hendrikmuhs/ccache-action does not know MSYS2.
+    env:
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_MAXSIZE: 500M
     steps:
     - uses: actions/checkout@v4
       with:
@@ -887,6 +1077,7 @@ jobs:
         install: >-
           git
           mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-ccache
           mingw-w64-ucrt-x86_64-meson
           mingw-w64-ucrt-x86_64-ninja
           mingw-w64-ucrt-x86_64-cmake
@@ -899,6 +1090,14 @@ jobs:
           mingw-w64-ucrt-x86_64-qt6-tools
           zip
 
+    # saved from master only, as in build-linux
+    - name: Restore the ccache directory
+      uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
+        restore-keys: ccache-${{ github.job }}-
+
     # -Ddxbc=enabled: the Direct3D shaders compiled by the runner's Windows
     # SDK fxc, so no start-up compiles HLSL; the build fails rather than
     # quietly shipping source if fxc is not found
@@ -906,6 +1105,14 @@ jobs:
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled -Ddxbc=enabled
         ninja -C build-qt
+        ccache --show-stats
+
+    - name: Save the ccache directory
+      if: github.event_name != 'pull_request'
+      uses: actions/cache/save@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
 
     - name: Self-check
       run: ./build-qt/burrtools-qt.exe --self-check
@@ -955,6 +1162,8 @@ jobs:
 
   qt-macos:
     name: Qt GUI (macOS)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -975,6 +1184,12 @@ jobs:
         version: '6.11.*'
         modules: 'qtshadertools'
         cache: true
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
 
     - name: Build
       run: |

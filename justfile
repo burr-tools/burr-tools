@@ -183,16 +183,29 @@ gcovr_qtgui := "--filter 'src/qtgui/'"
 # (the library and, as its [ui] cases, src/uicore), then the Qt GUI's suites
 # when the coverage build has the Qt GUI (Qt >= 6.8 found). Headless Linux
 # needs the render tests' platform set up as the qt-linux CI job does.
-_coverage-tests: setup-cov
+# areas="qtgui" runs the Qt GUI's suites alone: CI's coverage-qt job reports
+# only that figure, the coverage job measures the other two.
+# The library's cases run one process each, each pinned to a CPU
+# (scripts/test-cases-pinned.sh): the coverage build's atomic counters are
+# slow when a case's threads run on different CPUs. Cases tagged
+# [nocoverage] are too slow instrumented for what they add.
+_coverage-tests areas="all": setup-cov
     #!/usr/bin/env bash
     set -euo pipefail
     ninja -C build-cov
     # counters add up across runs: start from zero, so the library's figure
     # below holds the library's tests only, not an earlier run's GUI suites
     find build-cov -name '*.gcda' -delete
-    ./build-cov/test_burrtools '~[ui]'
-    gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
-    ./build-cov/test_burrtools '[ui]'
+    if [ "{{ areas }}" = qtgui ]; then
+        if [ ! -d build-cov/test/qtgui ]; then
+            echo "error: build-cov has no Qt GUI (Qt >= 6.8 not found)" >&2
+            exit 1
+        fi
+    else
+        ./scripts/test-cases-pinned.sh ./build-cov/test_burrtools '~[ui]~[nocoverage]' --reporter compact
+        gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
+        ./build-cov/test_burrtools '[ui]'
+    fi
     if [ -d build-cov/test/qtgui ]; then
         meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
     fi
@@ -201,7 +214,8 @@ _coverage-tests: setup-cov
 # html names its index file), then a summary per area read back from it --
 # the library's from the tracefile _coverage-tests took after its own tests.
 # (The HTML report shows every suite's hits, the library's files included.)
-_coverage-summary html="":
+# areas="qtgui" reports, and puts in the HTML, the Qt GUI's area only.
+_coverage-summary html="" areas="all":
     #!/usr/bin/env bash
     set -euo pipefail
     html_args=()
@@ -209,7 +223,12 @@ _coverage-summary html="":
         mkdir -p "$(dirname "{{ html }}")"
         html_args=(--html-details "{{ html }}")
     fi
-    gcovr {{ gcovr_base }} {{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }} \
+    if [ "{{ areas }}" = qtgui ]; then
+        filters=({{ gcovr_qtgui }})
+    else
+        filters=({{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }})
+    fi
+    gcovr {{ gcovr_base }} "${filters[@]}" \
         --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
     area() {
         echo "== $1"     # the CI report picks these lines out of the build's output
@@ -219,8 +238,10 @@ _coverage-summary html="":
         # (gcovr refuses /dev/null as an output)
         gcovr --root . --add-tracefile "$tracefile" "$@" --print-summary --output build-cov/coverage-area.txt
     }
-    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
-    area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    if [ "{{ areas }}" != qtgui ]; then
+        area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
+        area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    fi
     if [ -d build-cov/test/qtgui ]; then
         area "Qt GUI: src/qtgui, C++ only" build-cov/coverage.json {{ gcovr_qtgui }}
     fi
@@ -228,8 +249,8 @@ _coverage-summary html="":
 # Report test coverage per area (library, UI core, Qt GUI)
 coverage: _coverage-tests _coverage-summary
 
-# Per-area coverage summary plus an HTML report of every area in coverage-html/
-coverage-html: _coverage-tests (_coverage-summary "coverage-html/index.html")
+# Per-area coverage summary plus an HTML report in coverage-html/ (areas="qtgui": the Qt GUI's alone)
+coverage-html areas="all": (_coverage-tests areas) (_coverage-summary "coverage-html/index.html" areas)
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
