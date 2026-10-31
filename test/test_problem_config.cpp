@@ -672,44 +672,44 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
 /* the rotation model                                                  */
 /* ------------------------------------------------------------------ */
 
-TEST_CASE("problem: the rotation model is saved with the problem", "[problem][rotations]") {
+TEST_CASE("puzzle: the pieces' play and bevel are saved with the puzzle", "[problem][rotations]") {
   Fixture f = makeFixture(1);
-  CHECK_FALSE(f.problem->getRotationModel());
+  CHECK_FALSE(f.puzzle->getRotationModel());
 
   /* unset, nothing is written */
   auto plain = reloadEdited(*f.puzzle, [](std::string & text) {
     CHECK(text.find("rotationPlay") == std::string::npos);
   });
-  CHECK_FALSE(plain->getProblem(0)->getRotationModel());
+  CHECK_FALSE(plain->getRotationModel());
 
-  f.problem->setRotationModel({ 0.0126, 0.0317 });
+  f.puzzle->setRotationModel({ 0.0126, 0.0317 });
   auto p = reloadEdited(*f.puzzle, [](std::string & text) {
-    CHECK(text.find("rotationPlay=\"0.0126\"") != std::string::npos);
-    CHECK(text.find("rotationBevel=\"0.0317\"") != std::string::npos);
+    /* on the puzzle, not on a problem: the problems share the pieces */
+    CHECK(text.find("<puzzle version=\"2\" rotationPlay=\"0.0126\" rotationBevel=\"0.0317\"") != std::string::npos);
   });
-  REQUIRE(p->getProblem(0)->getRotationModel());
-  CHECK(p->getProblem(0)->getRotationModel()->play == 0.0126);
-  CHECK(p->getProblem(0)->getRotationModel()->chamfer == 0.0317);
+  REQUIRE(p->getRotationModel());
+  CHECK(p->getRotationModel()->play == 0.0126);
+  CHECK(p->getRotationModel()->chamfer == 0.0317);
 
-  /* a copied problem keeps it */
-  problem_c copy(f.problem, *f.puzzle);
+  /* a copied puzzle keeps it */
+  puzzle_c copy(f.puzzle.get());
   REQUIRE(copy.getRotationModel());
   CHECK(copy.getRotationModel()->play == 0.0126);
 
-  f.problem->clearRotationModel();
-  CHECK_FALSE(f.problem->getRotationModel());
+  f.puzzle->clearRotationModel();
+  CHECK_FALSE(f.puzzle->getRotationModel());
 }
 
-TEST_CASE("problem: an invalid rotation model is refused, in a file and by the setter",
+TEST_CASE("puzzle: an invalid rotation model is refused, in a file and by the setter",
           "[problem][rotations]") {
   Fixture f = makeFixture(1);
-  CHECK_THROWS(f.problem->setRotationModel({ 0, 0.03 }));
-  CHECK_THROWS(f.problem->setRotationModel({ 1, 0 }));
-  CHECK_THROWS(f.problem->setRotationModel({ 0.08, -0.01 }));
-  CHECK_THROWS(f.problem->setRotationModel({ 0.08, 0.46 }));
-  CHECK_FALSE(f.problem->getRotationModel());
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0, 0.03 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 1, 0 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0.08, -0.01 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0.08, 0.46 }));
+  CHECK_FALSE(f.puzzle->getRotationModel());
 
-  f.problem->setRotationModel({ 0.05, 0.03 });
+  f.puzzle->setRotationModel({ 0.05, 0.03 });
   for (auto [from, to] : { std::pair{ "rotationPlay=\"0.05\"", "rotationPlay=\"0\"" },
                            { "rotationPlay=\"0.05\"", "rotationPlay=\"0.05x\"" },
                            { "rotationPlay=\"0.05\"", "" },
@@ -734,7 +734,7 @@ TEST_CASE("xmlDouble: as short as it can be, and exact", "[problem][rotations]")
   }
 }
 
-TEST_CASE("problem: another rotation model makes the solutions unknown", "[problem][rotations]") {
+TEST_CASE("puzzle: other pieces make every problem's solutions unknown", "[problem][rotations]") {
   auto solved = [] {
     SolvingFixture f = makeSolvingFixture(1, 1);
     f.problem->finishedSolving();
@@ -743,12 +743,18 @@ TEST_CASE("problem: another rotation model makes the solutions unknown", "[probl
   };
 
   SolvingFixture set = solved();
-  set.problem->setRotationModel({ 0.081, 0.032 });
+  set.puzzle->setRotationModel({ 0.07, 0.032 });
   CHECK(set.problem->getSolveState() == SS_UNKNOWN);
+
+  /* storing the model that applies already (the default) changes nothing */
+  SolvingFixture same = solved();
+  same.puzzle->setRotationModel(rotationSettings_t{}.model);
+  CHECK(same.puzzle->getRotationModel());
+  CHECK(same.problem->getSolveState() == SS_SOLVED);
 
   /* clearing a model that is not there is no edit */
   SolvingFixture noEdit = solved();
-  noEdit.problem->clearRotationModel();
+  noEdit.puzzle->clearRotationModel();
   CHECK(noEdit.problem->getSolveState() == SS_SOLVED);
 }
 

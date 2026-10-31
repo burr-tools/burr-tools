@@ -191,15 +191,6 @@ private:
    */
   unsigned int maxHoles;
 
-  /**
-   * The physical pieces rotation moves are found for: their play and bevel
-   * (rotationGeometry::model_t). A property of the puzzle, not of the
-   * solver, so it is saved with the problem; unset, the solver's default
-   * model applies (rotationSettings_t::model).
-   */
-  std::optional<rotationGeometry::model_t> rotationModel;
-  /** drop the disassemblies that turn when next is tighter than the model now */
-  void dropTurnsFor(const rotationGeometry::model_t & next);
 
   /** called, when the problem gets changed */
   void editProblem(void);
@@ -403,20 +394,15 @@ public:
   /** invalidate the value */
   void setMaxHolesInvalid(void) { maxHoles = 0xFFFFFFFF; }
 
-  /** the stored model for rotation moves, unset when the default applies */
-  const std::optional<rotationGeometry::model_t> & getRotationModel(void) const { return rotationModel; }
-  /** Store the model; throws when it is not a valid one (validRotationModel).
-   *  A different model is an edit: the solutions become unknown. Less play
-   *  or a smaller bevel adds material, so then the disassemblies that turn
-   *  pieces are dropped too (their assemblies stay): their turns were only
-   *  proven for the old model. A disassembly kept only as information
-   *  cannot tell whether it turns and stays. */
-  void setRotationModel(const rotationGeometry::model_t & model);
-  /** back to the solver's default model; also an edit when one was set,
-   *  dropping turns like setRotationModel */
-  void clearRotationModel(void);
-  /** 0 < play < 1 and 0 <= bevel < half the cube */
-  static bool validRotationModel(const rotationGeometry::model_t & model);
+  /** The puzzle's pieces changed (puzzle_c::setRotationModel): the
+   *  solutions become unknown, and when the pieces got tighter (less play
+   *  or a smaller bevel, which adds material) the disassemblies that turn
+   *  are dropped (their assemblies stay): their turns were only proven for
+   *  the old pieces. A disassembly kept only as information cannot tell
+   *  whether it turns and stays. */
+  void piecesChanged(bool tighter);
+  /** drop the disassemblies that turn (see piecesChanged) */
+  void dropTurningDisassemblies(void);
   //@}
 
   /**
