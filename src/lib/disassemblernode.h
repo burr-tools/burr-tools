@@ -71,6 +71,14 @@ private:
   unsigned int piecenumber;
 
   /**
+   * In-plane pivot of the rotation move that led to this node, in doubled
+   * cell units and the frames of rotationGeometry::planarScene_c; only
+   * meaningful when isRotation(). Fills what was alignment padding after
+   * piecenumber, so the node does not grow.
+   */
+  int16_t rotPivotU = 0, rotPivotV = 0;
+
+  /**
    * The position and orientation of all involved pieces.
    *
    * For more memory performance I will try to limit the
@@ -313,6 +321,26 @@ public:
   /** get the waylength from root node to this node */
   unsigned int getWaylength(void) const {
     return waylength;
+  }
+
+  /**
+   * Rotation moves reuse dir and amount: dir = ROTATION_DIR_BASE + 2·axis +
+   * sense (no translation direction gets anywhere near it) and amount is
+   * the index of the path in the rotationGeometry::rotationTables_c family.
+   */
+  static const unsigned int ROTATION_DIR_BASE = 0x100;
+
+  bool isRotation(void) const { return dir >= ROTATION_DIR_BASE; }
+  unsigned int getRotationAxis(void) const { return (dir - ROTATION_DIR_BASE) >> 1; }
+  unsigned int getRotationSense(void) const { return (dir - ROTATION_DIR_BASE) & 1; }
+  unsigned int getRotationPath(void) const { return (unsigned int)amount; }
+  int getRotationPivotU(void) const { return rotPivotU; }
+  int getRotationPivotV(void) const { return rotPivotV; }
+
+  void setRotationPivot(int u, int v) {
+    bt_assert(abs(u) <= maxMove && abs(v) <= maxMove);
+    rotPivotU = (int16_t)u;
+    rotPivotV = (int16_t)v;
   }
 
  private:
