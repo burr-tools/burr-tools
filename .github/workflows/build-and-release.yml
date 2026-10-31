@@ -459,7 +459,9 @@ jobs:
         max-size: 1G   # debug objects with the Qt GUI
 
     # The Qt suites' render tests run as in qt-linux: Vulkan on Mesa's
-    # lavapipe, test_qtgui as "xcb" on Xvfb.
+    # lavapipe, test_qtgui as "xcb" on Xvfb. Only the Qt suites run (areas
+    # qtgui): the report takes this job's Qt GUI figure alone, the coverage
+    # job measures the library and src/uicore.
     - name: Report coverage and generate HTML report
       shell: bash
       env:
@@ -469,7 +471,7 @@ jobs:
         VK_LOADER_DEBUG: error
       run: |
         meson setup build-cov -Db_coverage=true -Dqt_gui=enabled
-        xvfb-run -a just coverage-html | tee coverage-summary.txt
+        xvfb-run -a just coverage-html qtgui | tee coverage-summary.txt
 
     - name: Upload the coverage summary
       uses: actions/upload-artifact@v4
