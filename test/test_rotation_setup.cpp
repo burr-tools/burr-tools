@@ -132,7 +132,7 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
   CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
 }
 
-TEST_CASE("a problem's stored model wins over the settings' default", "[rotations]") {
+TEST_CASE("the puzzle's stored model wins over the settings' default, a what-if model over both", "[rotations]") {
 
   auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   problem_c & problem = *puzzle->getProblem(0);
@@ -142,7 +142,7 @@ TEST_CASE("a problem's stored model wins over the settings' default", "[rotation
   CHECK(plain->getSettings().model.play == SMALL.model.play);
   CHECK(plain->getSettings().model.chamfer == SMALL.model.chamfer);
 
-  problem.setRotationModel({ 0.06, 0.04 });
+  puzzle->setRotationModel({ 0.06, 0.04 });
   auto stored = rotationContextFor(problem, SMALL);
   REQUIRE(stored != nullptr);
   CHECK(stored->getSettings().model.play == 0.06);
@@ -150,6 +150,13 @@ TEST_CASE("a problem's stored model wins over the settings' default", "[rotation
   /* the rest of the settings are the solver's */
   CHECK(stored->getSettings().amounts == SMALL.amounts);
   CHECK(rotationSettingsFor(problem, SMALL).model.chamfer == 0.04);
+
+  /* a what-if question passes its pieces and does not store them */
+  auto whatIf = rotationContextFor(problem, SMALL, false, rotationGeometry::model_t{ 0.03, 0.02 });
+  REQUIRE(whatIf != nullptr);
+  CHECK(whatIf->getSettings().model.play == 0.03);
+  CHECK(whatIf->getSettings().model.chamfer == 0.02);
+  CHECK(puzzle->getRotationModel()->play == 0.06);
 }
 
 TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {

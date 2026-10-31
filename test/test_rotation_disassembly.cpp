@@ -458,7 +458,7 @@ TEST_CASE("a tighter rotation model drops the disassemblies that turn", "[rotati
                                              rotationGeometry::model_t{ model.play, model.chamfer / 2 } }) {
     auto puzzle = solvedWithTurns();
     problem_c & problem = *puzzle->getProblem(0);
-    problem.setRotationModel(tighter);
+    puzzle->setRotationModel(tighter);
     REQUIRE(problem.getNumberOfSavedSolutions() == 1);
     CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
     CHECK(problem.getSavedSolution(0)->getAssembly() != nullptr);
@@ -466,10 +466,10 @@ TEST_CASE("a tighter rotation model drops the disassemblies that turn", "[rotati
 
   auto puzzle = solvedWithTurns();
   problem_c & problem = *puzzle->getProblem(0);
-  problem.setRotationModel({ model.play * 2, model.chamfer });
+  puzzle->setRotationModel({ model.play * 2, model.chamfer });
   CHECK(problem.getSavedSolution(0)->getDisassembly() != nullptr);
   /* back to the default from more play: tighter again */
-  problem.clearRotationModel();
+  puzzle->clearRotationModel();
   CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
 }
 

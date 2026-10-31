@@ -60,13 +60,14 @@ class TestBurrTools(unittest.TestCase):
         puzzle = burrtools.load(path)
         prob = puzzle.problems[0]
 
-        # the default until one is set: play 0.081 with puzzlecad's bevel
-        self.assertEqual(prob.rotation_model, (0.081, 0.032))
+        # the pieces belong to the puzzle: the default until one is set,
+        # play 0.081 with puzzlecad's bevel
+        self.assertEqual(puzzle.rotation_model, (0.081, 0.032))
 
         # the stored model reaches the solver: with the tight play of a
         # printed copy the pieces come apart differently than at the default
-        prob.rotation_model = (0.0126, 0.0317)
-        self.assertEqual(prob.rotation_model, (0.0126, 0.0317))
+        puzzle.rotation_model = (0.0126, 0.0317)
+        self.assertEqual(puzzle.rotation_model, (0.0126, 0.0317))
         solutions = list(prob.solve(disassemble=True, rotation_moves=True))
         self.assertEqual([s.moves_text for s in solutions], ["6.4"])
 
@@ -74,12 +75,12 @@ class TestBurrTools(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             saved = os.path.join(tmp, "model.xmpuzzle")
             puzzle.save(saved)
-            self.assertEqual(burrtools.load(saved).problems[0].rotation_model, (0.0126, 0.0317))
+            self.assertEqual(burrtools.load(saved).rotation_model, (0.0126, 0.0317))
 
         with self.assertRaises(ValueError):
-            prob.rotation_model = (0.1, 0.5)
-        prob.rotation_model = None
-        self.assertEqual(prob.rotation_model, (0.081, 0.032))
+            puzzle.rotation_model = (0.1, 0.5)
+        puzzle.rotation_model = None
+        self.assertEqual(puzzle.rotation_model, (0.081, 0.032))
 
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)

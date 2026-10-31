@@ -21,22 +21,6 @@ problem_c * PyProblem::get_problem() const {
   return puzzle->getProblem(problem_idx);
 }
 
-std::pair<double, double> PyProblem::get_rotation_model() const {
-  const rotationGeometry::model_t m = get_problem()->getRotationModel().value_or(rotationSettings_t{}.model);
-  return { m.play, m.chamfer };
-}
-
-void PyProblem::set_rotation_model(const std::optional<std::pair<double, double>> & model) {
-  if (!model) {
-    get_problem()->clearRotationModel();
-    return;
-  }
-  const rotationGeometry::model_t m = { model->first, model->second };
-  if (!problem_c::validRotationModel(m))
-    throw std::invalid_argument("rotation_model needs 0 < play < 1 and 0 <= bevel < half a cube");
-  get_problem()->setRotationModel(m);
-}
-
 std::string PyProblem::get_name() const {
   return get_problem()->getName();
 }

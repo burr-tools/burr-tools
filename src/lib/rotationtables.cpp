@@ -390,18 +390,21 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
 }
 
 rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings) {
-  if (problem.getRotationModel())
-    settings.model = *problem.getRotationModel();
+  if (problem.getPuzzle().getRotationModel())
+    settings.model = *problem.getPuzzle().getRotationModel();
   return settings;
 }
 
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background) {
+rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background,
+                   const std::optional<rotationGeometry::model_t> & model) {
 
   if (problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
     return nullptr;
 
-  const rotationSettings_t settings = rotationSettingsFor(problem, given);
+  rotationSettings_t settings = rotationSettingsFor(problem, given);
+  if (model)
+    settings.model = *model;
   const int radius = rotationRadiusFor(problem);
   auto tablesOf = [background, radius](const rotationSettings_t & s) {
     if (background)

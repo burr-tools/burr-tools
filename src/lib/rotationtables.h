@@ -48,7 +48,7 @@ class disassemblerNode_c;
 inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
 
 struct rotationSettings_t {
-  /** The model of a problem that stores none (problem_c::getRotationModel):
+  /** The model of a puzzle that stores none (puzzle_c::getRotationModel):
    *  PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
    *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
    *  never quite sharp, and a bevel only takes material away, so it adds
@@ -314,10 +314,10 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
 
 /**
  * The settings a problem's rotation moves use: the given ones with the
- * problem's own model when it stores one (problem_c::getRotationModel).
- * The model describes the pieces, so it belongs to the puzzle; the rest
- * is how the solver searches. rotationContextFor and optimizeTurns apply
- * it themselves.
+ * puzzle's model when it stores one (puzzle_c::getRotationModel). The model
+ * describes the pieces, so it belongs to the puzzle; the rest is how the
+ * solver searches. rotationContextFor and optimizeTurns apply it
+ * themselves.
  */
 rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
 
@@ -326,9 +326,12 @@ rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettin
  * possible for it (only cube grids with a valid result shape have them).
  * With background set, the tables are built on another thread and the
  * first disassembler that needs them waits; otherwise they are built (or
- * taken from the cache) before returning.
+ * taken from the cache) before returning. model: check against these
+ * pieces instead of the puzzle's, for a what-if question (burrTxt -M); it
+ * is an argument, never stored, so the question does not change the pieces.
  */
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false);
+rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false,
+                   const std::optional<rotationGeometry::model_t> & model = std::nullopt);
 
 #endif

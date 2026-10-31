@@ -89,7 +89,6 @@ problem_c::problem_c(const problem_c * orig, puzzle_c & puz) :
     parts.push_back(std::make_unique<part_c>(orig->parts[i].get()));
 
   maxHoles = orig->maxHoles;
-  rotationModel = orig->rotationModel;
 
   // solutions are NOT copied including the fields assm, solve state is set to unsolved
   // number of solutions and time to find them are unknown...
@@ -117,10 +116,6 @@ void problem_c::save(xmlWriter_c & xml) const
   if (maxHoles != 0xFFFFFFFF)
     xml.newAttrib("maxHoles", maxHoles);
 
-  if (rotationModel) {
-    xml.newAttrib("rotationPlay", xmlDouble(rotationModel->play));
-    xml.newAttrib("rotationBevel", xmlDouble(rotationModel->chamfer));
-  }
 
   xml.newTag("shapes"); // for historical reasons, parts are saved in an XML-tag called shapes
 
@@ -232,18 +227,6 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   if (str.length())
     maxHoles = atoi(str.c_str());
 
-  {
-    const std::string play = pars.getAttributeValue("rotationPlay");
-    const std::string bevel = pars.getAttributeValue("rotationBevel");
-    if (play.length() || bevel.length()) {
-      rotationGeometry::model_t model;
-      if (!xmlParseDouble(play, &model.play) || !xmlParseDouble(bevel, &model.chamfer) ||
-          !validRotationModel(model))
-        pars.exception("rotationPlay and rotationBevel must both be given, with 0 < play < 1 "
-                       "and 0 <= bevel < half a cube");
-      rotationModel = model;
-    }
-  }
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -1114,37 +1097,16 @@ void problem_c::sortSolutions(int by) {
   }
 }
 
-bool problem_c::validRotationModel(const rotationGeometry::model_t & model)
+void problem_c::piecesChanged(bool tighter)
 {
-  return rotationGeometry::validModel(model);
+  if (tighter)
+    dropTurningDisassemblies();
+  if (solveState == SS_SOLVING || solveState == SS_SOLVED)
+    makeUnknown();
 }
 
-void problem_c::setRotationModel(const rotationGeometry::model_t & model)
+void problem_c::dropTurningDisassemblies(void)
 {
-  if (!validRotationModel(model))
-    bt_te("problem_c::setRotationModel: needs 0 < play < 1 and 0 <= bevel < half a cube");
-  if (rotationModel && rotationModel->play == model.play && rotationModel->chamfer == model.chamfer)
-    return;
-  dropTurnsFor(model);
-  editProblem();
-  rotationModel = model;
-}
-
-void problem_c::clearRotationModel(void)
-{
-  if (!rotationModel)
-    return;
-  dropTurnsFor(rotationSettings_t{}.model);
-  editProblem();
-  rotationModel.reset();
-}
-
-void problem_c::dropTurnsFor(const rotationGeometry::model_t & next)
-{
-  const rotationGeometry::model_t now = rotationModel.value_or(rotationSettings_t{}.model);
-  /* more play and more bevel only remove material, so turns stay clear */
-  if (next.play >= now.play && next.chamfer >= now.chamfer)
-    return;
   auto guard = lockSolutions();
   for (auto & s : solutions)
     if (s->getDisassembly() && s->getDisassembly()->sumRotations() > 0)

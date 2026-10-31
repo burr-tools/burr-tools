@@ -62,6 +62,9 @@ std::optional<rotationGeometry::model_t> cliModel;
 /* -w: the file the solved puzzle is written to, nullptr without it */
 const char * writeFile = nullptr;
 solverSettings_t settings;
+/* -M: the pieces a what-if solve checks turns against instead of the
+ * puzzle's; never stored, so the question does not change the pieces */
+static std::optional<rotationGeometry::model_t> whatIf;
 
 std::unique_ptr<disassembler_c> d;
 
@@ -102,7 +105,7 @@ static void keepPlay(solution_c * s, const std::optional<turnPlay_t> & play, con
 static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
   if (!rotationMoves)
     return nullptr;
-  auto context = rotationContextFor(problem, settings.rotation);
+  auto context = rotationContextFor(problem, settings.rotation, false, whatIf);
   if (!context)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
   return context;
@@ -335,7 +338,7 @@ int main(int argv, char* args[]) {
         double play, chamfer;
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &play, &chamfer, &rest) != 2 ||
-            !problem_c::validRotationModel({ play, chamfer })) {
+            !puzzle_c::validRotationModel({ play, chamfer })) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
@@ -432,6 +435,9 @@ int main(int argv, char* args[]) {
   }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
+  /* -m: the pieces as they are, the puzzle's model, replacing the file's */
+  if (cliModel)
+    p.setRotationModel(*cliModel);
 
   if (ask) {
 
@@ -520,14 +526,14 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem ; pr++) {
 
       problem_c * problem = p.getProblem(pr);
-      if (cliModel)
-        problem->setRotationModel(*cliModel);
+      whatIf.reset();
 
       if (minimize != MIN_NONE && rotationMoves && disassemble) {
         /* more play or more bevel only takes material away and so only adds
          * turns: the smallest value at which the puzzle comes apart can be
-         * bisected, with the other one at the problem's. The puzzle is then
-         * solved, and with -w stored, at that value. */
+         * bisected, with the other one at the puzzle's. A what-if question:
+         * the pieces stay as they are, and the solve below is at the value
+         * found. */
         const double tolerance = 0.001;
         const rotationGeometry::model_t base = rotationSettingsFor(*problem, settings.rotation).model;
         const bool bevel = minimize == MIN_BEVEL;
@@ -537,13 +543,13 @@ int main(int argv, char* args[]) {
           (bevel ? m.chamfer : m.play) = v;
           return m;
         };
-        if (!problem_c::validRotationModel(modelAt(minLo)) || !problem_c::validRotationModel(modelAt(minHi))) {
+        if (!puzzle_c::validRotationModel(modelAt(minLo)) || !puzzle_c::validRotationModel(modelAt(minHi))) {
           printf("-M %s:%g,%g does not fit the model (play %.4f, bevel %.4f): the bevel must stay below half a cube\n",
                  name, minLo, minHi, base.play, base.chamfer);
           continue;
         }
         auto apartAt = [&](double v) {
-          problem->setRotationModel(modelAt(v));
+          whatIf = modelAt(v);
           return comesApart(problem);
         };
         double lo = minLo, hi = minHi;
@@ -560,7 +566,7 @@ int main(int argv, char* args[]) {
           else
             lo = mid;
         }
-        problem->setRotationModel(modelAt(hi));
+        whatIf = modelAt(hi);
         if (hi == minLo)
           printf("comes apart from %s %.4f (the lower end)\n", name, hi);
         else
@@ -569,8 +575,8 @@ int main(int argv, char* args[]) {
 
       if (writeFile) {
         /* the file says which pieces its disassemblies are for */
-        if (rotationMoves && !problem->getRotationModel())
-          problem->setRotationModel(rotationSettingsFor(*problem, settings.rotation).model);
+        if (rotationMoves && !p.getRotationModel())
+          p.setRotationModel(rotationSettingsFor(*problem, settings.rotation).model);
         problem->removeAllSolutions();
       }
 
@@ -629,8 +635,14 @@ int main(int argv, char* args[]) {
         reportSkippedRotations(a.pool->getRotationContext());
 
       cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << run->getIterations() << " iterations ";
-      if (writeFile)
+      if (writeFile) {
         problem->finishedSolving();
+        /* turns found for what-if pieces hold for the puzzle's only when
+         * those are not tighter (problem_c::piecesChanged) */
+        const rotationGeometry::model_t actual = rotationSettingsFor(*problem, settings.rotation).model;
+        if (whatIf && (actual.play < whatIf->play || actual.chamfer < whatIf->chamfer))
+          problem->dropTurningDisassemblies();
+      }
 
       if (newline)
         cout << endl;
@@ -640,12 +652,10 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem; pr ++) {
 
       problem_c * problem = p.getProblem(pr);
-      /* as when assembling: -m replaces the file's model, and with -w the
-       * file says which pieces its disassemblies are for */
-      if (cliModel)
-        problem->setRotationModel(*cliModel);
-      else if (rotationMoves && writeFile && !problem->getRotationModel())
-        problem->setRotationModel(rotationSettingsFor(*problem, settings.rotation).model);
+      /* as when assembling: with -w the file says which pieces its
+       * disassemblies are for */
+      if (rotationMoves && writeFile && !p.getRotationModel())
+        p.setRotationModel(rotationSettingsFor(*problem, settings.rotation).model);
 
       auto context = rotationContext(*problem);
       d = std::make_unique<disassembler_0_c>(*problem, settings, context);

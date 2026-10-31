@@ -32,6 +32,9 @@
 #include <string>
 #include <memory>
 #include <filesystem>
+#include <optional>
+
+#include "rotationgeometry.h"
 
 class voxel_c;
 class gridType_c;
@@ -72,6 +75,16 @@ private:
    * highest part
    */
   std::vector<uint32_t> colors;
+
+  /**
+   * The pieces' actual play and bevel (rotationGeometry::model_t): the
+   * pieces as they are, or will be, printed or cut. A property of the
+   * puzzle, as shapes are shared between problems: rotation moves are
+   * checked against it, and the STL export makes it. Unset, the default
+   * applies (rotationSettings_t::model). What a problem needs follows from
+   * its solutions' measured play (solution_c::getPlay), not from this.
+   */
+  std::optional<rotationGeometry::model_t> rotationModel;
 
   /**
    * some information about the puzzle
@@ -239,6 +252,22 @@ public:
   bool getCommentPopup(void) const { return commentPopup; }
   /** set or reset comment popup flag */
   void setCommentPopup(bool val) { commentPopup = val; }
+  //@}
+
+  /** \name the pieces' actual play and bevel */
+  //@{
+  /** the stored model, unset when the default applies */
+  const std::optional<rotationGeometry::model_t> & getRotationModel(void) const { return rotationModel; }
+  /** Store the model; throws when it is not a valid one (validRotationModel).
+   *  Other pieces are an edit of every problem: their solutions become
+   *  unknown, and less play or a smaller bevel, which adds material, drops
+   *  the disassemblies that turn (problem_c::piecesChanged). Storing the
+   *  model that applies already (the default) changes nothing. */
+  void setRotationModel(const rotationGeometry::model_t & model);
+  /** back to the default model, an edit like setRotationModel */
+  void clearRotationModel(void);
+  /** 0 < play < 1 and 0 <= bevel < half the cube */
+  static bool validRotationModel(const rotationGeometry::model_t & model);
   //@}
 
 public:

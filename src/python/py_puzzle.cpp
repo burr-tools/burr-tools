@@ -1,6 +1,7 @@
 #include "py_puzzle.h"
 #include "py_shape.h"
 #include "lib/puzzle.h"
+#include "lib/rotationtables.h"
 #include "lib/problem.h"
 #include "lib/gridtype.h"
 #include "lib/voxel.h"
@@ -30,6 +31,22 @@ std::string PyPuzzle::get_comment() const {
 
 void PyPuzzle::set_comment(const std::string & com) {
   puzzle->setComment(com);
+}
+
+std::pair<double, double> PyPuzzle::get_rotation_model() const {
+  const rotationGeometry::model_t m = puzzle->getRotationModel().value_or(rotationSettings_t{}.model);
+  return { m.play, m.chamfer };
+}
+
+void PyPuzzle::set_rotation_model(const std::optional<std::pair<double, double>> & model) {
+  if (!model) {
+    puzzle->clearRotationModel();
+    return;
+  }
+  const rotationGeometry::model_t m = { model->first, model->second };
+  if (!puzzle_c::validRotationModel(m))
+    throw std::invalid_argument("rotation_model needs 0 < play < 1 and 0 <= bevel < half a cube");
+  puzzle->setRotationModel(m);
 }
 
 unsigned int PyPuzzle::get_num_shapes() const {
