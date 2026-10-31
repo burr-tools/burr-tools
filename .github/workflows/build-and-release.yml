@@ -39,6 +39,16 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    # Meson compiles through ccache when it finds it. The cache is saved per
+    # job, from master only: the repository's caches are capped at 10 GB,
+    # and per-PR copies (up to 1 GB each) evicted master's within hours. A
+    # pull request restores master's, whose objects most of its build shares.
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
     
     - name: Setup build directory
       # -Db_ndebug=true is load-bearing, not cosmetic: without it Meson
@@ -127,10 +137,17 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
+    # ccache named here: meson adds it only to compilers it finds itself
     - name: Setup build directory
       env:
-        CC: clang
-        CXX: clang++
+        CC: ccache clang
+        CXX: ccache clang++
       run: meson setup build-clang --buildtype=release --werror
 
     - name: Build
@@ -169,6 +186,12 @@ jobs:
 
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
 
     - name: Build with ThreadSanitizer
       run: just build-tsan
@@ -213,6 +236,13 @@ jobs:
       run: |
         icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
         echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+        max-size: 1G   # debug objects with the Qt GUI
 
     - name: Build with ASan and UBSan
       run: |
@@ -339,6 +369,12 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
     # Configured without the Qt GUI, even where a Qt is found. `shell: bash`
     # sets pipefail, so a gcovr failure is not masked by tee's exit status.
     - name: Report coverage and generate HTML report
@@ -414,6 +450,13 @@ jobs:
 
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+        max-size: 1G   # debug objects with the Qt GUI
 
     # The Qt suites' render tests run as in qt-linux: Vulkan on Mesa's
     # lavapipe, test_qtgui as "xcb" on Xvfb.
@@ -625,12 +668,22 @@ jobs:
     
     - name: Install dependencies
       run: sudo apt-get install -y meson ninja-build mingw-w64 wine
-    
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
+    # ccache through a second cross file, which overrides the first's
+    # compilers: meson adds ccache only to compilers it finds itself.
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
       # / live bt_assert checks (~15-30% solver overhead, see the Linux job
       # comment and design/2026-09-24-benchmark-speedup-analysis.md §7).
-      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
+      run: |
+        printf "[binaries]\nc = ['ccache', 'x86_64-w64-mingw32-gcc']\ncpp = ['ccache', 'x86_64-w64-mingw32-g++']\n" > ccache-mingw64.txt
+        meson setup build-win --cross-file cross-mingw64.txt --cross-file ccache-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
     
     - name: Build
       run: ninja -C build-win
@@ -694,6 +747,12 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
     
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
@@ -811,6 +870,12 @@ jobs:
         modules: 'qtshadertools'
         cache: true
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+
     - name: Build
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
@@ -883,6 +948,11 @@ jobs:
     defaults:
       run:
         shell: msys2 {0}
+    # MSYS2's own ccache (see build-linux for why), its directory cached by
+    # hand: hendrikmuhs/ccache-action does not know MSYS2.
+    env:
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_MAXSIZE: 500M
     steps:
     - uses: actions/checkout@v4
       with:
@@ -896,6 +966,7 @@ jobs:
         install: >-
           git
           mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-ccache
           mingw-w64-ucrt-x86_64-meson
           mingw-w64-ucrt-x86_64-ninja
           mingw-w64-ucrt-x86_64-cmake
@@ -908,6 +979,14 @@ jobs:
           mingw-w64-ucrt-x86_64-qt6-tools
           zip
 
+    # saved from master only, as in build-linux
+    - name: Restore the ccache directory
+      uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
+        restore-keys: ccache-${{ github.job }}-
+
     # -Ddxbc=enabled: the Direct3D shaders compiled by the runner's Windows
     # SDK fxc, so no start-up compiles HLSL; the build fails rather than
     # quietly shipping source if fxc is not found
@@ -915,6 +994,14 @@ jobs:
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled -Ddxbc=enabled
         ninja -C build-qt
+        ccache --show-stats
+
+    - name: Save the ccache directory
+      if: github.event_name != 'pull_request'
+      uses: actions/cache/save@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
 
     - name: Self-check
       run: ./build-qt/burrtools-qt.exe --self-check
@@ -984,6 +1071,12 @@ jobs:
         version: '6.11.*'
         modules: 'qtshadertools'
         cache: true
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
 
     - name: Build
       run: |
