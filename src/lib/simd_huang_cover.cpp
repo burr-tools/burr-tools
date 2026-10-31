@@ -20,7 +20,6 @@
  */
 #include "simd_huang_cover.h"
 #include "assembler_pool.h"
-#include "simd_config.h"
 #include "bt_assert.h"
 
 #include <cstdlib>
@@ -31,17 +30,17 @@
 #include <stop_token>
 
 template <typename BitsetType>
-SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s)
+SimdHuangCover<BitsetType>::SimdHuangCover(unsigned int num_cols, unsigned int num_s, const solverSettings_t & settings)
   : num_columns(num_cols), num_shapes(num_s) {
   bt_assert(num_cols <= BitsetType::NUM_WORDS * 64);
   columns.resize(num_columns + 1);
 
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  use_avx2 = __builtin_cpu_supports("avx2") && SimdConfig::isVectorAccelerationEnabled();
-  use_avx512 = __builtin_cpu_supports("avx512f") && SimdConfig::isAvx512Allowed();
-#endif
-
-  use_neon = SimdConfig::isNeonAllowed();
+  use_avx2 = settings.avx2();
+  use_avx512 = settings.avx512();
+  use_neon = settings.neon();
+  fanout = settings.splitFanout;
+  donate = settings.donate;
+  donateEvery = settings.donateEvery;
 }
 
 template <typename BitsetType>
@@ -678,11 +677,8 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   // One token for the whole run: workers share it for cancellation checks,
   // and a worker that throws fires the source so siblings stop promptly.
   std::stop_token stop = runStop.get_token();
-  // Stop-time fan-out (see StopTrace) and donation toggles, fixed for the
-  // whole run.
-  const unsigned int fanout = SplitFanout::fromEnv();
-  const bool donate = !SplitFanout::noDonateFromEnv();
-  const unsigned long donateEvery = SplitFanout::donateEveryFromEnv();
+  // Stop-time fan-out (see StopTrace) and donation toggles: members, from
+  // the settings, fixed for the whole run.
   std::vector<SubtreeTask> tasks;
   if (resume_seeds != nullptr && !resume_seeds->empty()) {
     // Incremental continue: rebuild pool tasks by replaying the salvaged

@@ -107,8 +107,9 @@ class disassembler_a_c : public disassembler_c {
      * you can analyse many assemblies for disassembability.
      * Rotation moves are considered iff rotationContext is given (see
      * rotationContextFor); it is shared by all disassemblers of a solve.
+     * The settings choose the movement analysis kernels.
      */
-    disassembler_a_c(const problem_c & puz,
+    disassembler_a_c(const problem_c & puz, const solverSettings_t & settings,
                      std::shared_ptr<rotationContext_c> rotationContext = nullptr);
     ~disassembler_a_c(void);
 

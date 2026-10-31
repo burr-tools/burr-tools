@@ -58,7 +58,7 @@ void usage(bool full = false) {
   cout << "  -r    keep rotated solutions\n";
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
-  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  cout << "  -t n  set number of worker threads for solver (0 = auto, default: BURRTOOLS_THREADS, else auto)\n";
   if (full)
     btenv::print(cout, { btenv::Scope::Solver });
 }
@@ -98,7 +98,8 @@ static int solve(int argv, char* args[]) {
   int filenumber = 0;
   int firstProblem = 0;
   int lastProblem = 1;
-  unsigned int threads = 0;
+  /* what the command line chooses, the rest from the environment */
+  solverConfig_t config;
 
   for(int i = 1; i < argv; i++) {
 
@@ -135,7 +136,7 @@ static int solve(int argv, char* args[]) {
         cout << "-t requires a non-negative number\n";
         return 1;
       }
-      threads = (unsigned int)t;
+      config.threads = (unsigned int)t;
       i++;
     }
     else
@@ -144,6 +145,14 @@ static int solve(int argv, char* args[]) {
 
   if (filenumber == 0) {
     usage();
+    return 1;
+  }
+
+  solverSettings_t settings;
+  try {
+    settings = config.resolve();
+  } catch (const std::invalid_argument & e) {
+    cerr << e.what() << "\n";
     return 1;
   }
 
@@ -218,7 +227,7 @@ static int solve(int argv, char* args[]) {
       continue;
     }
 
-    solveThread_c assmThread(*problem, par, threads);
+    solveThread_c assmThread(*problem, par, settings);
 
     if (!assmThread.start(false)) {
       cout << "Could not start Solver\n";
