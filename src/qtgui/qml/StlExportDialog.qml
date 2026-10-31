@@ -27,6 +27,7 @@ import BurrTools.Ui
 //   │ ② Bevel     [ 0.5 ]     │                                      │
 //   │   Offset    [ 0.0 ]     │                                      │
 //   │   [x] ...               │                                      │
+//   │ ⑪ play, bevel: checked? │                                      │
 //   │ File                    │                                      │
 //   │ ③ [x] Binary STL        │ ⑦ Volume: 12.3 cm³                   │
 //   ├─────────────────────────┴──────────────────────────────────────┤
@@ -203,6 +204,18 @@ BtDialog {
                         }
                     }
                 }
+            }
+
+            // whether bevel and offset make the pieces rotation moves are
+            // checked for; empty for grids without rotation moves
+            Text { // ⑪
+                objectName: "export.stl.modelNote"
+                visible: text.length > 0
+                Layout.fillWidth: true
+                text: root.stl.modelNote
+                wrapMode: Text.WordWrap
+                color: Theme.muted
+                font.pixelSize: Theme.fontSecondary
             }
 
             SectionTitle { text: qsTr("File") }

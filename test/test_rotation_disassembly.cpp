@@ -41,9 +41,13 @@ namespace {
 /* the default settings with the planner on (it is off by default), and
  * with enough slack to reach the planned turn of AAA_most_rotations, which
  * the default slack of 0.02 does not: so its disassembly has a planned
- * path, which the replay and animation tests then cover */
+ * path, which the replay and animation tests then cover. The model is
+ * play 0.081 with a bevel of 0.032 (PR #50's play, puzzlecad's bevel),
+ * which these tests were written for; the default is the STL export's
+ * tight one, made for slides. */
 rotationSettings_t withPlanner(void) {
   rotationSettings_t s = rotationSettings_t{};
+  s.model = { 0.081, 0.032 };
   s.planner = true;
   s.slack = 0.04;
   return s;
@@ -1046,4 +1050,118 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
   /* the orders must share enough states, and some of them must offer turns */
   CHECK(compared >= 2 * (parts - 1));
   CHECK(withTurns > 0);
+}
+
+TEST_CASE("optimizeTurns never measures more play than the turns were found at", "[rotations][disasm]") {
+
+  /* at the default model's small play the planner's conservative bound
+   * misses paths the family's tables certified; the recorded path proves
+   * the turn there, so the measurement stays at or below that play */
+  auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+  const rotationSettings_t settings = rotationSettings_t{};
+  auto da = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, settings))
+              .disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  REQUIRE(da->sumRotations() > 0);
+
+  const turnPlay_t play = optimizeTurns(da.get(), assemblies[0].get(), problem, settings);
+  CHECK_FALSE(play.failed);
+  CHECK(play.upper <= settings.model.play);
+  CHECK(play.lower <= play.upper);
+}
+
+TEST_CASE("optimizeTurns reports its progress, stops when asked, and can only re-plan",
+          "[rotations][disasm]") {
+
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const separation_c * found = aaa().withRotations.get();
+  REQUIRE(found != nullptr);
+  const unsigned int turns = found->sumRotations();
+  REQUIRE(turns > 0);
+  const assembly_c * assembly = aaa().assemblies[0].get();
+
+  /* every turn counted, and bounds measured */
+  double measured = 0;
+  std::vector<rotationGeometry::path_t> provenPaths;
+  {
+    separation_c copy(found);
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(done == turns);
+    CHECK_FALSE(play.stopped);
+    CHECK(play.rotations);
+    CHECK(play.upper > 0);
+    CHECK(play.lower <= play.upper);
+    measured = play.upper;
+    provenPaths = play.proven;
+    CHECK(provenPaths.size() == turns);
+  }
+
+  /* re-planned for exactly the measured play, which is not the problem's:
+   * every turn gets a path that replays clear at that play, where the
+   * grid misses one from the paths the measuring proved */
+  {
+    separation_c copy(found);
+    optimizeControl_t control;
+    control.measure = false;
+    control.model = rotationGeometry::model_t{ measured, rotationModelOf(problem).chamfer };
+    control.proven = &provenPaths;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK_FALSE(play.failed);
+    replay_c replay(problem, *control.model);
+    replay.check(copy);
+    CHECK(replay.rotations == turns);
+  }
+
+  /* stopped before the first turn: nothing done, nothing valid */
+  {
+    separation_c copy(found);
+    std::atomic<bool> stop{ true };
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.stop = &stop;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(play.stopped);
+    CHECK(done == 0);
+  }
+
+  /* re-planning only: every turn gets a path, no play is measured */
+  {
+    separation_c copy(found);
+    optimizeControl_t control;
+    control.measure = false;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(play.upper == 0);
+    CHECK_FALSE(play.failed);
+    CHECK(copy.sumRotations() == turns);
+    CHECK(copy.movesText() == found->movesText());
+  }
+
+  /* re-planning with a planner that finds no path: at the play the turns
+   * were found at, the recorded paths are certified and stay; at a much
+   * smaller one they are not, nothing stands in, and that is reported */
+  {
+    rotationSettings_t pure = settings;
+    pure.plan.maxShift = 0;
+    pure.plan.steps = 2;
+    optimizeControl_t control;
+    control.measure = false;
+
+    separation_c same(found);
+    CHECK_FALSE(optimizeTurns(&same, assembly, problem, pure, control).failed);
+
+    separation_c copy(found);
+    control.model = rotationGeometry::model_t{ 0.005, settings.model.chamfer };
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, pure, control);
+    CHECK(play.failed);
+    CHECK(copy.movesText() == found->movesText());
+  }
 }

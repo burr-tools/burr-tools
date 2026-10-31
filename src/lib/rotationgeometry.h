@@ -21,6 +21,7 @@
 #ifndef __ROTATION_GEOMETRY_H__
 #define __ROTATION_GEOMETRY_H__
 
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <utility>
@@ -274,6 +275,9 @@ namespace rotationGeometry {
     bool widest = true;
     /** without widest: give up after evaluating this many cells */
     size_t budget = 60000;
+    /** set from another thread to give up at once (then nothing found is
+     *  valid); nullptr: never */
+    const std::atomic<bool> * stop = nullptr;
   };
 
   /** The outcome of planTurn. */
@@ -323,11 +327,16 @@ namespace rotationGeometry {
    * starting guess. With more play every clearance grows by at least the
    * extra play, so a path found at one play stays clear at every larger one.
    * Not found when the turn needs more than maxPlay.
+   *
+   * turnsAtModel: the caller knows a motion that turns at the model's play
+   * (a recorded path certified there), which the planner's conservative
+   * bound may miss; then the upper bound is at most the model's play, and
+   * `path` may be empty when no smaller play got a planned path.
    */
   playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                            unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense,
                            const model_t & model, const planSettings_t & settings,
-                           double tolerance = 0.0005, double maxPlay = 0.4);
+                           double tolerance = 0.0005, double maxPlay = 0.4, bool turnsAtModel = false);
 
   /** The path of the reverse turn: the same motion run backwards, as seen
    *  by the moving cubes in their turned orientation. */

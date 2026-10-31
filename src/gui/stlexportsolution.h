@@ -53,6 +53,8 @@ class stlExportSolution_c : public LFl_Double_Window {
     LFl_Input        * Pname;
     LFl_Check_Button * Binary;
     LFl_Box          * status;
+    /* whether bevel and offset make the pieces rotation moves are checked for */
+    LFl_Box          * modelNote;
 
   public:
 
@@ -62,6 +64,8 @@ class stlExportSolution_c : public LFl_Double_Window {
     void cb_Export(void);
     void cb_Abort(void);
     void cb_FileChooser(void);
+    /* a parameter changed: hand it to the exporter, show what it derives */
+    void cb_Parameter(void);
 };
 
 #endif

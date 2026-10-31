@@ -21,6 +21,9 @@
 #ifndef __STL_H__
 #define __STL_H__
 
+#include "rotationgeometry.h"
+
+#include <optional>
 #include <vector>
 
 #include <stdio.h>
@@ -95,6 +98,20 @@ class stlExporter_c {
     bool getBinaryMode(void) { return binaryMode; }
 
     virtual Polyhedron * getMesh(const voxel_c & v) const = 0;
+
+    /**
+     * Rotation moves are checked for pieces of a given play and bevel
+     * (rotationGeometry::model_t, problem_c::getRotationModel); an exporter
+     * that makes such cubes can take its parameters from that model, so the
+     * printed pieces are the ones the turns were checked for. The parameters
+     * then follow the unit size until one of them is set by hand. False when
+     * the exporter does not make cubes.
+     */
+    virtual bool followModel(const rotationGeometry::model_t & /*model*/) { return false; }
+    /** does it still follow the model given to followModel */
+    virtual bool followsModel(void) const { return false; }
+    /** the play and bevel the parameters give now, if it makes cubes */
+    virtual std::optional<rotationGeometry::model_t> currentModel(void) const { return std::nullopt; }
 
   private:
 

@@ -31,6 +31,9 @@
 #include <FL/gl.h>
 #pragma GCC diagnostic pop
 
+#include "../lib/rotationgeometry.h"
+
+#include <optional>
 #include <vector>
 
 class voxel_c;
@@ -254,6 +257,9 @@ class voxelFrame_c : public Fl_Gl_Window {
       bool useChecker = false;
       Polyhedron * poly = nullptr;
       Polyhedron * pickPoly = nullptr;  // the flat mesh of the edge-line style, used to pick in the other styles
+      /* the STL style's pieces: the play and bevel rotation moves are
+       * checked for (voxel_c::getSTLMeshFor); unset, the view's own */
+      std::optional<rotationGeometry::model_t> stlModel;
       GLuint list = 0;  // the display list for this shape 0 means no list defined
 
       /* The entry's own geometry bounds, in its local drawing units, before the
@@ -317,6 +323,10 @@ class voxelFrame_c : public Fl_Gl_Window {
     void * wheelUser = nullptr;
 
     std::vector<shapeInfo> shapes;
+    /* the model the entries added next take (addSpace): the one the shown
+     * problem stores, or the problems using the shown shape all store;
+     * cleared with them */
+    std::optional<rotationGeometry::model_t> spaceModel;
 
     colorMode colors;
 

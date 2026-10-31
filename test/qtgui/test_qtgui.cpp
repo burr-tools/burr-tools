@@ -28,6 +28,7 @@
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
+#include "../../src/lib/problem.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
@@ -2257,6 +2258,71 @@ private slots:
         break;
       }
     }
+  }
+
+  void bevelAndOffsetFollowTheRotationModel() {
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    StlExportController * s = f.app->stl();
+    f.app->shapes()->select(2);
+    s->begin();
+    auto value = [s](int i) { return s->parameter(i).value(QStringLiteral("value")).toDouble(); };
+    enum { UNIT = 0, BEVEL = 3, OFFSET = 4 };
+
+    // the default model at 10 mm: play 0.002 is 2 x 0.01 mm, bevel 0.03 is 0.3 mm,
+    // the export's values from before rotation moves
+    QVERIFY(qAbs(value(OFFSET) - 0.01) < 1e-12);
+    QVERIFY(qAbs(value(BEVEL) - 0.3) < 1e-12);
+    QCOMPARE(s->parameter(OFFSET).value(QStringLiteral("text")).toString(), QStringLiteral("0.01"));
+    QVERIFY(s->modelNote().contains(QLatin1String("the pieces rotation moves are checked for")));
+
+    // they follow the unit size; a field committed unchanged keeps them following
+    s->setParameter(UNIT, 20);
+    QVERIFY(qAbs(value(OFFSET) - 0.02) < 1e-9);
+    s->setParameter(BEVEL, value(BEVEL));
+    s->setParameter(UNIT, 10);
+    QVERIFY(qAbs(value(OFFSET) - 0.01) < 1e-9);
+
+    // set by hand, they stay, and the note says what was checked
+    s->setParameter(OFFSET, 0.1);
+    s->setParameter(UNIT, 20);
+    QCOMPARE(value(OFFSET), 0.1);
+    QVERIFY(s->modelNote().contains(QLatin1String("but rotation moves are checked for play 0.0020")));
+  }
+
+  void aNewExporterFollowsTheRotationModel() {
+    // a puzzle whose pieces have play 0.05 and bevel 0.04
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    QVERIFY(d->editStructure(2, [](puzzle_c & p) {
+      p.setRotationModel({ 0.05, 0.04 });
+      return true;
+    }));
+    const QString modeled = f.file("modeled.xmpuzzle");
+    d->saveAsFile(QUrl::fromLocalFile(modeled));
+    QVERIFY(QFile::exists(modeled));
+
+    // the dialog is up on another grid; the cube puzzle comes back while it is.
+    // An empty puzzle, so the dialog meshes nothing: a shape of the other
+    // grids goes through the Minkowski mesher, and a HexSticks piece took
+    // 11 s in a debug build, most of the suite's time limit under ASan
+    d->newDocument(gridType_c::GT_SPHERES);
+    StlExportController * s = f.app->stl();
+    s->begin();
+    QCOMPARE(s->parameterCount(), 8);     // the sphere exporter's
+    QVERIFY(s->modelNote().isEmpty());    // it makes no cubes
+    QVERIFY(d->loadPath(modeled));
+    f.app->shapes()->select(2);
+    s->setShape(2);
+    auto value = [s](int i) { return s->parameter(i).value(QStringLiteral("value")).toDouble(); };
+    enum { BEVEL = 3, OFFSET = 4 };
+    // at 10 mm: play 0.05 is 2 x 0.25 mm, bevel 0.04 is 0.4 mm
+    QVERIFY(qAbs(value(OFFSET) - 0.25) < 1e-9);
+    QVERIFY(qAbs(value(BEVEL) - 0.4) < 1e-9);
+    QVERIFY(s->modelNote().contains(QLatin1String("the pieces rotation moves are checked for")));
   }
 
   void insidesMakesTheMeshSeeThrough() {
