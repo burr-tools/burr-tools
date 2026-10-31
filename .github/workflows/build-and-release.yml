@@ -169,6 +169,8 @@ jobs:
   # pool hanging the runner rather than failing it.
   tsan-parallel:
     name: ThreadSanitizer (parallel solver)
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -208,6 +210,7 @@ jobs:
   sanitizers:
     name: Sanitizers (ASan + UBSan)
     needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.qt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -254,6 +257,7 @@ jobs:
         ninja -C build-asan
 
     - name: Unit tests, leaks included
+      if: needs.changes.outputs.core == 'true'
       env:
         ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
@@ -291,6 +295,13 @@ jobs:
   # always builds it: a PR into master, pushes, tags and manual runs. A
   # library change that breaks the Qt GUI is thus caught at the latest when
   # its stack's bottom PR targets master, or on master itself.
+  #
+  # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
+  # in sanitizers, coverage -- run when a pull request touches what that
+  # binary is built from or loads (core), whatever its base: unlike the Qt
+  # GUI's, those inputs can be listed exactly. (test_envvars also scans
+  # src/gui, src/qtgui, scripts and bench; the build jobs, which always run,
+  # run it too.)
   changes:
     name: Detect changed areas
     runs-on: ubuntu-latest
@@ -300,6 +311,7 @@ jobs:
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
       qt: ${{ steps.qt.outputs.build }}
+      core: ${{ steps.core.outputs.test }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -313,6 +325,23 @@ jobs:
           spec:
             - 'spec/**'
             - 'justfile'
+            - '.github/workflows/build-and-release.yml'
+          core:
+            - 'src/lib/**'
+            - 'src/tools/**'
+            - 'src/halfedge/**'
+            - 'src/uicore/**'
+            - 'src/gui/solveprogresscache.*'
+            - 'test/*'
+            - 'test/data/**'
+            - 'test/known_good/**'
+            - 'test/malformed/**'
+            - 'examples/**'
+            - 'subprojects/**'
+            - 'meson.build'
+            - 'meson.options'
+            - 'justfile'
+            - 'scripts/test-cases-pinned.sh'
             - '.github/workflows/build-and-release.yml'
           qt:
             - 'src/qtgui/**'
@@ -343,6 +372,18 @@ jobs:
         else
           echo "::notice::Qt GUI not built: this PR targets $BASE, not $DEFAULT, and touches no Qt GUI paths"
           echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Decide whether test_burrtools's own jobs run
+      id: core
+      env:
+        EVENT: ${{ github.event_name }}
+        CHANGED: ${{ steps.filter.outputs.core }}
+      run: |
+        if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
+          echo "test=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::tsan-parallel, coverage and the sanitizers' unit tests skipped: no library, test or build input changed"
+          echo "test=false" >> "$GITHUB_OUTPUT"
         fi
 
   # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
@@ -394,9 +435,10 @@ jobs:
   # C++. `coverage-report` puts both in one comment, the Qt GUI's part only
   # when its job got that far.
   coverage:
+    needs: changes
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/master') && needs.changes.outputs.core == 'true'
     outputs:
       html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
     steps:
@@ -557,18 +599,24 @@ jobs:
         pattern: coverage-summary*
         path: summaries
 
-    # No report without the library's figure. The Qt GUI's is the block from
-    # its "== Qt GUI" line on, in the Qt job's summary.
+    # No report without the library's figure, unless the coverage job was
+    # skipped as unaffected (changes). The Qt GUI's is the block from its
+    # "== Qt GUI" line on, in the Qt job's summary.
     - name: Build the coverage report body
       env:
         HTML_URL: ${{ needs.coverage.outputs.html-url }}
         HTML_QT_URL: ${{ needs.coverage-qt.outputs.html-url }}
         QT_BUILT: ${{ needs.changes.outputs.qt }}
+        CORE_TESTED: ${{ needs.changes.outputs.core }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         lib=summaries/coverage-summary/coverage-summary.txt
         qt=summaries/coverage-summary-qt/coverage-summary.txt
-        if [ ! -f "$lib" ]; then
+        if [ "$CORE_TESTED" != true ] && [ ! -f "$qt" ]; then
+          echo "No coverage measured: this PR touches neither the library's nor the Qt GUI's inputs." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        if [ "$CORE_TESTED" = true ] && [ ! -f "$lib" ]; then
           echo "::warning::no coverage summary: the coverage job failed"
           exit 0
         fi
@@ -579,12 +627,18 @@ jobs:
           echo "## Test coverage"
           echo
           echo '```'
-          grep -E '^(== |lines:|functions:|branches:)' "$lib"
+          if [ -f "$lib" ]; then
+            grep -E '^(== |lines:|functions:|branches:)' "$lib"
+          fi
           if [ -f "$qt" ]; then
             sed -n '/^== Qt GUI/,$p' "$qt" | grep -E '^(== |lines:|functions:|branches:)'
           fi
           echo '```'
           echo
+          if [ "$CORE_TESTED" != true ]; then
+            echo "The library's and src/uicore's figures are not measured: this PR touches no library, test or build input."
+            echo
+          fi
           if [ "$QT_BUILT" != true ]; then
             echo "The Qt GUI's figure is not measured: this PR targets a branch other than master and touches no Qt GUI paths."
             echo
