@@ -96,9 +96,9 @@ class disassembly_c
  * along the path. Everything needed to replay the exact checked motion.
  */
 struct stateRotation_t {
-  unsigned int axis;                ///< 0 = X, 1 = Y, 2 = Z
-  int pivotU, pivotV;               ///< in-plane pivot, doubled cell units, rotationGeometry frames
-  rotationGeometry::pathSpec_t path;
+  unsigned int axis = 0;            ///< 0 = X, 1 = Y, 2 = Z
+  int pivotU = 0, pivotV = 0;       ///< in-plane pivot, doubled cell units, rotationGeometry frames
+  rotationGeometry::pathSpec_t path = {};
   /** the turning pieces, as indices into the separation's pieces; a
    *  turn need not change a piece's orientation id (symmetric pieces) */
   std::vector<unsigned int> pieces;
@@ -291,6 +291,14 @@ public:
 
   /** get the separation for the pieces that were left over */
   const separation_c * getRemoved(void) const { return removed.get(); }
+
+  /** the same, for changing the recorded rotation paths (see optimizeTurns) */
+  state_c * editState(unsigned int num) {
+    bt_assert(num < states.size());
+    return states[num].get();
+  }
+  separation_c * editLeft(void) { return left.get(); }
+  separation_c * editRemoved(void) { return removed.get(); }
 
   /**
    * add a new state to the FRONT of the current state list.

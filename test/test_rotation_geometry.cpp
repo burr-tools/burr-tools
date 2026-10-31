@@ -263,8 +263,8 @@ TEST_CASE("a wiggle away from a face neighbour follows the cube's bulge", "[rota
 
   planarScene_c scene(moving, stat, 2, 0, 0, 0, { play, 0 });
   for (unsigned int sense = 0; sense < 2; sense++) {
-    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, -1, 0, amin - 0.005 })) == PATH_BLOCKED);
-    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, -1, 0, amin + 0.005 })) == PATH_CLEAR);
+    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, 8, amin - 0.005 })) == PATH_BLOCKED);
+    CHECK(scene.certifyPath(makePath({ PATH_WIGGLE, sense, 8, amin + 0.005 })) == PATH_CLEAR);
   }
 }
 
@@ -408,13 +408,14 @@ TEST_CASE("inversePose undoes a pose", "[rotations]") {
 
 TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0, 0 }), assert_exception);
-  CHECK_THROWS_AS(pathTable_c({ 0, 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(pathTable_c({ 0, 0 }, 2, { PATH_PURE, 0, 0, 0 }), assert_exception);
 }
 
 TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice pose", "[rotations]") {
-  for (pathKind_e kind : { PATH_PURE, PATH_WIGGLE, PATH_SLIDE })
+  for (pathKind_e kind : { PATH_PURE, PATH_WIGGLE, PATH_SLIDE, PATH_RAMP })
     for (unsigned int sense = 0; sense < 2; sense++) {
-      path_t path = makePath({ kind, sense, -1, 1, 0.3 });
+      /* (-1, 1), and a ramp held from 15° to 45° */
+      path_t path = makePath({ kind, sense, 6, 0.3, {}, 15, 45 });
       CHECK(path.front().theta == 0);
       CHECK(path.front().du == 0);
       CHECK(path.front().dv == 0);
@@ -422,8 +423,12 @@ TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice po
       CHECK(path.back().du == 0);
       CHECK(path.back().dv == 0);
     }
-  CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, 0, 0, 0.3 }), assert_exception);
-  CHECK_THROWS_AS(makePath({ PATH_WIGGLE, 0, 1, 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, 16, 0.3 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, -1, 0.3 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_WIGGLE, 0, 0, 0 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_RAMP, 0, 0, 0.3, {}, 0, 45 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_RAMP, 0, 0, 0.3, {}, 45, 15 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_RAMP, 0, 0, 0.3, {}, 45, 90 }), assert_exception);
 }
 
 TEST_CASE("the rotation tables decide every path like the path checker", "[rotations]") {
@@ -434,7 +439,7 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
   struct setup_t { model_t model; int scenes; };
   for (setup_t setup : { setup_t{ { 0.081, 0 }, 300 }, setup_t{ { 0.02, 0.05 }, 150 },
                          setup_t{ { 0.011, 0.054 }, 150 } }) {
-    rotationTables_c tables(setup.model, 4, { 0.15, 0.3 });
+    rotationTables_c tables(setup.model, 4, compassFamily({ 0.15, 0.3 }));
     REQUIRE(tables.size() == 1 + 2 * 2 * 8);
 
     std::mt19937 rng(42);
@@ -478,7 +483,7 @@ TEST_CASE("firstClear over path bitsets equals walking the tables one by one", "
   /* 145 paths per sense, three 64-bit words: firstClear ORs per-blocker
    * path sets instead of walking the tables, which must not change the
    * first clear path. */
-  rotationTables_c tables({ 0.081, 0 }, 4, { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 });
+  rotationTables_c tables({ 0.081, 0 }, 4, compassFamily({ 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 }));
   REQUIRE(tables.size() == 1 + 9 * 2 * 8);
 
   std::mt19937 rng(7);
@@ -511,7 +516,7 @@ TEST_CASE("firstClear over path bitsets equals walking the tables one by one", "
 TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotations]") {
 
   const int radius = 3;
-  rotationTables_c tables({ 0.081, 0 }, radius, { 0.2 });
+  rotationTables_c tables({ 0.081, 0 }, radius, compassFamily({ 0.2 }));
 
   for (unsigned int sense = 0; sense < 2; sense++) {
     /* every forward entry appears in the inverse ... */
@@ -537,23 +542,68 @@ TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotat
 
 TEST_CASE("turned and mirrored path tables equal directly computed ones", "[rotations]") {
 
+  /* the compass family, and the wide one, whose odd directions and ramps
+   * are turned from directions 1 and 3 */
   const model_t model = { 0.081, 0 };
-  rotationTables_c tables(model, 3, { 0.3 });
+  std::vector<pathSpec_t> wide = compassFamily({ 0.3 });
+  for (const pathSpec_t & s : wideExtension({ 0.3 }, { 0.3, 0.5 }))
+    wide.push_back(s);
 
-  for (unsigned int sense = 0; sense < 2; sense++)
-    for (unsigned int i = 1; i < tables.size(); i += 3) {
-      const pathTable_c & derived = tables.table(sense, i);
-      pathTable_c direct(model, 3, derived.getSpec());
-      INFO("sense " << sense << " path " << i);
-      for (int du = -6; du <= 6; du++)
-        for (int dv = -6; dv <= 6; dv++) {
-          if ((du ^ dv) & 1)
-            continue;
-          std::set<std::pair<int, int>> a(derived.blockers(du, dv).begin(), derived.blockers(du, dv).end());
-          std::set<std::pair<int, int>> b(direct.blockers(du, dv).begin(), direct.blockers(du, dv).end());
-          CHECK(a == b);
-        }
-    }
+  for (const std::vector<pathSpec_t> & family : { compassFamily({ 0.3 }), wide }) {
+    rotationTables_c tables(model, 3, family);
+    REQUIRE(tables.size() == family.size());
+    for (unsigned int sense = 0; sense < 2; sense++)
+      for (unsigned int i = 1; i < tables.size(); i++) {
+        const pathTable_c & derived = tables.table(sense, i);
+        pathTable_c direct(model, 3, derived.getSpec());
+        INFO("family of " << family.size() << " sense " << sense << " path " << i);
+        for (int du = -6; du <= 6; du++)
+          for (int dv = -6; dv <= 6; dv++) {
+            if ((du ^ dv) & 1)
+              continue;
+            std::set<std::pair<int, int>> a(derived.blockers(du, dv).begin(), derived.blockers(du, dv).end());
+            std::set<std::pair<int, int>> b(direct.blockers(du, dv).begin(), direct.blockers(du, dv).end());
+            CHECK(a == b);
+          }
+      }
+  }
+}
+
+TEST_CASE("the wide path family keeps the compass family and is closed under reversal", "[rotations]") {
+
+  const std::vector<double> compass = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
+  const std::vector<double> wideAmounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+  const std::vector<pathSpec_t> extension = wideExtension(compass, wideAmounts);
+
+  /* 16 directions x 11 amounts x {wiggle, slide, 3 ramps}, less the compass
+   * wiggles and slides already there */
+  CHECK(compassFamily(compass).size() == 145);
+  CHECK(extension.size() == 16 * 11 * 5 - 9 * 2 * 8);
+
+  /* The search needs every turn to be possible from both of its ends: the
+   * reverse of each path of +90° is a path of the -90° family, which holds
+   * the mirror images of the +90° one. */
+  std::vector<pathSpec_t> family = compassFamily(compass);
+  family.insert(family.end(), extension.begin(), extension.end());
+  std::vector<path_t> minus;
+  for (pathSpec_t s : family) {
+    s.sense = 1;
+    s.dir = (DIRECTIONS - s.dir) % DIRECTIONS;
+    minus.push_back(makePath(s));
+  }
+  auto same = [](const path_t & a, const path_t & b) {
+    if (a.size() != b.size())
+      return false;
+    for (size_t i = 0; i < a.size(); i++)
+      if (std::abs(a[i].theta - b[i].theta) > 1e-12 || std::abs(a[i].du - b[i].du) > 1e-12 || std::abs(a[i].dv - b[i].dv) > 1e-12)
+        return false;
+    return true;
+  };
+  for (const pathSpec_t & s : family) {
+    const path_t back = reversePath(makePath(s));
+    INFO("kind " << s.kind << " dir " << s.dir << " amount " << s.amount << " hold " << s.holdFrom << "-" << s.holdTo);
+    CHECK(std::any_of(minus.begin(), minus.end(), [&](const path_t & m) { return same(m, back); }));
+  }
 }
 
 TEST_CASE("path tables find blockers of far-out cubes", "[rotations]") {
@@ -563,7 +613,7 @@ TEST_CASE("path tables find blockers of far-out cubes", "[rotations]") {
    * offsets. Compare the outermost entries with an unpruned brute force. */
   const model_t model = { 0.081, 0 };
   const int radius = 8;
-  for (pathSpec_t spec : { pathSpec_t{ PATH_PURE, 0, 0, 0, 0 }, pathSpec_t{ PATH_SLIDE, 1, -1, 1, 0.3 } }) {
+  for (pathSpec_t spec : { pathSpec_t{ PATH_PURE, 0, 0, 0 }, pathSpec_t{ PATH_SLIDE, 1, 6, 0.3 } }) {
     pathTable_c table(model, radius, spec);
     const path_t path = makePath(spec);
     for (auto [du, dv] : { std::pair{ 16, 16 }, std::pair{ -15, 15 }, std::pair{ 16, -2 }, std::pair{ -16, -16 } }) {
@@ -593,12 +643,14 @@ TEST_CASE("the rotation tables rescue a turn by shifting away from the blocker",
   const std::vector<cell_t> bar = { { 0, 0, 0 }, { 1, 0, 0 } };
   const std::vector<cell_t> stat = { { -1, 0, 0 } };
   const model_t model = { 0.081, 0 };
-  rotationTables_c tables(model, 3, { 0.15, 0.3 });
+  rotationTables_c tables(model, 3, compassFamily({ 0.15, 0.3 }));
 
   int idx = tables.firstClear(bar, stat, 2, 0, 0, 0, 0);
   REQUIRE(idx > 0);
   const pathSpec_t & spec = tables.table(0, idx).getSpec();
-  CHECK(spec.dirU == 1);
+  double u, v;
+  directionVector(spec.dir, &u, &v);
+  CHECK(u > 0);
   planarScene_c scene(bar, stat, 2, 0, 0, 0, model);
   CHECK(scene.certifyPath(makePath(spec)) == PATH_CLEAR);
 }
@@ -612,11 +664,11 @@ TEST_CASE("invalid axes, senses and kinds throw, in release builds too", "[rotat
 
   const model_t model = { 0.081 };
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0, model), assert_exception);
-  CHECK_THROWS_AS(makePath({ PATH_PURE, 2, 0, 0, 0 }), assert_exception);
-  CHECK_THROWS_AS(makePath({ (pathKind_e)3, 0, 1, 0, 0.1 }), assert_exception);
-  CHECK_THROWS_AS(pathTable_c(model, 1, { PATH_SLIDE, 2, 1, 0, 0.1 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_PURE, 2 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ (pathKind_e)(PATH_RAMP + 1), 0, 0, 0.1 }), assert_exception);
+  CHECK_THROWS_AS(pathTable_c(model, 1, { PATH_SLIDE, 2, 0, 0.1 }), assert_exception);
 
-  rotationTables_c tables(model, 2, {});
+  rotationTables_c tables(model, 2, compassFamily({}));
   CHECK_THROWS_AS(tables.firstClear({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0, 0), assert_exception);
   CHECK_THROWS_AS(tables.table(0, 0).blocked({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0), assert_exception);
 }
@@ -630,15 +682,19 @@ TEST_CASE("the tables need the whole moving group within their radius", "[rotati
   const std::vector<cell_t> stat = { { 0, 2, 0 } };
   const model_t model = { 0.081 };
   CHECK(planarScene_c(moving, stat, 2, 0, 0, 0, model).certifyQuarterTurn(0) == PATH_CLEAR);
-  CHECK_THROWS_AS(rotationTables_c(model, 2, {}).firstClear(moving, stat, 2, 0, 0, 0, 0), assert_exception);
-  CHECK(rotationTables_c(model, 3, {}).firstClear(moving, stat, 2, 0, 0, 0, 0) == 0);
+  CHECK_THROWS_AS(rotationTables_c(model, 2, compassFamily({})).firstClear(moving, stat, 2, 0, 0, 0, 0), assert_exception);
+  CHECK(rotationTables_c(model, 3, compassFamily({})).firstClear(moving, stat, 2, 0, 0, 0, 0) == 0);
 }
 
-TEST_CASE("the rotation tables order their amounts ascending, once each", "[rotations]") {
-  rotationTables_c tables({ 0.081 }, 1, { 0.4, 0.1, 0.4 });
-  REQUIRE(tables.size() == 1 + 2 * 16);
-  for (unsigned int i = 1; i < tables.size(); i++)
-    CHECK(tables.table(0, i).getSpec().amount == ((i <= 16) ? 0.1 : 0.4));
+TEST_CASE("the path families order their amounts ascending, once each", "[rotations]") {
+  const std::vector<pathSpec_t> compass = compassFamily({ 0.4, 0.1, 0.4 });
+  REQUIRE(compass.size() == 1 + 2 * 16);
+  for (size_t i = 1; i < compass.size(); i++)
+    CHECK(compass[i].amount == ((i <= 16) ? 0.1 : 0.4));
+  const std::vector<pathSpec_t> wide = wideExtension({}, { 0.4, 0.1, 0.4 });
+  REQUIRE(wide.size() == 2 * 5 * DIRECTIONS);
+  for (size_t i = 0; i < wide.size(); i++)
+    CHECK(wide[i].amount == ((i < 5 * DIRECTIONS) ? 0.1 : 0.4));
 }
 
 TEST_CASE("a path in contact along a stretch is undecided at once", "[rotations]") {
@@ -662,7 +718,7 @@ TEST_CASE("rotation table statistics", "[.][rotations-table-stats]") {
   for (int radius : { 6, 8 })
     for (model_t model : { model_t{ 0.081, 0 }, model_t{ 0.02, 0.05 }, model_t{ 0.01, 0 } }) {
       auto start = std::chrono::steady_clock::now();
-      rotationTables_c tables(model, radius, amounts);
+      rotationTables_c tables(model, radius, compassFamily(amounts));
       double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 
       size_t pure = 0, all = 0;

@@ -1151,7 +1151,7 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
   const int dx = searchnode->getX(j) - searchnode->getX(i);
   const int dy = searchnode->getY(j) - searchnode->getY(i);
   const int dz = searchnode->getZ(j) - searchnode->getZ(i);
-  const rotationGeometry::rotationTables_c & tables = rotation->tables();
+  const rotationGeometry::rotationTables_c & tables = rotation->closureTables();
 
   const planeCells_t & pi = planeCells(partI, transI, axis);
   const planeCells_t & pj = planeCells(partJ, transJ, axis);
@@ -1355,6 +1355,12 @@ void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, un
  * Except with more than 16 distinct closures, where only the closures
  * themselves are tried, not their unions (SKIP_GROUPS reports it).
  *
+ * Planner: with it, the relation comes from the tables of the model with a
+ * little more play (rotationContext_c::closureTables), which block less,
+ * so more groups are checked. A turn no family path clears at the model's
+ * play but one clears with the extra play is handed to the planner, which
+ * looks for any motion at the model's play (rotationContext_c::plannedPath).
+ *
  * Pivots: cube centres and cube corners within the turning group's
  * footprint; edge midpoints cannot map the lattice onto itself. */
 void movementAnalysator_c::listRotations(void) {
@@ -1371,7 +1377,13 @@ void movementAnalysator_c::listRotations(void) {
   }
 
   const rotationGeometry::rotationTables_c & tables = rotation->tables();
-  const int reach = 2 * tables.getRadius();
+  /* with the planner the groups come from the relaxed tables, see below */
+  const rotationGeometry::rotationTables_c & closure = rotation->closureTables();
+  /* both are asked for with the problem's radius, but either may come from
+   * the cache with a larger one: only cubes both cover can be looked up, and
+   * only within the problem's radius, so that the turns found do not depend
+   * on which tables earlier solves left in the cache */
+  const int reach = 2 * std::min({ rotation->radius(), tables.getRadius(), closure.getRadius() });
   const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
 
   std::vector<std::vector<cell_t>> world(pn);
@@ -1484,13 +1496,19 @@ void movementAnalysator_c::listRotations(void) {
             if (unchanged)
               continue;
 
-            int path = tables.firstClear(moving, rotationGeometry::occupancy_c(stat), axis, hx, hy, hz, sense);
+            const rotationGeometry::occupancy_c occupied(stat);
+            int path = tables.firstClear(moving, occupied, axis, hx, hy, hz, sense);
+            /* No family path: if the family gets through with a little more
+             * play, the turn is near the threshold, where a planned motion
+             * may still find a way at this play. */
+            if (path < 0 && rotation->planner() && closure.firstClear(moving, occupied, axis, hx, hy, hz, sense) >= 0)
+              path = rotation->plannedPath(moving, stat, axis, hx, hy, hz, sense);
             if (path < 0)
               continue;
 
             if (!(group & 1u))
               addRotationNode(group, axis, sense, pu, pv, path, false);
-            else if (tables.table(sense, path).getSpec().kind == rotationGeometry::PATH_PURE) {
+            else if ((unsigned int)path < tables.size() && tables.table(sense, path).getSpec().kind == rotationGeometry::PATH_PURE) {
               /* the inverse of a pure turn is the pure turn the other way */
               bt_assert(tables.table(sense ^ 1, 0).getSpec().kind == rotationGeometry::PATH_PURE);
               addRotationNode(all & ~group, axis, sense ^ 1, pu, pv, 0, false);

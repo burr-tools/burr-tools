@@ -82,7 +82,7 @@ namespace rotationGeometry {
   void turnAbout(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense);
 
   struct model_t {
-    double play;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
+    double play = 0;      ///< gap between neighbouring cubes, cube side is 1 - play, must be > 0
     /** 45° bevel of the cube edges parallel to the rotation axis: the length
      *  cut off each adjacent face, so the bevel face is chamfer·√2 wide. A
      *  puzzlecad $burr_bevel b on cubes of size s is b / (√2 s). Printed
@@ -95,6 +95,10 @@ namespace rotationGeometry {
      *  into the printed piece on a motion certified clear. */
     double chamfer = 0;
   };
+
+  /** play > 0, chamfer >= 0 and a cube larger than its chamfer: the
+   *  models planarScene_c accepts. */
+  bool validModel(const model_t & model);
 
   /** Pose of the moving group: rotate by theta (radians, right-handed about
    *  the axis) around the scene pivot, then translate by (du, dv). */
@@ -129,6 +133,10 @@ namespace rotationGeometry {
        *  depth when overlapping. Huge when nothing can collide. */
       double clearance(const pose_t & p) const;
 
+      /** clearance(p) if it is at least floor; otherwise some value below
+       *  floor, found without looking at every pair */
+      double clearanceAbove(const pose_t & p, double floor) const;
+
       /** Certify the piecewise linear path through the given poses. Stops
        *  at the first segment that is blocked or undecided. */
       verdict_e certifyPath(const std::vector<pose_t> & waypoints) const;
@@ -138,6 +146,16 @@ namespace rotationGeometry {
 
       /** Largest distance of a moving cube corner from the pivot. */
       double radius(void) const { return rho; }
+
+      /** A certified lower bound on the smallest clearance along the
+       *  piecewise linear path, within eps of the true minimum. Since
+       *  adding play Δ adds at least Δ to every clearance, the path is
+       *  clear at every play of at least play - minClearance(path). */
+      double minClearance(const std::vector<pose_t> & waypoints, double eps = 1e-4) const;
+
+      /** True if the smallest clearance along the path is proven to be at
+       *  least threshold; stops as soon as either is clear. */
+      bool clearanceAtLeast(const std::vector<pose_t> & waypoints, double threshold) const;
 
     private:
 
@@ -158,6 +176,10 @@ namespace rotationGeometry {
       double outRadius;  // of a cube: clearance >= centre distance - 2·outRadius
 
       bool certifySegment(const pose_t & a, const pose_t & b, verdict_e * v) const;
+      /** Lipschitz branch and bound over one segment: a lower bound on its
+       *  smallest clearance, within eps; stops early, returning a value
+       *  below stopBelow, once a sample is below stopBelow. */
+      double segmentMinimum(const pose_t & a, const pose_t & b, double eps, double stopBelow) const;
       /** The decision certifySegment needs at pose p, using the exact
        *  clearance only where the cubes' in- and circumcircles do not settle
        *  it: -1 if a pair overlaps, 1 if every pair is at least margin
@@ -178,20 +200,50 @@ namespace rotationGeometry {
    *  poses, starting at the identity pose and ending at a quarter turn. */
   typedef std::vector<pose_t> path_t;
 
-  /** Kinds of rotation path, see rotationTables_c. */
+  /** Kinds of rotation path, see rotationTables_c and planTurn. */
   enum pathKind_e {
     PATH_PURE,    ///< plain quarter turn about the pivot
     PATH_WIGGLE,  ///< quarter turn with an offset amount·(cos θ + sin θ - 1)/(√2 - 1) along a direction
-    PATH_SLIDE    ///< shift by amount along a direction, quarter turn, shift back
+    PATH_SLIDE,   ///< shift by amount along a direction, quarter turn, shift back
+    PATH_PLANNED, ///< any polyline, found by planTurn for one scene
+    PATH_RAMP     ///< shift out linearly until holdFrom degrees, hold until holdTo, back by 90
   };
+
+  /** In-plane shift directions, in sixteenths of a full turn counter-
+   *  clockwise from +u: even ones are the 8 compass directions. */
+  constexpr int DIRECTIONS = 16;
 
   /** Names one path of a family; the path follows from it, see makePath. */
   struct pathSpec_t {
-    pathKind_e kind;
-    unsigned int sense;   ///< 0 = +90°, 1 = -90°, as in quarterTurn
-    int dirU, dirV;       ///< one of the 8 compass directions, in-plane, unused for PATH_PURE
-    double amount;        ///< shift distance in cells, unused for PATH_PURE
+    pathKind_e kind = PATH_PURE;
+    unsigned int sense = 0;   ///< 0 = +90°, 1 = -90°, as in quarterTurn
+    int dir = 0;              ///< shift direction, 0 to DIRECTIONS - 1, unused for PATH_PURE
+    double amount = 0;        ///< shift distance in cells, unused for PATH_PURE
+    /** the waypoints of a PATH_PLANNED path, from the identity pose to the
+     *  quarter turn of sense */
+    std::vector<pose_t> waypoints = {};
+    /** PATH_RAMP: the shift is reached at holdFrom and held until holdTo
+     *  (degrees turned, 0 < holdFrom <= holdTo < 90) */
+    int holdFrom = 0, holdTo = 0;
   };
+
+  /** The unit vector of a shift direction (exact for the compass ones). */
+  void directionVector(int dir, double * u, double * v);
+
+  /** The compass family of fixed paths, ordered by how much a move
+   *  disturbs: the pure turn, then per amount (ascending) the 8 wiggles and
+   *  the 8 slides; +90° only, rotationTables_c adds the mirrored -90°.
+   *  The amounts are sorted and duplicates dropped. */
+  std::vector<pathSpec_t> compassFamily(const std::vector<double> & amounts);
+
+  /** The paths the 16-direction family adds to compassFamily(compass) for
+   *  the amounts `wide`: wiggles and slides in every direction the compass
+   *  family lacks, and ramps out by 15° and held to 45°, out by 45° and held
+   *  to 75° (its reverse), and the tent (out by 45° and straight back), per
+   *  amount (ascending, duplicates dropped) in all 16 directions. See
+   *  design/2026-10-19-rotation-moves.md,
+   *  "The motions" and "Corpus results". */
+  std::vector<pathSpec_t> wideExtension(const std::vector<double> & compass, const std::vector<double> & wide);
 
   /** The waypoints of a path. Wiggles are polylines of WIGGLE_SEGMENTS
    *  segments; the polyline, not the smooth profile, is the motion that is
@@ -204,6 +256,80 @@ namespace rotationGeometry {
    *  equal parameter time. Every pose lies on the polyline the checker
    *  certified, so animating with it shows exactly the checked motion. */
   pose_t poseAt(const path_t & path, double t);
+
+  /** How planTurn searches: the configuration space (θ, du, dv) is cut
+   *  into cells of shift × shift × 90°/steps, shifts up to maxShift. */
+  struct planSettings_t {
+    double maxShift = 0.5;
+    double shift = 0.01;
+    int steps = 180;
+    /** cells with a centre clearance below this are never entered; a path
+     *  needing less is not looked for (the solver passes 0) */
+    double floor = -1;
+    /** also compute the optimistic bound `upper` (a second search) */
+    bool upper = false;
+    /** find the path with the most clearance; false: any path with at
+     *  least floor (faster, for deciding whether a turn is possible) */
+    bool widest = true;
+    /** without widest: give up after evaluating this many cells */
+    size_t budget = 60000;
+  };
+
+  /** The outcome of planTurn. */
+  struct turnPlan_t {
+    bool found = false;
+    path_t path;                ///< from the identity pose to the quarter turn
+    /** certified lower bound on the path's smallest clearance */
+    double clearance = -1e9;
+    /** no motion with shifts up to maxShift has a smallest clearance above
+     *  this (only with planSettings_t::upper; -inf: none reaches floor) */
+    double upper = 1e9;
+    /** the search ran out of its budget: the turn may be possible */
+    bool gaveUp = false;
+  };
+
+  /**
+   * The quarter turn of the scene's moving cubes, along the motion with the
+   * most clearance: a widest path (largest smallest clearance) over the
+   * grid of planSettings_t, shortcut, and its clearance certified on the
+   * polyline itself (planarScene_c::minClearance). The play the turn needs
+   * is at most model play - clearance; with `upper`, at least model play -
+   * upper (for shifts up to maxShift). See design/2026-10-19-rotation-moves.md,
+   * "The planner" and "The play a puzzle needs".
+   *
+   * The grid maps onto itself when the turn is seen from its end, so the
+   * reverse turn meets the same cells.
+   */
+  turnPlan_t planTurn(const planarScene_c & scene, unsigned int sense, const planSettings_t & settings);
+
+  /** The play a quarter turn needs, see requiredPlay. */
+  struct playBound_t {
+    bool found = false;
+    /** the turn is proven possible at this play, along `path` */
+    double needs = 0;
+    path_t path;
+    /** and proven impossible (for shifts up to maxShift) below this; 0 if
+     *  nothing could be proven */
+    double atLeast = 0;
+  };
+
+  /**
+   * The smallest play at which the moving cubes can make the quarter turn
+   * about the pivot among the static ones, by any motion with shifts up to
+   * settings.maxShift: bisection over the play with planTurn, to within
+   * tolerance. The chamfer is taken from model, its play is the
+   * starting guess. With more play every clearance grows by at least the
+   * extra play, so a path found at one play stays clear at every larger one.
+   * Not found when the turn needs more than maxPlay.
+   */
+  playBound_t requiredPlay(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                           unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense,
+                           const model_t & model, const planSettings_t & settings,
+                           double tolerance = 0.0005, double maxPlay = 0.4);
+
+  /** The path of the reverse turn: the same motion run backwards, as seen
+   *  by the moving cubes in their turned orientation. */
+  path_t reversePath(const path_t & path);
 
   /**
    * Lookup table for one fixed path, filled by the certified checker.
@@ -268,14 +394,6 @@ namespace rotationGeometry {
       friend class rotationTables_c;
   };
 
-  /**
-   * The family of fixed rotation paths a rotation move may use, one
-   * pathTable_c each, ordered by how much the move disturbs: the pure turn
-   * first, then per amount (ascending) the 8 wiggles and the 8 slides.
-   *
-   * Only the +90° tables for the directions (1,0) and (1,1) are computed
-   * with the checker, all others are turned and mirrored copies.
-   */
   /** The cells occupied by static cubes, as a dense bitmap over their
    *  bounding box: built once per group of turning pieces and then queried
    *  for every pivot, axis, sense and path. */
@@ -297,12 +415,21 @@ namespace rotationGeometry {
       std::vector<bool> bits;
   };
 
+  /**
+   * The family of fixed rotation paths a rotation move may use, one
+   * pathTable_c each, in the family's order (firstClear returns the first
+   * clear one, which a move records).
+   *
+   * Only the +90° tables for directions 0 to 3 (sixteenths) are computed
+   * with the checker, all others are turned and mirrored copies.
+   */
   class rotationTables_c {
 
     public:
 
-      /** amounts are sorted and duplicates dropped. */
-      rotationTables_c(const model_t & model, int radius, const std::vector<double> & amounts);
+      /** The tables of a family of +90° paths, in its order; the -90°
+       *  paths are their mirror images. */
+      rotationTables_c(const model_t & model, int radius, const std::vector<pathSpec_t> & family);
 
       int getRadius(void) const { return radius; }
 
