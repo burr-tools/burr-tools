@@ -207,6 +207,7 @@ jobs:
   # leaks are checked in test_burrtools only.
   sanitizers:
     name: Sanitizers (ASan + UBSan)
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -225,7 +226,9 @@ jobs:
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
+    # The Qt GUI only where the changes job builds it (see there)
     - name: Install Qt
+      if: needs.changes.outputs.qt == 'true'
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.8.*'
@@ -247,7 +250,7 @@ jobs:
     - name: Build with ASan and UBSan
       run: |
         meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
-          -Dqt_gui=enabled -Dpython=disabled
+          -Dqt_gui=${{ needs.changes.outputs.qt == 'true' && 'enabled' || 'disabled' }} -Dpython=disabled
         ninja -C build-asan
 
     - name: Unit tests, leaks included
@@ -257,6 +260,7 @@ jobs:
       run: ./build-asan/test_burrtools --reporter compact
 
     - name: Qt GUI suites
+      if: needs.changes.outputs.qt == 'true'
       env:
         ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
         UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
@@ -279,11 +283,23 @@ jobs:
   # can break this job with spec/** untouched -- and the justfile is
   # touched far more often than the specs. Gate the expensive job on all
   # paths that can change its outcome.
-  spec-changes:
-    name: Detect spec changes
+  #
+  # The Qt GUI's jobs (qt-*, coverage-qt, the Qt suites in sanitizers) are
+  # gated too: a pull request into a branch other than master -- a PR in
+  # the middle of a stack -- builds the Qt GUI only when it touches the Qt
+  # GUI or what it is built from besides the library. Everything else
+  # always builds it: a PR into master, pushes, tags and manual runs. A
+  # library change that breaks the Qt GUI is thus caught at the latest when
+  # its stack's bottom PR targets master, or on master itself.
+  changes:
+    name: Detect changed areas
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # the PR's own base, below
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
+      qt: ${{ steps.qt.outputs.build }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -298,16 +314,46 @@ jobs:
             - 'spec/**'
             - 'justfile'
             - '.github/workflows/build-and-release.yml'
+          qt:
+            - 'src/qtgui/**'
+            - 'src/uicore/**'
+            - 'test/qtgui/**'
+            - 'meson.build'
+            - 'meson.options'
+            - 'scripts/package-qt.sh'
+            - 'justfile'
+            - '.github/workflows/build-and-release.yml'
+    # The PR's base from the API: for a PR in a GitHub stack, base_ref names
+    # the stack's base (master), not the PR below it (seen on #189).
+    - name: Decide whether the Qt GUI is built
+      id: qt
+      env:
+        EVENT: ${{ github.event_name }}
+        PR: ${{ github.event.pull_request.number }}
+        DEFAULT: ${{ github.event.repository.default_branch }}
+        CHANGED: ${{ steps.filter.outputs.qt }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        BASE=
+        if [ "$EVENT" = pull_request ]; then
+          BASE=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .base.ref)
+        fi
+        if [ "$EVENT" != pull_request ] || [ "$BASE" = "$DEFAULT" ] || [ "$CHANGED" = true ]; then
+          echo "build=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::Qt GUI not built: this PR targets $BASE, not $DEFAULT, and touches no Qt GUI paths"
+          echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
 
   # Model-checks the PlusCal protocol specs in spec/ with TLC. It guards
   # the defect class TSan cannot see — lost wakeups, hangs, token leaks —
   # at the protocol level, before those shapes reach the C++ implementation.
   spec:
     name: TLA+ protocol specs
-    needs: spec-changes
+    needs: changes
     # Tags and manual dispatches have no diff base for the filter, so they
     # run unconditionally; PRs and pushes run only on spec/** changes.
-    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.spec-changes.outputs.spec == 'true'
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.spec == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -405,9 +451,10 @@ jobs:
         path: coverage-html/
 
   coverage-qt:
+    needs: changes
     runs-on: ubuntu-latest
     continue-on-error: true
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/master'
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/master') && needs.changes.outputs.qt == 'true'
     outputs:
       html-url: ${{ steps.coverage_artifact.outputs.artifact-url }}
     steps:
@@ -496,7 +543,7 @@ jobs:
 
   coverage-report:
     runs-on: ubuntu-latest
-    needs: [coverage, coverage-qt]
+    needs: [changes, coverage, coverage-qt]
     if: always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/master')
     permissions:
       contents: read
@@ -516,6 +563,7 @@ jobs:
       env:
         HTML_URL: ${{ needs.coverage.outputs.html-url }}
         HTML_QT_URL: ${{ needs.coverage-qt.outputs.html-url }}
+        QT_BUILT: ${{ needs.changes.outputs.qt }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         lib=summaries/coverage-summary/coverage-summary.txt
@@ -537,7 +585,10 @@ jobs:
           fi
           echo '```'
           echo
-          if [ ! -f "$qt" ]; then
+          if [ "$QT_BUILT" != true ]; then
+            echo "The Qt GUI's figure is not measured: this PR targets a branch other than master and touches no Qt GUI paths."
+            echo
+          elif [ ! -f "$qt" ]; then
             echo "The Qt GUI's figure is missing: the coverage-qt job did not finish ([run]($RUN_URL))."
             echo
           fi
@@ -848,6 +899,8 @@ jobs:
   # job does not pick these up: its download pattern names only the legacy builds.
   qt-linux:
     name: Qt GUI (Linux)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -945,6 +998,8 @@ jobs:
 
   qt-windows:
     name: Qt GUI (Windows, MSYS2 UCRT64)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: windows-latest
     timeout-minutes: 90
     defaults:
@@ -1053,6 +1108,8 @@ jobs:
 
   qt-macos:
     name: Qt GUI (macOS)
+    needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
