@@ -39,10 +39,11 @@ class TestBurrTools(unittest.TestCase):
 
     def test_rotation_moves(self):
         path = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "AAA_most_rotations.xmpuzzle")
-        prob = burrtools.load(path).problems[0]
-        # the model these expectations were found at (the default is the
+        puzzle = burrtools.load(path)
+        prob = puzzle.problems[0]
+        # the pieces these expectations were found for (the default is the
         # STL export's tight one, made for slides)
-        prob.rotation_model = (0.081, 0.032)
+        puzzle.rotation_model = (0.081, 0.032)
 
         # without turns the single assembly does not come apart
         self.assertEqual(list(prob.solve(disassemble=True)), [])

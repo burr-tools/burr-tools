@@ -115,8 +115,7 @@ void StlExportController::begin(void) {
 void StlExportController::followShapeModel(bool start) {
   if (!m_stl || !(start || m_stl->followsModel()))
     return;
-  if (const auto model = rotationModelForShape(m_doc->session().puzzle(), unsigned(m_shape)))
-    m_stl->followModel(*model);
+  m_stl->followModel(rotationModelOf(m_doc->session().puzzle()));
 }
 
 QString StlExportController::modelNote(void) const {
@@ -125,14 +124,11 @@ QString StlExportController::modelNote(void) const {
   const puzzle_c & p = m_doc->session().puzzle();
   if (unsigned(m_shape) >= p.getNumberOfShapes())
     return {};
-  const stlModelState_t s = stlModelState(*m_stl, rotationModelForShape(p, unsigned(m_shape)));
+  const stlModelState_t s = stlModelState(*m_stl, rotationModelOf(p));
   auto f = [](double v) { return QString::number(v, 'f', 4); };
   switch (s.match) {
     case stlModelState_t::NO_CUBES:
       return {};
-    case stlModelState_t::UNDECIDED:
-      return tr("Play %1, bevel %2. The problems using this shape check rotation moves for different play and bevel.")
-        .arg(f(s.now.play), f(s.now.chamfer));
     case stlModelState_t::MATCHES:
       return tr("Play %1, bevel %2: the pieces rotation moves are checked for.").arg(f(s.now.play), f(s.now.chamfer));
     case stlModelState_t::DIFFERS:

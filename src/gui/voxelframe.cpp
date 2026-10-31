@@ -1302,7 +1302,7 @@ void voxelFrame_c::showSingleShape(const puzzle_c * puz, unsigned int shapeNum) 
 
   hideMarker();
   clearSpaces();
-  spaceModel = storedRotationModelForShape(*puz, shapeNum);
+  spaceModel = puz->getRotationModel();
   unsigned int num = addSpace(puz->getGridType()->getVoxel(puz->getShape(shapeNum)));
 
   setSpaceColor(num, pieceColorR(shapeNum), pieceColorG(shapeNum), pieceColorB(shapeNum), 1);

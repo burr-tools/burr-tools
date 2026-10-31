@@ -359,33 +359,26 @@ rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettin
  *  the default (rotationSettings_t::model). */
 rotationGeometry::model_t rotationModelOf(const problem_c & problem);
 
-/** The model the pieces of a shape are checked for: the puzzle's, else the
- *  default. */
-std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & puzzle, unsigned int shape);
-
-/** The same, but only a stored model: nothing while the puzzle stores none.
- *  The 3D views' STL style draws such pieces; without one a shape keeps the
- *  view's own look. */
-std::optional<rotationGeometry::model_t> storedRotationModelForShape(const puzzle_c & puzzle, unsigned int shape);
+/** The pieces of a puzzle: its model, else the default. The same for every
+ *  shape and problem; the 3D views' STL style draws only a stored one
+ *  (puzzle_c::getRotationModel), so a puzzle without keeps their own look. */
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
 
 /** For an STL export dialog: whether the exporter's bevel and offset make
- *  the pieces the turns were checked for (`expected`, from
- *  rotationModelOf or rotationModelForShape; nothing when the problems
- *  disagree). */
+ *  the pieces the turns are checked for (`expected`, from rotationModelOf). */
 struct stlModelState_t {
   enum match_e {
     NO_CUBES,      ///< the exporter does not make cubes: nothing to say
-    UNDECIDED,     ///< the problems using the shape check different models
     MATCHES,       ///< the pieces are the ones the turns are checked for
     DIFFERS        ///< they are not: `now` against `expected`
   } match = NO_CUBES;
   rotationGeometry::model_t now, expected;
 };
-stlModelState_t stlModelState(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected);
+stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
 
 /** stlModelState as an English sentence, for the FLTK dialogs (the Qt one
  *  formats it with its translations); empty for NO_CUBES */
-std::string stlModelNote(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected);
+std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not

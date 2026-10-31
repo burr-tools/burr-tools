@@ -398,44 +398,31 @@ rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettin
 }
 
 rotationGeometry::model_t rotationModelOf(const problem_c & problem) {
-  return problem.getPuzzle().getRotationModel().value_or(rotationSettings_t{}.model);
+  return rotationModelOf(problem.getPuzzle());
 }
 
-std::optional<rotationGeometry::model_t> rotationModelForShape(const puzzle_c & puzzle, unsigned int /*shape*/) {
-  /* the pieces are the puzzle's, the same for every shape */
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle) {
   return puzzle.getRotationModel().value_or(rotationSettings_t{}.model);
 }
 
-std::optional<rotationGeometry::model_t> storedRotationModelForShape(const puzzle_c & puzzle, unsigned int /*shape*/) {
-  return puzzle.getRotationModel();
-}
-
-stlModelState_t stlModelState(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected) {
+stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected) {
   stlModelState_t state;
   const std::optional<rotationGeometry::model_t> now = stl.currentModel();
   if (!now)
     return state;
   state.now = *now;
-  if (!expected)
-    state.match = stlModelState_t::UNDECIDED;
-  else {
-    state.expected = *expected;
-    state.match = std::abs(now->play - expected->play) < 1e-6 && std::abs(now->chamfer - expected->chamfer) < 1e-6
-                    ? stlModelState_t::MATCHES : stlModelState_t::DIFFERS;
-  }
+  state.expected = expected;
+  state.match = std::abs(now->play - expected.play) < 1e-6 && std::abs(now->chamfer - expected.chamfer) < 1e-6
+                  ? stlModelState_t::MATCHES : stlModelState_t::DIFFERS;
   return state;
 }
 
-std::string stlModelNote(const stlExporter_c & stl, const std::optional<rotationGeometry::model_t> & expected) {
+std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::model_t & expected) {
   const stlModelState_t s = stlModelState(stl, expected);
   char text[200];
   switch (s.match) {
     case stlModelState_t::NO_CUBES:
       return "";
-    case stlModelState_t::UNDECIDED:
-      snprintf(text, sizeof(text), "Play %.4f, bevel %.4f. The problems using this shape check rotation "
-               "moves for different play and bevel.", s.now.play, s.now.chamfer);
-      break;
     case stlModelState_t::MATCHES:
       snprintf(text, sizeof(text), "Play %.4f, bevel %.4f: the pieces rotation moves are checked for.",
                s.now.play, s.now.chamfer);
