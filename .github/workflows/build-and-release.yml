@@ -47,6 +47,19 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    # Meson compiles through ccache when it finds it. One cache per job,
+    # saved by every run, pull requests included: a pull request restores
+    # its own latest cache, else its base branch's, else master's. A PR deep
+    # in a stack shares only about 70% of its objects with master, but
+    # 95% with its own previous push. The repository's caches are capped
+    # at 10 GB and evicted least recently used first, so ccache-prune keeps
+    # one entry per pull request and job, and cache-cleanup.yml deletes a
+    # pull request's entries when it is closed. Exception: sanitizers.
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
     
     - name: Setup build directory
       # -Db_ndebug=true is load-bearing, not cosmetic: without it Meson
@@ -135,10 +148,16 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get install -y clang libboost-all-dev meson ninja-build build-essential freeglut3-dev libgl-dev libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+
+    # ccache named here: meson adds it only to compilers it finds itself
     - name: Setup build directory
       env:
-        CC: clang
-        CXX: clang++
+        CC: ccache clang
+        CXX: ccache clang++
       run: meson setup build-clang --buildtype=release --werror
 
     - name: Build
@@ -177,6 +196,11 @@ jobs:
 
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
 
     - name: Build with ThreadSanitizer
       run: just build-tsan
@@ -221,6 +245,17 @@ jobs:
       run: |
         icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
         echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+
+    # Saved from master only, unlike every other job's (see build-linux):
+    # its cache and coverage-qt's are the largest, and this one (about 270 MB
+    # compressed) is half of what a pull request building the Qt GUI would
+    # save per push. A pull request restores master's.
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.event_name != 'pull_request' }}
+        max-size: 1G   # debug objects with the Qt GUI
 
     - name: Build with ASan and UBSan
       run: |
@@ -347,6 +382,11 @@ jobs:
     - name: Install just
       uses: extractions/setup-just@v2
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+
     # Configured without the Qt GUI, even where a Qt is found. `shell: bash`
     # sets pipefail, so a gcovr failure is not masked by tee's exit status.
     - name: Report coverage and generate HTML report
@@ -422,6 +462,12 @@ jobs:
 
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+        max-size: 1G   # debug objects with the Qt GUI
 
     # The Qt suites' render tests run as in qt-linux: Vulkan on Mesa's
     # lavapipe, test_qtgui as "xcb" on Xvfb.
@@ -633,12 +679,21 @@ jobs:
     
     - name: Install dependencies
       run: sudo apt-get install -y meson ninja-build mingw-w64 wine
-    
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+
+    # ccache through a second cross file, which overrides the first's
+    # compilers: meson adds ccache only to compilers it finds itself.
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
       # / live bt_assert checks (~15-30% solver overhead, see the Linux job
       # comment and design/2026-09-24-benchmark-speedup-analysis.md §7).
-      run: meson setup build-win --cross-file cross-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
+      run: |
+        printf "[binaries]\nc = ['ccache', 'x86_64-w64-mingw32-gcc']\ncpp = ['ccache', 'x86_64-w64-mingw32-g++']\n" > ccache-mingw64.txt
+        meson setup build-win --cross-file cross-mingw64.txt --cross-file ccache-mingw64.txt --buildtype=release --werror -Db_ndebug=true -Dpython=disabled
     
     - name: Build
       run: ninja -C build-win
@@ -702,6 +757,11 @@ jobs:
     
     - name: Install just
       uses: extractions/setup-just@v2
+
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
     
     - name: Setup build directory
       # -Db_ndebug=true: shipped binaries must not carry _GLIBCXX_ASSERTIONS
@@ -819,6 +879,11 @@ jobs:
         modules: 'qtshadertools'
         cache: true
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+
     - name: Build
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
@@ -891,19 +956,30 @@ jobs:
     defaults:
       run:
         shell: msys2 {0}
+    # MSYS2's own ccache (see build-linux for why), its directory cached by
+    # hand: hendrikmuhs/ccache-action does not know MSYS2.
+    env:
+      CCACHE_DIR: ${{ github.workspace }}\.ccache
+      CCACHE_MAXSIZE: 500M
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: recursive
 
+    # No package cache: its key hashes the downloaded packages, which
+    # update: true refreshes, so nearly every PR saved its own 262 MB copy
+    # (12 of them at once, crowding master's ccache out of the 10 GB), and
+    # setup took 72-120 s with it all the same.
     - uses: msys2/setup-msys2@v2
       with:
         msystem: UCRT64
         update: true
+        cache: false
         install: >-
           git
           mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-ccache
           mingw-w64-ucrt-x86_64-meson
           mingw-w64-ucrt-x86_64-ninja
           mingw-w64-ucrt-x86_64-cmake
@@ -916,6 +992,14 @@ jobs:
           mingw-w64-ucrt-x86_64-qt6-tools
           zip
 
+    # restored and saved as in build-linux
+    - name: Restore the ccache directory
+      uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
+        restore-keys: ccache-${{ github.job }}-
+
     # -Ddxbc=enabled: the Direct3D shaders compiled by the runner's Windows
     # SDK fxc, so no start-up compiles HLSL; the build fails rather than
     # quietly shipping source if fxc is not found
@@ -923,6 +1007,13 @@ jobs:
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled -Ddxbc=enabled
         ninja -C build-qt
+        ccache --show-stats
+
+    - name: Save the ccache directory
+      uses: actions/cache/save@v4
+      with:
+        path: .ccache
+        key: ccache-${{ github.job }}-${{ github.sha }}
 
     - name: Self-check
       run: ./build-qt/burrtools-qt.exe --self-check
@@ -993,6 +1084,11 @@ jobs:
         modules: 'qtshadertools'
         cache: true
 
+    - name: Set up ccache   # see build-linux
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}
+
     - name: Build
       run: |
         meson setup build-qt --buildtype=release --werror -Db_ndebug=true -Dqt_gui=enabled -Dpython=disabled
@@ -1037,6 +1133,43 @@ jobs:
         name: burrtools-qt-macos
         path: artifacts/qt/*.zip
         retention-days: 30
+
+  # Deletes this pull request's older ccache entries, keeping the newest per
+  # job: every run saves a new entry (keys cannot be overwritten), and a
+  # restack would otherwise leave one more full set per PR in the 10 GB.
+  # Runs once every job that saves a cache is done, whether it passed or
+  # not. A pull request from a fork gets a read-only token; its entries are
+  # left to GitHub's own eviction.
+  ccache-prune:
+    needs: [build-linux, clang-x86-64, tsan-parallel, coverage, coverage-qt, build-windows, build-macos, qt-linux, qt-windows, qt-macos]
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      actions: write
+    steps:
+    - name: Delete all but the newest ccache entry per job
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        REF: refs/pull/${{ github.event.pull_request.number }}/merge
+      run: |
+        # newest first, listed in full before deleting (deleting while paging
+        # would shift the pages); a key is ccache-<job>-<timestamp>
+        # (ccache-action) or ccache-<job>-<sha> (qt-windows)
+        caches=$(gh api --paginate "repos/$REPO/actions/caches?ref=$REF&key=ccache-&sort=created_at&direction=desc&per_page=100" \
+            --jq '.actions_caches[] | "\(.id) \(.key)"')
+        seen=
+        printf '%s\n' "$caches" | while read -r id key; do
+          [ -n "$id" ] || continue
+          job=$(printf '%s' "$key" | sed -E 's/-([0-9]{4}-[0-9]{2}-[0-9]{2}T.*|[0-9a-f]{40})$//')
+          case " $seen " in
+          *" $job "*)
+            echo "deleting $key"
+            gh api -X DELETE "repos/$REPO/actions/caches/$id" ;;
+          *) seen="$seen $job" ;;
+          esac
+        done
 
   release:
     needs: [build-linux, build-windows, build-macos]
