@@ -12,6 +12,15 @@ on:
 permissions:
   contents: write
 
+# A new push to a pull request cancels its runs still queued or running:
+# restacking pushes every PR of a stack at once, and without this the
+# superseded runs keep their places in the queue ahead of the current ones.
+# The group is the PR, not the commit, so the duplicate run GitHub sometimes
+# starts for one push is cancelled too. master and tags are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build-linux:
     runs-on: ubuntu-latest
