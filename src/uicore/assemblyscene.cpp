@@ -101,7 +101,7 @@ namespace btui {
       opt.colors = colors;
       opt.piece = pieceColor(int(shape));
       opt.palette = paletteOf(puz);
-      opt.stlModel = storedRotationModelForShape(puz, shape);
+      opt.stlModel = puz.getRotationModel();
       c.mesh = buildShapeMesh(*puz.getShape(shape), opt);
       // the main view frames a shape on its grid box; so does this
       const Vec3 lo = c.mesh.boundsMin, hi = c.mesh.boundsMax;

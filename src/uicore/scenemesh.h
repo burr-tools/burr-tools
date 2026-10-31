@@ -99,8 +99,8 @@ namespace btui {
      * say 50 %; user decision). 1 draws them opaque. */
     float variableAlpha = 0.6f;
     /* the Stl style's pieces: the play and bevel rotation moves are checked
-     * for, when the problem stores them (problem_c::getRotationModel,
-     * storedRotationModelForShape); unset, the view's own */
+     * for, when the puzzle stores them (puzzle_c::getRotationModel); unset,
+     * the view's own */
     std::optional<rotationGeometry::model_t> stlModel;
   };
 

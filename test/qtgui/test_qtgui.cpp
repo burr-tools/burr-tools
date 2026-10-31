@@ -2292,14 +2292,13 @@ private slots:
   }
 
   void aNewExporterFollowsTheRotationModel() {
-    // a puzzle whose problems store play 0.05 and bevel 0.04
+    // a puzzle whose pieces have play 0.05 and bevel 0.04
     Fixture f;
     f.make();
     DocumentController * d = f.app->document();
     QVERIFY(d->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
     QVERIFY(d->editStructure(2, [](puzzle_c & p) {
-      for (unsigned int i = 0; i < p.getNumberOfProblems(); i++)
-        p.getProblem(i)->setRotationModel({ 0.05, 0.04 });
+      p.setRotationModel({ 0.05, 0.04 });
       return true;
     }));
     const QString modeled = f.file("modeled.xmpuzzle");

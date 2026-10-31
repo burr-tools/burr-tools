@@ -146,9 +146,9 @@ void stlExport_c::cb_Update3DView(void)
   updateParameters(stl.get(), params);
 
   /* the selected shape's pieces, as long as bevel and offset follow a model */
-  const std::optional<rotationGeometry::model_t> model = rotationModelForShape(*puzzle, ShapeSelect->getSelection());
-  if (stl->followsModel() && model) {
-    stl->followModel(*model);
+  const rotationGeometry::model_t model = rotationModelOf(*puzzle);
+  if (stl->followsModel()) {
+    stl->followModel(model);
     showParameters(stl.get(), params);
   }
   modelNote->copy_label(stlModelNote(*stl, model).c_str());
@@ -252,9 +252,8 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
 
   stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
   bt_assert(stl);
-  /* the pieces rotation moves are checked for, when the problems agree */
-  if (const auto model = rotationModelForShape(*p, 0))
-    stl->followModel(*model);
+  /* the pieces rotation moves are checked for */
+  stl->followModel(rotationModelOf(*p));
 
   LFl_Frame *fr;
 
