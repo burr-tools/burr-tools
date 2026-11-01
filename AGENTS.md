@@ -14,8 +14,8 @@ test` and about 8.9s for `just test-all`; the difference is almost entirely the
 one Minkowski random-shapes stress case. Compilation is extra and can dominate:
 re-running with nothing changed is 1.6s against 8.9s, editing a single file is
 about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
-against 21.0s. Use `just test` while iterating and `just test-all` before
-calling a task done.
+against 21.0s. Use `just test` while iterating; what else to run before
+calling a task done is in rule 7 of section 3.
 
 `just docs` requires `doxygen` and `graphviz` (`brew install doxygen graphviz` on macOS,
 `apt-get install doxygen graphviz` on Linux). Without graphviz it still produces a complete
@@ -101,10 +101,11 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 6. **Compatibility is only between released versions:**
    - "Released" means a tagged version (`v0.8.0`, ...), not whatever is on `master`. File formats, saved search state (assembler `ASSEMBLER_VERSION`s), CLI behaviour and APIs only need to stay compatible with what a release shipped. Changing a format introduced after the last release needs no version bump, no reader for the intermediate layout and no migration; bump only when the released format changes. Check with `git show <tag>:<file>` which version a release actually carried.
    - Saved *search state* is stricter still: a paused search resumes only with the version that saved it (README, "Pausing a search and continuing later").
-7. **Quality Verification:**
-   - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
-   - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
-   - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
+7. **Quality Verification -- what to run locally, and what CI covers:**
+   - Locally, verify what CI cannot, or not cheaply: `just build` and `just test` in the dev `build/` dir (assertions live), plus the cases your change touches, run as often as their risk warrants. A change to threading or timing deserves a stress loop (hundreds of runs, under load, and pinned to one CPU where the OS allows it: `taskset -c 0` on Linux, `start /affinity 1` on Windows; macOS cannot pin a process): CI runs a test once, so a flaky test is found there one failure at a time.
+   - Leave the rest to CI rather than repeating it: `build-linux` (GCC) and `build-macos` (Apple Clang) build with `--werror -Db_ndebug=true` and run `just test-all`, `build-linux` also `just check` (so `just build-release`/`just test-release` add nothing before a push); Windows is MinGW cross-built and run under wine (`build-windows`) and built natively with MSYS2 UCRT64 (`qt-windows`, for PRs into master or touching the Qt GUI); `coverage` and the sanitizers run `test_burrtools` with assertions live. A toolchain CI does not use (MSVC, say) is yours to check. Run any of them locally when CI reported a failure there, or when you need the answer before pushing.
+   - Before pushing a restack (every PR of a stack at once), at least build and run `just test` at the stack's top and at every PR that changes an interface the PRs above it use: one failure there costs a CI run on each PR above it.
+   - `just test-regression` is not run by CI. Run it before opening or updating a PR that can change solver output (assembler, disassembler, grids, puzzle loading), to check that it still matches the known-good 0.7.1 output across all example puzzles.
 7. **Qt GUI: QML panels and dialogs, environment variables:**
    - Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
    - Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.

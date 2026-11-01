@@ -315,9 +315,10 @@ build-release:
     ninja -C build-rel
 
 # Run the test suites against the release binary (the configuration CI
-# ships and gates on). Required before pushing: the dev build neither
-# treats warnings as errors nor disables assertions, so `just test-all`
-# alone cannot catch what CI will fail on.
+# ships and gates on): the dev build neither treats warnings as errors nor
+# disables assertions. CI's build-linux job runs the same, so this is for
+# reproducing a failure there, not a step before every push (AGENTS.md,
+# rule 7).
 test-release:
     meson test -C build-rel --suite fast --suite slow --print-errorlogs
 
