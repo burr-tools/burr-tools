@@ -8,7 +8,7 @@ on:
       - 'v*.*.*'
   # edited: for a change of the PR's base (the changes job decides). A
   # retarget changes what the gates below decide -- a PR that moves to
-  # master must build the Qt GUI -- and without it the PR would keep the
+  # master must run the sanitizers -- and without it the PR would keep the
   # checks of its old base, its skipped jobs counting as passed.
   pull_request:
     types: [opened, synchronize, reopened, edited]
@@ -324,17 +324,15 @@ jobs:
   # touched far more often than the specs. Gate the expensive job on all
   # paths that can change its outcome.
   #
-  # The Qt GUI's jobs (qt-*, coverage-qt, the Qt suites in sanitizers) are
-  # gated too: a pull request into a branch other than master -- a PR in
-  # the middle of a stack -- builds the Qt GUI only when it touches the Qt
-  # GUI or what it is built from besides the library. Everything else
-  # always builds it: a PR into master, pushes, tags and manual runs. A
-  # library change that breaks the Qt GUI is thus caught at the latest when
-  # its stack's bottom PR targets master, or on master itself. Except on
-  # Linux: qt-linux also runs for a library change (src/lib, src/tools,
-  # src/halfedge), since the Qt GUI relies on the library's behaviour, not
-  # only its interface, and only its suites would notice a change there.
-  # The other platforms build the same code and add no signal for that.
+  # The Qt GUI's jobs are gated too. qt-linux is the Qt GUI's default
+  # platform: it runs for every pull request, whatever it touches (lavapipe
+  # renders there, and it is required to), and the Qt suites it runs notice
+  # a library change that breaks the Qt GUI. The rest -- qt-windows,
+  # qt-macos, coverage-qt and the Qt suites in sanitizers -- run for pushes,
+  # tags and manual runs, and for a pull request only when it touches the
+  # Qt GUI or what it is built from besides the library (src/qtgui,
+  # src/uicore, test/qtgui, the build files). A Windows- or macOS-only
+  # break from anything else is thus caught on master itself.
   #
   # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
   # in sanitizers, coverage -- run when a pull request touches what that
@@ -356,7 +354,6 @@ jobs:
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
       qt: ${{ steps.qt.outputs.build }}
-      qt_linux: ${{ steps.qt.outputs.build_linux }}
       core: ${{ steps.core.outputs.test }}
       into_default: ${{ steps.qt.outputs.into_default }}
     steps:
@@ -404,20 +401,15 @@ jobs:
             - 'scripts/package-qt.sh'
             - 'justfile'
             - '.github/workflows/build-and-release.yml'
-          lib:
-            - 'src/lib/**'
-            - 'src/tools/**'
-            - 'src/halfedge/**'
     # The PR's base from the API: for a PR in a GitHub stack, base_ref names
     # the stack's base (master), not the PR below it (seen on #189).
-    - name: Decide whether the Qt GUI is built
+    - name: Decide what the Qt GUI's jobs and the sanitizers do
       id: qt
       env:
         EVENT: ${{ github.event_name }}
         PR: ${{ github.event.pull_request.number }}
         DEFAULT: ${{ github.event.repository.default_branch }}
         CHANGED: ${{ steps.filter.outputs.qt }}
-        LIB_CHANGED: ${{ steps.filter.outputs.lib }}
         GH_TOKEN: ${{ github.token }}
       run: |
         BASE=
@@ -429,17 +421,11 @@ jobs:
         else
           echo "into_default=false" >> "$GITHUB_OUTPUT"
         fi
-        if [ "$EVENT" != pull_request ] || [ "$BASE" = "$DEFAULT" ] || [ "$CHANGED" = true ]; then
+        if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "build=true" >> "$GITHUB_OUTPUT"
-          echo "build_linux=true" >> "$GITHUB_OUTPUT"
-        elif [ "$LIB_CHANGED" = true ]; then
-          echo "::notice::Qt GUI built on Linux only: this PR targets $BASE, not $DEFAULT, and changes the library but no Qt GUI paths"
-          echo "build=false" >> "$GITHUB_OUTPUT"
-          echo "build_linux=true" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::Qt GUI not built: this PR targets $BASE, not $DEFAULT, and touches neither the library nor Qt GUI paths"
+          echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
           echo "build=false" >> "$GITHUB_OUTPUT"
-          echo "build_linux=false" >> "$GITHUB_OUTPUT"
         fi
     - name: Decide whether test_burrtools's own jobs run
       id: core
@@ -706,7 +692,7 @@ jobs:
             echo
           fi
           if [ "$QT_BUILT" != true ]; then
-            echo "The Qt GUI's figure is not measured: this PR targets a branch other than master and touches no Qt GUI paths."
+            echo "The Qt GUI's figure is not measured: this PR touches no Qt GUI paths."
             echo
           elif [ ! -f "$qt" ]; then
             echo "The Qt GUI's figure is missing: the coverage-qt job did not finish ([run]($RUN_URL))."
@@ -1021,7 +1007,6 @@ jobs:
   qt-linux:
     name: Qt GUI (Linux)
     needs: changes
-    if: needs.changes.outputs.qt_linux == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
