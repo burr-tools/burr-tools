@@ -7,6 +7,7 @@
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
 
+#include <cstdlib>
 #include <initializer_list>
 #include <memory>
 #include <stdexcept>
@@ -279,6 +280,36 @@ inline bool puzzlesRoundtripEqual(const puzzle_c & a, const puzzle_c & b) {
 
   return true;
 }
+
+/** Sets (or with nullptr unsets) an environment variable for one scope and
+ *  restores what was there before. */
+class ScopedEnv {
+  public:
+    ScopedEnv(const char * var, const char * value) : name(var) {
+      if (const char * old = std::getenv(var)) {
+        had = true;
+        previous = old;
+      }
+      set(value);
+    }
+    ~ScopedEnv() { set(had ? previous.c_str() : nullptr); }
+    ScopedEnv(const ScopedEnv &) = delete;
+    ScopedEnv & operator=(const ScopedEnv &) = delete;
+
+  private:
+    void set(const char * value) {
+#ifdef _WIN32
+      _putenv_s(name.c_str(), value ? value : "");
+#else
+      if (value)
+        setenv(name.c_str(), value, 1);
+      else
+        unsetenv(name.c_str());
+#endif
+    }
+    std::string name, previous;
+    bool had = false;
+};
 
 } // namespace bttest
 

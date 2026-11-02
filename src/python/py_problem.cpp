@@ -88,7 +88,8 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
                                                     bool reduce,
                                                     bool keep_rotations,
                                                     bool keep_mirror,
-                                                    unsigned int threads) {
+                                                    unsigned int threads,
+                                                    bool rotation_moves) {
   return std::make_unique<SolutionIterator>(
     puzzle,
     problem_idx,
@@ -96,7 +97,8 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
     reduce,
     keep_rotations,
     keep_mirror,
-    threads
+    threads,
+    rotation_moves
   );
 }
 

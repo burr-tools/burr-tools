@@ -26,8 +26,10 @@
 #include <atomic>
 #include <cstdint>
 #include <future>
+#include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -43,14 +45,60 @@ class disassemblerNode_c;
  * neither builds nor touches anything here.
  */
 struct rotationSettings_t {
-  rotationGeometry::model_t model;
-  std::vector<double> amounts;   ///< shift amounts of the wiggle and slide paths
+  rotationGeometry::model_t model = {};
+  std::vector<double> amounts;       ///< shift amounts of the compass wiggles and slides
+  /** amounts of the 16-direction extension after them, empty: compass
+   *  family only (rotationGeometry::wideExtension) */
+  std::vector<double> wideAmounts = {};
+  /** Turns no family path clears are planned (rotationGeometry::planTurn)
+   *  if the family clears them with `slack` more play: the planner finds
+   *  the motions the family misses near the threshold. Off by default: it
+   *  makes a solve 5 to 40 times slower. See
+   *  design/2026-10-19-rotation-moves.md. */
+  bool planner = false;
+  double slack = 0.02;
+  rotationGeometry::planSettings_t plan = {};
 };
 
-/** The settings used when the caller has no others: PR #50's implicit
- *  model (play 0.081, sharp edges) until physical calibration provides
- *  better defaults, and shift amounts every 0.05 from 0.05 to 0.45 (145
- *  paths per sense; see the TIC results in design/2026-10-19-rotation-moves.md). */
+/** The +90° paths of the settings' family, in table order. */
+std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
+
+/** Path families rotationConfig_t can choose. */
+enum rotationFamily_e {
+  ROTATION_FAMILY_COMPASS,  ///< 8 directions, wiggles and slides, amounts 0.05 to 0.45 (145 paths)
+  ROTATION_FAMILY_WIDE      ///< the compass family plus 16 directions and ramps, amounts to 0.55
+};
+
+/**
+ * What a front end chooses for rotation moves. Every field it leaves unset
+ * comes from the environment, and failing that from the default, so these
+ * hyperparameters are resolved in one place and the solver only sees the
+ * result, a rotationSettings_t:
+ *
+ * | field   | environment                          | default                   |
+ * |---------|--------------------------------------|---------------------------|
+ * | model   | -                                    | play 0.081, sharp edges   |
+ * | family  | BURRTOOLS_ROT_FAMILY=compass or wide | compass                   |
+ * | planner | BURRTOOLS_ROT_PLANNER=0 or 1         | off                       |
+ * | slack   | -                                    | 0.02                      |
+ *
+ * The model is PR #50's implicit one until physical calibration provides
+ * better defaults; the compass amounts are every 0.05 from 0.05 to 0.45
+ * (see the TIC results in design/2026-10-19-rotation-moves.md). An
+ * unparsable environment value is an error (bt_te), never silently the
+ * default: an A/B run must not measure the same thing twice.
+ */
+struct rotationConfig_t {
+  std::optional<rotationGeometry::model_t> model;
+  std::optional<rotationFamily_e> family;
+  std::optional<bool> planner;
+  std::optional<double> slack;
+
+  rotationSettings_t resolve(void) const;
+};
+
+/** The settings used when the caller chooses nothing:
+ *  rotationConfig_t{}.resolve(), i.e. environment, then defaults. */
 rotationSettings_t defaultRotationSettings(void);
 
 /** Table radius for a problem: the largest filled extent of its result and
@@ -64,8 +112,11 @@ int rotationRadiusFor(const problem_c & problem);
  * possible for it (only cube grids with a valid result shape have them).
  *
  * Tables are immutable and shared: all solvers asking for the same settings
- * get the same object, built on the first request and freed when the last
- * user drops it; a table with a larger radius also serves smaller ones.
+ * get the same object, built on the first request; a table with a larger
+ * radius also serves smaller ones. The two most recently used sets stay
+ * alive after their last user drops them, so solving designs of one size
+ * one after another builds the tables once (releaseRotationTables frees
+ * them); others are freed with their last user.
  * Safe to call from several threads. Building takes up to a few seconds, so
  * callers do it once, before starting worker threads.
  */
@@ -75,6 +126,10 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
 /** Same, with an explicit radius; for callers without a problem and tests. */
 std::shared_ptr<const rotationGeometry::rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius);
+
+/** Stop keeping the most recently used tables alive; tables still in use
+ *  stay until their last user drops them. */
+void releaseRotationTables(void);
 
 /**
  * The pivots, relative to a piece's hotspot in doubled in-plane units, at
@@ -115,16 +170,51 @@ class rotationContext_c {
 
   public:
 
-    rotationContext_c(const problem_c & problem,
-                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables);
+    /** relaxed: the tables of the model with settings.slack more play,
+     *  empty when the planner is off */
+    rotationContext_c(const problem_c & problem, const rotationSettings_t & settings,
+                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables,
+                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> relaxed = {});
 
     /** Does not wait for tables still being built in the background. */
     ~rotationContext_c();
 
     const problem_c & getProblem(void) const { return problem; }
 
+    /** The problem's own table radius (rotationRadiusFor). The tables may
+     *  be larger, served from the cache; turns are only looked for within
+     *  this radius, so results do not depend on what was solved before. */
+    int radius(void) const { return problemRadius; }
+
     /** The tables; waits for them if they are still being built. */
     const rotationGeometry::rotationTables_c & tables(void) const { return *tableFuture.get(); }
+
+    /** True if turns the family misses are planned. */
+    bool planner(void) const { return relaxedFuture.valid(); }
+
+    /** The tables whose "blocked on every path" relation decides which
+     *  groups may turn: with the planner those of the model with `slack`
+     *  more play (every turn the planner tries is one of them), else
+     *  tables(). Waits for them if needed. */
+    const rotationGeometry::rotationTables_c & closureTables(void) const {
+      return planner() ? *relaxedFuture.get() : tables();
+    }
+
+    /** With the planner: the planned path of a turn the family cannot make
+     *  but closureTables() can, as a path index after the family's (see
+     *  pathSpec), or -1 if the planner finds none. Results are cached by
+     *  the turn's scene and shared by all workers. A turn and its reverse
+     *  are planned once, from the same side, so a turn is found exactly
+     *  when its reverse is (the search needs undirected edges). */
+    int plannedPath(const std::vector<rotationGeometry::cell_t> & moving, const std::vector<rotationGeometry::cell_t> & stat,
+                    unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense);
+
+    /** The path a node's path index names: a family path of sense, or a
+     *  planned one. */
+    rotationGeometry::pathSpec_t pathSpec(unsigned int sense, unsigned int index) const;
+
+    /** The model and planner settings of this context. */
+    const rotationSettings_t & getSettings(void) const { return settings; }
 
     /** Cached blocking pivots of a pair: true and the set (nullptr: never
      *  blocks) if known. */
@@ -158,7 +248,8 @@ class rotationContext_c {
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
       SKIP_PIECES = 2,   ///< a (sub)problem had more pieces than groups can address
-      SKIP_GROUPS = 4    ///< more than 16 closures: only single closures were tried, not their unions
+      SKIP_GROUPS = 4,   ///< more than 16 closures: only single closures were tried, not their unions
+      SKIP_PLANNER = 8   ///< the planner gave up on a turn (planSettings_t::budget)
     };
     void noteSkipped(skip_e s) { skipped.fetch_or(s, std::memory_order_relaxed); }
     unsigned int getSkipped(void) const { return skipped.load(std::memory_order_relaxed); }
@@ -170,7 +261,17 @@ class rotationContext_c {
   private:
 
     const problem_c & problem;
+    const int problemRadius;
+    const rotationSettings_t settings;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
+    std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> relaxedFuture;
+
+    /* planner results by scene key (see plannedPath): the store indices of
+     * the path seen from the key's side and from the other, -1 for none */
+    struct planned_t { int forward, backward; };
+    mutable std::mutex planMutex;
+    std::map<std::vector<int>, planned_t> plans;
+    std::vector<std::unique_ptr<rotationGeometry::path_t>> plannedPaths;
 
     /* [part][trans], and the part of every piece */
     std::vector<std::vector<canonical_t>> canonicalOf;
@@ -186,6 +287,32 @@ class rotationContext_c {
     std::atomic<size_t> entries{0};
     std::atomic<unsigned int> skipped{0};
 };
+
+class separation_c;
+class assembly_c;
+
+/** What optimizeTurns found. */
+struct turnPlay_t {
+  bool rotations = false;   ///< the disassembly turns at all
+  /** every turn is proven possible at this play (along its recorded path)... */
+  double needs = 0;
+  /** ...and some turn is proven impossible below this (for shifts up to
+   *  the planner's maxShift), 0 if nothing could be proven */
+  double atLeast = 0;
+  /** a turn needed more than the planner's largest play: needs is not valid */
+  bool failed = false;
+};
+
+/**
+ * The play a disassembly needs: for every turn, the smallest play at which
+ * some motion gets the turning pieces through (rotationGeometry::requiredPlay);
+ * the disassembly needs the largest of them. Every turn's recorded path is
+ * replaced by the path with the most clearance at the model's play: the
+ * motion with the most room, which is also the one to animate. Slow (a
+ * bisection of planner runs per turn), meant for the few disassemblies that
+ * are reported. See design/2026-10-19-rotation-moves.md.
+ */
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not

@@ -6,6 +6,7 @@
 #include "py_shape.h"
 #include "py_problem.h"
 #include "py_puzzle.h"
+#include "lib/rotationtables.h"
 #include "lib/voxel.h"
 
 namespace py = pybind11;
@@ -117,7 +118,9 @@ PYBIND11_MODULE(burrtools, m) {
          py::arg("keep_rotations") = false,
          py::arg("keep_mirror") = false,
          py::arg("threads") = 0,
-         "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores)")
+         py::arg("rotation_moves") = false,
+         "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores; "
+         "rotation_moves: also allow quarter turns of piece groups when disassembling, cube grids only)")
     .def("__repr__", [](const PyProblem & p) {
       return "<Problem index=" + std::to_string(p.get_index()) +
              " name='" + p.get_name() +
@@ -149,4 +152,7 @@ PYBIND11_MODULE(burrtools, m) {
     });
 
   m.def("load", &PyPuzzle::load, py::arg("filename"), "Load a puzzle from an .xmpuzzle file");
+  m.def("release_rotation_tables", &releaseRotationTables,
+        "Free the rotation tables kept from earlier solves (the two most recently used sets stay alive "
+        "between solves, so designs of one size solved in sequence build them once)");
 }

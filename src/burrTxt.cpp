@@ -51,17 +51,32 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 bool rotationMoves;
-rotationSettings_t rotationSettings = defaultRotationSettings();
+bool reportPlay;
+/* what the command line chooses; resolved against the environment and the
+ * defaults once the arguments are read */
+rotationConfig_t rotationConfig;
+rotationSettings_t rotationSettings;
 
 std::unique_ptr<disassembler_c> d;
 
-/* the level line, with the number of rotation moves when there are any */
-static void printLevel(const std::string & level, const separation_c * da) {
+/* the level line, with the number of rotation moves when there are any,
+ * and with -P the play the disassembly needs; -P also replaces the turns'
+ * paths by those with the most room (see optimizeTurns) */
+static void printLevel(const std::string & level, separation_c * da, const assembly_c * a, const problem_c & problem) {
   unsigned int rotations = da->sumRotations();
-  if (rotations)
-    printf("level: %s, %u rotation%s\n", level.c_str(), rotations, rotations == 1 ? "" : "s");
-  else
+  if (!rotations) {
     printf("level: %s\n", level.c_str());
+    return;
+  }
+  printf("level: %s, %u rotation%s", level.c_str(), rotations, rotations == 1 ? "" : "s");
+  if (reportPlay) {
+    const turnPlay_t play = optimizeTurns(da, a, problem, rotationSettings);
+    if (play.failed)
+      printf(", a turn needs more play than the planner tries");
+    else
+      printf(", needs play %.4f (not below %.4f)", play.needs, play.atLeast);
+  }
+  printf("\n");
 }
 
 /* the rotation context for -R, nullptr without it: then no rotation code runs */
@@ -81,6 +96,8 @@ static void reportSkippedRotations(const rotationContext_c * context) {
   if (context->getSkipped() & rotationContext_c::SKIP_RADIUS)
     cerr << "note: rotation moves of groups wider than the rotation tables (radius "
          << context->tables().getRadius() << ") may have been missed\n";
+  if (context->getSkipped() & rotationContext_c::SKIP_PLANNER)
+    cerr << "note: the planner gave up on some turns near the threshold, which may have been missed\n";
   if (context->getSkipped() & rotationContext_c::SKIP_PIECES)
     cerr << "note: rotation moves were not considered in (sub)problems of more than 32 pieces\n";
   if (context->getSkipped() & rotationContext_c::SKIP_GROUPS)
@@ -111,7 +128,7 @@ public:
 
             if (!quiet || allProblems)
             {
-              printLevel(da->movesText(), da.get());
+              printLevel(da->movesText(), da.get(), a.get(), *puzzle);
             }
 
             if (printDisassemble)
@@ -141,6 +158,28 @@ public:
   }
 };
 
+/* whether the problem comes apart under the current rotationSettings: a
+ * quiet solve */
+static bool comesApart(problem_c * problem, unsigned int threads) {
+  auto assm = problem->getPuzzle().getGridType()->findAssembler(*problem);
+  if (assm->createMatrix(false, false, false) != assembler_c::ERR_NONE)
+    return false;
+  const bool q = quiet, ps = printSolutions, pd = printDisassemble, ap = allProblems, rp = reportPlay;
+  quiet = true;
+  printSolutions = printDisassemble = allProblems = reportPlay = false;
+  int solutions;
+  {
+    asm_cb a(problem, threads);
+    if (threads > 0)
+      assm->setNumThreads(threads);
+    assm->assemble(&a);
+    a.finish();
+    solutions = a.Solutions.load();
+  }
+  quiet = q; printSolutions = ps; printDisassemble = pd; allProblems = ap; reportPlay = rp;
+  return solutions > 0;
+}
+
 /* The usage; with full (-h, --help) the environment variables too, which
  * a wrong command line would only scroll the usage away with. */
 void usage(bool full = false) {
@@ -156,6 +195,11 @@ void usage(bool full = false) {
   cout << "        gap between cubes, length a 45 degree bevel\n";
   cout << "        cuts off each face (a puzzlecad $burr_bevel b on cubes of size s is\n";
   cout << "        b / (1.414 s))\n";
+  cout << "  -Q    with -R: also plan turns that no fixed path clears at this play but one\n";
+  cout << "        clears with a little more (finds turns near the threshold; much slower)\n";
+  cout << "  -P    with -R: print the play each disassembly needs, with optimized turn paths\n";
+  cout << "  -M lo,hi  with -d -R: find the smallest play in [lo, hi] at which the puzzle\n";
+  cout << "        comes apart (bisection), then solve at that play\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -190,6 +234,9 @@ int main(int argv, char* args[]) {
   printSolutions = false;
   quiet = false;
   rotationMoves = false;
+  reportPlay = false;
+  bool findMinPlay = false;
+  double minPlayLo = 0, minPlayHi = 0;
   bool assemble = true;
   unsigned int problem = 0;
   unsigned int firstProblem = 0;
@@ -222,6 +269,22 @@ int main(int argv, char* args[]) {
         reduce = true;
       else if (strcmp(args[i], "-R") == 0)
         rotationMoves = true;
+      else if (strcmp(args[i], "-P") == 0)
+        reportPlay = true;
+      else if (strcmp(args[i], "-Q") == 0)
+        rotationConfig.planner = true;
+      else if (strcmp(args[i], "-M") == 0) {
+        char rest;
+        if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &minPlayLo, &minPlayHi, &rest) != 2 ||
+            !(minPlayLo > 0 && minPlayLo < minPlayHi && minPlayHi < 0.5)) {
+          cout << "-M requires lo,hi with 0 < lo < hi < 0.5\n";
+          return 1;
+        }
+        findMinPlay = true;
+        /* the bisection is about the play a turn really needs */
+        rotationConfig.planner = true;
+        i++;
+      }
       else if (strcmp(args[i], "-m") == 0) {
         double play, chamfer;
         char rest;
@@ -230,7 +293,7 @@ int main(int argv, char* args[]) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
-        rotationSettings.model = { play, chamfer };
+        rotationConfig.model = rotationGeometry::model_t{ play, chamfer };
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -293,6 +356,14 @@ int main(int argv, char* args[]) {
 
   if (filenumber == 0) {
     usage();
+    return 1;
+  }
+
+  rotationSettings = rotationConfig.resolve();
+
+  /* the end of -M must leave the cubes larger than their bevel */
+  if (findMinPlay && !rotationGeometry::validModel({ minPlayHi, rotationSettings.model.chamfer })) {
+    printf("-M: bevel %.4f leaves no cube at play %.4f\n", rotationSettings.model.chamfer, minPlayHi);
     return 1;
   }
 
@@ -392,6 +463,33 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
+      if (findMinPlay && rotationMoves && disassemble) {
+        /* more play only adds turns, so the play at which the puzzle comes
+         * apart can be bisected; then it is solved at that play below */
+        const double tolerance = 0.001;
+        double lo = minPlayLo, hi = minPlayHi;
+        rotationSettings.model.play = hi;
+        if (!comesApart(problem, threads)) {
+          printf("does not come apart up to play %.4f\n", hi);
+          continue;
+        }
+        rotationSettings.model.play = lo;
+        if (comesApart(problem, threads))
+          hi = lo;
+        while (hi - lo > tolerance) {
+          rotationSettings.model.play = 0.5 * (lo + hi);
+          if (comesApart(problem, threads))
+            hi = rotationSettings.model.play;
+          else
+            lo = rotationSettings.model.play;
+        }
+        rotationSettings.model.play = hi;
+        if (hi == minPlayLo)
+          printf("comes apart from play %.4f (the lower end)\n", hi);
+        else
+          printf("comes apart from play %.4f (not at %.4f)\n", hi, lo);
+      }
+
       auto assm = p.getGridType()->findAssembler(*problem);
 
       switch (assm->createMatrix(false, false, false)) {
@@ -466,7 +564,7 @@ int main(int argv, char* args[]) {
               print(problem->getSavedSolution(sol)->getAssembly(), problem);
 
             if (!quiet)
-              printLevel(std::to_string(da->getMoves()), da.get());
+              printLevel(std::to_string(da->getMoves()), da.get(), problem->getSavedSolution(sol)->getAssembly(), *problem);
 
             if (printDisassemble)
               print(da.get(), problem->getSavedSolution(sol)->getAssembly(),problem);

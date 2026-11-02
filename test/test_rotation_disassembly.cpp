@@ -14,6 +14,7 @@
 #include "lib/puzzle.h"
 #include "lib/rotationgeometry.h"
 #include "lib/rotationtables.h"
+#include "lib/solution.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
 
@@ -36,6 +37,17 @@
 using namespace rotationGeometry;
 
 namespace {
+
+/* the default settings with the planner on (it is off by default), and
+ * with enough slack to reach the planned turn of AAA_most_rotations, which
+ * the default slack of 0.02 does not: so its disassembly has a planned
+ * path, which the replay and animation tests then cover */
+rotationSettings_t withPlanner(void) {
+  rotationSettings_t s = defaultRotationSettings();
+  s.planner = true;
+  s.slack = 0.04;
+  return s;
+}
 
 typedef std::tuple<int, int, int> key_t;
 
@@ -200,7 +212,7 @@ const aaa_t & aaa(void) {
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
     r.withoutRotations = disassembler_0_c(problem).disassemble(r.assemblies[0].get());
-    r.withRotations = disassembler_0_c(problem, rotationContextFor(problem, defaultRotationSettings()))
+    r.withRotations = disassembler_0_c(problem, rotationContextFor(problem, withPlanner()))
                         .disassemble(r.assemblies[0].get());
     return r;
   }();
@@ -279,10 +291,40 @@ TEST_CASE("rotation moves do not grow the search node", "[rotations][disasm]") {
     CHECK(sizeof(disassemblerNode_c) == 48);
 }
 
+TEST_CASE("the planner copes with family tables larger than its relaxed ones", "[rotations][disasm]") {
+
+  /* The cache serves a request from any tables of the same settings with
+   * at least the requested radius, so a context can get family tables
+   * larger than its relaxed ones. The search must then only turn cubes
+   * both cover (it threw "cube outside the tables" before), and find what
+   * it finds with tables of the problem's own radius. One more than the
+   * problem's radius is enough for that: the search threw with it too,
+   * and the tables' cost grows steeply with their radius. */
+  auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const int radius = rotationRadiusFor(problem);
+
+  releaseRotationTables();
+  auto larger = sharedRotationTables(settings, radius + 1);
+  auto context = rotationContextFor(problem, settings);
+  REQUIRE(context != nullptr);
+  REQUIRE(context->tables().getRadius() > context->closureTables().getRadius());
+
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+  auto da = disassembler_0_c(problem, context).disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  CHECK(da->movesText() == "2.3");
+
+  releaseRotationTables();
+}
+
 TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations][disasm]") {
 
   const problem_c & problem = *aaa().puzzle->getProblem(0);
-  const rotationSettings_t settings = defaultRotationSettings();
+  const rotationSettings_t settings = withPlanner();
 
   /* translations alone cannot take it apart */
   CHECK(aaa().withoutRotations == nullptr);
@@ -290,10 +332,29 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
   const separation_c * da = aaa().withRotations.get();
   REQUIRE(da != nullptr);
 
-  /* the shortest disassembly the breadth-first search finds; changes when
-   * the default model or the path family changes */
-  CHECK(da->movesText() == "2.4");
+  /* the shortest disassembly the breadth-first search finds, with the
+   * planner; changes when the default model, the path family or the
+   * planner changes (2.4 with the family alone: the planner finds a turn
+   * that saves a move) */
+  CHECK(da->movesText() == "2.3");
   CHECK(da->sumRotations() == 2);
+
+  /* one of its turns is planned: what the replay below covers */
+  {
+    unsigned int planned = 0;
+    std::vector<const separation_c *> todo = { da };
+    while (!todo.empty()) {
+      const separation_c * s = todo.back();
+      todo.pop_back();
+      for (unsigned int i = 0; i <= s->getMoves(); i++)
+        if (s->getState(i)->getRotation() && s->getState(i)->getRotation()->path.kind == PATH_PLANNED)
+          planned++;
+      for (const separation_c * c : { s->getLeft(), s->getRemoved() })
+        if (c)
+          todo.push_back(c);
+    }
+    CHECK(planned >= 1);
+  }
 
   SECTION("every step replays as a valid motion") {
     replay_c replay(problem, settings.model);
@@ -318,6 +379,31 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
     replay_c replay(problem, settings.model);
     replay.check(back);
     CHECK(replay.rotations == da->sumRotations());
+  }
+
+  SECTION("a solution with an orientation the grid does not have is rejected") {
+    solution_c sol(std::make_unique<assembly_c>(aaa().assemblies[0].get()), 0, std::make_unique<separation_c>(da), 0);
+    std::ostringstream out;
+    {
+      xmlWriter_c xml(out);
+      sol.save(xml);
+    }
+    const gridType_c * gt = problem.getPuzzle().getGridType();
+    auto load = [&](const std::string & text) {
+      std::istringstream in(text);
+      xmlParser_c pars(in);
+      pars.nextTag();
+      solution_c(pars, problem.getNumberOfPieces(), gt);
+    };
+    CHECK_NOTHROW(load(out.str()));
+
+    /* the first piece's orientation in the first state that has them */
+    std::string bad = out.str();
+    const size_t dt = bad.find("<dt>");
+    REQUIRE(dt != std::string::npos);
+    const size_t first = dt + 4, end = bad.find_first_of(" <", first);
+    bad.replace(first, end - first, std::to_string(gt->getSymmetries()->getNumTransformationsMirror()));
+    CHECK_THROWS(load(bad));
   }
 }
 
@@ -720,7 +806,7 @@ TEST_CASE("dropping a rotation context does not wait for its tables", "[rotation
 
   std::promise<void> gate, done;
   std::future<void> finished = done.get_future();
-  auto context = std::make_shared<rotationContext_c>(problem,
+  auto context = std::make_shared<rotationContext_c>(problem, defaultRotationSettings(),
     std::async(std::launch::async, [open = gate.get_future(), done = std::move(done)]() mutable {
       open.wait();
       done.set_value();
@@ -840,7 +926,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
   {
     std::promise<void> gate;
     std::shared_future<void> open = gate.get_future().share();
-    auto context = std::make_shared<rotationContext_c>(problem,
+    auto context = std::make_shared<rotationContext_c>(problem, settings,
       std::async(std::launch::async, [&problem, settings, open] {
         open.wait();
         return rotationTablesFor(problem, settings);
