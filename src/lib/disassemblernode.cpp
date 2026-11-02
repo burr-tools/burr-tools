@@ -91,6 +91,7 @@ void disassemblerNode_c::replaceNode(const disassemblerNode_c *n) {
   amount = n->amount;
   rotPivotU = n->rotPivotU;
   rotPivotV = n->rotPivotV;
+  rotGroup = n->rotGroup;
   waylength = n->waylength;
 
   if (comefrom && comefrom->decRefCount())

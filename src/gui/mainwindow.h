@@ -28,7 +28,7 @@
 
 #include <memory>
 
-namespace rotationGeometry { class rotationTables_c; }
+class rotationContext_c;
 #include <string>
 
 class VoxelEditGroup_c;
@@ -164,9 +164,9 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
   Fl_Check_Button *RotationMoves;
 
-  /* the rotation tables for disassembling the given problem when the
-   * Rotation Moves option is on, nullptr otherwise */
-  std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTablesForGui(const problem_c & pr);
+  /* the rotation context for disassembling the given problem right here
+   * when the Rotation Moves option is on, nullptr otherwise */
+  std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr);
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;

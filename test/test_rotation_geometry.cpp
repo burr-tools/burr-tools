@@ -286,6 +286,25 @@ TEST_CASE("the path checker agrees with a dense independent oracle", "[rotations
   CHECK(blocked > 100);
 }
 
+TEST_CASE("inversePose undoes a pose", "[rotations]") {
+
+  /* a pose maps x to R(theta)(x - P) + P + d, P the pivot (origin here) */
+  auto apply = [](const pose_t & p, double u, double v) {
+    const double c = std::cos(p.theta), s = std::sin(p.theta);
+    return std::pair{ c * u - s * v + p.du, s * u + c * v + p.dv };
+  };
+  std::mt19937 rng(7);
+  std::uniform_real_distribution<double> r(-2, 2);
+  for (int it = 0; it < 100; it++) {
+    const pose_t p = { r(rng), r(rng), r(rng) };
+    const double u = r(rng), v = r(rng);
+    auto [mu, mv] = apply(p, u, v);
+    auto [bu, bv] = apply(inversePose(p), mu, mv);
+    CHECK(std::fabs(bu - u) < 1e-12);
+    CHECK(std::fabs(bv - v) < 1e-12);
+  }
+}
+
 TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0 }), assert_exception);
   CHECK_THROWS_AS(pathTable_c({ 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
@@ -349,6 +368,33 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
     /* the scenes must include moves only a shifted path makes possible */
     CHECK(pureBlocked > 30);
     CHECK(rescued > 5);
+  }
+}
+
+TEST_CASE("pivotsBlockedAt is exactly the inverse of blockedOnAllPaths", "[rotations]") {
+
+  const int radius = 3;
+  rotationTables_c tables({ 0.081 }, radius, { 0.2 });
+
+  for (unsigned int sense = 0; sense < 2; sense++) {
+    /* every forward entry appears in the inverse ... */
+    std::set<std::tuple<int, int, int, int>> forward;
+    for (int du = -2 * radius; du <= 2 * radius; du++)
+      for (int dv = -2 * radius; dv <= 2 * radius; dv++) {
+        if ((du ^ dv) & 1)
+          continue;
+        for (auto [su, sv] : tables.blockedOnAllPaths(sense, du, dv)) {
+          forward.insert({ du, dv, su, sv });
+          const auto & inv = tables.pivotsBlockedAt(sense, su - du, sv - dv);
+          INFO("sense " << sense << " moving " << du << "," << dv << " static " << su << "," << sv);
+          CHECK(std::find(inv.begin(), inv.end(), std::pair<int, int>(du, dv)) != inv.end());
+        }
+      }
+    /* ... and the inverse holds nothing else */
+    for (int ddu = -8 * radius; ddu <= 8 * radius; ddu++)
+      for (int ddv = -8 * radius; ddv <= 8 * radius; ddv++)
+        for (auto [du, dv] : tables.pivotsBlockedAt(sense, ddu, ddv))
+          CHECK(forward.count({ du, dv, du + ddu, dv + ddv }) == 1);
   }
 }
 
