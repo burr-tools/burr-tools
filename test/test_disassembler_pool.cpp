@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "test_helpers.h"
 #include "lib/disassemblerpool.h"
 #include "lib/solvethread.h"
 #include "lib/puzzle.h"
@@ -26,40 +27,7 @@
 
 namespace {
 
-#ifdef _WIN32
-#include <stdlib.h>
-void set_env_var(const char * name, const char * value) {
-  if (value) _putenv_s(name, value);
-  else _putenv_s(name, "");
-}
-#else
-#include <cstdlib>
-void set_env_var(const char * name, const char * value) {
-  if (value) setenv(name, value, 1);
-  else unsetenv(name);
-}
-#endif
-
-struct ScopedEnv {
-  std::string name;
-  bool hadValue;
-  std::string oldValue;
-
-  ScopedEnv(const char * var, const char * val) : name(var) {
-    const char * existing = std::getenv(var);
-    if (existing) {
-      hadValue = true;
-      oldValue = existing;
-    } else {
-      hadValue = false;
-    }
-    set_env_var(var, val);
-  }
-
-  ~ScopedEnv() {
-    set_env_var(name.c_str(), hadValue ? oldValue.c_str() : nullptr);
-  }
-};
+using bttest::ScopedSettings;
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   auto str = openGzFile(path);
@@ -90,7 +58,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
   cb.out = &found;
   cb.limit = limit;
 
-  assembler_0_c assm(problem);
+  assembler_0_c assm(problem, bttest::settings());
   assm.setNumThreads(1);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
@@ -102,7 +70,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
 
 TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm][pool][equivalence]") {
   /* Solve Pelikan Burr twice through solveThread_c:
-   * 1. Once with BURRTOOLS_NO_DISASM_POOL=1 (sequential fallback)
+   * 1. Once with BURRTOOLS_DISASM_POOL=0 (sequential fallback)
    * 2. Once with multi-threaded disassembler pool (4 threads)
    * Assert identical assembly count, solution count, and solution movesText.
    */
@@ -113,8 +81,10 @@ TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm
   };
 
   auto runSolve = [](bool noPool) -> SolveData {
-    ScopedEnv envPool("BURRTOOLS_NO_DISASM_POOL", noPool ? "1" : nullptr);
-    ScopedEnv envThreads("BURRTOOLS_THREADS", "4");
+    ScopedSettings envPool;
+    envPool->disassemblerPool = !noPool;
+    ScopedSettings envThreads;
+    envThreads->threads = 4;
 
     auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
     REQUIRE(p != nullptr);
@@ -126,7 +96,7 @@ TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm
               solveThread_c::PAR_KEEP_ROTATIONS |
               solveThread_c::PAR_KEEP_MIRROR;
 
-    solveThread_c st(*problem, par);
+    solveThread_c st(*problem, par, bttest::settings());
     REQUIRE(st.start());
 
     while (st.isRunning()) {
@@ -183,7 +153,7 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
   {
     disassemblerPool_c pool(
       *problem,
-      4,
+      bttest::withThreads(4),
       [&](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         (void)a;
         (void)s;
@@ -228,7 +198,7 @@ TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[
 
   disassemblerPool_c pool(
     *problem,
-    2,
+    bttest::withThreads(2),
     [&](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
       (void)a;
       (void)s;
@@ -329,7 +299,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
   SECTION("abort without finish") {
     disassemblerPool_c pool(
       *problem,
-      4,
+      bttest::withThreads(4),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
 
@@ -344,7 +314,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
   SECTION("double abort") {
     disassemblerPool_c pool(
       *problem,
-      4,
+      bttest::withThreads(4),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
 
@@ -356,7 +326,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
   SECTION("finish then abort") {
     disassemblerPool_c pool(
       *problem,
-      2,
+      bttest::withThreads(2),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
 
@@ -368,7 +338,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
     {
       disassemblerPool_c pool(
         *problem,
-        4,
+        bttest::withThreads(4),
         [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
       );
 
@@ -389,7 +359,7 @@ TEST_CASE("disassembler pool: exception in callback propagates cleanly to finish
 
   disassemblerPool_c pool(
     *problem,
-    2,
+    bttest::withThreads(2),
     [](uint64_t seqNo, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {
       if (seqNo == 2) {
         throw std::runtime_error("simulated callback error");
@@ -419,7 +389,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     unsigned long first_phase_assemblies = 0;
     unsigned int final_act1 = solveThread_c::ACT_PAUSING;
     {
-      solveThread_c st1(*problem, par);
+      solveThread_c st1(*problem, par, bttest::settings());
       REQUIRE(st1.start(false));
 
       // Poll metrics during execution and pause as soon as work has begun
@@ -461,7 +431,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     if (final_act1 != solveThread_c::ACT_FINISHED) {
       CHECK(problem->getSolveState() == SS_SOLVING);
 
-      solveThread_c st2(*problem, par);
+      solveThread_c st2(*problem, par, bttest::settings());
       REQUIRE(st2.start(false));
 
       while (st2.isRunning()) {
@@ -496,7 +466,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     unsigned long first_phase_assemblies = 0;
     unsigned int final_act1 = solveThread_c::ACT_PAUSING;
     {
-      solveThread_c st1(*problem, par);
+      solveThread_c st1(*problem, par, bttest::settings());
       REQUIRE(st1.start(false));
 
       while (st1.isRunning()) {
@@ -532,7 +502,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     if (final_act1 != solveThread_c::ACT_FINISHED) {
       CHECK(problem->getSolveState() == SS_SOLVING);
 
-      solveThread_c st2(*problem, par);
+      solveThread_c st2(*problem, par, bttest::settings());
       REQUIRE(st2.start(false));
 
       while (st2.isRunning()) {
@@ -607,7 +577,7 @@ TEST_CASE("solveThread_c: a stop after the search completes stays resumable unti
                   solveThread_c::PAR_KEEP_MIRROR;
 
   {
-    stopAfterSearchSolveThread_c st1(*problem, par);
+    stopAfterSearchSolveThread_c st1(*problem, par, bttest::settings());
     REQUIRE(st1.start(false));
     while (st1.isRunning())
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -621,7 +591,7 @@ TEST_CASE("solveThread_c: a stop after the search completes stays resumable unti
   }
 
   // Continue disassembles the stashed assembly and only then finishes.
-  solveThread_c st2(*problem, par);
+  solveThread_c st2(*problem, par, bttest::settings());
   REQUIRE(st2.start(false));
   while (st2.isRunning())
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -662,7 +632,7 @@ TEST_CASE("solveThread_c: lifecycle guard invariants", "[solvethread][lifecycle]
                   solveThread_c::PAR_KEEP_ROTATIONS |
                   solveThread_c::PAR_KEEP_MIRROR;
 
-  solveThread_c st(*problem, par);
+  solveThread_c st(*problem, par, bttest::settings());
   REQUIRE(st.start(false));
   REQUIRE(waitForStop(st));
   REQUIRE(st.currentAction() == solveThread_c::ACT_FINISHED);
@@ -705,7 +675,7 @@ TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes
                   solveThread_c::PAR_KEEP_ROTATIONS |
                   solveThread_c::PAR_KEEP_MIRROR;
 
-  solveThread_c st(*problem, par);
+  solveThread_c st(*problem, par, bttest::settings());
   REQUIRE(st.start(false));
 
   // Double-start while running throws instead of clobbering the worker.
@@ -723,7 +693,7 @@ TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes
   // frontends observe a stopped thread instead of a
   // wedged or silently-clobbered solve -- and the solved problem is left
   // exactly as it was.
-  solveThread_c fresh(*problem, par);
+  solveThread_c fresh(*problem, par, bttest::settings());
   REQUIRE(fresh.start(false));
   REQUIRE(waitForStop(fresh, 20));
   REQUIRE(fresh.currentAction() == solveThread_c::ACT_ERROR);
@@ -736,7 +706,7 @@ TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes
   // After the reset the problem solves cleanly with a new object (one
   // object per run: `fresh` is spent).
   problem->removeAllSolutions();
-  solveThread_c resumed(*problem, par);
+  solveThread_c resumed(*problem, par, bttest::settings());
   REQUIRE(resumed.start(false));
   REQUIRE(waitForStop(resumed));
   CHECK(resumed.currentAction() == solveThread_c::ACT_FINISHED);
@@ -753,7 +723,7 @@ TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvet
 
   int par = solveThread_c::PAR_KEEP_ROTATIONS | solveThread_c::PAR_KEEP_MIRROR;
 
-  solveThread_c st(*problem, par, 2);
+  solveThread_c st(*problem, par, bttest::withThreads(2));
   REQUIRE(st.start());
 
   while (st.isRunning()) {
@@ -772,7 +742,7 @@ TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvet
  * so the pool has to report how much it has done and what it cost -- on both
  * of its internal code paths: the multi-threaded worker/merger pipeline, and
  * the single-threaded "inline" path submit() takes when the pool collapses to
- * one thread (num_threads <= 1, or BURRTOOLS_NO_DISASM_POOL is set). Both
+ * one thread (num_threads <= 1, or BURRTOOLS_DISASM_POOL=0). Both
  * paths run real disassemble() work, so both must advance the counters and
  * the cost identically as far as a consumer of completedCount()/
  * submittedCount() is concerned.
@@ -788,7 +758,7 @@ TEST_CASE("disassembler pool reports counts and accumulated cost",
     auto found = collectSomeAssemblies(*problem, 5);
     REQUIRE_FALSE(found.empty());
 
-    disassemblerPool_c pool(*problem, 2, nullptr);
+    disassemblerPool_c pool(*problem, bttest::withThreads(2), nullptr);
     const unsigned long n = found.size();
     for (auto & a : found) pool.submit(std::move(a));
     pool.finish();
@@ -806,7 +776,7 @@ TEST_CASE("disassembler pool reports counts and accumulated cost",
     auto found = collectSomeAssemblies(*problem, 5);
     REQUIRE_FALSE(found.empty());
 
-    disassemblerPool_c pool(*problem, 1, nullptr);
+    disassemblerPool_c pool(*problem, bttest::withThreads(1), nullptr);
     const unsigned long n = found.size();
     for (auto & a : found) pool.submit(std::move(a));
     pool.finish();

@@ -43,9 +43,10 @@ namespace {
    * test's ScopedEnv, or an environment a script sets up for a child.
    * C and C++ read through these functions, the name given as a literal --
    * getenv, Qt's qgetenv and qEnvironmentVariable*, test/qtgui's envDir
-   * (snapshots.cpp) and the rotation settings' fromEnv; a variable read some other way needs its reader
+   * (snapshots.cpp) and solver_config.cpp's readEnv, flag and number; a
+   * variable read some other way needs its reader
    * added here. */
-  const char * const cppReaders = "getenv|qgetenv|qEnvironmentVariable(?:IsSet|IsEmpty|IntValue)?|envDir|fromEnv";
+  const char * const cppReaders = "getenv|qgetenv|qEnvironmentVariable(?:IsSet|IsEmpty|IntValue)?|envDir|readEnv|flag|number";
 
   std::set<std::string> readsIn(const std::string & text, Lang lang) {
     static const std::regex cpp(std::string(R"(\b(?:)") + cppReaders + R"()\s*\(\s*"(BURRTOOLS_[A-Z0-9_]+)\")");
@@ -153,10 +154,10 @@ TEST_CASE("a switch is shown by its name, any value turning it on", "[envvars]")
   // the code asks whether a switch is set, not what it says: =1 would
   // suggest that =0 turns it off
   std::ostringstream out;
-  btenv::print(out, { btenv::Scope::Solver });
+  btenv::print(out, { btenv::Scope::Tests });
   const std::string s = out.str();
-  CHECK(s.find("    BURRTOOLS_NO_SIMD\n") != std::string::npos);
-  CHECK(s.find("BURRTOOLS_NO_SIMD=") == std::string::npos);
+  CHECK(s.find("    BURRTOOLS_REQUIRE_GPU_TESTS\n") != std::string::npos);
+  CHECK(s.find("BURRTOOLS_REQUIRE_GPU_TESTS=") == std::string::npos);
   CHECK(s.find("set to any value (even 0)") != std::string::npos);
 }
 

@@ -2,6 +2,7 @@
 #define BTTEST_TEST_HELPERS_H
 
 #include "lib/gridtype.h"
+#include "lib/solver_config.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
 #include "lib/symmetries.h"
@@ -280,6 +281,38 @@ inline bool puzzlesRoundtripEqual(const puzzle_c & a, const puzzle_c & b) {
 
   return true;
 }
+
+/** The solver settings tests run with: solverSettings_t{}, the defaults
+ *  without the environment (a BURRTOOLS_ variable in the shell must not
+ *  change what a test checks), as changed by the ScopedSettings in scope.
+ *  The engines take settings at construction, so set them first. */
+inline solverSettings_t & currentSettings() {
+  static solverSettings_t s;
+  return s;
+}
+inline const solverSettings_t & settings() { return currentSettings(); }
+
+/** settings() with this many threads, for the pools and solvers that take
+ *  their worker count from the settings */
+inline solverSettings_t withThreads(unsigned int threads) {
+  solverSettings_t s = settings();
+  s.threads = threads;
+  return s;
+}
+
+/** Changes settings() for one scope and restores them after:
+ *  `ScopedSettings dlx; dlx->bitParallel = false;` */
+class ScopedSettings {
+  public:
+    ScopedSettings() : saved(currentSettings()) {}
+    ~ScopedSettings() { currentSettings() = saved; }
+    ScopedSettings(const ScopedSettings &) = delete;
+    ScopedSettings & operator=(const ScopedSettings &) = delete;
+    solverSettings_t * operator->() { return &currentSettings(); }
+
+  private:
+    solverSettings_t saved;
+};
 
 /** Sets (or with nullptr unsets) an environment variable for one scope and
  *  restores what was there before. */
