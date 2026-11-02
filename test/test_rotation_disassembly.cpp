@@ -2,6 +2,7 @@
 
 #include "test_helpers.h"
 #include "lib/assembler.h"
+#include "lib/assembler_0.h"
 #include "lib/assembly.h"
 #include "lib/disasmtomoves.h"
 #include "lib/disassembler_0.h"
@@ -335,8 +336,8 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
 
   /* the shortest disassembly the breadth-first search finds, with the
    * planner; changes when the default model, the path family or the
-   * planner changes (2.4 with the family alone: the planner finds a turn
-   * that saves a move) */
+   * planner changes (2.4 with the compass family alone: the planner, like
+   * the wide family, finds a turn that saves a move) */
   CHECK(da->movesText() == "2.3");
   CHECK(da->sumRotations() == 2);
 
@@ -459,6 +460,46 @@ bool sameCentres(std::vector<std::array<double, 3>> a, std::vector<std::array<do
   return true;
 }
 
+}
+
+TEST_CASE("a tighter rotation model drops the disassemblies that turn", "[rotations][disasm]") {
+
+  /* turns are proven for the model they were found with; less play or a
+   * smaller bevel adds material, more of either only removes some */
+  auto solvedWithTurns = [] {
+    auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+    REQUIRE(puzzle != nullptr);
+    problem_c & problem = *puzzle->getProblem(0);
+    auto assemblies = assembleAll(problem);
+    REQUIRE(assemblies.size() == 1);
+    auto da = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, rotationSettings_t{}))
+                .disassemble(assemblies[0].get());
+    REQUIRE(da != nullptr);
+    REQUIRE(da->sumRotations() > 0);
+    problem.setAssembler(std::make_unique<assembler_0_c>(problem, bttest::settings()));
+    problem.addSolution(new assembly_c(assemblies[0].get()), da.release());
+    problem.finishedSolving();
+    return puzzle;
+  };
+  const rotationGeometry::model_t model = rotationSettings_t{}.model;
+
+  for (rotationGeometry::model_t tighter : { rotationGeometry::model_t{ model.play / 2, model.chamfer },
+                                             rotationGeometry::model_t{ model.play, model.chamfer / 2 } }) {
+    auto puzzle = solvedWithTurns();
+    problem_c & problem = *puzzle->getProblem(0);
+    puzzle->setRotationModel(tighter);
+    REQUIRE(problem.getNumberOfSavedSolutions() == 1);
+    CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
+    CHECK(problem.getSavedSolution(0)->getAssembly() != nullptr);
+  }
+
+  auto puzzle = solvedWithTurns();
+  problem_c & problem = *puzzle->getProblem(0);
+  puzzle->setRotationModel({ model.play * 2, model.chamfer });
+  CHECK(problem.getSavedSolution(0)->getDisassembly() != nullptr);
+  /* back to the default from more play: tighter again */
+  puzzle->clearRotationModel();
+  CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
 }
 
 TEST_CASE("the animation of every rotation starts and ends on the recorded states", "[rotations][disasm]") {
@@ -663,9 +704,9 @@ std::unique_ptr<puzzle_c> cubeAndDominoBar(void) {
 /* Returns how many of the exhaustive moves turn a symmetric piece into an
  * orientation the search replaces by its canonical one. */
 unsigned int checkAgainstBruteForce(const problem_c & problem, const assembly_c * assembly, unsigned int maxNodes,
-                                    bool expectRotations) {
+                                    bool expectRotations, const rotationSettings_t & settings = {}) {
 
-  auto context = rotationContextFor(problem, rotationSettings_t{});
+  auto context = rotationContextFor(problem, settings);
   REQUIRE(context != nullptr);
   movementAnalysator_c analysator(problem, bttest::settings(), context);
 
@@ -727,14 +768,19 @@ TEST_CASE("the closure-based rotation search agrees on symmetric pieces", "[rota
 }
 
 /* a tight burr: no piece can turn in the first states, and the closures must
- * agree with the exhaustive search on that; slow because of larger tables */
+ * agree with the exhaustive search on that. Its tables are large (radius
+ * 9), so the compass family: without the 16-direction extension they cost
+ * a fraction, the search reaches the same states (translations only), and
+ * the exhaustive search checks the paths the closures use */
 TEST_CASE("the closure-based rotation search agrees on a tight burr", "[rotations][disasm][stress]") {
   auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(puzzle != nullptr);
   problem_c & problem = *puzzle->getProblem(0);
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  checkAgainstBruteForce(problem, assemblies[0].get(), 3, false);
+  rotationSettings_t compass;
+  compass.wideAmounts = {};
+  checkAgainstBruteForce(problem, assemblies[0].get(), 3, false, compass);
 }
 
 TEST_CASE("disassemblies without rotation moves record no orientations", "[rotations][disasm]") {
@@ -770,7 +816,9 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
+  /* a family of a few paths (one compass amount, no 16-direction
+   * extension): which turns there are does not matter here */
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 }, {} });
   REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
@@ -911,6 +959,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
   REQUIRE(assemblies.size() == 1);
   rotationSettings_t settings = rotationSettings_t{};
   settings.model.play = 0.0813;   // tables no other case builds
+  settings.wideAmounts = {};      // the compass family: cheap to build
 
   auto text = [](const separation_c * s) {
     std::ostringstream out;
@@ -980,7 +1029,9 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
+  /* a family of a few paths (one compass amount, no 16-direction
+   * extension): which turns there are does not matter here */
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 }, {} });
   REQUIRE(context != nullptr);
   const unsigned int orientations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 

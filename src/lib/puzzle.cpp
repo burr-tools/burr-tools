@@ -21,6 +21,7 @@
 #include "puzzle.h"
 
 #include "problem.h"
+#include "rotationtables.h"
 #include "voxel.h"
 
 #include "../tools/xml.h"
@@ -92,6 +93,7 @@
 
 puzzle_c::puzzle_c(const puzzle_c * orig)
   : gt(std::make_unique<gridType_c>(*orig->gt)),
+    rotationModel(orig->rotationModel),
     comment(orig->comment),
     commentPopup(orig->commentPopup) {
 
@@ -191,6 +193,10 @@ void puzzle_c::save(xmlWriter_c & xml) const
 {
   xml.newTag("puzzle");
   xml.newAttrib("version", "2");
+  if (rotationModel) {
+    xml.newAttrib("rotationPlay", xmlDouble(rotationModel->play));
+    xml.newAttrib("rotationBevel", xmlDouble(rotationModel->chamfer));
+  }
 
   gt->save(xml);
 
@@ -263,6 +269,19 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
   if ((version != 1) && (version != 2))
     pars.exception("can only load files of version 1 and 2");
+
+  {
+    const std::string play = pars.getAttributeValue("rotationPlay");
+    const std::string bevel = pars.getAttributeValue("rotationBevel");
+    if (play.length() || bevel.length()) {
+      rotationGeometry::model_t model;
+      if (!xmlParseDouble(play, &model.play) || !xmlParseDouble(bevel, &model.chamfer) ||
+          !validRotationModel(model))
+        pars.exception("rotationPlay and rotationBevel must both be given, with 0 < play < 1 "
+                       "and 0 <= bevel < half a cube");
+      rotationModel = model;
+    }
+  }
 
   gt.reset();
   commentPopup = false;
@@ -440,3 +459,30 @@ void puzzle_c::exchangeProblems(unsigned int p1, unsigned int p2) {
   std::swap(problems[p1], problems[p2]);
 }
 
+
+bool puzzle_c::validRotationModel(const rotationGeometry::model_t & model)
+{
+  return rotationGeometry::validModel(model);
+}
+
+void puzzle_c::setRotationModel(const rotationGeometry::model_t & model)
+{
+  if (!validRotationModel(model))
+    bt_te("puzzle_c::setRotationModel: needs 0 < play < 1 and 0 <= bevel < half a cube");
+  const rotationGeometry::model_t now = rotationModel.value_or(rotationSettings_t{}.model);
+  rotationModel = model;
+  if (model.play == now.play && model.chamfer == now.chamfer)
+    return;
+  /* more play and more bevel only remove material, so turns stay clear */
+  const bool tighter = model.play < now.play || model.chamfer < now.chamfer;
+  for (auto & p : problems)
+    p->piecesChanged(tighter);
+}
+
+void puzzle_c::clearRotationModel(void)
+{
+  if (!rotationModel)
+    return;
+  setRotationModel(rotationSettings_t{}.model);
+  rotationModel.reset();
+}

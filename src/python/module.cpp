@@ -133,6 +133,10 @@ PYBIND11_MODULE(burrtools, m) {
     .def_static("load", &PyPuzzle::load, py::arg("filename"), "Load a puzzle from an .xmpuzzle file")
     .def("save", &PyPuzzle::save, py::arg("filename"), "Save the puzzle to an .xmpuzzle file")
     .def_property("comment", &PyPuzzle::get_comment, &PyPuzzle::set_comment, "Puzzle description or comments")
+    .def_property("rotation_model", &PyPuzzle::get_rotation_model, &PyPuzzle::set_rotation_model,
+                  "(play, bevel) of the pieces as printed, in cube sizes, saved with the puzzle: the gap "
+                  "between cubes and the length a 45 degree bevel cuts off each face. Rotation moves are "
+                  "checked against it. Reads the default while none is set; set None to go back to it")
     .def_property_readonly("num_shapes", &PyPuzzle::get_num_shapes, "Number of shapes in the puzzle")
     .def_property_readonly("num_problems", &PyPuzzle::get_num_problems, "Number of problems in the puzzle")
     .def("add_shape", &PyPuzzle::add_shape,

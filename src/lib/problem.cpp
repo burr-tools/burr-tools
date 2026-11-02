@@ -26,6 +26,7 @@
 #include "disassembly.h"
 #include "puzzle.h"
 #include "solution.h"
+#include "rotationtables.h"
 
 #include "../tools/xml.h"
 
@@ -114,6 +115,7 @@ void problem_c::save(xmlWriter_c & xml) const
 
   if (maxHoles != 0xFFFFFFFF)
     xml.newAttrib("maxHoles", maxHoles);
+
 
   xml.newTag("shapes"); // for historical reasons, parts are saved in an XML-tag called shapes
 
@@ -224,6 +226,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   std::string str = pars.getAttributeValue("maxHoles");
   if (str.length())
     maxHoles = atoi(str.c_str());
+
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -1092,6 +1095,22 @@ void problem_c::sortSolutions(int by) {
     case 2: stable_sort(solutions.begin(), solutions.end(), comp_2_moves   ); break;
     case 3: stable_sort(solutions.begin(), solutions.end(), comp_3_pieces  ); break;
   }
+}
+
+void problem_c::piecesChanged(bool tighter)
+{
+  if (tighter)
+    dropTurningDisassemblies();
+  if (solveState == SS_SOLVING || solveState == SS_SOLVED)
+    makeUnknown();
+}
+
+void problem_c::dropTurningDisassemblies(void)
+{
+  auto guard = lockSolutions();
+  for (auto & s : solutions)
+    if (s->getDisassembly() && s->getDisassembly()->sumRotations() > 0)
+      s->setDisassembly(nullptr);
 }
 
 void problem_c::editProblem(void)

@@ -116,7 +116,7 @@ bool solverSettings_t::neon(void) const {
 
 rotationSettings_t rotationConfig_t::resolve(void) const {
 
-  rotationFamily_e fam = ROTATION_FAMILY_COMPASS;
+  rotationFamily_e fam = ROTATION_FAMILY_WIDE;
   if (family)
     fam = *family;
   else if (auto v = readEnv("BURRTOOLS_ROT_FAMILY")) {
@@ -127,10 +127,8 @@ rotationSettings_t rotationConfig_t::resolve(void) const {
 
   /* the defaults are the initializers; choices and the environment on top */
   rotationSettings_t s;
-  if (model)
-    s.model = *model;
-  if (fam == ROTATION_FAMILY_WIDE)
-    s.wideAmounts = WIDE_AMOUNTS;
+  if (fam == ROTATION_FAMILY_COMPASS)
+    s.wideAmounts.clear();
   s.planner = flag("BURRTOOLS_ROT_PLANNER", planner, s.planner);
   if (slack)
     s.slack = *slack;
