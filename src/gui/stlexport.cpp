@@ -36,6 +36,7 @@
 #include "../lib/gridtype.h"
 #include "../lib/bt_assert.h"
 #include "../lib/voxel.h"
+#include "../lib/rotationtables.h"
 
 #include "../halfedge/volume.h"
 
@@ -76,15 +77,46 @@ void stlExport_c::cb_Export(void) {
 
 }
 
+std::string stlParameterText(const stlExporter_c & stl, unsigned int idx)
+{
+  char val[32];
+  snprintf(val, sizeof(val), "%.4g", stl.getParameter(idx));
+  return val;
+}
+
+/* every double shows the exporter's value */
+static void showParameters(const stlExporter_c * stl, const std::vector<std::unique_ptr<inputField_c>> & params)
+{
+  for (unsigned int i = 0; i < stl->numParameters(); i++)
+    if (params[i]->type == stlExporter_c::PAR_TYP_DOUBLE || params[i]->type == stlExporter_c::PAR_TYP_POS_DOUBLE)
+    {
+      LFl_Float_Input * in = static_cast<LFl_Float_Input*>(params[i]->w);
+      const std::string text = stlParameterText(*stl, i);
+      if (text != in->value())
+        in->value(text.c_str());
+    }
+}
+
 static void updateParameters(stlExporter_c * stl, const std::vector<std::unique_ptr<inputField_c>> & params)
 {
+  /* the doubles as shown before this change: only those edited go to the
+   * exporter, which may then derive others (bevel and offset from the unit
+   * size, see stlParameterText); afterwards every double shows its value */
+  std::vector<std::string> shown;
+  for (unsigned int i = 0; i < stl->numParameters(); i++)
+    shown.push_back(stlParameterText(*stl, i));
+
   for (unsigned int i = 0; i < stl->numParameters(); i++)
   {
     switch (params[i]->type)
     {
       case stlExporter_c::PAR_TYP_DOUBLE:
       case stlExporter_c::PAR_TYP_POS_DOUBLE:
-        stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
+        {
+          const char * text = static_cast<LFl_Float_Input*>(params[i]->w)->value();
+          if (shown[i] != text)
+            stl->setParameter(i, atof(text));
+        }
         break;
       case stlExporter_c::PAR_TYP_POS_INTEGER:
         {
@@ -104,12 +136,22 @@ static void updateParameters(stlExporter_c * stl, const std::vector<std::unique_
         bt_assert(0);
     }
   }
+
+  showParameters(stl, params);
 }
 
 static void cb_stlExport3DUpdate_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_Update3DView(); }
 void stlExport_c::cb_Update3DView(void)
 {
   updateParameters(stl.get(), params);
+
+  /* the selected shape's pieces, as long as bevel and offset follow a model */
+  const rotationGeometry::model_t model = rotationModelOf(*puzzle);
+  if (stl->followsModel()) {
+    stl->followModel(model);
+    showParameters(stl.get(), params);
+  }
+  modelNote->copy_label(stlModelNote(*stl, model).c_str());
 
   Polyhedron * p = 0;
   try
@@ -210,6 +252,8 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
 
   stl = std::unique_ptr<stlExporter_c>(p->getGridType()->getStlExporter());
   bt_assert(stl);
+  /* the pieces rotation moves are checked for */
+  stl->followModel(rotationModelOf(*p));
 
   LFl_Frame *fr;
 
@@ -259,9 +303,7 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
             (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
             (new LFl_Box(1, i))->setMinimumSize(5, 0);
             LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-            char val[10];
-            snprintf(val, 10, "%2.2f", stl->getParameter(i));
-            in->value(val);
+            in->value(stlParameterText(*stl, i).c_str());
             in->weight(1, 0);
 
             inp->w = in;
@@ -273,10 +315,7 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
             (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
             (new LFl_Box(1, i))->setMinimumSize(5, 0);
             LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-
-            char val[10];
-            snprintf(val, 10, "%2.2f", stl->getParameter(i));
-            in->value(val);
+            in->value(stlParameterText(*stl, i).c_str());
             in->weight(1, 0);
 
             inp->w = in;
@@ -322,6 +361,11 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : LFl_Dou
 
       params.push_back(std::move(inp));
     }
+
+    modelNote = new LFl_Box(0, stl->numParameters(), 3, 1);
+    modelNote->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+    modelNote->labelsize(12);
+    modelNote->setMinimumSize(220, 32);
 
     fr->end();
   }

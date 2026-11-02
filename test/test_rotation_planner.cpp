@@ -143,6 +143,18 @@ TEST_CASE("the planner's fast mode finds a turn with almost no room", "[rotation
   CHECK(scene.certifyPath(plan.path) == PATH_CLEAR);
 }
 
+TEST_CASE("the planner gives up at once when told to stop", "[rotations]") {
+  const crowellTurn_t t = mysTic();
+  planSettings_t s;
+  s.widest = false;
+  s.floor = 0;
+  std::atomic<bool> stop{ true };
+  s.stop = &stop;
+  const turnPlan_t plan = planTurn(sceneOf(t, SHARP_MODEL), t.sense, s);
+  CHECK_FALSE(plan.found);
+  CHECK(plan.gaveUp);
+}
+
 TEST_CASE("an impossible turn is ruled out with a proof", "[rotations]") {
   /* a cube turning about a corner through a wall of static cubes */
   const std::vector<cell_t> moving = { { 0, 0, 0 } };

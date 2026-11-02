@@ -24,6 +24,7 @@
 #include "../lib/disasmtomoves.h"
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
+#include "../lib/rotationtables.h"
 #include "../lib/solution.h"
 #include "../lib/voxel.h"
 
@@ -100,6 +101,7 @@ namespace btui {
       opt.colors = colors;
       opt.piece = pieceColor(int(shape));
       opt.palette = paletteOf(puz);
+      opt.stlModel = puz.getRotationModel();
       c.mesh = buildShapeMesh(*puz.getShape(shape), opt);
       // the main view frames a shape on its grid box; so does this
       const Vec3 lo = c.mesh.boundsMin, hi = c.mesh.boundsMax;
@@ -158,6 +160,7 @@ namespace btui {
         opt.colors = colors;
         opt.piece = pieceColor(int(prob.getShapeIdOfPart(p)), int(q));
         opt.palette = palette;
+        opt.stlModel = prob.getPuzzle().getRotationModel();
         append(c.mesh, buildShapeMesh(*vx, opt), Vec3{ x - hx, y - hy, z - hz }, alpha, dim);
       }
 

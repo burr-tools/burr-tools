@@ -176,6 +176,7 @@ gui_src = [
   'src/gui/filechooser.cpp',
   'src/gui/stlexport.cpp',
   'src/gui/stlexportsolution.cpp',
+  'src/gui/optimizeturns.cpp',
   'src/gui/togglebutton.cpp',
   'src/gui/tooltabs.cpp',
   'src/gui/vectorexportwindow.cpp',

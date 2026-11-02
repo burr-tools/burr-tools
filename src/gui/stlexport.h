@@ -71,6 +71,8 @@ class stlExport_c : public LFl_Double_Window {
     std::vector<std::unique_ptr<inputField_c>> params;
     LFl_Input *Fname, *Pname;
     LFl_Box *status;
+    /* whether bevel and offset make the pieces rotation moves are checked for */
+    LFl_Box *modelNote;
     LFl_Button *BtnStart, *BtnAbbort;
     PieceSelector * ShapeSelect;
     // LFl_Radio_Button *ExpShape; // Unused?
@@ -97,5 +99,12 @@ class stlExport_c : public LFl_Double_Window {
     void exportSTL(int shape);
     void cb_FileChooser(void);
 };
+
+/* The text an STL dialog shows for a parameter of type double: four
+ * significant digits (an offset of 0.405 mm, not 0.41). The dialogs hand
+ * the exporter only the fields whose text differs from this, so the bevel
+ * and offset the exporter derives from the rotation model
+ * (stlExporter_c::followModel) are not overwritten by their old text. */
+std::string stlParameterText(const stlExporter_c & stl, unsigned int idx);
 
 #endif

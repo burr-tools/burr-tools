@@ -27,6 +27,7 @@
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/volume.h"
 #include "../lib/puzzle.h"
+#include "../lib/rotationtables.h"
 #include "../lib/stl.h"
 #include "../lib/voxel.h"
 
@@ -86,9 +87,9 @@ QVariantMap StlExportController::parameter(int index) const {
   e.insert(QStringLiteral("tooltip"), QString::fromUtf8(m_stl->getParameterTooltip(i)).trimmed());
   e.insert(QStringLiteral("type"), typeName(type));
   e.insert(QStringLiteral("value"), v);
-  // the legacy fields: "%2.2f" for numbers, "%i" for counts
+  // the legacy fields: four significant digits for numbers (stlParameterText), "%i" for counts
   e.insert(QStringLiteral("text"), type == stlExporter_c::PAR_TYP_POS_INTEGER ? QString::number(int(v))
-                                                                           : QString::number(v, 'f', 2));
+                                                                           : QString::number(v, 'g', 4));
   return e;
 }
 
@@ -101,6 +102,7 @@ void StlExportController::begin(void) {
   m_insides = false;
   const int n = int(m_doc->session().puzzle().getNumberOfShapes());
   m_shape = std::clamp(m_shapes->selected(), 0, std::max(0, n - 1));
+  followShapeModel(true);
   m_camera.home();
   m_revision++;
   emit parametersChanged();
@@ -108,6 +110,32 @@ void StlExportController::begin(void) {
   emit shapeChanged();
   emit optionsChanged();
   rebuild();
+}
+
+void StlExportController::followShapeModel(bool start) {
+  if (!m_stl || !(start || m_stl->followsModel()))
+    return;
+  m_stl->followModel(rotationModelOf(m_doc->session().puzzle()));
+}
+
+QString StlExportController::modelNote(void) const {
+  if (!m_stl)
+    return {};
+  const puzzle_c & p = m_doc->session().puzzle();
+  if (unsigned(m_shape) >= p.getNumberOfShapes())
+    return {};
+  const stlModelState_t s = stlModelState(*m_stl, rotationModelOf(p));
+  auto f = [](double v) { return QString::number(v, 'f', 4); };
+  switch (s.match) {
+    case stlModelState_t::NO_CUBES:
+      return {};
+    case stlModelState_t::MATCHES:
+      return tr("Play %1, bevel %2: the pieces rotation moves are checked for.").arg(f(s.now.play), f(s.now.chamfer));
+    case stlModelState_t::DIFFERS:
+      return tr("Play %1, bevel %2, but rotation moves are checked for play %3, bevel %4.")
+        .arg(f(s.now.play), f(s.now.chamfer), f(s.expected.play), f(s.expected.chamfer));
+  }
+  return {};
 }
 
 /* the exporter of the puzzle's grid, with its default parameters */
@@ -124,14 +152,19 @@ void StlExportController::documentChanged(void) {
     return;
   const puzzle_c & p = m_doc->session().puzzle();
   // another grid takes another exporter; the same keeps its parameters
+  bool fresh = false;
   if (int(p.getGridType()->getType()) != m_gridType) {
     makeExporter();
+    fresh = true;
     m_revision++;
     emit parametersChanged();
     emit valuesChanged();
     emit optionsChanged();
   }
   m_shape = std::clamp(m_shape, 0, std::max(0, int(p.getNumberOfShapes()) - 1));
+  followShapeModel(fresh);  // an undo may have changed the problems' models; a new exporter starts following
+  m_revision++;
+  emit valuesChanged();
   emit shapeChanged();      // also the folder and the name suggested
   rebuild();
 }
@@ -154,6 +187,9 @@ void StlExportController::setShape(int s) {
   if (s == m_shape)
     return;
   m_shape = s;
+  followShapeModel(false);
+  m_revision++;
+  emit valuesChanged();     // bevel and offset, the model note
   emit shapeChanged();
   rebuild();
 }
@@ -183,6 +219,13 @@ void StlExportController::setParameter(int index, double value) {
     case stlExporter_c::PAR_TYP_SWITCH:      value = value != 0 ? 1 : 0; break;
     case stlExporter_c::PAR_TYP_DOUBLE:      break;
   }
+  /* a field commits when it loses focus, edited or not: a number that
+   * shows as the current one is no change, and must not stop bevel and
+   * offset from following the rotation model (stlParameterText) */
+  const double now = m_stl->getParameter(unsigned(index));
+  if (m_stl->getParameterType(unsigned(index)) != stlExporter_c::PAR_TYP_SWITCH &&
+      QString::number(value, 'g', 4) == QString::number(now, 'g', 4))
+    return;
   m_stl->setParameter(unsigned(index), value);
   m_revision++;
   emit valuesChanged();

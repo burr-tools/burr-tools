@@ -30,10 +30,13 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 class problem_c;
+class puzzle_c;
+class stlExporter_c;
 class disassemblerNode_c;
 
 /**
@@ -49,11 +52,12 @@ inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.
 
 struct rotationSettings_t {
   /** The model of a puzzle that stores none (puzzle_c::getRotationModel):
-   *  PR #50's play (0.081) with puzzlecad's default bevel: $burr_bevel
-   *  0.5 mm on 11.15 mm cubes, 0.5 / (√2 · 11.15) = 0.032. Real pieces are
-   *  never quite sharp, and a bevel only takes material away, so it adds
-   *  turns and never removes one. Physical calibration may change both. */
-  rotationGeometry::model_t model = { 0.081, 0.032 };
+   *  the STL export's defaults from before rotation moves (offset 0.01 mm,
+   *  bevel 0.3 mm on 10 mm cubes), so a puzzle that never turns exports
+   *  and draws as it always did. Turns usually need more clearance than
+   *  that; the GUI and burrTxt say so, and Optimize Turns / burrTxt -M
+   *  find what a puzzle needs. */
+  rotationGeometry::model_t model = { 0.002, 0.03 };
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
@@ -297,8 +301,37 @@ struct turnPlay_t {
    *  it; another disassembly of the puzzle might. 0 if nothing could be
    *  proven */
   double lower = 0;
-  /** a turn needed more than the planner's largest play: upper is not valid */
+  /** a turn needed more than the planner's largest play: upper is not
+   *  valid; re-planning (optimizeControl_t::measure false): a turn got no
+   *  path proven at the model's play and kept one that is not */
   bool failed = false;
+  /** stopped (optimizeControl_t::stop) before every turn was done: nothing valid */
+  bool stopped = false;
+  /** measuring: per turn, in the order optimizeTurns visits them, a path
+   *  of the turning pieces (their own sense, not inverted) proven at the
+   *  turn's measured play, empty if the planner gave none; re-planning for
+   *  a smaller play takes it when its search finds nothing better
+   *  (optimizeControl_t::proven) */
+  std::vector<rotationGeometry::path_t> proven;
+};
+
+/** How optimizeTurns runs, for a front end that shows its progress. */
+struct optimizeControl_t {
+  /** set from another thread to stop, within a planner run at the latest */
+  const std::atomic<bool> * stop = nullptr;
+  /** counts the turns done (separation_c::sumRotations of them in all) */
+  std::atomic<unsigned int> * done = nullptr;
+  /** false: only re-plan each turn's path, with the most room at the
+   *  model's play (after the play changed), without measuring the play */
+  bool measure = true;
+  /** plan for this model instead of the problem's: a front end re-plans
+   *  for a play before making it the problem's */
+  std::optional<rotationGeometry::model_t> model;
+  /** re-planning: paths proven before (turnPlay_t::proven of a measuring
+   *  run on the same disassembly). The planner's grid can miss a path that
+   *  is clear by a hair, so a turn it finds none for takes this one, or
+   *  keeps its recorded one, when that is certified at the model's play */
+  const std::vector<rotationGeometry::path_t> * proven = nullptr;
 };
 
 /**
@@ -310,7 +343,8 @@ struct turnPlay_t {
  * bisection of planner runs per turn), meant for the few disassemblies that
  * are reported. See design/2026-10-19-rotation-moves.md.
  */
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings);
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+                         const optimizeControl_t & control = {});
 
 /**
  * The settings a problem's rotation moves use: the given ones with the
@@ -320,6 +354,31 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
  * themselves.
  */
 rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
+
+/** The model a problem's rotation moves are checked for: its puzzle's, else
+ *  the default (rotationSettings_t::model). */
+rotationGeometry::model_t rotationModelOf(const problem_c & problem);
+
+/** The pieces of a puzzle: its model, else the default. The same for every
+ *  shape and problem; the 3D views' STL style draws only a stored one
+ *  (puzzle_c::getRotationModel), so a puzzle without keeps their own look. */
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
+
+/** For an STL export dialog: whether the exporter's bevel and offset make
+ *  the pieces the turns are checked for (`expected`, from rotationModelOf). */
+struct stlModelState_t {
+  enum match_e {
+    NO_CUBES,      ///< the exporter does not make cubes: nothing to say
+    MATCHES,       ///< the pieces are the ones the turns are checked for
+    DIFFERS        ///< they are not: `now` against `expected`
+  } match = NO_CUBES;
+  rotationGeometry::model_t now, expected;
+};
+stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
+
+/** stlModelState as an English sentence, for the FLTK dialogs (the Qt one
+ *  formats it with its translations); empty for NO_CUBES */
+std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not

@@ -607,3 +607,77 @@ TEST_CASE("stl export: the coplanar merge the writer runs changes nothing for th
       REQUIRE(volume(*merged) == Approx(volume(*raw)).epsilon(1e-3));
     }
 }
+
+/* ------------------------------------------------------------------ */
+/* bevel and offset from the rotation model                            */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("stl export: the cube exporter takes bevel and offset from a rotation model",
+          "[stl][rotations]") {
+  gridType_c cubes(gridType_c::GT_BRICKS);
+  std::unique_ptr<stlExporter_c> stl(cubes.getStlExporter());
+  enum { UNIT = 0, UNIT_Y = 1, BEVEL = 3, OFFSET = 4 };
+
+  /* the model's play is the gap between cubes, the offset each face's */
+  REQUIRE(stl->followModel({ 0.081, 0.032 }));
+  CHECK(stl->followsModel());
+  CHECK(stl->getParameter(OFFSET) == Approx(0.405));
+  CHECK(stl->getParameter(BEVEL) == Approx(0.32));
+  REQUIRE(stl->currentModel());
+  CHECK(stl->currentModel()->play == Approx(0.081));
+  CHECK(stl->currentModel()->chamfer == Approx(0.032));
+
+  /* the parameters follow the unit size... */
+  stl->setParameter(UNIT, 20);
+  CHECK(stl->getParameter(OFFSET) == Approx(0.81));
+  CHECK(stl->getParameter(BEVEL) == Approx(0.64));
+  /* ...and setting one to its value again keeps them following */
+  stl->setParameter(BEVEL, stl->getParameter(BEVEL));
+  CHECK(stl->followsModel());
+
+  /* until one is set by hand */
+  stl->setParameter(OFFSET, 0.2);
+  CHECK_FALSE(stl->followsModel());
+  stl->setParameter(UNIT, 10);
+  CHECK(stl->getParameter(OFFSET) == Approx(0.2));
+  CHECK(stl->currentModel()->play == Approx(0.04));
+
+  /* stretched units make no cubes */
+  stl->setParameter(UNIT_Y, 12);
+  CHECK_FALSE(stl->currentModel());
+}
+
+TEST_CASE("stl export: only the cube grid's exporter follows a rotation model", "[stl][rotations]") {
+  for (gridType_c::gridType t : { gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA,
+                                  gridType_c::GT_TRIANGULAR_PRISM, gridType_c::GT_SPHERES }) {
+    gridType_c grid(t);
+    std::unique_ptr<stlExporter_c> stl(grid.getStlExporter());
+    if (!stl)
+      continue;
+    INFO("grid " << t);
+    CHECK_FALSE(stl->followModel({ 0.081, 0.032 }));
+    CHECK_FALSE(stl->currentModel());
+  }
+}
+
+TEST_CASE("stl look: the cube grid draws pieces of the rotation model's play and bevel",
+          "[stl][rotations]") {
+  gridType_c cubes(gridType_c::GT_BRICKS);
+  std::unique_ptr<voxel_c> v(cubes.getVoxel(1, 1, 1, voxel_c::VX_FILLED));
+
+  auto lowest = [](const Polyhedron & p) {
+    double lo = 1e9;
+    for (auto it = p.vBegin(); it != p.vEnd(); ++it)
+      lo = std::min(lo, double((*it)->position().x()));
+    return lo;
+  };
+
+  /* each face play / 2 into its cell, whatever the view's own gap is */
+  const std::unique_ptr<Polyhedron> wide(v->getSTLMeshFor({ 0.2, 0.05 }));
+  const std::unique_ptr<Polyhedron> tight(v->getSTLMeshFor({ 0.02, 0.05 }));
+  REQUIRE(wide);
+  REQUIRE(tight);
+  CHECK(lowest(*wide) == Approx(0.1).margin(1e-6));
+  CHECK(lowest(*tight) == Approx(0.01).margin(1e-6));
+  CHECK(volume(*wide) < volume(*tight));
+}
