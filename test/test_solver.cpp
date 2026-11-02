@@ -22,9 +22,11 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstdlib>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <set>
 #include <string>
@@ -4125,10 +4127,12 @@ static unsigned int a1DlxTopFourTasks(const std::string & state) {
  * (25 shapes, 6 placed) reaches such stops on the DLX pool path for most
  * stop points; the union of stopped and resumed run must equal the
  * uninterrupted baseline. Three full DLX runs (~8 s on a 4-core laptop),
- * hence the slow suite ([stress]).
+ * hence the slow suite ([stress]). Coverage runs skip it ([nocoverage]):
+ * instrumented, it takes 11 minutes even with its threads on one CPU, and
+ * it covers no line the other cases leave out (2 branches, 2026-10-31).
  */
 TEST_CASE("assembler_1 DLX write-back restores a stop between rows exactly",
-          "[assembler][resume][save][stress]") {
+          "[assembler][resume][save][stress][nocoverage]") {
   ScopedEnv noSimd("BURRTOOLS_NO_SIMD", "1");
   auto p = puzzle_c::load("examples/SolidSixPieceBurrs.xmpuzzle");
   REQUIRE(p != nullptr);
@@ -4728,6 +4732,175 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
   }
 }
 
+namespace {
+
+/* Holds one token of a ThreadBudget per budget slot, each on its own thread
+ * (a thread holds at most one token), until release(). While it holds them no
+ * disassembly pool worker can start a job: pickup takes a token first.
+ */
+class budgetHolders_c {
+
+  std::mutex m;
+  std::condition_variable cv;
+  std::vector<std::thread> threads;
+  size_t arrived = 0;
+  bool allHeld = true;
+  bool go = false;
+
+public:
+
+  explicit budgetHolders_c(ThreadBudget * budget) {
+    if (!budget) {
+      allHeld = false;
+      return;
+    }
+    for (unsigned int i = 0; i < budget->total(); i++)
+      threads.emplace_back([this, budget] {
+        const bool held = budget->tryAcquire();
+        std::unique_lock<std::mutex> lock(m);
+        if (!held)
+          allHeld = false;
+        arrived++;
+        cv.notify_all();
+        cv.wait(lock, [this] { return go; });
+        lock.unlock();
+        budget->release();  // a no-op on a thread that got no token
+      });
+    std::unique_lock<std::mutex> lock(m);
+    cv.wait(lock, [this] { return arrived == threads.size(); });
+  }
+
+  ~budgetHolders_c() { release(); }
+
+  budgetHolders_c(const budgetHolders_c &) = delete;
+  budgetHolders_c & operator=(const budgetHolders_c &) = delete;
+
+  /* every token of the budget is held; read before release() */
+  bool all(void) {
+    std::lock_guard<std::mutex> lock(m);
+    return allHeld;
+  }
+
+  void release(void) {
+    {
+      std::lock_guard<std::mutex> lock(m);
+      go = true;
+    }
+    cv.notify_all();
+    for (auto & t : threads)
+      t.join();
+    threads.clear();
+  }
+};
+
+/* Puts a real solve into the state the bar can latch in, every time.
+ *
+ * That state is "assembly complete, assemblies counted, nothing
+ * disassembled yet". A natural solve passes through it only if the
+ * assembler happens to finish before the pool completes its first job, and a
+ * sampler on another thread only sees it if it happens to poll inside that
+ * window. Here the assemblies are held back while the search runs and handed
+ * to the pool in assemblyPhaseEnded() -- after assemble() has returned,
+ * before run() records the end of the phase -- while every budget token is
+ * held, so the pool takes the jobs but cannot start one. The bar is read
+ * there, then the tokens go back and the solve finishes normally.
+ *
+ * Nothing reads getProgress() during the search: the bar holds 0 until the
+ * hook. With the assemblies held back the pool has no evidence during the
+ * search, so a read there would publish the bare assembly fraction, and
+ * where the search found its last assembly would decide what the bar holds
+ * when the hook runs.
+ */
+class latchWindowSolveThread_c : public solveThread_c {
+
+  std::mutex heldMutex;
+  std::vector<std::unique_ptr<assembly_c>> held;
+
+  std::mutex phaseMutex;
+  std::condition_variable phaseCv;
+  bool phaseEnded = false;
+
+public:
+
+  using solveThread_c::solveThread_c;
+
+  // assemblyPhaseEnded() is called on the worker: join it while this
+  // subclass is still intact
+  ~latchWindowSolveThread_c() override { joinThread(); }
+
+  /* written on the worker in assemblyPhaseEnded(), read by the test after
+   * waitForPhaseEnd() returned true */
+  size_t assembliesHeld = 0;
+  bool budgetPresent = false;
+  bool tokensHeld = false;
+  float latchValue = -1.0f;       // every assembly counted, none disassembled
+  bool latchOutstanding = false;
+  bool delivered = false;         // within the deadline below
+  float deliveredValue = -1.0f;   // the first disassembly has been delivered
+
+  bool waitForPhaseEnd(std::chrono::steady_clock::time_point deadline) {
+    std::unique_lock<std::mutex> lock(phaseMutex);
+    return phaseCv.wait_until(lock, deadline, [this] { return phaseEnded; });
+  }
+
+protected:
+
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    std::lock_guard<std::mutex> lock(heldMutex);
+    held.push_back(std::move(a));
+    return true;
+  }
+
+  void assemblyPhaseEnded(void) override {
+    std::vector<std::unique_ptr<assembly_c>> found;
+    {
+      std::lock_guard<std::mutex> lock(heldMutex);
+      found.swap(held);
+    }
+    assembliesHeld = found.size();
+
+    /* public in assembler_cb, where the assemblers ask for it */
+    assembler_cb & cb = *this;
+    ThreadBudget * budget = cb.threadBudget();
+    budgetPresent = (budget != nullptr);
+
+    {
+      budgetHolders_c holders(budget);
+      tokensHeld = holders.all();
+
+      for (auto & a : found)
+        solveThread_c::assembly(std::move(a));
+
+      latchValue = getProgress();
+      latchOutstanding = workOutstanding();
+    }
+
+    /* Once one disassembly is delivered, the blend has evidence and the bar
+     * must have moved off what it held. The value is not checked against
+     * the cap: assemblyEndNs is still 0 here, so workOutstanding() reads true
+     * even after the pool has done every job, and the cap is then the honest
+     * value. Waits on the pool, which holds its tokens again, not on time;
+     * the deadline only turns a pool that never delivers into a failure
+     * rather than a hang. */
+    if (assembliesHeld) {
+      const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+      while (getProblem().getNumAssemblies() == 0 &&
+             std::chrono::steady_clock::now() < deadline)
+        std::this_thread::yield();
+      delivered = getProblem().getNumAssemblies() > 0;
+      deliveredValue = getProgress();
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(phaseMutex);
+      phaseEnded = true;
+    }
+    phaseCv.notify_all();
+  }
+};
+
+}
+
 /* The GUI reads solveThread_c::getProgress(), so the properties the bar
  * depends on are asserted here rather than by driving FLTK: the value is
  * bounded, never moves backwards, stays strictly below 1.0 for as long as the
@@ -4739,165 +4912,195 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
  * and the parallel assemblers can round getFinished() to exactly 1.0f while
  * their workers are still live. Neither is invisible to the user by accident:
  * getProgress() caps what it reports while the solve runs.
+ *
+ * And the bar must not spend the solve pinned at that cap. Until the pool
+ * completes its first job there is nothing to blend, and once assembly is
+ * complete the model's assembly-only answer is its "counted but not done"
+ * sentinel. Published into the monotone guard, that caps to runningCap and
+ * latches: every genuine blended value afterwards is lower, so the guard
+ * locks them all out for the whole disassembly tail. latchWindowSolveThread_c
+ * reads the bar in exactly that state, so the latch is caught on every run
+ * rather than on the runs where a sampler happened to look at the right
+ * moment; the samples from the test thread afterwards only add properties
+ * that hold whenever they are taken, so their number does not matter.
  */
 TEST_CASE("solve thread reports monotone whole-solve progress",
           "[solvethread][progress]") {
+  if (!threadBudgetEnabled())
+    SKIP("the latch window is held open through the thread budget");
+
   auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
-  /* The bar must not spend the solve pinned at getProgress()'s running cap.
-   *
-   * Until the pool completes its first task there is nothing to blend, and
-   * once assembly is complete the model's assembly-only answer is its "counted
-   * but not done" sentinel -- a hair under 1. Published into the monotone
-   * guard, that caps to 0.999 and latches: every genuine blended value
-   * afterwards is lower, so the guard locks them all out. On this puzzle,
-   * whose assembly finishes in ~4 ms against a ~185 ms disassembly tail, that
-   * is almost the whole solve.
-   *
-   * Both checks are scale-invariant, per the test strategy in
-   * design/2026-09-19-solve-progress-reporting.md: a plateau as a fraction of
-   * the samples rather than an absolute duration. Measured over six runs on
-   * the author's machine the top plateau is 18.8-20.4% and the maximum
-   * 0.9176; under ThreadSanitizer, which stretches the tail, it is 52%.
-   * With the sentinel reaching the guard they are 98% and 0.999, so a
-   * genuine regression pins the whole solve near saturation, not just
-   * elevated -- which is why a generous threshold still catches one.
-   *
-   * On GitHub's actual CI runners, measured directly (from untruncated
-   * Catch2 XML artifacts, not the console log meson truncates) across
-   * three independent, unrelated runner environments, none under any
-   * sanitizer: 84.76% of 105 samples on build-linux (native GCC),
-   * 87.5% of 72 samples on clang-x86-64 (native Clang), and a further
-   * failure on build-macos (native arm64) at whatever an 92% bound
-   * still wasn't generous enough for. The pattern across all three is the
-   * same shape: a plateau meaningfully above the local baseline, but
-   * nowhere near the ~98% saturation a real defect produces -- these
-   * numbers move with how fast and how evenly scheduled the runner is,
-   * not with the correctness of the code. The original 80% bound was
-   * calibrated against one machine and a TSan build, not against three
-   * independent shared CI runners with their own, apparently quite
-   * different, scheduling characteristics. plateauThreshold and the
-   * retry below absorb that: retrying gives a slower-than-typical run on
-   * a contended runner another independent attempt, and the bound is set
-   * close to, but still clearly under, the saturated range a real
-   * regression would reach -- generous enough to clear runner noise
-   * without losing the ability to catch an actual regression.
+  /* the shipped examples are saved already solved, and solveThread_c
+   * asserts solveState == SS_UNSOLVED on the way in
    */
-  const double plateauThreshold = 96.0;
+  problem->removeAllSolutions();
 
-  double plateau = 0.0;
-  std::vector<float> samples;
-  bool finishedAtOne = false;
-  /* Every value a genuine assertion below needs, computed here but not
-   * asserted here: a CHECK failure does not throw, so asserting inside a
-   * retried attempt would permanently record that attempt's failure even
-   * when a later attempt succeeds. produce() only ever REQUIREs the
-   * hard preconditions that make an attempt meaningless if violated
-   * (the thread actually started and finished, there is more than one
-   * sample); every property the retry exists to tolerate is captured into
-   * a plain bool here and asserted exactly once, after the loop, against
-   * only the attempt that was finally kept.
-   */
-  bool samplesInRange = false;
-  bool samplesMonotone = false;
-  /* Samples at runningCap taken while the solve still had counted work to
-   * do. The bar may legitimately sit at the cap once that work is done: the
-   * worker then still joins the pool's workers and merger and delivers the
-   * results before it reports ACT_FINISHED, and on a loaded machine the
-   * sampler sees that span as several samples, any of which may be the last.
-   * What the latch breaks, and what is asserted, is that the cap is never
-   * reported while work remains. That relies on no honest value reaching the
-   * cap while work remains, and on this puzzle none comes close: over 140
-   * runs, idle and with the machine twice oversubscribed, the highest value
-   * reported with work outstanding was 0.9896 -- ten times further from 1
-   * than the cap is.
-   */
-  size_t capWhileOutstanding = 0;
-  bool barMoved = false;
+  /* two threads, not the machine's count: with one the pool disassembles
+   * inline and has no budget to hold */
+  latchWindowSolveThread_c thread(*problem, solveThread_c::PAR_DISASSM, 2);
 
-  auto produce = [&]() {
-    /* the shipped examples are saved already solved, and solveThread_c
-     * asserts solveState == SS_UNSOLVED on the way in
-     */
-    problem->removeAllSolutions();
+  /* nothing has started yet, so there is nothing to report and no
+   * assembler to read it from */
+  REQUIRE(thread.getProgress() == 0.0f);
 
-    solveThread_c thread(*problem, solveThread_c::PAR_DISASSM);
+  REQUIRE(thread.start());
 
-    /* nothing has started yet, so there is nothing to report and no
-     * assembler to read it from */
-    REQUIRE(thread.getProgress() == 0.0f);
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+  REQUIRE(thread.waitForPhaseEnd(deadline));
 
-    samples.clear();
-    capWhileOutstanding = 0;
-    REQUIRE(thread.start());
+  REQUIRE(thread.budgetPresent);
+  REQUIRE(thread.tokensHeld);
+  REQUIRE(thread.assembliesHeld > 0);
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    while (!thread.stopped() &&
-           thread.currentAction() != solveThread_c::ACT_ASSERT &&
-           std::chrono::steady_clock::now() < deadline) {
-      const float p = thread.getProgress();
-      /* read after the sample: workOutstanding() never goes back to true, so
-       * true here means the work was outstanding when p was reported */
-      if (p >= solveThread_c::runningCap && thread.workOutstanding())
-        capWhileOutstanding++;
-      samples.push_back(p);
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+  /* The latch window: assembly complete, every assembly counted, none
+   * disassembled. The bar holds what it held -- 0, nothing was published
+   * before -- instead of jumping to the cap. */
+  CHECK(thread.latchOutstanding);
+  CHECK(thread.latchValue == 0.0f);
+  CHECK(thread.latchValue < solveThread_c::runningCap);
 
-    REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+  /* and it moves as soon as there is evidence */
+  REQUIRE(thread.delivered);
+  CHECK(thread.deliveredValue > thread.latchValue);
+  CHECK(thread.deliveredValue < 1.0f);
 
-    /* The final sample may have been taken in the window between the loop's
-     * check and the worker setting ACT_FINISHED, so it is allowed to be 1.0;
-     * drop it before asserting that a running solve never reports completion.
-     */
-    REQUIRE(samples.size() > 1);
-    samples.pop_back();
-
-    samplesInRange = true;
-    samplesMonotone = true;
-    for (size_t i = 0; i < samples.size(); i++) {
-      if (samples[i] < 0.0f || samples[i] >= 1.0f)
-        samplesInRange = false;
-      if (i && samples[i] < samples[i-1])
-        samplesMonotone = false;
-    }
-
-    size_t top = 0;
-    for (size_t i = samples.size(); i-- > 0 && samples[i] == samples.back(); )
-      top++;
-    plateau = 100.0 * static_cast<double>(top) / static_cast<double>(samples.size());
-
-    barMoved = *std::max_element(samples.begin(), samples.end()) > samples.front();
-
-    finishedAtOne = (thread.getProgress() == 1.0f) && (thread.getProgress() == 1.0f);
+  struct sample_t {
+    float value;
+    bool outstanding;   // the work was outstanding when value was reported
+    bool finished;      // ACT_FINISHED may have been set before value was read
   };
+  std::vector<sample_t> samples;
 
-  constexpr int maxAttempts = 5;
-  produce();
-  for (int attempt = 2; attempt <= maxAttempts && plateau >= plateauThreshold; attempt++) {
-    WARN("plateau " << plateau << "% on attempt " << (attempt - 1)
-         << " of " << maxAttempts << " -- retrying with a fresh solve"
-         << " (see the CI-runner note above)");
-    produce();
+  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline) {
+    const float v = thread.getProgress();
+    /* read after the sample: workOutstanding() never goes back to true, so
+     * true here means the work was outstanding when v was reported */
+    const bool outstanding = thread.workOutstanding();
+    /* read after the sample too: not finished here means v was reported by
+     * a running solve */
+    const bool finished = thread.currentAction() == solveThread_c::ACT_FINISHED;
+    samples.push_back({v, outstanding, finished});
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  INFO("samples: " << samples.size()
-       << " first: " << samples.front()
-       << " last: " << samples.back());
-  INFO("top plateau " << plateau << "% of " << samples.size()
-       << " samples, at " << samples.back());
-  INFO(capWhileOutstanding << " samples at the running cap with work outstanding");
+  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
 
+  /* Every value the running solve reported is in [0, 1), and none moved
+   * backwards: the hook's two values come before every sample (the sampler
+   * waited for the hook), and all of them are read off one monotone guard.
+   * The cap may be reported once the counted work is done -- the worker then
+   * still joins the pool's workers and merger and delivers the results
+   * before it reports ACT_FINISHED -- but never while work remains. That
+   * relies on no honest value reaching the cap while work remains, and on
+   * this puzzle none comes close: over 140 runs, idle and with the machine
+   * twice oversubscribed, the highest value reported with work outstanding
+   * was 0.9896 -- ten times further from 1 than the cap is.
+   */
+  bool samplesInRange = true;
+  bool samplesMonotone = true;
+  size_t capWhileOutstanding = 0;
+  float previous = thread.deliveredValue;
+  for (const auto & s : samples) {
+    if (s.value < 0.0f || s.value > 1.0f || (!s.finished && s.value >= 1.0f))
+      samplesInRange = false;
+    if (s.value < previous)
+      samplesMonotone = false;
+    if (s.value >= solveThread_c::runningCap && s.outstanding)
+      capWhileOutstanding++;
+    previous = s.value;
+  }
+
+  INFO(samples.size() << " samples after the assembly phase, latch window at "
+       << thread.latchValue << ", first delivery at " << thread.deliveredValue);
   CHECK(samplesInRange);
   CHECK(samplesMonotone);
   CHECK(capWhileOutstanding == 0);
-  CHECK(barMoved);
 
-  CHECK(plateau < plateauThreshold);
-  CHECK(finishedAtOne);  // getProgress() == 1.0f, checked twice: idempotent, the GUI polls repeatedly
+  // getProgress() == 1.0f, checked twice: idempotent, the GUI polls repeatedly
+  CHECK(thread.getProgress() == 1.0f);
+  CHECK(thread.getProgress() == 1.0f);
+
+  /* holding the assemblies back lost none of them */
+  CHECK(problem->getNumAssemblies() == thread.assembliesHeld);
+}
+
+namespace {
+
+/* Reads the bar each time the search delivers an assembly, before passing it
+ * on: points inside the search, fixed by the puzzle rather than by when a
+ * sampler gets scheduled. The reads and their recording share one mutex, so
+ * the recorded order is the order the guard published them in.
+ */
+class searchReadSolveThread_c : public solveThread_c {
+
+  std::mutex readsMutex;
+
+public:
+
+  using solveThread_c::solveThread_c;
+
+  // assembly() is called on the assembler's workers: join them while this
+  // subclass is still intact
+  ~searchReadSolveThread_c() override { joinThread(); }
+
+  /* written by the workers, read by the test once the solve has finished */
+  std::vector<float> reads;
+
+protected:
+
+  bool assembly(std::unique_ptr<assembly_c> a) override {
+    {
+      std::lock_guard<std::mutex> lock(readsMutex);
+      reads.push_back(getProgress());
+    }
+    return solveThread_c::assembly(std::move(a));
+  }
+};
+
+}
+
+/* The whole-solve test above reads nothing during the search. This one reads
+ * there only: what the GUI sees while assemblies are still being found and
+ * the pool works through the first of them. Every read is in range, below
+ * the cap -- the search is running, so work is outstanding -- and none moves
+ * backwards.
+ */
+TEST_CASE("solve thread progress during the search is in range and monotone",
+          "[solvethread][progress]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p != nullptr);
+  auto problem = p->getProblem(0);
+  REQUIRE(problem != nullptr);
+  problem->removeAllSolutions();
+
+  searchReadSolveThread_c thread(*problem, solveThread_c::PAR_DISASSM, 2);
+  REQUIRE(thread.start());
+
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+
+  /* one read per assembly */
+  REQUIRE(thread.reads.size() == problem->getNumAssemblies());
+  REQUIRE(thread.reads.size() > 1);
+
+  bool inRange = true;
+  bool monotone = true;
+  for (size_t i = 0; i < thread.reads.size(); i++) {
+    if (thread.reads[i] < 0.0f || thread.reads[i] >= solveThread_c::runningCap)
+      inRange = false;
+    if (i && thread.reads[i] < thread.reads[i-1])
+      monotone = false;
+  }
+  INFO(thread.reads.size() << " reads, from " << thread.reads.front()
+       << " to " << thread.reads.back());
+  CHECK(inRange);
+  CHECK(monotone);
 }
 
 /* The rule getProgress() applies while the disassembly pool has completed

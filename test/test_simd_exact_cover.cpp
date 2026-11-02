@@ -991,9 +991,19 @@ TEST_CASE("SimdHuangCover: parallelSolve does not count aborted tasks as complet
   std::atomic<size_t> total_tasks{0};
   std::atomic<size_t> completed_tasks{0};
 
+  // The matrix has two solutions, one per task, and each worker may reach
+  // its task's solution before the other's stop lands. A consumer that took
+  // both would have searched everything, and both tasks would rightly count
+  // as completed. So this one consumes as the assemblers' do: delivery is
+  // serialised, the first solution stops the run, and any later one is
+  // declined -- its task then holds unexplored territory, whatever the
+  // interleaving.
+  std::mutex deliver;
   solver.parallelSolve(
     2,
-    [&](const std::vector<unsigned int> &) {
+    [&](const std::vector<unsigned int> &, bool & consumed) {
+      std::lock_guard<std::mutex> lock(deliver);
+      consumed = !stopSrc.stop_requested();
       stopSrc.request_stop();
       return false;
     },
