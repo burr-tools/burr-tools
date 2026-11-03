@@ -487,15 +487,10 @@ void ViewportController::addGhosts(SceneFrame & f) const {
   if (ghosts.empty())
     return;
 
-  // the drawing colour: the voxel colour, or Default's -- the shape's own
-  QColor draw;
-  const int c = m_editor->drawColour();
-  const puzzle_c & p = m_doc->session().puzzle();
-  if (c > 0 && unsigned(c) <= p.colorNumber()) {
-    unsigned char r, g, b;
-    p.getColor(unsigned(c) - 1, &r, &g, &b);
-    draw = QColor(r, g, b);
-  } else {
+  // the drawing colour: the edit cursor's (so the two never disagree about
+  // a colour id), or Default's -- the shape's own
+  QColor draw = m_editor->cursorColour();
+  if (!draw.isValid()) {
     const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
     draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
   }
