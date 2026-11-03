@@ -14,6 +14,7 @@
 #include "guarded.h"
 #include "iconprovider.h"
 #include "keyboardcues.h"
+#include "nativedialogs.h"
 #include "popupwindowstyle.h"
 #include "layoutcontroller.h"
 #include "offscreenrenderer.h"
@@ -63,11 +64,22 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
 
 #include <ctime>
 #include <memory>
 #include <new>
+#include <optional>
+#include <string>
 #include <vector>
+
+#ifdef Q_OS_WIN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#include <commctrl.h>
+#endif
 
 namespace {
 
@@ -1980,6 +1992,77 @@ private slots:
 
 // ---------------------------------------------------------------------------
 
+/* The system's "save changes?" dialog (NativeDialogs): offscreen, as here,
+ * the shell's own; on Windows the task dialog, its buttons clicked as a
+ * person would, once it is up */
+class TestNativeDialogs : public QObject {
+  Q_OBJECT
+
+private slots:
+
+  void offscreenKeepsTheShellsDialog() {
+    NativeDialogs d;
+    QVERIFY(!d.available());
+    QSignalSpy answered(&d, &NativeDialogs::answered), failed(&d, &NativeDialogs::failed);
+    d.askToSave(nullptr, QStringLiteral("text"), QStringLiteral("question"));   // asks nothing
+    QTest::qWait(20);
+    QCOMPARE(answered.count() + failed.count(), 0);
+  }
+
+  void windowsAsksWithItsTaskDialog_data() {
+    QTest::addColumn<int>("button");
+    QTest::addColumn<int>("choice");
+    // nativedialogs.cpp's ids for Save and Don't Save; the common Cancel
+    QTest::newRow("save") << 100 << int(NativeDialogs::Save);
+    QTest::newRow("don't save") << 101 << int(NativeDialogs::Discard);
+    QTest::newRow("cancel") << 2 << int(NativeDialogs::Cancel);
+  }
+  void windowsAsksWithItsTaskDialog() {
+#ifndef Q_OS_WIN
+    QVERIFY(!NativeDialogs::systemHasIt());
+    QSKIP("the task dialog is Windows'");
+#else
+    QFETCH(int, button);
+    QFETCH(int, choice);
+    QVERIFY2(NativeDialogs::systemHasIt(), "common controls 6, named by test_qtgui's manifest");
+    const QString title = QStringLiteral("BurrTools test %1").arg(button);
+    // the dialog runs its own loop, which runs Qt's timers: find it, click
+    struct Find { std::wstring title; HWND hwnd = nullptr; } find{ title.toStdWString() };
+    int tries = 0;
+    QTimer click;
+    click.setInterval(20);
+    connect(&click, &QTimer::timeout, this, [&] {
+      if (++tries > 250)                // 5 s: it never came up
+        click.stop();
+      EnumThreadWindows(GetCurrentThreadId(), [](HWND w, LPARAM p) -> BOOL {
+        auto * f = reinterpret_cast<Find *>(p);
+        wchar_t text[64] = {};
+        GetWindowTextW(w, text, int(std::size(text)));
+        if (f->title == text) {
+          f->hwnd = w;
+          return FALSE;
+        }
+        return TRUE;
+      }, reinterpret_cast<LPARAM>(&find));
+      if (find.hwnd) {
+        click.stop();
+        PostMessageW(find.hwnd, TDM_CLICK_BUTTON, WPARAM(button), 0);
+      }
+    });
+    click.start();
+    const std::optional<NativeDialogs::Choice> got =
+      NativeDialogs::systemAskToSave(nullptr, title, QStringLiteral("The puzzle has unsaved changes."),
+                                     QStringLiteral("Save before you quit?"));
+    QVERIFY2(find.hwnd, "the dialog came up");
+    QVERIFY(got.has_value());
+    QCOMPARE(int(*got), choice);
+#endif
+  }
+};
+
+
+// ---------------------------------------------------------------------------
+
 /* Help > Check for updates and the launch check, up to the network: what
  * needs no request is checked here, and no test asks GitHub anything. */
 class TestUpdates : public QObject {
@@ -3609,6 +3692,7 @@ int main(int argc, char ** argv) {
   run(TestLayout());
   run(TestCommands());
   run(TestKeyboardCues());
+  run(TestNativeDialogs());
   run(TestUpdates());
   run(TestShapesAndStatus());
   run(TestIcons());

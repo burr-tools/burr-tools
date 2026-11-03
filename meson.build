@@ -738,7 +738,7 @@ if qt6_dep.found()
   # (just profile-qml, the Qt profile workflow); never in a release
   qtgui_main_args = get_option('qml_debug') ? ['-DQT_QML_DEBUG'] : []
 
-  burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources,
+  burrtools_qt_exe = executable('burrtools-qt', 'src/qtgui/main.cpp', qtgui_static_sources, qtgui_win_res,
     include_directories: inc,
     cpp_args: qtgui_main_args + qt_cpp_args,
     link_whole: libburr_qtgui,

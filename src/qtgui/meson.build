@@ -16,6 +16,7 @@ qtgui_moc_headers = files(
   'imageexportcontroller.h',
   'keyboardcues.h',
   'layoutcontroller.h',
+  'nativedialogs.h',
   'popupwindowstyle.h',
   'scenecontroller.h',
   'settingscontroller.h',
@@ -113,6 +114,14 @@ if host_machine.system() == 'windows'
   # the system's arrow and pointer size (systempointer.cpp), its reduce motion (systemmotion.cpp)
   qtgui_platform_deps += [cxx.find_library('user32'), cxx.find_library('advapi32')]
 endif
+# Windows: the manifest naming common controls 6, for the task dialog that
+# asks to save (nativedialogs.cpp), in burrtools-qt and test_qtgui
+qtgui_win_res = []
+if host_machine.system() == 'windows'
+  qtgui_win_res = wm.compile_resources('burrtools-qt.rc',
+    depend_files: files('burrtools-qt.manifest'),
+    include_directories: include_directories('.'))
+endif
 # the system's arrow and reduce motion on macOS (*_mac.mm); elsewhere the .cpp
 qtgui_platform_src = ['systemmotion.cpp', 'systempointer.cpp']
 if host_machine.system() == 'darwin'
@@ -145,6 +154,7 @@ libburr_qtgui = static_library('burr_qtgui', [
     'imageexportcontroller.cpp',
     'keyboardcues.cpp',
     'layoutcontroller.cpp',
+    'nativedialogs.cpp',
     'offscreenrenderer.cpp',
     'pipelinecache.cpp',
     'popupwindowstyle.cpp',

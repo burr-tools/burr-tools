@@ -43,6 +43,7 @@ if qt6_test_dep.found()
     ['test_qtgui.cpp', 'test_viewport.cpp', 'test_editor.cpp', 'test_inspector.cpp', 'test_voxeltypes.cpp',
      'test_saving.cpp',
      '../alloccount.cpp',
+     qtgui_win_res,
      qt6.compile_moc(sources: 'test_qtgui.cpp',
                      headers: ['test_viewport.h', 'test_editor.h', 'test_inspector.h', 'test_voxeltypes.h',
                                'test_saving.h'],
