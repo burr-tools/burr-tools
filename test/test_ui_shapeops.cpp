@@ -217,12 +217,25 @@ TEST_CASE("x2 and x3 then Minimize give the shape back; Minimize says when it ca
   runTask(*p, { 1 }, task::Scale2);
   CHECK(minimizeFactor(*p, { 0 }) == 4);
   CHECK(minimizeFactor(*p, { 0, 1 }) == 2);
-  // the grid's limit (C02's 1000 steps)
-  auto big = puzzleWith(gridType_c::GT_BRICKS, 400, 1, 1);
-  const OpCheck b = checkTask(*big, { 0 }, task::Scale3);
+  // x2 and x3 stop at 60 along any axis, well before the steppers' 1000
+  auto at20 = puzzleWith(gridType_c::GT_BRICKS, 2, 20, 1);
+  CHECK(checkTask(*at20, { 0 }, task::Scale3).allowed);           // to 60: allowed
+  auto at21 = puzzleWith(gridType_c::GT_BRICKS, 2, 1, 21);
+  const OpCheck b = checkTask(*at21, { 0 }, task::Scale3);
   CHECK_FALSE(b.allowed);
-  CHECK(b.reason == "Blocked: grid would exceed " + std::to_string(maxGridSteps));
-  CHECK(checkTask(*big, { 0 }, task::Scale2).allowed);
+  CHECK(b.reason == "Blocked: grid would exceed 60");
+  CHECK(checkTask(*puzzleWith(gridType_c::GT_BRICKS, 30, 1, 1), { 0 }, task::Scale2).allowed);
+  CHECK_FALSE(checkTask(*puzzleWith(gridType_c::GT_BRICKS, 31, 1, 1), { 0 }, task::Scale2).allowed);
+  // with Apply to all, one shape too big blocks them all
+  auto two = puzzleWith(gridType_c::GT_BRICKS, 2, 2, 2);
+  two->addShape(40, 1, 1);
+  CHECK(checkTask(*two, { 0 }, task::Scale2).allowed);
+  CHECK_FALSE(checkTask(*two, { 0, 1 }, task::Scale2).allowed);
+  // counted in the steppers' steps: tetra-octa sizes in 3s, 20 steps x3 is 60
+  auto to = puzzleWith(gridType_c::GT_TETRA_OCTA, 60, 3, 3);
+  CHECK(checkTask(*to, { 0 }, task::Scale3).allowed);
+  auto to2 = puzzleWith(gridType_c::GT_TETRA_OCTA, 63, 3, 3);
+  CHECK_FALSE(checkTask(*to2, { 0 }, task::Scale3).allowed);
   // spheres do not scale; rhombic shapes do not minimize
   auto sp = puzzleWith(gridType_c::GT_SPHERES, 2, 2, 2);
   CHECK(checkTask(*sp, { 0 }, task::Scale2).reason == "Not available for this voxel type");

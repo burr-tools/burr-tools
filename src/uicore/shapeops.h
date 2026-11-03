@@ -109,6 +109,12 @@ namespace btui {
   };
   OpCheck checkTask(const puzzle_c & p, const std::vector<unsigned int> & shapes, int task);
 
+  /* x2 and x3 make no axis longer than this, in the steppers' steps
+   * ("Blocked: grid would exceed 60"): far below the steppers' own 1000,
+   * which a few presses would otherwise reach, a grid too big to edit or
+   * draw. A grid sized past it by the steppers is not scaled at all. */
+  constexpr int maxScaledSteps = 60;
+
   /* Run a checked task on the shapes; what to say afterwards (C05's "Filled
    * 3 interior voxels", Minimize's factor), empty when nothing is said. */
   struct OpResult {
