@@ -367,8 +367,8 @@ namespace btui {
       const int step = sizeStep(t);
       for (const voxel_c * v : vs)
         for (unsigned int dim : { v->getX(), v->getY(), v->getZ() })
-          if ((int(dim) + step - 1) / step * n > maxGridSteps)
-            return { false, "Blocked: grid would exceed " + std::to_string(maxGridSteps) };
+          if ((int(dim) + step - 1) / step * n > maxScaledSteps)
+            return { false, "Blocked: grid would exceed " + std::to_string(maxScaledSteps) };
       return {};
     }
     if (task == task::Minimize) {
