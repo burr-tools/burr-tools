@@ -331,7 +331,10 @@ jobs:
   # qt-macos, coverage-qt and the Qt suites in sanitizers -- run for pushes,
   # tags and manual runs, and for a pull request only when it touches the
   # Qt GUI or what it is built from besides the library (src/qtgui,
-  # src/uicore, test/qtgui, the build files). A Windows- or macOS-only
+  # src/uicore, test/qtgui, the build files). qt-macos runs for a library
+  # change too (core, below): macOS is the one Clang build of the Qt GUI,
+  # with its own frameworks and arm64, where a library change can break
+  # what Linux and Windows (both GCC, x86-64) do not see. A Windows-only
   # break from anything else is thus caught on master itself.
   #
   # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
@@ -354,6 +357,7 @@ jobs:
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
       qt: ${{ steps.qt.outputs.build }}
+      qt_macos: ${{ steps.qt.outputs.macos }}
       core: ${{ steps.core.outputs.test }}
       into_default: ${{ steps.qt.outputs.into_default }}
     steps:
@@ -410,6 +414,7 @@ jobs:
         PR: ${{ github.event.pull_request.number }}
         DEFAULT: ${{ github.event.repository.default_branch }}
         CHANGED: ${{ steps.filter.outputs.qt }}
+        CORE_CHANGED: ${{ steps.filter.outputs.core }}
         GH_TOKEN: ${{ github.token }}
       run: |
         BASE=
@@ -424,8 +429,20 @@ jobs:
         if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "build=true" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
           echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
+        # qt-macos: also for a library change
+        if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ] || [ "$CORE_CHANGED" = true ]; then
+          echo "macos=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "macos=false" >> "$GITHUB_OUTPUT"
+        fi
+        if [ "$EVENT" = pull_request ] && [ "$CHANGED" != true ]; then
+          if [ "$CORE_CHANGED" = true ]; then
+            echo "::notice::Qt GUI built on Linux and macOS only: this PR touches the library but no Qt GUI paths"
+          else
+            echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
+          fi
         fi
     - name: Decide whether test_burrtools's own jobs run
       id: core
@@ -1218,7 +1235,8 @@ jobs:
   qt-macos:
     name: Qt GUI (macOS)
     needs: changes
-    if: needs.changes.outputs.qt == 'true'
+    # the Qt paths, or the library's (the changes job says why)
+    if: needs.changes.outputs.qt_macos == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
