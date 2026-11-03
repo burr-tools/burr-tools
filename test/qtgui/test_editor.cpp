@@ -83,7 +83,21 @@ namespace {
     using VoxelGridItem::mousePressEvent;
     using VoxelGridItem::mouseMoveEvent;
     using VoxelGridItem::mouseReleaseEvent;
+    using VoxelGridItem::hoverEnterEvent;
+    using VoxelGridItem::hoverMoveEvent;
+    using VoxelGridItem::hoverLeaveEvent;
   };
+
+  // a hover at an item point; with no window, the scene's point too
+  void hover(InputGrid & g, QEvent::Type t, QPointF p) {
+    QHoverEvent e(t, p, p, p);
+    if (t == QEvent::HoverEnter)
+      g.hoverEnterEvent(&e);
+    else if (t == QEvent::HoverMove)
+      g.hoverMoveEvent(&e);
+    else
+      g.hoverLeaveEvent(&e);
+  }
 
   QMouseEvent mouse(QEvent::Type t, QPointF p, Qt::MouseButton b = Qt::LeftButton) {
     const Qt::MouseButtons held = t == QEvent::MouseButtonRelease ? Qt::NoButton : Qt::MouseButtons(b);
@@ -1093,6 +1107,82 @@ void TestEditor::theGridByKeyboard() {
   QFocusEvent out(QEvent::FocusOut, Qt::TabFocusReason);
   QCoreApplication::sendEvent(&g, &out);
   QCOMPARE(f.editor()->hoverCol(), -1);
+}
+
+void TestEditor::theKeysAndThePointerTakeTheHighlightInTurn() {
+  // PR 181: with the pointer resting on the grid, the arrows' cell is the
+  // one highlighted -- Qt Quick's repeated hover at the still pointer does
+  // not put it back -- until the pointer moves; the arrows then go on from
+  // the pointer's cell
+  EditorFixture f(4, 4, 2);
+  InputGrid g;
+  g.setSize(QSizeF(400, 400));
+  g.setEditor(f.editor());
+  auto at = [&] { return QPoint(f.editor()->hoverCol(), f.editor()->hoverRow()); };
+  auto key = [&](int k, Qt::KeyboardModifiers m = Qt::NoModifier) {
+    QKeyEvent e(QEvent::KeyPress, k, m);
+    QCoreApplication::sendEvent(&g, &e);
+    return e.isAccepted();
+  };
+  // the keys' cell: the middle one, from a first Tab in
+  QFocusEvent in(QEvent::FocusIn, Qt::TabFocusReason);
+  QFocusEvent out(QEvent::FocusOut, Qt::TabFocusReason);
+  QCoreApplication::sendEvent(&g, &in);
+  const QPoint middle = at();
+  QVERIFY(middle != QPoint(0, 0));
+  QCoreApplication::sendEvent(&g, &out);
+  const QPointF rest = g.cellCentre(0, 0);
+  hover(g, QEvent::HoverEnter, rest);
+  QCOMPARE(at(), QPoint(0, 0));
+
+  // Tab in again: the keys' cell shown, the pointer resting elsewhere
+  QCoreApplication::sendEvent(&g, &in);
+  QCOMPARE(at(), middle);
+  hover(g, QEvent::HoverMove, rest);                 // the frame's repeat
+  QCOMPARE(at(), middle);
+  QVERIFY(key(Qt::Key_Right));
+  hover(g, QEvent::HoverMove, rest);
+  QCOMPARE(at(), middle + QPoint(1, 0));
+  QVERIFY(key(Qt::Key_Space));                       // applied where it is shown
+  QCOMPARE(f.state(middle.x() + 1, middle.y(), 0), int(voxel_c::VX_FILLED));
+  QCOMPARE(f.state(0, 0, 0), int(voxel_c::VX_EMPTY));
+
+  // the pointer moves: the highlight is its again
+  hover(g, QEvent::HoverMove, g.cellCentre(3, 3));
+  QCOMPARE(at(), QPoint(3, 3));
+  // and the arrows go on from there, not from where they left off
+  QVERIFY(key(Qt::Key_Down));
+  QCOMPARE(at(), QPoint(3, 2));
+  hover(g, QEvent::HoverMove, g.cellCentre(3, 3));   // the repeat, at the moved pointer
+  QCOMPARE(at(), QPoint(3, 2));
+
+  // a layer step keeps (and shows) the keys' cell
+  QVERIFY(key(Qt::Key_Up, Qt::ShiftModifier));
+  QCOMPARE(f.editor()->layer(), 1);
+  hover(g, QEvent::HoverMove, g.cellCentre(3, 3));
+  QCOMPARE(at(), QPoint(3, 2));
+
+  // keys the grid leaves to the window take nothing
+  hover(g, QEvent::HoverMove, g.cellCentre(1, 3));
+  QVERIFY(!key(Qt::Key_A));
+  QCOMPARE(at(), QPoint(1, 3));
+
+  // focus away while the keys hold it: the highlight back under the pointer
+  QVERIFY(key(Qt::Key_Left));
+  QCOMPARE(at(), QPoint(0, 3));
+  QCoreApplication::sendEvent(&g, &out);
+  QCOMPARE(at(), QPoint(1, 3));
+
+  // a click: the pointer's, and the keys go on from the clicked cell
+  QCoreApplication::sendEvent(&g, &in);
+  auto press = mouse(QEvent::MouseButtonPress, g.cellCentre(2, 1));
+  g.mousePressEvent(&press);
+  auto release = mouse(QEvent::MouseButtonRelease, g.cellCentre(2, 1));
+  g.mouseReleaseEvent(&release);
+  QCOMPARE(at(), QPoint(2, 1));
+  QVERIFY(key(Qt::Key_Right));
+  QCOMPARE(at(), QPoint(3, 1));
+  hover(g, QEvent::HoverLeave, g.cellCentre(2, 1));
 }
 
 void TestEditor::a32By32GridRedrawsInTime() {

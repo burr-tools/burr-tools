@@ -437,25 +437,34 @@ void VoxelGridItem::hoverAt(QPointF p) {
     update();
 }
 
+void VoxelGridItem::pointerHover(QHoverEvent * e) {
+  if (m_editor)
+    m_editor->setModifiers(e->modifiers());
+  // a hover at the pointer the keys took the highlight from: Qt Quick's
+  // repeat after a frame, not a move
+  if (m_keysHold && e->scenePosition() == m_pointer)
+    return;
+  m_keysHold = false;
+  m_pointer = e->scenePosition();
+  hoverAt(e->position());
+}
+
 void VoxelGridItem::hoverEnterEvent(QHoverEvent * e) {
   m_hovered = true;
   if (!m_filtering && QGuiApplication::instance()) {
     QGuiApplication::instance()->installEventFilter(this);
     m_filtering = true;
   }
-  if (m_editor)
-    m_editor->setModifiers(e->modifiers());
-  hoverAt(e->position());
+  pointerHover(e);
 }
 
 void VoxelGridItem::hoverMoveEvent(QHoverEvent * e) {
-  if (m_editor)
-    m_editor->setModifiers(e->modifiers());
-  hoverAt(e->position());
+  pointerHover(e);
 }
 
 void VoxelGridItem::hoverLeaveEvent(QHoverEvent *) {
   m_hovered = false;
+  m_keysHold = false;
   if (m_filtering && !m_pressed) {
     QGuiApplication::instance()->removeEventFilter(this);
     m_filtering = false;
@@ -486,7 +495,9 @@ void VoxelGridItem::mousePressEvent(QMouseEvent * e) {
     return;
   }
   m_pressed = true;
+  m_keysHold = false;
   m_last = e->position();
+  m_pointer = e->scenePosition();
   m_keyCol = c.x();                    // the keys go on from here
   m_keyRow = c.y();
   forceActiveFocus(Qt::MouseFocusReason);
@@ -526,15 +537,31 @@ void VoxelGridItem::focusInEvent(QFocusEvent * e) {
   if (i < 0)
     i = btui::nearestCell(m_layout, { m_layout.width / 2, m_layout.height / 2 });
   setKeyCell(i);
+  // Tab: the keys' cell is the one shown, wherever the pointer rests
+  if (e->reason() != Qt::MouseFocusReason)
+    m_keysHold = true;
 }
 
 void VoxelGridItem::focusOutEvent(QFocusEvent * e) {
   QQuickPaintedItem::focusOutEvent(e);
-  if (m_editor && !m_hovered && !m_pressed) {
+  const bool held = std::exchange(m_keysHold, false);
+  if (!m_editor || m_pressed)
+    return;
+  if (!m_hovered) {
     m_editor->setModifiers(Qt::NoModifier);
     m_editor->hover(-1, -1);
     update();
+  } else if (held) {
+    hoverAt(mapFromScene(m_pointer));   // the highlight back under the pointer
   }
+}
+
+void VoxelGridItem::takeKeys(void) {
+  if (!m_keysHold && m_hovered && m_editor && m_editor->hoverCol() >= 0) {
+    m_keyCol = m_editor->hoverCol();
+    m_keyRow = m_editor->hoverRow();
+  }
+  m_keysHold = true;
 }
 
 void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
@@ -554,13 +581,22 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
     e->ignore();
     return;
   }
+  const bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+  const bool apply = key == Qt::Key_Space || key == Qt::Key_Return || key == Qt::Key_Enter ||
+                     key == Qt::Key_Delete || key == Qt::Key_Backspace;
+  if (!arrow && !apply) {
+    e->ignore();                          // others go on to the window
+    return;
+  }
+  takeKeys();
   int i = keyCell();
   if (i < 0)
     i = btui::nearestCell(m_layout, { m_layout.width / 2, m_layout.height / 2 });
   // layout units: y up, as the rows count
   const Qt::KeyboardModifiers mods = e->modifiers() & ~Qt::KeypadModifier;
-  // Shift+Up / Down: a layer up or down, the cell cursor kept
+  // Shift+Up / Down: a layer up or down, the cell cursor kept (and shown)
   if ((key == Qt::Key_Up || key == Qt::Key_Down) && mods == Qt::ShiftModifier) {
+    setKeyCell(i);
     m_editor->layerStep(key == Qt::Key_Up ? 1 : -1);
     e->accept();
     return;
@@ -585,8 +621,7 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
       break;
     }
     default:
-      e->ignore();
-      return;
+      break;
   }
   e->accept();
 }
@@ -614,6 +649,7 @@ void VoxelGridItem::strokeTo(QPointF p) {
 void VoxelGridItem::mouseMoveEvent(QMouseEvent * e) {
   if (!m_pressed || !m_editor)
     return;
+  m_pointer = e->scenePosition();
   strokeTo(e->position());
   hoverAt(e->position());
 }

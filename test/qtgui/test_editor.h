@@ -34,6 +34,7 @@ private slots:
   void a32By32GridRedrawsInTime();
   void theViewIsReadyInTimeAfterAStrokeSegment();
   void theGridByKeyboard();
+  void theKeysAndThePointerTakeTheHighlightInTurn();
 };
 
 /* Editing in the 3D view (C06, P5): Edit mode and the quick tools, the

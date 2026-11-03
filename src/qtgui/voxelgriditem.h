@@ -105,6 +105,12 @@ private:
   void relayout(void);
   void updateCursor(void);
   void hoverAt(QPointF p);
+  /* a hover event: the pointer's cell highlighted, unless the keys hold the
+   * highlight and the pointer has not moved since */
+  void pointerHover(QHoverEvent * e);
+  /* the arrows and Space take the highlight from the pointer, going on
+   * from the cell it highlights */
+  void takeKeys(void);
   /* the keyboard's cell, by index into m_layout.cells: shown as hovered */
   void setKeyCell(int index);
   int keyCell(void) const;
@@ -126,6 +132,11 @@ private:
   bool m_areaShown = false;           ///< the last paint drew a dragged area (Area mode)
   QPointF m_last;                     ///< the stroke's last point
   int m_keyCol = -1, m_keyRow = -1;   ///< the keyboard's cell, kept across layers
+  /* the keys hold the highlight: the pointer's hovers are ignored until it
+   * moves off m_pointer. Qt Quick repeats a hover at a still pointer after
+   * each frame, which would put the highlight back under it at once. */
+  bool m_keysHold = false;
+  QPointF m_pointer;                  ///< the pointer's last scene position over the grid
   std::vector<QStaticText> m_numbers;   ///< the rulers' numbers, laid out once
 };
 
