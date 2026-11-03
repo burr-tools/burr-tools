@@ -97,6 +97,62 @@ TEST_CASE("every voxel type's layer: one cell per voxel, counter-clockwise, insi
   }
 }
 
+TEST_CASE("cellAt finds what a scan of every cell would, through its buckets", "[ui][gridcells]") {
+  // PR 181 review: cellAt looks in the point's unit square only; the cell
+  // it finds is the first, in order, that holds the point -- edges and
+  // corners included, where neighbours meet -- and none outside every cell
+  auto scan = [](const GridLayout & l, Pt p) {
+    for (size_t i = 0; i < l.cells.size(); i++) {
+      const GridCell & c = l.cells[i];
+      if (c.round) {
+        const double dx = p.x - c.centre.x, dy = p.y - c.centre.y;
+        if (dx * dx + dy * dy <= c.radius * c.radius)
+          return int(i);
+        continue;
+      }
+      bool in = true;
+      for (size_t k = 0; k < c.outline.size() && in; k++) {
+        const Pt & a = c.outline[k];
+        const Pt & b = c.outline[(k + 1) % c.outline.size()];
+        in = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) >= -1e-9;
+      }
+      if (in)
+        return int(i);
+    }
+    return -1;
+  };
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    const unsigned s = unsigned(sizeStep(t));
+    auto v = bttest::makeVoxel(gt, 3 * s + (s > 1 ? 0 : 4), 2 * s + (s > 1 ? 0 : 3), 2 * s);
+    for (int layer = 0; layer < int(v->getZ()); layer++) {
+      const GridLayout l = gridLayout(*v, Plane::XY, layer);
+      REQUIRE_FALSE(l.cells.empty());
+      int hits = 0, checked = 0;
+      // a fine sweep, every edge and corner of the unit squares, a margin outside
+      for (double y = -0.5; y <= l.height + 0.5; y += 1.0 / 24)
+        for (double x = -0.5; x <= l.width + 0.5; x += 1.0 / 24) {
+          const Pt p{ x, y };
+          const int want = scan(l, p);
+          if (cellAt(l, p) != want) {
+            INFO("layer " << layer << " at " << x << ", " << y);
+            CHECK(cellAt(l, p) == want);
+          }
+          hits += want >= 0;
+          checked++;
+        }
+      CHECK(hits > 0);
+      CHECK(checked > 0);
+      // every corner of every cell: on edges they share
+      for (const GridCell & c : l.cells)
+        for (const Pt & q : c.outline)
+          CHECK(cellAt(l, q) == scan(l, q));
+    }
+  }
+  CHECK(cellAt(GridLayout{}, { 0.5, 0.5 }) == -1);
+}
+
 TEST_CASE("prism triangles alternate: base down where x+y is even", "[ui][gridcells]") {
   gridType_c gt(gridType_c::GT_TRIANGULAR_PRISM);
   auto v = bttest::makeVoxel(gt, 3, 2, 1);

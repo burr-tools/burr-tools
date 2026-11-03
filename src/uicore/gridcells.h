@@ -59,6 +59,13 @@ namespace btui {
     /* square cells, one per column and row: rulers can number them */
     bool squares = false;
     int cols = 0, rows = 0;
+    /* cellAt's index: the cells whose bounds reach each unit square of the
+     * layout, row by row, in rising cell order -- square (bx, by)'s are
+     * bucketCells[bucketStart[i] .. bucketStart[i + 1]), i = by * bucketCols + bx.
+     * So a hit tests the few cells there, not every cell of the layer. */
+    int bucketCols = 0, bucketRows = 0;
+    std::vector<int> bucketStart;
+    std::vector<int> bucketCells;
   };
 
   /* The cells of a layer of a plane. Prisms have the XY plane only
