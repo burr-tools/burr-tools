@@ -1014,6 +1014,31 @@ void TestEditor::theGridPaintsAStrokeWithoutGaps() {
   QVERIFY(!outside.isAccepted());
 }
 
+void TestEditor::theOtherButtonMidStrokeLeavesTheStrokeAlone() {
+  // PR 181 review: a left drag, the right button clicked during it: the
+  // right release does not end the left stroke, which paints on
+  EditorFixture f(6, 1, 1);
+  InputGrid g;
+  g.setSize(QSizeF(600, 200));
+  g.setEditor(f.editor());
+  auto press = mouse(QEvent::MouseButtonPress, g.cellCentre(0, 0));
+  g.mousePressEvent(&press);
+  auto move = mouse(QEvent::MouseMove, g.cellCentre(1, 0));
+  g.mouseMoveEvent(&move);
+  auto rpress = mouse(QEvent::MouseButtonPress, g.cellCentre(1, 0), Qt::RightButton);
+  g.mousePressEvent(&rpress);
+  QVERIFY(!rpress.isAccepted());                        // mid-stroke: ignored
+  auto rrelease = mouse(QEvent::MouseButtonRelease, g.cellCentre(1, 0), Qt::RightButton);
+  g.mouseReleaseEvent(&rrelease);
+  auto on = mouse(QEvent::MouseMove, g.cellCentre(5, 0));
+  g.mouseMoveEvent(&on);
+  QCOMPARE(f.filled(), 6);                              // the stroke went on
+  auto release = mouse(QEvent::MouseButtonRelease, g.cellCentre(5, 0));
+  g.mouseReleaseEvent(&release);
+  f.app->document()->undo();                            // and is one step
+  QCOMPARE(f.filled(), 0);
+}
+
 void TestEditor::theViewIsReadyInTimeAfterAStrokeSegment() {
   // AC-C08-08's second half: after a stroke segment, the 3D view's next
   // frame -- the edit, the mesh rebuilt, the frame put together -- within

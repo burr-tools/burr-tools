@@ -31,6 +31,7 @@ private slots:
   void theEditButtonShowsTheCursorsDrawing();
   void theGridHitsItsCellsAndPaintsTheirVoxels();
   void theGridPaintsAStrokeWithoutGaps();
+  void theOtherButtonMidStrokeLeavesTheStrokeAlone();
   void a32By32GridRedrawsInTime();
   void theViewIsReadyInTimeAfterAStrokeSegment();
   void theGridByKeyboard();

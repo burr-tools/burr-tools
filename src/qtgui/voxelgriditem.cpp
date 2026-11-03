@@ -495,6 +495,7 @@ void VoxelGridItem::mousePressEvent(QMouseEvent * e) {
     return;
   }
   m_pressed = true;
+  m_button = e->button();
   m_keysHold = false;
   m_last = e->position();
   m_pointer = e->scenePosition();
@@ -655,12 +656,12 @@ void VoxelGridItem::mouseMoveEvent(QMouseEvent * e) {
 }
 
 void VoxelGridItem::mouseReleaseEvent(QMouseEvent * e) {
-  if (!m_pressed)
-    return;
-  const bool left = e->button() == Qt::LeftButton, right = e->button() == Qt::RightButton;
-  if (!left && !right)
+  // only the stroke's own button ends it: the other one, pressed and
+  // released mid-stroke, was ignored at its press and is here too
+  if (!m_pressed || e->button() != m_button)
     return;
   m_pressed = false;
+  m_button = Qt::NoButton;
   if (m_editor) {
     m_editor->release();
     if (!m_hovered || cellAt(e->position()).x() < 0)
@@ -683,6 +684,7 @@ void VoxelGridItem::mouseUngrabEvent(void) {
       m_editor->release();
   }
   m_pressed = false;
+  m_button = Qt::NoButton;
 }
 
 bool VoxelGridItem::event(QEvent * e) {

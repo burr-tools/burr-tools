@@ -129,6 +129,7 @@ private:
   bool m_hovered = false;
   bool m_filtering = false;
   bool m_pressed = false;
+  Qt::MouseButton m_button = Qt::NoButton;   ///< the button the stroke began with: only its release ends it
   bool m_areaShown = false;           ///< the last paint drew a dragged area (Area mode)
   QPointF m_last;                     ///< the stroke's last point
   int m_keyCol = -1, m_keyRow = -1;   ///< the keyboard's cell, kept across layers
