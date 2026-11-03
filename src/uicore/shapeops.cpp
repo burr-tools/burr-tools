@@ -305,10 +305,12 @@ namespace btui {
   }
 
   int minimizeFactor(const puzzle_c & p, const std::vector<unsigned int> & shapes) {
-    // legacy ToolTab_0::cb_transform: each prime that divides every shape, as often as it does
+    // legacy ToolTab_0::cb_transform: each prime that divides every shape, as often as it does.
+    // Not the empty ones: an empty grid only divides while it is `prime` cells
+    // wide, so one would cap the factor for all (a 1x1x1 one would block it)
     std::vector<std::unique_ptr<voxel_c>> copies;
     for (unsigned int s : shapes)
-      if (s < p.getNumberOfShapes())
+      if (s < p.getNumberOfShapes() && !empty(*p.getShape(s)))
         copies.push_back(copyOf(*p.getShape(s)));
     if (copies.empty())
       return 1;
@@ -393,10 +395,12 @@ namespace btui {
       const int factor = minimizeFactor(p, shapes);
       if (factor <= 1)
         return r;
+      // the empty shapes are left as they are (minimizeFactor)
       for (unsigned char prime : { 2, 3, 5, 7, 11, 13, 17, 19 })
         for (int f = factor; f % prime == 0; f /= prime)
           for (voxel_c * v : vs)
-            v->scaleDown(prime, true);
+            if (!empty(*v))
+              v->scaleDown(prime, true);
       for (voxel_c * v : vs)
         v->initHotspot();
       r.changed = true;
