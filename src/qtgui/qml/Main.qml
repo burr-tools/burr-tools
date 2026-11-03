@@ -601,6 +601,20 @@ ApplicationWindow {
         }
     }
 
+    // unsaved changes: Save, Discard or Cancel (DocumentController.resolveDiscard)
+    function askToSave(question: string) {
+        discardDialog.active = true
+        const d = discardDialog.item as MessageDialog
+        d.informativeText = question
+        d.open()
+    }
+    // Windows: the system's own dialog, its answer straight to resolveDiscard
+    // (NativeDialogs; macOS's MessageDialog is the system's already)
+    Connections {
+        target: App.nativeDialogs
+        function onFailed(text: string, question: string) { win.askToSave(question) }
+    }
+
     Loader {
         id: discardDialog
         active: false
@@ -683,10 +697,11 @@ ApplicationWindow {
     Connections {
         target: App.document
         function onConfirmDiscardRequested(action: string) {
-            discardDialog.active = true
-            const d = discardDialog.item as MessageDialog
-            d.informativeText = qsTr("Save before you %1?").arg(action)
-            d.open()
+            const question = qsTr("Save before you %1?").arg(action)
+            if (App.nativeDialogs.available)
+                App.nativeDialogs.askToSave(win, qsTr("The puzzle has unsaved changes."), question)
+            else
+                win.askToSave(question)
         }
         function onNewFileTypeRequested() { win.showDialog(newDialog) }
         // a question about a row or a colour id is void once those may have changed

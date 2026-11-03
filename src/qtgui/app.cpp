@@ -114,6 +114,12 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_updates = new UpdateController(m_settings, this);
   connect(m_commands, &CommandController::checkForUpdatesRequested, m_updates, &UpdateController::checkNow);
   m_popupStyle = new PopupWindowStyle(this);
+  m_nativeDialogs = new NativeDialogs(this);
+  // the system's "save changes?" answers (Windows) as the shell's dialog's do
+  static_assert(int(NativeDialogs::Save) == int(DocumentController::Save) &&
+                int(NativeDialogs::Discard) == int(DocumentController::Discard) &&
+                int(NativeDialogs::Cancel) == int(DocumentController::Cancel));
+  connect(m_nativeDialogs, &NativeDialogs::answered, m_document, &DocumentController::resolveDiscard);
 
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
   connect(m_settings, &SettingsController::changed, this, [this] {

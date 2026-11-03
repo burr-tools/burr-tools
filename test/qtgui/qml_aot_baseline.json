@@ -36,7 +36,7 @@
     "Inspector.qml": 107,
     "KeyBadge.qml": 0,
     "KeyboardShortcutsDialog.qml": 21,
-    "Main.qml": 71,
+    "Main.qml": 72,
     "NewFileDialog.qml": 8,
     "NumberField.qml": 5,
     "PlaceholderCard.qml": 0,
@@ -61,5 +61,5 @@
     "WorkspaceRail.qml": 10
   },
   "qt": "6.11",
-  "total": 757
+  "total": 758
 }
