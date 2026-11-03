@@ -555,6 +555,7 @@ void TestEdit3d::theGhostTakesEachToolsLook() {
   QCOMPARE(f.editor()->drawColour(), 1);
   f.v->pointerHover(160, 120, Qt::ShiftModifier);
   QCOMPARE(rgb(ghost()), f.app->colours()->colourOf(1));
+  QCOMPARE(rgb(ghost()), f.editor()->cursorColour());   // the edit cursor's, one lookup
 
   // Paint over the voxel, in Edit mode: its new colour at 50 %
   f.editor()->setEditMode(true);
