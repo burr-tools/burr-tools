@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numbers>
 
 namespace btui {
@@ -93,6 +94,54 @@ namespace btui {
       if (x == 0 && y == 2) return { { X, Y + 1 }, { X, Y }, { X + 1, Y + 1 } };
       if (x == 2 && y == 2) return { { X + 1, Y + 1 }, { X, Y + 1 }, { X + 1, Y } };
       return {};
+    }
+
+    /* the unit squares a cell's bounds reach, clamped to the layout's: both
+     * ends inclusive, so a cell is found from either side of an edge it is
+     * on, and a little padded, as insideConvex's tolerance is */
+    struct Span { int x0, y0, x1, y1; };
+    Span spanOf(const GridLayout & l, const GridCell & c) {
+      constexpr double pad = 1e-6;
+      double x0 = c.centre.x - c.radius, x1 = c.centre.x + c.radius;
+      double y0 = c.centre.y - c.radius, y1 = c.centre.y + c.radius;
+      if (!c.round) {
+        x0 = y0 = std::numeric_limits<double>::max();
+        x1 = y1 = std::numeric_limits<double>::lowest();
+        for (const Pt & q : c.outline) {
+          x0 = std::min(x0, q.x); x1 = std::max(x1, q.x);
+          y0 = std::min(y0, q.y); y1 = std::max(y1, q.y);
+        }
+      }
+      auto bx = [&](double v) { return std::clamp(int(std::floor(v)), 0, l.bucketCols - 1); };
+      auto by = [&](double v) { return std::clamp(int(std::floor(v)), 0, l.bucketRows - 1); };
+      return { bx(x0 - pad), by(y0 - pad), bx(x1 + pad), by(y1 + pad) };
+    }
+
+    /* GridLayout's buckets, counted then filled (in rising cell order) */
+    void index(GridLayout & l) {
+      l.bucketCols = std::max(1, int(std::ceil(l.width)));
+      l.bucketRows = std::max(1, int(std::ceil(l.height)));
+      const size_t n = size_t(l.bucketCols) * size_t(l.bucketRows);
+      l.bucketStart.assign(n + 1, 0);
+      std::vector<Span> spans;
+      spans.reserve(l.cells.size());
+      for (const GridCell & c : l.cells) {
+        const Span s = spanOf(l, c);
+        spans.push_back(s);
+        for (int y = s.y0; y <= s.y1; y++)
+          for (int x = s.x0; x <= s.x1; x++)
+            l.bucketStart[size_t(y * l.bucketCols + x) + 1]++;
+      }
+      for (size_t i = 0; i < n; i++)
+        l.bucketStart[i + 1] += l.bucketStart[i];
+      l.bucketCells.resize(size_t(l.bucketStart[n]));
+      std::vector<int> fill(l.bucketStart.begin(), l.bucketStart.end() - 1);
+      for (size_t i = 0; i < spans.size(); i++) {
+        const Span & s = spans[i];
+        for (int y = s.y0; y <= s.y1; y++)
+          for (int x = s.x0; x <= s.x1; x++)
+            l.bucketCells[size_t(fill[size_t(y * l.bucketCols + x)]++)] = int(i);
+      }
     }
 
     bool insideConvex(const std::vector<Pt> & poly, Pt p) {
@@ -189,6 +238,7 @@ namespace btui {
         ccw(cell.outline);
         out.cells.push_back(std::move(cell));
       }
+    index(out);
     return out;
   }
 
@@ -251,14 +301,25 @@ namespace btui {
   }
 
   int cellAt(const GridLayout & layout, Pt p) {
-    for (size_t i = 0; i < layout.cells.size(); i++) {
-      const GridCell & c = layout.cells[i];
+    // the unit square's cells only (GridLayout's buckets); the first that
+    // holds the point, as a scan of every cell in order would find
+    if (layout.cells.empty() || layout.bucketStart.empty() || !std::isfinite(p.x) || !std::isfinite(p.y))
+      return -1;
+    constexpr double pad = 1e-6;
+    if (p.x < -pad || p.y < -pad || p.x > layout.bucketCols + pad || p.y > layout.bucketRows + pad)
+      return -1;
+    const int bx = std::clamp(int(std::floor(p.x)), 0, layout.bucketCols - 1);
+    const int by = std::clamp(int(std::floor(p.y)), 0, layout.bucketRows - 1);
+    const size_t b = size_t(by * layout.bucketCols + bx);
+    for (int k = layout.bucketStart[b]; k < layout.bucketStart[b + 1]; k++) {
+      const int i = layout.bucketCells[size_t(k)];
+      const GridCell & c = layout.cells[size_t(i)];
       if (c.round) {
         const double dx = p.x - c.centre.x, dy = p.y - c.centre.y;
         if (dx * dx + dy * dy <= c.radius * c.radius)
-          return int(i);
+          return i;
       } else if (insideConvex(c.outline, p)) {
-        return int(i);
+        return i;
       }
     }
     return -1;
