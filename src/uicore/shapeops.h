@@ -118,7 +118,8 @@ namespace btui {
   OpResult runTask(puzzle_c & p, const std::vector<unsigned int> & shapes, int task);
 
   /* the factor Minimize divides by, over every shape given (legacy: every
-   * prime that divides all of them, as often as it does); 1 for none */
+   * prime that divides all of them, as often as it does); 1 for none. Empty
+   * shapes take no part, and Minimize leaves them as they are. */
   int minimizeFactor(const puzzle_c & p, const std::vector<unsigned int> & shapes);
 
   /* C05's surface sets: a filled voxel is outer when a face neighbour is

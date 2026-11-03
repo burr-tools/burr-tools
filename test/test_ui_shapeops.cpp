@@ -295,6 +295,33 @@ TEST_CASE("x2 then x3 minimizes by 6, back to the shape", "[ui][shapeops]") {
   CHECK(ce.reason == "The shape is empty");
 }
 
+TEST_CASE("Minimize with Apply to all: the empty shapes take no part", "[ui][shapeops]") {
+  // PR 181 review: an empty grid only divides while it is `prime` cells
+  // wide, so an empty shape among the others used to cap the factor -- a
+  // 1x1x1 one blocked Minimize, a fresh 6x6x6 one capped it at 4 (or 6)
+  auto p = puzzleWith(gridType_c::GT_BRICKS, 3, 3, 3);
+  p->getShape(0)->setState(1, 1, 0, voxel_c::VX_FILLED);
+  runTask(*p, { 0 }, task::Scale2);
+  runTask(*p, { 0 }, task::Scale2);
+  runTask(*p, { 0 }, task::Scale3);                     // 36 wide, factor 12
+  p->addShape(1, 1, 1);                                 // empty, 1 x 1 x 1
+  p->addShape(6, 6, 6);                                 // empty, a fresh New shape
+  const std::vector<unsigned int> all = { 0, 1, 2 };
+  CHECK(minimizeFactor(*p, all) == 12);
+  REQUIRE(checkTask(*p, all, task::Minimize).allowed);
+  const OpResult r = runTask(*p, all, task::Minimize);
+  CHECK(r.message == "Resolution reduced ÷12");
+  CHECK(p->getShape(0)->getX() == 3);
+  CHECK(count(*p->getShape(0)) == 1);
+  // the empty ones as they were
+  CHECK(p->getShape(1)->getX() == 1);
+  CHECK(p->getShape(2)->getX() == 6);
+  CHECK(p->getShape(2)->getZ() == 6);
+  // empty shapes alone: still nothing to reduce
+  CHECK(checkTask(*p, { 1, 2 }, task::Minimize).reason == "The shape is empty");
+  CHECK(minimizeFactor(*p, { 1, 2 }) == 1);
+}
+
 TEST_CASE("the outside reaches round a piece smaller than its grid, and into an open pocket", "[ui][shapeops]") {
   // C05 Semantics: exterior space is every empty cell the outside reaches,
   // not only the grid's edge -- a piece inside a bigger grid, a tunnel to a cavity
