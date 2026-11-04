@@ -411,6 +411,12 @@ the network.
   (24 units, 1.8 strokes) in the button's tint, the drop in the drawing
   colour: the cursor's drawing cropped to fill the button drew its lines
   twice as heavy as the toolbar's other icons.
+- **Unsaved changes on Windows ask with the system's dialog** (product
+  decision 2026-11-04): Save / Don't Save / Cancel in a Task Dialog
+  (`NativeDialogs`, comctl32 v6 via the app's manifest). Elsewhere, and
+  when the Task Dialog cannot be shown, Qt Quick Dialogs' MessageDialog
+  asks: the system's own on macOS, Qt's drawing on Linux (it is native on
+  macOS, iOS and Android only).
 - **The view's keys** (P5): Alt+1 … 6 for the cube's faces, Ctrl+arrows
   for its turns (Option on macOS); the spec asks for them without naming keys.
 - **Inspector** (P6, product decisions 2026-10-28): **Fit & scale follows
@@ -424,9 +430,11 @@ the network.
   the whole shape, as often as it does, on bricks only (legacy has no
   scale-down for the other types; C03: the largest k ≤ 8). **A nudge out
   of the grid is blocked** with its reason (C04, OQ-7; legacy loses the
-  voxels). **Scale** stops at the 1000-step grid limit (OQ-6; the mock:
-  64) and is hidden for spheres (C14); rhombic and tetra-octa shapes scale
-  too (the library can). **The surface sets** are the spec's (AC-C05-04:
+  voxels). **×2 and ×3 stop at 60 grid steps** along any axis ("Blocked:
+  grid would exceed 60"; product decision 2026-11-04): the steppers' own
+  1000-step limit (OQ-6; the mock: 64) is a few presses away and leaves a
+  grid too big to edit or draw. Scale is hidden for spheres (C14);
+  rhombic and tetra-octa shapes scale too (the library can). **The surface sets** are the spec's (AC-C05-04:
   the walls of an enclosed cavity are inner; legacy counts them as outer).
   **A Transform button previews its result** in the 3D view while hovered
   or focused -- the result as a ghost in the shape's colour, legacy's arc,
