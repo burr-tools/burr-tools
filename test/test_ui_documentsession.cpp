@@ -8,10 +8,12 @@
 
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
+#include "../src/tools/gzstream.h"
 
 #include <filesystem>
 #include <fstream>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -46,6 +48,34 @@ TEST_CASE("newDocument takes the chosen grid type and drops the name", "[ui][doc
   CHECK(d.fileName().empty());
   CHECK(d.puzzle().getGridType()->getType() == gridType_c::GT_SPHERES);
   CHECK(d.puzzle().getNumberOfShapes() == 0);
+  CHECK_FALSE(d.isModified());
+}
+
+TEST_CASE("a puzzle from a stream stays unnamed and counts as unsaved", "[ui][document]") {
+  auto in = openGzFile(std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
+  REQUIRE(in);
+  DocumentSession d;
+  auto r = d.loadUnnamed(*in);
+  REQUIRE(r.ok);
+  CHECK(r.error.empty());
+  CHECK(d.puzzle().getNumberOfShapes() > 0);
+  CHECK(d.fileName().empty());
+  CHECK(d.isModified());                 // no file holds it: closing has to ask
+  CHECK_FALSE(d.canUndo());
+  CHECK_FALSE(d.save());                 // nowhere to write yet: Save asks where
+}
+
+TEST_CASE("a stream without a puzzle leaves the document untouched", "[ui][document]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  const unsigned int shapes = d.puzzle().getNumberOfShapes();
+
+  std::istringstream junk("not a puzzle");
+  auto r = d.loadUnnamed(junk);
+  CHECK_FALSE(r.ok);
+  CHECK_FALSE(r.error.empty());
+  CHECK(d.puzzle().getNumberOfShapes() == shapes);
+  CHECK(d.fileName() == std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
   CHECK_FALSE(d.isModified());
 }
 

@@ -189,7 +189,8 @@ namespace {
     std::cout <<
       "burrtools-qt [options] [puzzle file ...]\n"
       "\n"
-      "  puzzle file          opened once the window is up; the first that loads wins\n"
+      "  puzzle file          opened once the window is up; the first that loads wins;\n"
+      "                       \"-\" is a puzzle piped into standard input\n"
       "  --gallery            the component gallery (every control in every state)\n"
       "                       instead of the main window\n"
       "  --screenshot=<png>   save the window 1.5 s after the puzzle opened, then quit\n"
@@ -367,7 +368,7 @@ int main(int argc, char ** argv) {
    * (DocumentController::loadStartupFiles); the commands and the screenshot
    * wait for that. Qt has taken its own options (-platform, ...) out by
    * now; another one that starts with "-" is named on stderr and ignored,
-   * not opened.
+   * not opened, but for "-" itself, the puzzle on standard input.
    */
   QString screenshot, command;
   QStringList files;
@@ -383,7 +384,7 @@ int main(int argc, char ** argv) {
       continue;           // the process serial number older macOS adds for the Finder
     else if (args.at(i) == QLatin1String("--gallery"))
       continue;
-    else if (args.at(i).startsWith(QLatin1Char('-')))
+    else if (args.at(i).startsWith(QLatin1Char('-')) && args.at(i) != QLatin1String("-"))
       fprintf(stderr, "burrtools-qt: unknown option %s ignored (--help lists the options)\n", qPrintable(args.at(i)));
     else
       files << args.at(i);

@@ -29,6 +29,13 @@
 #include "gzstream.h"
 #include <string.h>  // for memcpy
 
+#ifdef _WIN32
+#include <io.h>      // for _dup, _close, _setmode
+#include <fcntl.h>   // for _O_BINARY
+#else
+#include <unistd.h>  // for dup, close
+#endif
+
 // ----------------------------------------------------------------------------
 // Internal classes to implement gzstream. See header file for user classes.
 // ----------------------------------------------------------------------------
@@ -57,6 +64,17 @@ gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
     file = gzopen( name, fmode);
     if (file == 0)
         return (gzstreambuf*)0;
+    opened = 1;
+    return this;
+}
+
+gzstreambuf* gzstreambuf::open( int fd) {
+    if ( is_open())
+        return (gzstreambuf*)0;
+    file = gzdopen( fd, "rb");
+    if (file == 0)
+        return (gzstreambuf*)0;
+    mode = std::ios::in;
     opened = 1;
     return this;
 }
@@ -187,3 +205,37 @@ std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path)
   return openGzFile(path.string().c_str());
 }
 
+std::unique_ptr<std::istream> openGzDescriptor(int fd)
+{
+  // Windows numbers the stdin of a GUI program started without one -2
+  if (fd < 0)
+    return nullptr;
+
+  // gzclose() closes the descriptor gzdopen() was given, so it gets a
+  // duplicate. On Windows that one reads in binary mode: text mode turns CR LF
+  // into LF and ends at the first ^Z, which corrupts compressed data. The mode
+  // belongs to the descriptor, so the caller's stays as it was.
+#ifdef _WIN32
+  const int own = _dup(fd);
+  if (own < 0)
+    return nullptr;
+  _setmode(own, _O_BINARY);
+#else
+  const int own = dup(fd);
+  if (own < 0)
+    return nullptr;
+#endif
+
+  auto gz = std::make_unique<igzstream>();
+  if (!gz->rdbuf()->open(own))
+  {
+#ifdef _WIN32
+    _close(own);
+#else
+    close(own);
+#endif
+    return nullptr;
+  }
+
+  return gz;
+}
