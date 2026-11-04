@@ -1,0 +1,54 @@
+name: PR base changed
+
+# A pull request moved to another base (a stack's lower PR merged, or a
+# manual retarget) needs Build and Release again: its gates depend on the
+# base -- a PR that moves to master must run the sanitizers -- and the PR
+# would otherwise keep the checks of its old base, its skipped jobs
+# counting as passed.
+#
+# `edited` is also every edit of the PR's title or description, and the
+# trigger cannot tell them apart. That is why it lives here and not in
+# Build and Release: there, an edit's run skipped every job under the
+# jobs' own names, and a PR's checks show the newest check run of each
+# name, so the skipped ones hid the real run's results for the same commit
+# -- a failure included. Here an edit leaves one skipped check of this
+# workflow's own name.
+#
+# A run started by GITHUB_TOKEN's events does not start other workflows,
+# except by dispatch: so the PR's branch gets a manual run of Build and
+# Release, whose checks land on the PR's head commit under their usual
+# names. A manual run opens every gate (the Qt GUI's jobs on every
+# platform, the sanitizers, the specs) except coverage, which runs for pull
+# requests and master only; it builds the PR's branch, not its merge with
+# the new base. The next push to the PR runs Build and Release as usual.
+on:
+  pull_request:
+    types: [edited]
+
+permissions:
+  actions: write          # gh workflow run
+  contents: read
+
+jobs:
+  rerun:
+    name: Run Build and Release against the new base
+    if: github.event.changes.base
+    runs-on: ubuntu-latest
+    steps:
+    - name: Start Build and Release on the PR's branch
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        OLD_BASE: ${{ github.event.changes.base.ref.from }}
+        NEW_BASE: ${{ github.event.pull_request.base.ref }}
+      run: |
+        echo "Base changed: $OLD_BASE -> $NEW_BASE"
+        # a fork's branch is not this repository's to dispatch on
+        if [ "$HEAD_REPO" != "$REPO" ]; then
+          echo "::error::This PR's branch is in $HEAD_REPO: push to it to run Build and Release against $NEW_BASE"
+          exit 1
+        fi
+        gh workflow run build-and-release.yml --repo "$REPO" --ref "$HEAD_REF"
+        echo "::notice::Build and Release started on $HEAD_REF for the new base $NEW_BASE"
