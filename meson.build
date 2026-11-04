@@ -503,7 +503,7 @@ test_burrtools = executable('test_burrtools',
     'test/test_puzzle_history.cpp',
     'test/test_ps3dloader.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
-    'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,
+    'test/test_curl_abi.cpp', 'test/test_envvars.cpp', 'test/test_stdin.cpp'] + uicore_test_src,
   include_directories: inc,
   link_with: [libburr_core, libburr_uicore],
   link_args: legacy_link_args,
@@ -608,7 +608,7 @@ if not meson.is_cross_build()
     workdir: meson.project_source_root(),
   )
 
-  # the puzzle piped into the solvers, compressed or plain
+  # the solvers reading the puzzle from stdin, piped compressed or plain
   test('cli_stdin',
     find_program('python3'),
     args: [meson.project_source_root() / 'test/cli_stdin.py', burrtxt_exe, burrtxt2_exe, meson.project_source_root()],

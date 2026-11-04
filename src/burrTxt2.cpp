@@ -30,8 +30,10 @@
 #include "tools/envvars.h"
 #include "tools/cliargs.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -48,8 +50,13 @@ using namespace std;
  * a wrong command line would only scroll the usage away with. */
 void usage(bool full = false) {
 
-  cout << "burrTxt2 [options] file [options]\n\n";
-  cout << "  file: puzzle file with the puzzle definition to solve\n\n";
+  cout << "burrTxt2 [options] [file] [options]\n\n";
+  cout << "  file: puzzle file with the puzzle definition to solve, compressed or\n";
+  cout << "        not; \"-\" or no file at all reads it from standard input\n";
+  cout << "        The result goes into the file's name with \"ttt\" added, for\n";
+  cout << "        standard input into stdin.xmpuzzlettt in the current directory.\n";
+  cout << "        Input on standard input stops the solver, unless the puzzle came\n";
+  cout << "        through there.\n\n";
   cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
   cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
@@ -64,8 +71,16 @@ void usage(bool full = false) {
 }
 
 
-bool checkInput(void)
+/* Waits a second for the solver, and says whether the user asked to stop it by
+ * giving input. A stdin the puzzle came through can not say that: it stays at
+ * its end, which reads as ready for ever. */
+bool checkInput(bool fromStdin)
 {
+  if (fromStdin) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    return false;
+  }
+
   /* Initialize the file descriptor set. */
   fd_set set;
   FD_ZERO (&set);
@@ -142,18 +157,39 @@ static int solve(int argv, char* args[]) {
       filenumber = i;
   }
 
-  if (filenumber == 0) {
+  const char * file = filenumber ? args[filenumber] : nullptr;
+  const bool fromStdin = btcli::solverReadsStdin(file);
+
+  if (!file && !fromStdin) {
     usage();
     return 1;
   }
 
-  auto str = openGzFile(args[filenumber]);
+  std::string stdinError;
+  auto str = fromStdin ? btcli::openStdin(stdinError) : openGzFile(file);
+
   if (!str) {
-    cout << "could not open input file \"" << args[filenumber] << "\"\n";
+    if (fromStdin) {
+      cout << stdinError << "\n\n";
+      usage();
+      return 1;
+    }
+    cout << "could not open input file \"" << file << "\"\n";
     return 2;
   }
-  xmlParser_c pars(*str);
-  puzzle_c p(pars);
+
+  std::unique_ptr<puzzle_c> loaded;
+
+  try {
+    xmlParser_c pars(*str);
+    loaded = std::make_unique<puzzle_c>(pars);
+  }
+  catch (const xmlParserException_c & e) {
+    cout << "could not load the puzzle: " << e.what() << "\n";
+    return 2;
+  }
+
+  puzzle_c & p = *loaded;
 
   if (firstProblem < 0 || (unsigned int)firstProblem >= p.getNumberOfProblems()) {
     cout << "the file has " << p.getNumberOfProblems() << " problem(s), there is no problem "
@@ -179,7 +215,7 @@ static int solve(int argv, char* args[]) {
     return 2;
   }
 
-  std::string outname = args[filenumber];
+  std::string outname = fromStdin ? "stdin.xmpuzzle" : file;
   outname += "ttt";
   cout << "outputting into " << outname << std::endl;
 
@@ -227,7 +263,7 @@ static int solve(int argv, char* args[]) {
 
     while (!assmThread.stopped()) {
 
-      if (checkInput()) {
+      if (checkInput(fromStdin)) {
         cout << "abborting \n";
         assmThread.stop();
 
