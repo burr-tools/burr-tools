@@ -80,6 +80,7 @@ private slots:
   void dimmingShowsInTheViewInEveryStyle();
   void theCardShowsItsCanvas();
   void hoverPicksAtMostOnceAFrame();
+  void theFramesRepeatedHoverAsksTheKeyboard();
 };
 
 /* The pipeline caches of the main window and the offscreen renderer. */

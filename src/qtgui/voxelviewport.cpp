@@ -160,8 +160,14 @@ void VoxelViewport::hoverEnterEvent(QHoverEvent * e) {
 }
 
 void VoxelViewport::hoverMoveEvent(QHoverEvent * e) {
+  /* Qt Quick repeats the hover at a still pointer after a frame that
+   * changed items, with QGuiApplication::keyboardModifiers(); on Windows a
+   * modifier's own release leaves that holding it, so the repeat would put
+   * the quick tool the release just took off back on (the Edit button lit
+   * until the pointer moved). A hover where the last one was asks the keyboard. */
+  const bool still = e->position() == m_hover;
   m_hover = e->position();
-  m_hoverMods = e->modifiers();
+  m_hoverMods = still ? QGuiApplication::queryKeyboardModifiers() : e->modifiers();
   m_hoverPending = true;
   polish();                    // picked once, before the next frame
 }

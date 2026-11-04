@@ -1174,6 +1174,32 @@ void TestEditor::theGridByKeyboard() {
   QCOMPARE(f.editor()->hoverCol(), -1);
 }
 
+void TestEditor::theFramesRepeatedHoverAsksTheKeyboard() {
+  // Qt Quick repeats the hover at a still pointer after a frame, with
+  // QGuiApplication::keyboardModifiers(), which on Windows still holds a
+  // modifier just released: the quick tool would come back on until the
+  // pointer moved. A hover where the last one was takes the keyboard's state.
+  if (QGuiApplication::queryKeyboardModifiers() != Qt::NoModifier)
+    QSKIP("a modifier is held on this keyboard");
+  EditorFixture f(4, 4, 2);
+  InputGrid g;
+  g.setSize(QSizeF(400, 400));
+  g.setEditor(f.editor());
+  const QPointF p = g.cellCentre(1, 1);
+  hover(g, QEvent::HoverEnter, p);
+  QHoverEvent held(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p, kErase);
+  g.hoverMoveEvent(&held);                           // a move: the event's keys
+  QCOMPARE(f.editor()->toolInEffect(), EditorController::Erase);
+  QHoverEvent repeat(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p + QPointF(1, 0), kErase);
+  g.hoverMoveEvent(&repeat);                         // the frame's repeat, stale keys
+  QCOMPARE(f.editor()->toolInEffect(), f.editor()->tool());
+  // and the grid's own key release, which carries the released key on Windows
+  f.editor()->setModifiers(kErase);
+  QKeyEvent release(QEvent::KeyRelease, kMac ? Qt::Key_Alt : Qt::Key_Control, kErase);
+  QCoreApplication::sendEvent(&g, &release);
+  QCOMPARE(f.editor()->toolInEffect(), f.editor()->tool());
+}
+
 void TestEditor::theKeysAndThePointerTakeTheHighlightInTurn() {
   // PR 181: with the pointer resting on the grid, the arrows' cell is the
   // one highlighted -- Qt Quick's repeated hover at the still pointer does
