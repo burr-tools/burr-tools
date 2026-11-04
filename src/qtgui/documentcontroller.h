@@ -121,11 +121,12 @@ public:
    * at start-up. Returns whether it loaded.
    */
   bool loadPath(const QString & path);
+  bool loadStdin(void);
 
   /* The puzzle files named on the command line, opened by
    * loadStartupFiles(): Main.qml calls it after the window's first frame,
    * before it makes the workspace. Like legacy, the first that loads wins;
-   * the others are not tried. */
+   * the others are not tried. "-" is the puzzle on standard input. */
   void setStartupFiles(const QStringList & files);
   Q_INVOKABLE void loadStartupFiles(void);
   bool startupFilesPending(void) const { return !m_startupFiles.isEmpty(); }
