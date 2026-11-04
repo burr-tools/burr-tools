@@ -64,9 +64,9 @@ std::unique_ptr<puzzle_c> loadPuzzlerSolver3D(std::istream * str) {
 
         char c;
 
-        s >> sx >> c >> sy >> c >> sz;
-
-        if ((sx > 500) || (sy > 500) || (sz > 500)) {
+        // a size that does not read, or is not 1 ... 500, is no shape
+        if (!(s >> sx >> c >> sy >> c >> sz) || sx < 1 || sy < 1 || sz < 1 ||
+            (sx > 500) || (sy > 500) || (sz > 500)) {
           return nullptr;
         }
 
@@ -87,7 +87,9 @@ std::unique_ptr<puzzle_c> loadPuzzlerSolver3D(std::istream * str) {
 
       for (int z = 0; z < sz; z++)
         for (int x = 0; x < sx; x++) {
-          char c = line[z*(sx+1)+x];
+          // a line may end early (trailing blanks trimmed): what is not there is empty
+          const size_t at = size_t(z)*size_t(sx+1)+size_t(x);
+          char c = at < line.size() ? line[at] : ' ';
           if (c == ',') {
             return nullptr;
           }
@@ -104,8 +106,16 @@ std::unique_ptr<puzzle_c> loadPuzzlerSolver3D(std::istream * str) {
     }
   }
 
+  // a file that ends inside a shape is cut short
+  if (state != 0)
+    return nullptr;
+
   // find mark and remove duplicate shapes from problem
   unsigned s = pr->getNumberOfParts();
+
+  // no piece: not a PuzzleSolver3D file (and s-1 below would wrap)
+  if (s == 0)
+    return nullptr;
 
   for (unsigned int s1 = 0; s1 < s-1; s1++)
     for (unsigned int s2 = s1+1; s2 < s; s2++)

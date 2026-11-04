@@ -83,8 +83,19 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_layout = new LayoutController(m_settings, this);
   m_status = new StatusController(this);
   m_shapes = new ShapesModel(m_document, this);
-  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, this);
-  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, this);
+  m_colours = new ColoursModel(m_document, m_shapes, this);
+  m_editor = new EditorController(m_document, m_shapes, m_colours, m_status, this);
+  // Area mode is remembered, as legacy's "rubberband" is
+  m_editor->setAreaMode(m_settings->areaMode());
+  connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
+  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, this);
+  m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
+  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, this);
+  connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
+  connect(m_colours, &ColoursModel::flashRequested, m_status, &StatusController::flash);
+  connect(m_editor, &EditorController::flashRequested, m_status, &StatusController::flash);
+  connect(m_inspector, &InspectorController::flashRequested, m_status, &StatusController::flash);
+  connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
@@ -103,6 +114,12 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_updates = new UpdateController(m_settings, this);
   connect(m_commands, &CommandController::checkForUpdatesRequested, m_updates, &UpdateController::checkNow);
   m_popupStyle = new PopupWindowStyle(this);
+  m_nativeDialogs = new NativeDialogs(this);
+  // the system's "save changes?" answers (Windows) as the shell's dialog's do
+  static_assert(int(NativeDialogs::Save) == int(DocumentController::Save) &&
+                int(NativeDialogs::Discard) == int(DocumentController::Discard) &&
+                int(NativeDialogs::Cancel) == int(DocumentController::Cancel));
+  connect(m_nativeDialogs, &NativeDialogs::answered, m_document, &DocumentController::resolveDiscard);
 
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
   connect(m_settings, &SettingsController::changed, this, [this] {
@@ -113,7 +130,10 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_shapes, &ShapesModel::countChanged, this, &App::updateStatusText);
   connect(m_document, &DocumentController::documentReplaced, this, &App::updateStatusText);
   connect(m_document, &DocumentController::historyApplied, this, &App::updateStatusText);
-  connect(m_document, &DocumentController::puzzleEdited, this, &App::updateStatusText);
+  connect(m_document, &DocumentController::puzzleEdited, this, [this](int, DocumentController::Change c) {
+    if (c != DocumentController::Change::Label && c != DocumentController::Change::Palette)
+      updateStatusText();
+  });
   connect(m_layout, &LayoutController::changed, this, &App::updateStatusText);
   updateStatusText();
 }

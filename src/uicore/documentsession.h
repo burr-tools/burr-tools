@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 
 class puzzle_c;
 
@@ -122,6 +123,7 @@ namespace btui {
        * exception goes on. Returns what f returned.
        */
       template <class F> bool edit(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape, F && f) {
+        endStroke();
         bool changed;
         try {
           changed = f(*puz);
@@ -141,9 +143,41 @@ namespace btui {
         markModified();
       }
 
+      /* A stroke: a drag that paints (C08), one undo step however many
+       * changes it makes. Between beginStroke() and endStroke(), strokeEdit(f)
+       * changes the puzzle as edit() does, without a step of its own; the
+       * stroke is recorded at its end if any of them changed anything. An
+       * edit(), undo, redo or another document ends an open stroke first, so
+       * what it painted so far is a step of its own and is never lost. A
+       * save during a stroke splits it there: the part saved is one step, the
+       * rest of the drag the next, so an undo back to the save reads clean.
+       * Outside a stroke, strokeEdit() is an edit() of the stroke kind.
+       */
+      void beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);
+      template <class F> bool strokeEdit(F && f) {
+        if (!stroking)
+          return edit(strokeKind, strokeShape, std::forward<F>(f));
+        bool changed;
+        try {
+          changed = f(*puz);
+        } catch (...) {
+          hist->markStrokeDirty();
+          throw;
+        }
+        if (changed)
+          hist->markStrokeDirty();
+        return changed;
+      }
+      /* true when the stroke changed the puzzle (an undo step was recorded) */
+      bool endStroke(void);
+      bool inStroke(void) const { return stroking; }
+
       void setUndoDepth(unsigned int depth);
 
     private:
+
+      /* an open stroke so far as one undo step, the stroke going on (a save) */
+      void splitStroke(void);
 
       /* the current state as one undo step */
       void record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);
@@ -153,6 +187,9 @@ namespace btui {
       std::unique_ptr<puzzle_c> puz;
       std::unique_ptr<puzzleHistory_c> hist;
       std::filesystem::path fname;
+      bool stroking = false;
+      puzzleHistory_c::actionKind_e strokeKind = puzzleHistory_c::AK_ENTITIES_GRID_PAINT;
+      unsigned int strokeShape = puzzleHistory_c::NO_SHAPE;
   };
 }
 

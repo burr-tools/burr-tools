@@ -30,14 +30,27 @@
 /* The 3D view's surface (spec C06 "canvas"): a QQuickRhiItem that draws the
  * controller's frame with SceneRenderer and passes pointer input on in dp.
  *
- * It never takes keyboard focus -- pressing in the 3D view must not pull
- * focus out of the Solver's lists (C20 sticky focus).
+ * A press never takes keyboard focus -- it must not pull focus out of the
+ * Solver's lists (C20 sticky focus); Tab reaches it where the QML lets it
+ * (the main view: its keys, WCAG 2.1.1).
+ *
+ * Over it without a button the pointer and the modifiers held go to the
+ * controller (pointerHover), which the main view edits from (C06): the
+ * modifiers also when only they change, so a quick tool's cursor and ghost
+ * appear the moment its key goes down (AC-C06-08) -- at most once a frame:
+ * the latest pointer and modifiers are kept and picked in updatePolish()
+ * (the Qt Quick guide's section 7). The cursor is the edit tool's while a
+ * click would edit, the grab hand while dragging.
  */
 class VoxelViewport : public QQuickRhiItem {
   Q_OBJECT
   QML_ELEMENT
 
   Q_PROPERTY(SceneController * controller READ controller WRITE setController NOTIFY controllerChanged FINAL)
+  /* QQuickItem's activeFocusOnTab, which Qt 6.8 does not let QML set on a
+   * type of ours ("not available in BurrTools.Ui 255.255": a property
+   * revision the module's types do not take up) */
+  Q_PROPERTY(bool tabStop READ activeFocusOnTab WRITE setActiveFocusOnTab NOTIFY activeFocusOnTabChanged FINAL)
 
 public:
 
@@ -74,11 +87,25 @@ protected:
   void mouseReleaseEvent(QMouseEvent * e) override;
   void mouseUngrabEvent(void) override;
   void wheelEvent(QWheelEvent * e) override;
+  void hoverEnterEvent(QHoverEvent * e) override;
+  void hoverMoveEvent(QHoverEvent * e) override;
+  void hoverLeaveEvent(QHoverEvent * e) override;
+  bool eventFilter(QObject * watched, QEvent * e) override;
+  void updatePolish(void) override;
+  /* a move to a screen of another scale composes the edit cursor again */
+  void itemChange(ItemChange change, const ItemChangeData & value) override;
 
 private:
 
+  void updateCursor(void);
+
   QPointer<SceneController> m_controller;
   QMetaObject::Connection m_frameConnection;
+  QPointF m_hover{ -1, -1 };       ///< the pointer, while over the item
+  Qt::KeyboardModifiers m_hoverMods;
+  bool m_hoverPending = false;     ///< a hover to pick at the next polish
+  bool m_filtering = false;        ///< watching the modifier keys
+  quint64 m_cursorKey = 0;         ///< the cursor set (updateCursor): none, the tool, or a grab hand; 0 before any
   QList<int> m_supported;          ///< the device's sample counts; empty until known
 };
 

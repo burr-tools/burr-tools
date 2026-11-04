@@ -250,7 +250,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -331,7 +331,10 @@ jobs:
   # qt-macos, coverage-qt and the Qt suites in sanitizers -- run for pushes,
   # tags and manual runs, and for a pull request only when it touches the
   # Qt GUI or what it is built from besides the library (src/qtgui,
-  # src/uicore, test/qtgui, the build files). A Windows- or macOS-only
+  # src/uicore, test/qtgui, the build files). qt-macos runs for a library
+  # change too (core, below): macOS is the one Clang build of the Qt GUI,
+  # with its own frameworks and arm64, where a library change can break
+  # what Linux and Windows (both GCC, x86-64) do not see. A Windows-only
   # break from anything else is thus caught on master itself.
   #
   # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
@@ -354,6 +357,7 @@ jobs:
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
       qt: ${{ steps.qt.outputs.build }}
+      qt_macos: ${{ steps.qt.outputs.macos }}
       core: ${{ steps.core.outputs.test }}
       into_default: ${{ steps.qt.outputs.into_default }}
     steps:
@@ -410,6 +414,7 @@ jobs:
         PR: ${{ github.event.pull_request.number }}
         DEFAULT: ${{ github.event.repository.default_branch }}
         CHANGED: ${{ steps.filter.outputs.qt }}
+        CORE_CHANGED: ${{ steps.filter.outputs.core }}
         GH_TOKEN: ${{ github.token }}
       run: |
         BASE=
@@ -424,8 +429,20 @@ jobs:
         if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "build=true" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
           echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
+        # qt-macos: also for a library change
+        if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ] || [ "$CORE_CHANGED" = true ]; then
+          echo "macos=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "macos=false" >> "$GITHUB_OUTPUT"
+        fi
+        if [ "$EVENT" = pull_request ] && [ "$CHANGED" != true ]; then
+          if [ "$CORE_CHANGED" = true ]; then
+            echo "::notice::Qt GUI built on Linux and macOS only: this PR touches the library but no Qt GUI paths"
+          else
+            echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
+          fi
         fi
     - name: Decide whether test_burrtools's own jobs run
       id: core
@@ -569,7 +586,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -1020,7 +1037,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ninja-build build-essential cmake libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 imagemagick
         pip install --user "meson>=1.7"
 
@@ -1218,7 +1235,8 @@ jobs:
   qt-macos:
     name: Qt GUI (macOS)
     needs: changes
-    if: needs.changes.outputs.qt == 'true'
+    # the Qt paths, or the library's (the changes job says why)
+    if: needs.changes.outputs.qt_macos == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -1255,8 +1273,23 @@ jobs:
 
     # The render tests try Metal and skip where the runner offers none (not
     # yet known for these VMs; the test log says which backend was used).
+    # The gallery's reference images exist for macOS
+    # (test/qtgui/snapshots/macos), so a missing one fails too.
     - name: Test
+      env:
+        BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
       run: meson test -C build-qt --suite fast --print-errorlogs
+
+    # The suites run offscreen, where AppKit draws no NSCursor image and the
+    # system-arrow test skips: run it once on the window server, so
+    # systempointer_mac.mm is exercised, not only compiled. The other test
+    # classes report the function as not found, so the exit status says
+    # nothing: TestEditor's own line does.
+    - name: The system's arrow (cocoa)
+      run: |
+        ./build-qt/test/qtgui/test_qtgui -platform cocoa theCursorsDrawOnTheSystemsArrow > "$RUNNER_TEMP/arrow.txt" 2>&1 || true
+        grep 'TestEditor::' "$RUNNER_TEMP/arrow.txt"
+        grep -q 'PASS   : TestEditor::theCursorsDrawOnTheSystemsArrow()' "$RUNNER_TEMP/arrow.txt"
 
     - name: Upload the test log
       if: failure()
@@ -1266,9 +1299,9 @@ jobs:
         path: build-qt/meson-logs/testlog.txt
         if-no-files-found: ignore
 
-    # no macOS reference images yet: the grabs, to commit as snapshots/macos
-    - name: Upload gallery grabs
-      if: always()
+    # grabs that did not match their reference, with the reference and a diff
+    - name: Upload gallery differences
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: gallery-snapshots-macos

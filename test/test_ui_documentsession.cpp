@@ -76,6 +76,13 @@ TEST_CASE("a failed load leaves the current document alone", "[ui][document]") {
   CHECK_FALSE(bad.ok);
   CHECK(bad.error.starts_with("load error: "));
   CHECK(d.puzzle().getNumberOfShapes() == shapes);
+
+  // a folder is there but is no file: refused, nothing changed
+  auto folder = d.load("examples");
+  CHECK_FALSE(folder.ok);
+  CHECK_FALSE(folder.error.empty());
+  CHECK(d.puzzle().getNumberOfShapes() == shapes);
+  CHECK(d.fileName() == std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
 }
 
 TEST_CASE("saveAs appends the extension, adopts the name and round-trips", "[ui][document]") {
@@ -270,4 +277,122 @@ TEST_CASE("an imported PuzzleSolver3D file is unsaved and has no file name", "[u
   // Save must ask where: it may not write xmpuzzle over the source file
   CHECK(d.fileName().empty());
   CHECK_FALSE(d.save());
+}
+
+namespace {
+  /* fill voxel x of shape 0 */
+  auto fill(unsigned x) {
+    return [x](puzzle_c & p) {
+      if (p.getShape(0)->getState(x, 0, 0) == voxel_c::VX_FILLED)
+        return false;
+      p.getShape(0)->setState(x, 0, 0, voxel_c::VX_FILLED);
+      return true;
+    };
+  }
+
+  void oneShape(DocumentSession & d) {
+    d.edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0, [](puzzle_c & p) { p.addShape(5, 1, 1); return true; });
+  }
+}
+
+TEST_CASE("a stroke is one undo step however many cells it paints", "[ui][document]") {
+  // AC-C08-05
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  CHECK(d.inStroke());
+  for (unsigned x = 0; x < 5; x++)
+    CHECK(d.strokeEdit(fill(x)));
+  CHECK_FALSE(d.strokeEdit(fill(2)));
+  CHECK(d.endStroke());
+  CHECK_FALSE(d.inStroke());
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 5);
+  auto r = d.undo();
+  CHECK(r.selectedShape == 0);
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
+  d.redo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 5);
+}
+
+TEST_CASE("a stroke that changes nothing leaves no step, and two strokes are two steps", "[ui][document]") {
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  CHECK_FALSE(d.endStroke());
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.strokeEdit(fill(0));
+  d.endStroke();
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);   // at once: not merged
+  d.strokeEdit(fill(1));
+  d.endStroke();
+  d.undo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 1);
+}
+
+TEST_CASE("an undo, an edit or another document during a stroke ends it first", "[ui][document]") {
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.strokeEdit(fill(0));
+  d.undo();                       // the stroke so far was a step: undoing it
+  CHECK_FALSE(d.inStroke());
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
+  d.redo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 1);
+
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.strokeEdit(fill(1));
+  d.edit(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0, fill(2));
+  CHECK_FALSE(d.inStroke());
+  d.undo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 2);
+
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.newDocument(gridType_c::GT_BRICKS);
+  CHECK_FALSE(d.inStroke());
+  CHECK_FALSE(d.endStroke());
+  CHECK_FALSE(d.canUndo());
+}
+
+TEST_CASE("a save during a stroke splits it: an undo back to the save reads clean", "[ui][document]") {
+  TempDir t;
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  d.strokeEdit(fill(0));
+  d.strokeEdit(fill(1));
+  REQUIRE(d.saveAs(t.path / "mid"));
+  CHECK(d.inStroke());
+  CHECK_FALSE(d.isModified());
+  d.strokeEdit(fill(2));
+  CHECK(d.endStroke());
+  CHECK(d.isModified());
+  d.undo();                       // the rest of the drag
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 2);
+  CHECK_FALSE(d.isModified());    // the file holds just this
+  d.undo();                       // the part before the save
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
+  CHECK(d.isModified());
+}
+
+TEST_CASE("strokeEdit outside a stroke is an edit of its own", "[ui][document]") {
+  DocumentSession d;
+  oneShape(d);
+  CHECK(d.strokeEdit(fill(0)));
+  CHECK(d.isModified());
+  d.undo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
+}
+
+TEST_CASE("a stroke that throws is still recorded, so undo reaches the state before it", "[ui][document]") {
+  DocumentSession d;
+  oneShape(d);
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, 0);
+  CHECK_THROWS(d.strokeEdit([](puzzle_c & p) -> bool {
+    p.getShape(0)->setState(0, 0, 0, voxel_c::VX_FILLED);
+    throw std::runtime_error("half way");
+  }));
+  CHECK(d.endStroke());
+  d.undo();
+  CHECK(d.puzzle().getShape(0)->countState(voxel_c::VX_FILLED) == 0);
 }

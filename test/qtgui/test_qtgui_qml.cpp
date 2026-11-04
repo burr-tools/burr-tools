@@ -10,6 +10,8 @@
 #include <QQmlEngine>
 #include <QQuickStyle>
 #include <QGuiApplication>
+#include <QFont>
+#include <QFontInfo>
 #include <QStyleHints>
 #include <QFile>
 #include <QTemporaryDir>
@@ -35,6 +37,11 @@ public slots:
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     // a steady text cursor: a blinking one would make reference images flaky
     QGuiApplication::styleHints()->setCursorFlashTime(0);
+    /* the font database's aliases filled now, outside every test: a family
+     * no system has (the offscreen platform's "Sans Serif") makes Qt build
+     * them on first use and, slow, warn that it did -- which a test's
+     * failOnWarning would take for its own (macOS CI) */
+    QFontInfo(QFont(QStringLiteral("Sans Serif"))).family();
     qmlRegisterSingletonInstance("BurrTools.Test", 1, 0, "Snapshots", &m_snapshots);
     m_app = std::make_unique<App>(m_dir.filePath(QStringLiteral("settings.rc")),
                                   m_dir.filePath(QStringLiteral("legacy.rc")));
@@ -42,6 +49,7 @@ public slots:
 
   void qmlEngineAvailable(QQmlEngine * engine) {
     engine->addImageProvider(QStringLiteral("icon"), new IconProvider);
+    engine->addImageProvider(QStringLiteral("editglyph"), new EditGlyphProvider);
   }
 
 private:

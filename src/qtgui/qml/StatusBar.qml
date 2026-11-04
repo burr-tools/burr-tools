@@ -40,7 +40,7 @@ Rectangle {
         textFormat: Text.StyledText
         text: App.status.text.replace(/<b>/g, "<b><font color='" + Theme.text + "'>").replace(/<\/b>/g, "</font></b>")
         color: Theme.muted
-        font.pixelSize: Theme.fontSecondary
+        font.pixelSize: Math.round(Theme.statusBarFont)    // 11.5 at 12 (Qt < 6.12 truncates)
         elide: Text.ElideRight
     }
     Text { // ②
@@ -49,6 +49,6 @@ Rectangle {
         anchors { right: parent.right; rightMargin: 14; verticalCenter: parent.verticalCenter }
         text: App.status.cursorText
         color: Theme.muted
-        font.pixelSize: Theme.fontSecondary
+        font.pixelSize: Math.round(Theme.statusBarFont)    // 11.5 at 12 (Qt < 6.12 truncates)
     }
 }
