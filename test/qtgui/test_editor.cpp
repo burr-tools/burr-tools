@@ -909,8 +909,8 @@ void TestEditor::theCursorsDrawOnTheSystemsArrow() {
 
 void TestEditor::theEditButtonShowsTheCursorsDrawing() {
   // C06 "The Edit button": the same drawing as the cursor, its badge or
-  // drop in the drawing colour (Default: the theme's contrast), cropped to
-  // fill the button's square; served as image://editglyph/<tool>?color=&dark=
+  // drop in the drawing colour (Default: the theme's contrast); served as
+  // image://editglyph/<tool>?color=&dark=&ink=
   auto count = [](const QImage & img, auto pred) {
     int n = 0;
     for (int y = 0; y < img.height(); y++)
@@ -920,12 +920,34 @@ void TestEditor::theEditButtonShowsTheCursorsDrawing() {
   };
   auto red = [](QColor c) { return c.alpha() > 200 && c.red() > 180 && c.green() < 90 && c.blue() < 90; };
   auto any = [](QColor c) { return c.alpha() > 8; };
+  /* a drawing's line weight in pixels: its inked area over half its edge,
+   * as a line of width w and length l has area w*l and edge 2*l */
+  auto weight = [](const QImage & img) {
+    auto inked = [&](int x, int y) {
+      return x >= 0 && y >= 0 && x < img.width() && y < img.height() && img.pixelColor(x, y).alpha() > 127;
+    };
+    int area = 0, edge = 0;
+    for (int y = 0; y < img.height(); y++)
+      for (int x = 0; x < img.width(); x++)
+        if (inked(x, y)) {
+          area++;
+          edge += !inked(x - 1, y) || !inked(x + 1, y) || !inked(x, y - 1) || !inked(x, y + 1);
+        }
+    return edge ? 2.0 * area / edge : 0.0;
+  };
+  IconProvider icons;
+  double lightest = 1e9, heaviest = 0;
+  for (const char * name : { "eye", "pan", "orbit", "fit" }) {
+    QSize s;
+    const double w = weight(icons.requestImage(QString::fromLatin1(name) + QStringLiteral("?color=000000"), &s, QSize(80, 80)));
+    lightest = std::min(lightest, w);
+    heaviest = std::max(heaviest, w);
+  }
   for (const btui::Tool tool : { btui::Tool::Fixed, btui::Tool::Variable, btui::Tool::Erase, btui::Tool::Paint }) {
     const QImage plain = editcursor::glyph(tool, QColor(), false, 44);
     QCOMPARE(plain.size(), QSize(44, 44));
     QVERIFY(count(plain, any) > 100);
     QCOMPARE(count(plain, red), 0);
-    // fitted: it reaches two opposite edges of the square, not the 32 px cursor's corner
     const QImage img = editcursor::glyph(tool, QColor(220, 30, 30), false, 44);
     bool left = false, right = false, top = false, bottom = false;
     for (int i = 0; i < 44; i++) {
@@ -934,7 +956,21 @@ void TestEditor::theEditButtonShowsTheCursorsDrawing() {
       top |= img.pixelColor(i, 0).alpha() > 8;
       bottom |= img.pixelColor(i, 43).alpha() > 8;
     }
-    QVERIFY((left && right) || (top && bottom));
+    if (tool == btui::Tool::Fixed || tool == btui::Tool::Variable) {
+      // fitted: it reaches two opposite edges of the square, not the 32 px cursor's corner
+      QVERIFY((left && right) || (top && bottom));
+    } else {
+      /* the eraser and the bucket are drawn as the toolbar's icons are: 20 of
+       * 22 px, lines as heavy as theirs (they were the cursor's drawing
+       * blown up to the square, twice as heavy), in the button's tint */
+      QVERIFY(!left && !right && !top && !bottom);
+      const double w = weight(editcursor::glyph(tool, QColor(), false, 88));
+      QVERIFY2(w > lightest * 0.8 && w < heaviest * 1.25,
+               qPrintable(QStringLiteral("%1: %2 px, the icons %3..%4").arg(int(tool)).arg(w).arg(lightest).arg(heaviest)));
+      const QImage tinted = editcursor::glyph(tool, QColor(), false, 44, QColor(220, 30, 30));
+      QVERIFY(count(tinted, red) > 40);
+      QCOMPARE(count(tinted, [&](QColor c) { return c.alpha() > 200 && !red(c); }), 0);
+    }
     if (tool != btui::Tool::Erase)                    // the eraser has no colour of its own
       QVERIFY2(count(img, red) > 4, qPrintable(QString::number(int(tool))));
   }
@@ -945,6 +981,9 @@ void TestEditor::theEditButtonShowsTheCursorsDrawing() {
   QCOMPARE(size, QSize(40, 40));
   QVERIFY(count(served, red) > 4);
   QCOMPARE(served, editcursor::glyph(btui::Tool::Paint, QColor(0xdc, 0x1e, 0x1e), false, 40));
+  // and the button's tint, which the eraser's and the bucket's lines take
+  QCOMPARE(provider.requestImage(QStringLiteral("2?color=&dark=0&ink=dc1e1e"), &size, QSize(40, 40)),
+           editcursor::glyph(btui::Tool::Erase, QColor(), false, 40, QColor(0xdc, 0x1e, 0x1e)));
   QVERIFY(provider.requestImage(QStringLiteral("0?color=&dark=1"), &size, QSize(40, 40))
           != provider.requestImage(QStringLiteral("0?color=&dark=0"), &size, QSize(40, 40)));
 }

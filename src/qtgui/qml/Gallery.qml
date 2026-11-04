@@ -271,7 +271,7 @@ ApplicationWindow {
                     Cell { kind: "hover"; ToolbarButton { iconName: "orbit"; caption: "Orbit" } }
                     Cell { kind: "on"; ToolbarButton { iconName: "pan"; caption: "Pan"; on: true } }
                     Cell { kind: "focus"; ToolbarButton { iconName: "orbit"; caption: "Orbit" } }
-                    Cell { kind: "disabled"; ToolbarButton { glyphName: "edit-tool-fixed"; caption: "Edit"; badge: "1"; enabled: false } }
+                    Cell { kind: "disabled"; ToolbarButton { glyphName: "edit-tool-fixed"; caption: "Edit"; enabled: false } }
                     Cell { kind: "compact"; ToolbarButton { iconName: "eye"; caption: "Display"; compact: true } }
                 }
                 GalleryRow {

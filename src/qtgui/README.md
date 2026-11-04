@@ -404,6 +404,13 @@ the network.
 - **The Edit button's override** (P5, product decision 2026-10-27): a
   quick tool held over the view lights the button as Edit mode does (the
   glyph and badge the quick tool's), not with C06's dashed outline.
+- **The Edit button's number badge and icon weight** (product decision
+  2026-11-04): no 1–4 badge (C06, AC-C06-09); it overlapped the icon in
+  Minimal, and the drawing already names the tool, the tooltip its number.
+  Erase and Paint are their cursor drawings redrawn on the UI icons' grid
+  (24 units, 1.8 strokes) in the button's tint, the drop in the drawing
+  colour: the cursor's drawing cropped to fill the button drew its lines
+  twice as heavy as the toolbar's other icons.
 - **The view's keys** (P5): Alt+1 … 6 for the cube's faces, Ctrl+arrows
   for its turns (Option on macOS); the spec asks for them without naming keys.
 - **Inspector** (P6, product decisions 2026-10-28): **Fit & scale follows

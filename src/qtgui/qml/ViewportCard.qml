@@ -250,12 +250,15 @@ Rectangle {
                 readonly property int toolNo: App.editor.toolInEffect + 1
                 toggle: true
                 // the cursor's own drawing, its badge or drop in the drawing colour
-                // (Default: the theme's contrast), as the 3D cursor is (C06)
+                // (Default: the theme's contrast), as the 3D cursor is (C06); the
+                // eraser's and the bucket's lines in the button's tint, as its
+                // other icons. No number badge (product decision 2026-11-04):
+                // the drawing names the tool, the tooltip its number.
                 glyphSource: "image://editglyph/" + App.editor.toolInEffect
                              + "?color=" + (App.colours.drawColour > 0 ? App.colours.drawRgb.toString().replace("#", "").slice(-6) : "")
                              + "&dark=" + (Theme.dark ? 1 : 0)
+                             + "&ink=" + tint.toString().replace("#", "").slice(-6)
                 caption: qsTr("Edit")
-                badge: String(toolNo)
                 // C06 Edit button: on in Edit mode; override while a quick tool is held
                 on: App.editor.editMode
                 override: App.editor.quickHeld3d

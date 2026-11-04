@@ -136,6 +136,8 @@
   <file>cursors/arrow-fallback.svg</file>
   <file>cursors/badge-fixed.template.svg</file>
   <file>cursors/badge-variable.template.svg</file>
+  <file>cursors/button-erase.template.svg</file>
+  <file>cursors/button-paint.template.svg</file>
   <file>cursors/icon-cursor-erase.template.svg</file>
   <file>cursors/icon-cursor-paint.template.svg</file>
 </qresource>

@@ -15,12 +15,13 @@ AbstractButton {
     property bool on: false
     property bool toggle: false     // `on` is a state (a mode, a menu open): checked to assistive tech
     property bool compact: false
-    property string badge            // the Edit button's tool number
     /* a momentary state (the Edit button while a quick tool is held, C06):
      * drawn as `on` (product decision 2026-10-27, not C06's dashed outline);
-     * the button's glyph and badge show the quick tool */
+     * the button's glyph shows the quick tool */
     property bool override: false
     readonly property bool lit: on || override
+    // the icon's and the caption's tint; a glyphSource drawn in lines takes it too
+    readonly property color tint: lit ? Theme.accent : (hovered ? Theme.text : Theme.muted)
     /* the focus ring for a toolbar that holds the focus for its buttons
      * (one roving Tab stop, overview/04 section 5) */
     property bool ring: false
@@ -63,7 +64,7 @@ AbstractButton {
                     anchors.centerIn: parent
                     name: root.iconName
                     size: 20
-                    color: root.lit ? Theme.accent : (root.hovered ? Theme.text : Theme.muted)
+                    color: root.tint
                 }
                 Glyph {
                     visible: root.glyphName.length > 0
@@ -86,18 +87,10 @@ AbstractButton {
                 visible: !root.compact
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: root.caption
-                color: root.lit ? Theme.accent : (root.hovered ? Theme.text : Theme.muted)
+                color: root.tint
                 font.pixelSize: Theme.fontCaption
                 font.weight: Font.DemiBold
             }
-        }
-        Text {
-            visible: root.badge.length > 0
-            anchors { top: parent.top; right: parent.right; topMargin: 2; rightMargin: 4 }
-            text: root.badge
-            color: root.lit ? Theme.accent : Theme.muted
-            font.pixelSize: Theme.fontKeyBadge
-            font.weight: Font.Bold
         }
     }
     opacity: enabled ? 1 : 0.4
