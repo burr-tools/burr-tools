@@ -25,6 +25,7 @@
 #include "../lib/ps3dloader.h"
 #include "../lib/puzzle.h"
 
+#include "../tools/cliargs.h"
 #include "../tools/fileexists.h"
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
@@ -71,10 +72,34 @@ namespace btui {
       return r;
     }
 
+    return read(*str, file);
+  }
+
+  DocumentSession::LoadResult DocumentSession::loadUnnamed(std::istream & in) {
+    LoadResult r = read(in, {});
+    if (r.ok)
+      hist->markModified();
+    return r;
+  }
+
+  DocumentSession::LoadResult DocumentSession::loadStdin(void) {
+
+    LoadResult r;
+
+    auto str = btcli::openStdin(r.error);
+    if (!str)
+      return r;
+
+    return loadUnnamed(*str);
+  }
+
+  DocumentSession::LoadResult DocumentSession::read(std::istream & in, const std::filesystem::path & name) {
+
+    LoadResult r;
     std::unique_ptr<puzzle_c> np;
 
     try {
-      xmlParser_c pars(*str);
+      xmlParser_c pars(in);
       np = std::make_unique<puzzle_c>(pars);
     }
     catch (xmlParserException_c & e) {
@@ -89,7 +114,7 @@ namespace btui {
     r.showComment = np->getCommentPopup();
 
     adopt(std::move(np));
-    fname = file;
+    fname = name;
     r.ok = true;
     return r;
   }

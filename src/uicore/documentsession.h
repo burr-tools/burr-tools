@@ -27,6 +27,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <iosfwd>
 #include <string>
 
 class puzzle_c;
@@ -74,6 +75,15 @@ namespace btui {
 
       /* Load a BurrTools file. On failure the current document is untouched. */
       LoadResult load(const std::filesystem::path & file);
+
+      /* Load a BurrTools puzzle from a stream; on failure the current document
+       * is untouched. No file stands behind it, so it becomes the document
+       * unsaved and without a file name, and the first Save asks where.
+       */
+      LoadResult loadUnnamed(std::istream & in);
+
+      /* The same from standard input: the file name "-" on a command line. */
+      LoadResult loadStdin(void);
 
       /* Import a PuzzleSolver3D file; it becomes the document, unsaved and
        * without a file name, so the first Save asks where. (Legacy kept the
@@ -149,6 +159,7 @@ namespace btui {
       void record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);
 
       void adopt(std::unique_ptr<puzzle_c> p);
+      LoadResult read(std::istream & in, const std::filesystem::path & name);
 
       std::unique_ptr<puzzle_c> puz;
       std::unique_ptr<puzzleHistory_c> hist;

@@ -26,6 +26,7 @@
 #include "Layouter.h"
 #include "solveprogresscache.h"
 
+#include <iosfwd>
 #include <memory>
 #include <string>
 
@@ -224,6 +225,17 @@ class mainWindow_c : public LFl_Double_Window {
    * comes back false, or the user sees two dialogs stacked for one failure.
    */
   bool tryToLoad(const char *fname, bool * reportedError = 0);
+
+  /* Load the puzzle on standard input: the file name "-" on the command line.
+   * It says why when there is none, as asking for it was no accident.
+   */
+  bool tryToLoadStdin(void);
+
+  /* What the two above share. Without a name no file stands behind the puzzle:
+   * it stays unnamed and counts as unsaved, so that the first Save asks where
+   * and closing the window does not silently lose it.
+   */
+  bool loadPuzzle(std::istream & str, const char * name, bool * reportedError);
 
   /* Ask about unsaved changes before an operation that would discard them.
    * Returns false if the caller should abort. 'action' is the verb shown to
