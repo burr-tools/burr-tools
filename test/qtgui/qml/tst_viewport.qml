@@ -226,7 +226,9 @@ TestCase {
         const edit = item("entities.viewport.toolbar.edit")
         verify(!App.editor.editMode)
         verify(edit.tip.indexOf("Press E to turn edit mode on") >= 0)
-        compare(edit.badge, String(App.editor.toolInEffect + 1))
+        // the drawing names the tool; no number badge (product decision 2026-11-04)
+        verify(edit.glyphSource.toString().startsWith("image://editglyph/" + App.editor.toolInEffect + "?"))
+        verify(edit.tip.indexOf("(" + (App.editor.toolInEffect + 1) + ")") >= 0)
         mouseClick(edit)
         verify(App.editor.editMode)
         verify(edit.on)
@@ -236,7 +238,6 @@ TestCase {
         keyClick(Qt.Key_E)
         verify(App.editor.editMode)
         App.editor.tool = EditorController.Erase
-        compare(edit.badge, "3")
         verify(edit.glyphSource.toString().startsWith("image://editglyph/2?"))       // Erase's drawing
         // a palette colour drawn: the icon's badge or drop takes it, as the cursor does
         App.colours.addColour()

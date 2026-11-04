@@ -225,7 +225,6 @@ TestCase {
         keyClick(Qt.Key_4)
         compare(App.editor.tool, EditorController.Paint)
         // the 3D Edit button shows the tool in place (AC-C07-09)
-        compare(item("entities.viewport.toolbar.edit").badge, "4")
         // the cursor's drawing for Paint, in the drawing colour (Default here: none given)
         verify(item("entities.viewport.toolbar.edit").glyphSource.toString().startsWith("image://editglyph/3?color=&"))
         keyClick(Qt.Key_1)

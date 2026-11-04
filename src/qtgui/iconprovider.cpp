@@ -79,8 +79,10 @@ QImage EditGlyphProvider::requestImage(const QString & id, QSize * size, const Q
   const QUrlQuery query(q < 0 ? QString() : id.mid(q + 1));
   const QString colour = query.queryItemValue(QStringLiteral("color"));
   const bool dark = query.queryItemValue(QStringLiteral("dark")) == QLatin1String("1");
+  const QString ink = query.queryItemValue(QStringLiteral("ink"));
   const int px = requestedSize.isValid() && requestedSize.width() > 0 ? requestedSize.width() : 32;
-  const QImage img = editcursor::glyph(btui::Tool(tool), colour.isEmpty() ? QColor() : QColor(u'#' + colour), dark, px);
+  const QImage img = editcursor::glyph(btui::Tool(tool), colour.isEmpty() ? QColor() : QColor(u'#' + colour), dark, px,
+                                       ink.isEmpty() ? QColor() : QColor(u'#' + ink));
   if (size)
     *size = img.size();
   return img;

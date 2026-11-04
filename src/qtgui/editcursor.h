@@ -57,9 +57,14 @@ namespace editcursor {
   QCursor cursor(btui::Tool tool, const QColor & colour, bool dark, qreal scale);
 
   /* The same drawing as an icon (C06 "The Edit button": "the same drawing
-   * as the cursor"): cropped to what it draws and centred in a square of
-   * px device pixels, so it fills a button as a glyph does */
-  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px);
+   * as the cursor"), in a square of px device pixels. Fixed and Variable:
+   * the cursor cropped to what it draws and centred, so it fills the
+   * square. Erase and Paint: their outline on the UI icons' grid (24 units,
+   * 1.8 strokes, drawn 20 in 22, as Icon draws in the toolbar), the lines
+   * in `tint` (invalid: the theme's ink), so the eraser and the bucket
+   * weigh what the toolbar's other icons do; the drop in `colour`
+   * (invalid: the tint). */
+  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px, const QColor & tint = QColor());
 }
 
 #endif

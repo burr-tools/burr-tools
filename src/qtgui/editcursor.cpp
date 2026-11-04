@@ -149,8 +149,21 @@ namespace editcursor {
     return c;
   }
 
-  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px) {
+  QImage glyph(btui::Tool tool, const QColor & colour, bool dark, int px, const QColor & tint) {
     px = std::max(1, px);
+    if (tool == btui::Tool::Erase || tool == btui::Tool::Paint) {
+      QString svg = asset(tool == btui::Tool::Erase ? "button-erase.template.svg" : "button-paint.template.svg");
+      const QString line = tint.isValid() ? tint.name() : ink(dark);
+      svg.replace(QStringLiteral("%COLOUR%"), colour.isValid() ? colour.name() : line);
+      svg.replace(QStringLiteral("%INK%"), line);
+      QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
+      out.fill(Qt::transparent);
+      QPainter p(&out);
+      p.setRenderHint(QPainter::Antialiasing);
+      const qreal inset = px / 22.0;               // an Icon of 20 in the button's 22 px slot
+      render(p, svg, QRectF(inset, inset, px - 2 * inset, px - 2 * inset));
+      return out;
+    }
     // drawn large, then the box of what it draws taken and fitted
     const Composed c = compose(tool, colour, dark, qreal(px) / 12.0);
     const QImage & img = c.image;
