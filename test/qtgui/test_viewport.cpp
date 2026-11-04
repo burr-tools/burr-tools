@@ -1590,9 +1590,11 @@ namespace {
     using SceneController::SceneController;
     int hovers = 0;
     float lastX = -1;
-    void pointerHover(float x, float, Qt::KeyboardModifiers) override {
+    Qt::KeyboardModifiers lastMods;
+    void pointerHover(float x, float, Qt::KeyboardModifiers m) override {
       hovers++;
       lastX = x;
+      lastMods = m;
     }
   };
 }
@@ -1620,6 +1622,36 @@ void TestViewportItem::hoverPicksAtMostOnceAFrame() {
   QCOMPARE(scene.lastX, 20.0f);
   t.frame();
   QCOMPARE(scene.hovers, 1);                         // nothing new, no pick
+  view->setController(nullptr);
+}
+
+void TestViewportItem::theFramesRepeatedHoverAsksTheKeyboard() {
+  // Qt Quick repeats the hover at a still pointer after a frame that changed
+  // items, with QGuiApplication::keyboardModifiers(); on Windows that still
+  // holds a modifier the user just let go of, and the repeat put the quick
+  // tool back on: the Edit button stayed lit until the pointer moved. A
+  // hover where the last one was picks with the keyboard's state.
+  if (QGuiApplication::queryKeyboardModifiers() != Qt::NoModifier)
+    QSKIP("a modifier is held on this keyboard");
+  AppFixture f;
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(200, 150)));
+  CountingScene scene(f.app->settings());
+  auto * view = new VoxelViewport(t.window->contentItem());
+  view->setController(&scene);
+  view->setSize(QSizeF(200, 150));
+  t.frame();
+  const QPointF p(40, 40);
+  QHoverEvent enter(QEvent::HoverEnter, p, p, p);
+  QCoreApplication::sendEvent(view, &enter);
+  QHoverEvent held(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p, Qt::ShiftModifier);
+  QCoreApplication::sendEvent(view, &held);          // a move: the event's keys
+  t.frame();
+  QCOMPARE(scene.lastMods, Qt::KeyboardModifiers(Qt::ShiftModifier));
+  QHoverEvent repeat(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p + QPointF(1, 0), Qt::ShiftModifier);
+  QCoreApplication::sendEvent(view, &repeat);        // the frame's repeat, Shift let go
+  t.frame();
+  QCOMPARE(scene.lastMods, Qt::KeyboardModifiers(Qt::NoModifier));
   view->setController(nullptr);
 }
 

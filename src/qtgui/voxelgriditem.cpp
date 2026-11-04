@@ -438,8 +438,12 @@ void VoxelGridItem::hoverAt(QPointF p) {
 }
 
 void VoxelGridItem::pointerHover(QHoverEvent * e) {
+  /* Qt Quick's repeat at a still pointer carries keyboardModifiers(), which
+   * on Windows still holds a modifier just released (as VoxelViewport's
+   * hover): there, ask the keyboard */
   if (m_editor)
-    m_editor->setModifiers(e->modifiers());
+    m_editor->setModifiers(e->scenePosition() == m_pointer ? QGuiApplication::queryKeyboardModifiers()
+                                                           : e->modifiers());
   // a hover at the pointer the keys took the highlight from: Qt Quick's
   // repeat after a frame, not a move
   if (m_keysHold && e->scenePosition() == m_pointer)
@@ -578,7 +582,8 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
   relayout();
   const int key = e->key();
   if (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta) {
-    m_editor->setModifiers(e->modifiers());             // the quick tool's cursor and ghost
+    // the quick tool's cursor and ghost; the keyboard's state, as the filter's
+    m_editor->setModifiers(QGuiApplication::queryKeyboardModifiers());
     e->ignore();
     return;
   }
@@ -629,8 +634,10 @@ void VoxelGridItem::keyPressEvent(QKeyEvent * e) {
 
 void VoxelGridItem::keyReleaseEvent(QKeyEvent * e) {
   const int key = e->key();
+  /* the keyboard's state, not the event's: on Windows a modifier's own
+   * release still carries it, and this runs after the filter set it right */
   if (m_editor && (key == Qt::Key_Shift || key == Qt::Key_Alt || key == Qt::Key_Control || key == Qt::Key_Meta))
-    m_editor->setModifiers(e->modifiers());
+    m_editor->setModifiers(QGuiApplication::queryKeyboardModifiers());
   e->ignore();
 }
 

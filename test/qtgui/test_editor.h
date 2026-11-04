@@ -36,6 +36,7 @@ private slots:
   void theViewIsReadyInTimeAfterAStrokeSegment();
   void theGridByKeyboard();
   void theKeysAndThePointerTakeTheHighlightInTurn();
+  void theFramesRepeatedHoverAsksTheKeyboard();
 };
 
 /* Editing in the 3D view (C06, P5): Edit mode and the quick tools, the
