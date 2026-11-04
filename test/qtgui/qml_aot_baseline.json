@@ -56,10 +56,10 @@
     "ToolbarButton.qml": 5,
     "UpdateDialog.qml": 2,
     "VectorExportDialog.qml": 15,
-    "ViewportCard.qml": 22,
+    "ViewportCard.qml": 23,
     "VoxelEditorCard.qml": 85,
     "WorkspaceRail.qml": 10
   },
   "qt": "6.11",
-  "total": 758
+  "total": 759
 }
