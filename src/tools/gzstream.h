@@ -51,7 +51,6 @@ private:
     int              mode;               // I/O mode
 
     int flush_buffer();
-    bool setMode( int open_mode, char* fmode);
 public:
     gzstreambuf() : file(nullptr), opened(0), mode(0) {
         setp( buffer, buffer + (bufferSize-1));
@@ -62,8 +61,8 @@ public:
     }
     int is_open() { return opened; }
     gzstreambuf* open( const char* name, int open_mode);
-    // on success the stream owns fd: close() closes it
-    gzstreambuf* open( int fd, int open_mode);
+    // for reading; on success the stream owns fd: close() closes it
+    gzstreambuf* open( int fd);
     gzstreambuf* close();
     ~gzstreambuf() { close(); }
 
@@ -125,9 +124,9 @@ public:
 std::unique_ptr<std::istream> openGzFile(const char * name);
 std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
 
-// the same for standard input: reads compressed or plain data through a
-// duplicate of the descriptor, so stdin itself stays open. Returns nullptr if
-// stdin could not be opened.
-std::unique_ptr<std::istream> openGzStdin();
+// the same for an open descriptor: reads compressed or plain data through a
+// duplicate of it, so fd itself stays open and keeps its mode. Returns nullptr
+// if fd is not an open descriptor.
+std::unique_ptr<std::istream> openGzDescriptor(int fd);
 
 #endif
