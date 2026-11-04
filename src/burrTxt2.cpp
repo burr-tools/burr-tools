@@ -53,10 +53,10 @@ void usage(bool full = false) {
   cout << "burrTxt2 [options] [file] [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve, compressed or\n";
   cout << "        not; \"-\" or no file at all reads it from standard input\n";
-  cout << "        The result goes into the file's name with \"ttt\" added, for\n";
-  cout << "        standard input into stdin.xmpuzzlettt in the current directory.\n";
-  cout << "        Input on standard input stops the solver, unless the puzzle came\n";
-  cout << "        through there.\n\n";
+  cout << "        The result goes into the file's name with \"ttt\" added and input on\n";
+  cout << "        standard input stops the solver. For a puzzle read from standard\n";
+  cout << "        input the result goes to standard output, everything else to\n";
+  cout << "        standard error, and only killing the program stops it.\n\n";
   cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
   cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
@@ -160,6 +160,14 @@ static int solve(int argv, char* args[]) {
   const char * file = filenumber ? args[filenumber] : nullptr;
   const bool fromStdin = btcli::solverReadsStdin(file);
 
+  /* A piped puzzle has no name to put a file beside, so its result goes to
+   * stdout, for a redirection or the next program in the pipe. Every message
+   * then moves to stderr, for good: not one may land in the result.
+   */
+  std::ostream result(cout.rdbuf());
+  if (fromStdin)
+    cout.rdbuf(cerr.rdbuf());
+
   if (!file && !fromStdin) {
     usage();
     return 1;
@@ -215,15 +223,19 @@ static int solve(int argv, char* args[]) {
     return 2;
   }
 
-  std::string outname = fromStdin ? "stdin.xmpuzzle" : file;
-  outname += "ttt";
-  cout << "outputting into " << outname << std::endl;
+  ofstream ostr;
 
-  ofstream ostr(outname.c_str());
-  if (!ostr)
-  {
-    cout << "Can not open output file, aborting\n";
-    return 2;
+  if (!fromStdin) {
+    const std::string outname = std::string(file) + "ttt";
+    cout << "outputting into " << outname << std::endl;
+
+    ostr.open(outname.c_str());
+    if (!ostr)
+    {
+      cout << "Can not open output file, aborting\n";
+      return 2;
+    }
+    result.rdbuf(ostr.rdbuf());
   }
 
   for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
@@ -364,7 +376,7 @@ static int solve(int argv, char* args[]) {
     cout.flush();
   }
 
-  xmlWriter_c xml(ostr);
+  xmlWriter_c xml(result);
   p.save(xml);
 
   return exitCode;
