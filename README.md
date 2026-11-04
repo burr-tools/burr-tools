@@ -24,8 +24,9 @@ downloads.
 All the programs can take the puzzle from a pipe instead of a file, compressed
 or plain, with the file name `-`: `gunzip -c puzzle.xmpuzzle | burrtools -`.
 The command-line solvers also read a pipe when given no file at all. `burrTxt2`
-then writes its result to `stdin.xmpuzzlettt` in the current directory, and as
-its standard input is taken, input there no longer stops it: killing it does,
+then writes the solved puzzle to standard output instead of a file, and its
+messages to standard error: `gunzip -c puzzle.xmpuzzle | burrTxt2 -d > solved.xml`.
+As its standard input is taken, input there no longer stops it: killing it does,
 and loses the result. In the GUIs the puzzle has no file behind it, so it opens
 as Untitled and unsaved.
 

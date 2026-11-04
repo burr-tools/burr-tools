@@ -6,8 +6,9 @@ Either way the run must match the one that names the file, whether the data
 is gzip compressed (as the example files are) or plain XML. Input that holds
 no puzzle has to be reported, not crash the program or leave it waiting.
 
-burrTxt2 needs more than that: stdin is also how a user stops it, and the
-name of its output file comes from the name of its input.
+burrTxt2 needs more than that: stdin is also how a user stops it, and a piped
+puzzle has no name to put an output file beside, so its result goes to stdout
+and its messages to stderr. A run on a named file keeps writing a file.
 
 Every run gets a timeout, so a binary left waiting on stdin fails the test
 instead of hanging the suite.
@@ -28,27 +29,41 @@ except ImportError:         # Windows
 TIMEOUT = 120
 
 PUZZLE = "examples/PelikanBurr.xmpuzzle"
-OUTPUT = "stdin.xmpuzzlettt"
 SOLVE = ["-R", "-d", "-b", "0"]   # for burrTxt2: from the start, ignoring the stored result
 
 failures = []
 
 
-def run(binary, args, stdin_data, label, cwd=None):
-    """Run a solver with stdin_data on its stdin, return (returncode, output)."""
+def execute(binary, args, stdin_data, label, cwd, stderr):
+    """Run a solver with stdin_data on its stdin, return the process or None."""
     try:
-        proc = subprocess.run(
+        return subprocess.run(
             [binary] + args,
             input=stdin_data,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=stderr,
             timeout=TIMEOUT,
             cwd=cwd,
         )
     except subprocess.TimeoutExpired:
         failures.append(f"{label}: did not terminate within {TIMEOUT}s")
+        return None
+
+
+def run(binary, args, stdin_data, label, cwd=None):
+    """Run a solver, return (returncode, output), stderr and stdout together."""
+    proc = execute(binary, args, stdin_data, label, cwd, subprocess.STDOUT)
+    if proc is None:
         return None, ""
     return proc.returncode, proc.stdout.decode(errors="replace")
+
+
+def run_split(binary, args, stdin_data, label, cwd):
+    """Run a solver, return (returncode, stdout, stderr)."""
+    proc = execute(binary, args, stdin_data, label, cwd, subprocess.PIPE)
+    if proc is None:
+        return None, "", ""
+    return proc.returncode, proc.stdout.decode(errors="replace"), proc.stderr.decode(errors="replace")
 
 
 def check(label, condition, detail):
@@ -139,36 +154,48 @@ def test_burrtxt2(binary, compressed, plain):
         ("burrTxt2 plain XML, file \"-\"", ["-"], plain),
     ]:
         with tempfile.TemporaryDirectory() as cwd:
-            rc, out = run(binary, SOLVE + extra, data, label, cwd)
+            rc, out, messages = run_split(binary, SOLVE + extra, data, label, cwd)
             if rc is None:
                 continue
-            check(label, rc == 0, f"exited {rc}\n{out}")
+            check(label, rc == 0, f"exited {rc}\n{messages}")
             # the stdin that brought the puzzle is at its end, which must
             # not read as the user stopping the solver
-            check(label, "abborting" not in out, f"stopped by its own input\n{out}")
-            check(label, "done" in out, f"did not finish\n{out}")
-            check(label, f"outputting into {OUTPUT}" in out,
-                  f"did not name its output file\n{out}")
-            result = Path(cwd) / OUTPUT
-            check(label, result.exists(), f"wrote no {OUTPUT}\n{out}")
-            if result.exists():
-                found = solved(result.read_text())
-                check(label, found == expected, f"found {found}, expected {expected}")
+            check(label, "abborting" not in messages, f"stopped by its own input\n{messages}")
+            check(label, "done" in messages, f"no progress on stderr\n{messages}")
+            check(label, out.startswith("<") and out.rstrip().endswith("</puzzle>"),
+                  f"stdout is not just the puzzle\n{out[:300]}")
+            check(label, solved(out) == expected, f"found {solved(out)}, expected {expected}")
+            check(label, not os.listdir(cwd), f"left files behind: {os.listdir(cwd)}")
 
-    # continuing it finds nothing to do, as for a named file
-    label = "burrTxt2 continuing an already solved puzzle"
-    with tempfile.TemporaryDirectory() as cwd:
-        rc, out = run(binary, ["-"], compressed, label, cwd)
-        if rc is not None:
-            check(label, rc == 0, f"exited {rc}\n{out}")
-            check(label, "already solved" in out, f"did not say so\n{out}")
+            # what comes out goes back in: the next program in a pipe
+            again = f"{label}, its result piped back in"
+            rc, out, messages = run_split(binary, ["-"], out.encode(), again, cwd)
+            if rc is not None:
+                check(again, rc == 0, f"exited {rc}\n{messages}")
+                check(again, "already solved" in messages, f"did not say so\n{messages}")
 
-    # the checks that fail before the output file is opened leave none behind
+    # no puzzle, no result: stdout stays empty for whatever it is redirected to
     with tempfile.TemporaryDirectory() as cwd:
         for name, data in [("empty", b""), ("junk", b"not a puzzle")]:
-            run(binary, ["-"], data, f"burrTxt2 {name} stdin", cwd)
-        check("burrTxt2 without a puzzle", not (Path(cwd) / OUTPUT).exists(),
-              "wrote an output file all the same")
+            label = f"burrTxt2 {name} stdin"
+            rc, out, _ = run_split(binary, ["-"], data, label, cwd)
+            check(label, rc is None or out == "", f"wrote to stdout\n{out}")
+        check("burrTxt2 without a puzzle", not os.listdir(cwd),
+              f"left files behind: {os.listdir(cwd)}")
+
+    # a named file goes on as it always has: the result beside it, the
+    # messages on stdout. A stdin at its end stops the solver at once, which
+    # does not matter here
+    label = "burrTxt2 named file"
+    with tempfile.TemporaryDirectory() as cwd:
+        named = Path(cwd) / "named.xmpuzzle"
+        named.write_bytes(compressed)
+        rc, out, messages = run_split(binary, [str(named)], b"", label, cwd)
+        if rc is not None:
+            check(label, rc == 0, f"exited {rc}\n{out}\n{messages}")
+            check(label, f"outputting into {named}ttt" in out, f"did not say so\n{out}")
+            check(label, "<puzzle" not in out, f"wrote the result to stdout\n{out[:300]}")
+            check(label, Path(f"{named}ttt").exists(), f"wrote no file\n{out}")
 
     check_reported(binary, [], "burrTxt2")
     check_terminal(binary, "burrTxt2")
