@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "palette.h"
+#include "okhsl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,125 +28,117 @@ namespace btui {
 
   namespace {
 
-    // the legacy tables (src/gui/piececolor.cpp now wraps these)
-    constexpr int COLS = 18;
-
-    const float tr[COLS] = {
-      0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.6f,
-      0.0f, 0.6f, 0.6f, 0.0f, 0.6f, 0.0f, 0.6f, 1.0f, 1.0f
-    };
-    const float tg[COLS] = {
-      0.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.6f, 0.0f,
-      0.6f, 0.6f, 0.0f, 1.0f, 1.0f, 0.6f, 0.0f, 0.6f, 0.0f
-    };
-    const float tb[COLS] = {
-      1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.6f, 0.0f, 0.0f,
-      0.6f, 0.0f, 0.6f, 0.6f, 0.0f, 1.0f, 1.0f, 0.0f, 0.6f
-    };
-
-    constexpr int JITTERS = 53;
-
-    const float jr[JITTERS] = {
-       0.0f,
-      -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f,  0.3f,
-      -0.3f, -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,  0.0f,
-       0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
-      -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f,  0.4f,
-      -0.4f, -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,  0.0f,
-       0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f
-    };
-    const float jg[JITTERS] = {
-       0.0f,
-      -0.3f,  0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.3f, -0.3f,  0.3f,
-      -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,  0.3f, -0.3f,
-      -0.3f,  0.3f,  0.0f,  0.0f,  0.3f, -0.3f,  0.0f,  0.0f,
-      -0.4f,  0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.4f, -0.4f,  0.4f,
-      -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f,  0.4f, -0.4f,
-      -0.4f,  0.4f,  0.0f,  0.0f,  0.4f, -0.4f,  0.0f,  0.0f
-    };
-    const float jb[JITTERS] = {
-       0.0f,
-      -0.3f,  0.3f,  0.3f, -0.3f,  0.3f, -0.3f, -0.3f,  0.3f,  0.0f,
-       0.0f,  0.0f,  0.0f,  0.3f, -0.3f,  0.3f, -0.3f,  0.3f, -0.3f,
-       0.3f, -0.3f,  0.3f, -0.3f,  0.0f,  0.0f,  0.0f,  0.0f,
-      -0.4f,  0.4f,  0.4f, -0.4f,  0.4f, -0.4f, -0.4f,  0.4f,  0.0f,
-       0.0f,  0.0f,  0.0f,  0.4f, -0.4f,  0.4f, -0.4f,  0.4f, -0.4f,
-       0.4f, -0.4f,  0.4f, -0.4f,  0.0f,  0.0f,  0.0f,  0.0f
-    };
-
-    /* the table for the first COLS shapes, a formula beyond -- and for any
-     * index a view may hand over while its rows go (-1): never outside the
-     * table.
+    /* The base colours come from Okhsl, so every hue is drawn at a
+     * lightness that looks the same: the legacy table's pure primaries put
+     * blue at a quarter of yellow's lightness, and shading them by one
+     * factor (the voxel style's checker, the variable voxels) moved yellow
+     * a long way and blue hardly at all.
      *
-     * The arithmetic below is legacy's to the bit, double where it used
-     * double, so the FLTK GUI's piececolor wrappers return what they always
-     * did; test_ui_palette pins it.
-     */
-    bool inTable(int x) { return x >= 0 && x < COLS; }
-    double sineR(int x) { return 1 + std::sin(0.7 * x); }
-    double sineG(int x) { return 1 + std::sin(1.3 * x + 1.5); }
-    double sineB(int x) { return 1 + std::sin(3.5 * x + 2.3); }
-    float baseR(int x) { return inTable(x) ? tr[x] : float(sineR(x) / 2); }
-    float baseG(int x) { return inTable(x) ? tg[x] : float(sineG(x) / 2); }
-    float baseB(int x) { return inTable(x) ? tb[x] : float(sineB(x) / 2); }
+     * Eight anchor hues, in hue order, with the lightness each needs to
+     * sit at the same apparent brightness (a syntax-highlighting set made
+     * for a light background; on the view's light grey it reads slightly
+     * more saturated than on white). The lightness varies because some
+     * hues can't be both this light and fully saturated. */
+    struct Anchor { float hue, lightness; };
+    constexpr int ANCHORS = 8;
+    const Anchor anchors[ANCHORS] = {
+      {  25.f, 0.50f },  // red
+      {  55.f, 0.55f },  // brown
+      { 100.f, 0.60f },  // mustard
+      { 155.f, 0.50f },  // green
+      { 235.f, 0.60f },  // cyan
+      { 265.f, 0.50f },  // blue
+      { 305.f, 0.50f },  // purple
+      { 340.f, 0.55f },  // magenta
+    };
+    struct Okhsl { float hue, lightness; };  // saturation is always 1
 
-    /* 0 to 255: the table's float times 255, the formula's double, cut off */
-    unsigned int base8(const float * table, double (*sine)(int), int x) {
-      return inTable(x) ? (unsigned int)(table[x] * 255) : (unsigned int)(255 * sine(x) / 2);
-    }
+    /* the first eight shapes in the order the legacy table had them: blue,
+     * green, red, cyan, yellow (mustard here), magenta, then the two the
+     * table had no counterpart for */
+    const int firstEight[ANCHORS] = { 5, 3, 0, 4, 2, 7, 6, 1 };
 
-    /* the copy-th jitter entry that keeps every channel inside [0, 1]; when
-     * the table runs out there is no jitter any more (legacy getJitter)
-     */
-    int jitterIndex(int val, int copy) {
-      int j = 0;
-      while (j < JITTERS) {
-        float x = baseR(val) + jr[j];
-        if (x < 0 || x > 1) { j++; continue; }
-        x = baseG(val) + jg[j];
-        if (x < 0 || x > 1) { j++; continue; }
-        x = baseB(val) + jb[j];
-        if (x < 0 || x > 1) { j++; continue; }
-        if (copy == 0)
-          break;
-        copy--;
-        j++;
+    /* Shape x's place on the anchor cycle, 0 to 8: the first eight shapes
+     * are the anchors; the next eight the hues halfway between neighbouring
+     * anchors; the next sixteen the quarter points, and so on, each level
+     * halving the gaps the level before left. Within a level the places are
+     * taken with a stride, so that consecutive shapes are far apart in hue. */
+    float cyclePosition(int x) {
+      if (x < 0) x = 0;
+      if (x < ANCHORS)
+        return float(firstEight[x]);
+
+      // level 1 has 8 places, level 2 16, level 3 32 ...
+      int first = ANCHORS;
+      int places = ANCHORS;
+      while (x >= first + places) {
+        first += places;
+        places *= 2;
       }
-      return j == JITTERS ? 0 : j;
+      const int k = x - first;
+      // a stride coprime with the count (a power of two, so any odd one)
+      const int stride = ((3 * places) / 8) | 1;
+      const int place = (k * stride) % places;
+      return (float(place) + 0.5f) * float(ANCHORS) / float(places);
     }
 
-    float ramp(float v) { return float(0.5 + 0.5 * std::fabs(1 - 2 * v)); }
+    Okhsl baseHsl(int x) {
+      const float t = cyclePosition(x);
+      const int i = int(t) % ANCHORS;
+      const float f = t - float(int(t));
+      const Anchor & a = anchors[i];
+      const Anchor & n = anchors[(i + 1) % ANCHORS];
+      const float nextHue = n.hue + (i + 1 == ANCHORS ? 360.f : 0.f);
+      return { std::fmod(a.hue + f * (nextHue - a.hue), 360.f), a.lightness + f * (n.lightness - a.lightness) };
+    }
 
-    /* a channel of copy `copy`: its jitter, scaled down near the ends */
-    double jittered(float v, float jitter, double scale) { return v + jitter * scale * ramp(v); }
+    Rgb toRgb(const Okhsl & c) { return okhslToSrgb(c.hue, 1.0f, c.lightness); }
 
-    struct Jittered {
-      double r, g, b;
+    /* 0 to 255, cut off (the FLTK GUI's colours) */
+    unsigned int to8(float v) { return (unsigned int)(v * 255); }
+
+    /* a copy of a shape: the shape's hue and lightness nudged, by more for
+     * every further copy, so the copies in one assembly can be told apart
+     * and still read as the same shape. Copy 0 is the shape's own colour. */
+    struct Nudge { float hue, lightness; };
+    constexpr int NUDGES = 12;
+    const Nudge nudges[NUDGES] = {
+      {   0.f,  0.12f }, {   0.f, -0.12f },
+      {  12.f,  0.06f }, { -12.f, -0.06f },
+      {  12.f, -0.06f }, { -12.f,  0.06f },
+      {  12.f,  0.14f }, { -12.f, -0.14f },
+      {   0.f,  0.22f }, {   0.f, -0.22f },
+      {  20.f,  0.f   }, { -20.f,  0.f   },
     };
 
-    Jittered jitteredColor(int shape, int copy) {
-      const int j = jitterIndex(shape, copy);
-      return { jittered(baseR(shape), jr[j], 0.5), jittered(baseG(shape), jg[j], 0.4),
-               jittered(baseB(shape), jb[j], 0.7) };
+    Okhsl copyHsl(int shape, int copy) {
+      Okhsl c = baseHsl(shape);
+      if (copy > 0) {
+        const Nudge & n = nudges[(copy - 1) % NUDGES];
+        // past the table the hue drifts a little further each time round
+        c.hue += n.hue + 6.f * float((copy - 1) / NUDGES);
+        c.lightness = std::min(0.85f, std::max(0.2f, c.lightness + n.lightness));
+      }
+      return c;
     }
   }
 
   Rgb pieceColor(int shape) {
-    return { baseR(shape), baseG(shape), baseB(shape) };
+    return toRgb(baseHsl(shape));
   }
 
   Rgb pieceColor(int shape, int copy) {
-    const Jittered c = jitteredColor(shape, copy);
-    return { float(c.r), float(c.g), float(c.b) };
+    return toRgb(copyHsl(shape, copy));
   }
 
   Rgb8 pieceColor8(int shape) {
-    return { base8(tr, sineR, shape), base8(tg, sineG, shape), base8(tb, sineB, shape) };
+    const Rgb c = pieceColor(shape);
+    return { to8(c.r), to8(c.g), to8(c.b) };
   }
 
   Rgb8 pieceColor8(int shape, int copy) {
-    const Jittered c = jitteredColor(shape, copy);
-    return { (unsigned int)(c.r * 255), (unsigned int)(c.g * 255), (unsigned int)(c.b * 255) };
+    const Rgb c = pieceColor(shape, copy);
+    return { to8(c.r), to8(c.g), to8(c.b) };
   }
 
   float relativeLuminance(const Rgb & c) {
