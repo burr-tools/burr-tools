@@ -1832,7 +1832,7 @@ private slots:
     QCOMPARE(m->count(), n);
     QCOMPARE(m->selected(), 0);
     QCOMPARE(m->data(m->index(1), ShapesModel::IdTextRole).toString(), QStringLiteral("S2"));
-    QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), QColor(0, 0, 255));
+    QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), ShapesModel::chipColor(0));
 
     m->select(n + 10);
     QCOMPARE(m->selected(), n - 1);
