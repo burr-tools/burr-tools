@@ -796,7 +796,9 @@ void TestRender::framesDoNotAllocatePerTriangle() {
       for (unsigned y = 0; y < edge; y++)
         for (unsigned x = 0; x < edge; x++)
           v->setState(x, y, z, voxel_c::VX_VARIABLE);
-    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, btui::MeshOptions{}));
+    btui::MeshOptions seeThrough;
+    seeThrough.variableAlpha = 0.6f;
+    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, seeThrough));
   };
   auto perFrame = [&](const std::shared_ptr<const btui::ShapeMesh> & mesh, quint64 revision) {
     btui::Camera cam;
@@ -947,6 +949,7 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
   v->setColor(0, 0, 1, red);
   btui::MeshOptions opt;
   opt.colors = btui::ColorMode::Voxel;
+  opt.variableAlpha = 0.6f;
   for (unsigned i = 0; i < p.colorNumber(); i++) {
     unsigned char r, g, b;
     p.getColor(i, &r, &g, &b);
