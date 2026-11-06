@@ -56,7 +56,7 @@ private slots:
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();
   void theStlPreviewDrawsTheMeshAndItsInsides();
-  void theFlatStyleOutlinesEveryVoxelFace();
+  void theFlatStyleOutlinesTheShapesEdges();
   void translucencyBlendsInLinearLight();
   void innerVariableVoxelsShowThroughTheOuterOnes();
   void theTargetsOutgrowTheViewInSteps();
