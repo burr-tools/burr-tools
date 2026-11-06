@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "shapesmodel.h"
+#include "theme.h"
 #include "documentcontroller.h"
 
 #include "../uicore/palette.h"
@@ -52,6 +53,12 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
     if (shape >= 0)
       select(shape);
   });
+  // the piece colours follow the theme's background (Theme::updateDark)
+  if (Theme * t = Theme::instance())
+    connect(t, &Theme::changed, this, [this] {
+      if (m_rows > 0)
+        emit dataChanged(index(0), index(m_rows - 1), { ColorRole, TextColorRole });
+    });
   refresh(true);
   select(0);
 }

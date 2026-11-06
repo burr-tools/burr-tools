@@ -78,6 +78,13 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
     emit optionsChanged();
     emit frameChanged();
   });
+  // the piece colour is baked into the mesh, and it follows the theme's
+  // background (Theme::updateDark)
+  if (Theme * t = Theme::instance())
+    connect(t, &Theme::changed, this, [this, t] {
+      if (t->dark() != m_meshDark)
+        scheduleMesh();
+    });
 
   /* One change to the puzzle reaches here several times over (an edit: the
    * document's signal, the shapes list's count and maybe its selection). The
@@ -261,6 +268,7 @@ void ViewportController::buildMesh(void) {
     m_mesh.reset();
   }
   m_meshStyle = m_voxelStyle;
+  m_meshDark = btui::pieceColorsForDarkBackground();
   m_meshRevision++;
 
   emit sceneChanged();      // emptyShape follows the mesh
