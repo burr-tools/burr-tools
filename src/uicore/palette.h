@@ -59,6 +59,11 @@ namespace btui {
   inline float darkShade(float f) { return float(f * 0.9); }
   inline float lightShade(float f) { return float(1 - 0.9 * (1 - f)); }
 
+  /* the shade of a variable voxel: the same hue as the fixed voxels next
+   * to it, markedly darker, so a variable region reads as a region (the 2D
+   * editor's cells and the 3D view's edge-line and STL styles) */
+  inline float variableShade(float f) { return float(f * 0.6); }
+
   /* WCAG 2 relative luminance of an sRGB colour, and the contrast ratio of
    * two (1 to 21) */
   float relativeLuminance(const Rgb & c);

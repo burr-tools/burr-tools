@@ -404,8 +404,10 @@ void gridEditor_c::draw() {
         drawNormalTile(x, y, currentZ, tx, ty, sx, sy);
         break;
       case voxel_c::VX_VARIABLE:
-        fl_color(r, g, b);
-        drawVariableTile(x, y, currentZ, tx, ty, sx, sy);
+        // the whole cell in a darker shade of the same hue; the old inset
+        // square left only a thin rim of background, too subtle to see
+        fl_color(int(255*variablePieceColor(r/255.0f)), int(255*variablePieceColor(g/255.0f)), int(255*variablePieceColor(b/255.0f)));
+        drawNormalTile(x, y, currentZ, tx, ty, sx, sy);
         break;
       }
 
