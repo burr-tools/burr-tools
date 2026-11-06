@@ -1294,11 +1294,12 @@ jobs:
   # job: every run saves a new entry (keys cannot be overwritten), and a
   # restack would otherwise leave one more full set per PR in the 10 GB.
   # Runs once every job that saves a cache is done, whether it passed or
-  # not. A pull request from a fork gets a read-only token; its entries are
-  # left to GitHub's own eviction.
+  # not. A pull request from a fork gets a read-only token, so the job
+  # does not run for one (the DELETE would be refused with 403 and show
+  # the job as failed); its entries are left to GitHub's own eviction.
   ccache-prune:
     needs: [changes, build-linux, clang-x86-64, tsan-parallel, coverage, coverage-qt, build-windows, build-macos, qt-linux, qt-windows, qt-macos]
-    if: always() && needs.changes.result == 'success' && github.event_name == 'pull_request'
+    if: always() && needs.changes.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
