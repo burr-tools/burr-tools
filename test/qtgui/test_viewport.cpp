@@ -1048,6 +1048,32 @@ void TestRender::darkThemeUsesTheDarkCanvas() {
   Theme::instance()->setMode(QStringLiteral("light"));
 }
 
+void TestRender::darkThemeRebuildsTheMeshInTheDarkPieceColours() {
+  // the piece colour is baked into the mesh; a theme switch rebuilds it
+  // with the other set, so the drawn shape changes colour with the chips
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(160, 120)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  Theme::instance()->setMode(QStringLiteral("light"));
+  auto restore = qScopeGuard([] { Theme::instance()->setMode(QStringLiteral("light")); });
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor light = t.render(v->frame(1)).pixelColor(80, 60);
+
+  Theme::instance()->setMode(QStringLiteral("dark"));
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor dark = t.render(v->frame(1)).pixelColor(80, 60);
+  QVERIFY(dark != light);
+  // both are the blue of shape 1, the dark set's lighter
+  QVERIFY(light.blue() > light.red() && light.blue() > light.green());
+  QVERIFY(dark.blue() > dark.red() && dark.blue() > dark.green());
+  QVERIFY(dark.lightnessF() > light.lightnessF());
+}
+
 void TestRender::theSlabTintsItsLayer() {
   // a flat 6x6x1 plate seen from the front: the slab of its only layer
   // covers it, and with the slab off the pixels differ

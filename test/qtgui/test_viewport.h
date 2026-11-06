@@ -52,6 +52,7 @@ private slots:
   void rendersTheShapeOnTheCanvas();
   void lightingChangesTheShading();
   void darkThemeUsesTheDarkCanvas();
+  void darkThemeRebuildsTheMeshInTheDarkPieceColours();
   void theSlabTintsItsLayer();
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();

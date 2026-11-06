@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "toolscontroller.h"
+#include "theme.h"
 #include "app.h"
 #include "documentcontroller.h"
 #include "guarded.h"
@@ -57,6 +58,12 @@ ShapeStatusModel::ShapeStatusModel(DocumentController * doc, QObject * parent) :
   m_timer.setSingleShot(true);
   m_timer.setInterval(0);
   connect(&m_timer, &QTimer::timeout, this, &ShapeStatusModel::step);
+  // the piece colours follow the theme's background (Theme::updateDark)
+  if (Theme * t = Theme::instance())
+    connect(t, &Theme::changed, this, [this] {
+      if (rowCount() > 0)
+        emit dataChanged(index(0), index(rowCount() - 1), { ColorRole });
+    });
   // a table about another puzzle is meaningless
   connect(m_doc, &DocumentController::documentReplaced, this, &ShapeStatusModel::clear);
   connect(m_doc, &DocumentController::historyApplied, this, &ShapeStatusModel::clear);
