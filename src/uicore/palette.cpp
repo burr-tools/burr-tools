@@ -41,7 +41,7 @@ namespace btui {
      * hues can't be both this light and fully saturated. */
     struct Anchor { float hue, lightness; };
     constexpr int ANCHORS = 8;
-    const Anchor anchors[ANCHORS] = {
+    const Anchor lightAnchors[ANCHORS] = {
       {  25.f, 0.50f },  // red
       {  55.f, 0.55f },  // brown
       { 100.f, 0.60f },  // mustard
@@ -51,6 +51,21 @@ namespace btui {
       { 305.f, 0.50f },  // purple
       { 340.f, 0.55f },  // magenta
     };
+
+    /* the same hues for a dark background (the set's dark-mode companion):
+     * lighter throughout, by more where the hue can take it */
+    const Anchor darkAnchors[ANCHORS] = {
+      {  25.f, 0.55f },  // red
+      {  55.f, 0.65f },  // orange
+      { 100.f, 0.70f },  // yellow
+      { 155.f, 0.65f },  // green
+      { 235.f, 0.70f },  // cyan
+      { 265.f, 0.55f },  // blue
+      { 305.f, 0.60f },  // purple
+      { 340.f, 0.65f },  // pink
+    };
+
+    bool darkBackground = false;
     struct Okhsl { float hue, lightness; };  // saturation is always 1
 
     /* the first eight shapes in the order the legacy table had them: blue,
@@ -83,6 +98,7 @@ namespace btui {
     }
 
     Okhsl baseHsl(int x) {
+      const Anchor * anchors = darkBackground ? darkAnchors : lightAnchors;
       const float t = cyclePosition(x);
       const int i = int(t) % ANCHORS;
       const float f = t - float(int(t));
@@ -122,6 +138,9 @@ namespace btui {
       return c;
     }
   }
+
+  void setPieceColorsForDarkBackground(bool dark) { darkBackground = dark; }
+  bool pieceColorsForDarkBackground(void) { return darkBackground; }
 
   Rgb pieceColor(int shape) {
     return toRgb(baseHsl(shape));
