@@ -52,6 +52,8 @@ namespace btui {
 
   namespace {
 
+    constexpr float kPi = 3.14159265358979323846f;
+
     struct Lab { float L, a, b; };
     struct LC { float L, C; };
     struct ST { float S, T; };
@@ -278,8 +280,8 @@ namespace btui {
       return { 0.f, 0.f, 0.f };
 
     const float h = hueDegrees / 360.f;
-    const float a_ = std::cos(2.f * float(M_PI) * h);
-    const float b_ = std::sin(2.f * float(M_PI) * h);
+    const float a_ = std::cos(2.f * kPi * h);
+    const float b_ = std::sin(2.f * kPi * h);
     const float L = toeInv(l);
 
     const Cs cs = getCs(L, a_, b_);

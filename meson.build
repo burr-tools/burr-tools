@@ -442,7 +442,7 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/imagepages.cpp',
     'src/uicore/layoutmodel.cpp',
     'src/uicore/palette.cpp',
-  'src/uicore/okhsl.cpp',
+    'src/uicore/okhsl.cpp',
     'src/uicore/puzzlehistory.cpp',
     'src/uicore/puzzletools.cpp',
     'src/uicore/scenemesh.cpp',
