@@ -60,6 +60,9 @@ unsigned int pieceColorBi(int x, int sub);
 float darkPieceColor(float f);
 float lightPieceColor(float f);
 
+/* the darker shade of the same hue that marks a variable voxel */
+float variablePieceColor(float f);
+
 /* two macros to directly get the fltk color */
 #define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))
 #define fltkPieceColor(x) fl_rgb_color(pieceColorRi(x), pieceColorGi(x), pieceColorBi(x))

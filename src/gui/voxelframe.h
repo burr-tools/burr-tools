@@ -245,6 +245,11 @@ class voxelFrame_c : public Fl_Gl_Window {
       bool dim = false;
       bool useChecker = false;
       Polyhedron * poly = nullptr;
+      /* the edge-line and STL styles mesh the shape's variable voxels as a
+       * region of their own, drawn in the variable shade: `poly` then holds
+       * only the fixed voxels. The voxel style and the gridline mode put
+       * everything in `poly` and leave this null. */
+      Polyhedron * polyVar = nullptr;
       Polyhedron * pickPoly = nullptr;  // the flat mesh of the edge-line style, used to pick in the other styles
       GLuint list = 0;  // the display list for this shape 0 means no list defined
 
@@ -272,6 +277,14 @@ class voxelFrame_c : public Fl_Gl_Window {
     std::vector<colorInfo> palette;
 
     void drawShape(shapeInfo * shape);
+
+    /* the meshes of a shape entry in the current style: `poly`, and `polyVar`
+     * for the styles that mesh the variable voxels separately */
+    void buildShapeMeshes(shapeInfo * shape);
+
+    /* drop an entry's meshes (not the pick mesh) and display list, so the next
+     * draw rebuilds them */
+    static void dropMeshes(shapeInfo & s);
 
     /* give an entry a voxel shape, recording its bounds and hotspot; the only
      * way `shape` is ever set */

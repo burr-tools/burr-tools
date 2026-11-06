@@ -44,6 +44,7 @@ unsigned int pieceColorBi(int x, int sub) { return btui::pieceColor8(x, sub).b; 
 
 float darkPieceColor(float f) { return btui::darkShade(f); }
 float lightPieceColor(float f) { return btui::lightShade(f); }
+float variablePieceColor(float f) { return btui::variableShade(f); }
 
 Fl_Color contrastPieceColor(int x) {
   if (3*pieceColorRi(x) + 6*pieceColorGi(x) + pieceColorBi(x) < 1275)

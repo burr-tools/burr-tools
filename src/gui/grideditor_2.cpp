@@ -69,19 +69,6 @@ void gridEditor_2_c::drawNormalTile(int x, int y, [[maybe_unused]] int z, int tx
   fl_pie(tx+x*sx, ty-y*sy-sy, sxc, syc, 0, 360);
 }
 
-void gridEditor_2_c::drawVariableTile(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
-
-  bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));
-
-  int sxc = 10000*sx/7072;
-  int syc = 10000*sy/7072;
-
-  tx -= 3*sx/10;
-  ty -= 3*sy/10;
-
-  fl_pie(tx+x*sx+2, ty-y*sy+2-sy, sxc-4, syc-4, 0, 360);
-}
-
 void gridEditor_2_c::drawTileFrame(int x, int y, [[maybe_unused]] int z, int tx, int ty, int sx, int sy) {
 
   bt_assert(puzzle->getShape(piecenumber)->validCoordinate(x, y, z));

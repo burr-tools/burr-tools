@@ -28,6 +28,7 @@
 #include "platform.h"
 
 #include "../lib/voxel.h"
+#include "../lib/gridtype.h"
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/assembly.h"
@@ -473,6 +474,69 @@ bool inRegion(int x, int y, int z, int x1, int x2, int y1, int y2, int z1, int z
 
 
 
+/* the meshes of a shape entry in the current style, when it has none yet */
+void voxelFrame_c::buildShapeMeshes(shapeInfo * shape) {
+
+  if (shape->poly)
+    return;
+
+  const voxel_c * vx = shape->shape;
+
+  if (shape->mode == gridline)
+  {
+    shape->poly = vx->getWireframeMesh();
+    return;
+  }
+
+  if (curStyle == styleVoxel)
+  {
+    shape->poly = vx->getDrawingMesh();
+    return;
+  }
+
+  /* the edge-line and STL styles draw the shape as solids: its fixed
+   * voxels as one, its variable voxels as another, in the variable shade.
+   * Each is meshed on its own from a copy of the shape holding only those
+   * voxels, so the boundary between the two gets faces (and, in the
+   * edge-line style, an edge line; in the STL style, the gap) like any
+   * other surface, and both are occluded like any other surface. */
+  auto mesh = [&](const voxel_c * v) -> Polyhedron * {
+    if (v->countState(voxel_c::VX_FILLED) == 0)
+      return new Polyhedron();
+    return (curStyle == styleSTL) ? v->getSTLMesh() : v->getFlatMesh();
+  };
+
+  if (vx->countState(voxel_c::VX_VARIABLE) == 0)
+  {
+    shape->poly = mesh(vx);
+    return;
+  }
+
+  voxel_c * fixed = vx->getGridType()->getVoxel(vx);
+  voxel_c * variable = vx->getGridType()->getVoxel(vx);
+
+  for (unsigned int i = 0; i < vx->getXYZ(); i++)
+  {
+    switch (vx->getState(i))
+    {
+      case voxel_c::VX_VARIABLE:
+        fixed->setState(i, voxel_c::VX_EMPTY);
+        // the meshers take the filled voxels, so in its own copy the variable region is the filled one
+        variable->setState(i, voxel_c::VX_FILLED);
+        break;
+      case voxel_c::VX_FILLED:
+        variable->setState(i, voxel_c::VX_EMPTY);
+        break;
+    }
+  }
+
+  shape->poly = mesh(fixed);
+  shape->polyVar = mesh(variable);
+
+  delete fixed;
+  delete variable;
+}
+
 /* draws the geometry of a single shape, the surrounding state and
  * transformation must already be set up
  */
@@ -504,70 +568,59 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
     if (pickClassic && !shape->pickPoly)
       shape->pickPoly = shape->shape->getFlatMesh();
 
-    if (!shape->poly)
+    if (shape->shape)
+      buildShapeMeshes(shape);
+
+    // the checker pattern is only for the voxel style, the other styles
+    // paint the whole piece in one colour
+    bool checker = shape->useChecker && (shape->mode == gridline || curStyle == styleVoxel);
+    bool edgeLines = (shape->mode == normal) && (curStyle == styleEdges);
+    // the voxel style's meshes carry the variable voxels' black markers;
+    // the other styles draw the variable voxels as their own solid instead
+    bool markers = (shape->mode == gridline) || (curStyle == styleVoxel);
+
+    float lr = lightPieceColor(shape->r);
+    float lg = lightPieceColor(shape->g);
+    float lb = lightPieceColor(shape->b);
+    float dr = darkPieceColor(shape->r);
+    float dg = darkPieceColor(shape->g);
+    float db = darkPieceColor(shape->b);
+    // the variable solid: the shade the fixed voxels get, darkened
+    float vr = variablePieceColor(dr);
+    float vg = variablePieceColor(dg);
+    float vb = variablePieceColor(db);
+
+    if (shape->dim)
     {
-      if (shape->mode == gridline)
-      {
-        shape->poly = shape->shape->getWireframeMesh();
-      }
-      else if (curStyle == styleEdges)
-      {
-        shape->poly = shape->shape->getFlatMesh();
-      }
-      else if (curStyle == styleSTL)
-      {
-        shape->poly = shape->shape->getSTLMesh();
-      }
-      else
-      {
-        shape->poly = shape->shape->getDrawingMesh();
-      }
+      lr = 1 - (1 - lr) * 0.2;
+      lg = 1 - (1 - lg) * 0.2;
+      lb = 1 - (1 - lb) * 0.2;
+
+      dr = 1 - (1 - dr) * 0.2;
+      dg = 1 - (1 - dg) * 0.2;
+      db = 1 - (1 - db) * 0.2;
+
+      vr = 1 - (1 - vr) * 0.2;
+      vg = 1 - (1 - vg) * 0.2;
+      vb = 1 - (1 - vb) * 0.2;
     }
 
-    Polyhedron * poly = pickClassic ? shape->pickPoly : shape->poly;
-
-    if (poly)
+    if (colors == anaglyphColorL || colors == anaglyphColor)
     {
-      // the checker pattern is only for the voxel style, the other styles
-      // paint the whole piece in one colour
-      bool checker = shape->useChecker && (shape->mode == gridline || curStyle == styleVoxel);
-      bool edgeLines = (shape->mode == normal) && (curStyle == styleEdges);
+      float tmp;
+      tmp = 0.1*lb + 0.3*lr + 0.6*lg;
+      tmp = 1-(1-tmp)/3;
+      lr = lg = lb = tmp;
+      tmp = 0.1*db + 0.3*dr + 0.6*dg;
+      tmp = 1-(1-tmp)/3;
+      dr = dg = db = tmp;
+      tmp = 0.1*vb + 0.3*vr + 0.6*vg;
+      tmp = 1-(1-tmp)/3;
+      vr = vg = vb = tmp;
+    }
 
-      if (edgeLines)
-      {
-        // push the faces back a bit so the edge lines don't z-fight with them
-        glEnable(GL_POLYGON_OFFSET_FILL);
-        glPolygonOffset(1.0, 1.0);
-      }
-
-      float lr = lightPieceColor(shape->r);
-      float lg = lightPieceColor(shape->g);
-      float lb = lightPieceColor(shape->b);
-      float dr = darkPieceColor(shape->r);
-      float dg = darkPieceColor(shape->g);
-      float db = darkPieceColor(shape->b);
-
-      if (shape->dim)
-      {
-        lr = 1 - (1 - lr) * 0.2;
-        lg = 1 - (1 - lg) * 0.2;
-        lb = 1 - (1 - lb) * 0.2;
-
-        dr = 1 - (1 - dr) * 0.2;
-        dg = 1 - (1 - dg) * 0.2;
-        db = 1 - (1 - db) * 0.2;
-      }
-
-      if (colors == anaglyphColorL || colors == anaglyphColor)
-      {
-        float tmp;
-        tmp = 0.1*lb + 0.3*lr + 0.6*lg;
-        tmp = 1-(1-tmp)/3;
-        lr = lg = lb = tmp;
-        tmp = 0.1*db + 0.3*dr + 0.6*dg;
-        tmp = 1-(1-tmp)/3;
-        dr = dg = db = tmp;
-      }
+    /* the faces of one mesh; `variable` paints it as the variable solid */
+    auto drawFaces = [&](const Polyhedron * poly, bool variable) {
 
       for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); ++it)
       {
@@ -612,9 +665,17 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
 
         if (   colors == paletteColor
             && f->_color > 0 && f->_color <= palette.size()
-            && !(f->_flags & FF_VARIABLE_FACE))
-            glColor4f(palette[f->_color-1].r, palette[f->_color-1].g, palette[f->_color-1].b, alpha);
-        else if (f->_flags & FF_VARIABLE_FACE)
+            && !(markers && (f->_flags & FF_VARIABLE_FACE)))
+        {
+          const colorInfo & c = palette[f->_color-1];
+          if (variable)
+            glColor4f(variablePieceColor(c.r), variablePieceColor(c.g), variablePieceColor(c.b), alpha);
+          else
+            glColor4f(c.r, c.g, c.b, alpha);
+        }
+        else if (variable)
+          glColor4f(vr, vg, vb, alpha);
+        else if (markers && (f->_flags & FF_VARIABLE_FACE))
           glColor4f(0, 0, 0, alpha);
         else if (f->_flags & FF_COLOR_LIGHT && checker)
           glColor4f(lr, lg, lb, alpha);
@@ -634,7 +695,7 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
           glVertex3fv((*e)->dst()->position().getData());
         } while (e != sentinel);
 
-        if (f->_flags & FF_VARIABLE_MARK)
+        if (markers && (f->_flags & FF_VARIABLE_MARK))
         {
           // draw the variable face
           // TODO, properly draw quadrilaterals (and possibly even more corners, right now only triangles work
@@ -670,43 +731,71 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         glPopName();
         glPopName();
       }
+    };
+
+    /* black lines at the edges of one mesh, so where 2 faces with
+     * different normals meet, coplanar voxel-voxel boundaries get no line */
+    auto drawEdgeLines = [&](const Polyhedron * poly) {
+
+      glBegin(GL_LINES);
+
+      for (int i = 0; i < poly->numHalfEdges(); i++)
+      {
+        const HalfEdge * he = poly->halfedge(i);
+        const HalfEdge * tw = he->twin();
+
+        // draw each edge only once
+        if (!tw || tw->index() < i)
+          continue;
+
+        const Face * f1 = he->face();
+        const Face * f2 = tw->face();
+
+        if (!f1 || !f2 || f1->hole() || f2->hole())
+          continue;
+
+        if (f1->normal() * f2->normal() > 0.99)
+          continue;
+
+        glVertex3fv(tw->dst()->position().getData());
+        glVertex3fv(he->dst()->position().getData());
+      }
+
+      glEnd();
+    };
+
+    if (pickClassic)
+    {
+      if (shape->pickPoly)
+        drawFaces(shape->pickPoly, false);
+    }
+    else if (shape->poly)
+    {
+      if (edgeLines)
+      {
+        // push the faces back a bit so the edge lines don't z-fight with them
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0, 1.0);
+      }
+
+      drawFaces(shape->poly, false);
+      if (shape->polyVar)
+        drawFaces(shape->polyVar, true);
 
       if (edgeLines)
       {
         glDisable(GL_POLYGON_OFFSET_FILL);
 
-        // black lines at the edges of the shape, so where 2 faces with
-        // different normals meet, coplanar voxel-voxel boundaries get no line.
         // black (and the grey used for dimmed pieces) is not changed by the
         // lighting, so we can leave it enabled
         float e = shape->dim ? 0.8 : 0;
         glColor4f(e, e, e, shape->a);
         glLineWidth(2);
-        glBegin(GL_LINES);
 
-        for (int i = 0; i < poly->numHalfEdges(); i++)
-        {
-          const HalfEdge * he = poly->halfedge(i);
-          const HalfEdge * tw = he->twin();
+        drawEdgeLines(shape->poly);
+        if (shape->polyVar)
+          drawEdgeLines(shape->polyVar);
 
-          // draw each edge only once
-          if (!tw || tw->index() < i)
-            continue;
-
-          const Face * f1 = he->face();
-          const Face * f2 = tw->face();
-
-          if (!f1 || !f2 || f1->hole() || f2->hole())
-            continue;
-
-          if (f1->normal() * f2->normal() > 0.99)
-            continue;
-
-          glVertex3fv(tw->dst()->position().getData());
-          glVertex3fv(he->dst()->position().getData());
-        }
-
-        glEnd();
         glLineWidth(3);
       }
     }
@@ -1133,9 +1222,10 @@ void voxelFrame_c::clearSpaces(void) {
   for (unsigned int i = 0; i < shapes.size(); i++) {
     if (shapes[i].list) glDeleteLists(shapes[i].list, 1);
     delete shapes[i].shape;
-    if (shapes[i].poly)
-      delete shapes[i].poly;
+    delete shapes[i].poly;
     shapes[i].poly = 0;
+    delete shapes[i].polyVar;
+    shapes[i].polyVar = 0;
     delete shapes[i].pickPoly;
     shapes[i].pickPoly = 0;
   }
@@ -1200,6 +1290,8 @@ void voxelFrame_c::setDrawingMode(unsigned int nr, drawingMode mode) {
     {
       delete shapes[nr].poly;
       shapes[nr].poly = 0;
+      delete shapes[nr].polyVar;
+      shapes[nr].polyVar = 0;
       delete shapes[nr].pickPoly;
       shapes[nr].pickPoly = 0;
     }
@@ -1230,6 +1322,8 @@ void voxelFrame_c::setRenderStyle(renderStyle style) {
     if (shapes[nr].poly && shapes[nr].mode != gridline) {
       delete shapes[nr].poly;
       shapes[nr].poly = 0;
+      delete shapes[nr].polyVar;
+      shapes[nr].polyVar = 0;
       delete shapes[nr].pickPoly;
       shapes[nr].pickPoly = 0;
     }
@@ -1328,6 +1422,7 @@ void voxelFrame_c::clearTransformPreview(void) {
   if (s.list) glDeleteLists(s.list, 1);
   delete s.shape;
   delete s.poly;
+  delete s.polyVar;
   delete s.pickPoly;
   shapes.erase(shapes.begin() + previewShapeIndex);
 
@@ -1694,6 +1789,8 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
       {
         delete shapes[0].poly;
         shapes[0].poly = 0;
+        delete shapes[0].polyVar;
+        shapes[0].polyVar = 0;
         delete shapes[0].pickPoly;
         shapes[0].pickPoly = 0;
       }
