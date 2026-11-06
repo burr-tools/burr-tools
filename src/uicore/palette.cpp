@@ -153,6 +153,12 @@ namespace btui {
     return 0.2126f * lin(c.r) + 0.7152f * lin(c.g) + 0.0722f * lin(c.b);
   }
 
+  Rgb variableShade(const Rgb & c) {
+    // 0.6 for the lightest colours, down towards 0.35 for the darkest
+    const float k = 0.35f + 0.25f * std::sqrt(relativeLuminance(c));
+    return { c.r * k, c.g * k, c.b * k };
+  }
+
   float contrastRatio(const Rgb & a, const Rgb & b) {
     const float la = relativeLuminance(a), lb = relativeLuminance(b);
     return (std::max(la, lb) + 0.05f) / (std::min(la, lb) + 0.05f);

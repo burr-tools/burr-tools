@@ -586,9 +586,8 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
     float dg = darkPieceColor(shape->g);
     float db = darkPieceColor(shape->b);
     // the variable solid: the shade the fixed voxels get, darkened
-    float vr = variablePieceColor(dr);
-    float vg = variablePieceColor(dg);
-    float vb = variablePieceColor(db);
+    float vr = dr, vg = dg, vb = db;
+    variablePieceColor(&vr, &vg, &vb);
 
     if (shape->dim)
     {
@@ -669,7 +668,11 @@ void voxelFrame_c::drawShape(shapeInfo * shape) {
         {
           const colorInfo & c = palette[f->_color-1];
           if (variable)
-            glColor4f(variablePieceColor(c.r), variablePieceColor(c.g), variablePieceColor(c.b), alpha);
+          {
+            float pr = c.r, pg = c.g, pb = c.b;
+            variablePieceColor(&pr, &pg, &pb);
+            glColor4f(pr, pg, pb, alpha);
+          }
           else
             glColor4f(c.r, c.g, c.b, alpha);
         }
