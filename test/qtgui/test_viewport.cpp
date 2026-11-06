@@ -986,10 +986,12 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
   QCOMPARE(nearest.green(), 0);
 }
 
-void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
-  // C06 / the mock: each voxel face stroked darker; Classic (legacy's
-  // bevels and checker) has no such lines. Rendered with and without the
-  // outline, only the outline pixels change -- and they get darker.
+void TestRender::theFlatStyleOutlinesTheShapesEdges() {
+  // the flat style strokes the shape's edges darker -- where faces meet at
+  // an angle or the colour changes, not across a flat region of voxels;
+  // Classic (legacy's bevels and checker) has no such lines. Rendered with
+  // and without the outline, only the outline pixels change -- and they
+  // get darker.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(320, 240)));
   AppFixture f;
@@ -1021,8 +1023,11 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
   int darker = 0, lighter = 0;
   const QImage flat = compareOutline(&darker, &lighter);
   saveForInspection(flat, "pelikan-flat");
-  // an 8x8x8 cube shows three faces of 64 voxel faces each: many lines
-  QVERIFY2(darker > 1500, qPrintable(QStringLiteral("%1 outline pixels").arg(darker)));
+  // an 8x8x8 cube shows three faces with nine edges between them: a
+  // few hundred pixels of line, and nothing like the 1500 and more that
+  // stroking the 64 voxel faces of each face would give
+  QVERIFY2(darker > 300, qPrintable(QStringLiteral("%1 outline pixels").arg(darker)));
+  QVERIFY2(darker < 1500, qPrintable(QStringLiteral("%1 outline pixels").arg(darker)));
   QCOMPARE(lighter, 0);
 
   f.app->settings()->setVoxelStyle(QStringLiteral("legacy"));
@@ -1067,8 +1072,10 @@ void TestRender::theSlabTintsItsLayer() {
   saveForInspection(with, "slab-on");
   const QColor a = with.pixelColor(160, 120), b = without.pixelColor(160, 120);
   QVERIFY(a != b);
-  // the tint pulls toward the accent (blue)
-  QVERIFY(a.blue() >= b.blue());
+  // a tint, not a repaint: the plate's hue (blue) still dominates under it.
+  // (The earlier check that the blue channel rose sampled a voxel grid line,
+  // which the flat style no longer draws across a flat face.)
+  QVERIFY(a.blue() > a.red() && a.blue() > a.green());
 }
 
 void TestRender::everyGridTypeRenders() {

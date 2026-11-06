@@ -215,18 +215,58 @@ TEST_CASE("flat style: the outline follows each face's sides, not the fan's diag
   const MeshVertex & a = m.opaque[0];
   CHECK((a.edge[0] == 1.0f || a.edge[0] == 1.0f + kNoOutline));
 
-  // a triangle grid's faces are outlined all round
+  // a lone triangular prism: its triangular end faces are outlined all round
   gridType_c tri(gridType_c::GT_TRIANGULAR_PRISM);
-  auto p = bttest::makeVoxel(tri, 2, 2, 1);
-  for (unsigned x = 0; x < 2; x++)
-    for (unsigned y = 0; y < 2; y++)
-      if (p->validCoordinate(x, y, 0)) p->setState(x, y, 0, voxel_c::VX_FILLED);
+  auto p = bttest::makeVoxel(tri, 1, 1, 1);
+  p->setState(0, 0, 0, voxel_c::VX_FILLED);
   const ShapeMesh pm = buildShapeMesh(*p, blue());
   REQUIRE_FALSE(pm.opaque.empty());
   int full = 0;
   for (size_t t = 0; t < pm.opaque.size() / 3; t++)
     full += outlinedSides(pm.opaque, t) == 3 ? 1 : 0;
-  CHECK(full > 0);                                   // the triangular end faces
+  CHECK(full == 2);
+}
+
+TEST_CASE("flat style: no outline where a face continues in the same plane and colour", "[ui][scenemesh]") {
+  // two cubes side by side: the sides the two top faces (front, back,
+  // bottom) share lie inside one flat region and get no line; the box's
+  // own edges do. The box has 12 edges, the four along x split in two
+  // where the cubes meet: 16 edge segments, each on two faces.
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 2, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  const ShapeMesh m = buildShapeMesh(*v, blue());
+  int outlined = 0;
+  for (size_t t = 0; t < m.opaque.size() / 3; t++)
+    outlined += outlinedSides(m.opaque, t);
+  CHECK(outlined == 32);
+
+  // a fixed voxel next to a variable one: the colour changes at the
+  // boundary, so the boundary is outlined like an edge
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  const ShapeMesh b = buildShapeMesh(*v, blue());
+  outlined = 0;
+  for (size_t t = 0; t < b.opaque.size() / 3; t++)
+    outlined += outlinedSides(b.opaque, t);
+  CHECK(outlined == 40);
+
+  // a concave corner is an edge too: an L of three cubes
+  auto l = bttest::makeVoxel(gt, 2, 2, 1);
+  l->setState(0, 0, 0, voxel_c::VX_FILLED);
+  l->setState(1, 0, 0, voxel_c::VX_FILLED);
+  l->setState(0, 1, 0, voxel_c::VX_FILLED);
+  const ShapeMesh lm = buildShapeMesh(*l, blue());
+  // the inner corner's two faces meet at a right angle: both their sides there are outlined
+  bool innerOutlined = false;
+  for (size_t t = 0; t < lm.opaque.size() / 3; t++) {
+    const MeshVertex * tv = &lm.opaque[3 * t];
+    // a face of cube (1,0,0) facing +y, or of cube (0,1,0) facing +x
+    const bool inner = (tv->cell[0] == 1.0f && tv->normal[1] > 0.9f) || (tv->cell[1] == 1.0f && tv->normal[0] > 0.9f);
+    if (inner && outlinedSides(lm.opaque, t) == 2)
+      innerOutlined = true;
+  }
+  CHECK(innerOutlined);
 }
 
 TEST_CASE("flat style: variable voxels are opaque in the darker shade, outlined like the fixed ones", "[ui][scenemesh]") {
