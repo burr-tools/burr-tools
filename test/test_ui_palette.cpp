@@ -1,6 +1,6 @@
-/* Tests for btui::pieceColor, the piece colours of both GUIs: legacy's
- * src/gui/piececolor.cpp is a wrapper over it, so these tests cover the
- * FLTK GUI's colours too.
+/* Tests for btui::pieceColor, the piece colours of both GUIs: the FLTK
+ * GUI's src/gui/piececolor.cpp is a wrapper over it, so these tests cover
+ * its colours too.
  */
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -14,27 +14,79 @@ using namespace btui;
 using Catch::Matchers::WithinAbs;
 
 namespace {
-  void checkRgb(Rgb c, float r, float g, float b) {
-    CHECK_THAT(c.r, WithinAbs(r, 1e-6));
-    CHECK_THAT(c.g, WithinAbs(g, 1e-6));
-    CHECK_THAT(c.b, WithinAbs(b, 1e-6));
+  /* the eight anchors: Okhsl at full saturation, hue and lightness as in the
+   * syntax-highlighting sets the palette is built from, to the reference
+   * conversion's rounding (a unit or two in 255) */
+  void checkHex(int shape, unsigned int r, unsigned int g, unsigned int b) {
+    const Rgb c = pieceColor(shape);
+    INFO("shape " << shape);
+    CHECK_THAT(c.r * 255, WithinAbs(r, 2.01));
+    CHECK_THAT(c.g * 255, WithinAbs(g, 2.01));
+    CHECK_THAT(c.b * 255, WithinAbs(b, 2.01));
   }
 }
 
-TEST_CASE("the first shapes have the legacy colours", "[ui][palette]") {
-  checkRgb(pieceColor(0), 0, 0, 1);   // S1 blue
-  checkRgb(pieceColor(1), 0, 1, 0);   // S2 green
-  checkRgb(pieceColor(2), 1, 0, 0);   // S3 red
-  checkRgb(pieceColor(3), 0, 1, 1);   // S4 cyan
-  checkRgb(pieceColor(17), 1, 0, 0.6f);
+TEST_CASE("the first eight shapes are the anchors, in the legacy table's order", "[ui][palette]") {
+  checkHex(0, 0x30, 0x64, 0xff);  // blue, 265 degrees
+  checkHex(1, 0x00, 0x8e, 0x50);  // green, 155
+  checkHex(2, 0xdf, 0x00, 0x25);  // red, 25
+  checkHex(3, 0x00, 0x9d, 0xd8);  // cyan, 235
+  checkHex(4, 0xa5, 0x92, 0x00);  // mustard, 100, where legacy had yellow
+  checkHex(5, 0xe0, 0x00, 0xb4);  // magenta, 340
+  checkHex(6, 0xa2, 0x01, 0xfd);  // purple, 305 (the set's #aa02f0 is a touch under full saturation)
+  checkHex(7, 0xc6, 0x66, 0x00);  // brown, 55
 }
 
-TEST_CASE("beyond the table the colours follow the legacy sine sequence", "[ui][palette]") {
-  for (int x : { 18, 25, 100 }) {
-    INFO("shape " << x);
-    checkRgb(pieceColor(x), float((1 + std::sin(0.7 * x)) / 2), float((1 + std::sin(1.3 * x + 1.5)) / 2),
-             float((1 + std::sin(3.5 * x + 2.3)) / 2));
+TEST_CASE("the dark-background set is the same hues, lighter", "[ui][palette]") {
+  struct Restore { ~Restore() { setPieceColorsForDarkBackground(false); } } restore;
+  REQUIRE_FALSE(pieceColorsForDarkBackground());
+  setPieceColorsForDarkBackground(true);
+  REQUIRE(pieceColorsForDarkBackground());
+  checkHex(0, 0x44, 0x78, 0xff);  // blue, 265 degrees at 0.55
+  checkHex(1, 0x00, 0xbc, 0x6c);  // green, 155 at 0.65
+  checkHex(2, 0xf6, 0x00, 0x2a);  // red, 25 at 0.55
+  checkHex(3, 0x08, 0xb9, 0xff);  // cyan, 235 at 0.70
+  checkHex(4, 0xc3, 0xac, 0x00);  // yellow, 100 at 0.70
+  checkHex(5, 0xff, 0x3e, 0xd0);  // pink, 340 at 0.65 (the set says #ff41d0: on the gamut edge, three units apart)
+  checkHex(6, 0xb3, 0x5e, 0xff);  // purple, 305 at 0.60
+  checkHex(7, 0xed, 0x7b, 0x00);  // orange, 55 at 0.65
+  // every dark-set colour is lighter than its light-set counterpart
+  for (int shape = 0; shape < 32; shape++) {
+    setPieceColorsForDarkBackground(true);
+    const float dark = relativeLuminance(pieceColor(shape));
+    setPieceColorsForDarkBackground(false);
+    const float light = relativeLuminance(pieceColor(shape));
+    INFO("shape " << shape);
+    CHECK(dark > light);
   }
+}
+
+TEST_CASE("the anchors sit at one apparent brightness", "[ui][palette]") {
+  // Okhsl lightness 0.5 to 0.6: the WCAG luminance of all eight lies in a
+  // narrow band, where the legacy primaries spanned 0.07 (blue) to 0.93 (yellow)
+  float lo = 1, hi = 0;
+  for (int shape = 0; shape < 8; shape++) {
+    const float l = relativeLuminance(pieceColor(shape));
+    lo = std::min(lo, l);
+    hi = std::max(hi, l);
+  }
+  CHECK(lo > 0.12f);
+  CHECK(hi < 0.35f);
+}
+
+TEST_CASE("later shapes halve the gaps between the hues before them", "[ui][palette]") {
+  // shapes 9 to 16 are halfway between neighbouring anchors, 17 to 32 a
+  // quarter of the way: no colour repeats among the first 64 shapes
+  for (int x = 0; x < 64; x++)
+    for (int y = 0; y < x; y++) {
+      const Rgb a = pieceColor(x), b = pieceColor(y);
+      INFO("shapes " << x << " and " << y);
+      CHECK((std::fabs(a.r - b.r) + std::fabs(a.g - b.g) + std::fabs(a.b - b.b)) > 0.02f);
+    }
+  // shape 9 lies between red (25) and brown (55) in hue: redder than brown, browner than red
+  const Rgb red = pieceColor(2), brown = pieceColor(7), mid = pieceColor(8);
+  CHECK(mid.g > red.g);
+  CHECK(mid.g < brown.g);
 }
 
 TEST_CASE("copies of a shape get distinct colours inside [0, 1]", "[ui][palette]") {
@@ -53,9 +105,9 @@ TEST_CASE("copies of a shape get distinct colours inside [0, 1]", "[ui][palette]
 
 TEST_CASE("chip text is whichever of white and black contrasts more, always at least 4.5:1", "[ui][palette]") {
   CHECK(prefersWhiteText(0));        // blue
-  CHECK_FALSE(prefersWhiteText(1));  // green
-  CHECK_FALSE(prefersWhiteText(3));  // cyan
-  CHECK_FALSE(prefersWhiteText(2));  // red: black 5.3:1 (legacy's white was 4.0)
+  CHECK_FALSE(prefersWhiteText(1));  // green: black 4.6:1, white 4.5:1
+  CHECK(prefersWhiteText(2));        // red
+  CHECK(prefersWhiteText(6));        // purple
   const Rgb white{ 1, 1, 1 }, black{ 0, 0, 0 };
   for (int shape = 0; shape < 120; shape++) {
     INFO("shape " << shape);
@@ -83,40 +135,18 @@ TEST_CASE("an index a view hands over while its rows go (-1) gives a colour too"
   }
 }
 
-TEST_CASE("the colours are legacy's to the bit, as the FLTK GUI's piececolor reads them", "[ui][palette]") {
-  /* Written down from src/gui/piececolor.cpp before it became a wrapper:
-   * the 0-255 channels it handed to FLTK and the floats it handed to
-   * OpenGL, for table shapes, formula shapes and jittered copies. Compared
-   * exactly: legacy computed parts in double, and a float shortcut moves
-   * values by a bit and an 8-bit channel by one. */
-  struct Case {
-    int shape, copy;
-    unsigned int r8, g8, b8;
-    float r, g, b;
-  };
-  const Case cases[] = {
-    { 0, -1, 0, 0, 255, 0, 0, 1 },
-    { 8, -1, 153, 0, 0, 0.600000024f, 0, 0 },
-    { 18, -1, 131, 98, 207, 0.51681155f, 0.384677142f, 0.811841547f },
-    { 25, -1, 3, 194, 250, 0.0121869976f, 0.764541328f, 0.982597351f },
-    { 100, -1, 226, 72, 181, 0.886945367f, 0.283917814f, 0.713703573f },
-    { 0, 1, 38, 30, 201, 0.150000006f, 0.120000005f, 0.789999962f },
-    { 2, 8, 203, 40, 71, 0.800000012f, 0.159999996f, 0.280000001f },
-    { 4, 3, 216, 255, 53, 0.850000024f, 1, 0.210000008f },
-    { 9, 2, 38, 134, 120, 0.150000006f, 0.527999997f, 0.474000007f },
-    { 30, 5, 199, 170, 147, 0.780578613f, 0.667075574f, 0.579449177f },
-    { 100, 40, 226, 72, 181, 0.886945367f, 0.283917814f, 0.713703573f },  // jitter table ran out
-  };
-  for (const Case & k : cases) {
-    INFO("shape " << k.shape << " copy " << k.copy);
-    const Rgb8 c8 = k.copy < 0 ? pieceColor8(k.shape) : pieceColor8(k.shape, k.copy);
-    const Rgb c = k.copy < 0 ? pieceColor(k.shape) : pieceColor(k.shape, k.copy);
-    CHECK(c8.r == k.r8);
-    CHECK(c8.g == k.g8);
-    CHECK(c8.b == k.b8);
-    CHECK(c.r == k.r);
-    CHECK(c.g == k.g);
-    CHECK(c.b == k.b);
+TEST_CASE("the 8-bit colours are the floats cut off, as the FLTK GUI reads them", "[ui][palette]") {
+  for (int shape : { 0, 7, 20, 100 }) {
+    const Rgb c = pieceColor(shape);
+    const Rgb8 c8 = pieceColor8(shape);
+    CHECK(c8.r == (unsigned int)(c.r * 255));
+    CHECK(c8.g == (unsigned int)(c.g * 255));
+    CHECK(c8.b == (unsigned int)(c.b * 255));
+    const Rgb j = pieceColor(shape, 3);
+    const Rgb8 j8 = pieceColor8(shape, 3);
+    CHECK(j8.r == (unsigned int)(j.r * 255));
+    CHECK(j8.g == (unsigned int)(j.g * 255));
+    CHECK(j8.b == (unsigned int)(j.b * 255));
   }
   CHECK(darkShade(0.7f) == 0.629999995f);
   CHECK(lightShade(0.7f) == 0.730000019f);

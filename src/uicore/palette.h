@@ -36,6 +36,13 @@ namespace btui {
     float r, g, b;
   };
 
+  /* The piece colours come in a set for a light background (the default,
+   * and all the FLTK GUI has) and one for a dark background: the same hues,
+   * lighter. This switches every colour below for the whole program; a GUI
+   * that switches it has to redraw what shows piece colours. */
+  void setPieceColorsForDarkBackground(bool dark);
+  bool pieceColorsForDarkBackground(void);
+
   /* the base colour of shape number `shape` (0-based) */
   Rgb pieceColor(int shape);
 
@@ -58,6 +65,14 @@ namespace btui {
    */
   inline float darkShade(float f) { return float(f * 0.9); }
   inline float lightShade(float f) { return float(1 - 0.9 * (1 - f)); }
+
+  /* the shade of a variable voxel: the same hue as the fixed voxels next
+   * to it, markedly darker, so a variable region reads as a region (the 2D
+   * editor's cells and the 3D view's edge-line and STL styles). The factor
+   * depends on how light the colour is: the palette's hues are far from
+   * equally bright (pure blue is a quarter as light as yellow), and one
+   * factor that makes yellow plainly olive leaves blue nearly as it was. */
+  Rgb variableShade(const Rgb & c);
 
   /* WCAG 2 relative luminance of an sRGB colour, and the contrast ratio of
    * two (1 to 21) */

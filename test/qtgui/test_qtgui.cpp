@@ -28,6 +28,7 @@
 #include "test_viewport.h"
 
 #include "../../src/uicore/commands.h"
+#include "../../src/uicore/palette.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
@@ -1832,12 +1833,39 @@ private slots:
     QCOMPARE(m->count(), n);
     QCOMPARE(m->selected(), 0);
     QCOMPARE(m->data(m->index(1), ShapesModel::IdTextRole).toString(), QStringLiteral("S2"));
-    QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), QColor(0, 0, 255));
+    QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), ShapesModel::chipColor(0));
 
     m->select(n + 10);
     QCOMPARE(m->selected(), n - 1);
     m->select(-5);
     QCOMPARE(m->selected(), -1);
+  }
+
+  void theChipColoursFollowTheThemesBackground() {
+    // the piece colours come in a light-background and a dark-background
+    // set; switching the theme swaps them and tells the list, so the chips
+    // repaint (the viewport rebuilds its mesh the same way, TestRender)
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    ShapesModel * m = f.app->shapes();
+    Theme * t = Theme::instance();
+    t->setMode(QStringLiteral("light"));
+    auto restore = qScopeGuard([t] { t->setMode(QStringLiteral("light")); });
+    QVERIFY(!btui::pieceColorsForDarkBackground());
+    const QColor light = m->data(m->index(0), ShapesModel::ColorRole).value<QColor>();
+
+    QSignalSpy told(m, &ShapesModel::dataChanged);
+    t->setMode(QStringLiteral("dark"));
+    QVERIFY(btui::pieceColorsForDarkBackground());
+    QVERIFY(told.count() >= 1);
+    const QColor dark = m->data(m->index(0), ShapesModel::ColorRole).value<QColor>();
+    QVERIFY(dark != light);
+    QCOMPARE(dark, ShapesModel::chipColor(0));
+    QVERIFY(dark.lightnessF() > light.lightnessF());   // the same hue, lighter, for the dark canvas
+
+    t->setMode(QStringLiteral("light"));
+    QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), light);
   }
 
   void aNewEmptyDocumentClearsTheSelectionForTheViews() {

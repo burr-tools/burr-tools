@@ -73,27 +73,30 @@ namespace btui {
 
   enum class ColorMode { Piece, Voxel };
 
-  /* How voxels look (Settings ▸ 3D view ▸ Voxel style).
+  /* How voxels look (Settings ▸ 3D view ▸ Voxel style). In every style a
+   * variable voxel is told from a fixed one by its colour: the same hue,
+   * darker (variableShade), as the FLTK GUI draws it.
    *   Flat    the redesign's: plain faces in the voxel's colour, every voxel
-   *           face outlined, variable voxels slightly see-through
-   *           (variableAlpha) with a dashed outline (C06, the mock)
+   *           face outlined; variable voxels in the darker shade, opaque
+   *           (or see-through with a dashed outline, variableAlpha)
    *   Legacy  legacy BurrTools': bevelled voxels in alternating light and
    *           dark shades, variable voxels opaque with a black marker
    *   Stl     the shape as Export ▸ STL makes it (voxel_c::getSTLMesh, the
    *           view's bevel and gap): chamfered edges, no outlines, the shape's
-   *           colour; only the fixed voxels -- an exported piece is solid,
-   *           and variable voxels are not drawn */
+   *           colour; the fixed voxels as one solid and the variable voxels
+   *           as another, in the darker shade, with the export's gap between
+   *           them */
   enum class VoxelStyle { Flat, Legacy, Stl };
-
   struct MeshOptions {
     VoxelStyle style = VoxelStyle::Flat;
     ColorMode colors = ColorMode::Piece;
     Rgb piece{ 0.5f, 0.5f, 0.5f };   ///< the shape's colour
     std::vector<Rgb> palette;        ///< the puzzle's colours; voxel colour i uses palette[i-1]
-    /* the flat style's variable voxels: translucent, so the variable voxels
-     * inside show through the outer ones, layer over layer (C06 and the mock
-     * say 50 %; user decision). 1 draws them opaque. */
-    float variableAlpha = 0.6f;
+    /* the flat style's variable voxels: 1 draws them opaque, a solid that
+     * occludes like the fixed voxels; below 1 they are translucent, each
+     * voxel outlined dashed, and the variable voxels inside show through
+     * the outer ones, layer over layer (the redesign's first look, C06) */
+    float variableAlpha = 1.0f;
   };
 
   struct ShapeMesh {

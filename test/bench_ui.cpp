@@ -47,7 +47,7 @@ TEST_CASE("building a shape's mesh", "[.][bench][scenemesh]") {
   const auto solid8 = cube(gt, 8), solid20 = cube(gt, 20), shell20 = cube(gt, 20, true), solid50 = cube(gt, 50);
   BENCHMARK("8^3 solid") { return buildShapeMesh(*solid8, blue()).opaque.size(); };
   BENCHMARK("20^3 solid") { return buildShapeMesh(*solid20, blue()).opaque.size(); };
-  BENCHMARK("20^3 shell round a variable core") { return buildShapeMesh(*shell20, blue()).translucent.size(); };
+  BENCHMARK("20^3 shell round a variable core") { return buildShapeMesh(*shell20, blue()).opaque.size(); };
   BENCHMARK("50^3 solid") { return buildShapeMesh(*solid50, blue()).opaque.size(); };
 }
 

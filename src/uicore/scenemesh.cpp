@@ -25,7 +25,10 @@
 #include "../halfedge/polyhedron.h"
 
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <memory>
+#include <unordered_map>
 
 namespace btui {
 
@@ -101,17 +104,21 @@ namespace btui {
       }
 
       /* the flat style's colour: the voxel's colour or the shape's, as is --
-       * no light and dark alternation */
+       * no light and dark alternation; a variable voxel's darkened */
       Rgba8 flatColor(unsigned int color, bool variable) const {
-        Rgba8 c = rgba(opt.piece.r, opt.piece.g, opt.piece.b);
-        if (opt.colors == ColorMode::Voxel && color > 0 && color <= opt.palette.size()) {
-          const Rgb & p = opt.palette[color - 1];
-          c = rgba(p.r, p.g, p.b);
-        }
+        Rgb base = opt.piece;
+        if (opt.colors == ColorMode::Voxel && color > 0 && color <= opt.palette.size())
+          base = opt.palette[color - 1];
+        if (variable)
+          base = variableShade(base);
+        Rgba8 c = rgba(base.r, base.g, base.b);
         if (variable)
           c.a = channel(opt.variableAlpha);
         return c;
       }
+
+      // the flat style's variable voxels drawn as a solid, not see-through
+      bool opaqueVariable(void) const { return opt.variableAlpha >= 1.0f; }
 
       /* A drawing-mesh face (spheres) in the flat style: one colour, no
        * outline over its many small facets. */
@@ -119,20 +126,26 @@ namespace btui {
         if (f->hole() || (f->_flags & FF_INSIDE_FACE))
           return;
         const bool variable = shape.getState(f->_fb_index) == voxel_c::VX_VARIABLE;
-        addFlatPolygon(cornersOf(f), toVec(f->normal()), flatColor(f->_color, variable), cellOf(f->_fb_index),
-                       variable, false);
+        const std::vector<Vec3> corners = cornersOf(f);
+        addFlatPolygon(corners, toVec(f->normal()), flatColor(f->_color, variable), cellOf(f->_fb_index),
+                       variable, std::vector<bool>(corners.size(), false));
       }
 
       /* Every voxel's faces in the flat style. A face is drawn where the
-       * neighbour is empty; a fixed voxel also faces a variable neighbour,
-       * so it stays a closed solid seen through it; and a variable voxel
-       * faces a variable neighbour, so the inner variable voxels show
-       * through the outer ones, every boundary outlined (the library's flat
-       * mesh treats both kinds as filled and draws neither). Two variable
-       * neighbours give two faces in one place, facing away from each
-       * other: from any side one of them is culled. */
+       * neighbour is empty. With see-through variable voxels a fixed voxel
+       * also faces a variable neighbour, so it stays a closed solid seen
+       * through it, and a variable voxel faces a variable neighbour, so the
+       * inner variable voxels show through the outer ones, every boundary
+       * outlined (the library's flat mesh treats both kinds as filled and
+       * draws neither). Two variable neighbours give two faces in one place,
+       * facing away from each other: from any side one of them is culled.
+       * With opaque variable voxels those faces would all be inside the
+       * solid, so only the faces towards empty space are drawn, as for the
+       * fixed voxels. */
       void addFlatVoxels(void) {
         struct Side { std::vector<Vec3> corners; int nx = 0, ny = 0, nz = 0; };
+        struct Exposed { std::vector<Vec3> corners; Vec3 normal; Rgba8 col; Vec3 cell; bool variable; };
+        std::vector<Exposed> faces;
         std::vector<Side> sides;
         std::vector<float> fc;
         for (unsigned int z = 0; z < shape.getZ(); z++)
@@ -164,9 +177,9 @@ namespace btui {
               const bool variable = shape.isVariable(x, y, z);
               const Rgba8 col = flatColor(shape.getColor(x, y, z), variable);
               const Vec3 cell{ float(x), float(y), float(z) };
-              for (const Side & s : sides) {
+              for (Side & s : sides) {
                 const int other = shape.getState2(s.nx, s.ny, s.nz);
-                if (!(other == voxel_c::VX_EMPTY || other == voxel_c::VX_VARIABLE))
+                if (!(other == voxel_c::VX_EMPTY || (other == voxel_c::VX_VARIABLE && !opaqueVariable())))
                   continue;
                 // outward: away from the voxel's centre
                 Vec3 nrm = cross(s.corners[1] - s.corners[0], s.corners[2] - s.corners[0]);
@@ -176,25 +189,66 @@ namespace btui {
                 nrm = nrm * (1.0f / len);
                 if (dot(nrm, s.corners[0] - centre) < 0)
                   nrm = nrm * -1.0f;
-                addFlatPolygon(s.corners, nrm, col, cell, variable, true);
+                faces.push_back({ std::move(s.corners), nrm, col, cell, variable });
               }
             }
+
+        /* A side of a face is outlined where the shape has an edge there:
+         * unless another exposed face shares the side, lies in the same
+         * plane and is the same colour, in which case the two are one flat
+         * region and a line between them would only draw the voxel grid
+         * (the FLTK GUI's edge-line style draws the same lines). Faces are
+         * matched on their sides' endpoints, rounded, which works on every
+         * grid alike. */
+        std::unordered_map<std::uint64_t, std::vector<size_t>> bySide;
+        auto quantise = [](const Vec3 & p) -> std::uint64_t {
+          auto q = [](float v) { return std::uint64_t(std::int64_t(std::lround(v * 1024.0f)) & 0x1fffff); };
+          return (q(p.x) << 42) | (q(p.y) << 21) | q(p.z);
+        };
+        auto sideKey = [&](const Vec3 & a, const Vec3 & b) -> std::uint64_t {
+          const std::uint64_t ka = quantise(a), kb = quantise(b);
+          // the same key from either end
+          return (ka < kb ? ka : kb) * 0x9E3779B97F4A7C15ull ^ (ka < kb ? kb : ka);
+        };
+        for (size_t f = 0; f < faces.size(); f++) {
+          const std::vector<Vec3> & c = faces[f].corners;
+          for (size_t i = 0; i < c.size(); i++)
+            bySide[sideKey(c[i], c[(i + 1) % c.size()])].push_back(f);
+        }
+        std::vector<bool> outline;
+        for (size_t f = 0; f < faces.size(); f++) {
+          const Exposed & e = faces[f];
+          const size_t k = e.corners.size();
+          outline.assign(k, true);
+          for (size_t i = 0; i < k; i++)
+            for (size_t g : bySide[sideKey(e.corners[i], e.corners[(i + 1) % k])]) {
+              if (g == f)
+                continue;
+              const Exposed & o = faces[g];
+              const bool sameColour = o.col.r == e.col.r && o.col.g == e.col.g && o.col.b == e.col.b && o.col.a == e.col.a;
+              if (sameColour && dot(o.normal, e.normal) > 0.999f)
+                outline[i] = false;
+            }
+          addFlatPolygon(e.corners, e.normal, e.col, e.cell, e.variable, outline);
+        }
       }
 
-      /* A flat-style polygon, fanned into triangles. With `outline` the
-       * polygon's own sides are outlined (dashed on variable voxels) but not
-       * the fan's diagonals: in each triangle (0, i, i+1) the side opposite
-       * corner 0 is always a side of the polygon, the one opposite corner i
-       * only in the last triangle, the one opposite corner i+1 only in the
-       * first. */
-      void addFlatPolygon(const std::vector<Vec3> & corners, Vec3 n, Rgba8 col, Vec3 cell, bool variable, bool outline) {
+      /* A flat-style polygon, fanned into triangles. `outline` says for each
+       * of the polygon's sides (side i runs from corner i to corner i+1)
+       * whether it is outlined (dashed on see-through variable voxels); the
+       * fan's diagonals never are: in each triangle (0, i, i+1) the side
+       * opposite corner 0 is side i of the polygon, the one opposite corner
+       * i is the last side, only in the last triangle, the one opposite
+       * corner i+1 is side 0, only in the first. */
+      void addFlatPolygon(const std::vector<Vec3> & corners, Vec3 n, Rgba8 col, Vec3 cell, bool variable,
+                          const std::vector<bool> & outline) {
         std::vector<MeshVertex> & dst = variable && col.a < 255 ? out.translucent : out.opaque;
-        const float dashed = variable ? 1.0f : 0.0f;
+        const float dashed = variable && col.a < 255 ? 1.0f : 0.0f;
         const size_t k = corners.size();
         for (size_t i = 1; i + 1 < k; i++) {
-          const float o0 = outline ? 0.0f : kNoOutline;
-          const float o1 = outline && i + 1 == k - 1 ? 0.0f : kNoOutline;
-          const float o2 = outline && i == 1 ? 0.0f : kNoOutline;
+          const float o0 = outline[i] ? 0.0f : kNoOutline;
+          const float o1 = i + 1 == k - 1 && outline[k - 1] ? 0.0f : kNoOutline;
+          const float o2 = i == 1 && outline[0] ? 0.0f : kNoOutline;
           push(dst, corners[0], n, col, cell, 1 + o0, o1, o2, dashed);
           push(dst, corners[i], n, col, cell, o0, 1 + o1, o2, dashed);
           push(dst, corners[i + 1], n, col, cell, o0, o1, 1 + o2, dashed);
@@ -265,23 +319,37 @@ namespace btui {
       return v;
     }
 
-    /* The STL style's faces: the library's STL-look mesh of `fixed` (no
-     * variable voxels) -- the export's meshers at the view's defaults, in
-     * the shape's own units, each face tagged with its voxel
+    /* `shape`'s variable voxels alone, as filled ones: the meshers take the
+     * filled voxels, so this is the variable region as a solid of its own */
+    std::unique_ptr<voxel_c> variableVoxels(const voxel_c & shape) {
+      std::unique_ptr<voxel_c> v(shape.getGridType()->getVoxel(shape));
+      for (unsigned int i = 0; i < v->getXYZ(); i++)
+        switch (v->getState(i)) {
+          case voxel_c::VX_FILLED:   v->setState(i, voxel_c::VX_EMPTY);  break;
+          case voxel_c::VX_VARIABLE: v->setState(i, voxel_c::VX_FILLED); break;
+          default: break;
+        }
+      return v;
+    }
+
+    /* The STL style's faces of one solid, `part`, in `colour`: the library's
+     * STL-look mesh -- the export's meshers at the view's defaults, in the
+     * shape's own units, each face tagged with its voxel
      * (voxel_c::getSTLMesh; it falls back to the flat mesh itself when a
-     * mesher fails). False when even that is not to be had, and the caller
-     * draws the voxels flat instead. */
-    bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
+     * mesher fails), appended to `out`. False when even that is not to be
+     * had, and the caller draws the voxels flat instead. */
+    bool addStlFaces(const voxel_c & part, const Rgb & colour, ShapeMesh & out) {
       bool filled = false;
-      for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
-        filled = fixed.getState(i) == voxel_c::VX_FILLED;
+      for (unsigned int i = 0; i < part.getXYZ() && !filled; i++)
+        filled = part.getState(i) == voxel_c::VX_FILLED;
       if (!filled)
         return true;                                  // nothing to draw
 
-      const std::unique_ptr<Polyhedron> poly(fixed.getSTLMesh());
+      const std::unique_ptr<Polyhedron> poly(part.getSTLMesh());
       if (!poly || poly->vBegin() == poly->vEnd())
         return false;
-      out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
+      ShapeMesh m = buildPolyhedronMesh(*poly, false, &colour, &part);
+      out.opaque.insert(out.opaque.end(), m.opaque.begin(), m.opaque.end());
       return true;
     }
   }
@@ -294,9 +362,18 @@ namespace btui {
     out.boundsMax = { cx, cy, cz };
 
     if (opt.style == VoxelStyle::Stl) {
+      /* two solids, the fixed and the variable voxels, so the boundary
+       * between them gets the export's gap like any other surface and the
+       * variable region is occluded like any other solid */
       const std::unique_ptr<voxel_c> fixed = fixedVoxels(shape);
-      if (!addStlFaces(*fixed, opt, out)) {
-        Builder f{ *fixed, opt, out };
+      const std::unique_ptr<voxel_c> variable = variableVoxels(shape);
+      const Rgb shade = variableShade(opt.piece);
+      if (!addStlFaces(*fixed, opt.piece, out) || !addStlFaces(*variable, shade, out)) {
+        out.opaque.clear();
+        MeshOptions flat = opt;
+        flat.style = VoxelStyle::Flat;
+        flat.variableAlpha = 1.0f;
+        Builder f{ shape, flat, out };
         f.addFlatVoxels();
       }
       return out;

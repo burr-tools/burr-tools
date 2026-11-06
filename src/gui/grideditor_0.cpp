@@ -54,10 +54,6 @@ void gridEditor_0_c::drawNormalTile(int x, int y, int, int tx, int ty, int sx, i
   fl_rectf(tx+x*sx, ty-(y+1)*sy, sx, sy);
 }
 
-void gridEditor_0_c::drawVariableTile(int x, int y, int, int tx, int ty, int sx, int sy) {
-  fl_rectf(tx+x*sx+3, ty-(y+1)*sy+3, sx-5, sy-5);
-}
-
 void gridEditor_0_c::drawTileFrame(int x, int y, int, int tx, int ty, int sx, int sy) {
   fl_rect(tx+x*sx, ty-(y+1)*sy, sx+1, sy+1);
 }
