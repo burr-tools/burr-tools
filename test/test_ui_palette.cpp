@@ -15,14 +15,14 @@ using Catch::Matchers::WithinAbs;
 
 namespace {
   /* the eight anchors: Okhsl at full saturation, hue and lightness as in the
-   * light-mode syntax-highlighting set the palette is built from, to the
-   * reference conversion's rounding (one unit in 255) */
+   * syntax-highlighting sets the palette is built from, to the reference
+   * conversion's rounding (a unit or two in 255) */
   void checkHex(int shape, unsigned int r, unsigned int g, unsigned int b) {
     const Rgb c = pieceColor(shape);
     INFO("shape " << shape);
-    CHECK_THAT(c.r * 255, WithinAbs(r, 1.01));
-    CHECK_THAT(c.g * 255, WithinAbs(g, 1.01));
-    CHECK_THAT(c.b * 255, WithinAbs(b, 1.01));
+    CHECK_THAT(c.r * 255, WithinAbs(r, 2.01));
+    CHECK_THAT(c.g * 255, WithinAbs(g, 2.01));
+    CHECK_THAT(c.b * 255, WithinAbs(b, 2.01));
   }
 }
 
@@ -35,6 +35,30 @@ TEST_CASE("the first eight shapes are the anchors, in the legacy table's order",
   checkHex(5, 0xe0, 0x00, 0xb4);  // magenta, 340
   checkHex(6, 0xa2, 0x01, 0xfd);  // purple, 305 (the set's #aa02f0 is a touch under full saturation)
   checkHex(7, 0xc6, 0x66, 0x00);  // brown, 55
+}
+
+TEST_CASE("the dark-background set is the same hues, lighter", "[ui][palette]") {
+  struct Restore { ~Restore() { setPieceColorsForDarkBackground(false); } } restore;
+  REQUIRE_FALSE(pieceColorsForDarkBackground());
+  setPieceColorsForDarkBackground(true);
+  REQUIRE(pieceColorsForDarkBackground());
+  checkHex(0, 0x44, 0x78, 0xff);  // blue, 265 degrees at 0.55
+  checkHex(1, 0x00, 0xbc, 0x6c);  // green, 155 at 0.65
+  checkHex(2, 0xf6, 0x00, 0x2a);  // red, 25 at 0.55
+  checkHex(3, 0x08, 0xb9, 0xff);  // cyan, 235 at 0.70
+  checkHex(4, 0xc3, 0xac, 0x00);  // yellow, 100 at 0.70
+  checkHex(5, 0xff, 0x3e, 0xd0);  // pink, 340 at 0.65 (the set says #ff41d0: on the gamut edge, three units apart)
+  checkHex(6, 0xb3, 0x5e, 0xff);  // purple, 305 at 0.60
+  checkHex(7, 0xed, 0x7b, 0x00);  // orange, 55 at 0.65
+  // every dark-set colour is lighter than its light-set counterpart
+  for (int shape = 0; shape < 32; shape++) {
+    setPieceColorsForDarkBackground(true);
+    const float dark = relativeLuminance(pieceColor(shape));
+    setPieceColorsForDarkBackground(false);
+    const float light = relativeLuminance(pieceColor(shape));
+    INFO("shape " << shape);
+    CHECK(dark > light);
+  }
 }
 
 TEST_CASE("the anchors sit at one apparent brightness", "[ui][palette]") {

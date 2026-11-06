@@ -36,6 +36,13 @@ namespace btui {
     float r, g, b;
   };
 
+  /* The piece colours come in a set for a light background (the default,
+   * and all the FLTK GUI has) and one for a dark background: the same hues,
+   * lighter. This switches every colour below for the whole program; a GUI
+   * that switches it has to redraw what shows piece colours. */
+  void setPieceColorsForDarkBackground(bool dark);
+  bool pieceColorsForDarkBackground(void);
+
   /* the base colour of shape number `shape` (0-based) */
   Rgb pieceColor(int shape);
 
