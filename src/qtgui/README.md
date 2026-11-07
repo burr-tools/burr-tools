@@ -970,6 +970,17 @@ Product decisions of 2026-11-06, unless a line says otherwise.
 - **The left card scrolls in a short window, its summary stays**: what is above
   the strip scrolls by the bar and the wheel, never by dragging, which the lists
   in it use.
+- **Shape colours: Muted by default, Classic a setting away** (product decision
+  2026-11-08, Settings ▸ General, `btui::ShapeColours`). The pure primaries glare on
+  the dark panel, and dark blue nearly vanishes there (1.2:1). Muted keeps each hue
+  at half the chroma, the lightness spread over a band per theme, because one set
+  cannot serve both: the dark theme's would fall below 3:1 on white for 13 of the 18
+  colours. Every shape then reaches 3:1 on its panel in both themes (Classic: 4 fail
+  on dark, 7 on light) and text on a shape keeps 4.5:1. The price is colours that sit
+  closer together, so the S number stays on every chip and object. It is a mapping
+  for the screen: `palette.cpp`, the legacy GUI and the file keep the table, as do
+  image exports (`buildAssemblyScene`); a vector export is the view as it is on
+  screen, so it follows the setting.
 - **Text on the accent is a token of its own** (product decision 2026-11-07):
   `onAccent`, white on the light accent and `#0b1220` on the dark one (6.76:1).
   Darkening the dark accent for white text would have dropped the accent used as

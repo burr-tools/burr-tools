@@ -122,6 +122,18 @@ TestCase {
         compare(App.settings.voxelStyle, "flat")
     }
 
+    function test_shapeColoursAreASegmentedChoice() {
+        // softer by default; the colours BurrTools has always used behind Classic
+        const d = openSettings()
+        mouseClick(inside(d, "settings.nav.general"))
+        waitForRendering(d.contentItem)
+        compare(App.settings.shapeColours, "muted")
+        mouseClick(inside(d, "settings.shapeColours.classic"))
+        compare(App.settings.shapeColours, "classic")
+        mouseClick(inside(d, "settings.shapeColours.muted"))
+        compare(App.settings.shapeColours, "muted")
+    }
+
     function test_antialiasingIsASegmentedChoice() {
         // 4x by default; off, 2x and 8x on the same row
         const d = openSettings()

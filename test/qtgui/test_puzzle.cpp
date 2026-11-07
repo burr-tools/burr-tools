@@ -13,8 +13,10 @@
 #include "offscreenrenderer.h"
 #include "puzzlecontroller.h"
 #include "shapesmodel.h"
+#include "settingscontroller.h"
 #include "statuscontroller.h"
 #include "test_gpu.h"
+#include "theme.h"
 #include "viewportcontroller.h"
 
 #include "../../src/lib/problem.h"
@@ -934,4 +936,75 @@ void TestPuzzle::anOddValueChangesNothing() {
   QCOMPARE(f.problem().getColorConstraints(), rules);
   f.puzzle()->setPiecesView(QStringLiteral("cards"));
   QCOMPARE(f.puzzle()->piecesView(), QStringLiteral("chips"));
+}
+
+void TestPuzzle::shapeColoursDefaultToMutedAndSwitchBack() {
+  PuzzleFixture f;
+  SettingsController * s = f.app->settings();
+  QCOMPARE(s->shapeColours(), QStringLiteral("muted"));
+  QVERIFY(ShapesModel::chipColor(2) != QColor(255, 0, 0));
+
+  s->setShapeColours(QStringLiteral("classic"));
+  QCOMPARE(ShapesModel::chipColor(2), QColor(255, 0, 0));
+  QCOMPARE(ShapesModel::chipColor(0), QColor(0, 0, 255));
+
+  // an unknown word is the default, as in every setting of its kind
+  s->setShapeColours(QStringLiteral("neon"));
+  QCOMPARE(s->shapeColours(), QStringLiteral("muted"));
+
+  // a reset of its page brings the default back
+  s->setShapeColours(QStringLiteral("classic"));
+  s->resetSection(QStringLiteral("general"));
+  QCOMPARE(s->shapeColours(), QStringLiteral("muted"));
+  QVERIFY(ShapesModel::chipColor(2) != QColor(255, 0, 0));
+}
+
+void TestPuzzle::everyViewFollowsTheShapeColours() {
+  PuzzleFixture f;
+  f.puzzle()->stepPiece(1, 1);
+  f.puzzle()->selectPiece(1);
+  f.flush();
+  ShapesModel * shapes = f.app->shapes();
+  QSignalSpy rows(shapes, &QAbstractItemModel::dataChanged);
+  QSignalSpy scene(f.viewport(), &ViewportController::sceneChanged);
+
+  const auto sceneColours = [&] {
+    QSet<quint32> seen;
+    const SceneFrame frame = f.viewport()->frame(1);
+    for (const auto * list : { &frame.mesh->opaque, &frame.mesh->translucent })
+      for (const btui::MeshVertex & v : *list)
+        seen.insert(quint32(v.color.r) << 16 | quint32(v.color.g) << 8 | v.color.b);
+    return seen;
+  };
+  const QColor mutedChip = f.puzzle()->pieces()->value(0, QStringLiteral("chipColor")).value<QColor>();
+  const QSet<quint32> muted = sceneColours();
+
+  f.app->settings()->setShapeColours(QStringLiteral("classic"));
+  QCoreApplication::sendPostedEvents();
+  f.flush();
+
+  QVERIFY(rows.count() >= 1);
+  QVERIFY(scene.count() >= 1);
+  const QColor classicChip = f.puzzle()->pieces()->value(0, QStringLiteral("chipColor")).value<QColor>();
+  QVERIFY(classicChip != mutedChip);
+  QCOMPARE(classicChip, ShapesModel::chipColor(1));
+  QCOMPARE(f.puzzle()->pieceColor(), classicChip);
+  QVERIFY(sceneColours() != muted);
+}
+
+void TestPuzzle::theThemePicksItsMutedSet() {
+  PuzzleFixture f;
+  f.app->settings()->setTheme(QStringLiteral("light"));
+  const QColor light = ShapesModel::chipColor(2);
+  QSignalSpy spy(Theme::instance(), &Theme::shapeColoursChanged);
+  f.app->settings()->setTheme(QStringLiteral("dark"));
+  QCOMPARE(spy.count(), 1);
+  QVERIFY(ShapesModel::chipColor(2) != light);
+  QVERIFY(ShapesModel::chipColor(2).lightnessF() > light.lightnessF());
+
+  // classic does not depend on the theme
+  f.app->settings()->setShapeColours(QStringLiteral("classic"));
+  const QColor classic = ShapesModel::chipColor(2);
+  f.app->settings()->setTheme(QStringLiteral("light"));
+  QCOMPARE(ShapesModel::chipColor(2), classic);
 }

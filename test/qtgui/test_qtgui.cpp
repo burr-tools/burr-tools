@@ -2302,6 +2302,7 @@ private slots:
     QCOMPARE(m->count(), n);
     QCOMPARE(m->selected(), 0);
     QCOMPARE(m->data(m->index(1), ShapesModel::IdTextRole).toString(), QStringLiteral("S2"));
+    f.app->settings()->setShapeColours(QStringLiteral("classic"));
     QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), QColor(0, 0, 255));
 
     m->select(n + 10);

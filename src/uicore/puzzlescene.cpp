@@ -45,7 +45,7 @@ namespace btui {
 
     Prepared prepare(const voxel_c & shape, int index, const MeshOptions & options) {
       MeshOptions o = options;
-      o.piece = pieceColor(index);
+      o.piece = o.shapeColours.of(index);
       Prepared out;
       out.mesh = buildShapeMesh(shape, o);
       if (out.mesh.empty())

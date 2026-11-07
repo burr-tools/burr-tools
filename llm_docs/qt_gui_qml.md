@@ -18,7 +18,9 @@ For `src/qtgui/qml/`. Accessibility rules are in `llm_docs/qt_gui_accessibility.
   concatenation of sentence parts.
 - **Colours, sizes, radii, durations from `Theme`**, never literals. Text on
   a shape's colour uses the model's `chipTextColor` / `App.viewport.shapeTextColor`
-  (`btui::prefersWhiteText`, a WCAG rule), never a local formula.
+  (`btui::prefersWhiteText`, a WCAG rule), never a local formula. A shape's colour on
+  screen comes from `ShapesModel::chipColor` / `Theme::shapeColours()`, never
+  `btui::pieceColor`, which is the table before Settings › Shape colours.
 - **Names are text, not markup:** every `Text` showing a label, a tooltip or a
   file's words sets `textFormat: Text.PlainText`. The default renders markup and
   loads the images a name asks for. `tst_puzzle`'s `test_namesAreNeverRichText`

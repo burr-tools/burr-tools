@@ -1563,6 +1563,7 @@ void TestViewportItem::theCardShowsItsCanvas() {
   AppFixture f;
   QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
   Theme::instance()->setMode(QStringLiteral("light"));
+  f.app->settings()->setShapeColours(QStringLiteral("classic"));
   QTRY_VERIFY_WITH_TIMEOUT(!f.app->viewport()->animating(), 3000);
   QuickTarget t;
   GPU_OR_SKIP(t.create(QSize(480, 360)));

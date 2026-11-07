@@ -21,6 +21,8 @@
 #ifndef BTQT_THEME_H
 #define BTQT_THEME_H
 
+#include "../uicore/shapecolours.h"
+
 #include <QColor>
 #include <QHash>
 #include <QObject>
@@ -165,6 +167,10 @@ public:
   QString density(void) const { return m_minimal ? QStringLiteral("minimal") : QStringLiteral("standard"); }
   void setDensity(const QString & d);
   bool dark(void) const { return m_dark; }
+  /* Settings ▸ Shape colours */
+  void setShapePalette(btui::ShapePalette p);
+  /* what a shape is shown in: the table's colours without a Theme (a test) */
+  static btui::ShapeColours shapeColours(void);
 
   /* What the theme asks the platform for, so its own drawing (title bar,
    * native dialogs) matches: Light or Dark when forced, Unknown -- the
@@ -284,6 +290,8 @@ public:
   static QColor parseColor(const QString & s);
 
 signals:
+  /* the shape colours on show changed: their palette, or the theme */
+  void shapeColoursChanged(void);
 
   void changed(void);
 
@@ -301,6 +309,7 @@ private:
 
   QString m_mode = QStringLiteral("light");      // the settings' default
   bool m_dark = false;
+  btui::ShapePalette m_shapePalette = btui::ShapePalette::Muted;
   Qt::ColorScheme m_systemScheme = Qt::ColorScheme::Unknown;
   int m_motionOverride = -1;                       ///< setReducedMotionForTesting
   bool m_minimal = false;

@@ -83,6 +83,11 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
       scheduleMesh();
     emit optionsChanged();
   });
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, [this] {
+      scheduleMesh();
+      emit sceneChanged();
+    });
   connect(m_layout, &LayoutController::changed, this, [this] {
     // the camera frames what each workspace shows
     if (m_layout->workspace() != m_workspace) {
@@ -214,7 +219,7 @@ QColor ViewportController::shapeColor(void) const {
 }
 
 QColor ViewportController::shapeTextColor(void) const {
-  return m_shapeIndex >= 0 && !btui::prefersWhiteText(m_shapeIndex) ? QColor(Qt::black) : QColor(Qt::white);
+  return m_shapeIndex >= 0 ? ShapesModel::chipTextColor(m_shapeIndex) : QColor(Qt::white);
 }
 
 /* The selected shape, looked up again after any change to the puzzle or the
@@ -278,7 +283,7 @@ void ViewportController::buildMesh(void) {
   if (m_shape) {
     btui::MeshOptions opt;
     opt.style = m_voxelStyle;
-    opt.piece = btui::pieceColor(m_shapeIndex);
+    opt.piece = Theme::shapeColours().of(m_shapeIndex);
     opt.colors = colourViewValue();
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
@@ -318,6 +323,7 @@ void ViewportController::buildPuzzleMesh(void) {
   m_puzzle->refresh();
   btui::MeshOptions opt;
   opt.style = m_voxelStyle;
+  opt.shapeColours = Theme::shapeColours();
   opt.colors = colourViewValue();
   for (unsigned i = 0; i < p.colorNumber(); i++) {
     unsigned char r, g, b;
@@ -601,8 +607,7 @@ void ViewportController::addTransformPreview(SceneFrame & f) const {
   if (!m_transform || !m_shape || !t)
     return;
   const TransformPreview & p = *m_transform;
-  const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
-  const QColor piece = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  const QColor piece = ShapesModel::chipColor(m_shapeIndex);
   guarded([&] {
     btui::addResultGhost(f.ghostFaces, f.ghostLines, *m_shape, p.result.get(),
                          { rgba(piece, 0.5f), rgba(t->accent()), 1.5f });
@@ -639,10 +644,8 @@ void ViewportController::addGhosts(SceneFrame & f) const {
   // the drawing colour: the edit cursor's (so the two never disagree about
   // a colour id), or Default's -- the shape's own
   QColor draw = m_editor->cursorColour();
-  if (!draw.isValid()) {
-    const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
-    draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
-  }
+  if (!draw.isValid())
+    draw = ShapesModel::chipColor(m_shapeIndex);
   const bool variable = m_editor->toolInEffect() == EditorController::Variable;
 
   for (const btui::GhostKind kind : { btui::GhostKind::Place, btui::GhostKind::Replace, btui::GhostKind::Erase,

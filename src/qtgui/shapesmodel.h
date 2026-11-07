@@ -103,7 +103,9 @@ public:
   Q_INVOKABLE void requestRename(int row);
 
   /* the chip colour of shape i, by position */
+  /* the shape's colour on screen, and the text that reads on it */
   static QColor chipColor(int i);
+  static QColor chipTextColor(int i);
 
   /* Re-read the shapes after the puzzle changed, and select `want` (when it
    * is a row) or keep the selection within the list -- one selectedChanged,

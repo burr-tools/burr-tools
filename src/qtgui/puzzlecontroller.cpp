@@ -23,6 +23,7 @@
 #include "guarded.h"
 #include "layoutcontroller.h"
 #include "shapesmodel.h"
+#include "theme.h"
 
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
@@ -40,10 +41,6 @@ namespace {
 
   QString idOfShape(int shape) {
     return QString::fromStdString(btui::shapeId(shape));
-  }
-
-  QColor textOnShape(int shape) {
-    return btui::prefersWhiteText(shape) ? QColor(Qt::white) : QColor(Qt::black);
   }
 
   QString groupName(int group) {
@@ -101,6 +98,8 @@ PuzzleController::PuzzleController(DocumentController * doc, ShapesModel * shape
   connect(shapes, &ShapesModel::shapesRenumbering, this, [this] { m_doc->beginStep(m_problem, m_piece, 0); });
   connect(shapes, &ShapesModel::shapesRenumbered, this, &PuzzleController::followShapes);
   connect(doc, &DocumentController::puzzleEdited, this, [this] { stale(); });
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, [this] { stale(); });
   connect(layout, &LayoutController::changed, this, [this] {
     if (m_stale && m_layout->workspace() == LayoutController::Puzzle)
       refresh();
@@ -194,13 +193,13 @@ void PuzzleController::refresh(void) {
       if (slot.role == btui::GoalRole::Result) {
         v.resultIdText = idOfShape(slot.shape);
         v.resultColor = ShapesModel::chipColor(slot.shape);
-        v.resultTextColor = textOnShape(slot.shape);
+        v.resultTextColor = ShapesModel::chipTextColor(slot.shape);
       }
       const voxel_c * s = p.getShape(unsigned(slot.shape));
       const int fixed = filled(s), total = fixed + variable(s);
       const QString name = QString::fromStdString(s->getName());
       goal.push_back({ role, title, slot.shape, idOfShape(slot.shape), name.isEmpty() ? tr("Result piece") : name,
-                       ShapesModel::chipColor(slot.shape), textOnShape(slot.shape),
+                       ShapesModel::chipColor(slot.shape), ShapesModel::chipTextColor(slot.shape),
                        tr("%1 · can hold %2").arg(voxelsText(fixed), rangeText(fixed, total)) });
     }
     m_goal->setRows(std::move(goal));
@@ -224,7 +223,7 @@ void PuzzleController::refresh(void) {
         for (const btui::GroupMember & m : g.members)
           if (m.shape == s)
             names << groupName(g.id);
-      pieces.push_back({ s, idOfShape(s), label, ShapesModel::chipColor(s), textOnShape(s), c.min, c.max, countText,
+      pieces.push_back({ s, idOfShape(s), label, ShapesModel::chipColor(s), ShapesModel::chipTextColor(s), c.min, c.max, countText,
                          c.isRange() || m_rangeHeld == s, names.join(QStringLiteral(", ")) });
     }
     m_pieces->setRows(std::move(pieces));
@@ -238,7 +237,7 @@ void PuzzleController::refresh(void) {
         members.append(QVariantMap{ { QStringLiteral("idText"), idOfShape(m.shape) },
                                     { QStringLiteral("count"), m.count },
                                     { QStringLiteral("chipColor"), ShapesModel::chipColor(m.shape) },
-                                    { QStringLiteral("chipTextColor"), textOnShape(m.shape) } });
+                                    { QStringLiteral("chipTextColor"), ShapesModel::chipTextColor(m.shape) } });
       groupRows.push_back({ g.id, tr("Group %1").arg(g.id), members });
     }
     m_groups->setRows(std::move(groupRows));
@@ -256,7 +255,7 @@ void PuzzleController::refresh(void) {
       v.pieceName = name.isEmpty() ? tr("Piece") : name;
       v.pieceDetail = tr("%1 · %2 fixed · %3 variable").arg(voxelsText(fixed + vari)).arg(fixed).arg(vari);
       v.pieceColor = ShapesModel::chipColor(piece);
-      v.pieceTextColor = textOnShape(piece);
+      v.pieceTextColor = ShapesModel::chipTextColor(piece);
       v.pieceMin = c.min;
       v.pieceMax = c.max;
       v.pieceRange = c.isRange() || m_rangeHeld == piece;

@@ -53,6 +53,9 @@ private slots:
   void aVectorExportFromPuzzleSpreadsTheObjects();
   void theTopCountStops();
   void anOddValueChangesNothing();
+  void shapeColoursDefaultToMutedAndSwitchBack();
+  void everyViewFollowsTheShapeColours();
+  void theThemePicksItsMutedSet();
 };
 
 #endif

@@ -21,6 +21,7 @@
 #include "shapesmodel.h"
 #include "documentcontroller.h"
 #include "guarded.h"
+#include "theme.h"
 
 #include "../uicore/palette.h"
 #include "../uicore/shapelist.h"
@@ -47,6 +48,11 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
   // the change names the shape to select: one selectedChanged, for the end state
   connect(doc, &DocumentController::historyApplied, this, [this](int, int shape) { refresh(false, shape); });
   connect(doc, &DocumentController::puzzleEdited, this, &ShapesModel::edited);
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, [this] {
+      if (m_rows > 0)
+        emit dataChanged(index(0), index(m_rows - 1), { ColorRole, TextColorRole });
+    });
   refresh(true);
   select(0);
 }
@@ -66,8 +72,13 @@ const ShapesModel::Counts & ShapesModel::countsOf(int row) const {
 }
 
 QColor ShapesModel::chipColor(int i) {
-  btui::Rgb c = btui::pieceColor(i);
-  return QColor::fromRgbF(c.r, c.g, c.b);
+  // in the 8 bits a pixel has, so that what is drawn compares equal to it
+  const btui::Rgb c = Theme::shapeColours().of(i);
+  return QColor(qRound(c.r * 255), qRound(c.g * 255), qRound(c.b * 255));
+}
+
+QColor ShapesModel::chipTextColor(int i) {
+  return Theme::shapeColours().whiteText(i) ? QColor(Qt::white) : QColor(Qt::black);
 }
 
 QVariant ShapesModel::data(const QModelIndex & index, int role) const {
@@ -85,7 +96,7 @@ QVariant ShapesModel::data(const QModelIndex & index, int role) const {
     case IdTextRole:    return idTextOf(i);
     case LabelRole:     return QString::fromStdString(s->getName());
     case ColorRole:     return chipColor(i);
-    case TextColorRole: return btui::prefersWhiteText(i) ? QColor(Qt::white) : QColor(Qt::black);
+    case TextColorRole: return chipTextColor(i);
     case FixedRole:     return countsOf(i).fixed;
     case VariableRole:  return countsOf(i).variable;
     case WeightRole:    return s->getWeight();
