@@ -222,8 +222,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   maxHoles = 0xFFFFFFFF;
 
   std::string str = pars.getAttributeValue("maxHoles");
-  if (str.length())
-    maxHoles = atoi(str.c_str());
+  if (str.length()) {
+    const int holes = atoi(str.c_str());
+    if (holes < 0)
+      pars.exception("the maximal number of holes can not be negative");
+    maxHoles = holes;
+  }
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -256,6 +260,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   }
 
   unsigned int pieces = 0;
+  bool partsRead = false;
 
   do
   {
@@ -266,6 +271,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
     if (pars.getName() == "shapes")  // parts are saved in this tag for historical reasons
     {
+      /* The stored solutions are read against the pieces listed so far, and
+       * every later use of them trusts that count. */
+      if (partsRead || solutions.size() > 0 || stashedAssemblies.size() > 0)
+        pars.exception("a problem can have only one shapes node, in front of its solutions");
+      partsRead = true;
+
       do
       {
         int state = pars.nextTag();
@@ -303,6 +314,11 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
           if (id >= puzzle.getNumberOfShapes())
             pars.exception("the shape ids must be for valid shapes");
+
+          // every part operation finds a shape's one part by its id
+          for (const auto & part : parts)
+            if (part->shapeId == id)
+              pars.exception("a shape can be listed only once in a problem");
 
           if (grp)
           {

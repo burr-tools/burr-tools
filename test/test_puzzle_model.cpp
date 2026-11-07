@@ -1,4 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
+#include <sstream>
+#include <iterator>
 
 #include "test_helpers.h"
 
@@ -1787,4 +1789,70 @@ TEST_CASE("assembly: the pivot decides the comparison -- the same assembly answe
 
   REQUIRE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
   REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 1, nullptr, true));
+}
+
+// ---------------------------------------------------------------------------
+// what a file may hold
+// ---------------------------------------------------------------------------
+
+namespace {
+
+  /* a puzzle's file, as text, to change by hand */
+  std::string solvedFile(void) {
+    auto str = openGzFile("examples/PelikanBurr.xmpuzzle");
+    REQUIRE(str);
+    return std::string(std::istreambuf_iterator<char>(*str), std::istreambuf_iterator<char>());
+  }
+
+  std::string replaced(std::string text, const std::string & what, const std::string & with) {
+    const size_t at = text.find(what);
+    REQUIRE(at != std::string::npos);
+    return text.replace(at, what.size(), with);
+  }
+
+  std::unique_ptr<puzzle_c> read(const std::string & text) {
+    std::istringstream in(text);
+    xmlParser_c pars(in);
+    return std::make_unique<puzzle_c>(pars);
+  }
+}
+
+TEST_CASE("an unchanged file still reads", "[puzzle][file]") {
+  CHECK_NOTHROW(read(solvedFile()));
+}
+
+TEST_CASE("a file cannot add pieces behind its solutions", "[puzzle][file]") {
+  CHECK_THROWS(read(replaced(solvedFile(), "</solutions>", "</solutions><shapes><shape id=\"1\" count=\"1\"/></shapes>")));
+}
+
+TEST_CASE("a file cannot list its shapes twice", "[puzzle][file]") {
+  const std::string file = solvedFile();
+  const size_t end = file.find("</shapes>", file.find("<problem"));
+  REQUIRE(end != std::string::npos);
+  const std::string again = file.substr(0, end + 9) + "<shapes></shapes>" + file.substr(end + 9);
+  CHECK_THROWS(read(again));
+}
+
+TEST_CASE("a file cannot list a shape twice in a problem", "[puzzle][file]") {
+  CHECK_THROWS(read(replaced(solvedFile(), "<shape id=\"1\" count=\"1\"/>",
+                             "<shape id=\"1\" count=\"1\"/><shape id=\"1\" count=\"2\"/>")));
+}
+
+TEST_CASE("a file holds at most 63 colours", "[puzzle][file]") {
+  std::string colours;
+  for (int i = 0; i < 63; i++)
+    colours += "<color red=\"1\" green=\"2\" blue=\"3\"/>";
+  const std::string file = solvedFile();
+  const size_t open = file.find("<colors");
+  const size_t close = file.find('>', open);
+  REQUIRE(file[close - 1] == '/');
+  const std::string head = file.substr(0, open) + "<colors>";
+  const std::string tail = "</colors>" + file.substr(close + 1);
+  CHECK_NOTHROW(read(head + colours + tail));
+  CHECK_THROWS(read(head + colours + "<color red=\"1\" green=\"2\" blue=\"3\"/>" + tail));
+}
+
+TEST_CASE("a file cannot ask for fewer than no holes", "[puzzle][file]") {
+  CHECK_THROWS(read(replaced(solvedFile(), "<problem ", "<problem maxHoles=\"-2\" ")));
+  CHECK(read(replaced(solvedFile(), "<problem ", "<problem maxHoles=\"2\" "))->getProblem(0)->getMaxHoles() == 2);
 }
