@@ -260,12 +260,40 @@ namespace btui {
 
   puzzleHistory_c::undoResult_t DocumentSession::undo(void) {
     endStroke();
-    return hist->undo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->undo(puz.get());
+    noteSolutionsLost(held);
+    return r;
   }
 
   puzzleHistory_c::undoResult_t DocumentSession::redo(void) {
     endStroke();
-    return hist->redo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->redo(puz.get());
+    noteSolutionsLost(held);
+    return r;
+  }
+
+  void DocumentSession::beginStep(const puzzleHistory_c::selection_t & selection, unsigned int coalesceKey) {
+    hist->beginStep(selection, coalesceKey);
+  }
+
+  void DocumentSession::endStep(const puzzleHistory_c::selection_t & selection) {
+    hist->endStep(selection);
+  }
+
+  long DocumentSession::solutionsHeld(void) const {
+    long held = 0;
+    for (unsigned int i = 0; i < puz->getNumberOfProblems(); i++) {
+      const problem_c * pr = puz->getProblem(i);
+      held += long(pr->getNumberOfSavedSolutions()) + (pr->getSolveState() == SS_UNSOLVED ? 0 : 1);
+    }
+    return held + hist->solutionsKept() + puzzleHistory_c::solutionsIn(strokeLost);
+  }
+
+  void DocumentSession::noteSolutionsLost(long heldBefore) {
+    if (solutionsHeld() < heldBefore)
+      hist->markModified();
   }
 
   void DocumentSession::beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {

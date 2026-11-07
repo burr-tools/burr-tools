@@ -18,6 +18,7 @@
 #include <memory>
 #include <set>
 #include <stdint.h>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -53,6 +54,7 @@ public:
     AK_ENTITIES_CLICK_3D,     ///< voxel add/remove via 3D view on Entities tab
     AK_COLOR_PALETTE,         ///< add/remove/change a colour entry
     AK_PROBLEM_STRUCTURAL,    ///< problem add/delete/rename/piece-counts/result/constraints
+    AK_PROBLEM_COUNT,         ///< a piece's count, stepped or typed: a burst on one piece is one step
   };
 
   /** Which tab an undo/redo should switch to. */
@@ -62,15 +64,27 @@ public:
     TAB_SOLVER,
   };
 
+  static const unsigned int NO_SHAPE = (unsigned int)-1;
+  static const unsigned int NO_PROBLEM = (unsigned int)-1;
+
+  /** The Puzzle workspace's selection, as a step found it or left it. */
+  struct selection_t {
+    unsigned int problem = NO_PROBLEM;  ///< NO_PROBLEM: the step says nothing about the selection
+    unsigned int piece = NO_SHAPE;
+  };
+
   struct undoResult_t {
     unsigned int selectedShape; ///< shape list index to restore; (unsigned)-1 if unknown
     affectedTab_e tab;          ///< tab to switch to after restore
+    selection_t selection = {}; ///< where the step puts the Puzzle workspace's selection
   };
 
-  static const unsigned int NO_SHAPE = (unsigned int)-1;
   static const unsigned int MAX_UNDO = 500; ///< absolute upper bound (the redesigned Settings offer 500); runtime limit set via setMaxUndo()
   static const int GRID_PAINT_COALESCE_MS = 500;
   static const int TRANSFORM_COALESCE_MS  = 150;
+  /* a held stepper repeats every 80 ms; a number typed in two goes commits
+   * after each pause, 350 ms plus the gap between the keys */
+  static const int PROBLEM_COUNT_COALESCE_MS = 800;
 
   puzzleHistory_c(void);
   ~puzzleHistory_c(void);
@@ -92,6 +106,18 @@ public:
   void record(puzzle_c * puzzle, actionKind_e kind,
               unsigned int selectedShape = NO_SHAPE);
 
+  /**
+   * The step the next record() makes begins with this selection: an undo of
+   * it goes back there. For AK_PROBLEM_COUNT, coalesceKey names what is being
+   * counted; only steps of one problem and key coalesce.
+   */
+  void beginStep(const selection_t & selection, unsigned int coalesceKey = 0);
+  /**
+   * Ends what beginStep() began. If a step was recorded since, this is where
+   * it left the selection: a redo of it goes there.
+   */
+  void endStep(const selection_t & selection);
+
   bool canUndo(void) const;
   bool canRedo(void) const;
 
@@ -110,6 +136,13 @@ public:
    *  keeps its own, the state before the whole step. False, and d left as
    *  it was, when there is no step to keep them in (step 0). */
   bool keepDiscarded(discarded_t && d);
+
+  /** What the records hold, counted as DocumentSession counts a problem's:
+   *  its saved solutions, and one for a search state past unsolved. */
+  static long solutionsIn(const discarded_t & d);
+  /** The same over every step's kept records: an undo or redo moves them
+   *  between the steps and the problems, and loses none. */
+  long solutionsKept(void) const;
 
   /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
    *  limit drops the oldest undo steps at once, then the redo steps furthest
@@ -149,6 +182,7 @@ private:
     unsigned int resultId = 0;
     std::set<uint32_t> colorConstraints;
     std::vector<partSnap_t> parts;
+    unsigned int maxHoles = 0xFFFFFFFF;  ///< as problem_c stores it: this value is "no limit"
   };
 
   struct snapshot_t {
@@ -160,6 +194,7 @@ private:
     /* What this step discarded while in the state after it, what undoing it
      * put back while in the state before it: swapped at each undo / redo. */
     discarded_t discarded;
+    selection_t before, after;                          ///< the selection around this step (beginStep, endStep)
 
     snapshot_t(void) : selectedShape(NO_SHAPE), kind(AK_NONE) {}
     ~snapshot_t(void) = default;
@@ -182,6 +217,13 @@ private:
   unsigned int lastShape;
   int64_t lastTimeMs;
 
+  bool stepOpen;            ///< between beginStep() and endStep()
+  bool stepRecorded;        ///< ... and a step was recorded in between
+  selection_t stepBefore;
+  unsigned int stepKey;
+  selection_t lastBefore;   ///< the last step's, what the next may coalesce with
+  unsigned int lastKey;
+
   static std::unique_ptr<voxel_c> cloneShape(const voxel_c * src);
   static int64_t nowMs(void);
 
@@ -189,12 +231,14 @@ private:
                                       unsigned int selectedShape,
                                       actionKind_e kind,
                                       const snapshot_t * prevSnap) const;
-  /* Returns the shapes whose voxels it changed. A problem the snapshot
-   * leaves as it is keeps its solutions. */
+  /* Returns the shapes whose voxels it changed. A problem whose structure
+   * the snapshot leaves as it is keeps its solutions. */
   std::vector<unsigned int> restore(puzzle_c * puzzle, const snapshot_t * snap) const;
   static problemSnap_t snapProblem(const problem_c * pr);
-  /* the same parts, result, groups and colour constraints (the name aside) */
-  static bool sameStructure(const problemSnap_t & a, const problemSnap_t & b);
+  void matchProblems(puzzle_c * puzzle, const snapshot_t * snap) const;
+  void matchShapes(puzzle_c * puzzle, const snapshot_t * snap) const;
+  /* the same parts, result, groups, colour constraints and holes (the name aside) */
+  static bool sameStructure(const problem_c & pr, const problemSnap_t & ps);
   /* after a restore: the step's kept solve records swapped in or out, and
    * the solutions of the other problems using a changed shape dropped */
   static void settleSolutions(puzzle_c * puzzle, const std::vector<unsigned int> & changedShapes,

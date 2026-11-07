@@ -634,3 +634,61 @@ TEST_CASE("an undo that changes a shape drops the solutions no step kept for it"
   d.undo();
   CHECK(unsolved(d, 0));
 }
+
+TEST_CASE("an undo back to the save reads as unsaved when solutions went on the way", "[ui][document]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  REQUIRE(d.puzzle().getProblem(0)->getNumberOfSavedSolutions() > 0);
+  REQUIRE_FALSE(d.isModified());
+
+  d.edit(puzzleHistory_c::AK_PROBLEM_STRUCTURAL, puzzleHistory_c::NO_SHAPE, [](puzzle_c & p) {
+    problem_c * pr = p.getProblem(0);
+    pr->setShapeMaximum(pr->getShapeIdOfPart(0), pr->getShapeMaximum(pr->getShapeIdOfPart(0)) + 1);
+    pr->removeAllSolutions();
+    return true;
+  });
+  d.undo();
+
+  // the file has them and the puzzle does not
+  CHECK(d.puzzle().getProblem(0)->getNumberOfSavedSolutions() == 0);
+  CHECK(d.isModified());
+}
+
+TEST_CASE("an undo back to the save reads clean when no solutions went", "[ui][document]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  d.edit(puzzleHistory_c::AK_PROBLEM_STRUCTURAL, puzzleHistory_c::NO_SHAPE, [](puzzle_c & p) {
+    p.getProblem(0)->setName("renamed");
+    return true;
+  });
+  CHECK(d.isModified());
+  d.undo();
+  CHECK_FALSE(d.isModified());
+}
+
+TEST_CASE("an undo back to the save reads clean when the solutions a voxel edit dropped come back", "[ui][document]") {
+  /* the step keeps them, so they are not lost on the way: neither the edit,
+   * nor a stroke, nor a redo after the undo makes the save point unreachable */
+  Pelikan f;
+  DocumentSession & d = f.d;
+  REQUIRE_FALSE(d.isModified());
+
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  REQUIRE(unsolved(d, 0));
+  CHECK(d.isModified());
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());
+  d.redo();
+  CHECK(d.isModified());
+  d.undo();
+  CHECK_FALSE(d.isModified());
+
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, f.used);
+  d.strokeEdit(flip(f.used));
+  d.strokeEdit(flip(f.used));
+  CHECK(d.endStroke());
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());
+}

@@ -11,6 +11,8 @@
 #include "../src/lib/problem.h"
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
+#include "../src/tools/gzstream.h"
+#include "../src/tools/xml.h"
 
 #include <memory>
 
@@ -26,6 +28,18 @@ std::unique_ptr<puzzle_c> makePuzzleWithShapes(unsigned int numShapes) {
   for (unsigned int i = 0; i < numShapes; i++)
     p->addShape(1, 1, 1);
   p->addProblem();
+  return p;
+}
+
+/* Pelikan Burr: its problem 0 has saved solutions; a second, empty problem
+ * and a shape no problem uses go beside it. */
+std::unique_ptr<puzzle_c> solvedPuzzle() {
+  auto str = openGzFile("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(str);
+  xmlParser_c pars(*str);
+  auto p = std::make_unique<puzzle_c>(pars);
+  REQUIRE(p->getNumberOfProblems() > 0);
+  REQUIRE(p->getProblem(0)->getNumberOfSavedSolutions() > 0);
   return p;
 }
 
@@ -791,4 +805,258 @@ TEST_CASE("endStroke resets coalesce window so next stroke is a new step", "[gui
 
   h.undo(puzzle.get());
   CHECK(h.canUndo()); // two distinct steps
+}
+
+// ---------------------------------------------------------------------------
+// Solutions: the history keeps none, so a restore must not touch a problem it
+// does not change. They can be computed again, but undoing a rename or an
+// unrelated shape must not cost the user a long search.
+// ---------------------------------------------------------------------------
+
+TEST_CASE("undoing an edit elsewhere keeps a problem's solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  SECTION("a shape no problem uses") {
+    puzzle->addShape(2, 2, 2);
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL);
+  }
+  SECTION("another problem") {
+    puzzle->addProblem();
+    h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  }
+  SECTION("the problem's own name") {
+    puzzle->getProblem(0)->setName("renamed");
+    h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  }
+  SECTION("a colour") {
+    puzzle->addColor(1, 2, 3);
+    h.record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE);
+  }
+
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  h.redo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+}
+
+TEST_CASE("undoing a reorder of the problems brings each its solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  const std::string name = puzzle->getProblem(0)->getName();
+  const unsigned int other = puzzle->addProblem();
+  puzzle->getProblem(other)->setName("other");
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->exchangeProblems(0, other);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  h.undo(puzzle.get());
+
+  CHECK(puzzle->getProblem(0)->getName() == name);
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  CHECK(puzzle->getProblem(other)->getName() == "other");
+  CHECK(puzzle->getProblem(other)->getNumberOfSavedSolutions() == 0);
+
+  h.redo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getName() == "other");
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
+  CHECK(puzzle->getProblem(other)->getNumberOfSavedSolutions() == solutions);
+}
+
+TEST_CASE("undoing the delete of one problem leaves the others their solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  // the deleted problem comes before the solved one, which moves up
+  const unsigned int added = puzzle->addProblem();
+  puzzle->getProblem(added)->setName("first");
+  puzzle->exchangeProblems(0, added);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->removeProblem(0);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  REQUIRE(puzzle->getProblem(added - 1)->getNumberOfSavedSolutions() == solutions);
+  h.undo(puzzle.get());
+
+  CHECK(puzzle->getProblem(0)->getName() == "first");
+  CHECK(puzzle->getProblem(added)->getNumberOfSavedSolutions() == solutions);
+}
+
+TEST_CASE("a restore that changes a problem drops its solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  problem_c * pr = puzzle->getProblem(0);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  SECTION("its pieces") {
+    const unsigned int shape = pr->getShapeIdOfPart(0);
+    pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+    h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  }
+  SECTION("a shape it uses") {
+    const unsigned int shape = pr->getShapeIdOfPart(0);
+    voxel_c * v = puzzle->getShape(shape);
+    v->setState(0, v->getState(0) == voxel_c::VX_EMPTY ? voxel_c::VX_FILLED : voxel_c::VX_EMPTY);
+    h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_GRID_PAINT, shape);
+  }
+
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
+}
+
+TEST_CASE("the hole limit is captured and restored on undo", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->getProblem(0)->setMaxHoles(3);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  h.undo(puzzle.get());
+  CHECK_FALSE(puzzle->getProblem(0)->maxHolesDefined());
+  h.redo(puzzle.get());
+  REQUIRE(puzzle->getProblem(0)->maxHolesDefined());
+  CHECK(puzzle->getProblem(0)->getMaxHoles() == 3);
+}
+
+TEST_CASE("a shape delete undone and redone leaves its problem whole", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int shapes = puzzle->getNumberOfShapes();
+  const unsigned int parts = puzzle->getProblem(0)->getNumberOfParts();
+  const unsigned int gone = puzzle->getProblem(0)->getShapeIdOfPart(parts - 1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->removeShape(gone);
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  h.undo(puzzle.get());
+  REQUIRE(puzzle->getNumberOfShapes() == shapes);
+  REQUIRE(puzzle->getProblem(0)->getNumberOfParts() == parts);
+
+  // the ids of the parts lie past the shapes the redo goes back to
+  h.redo(puzzle.get());
+  CHECK(puzzle->getNumberOfShapes() == shapes - 1);
+  CHECK(puzzle->getProblem(0)->getNumberOfParts() == parts - 1);
+  for (unsigned int i = 0; i < parts - 1; i++)
+    CHECK(puzzle->getProblem(0)->getShapeIdOfPart(i) < shapes - 1);
+
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfParts() == parts);
+}
+
+TEST_CASE("undoing a reorder of the shapes leaves the problems their solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  // a shape no problem uses, moved past all of them
+  const unsigned int added = puzzle->addShape(1, 1, 1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  for (unsigned int k = added; k > 0; k--)
+    puzzle->exchangeShapes(k, k - 1);
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_STRUCTURAL, 0);
+  REQUIRE(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  h.redo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+}
+
+TEST_CASE("two shapes alike do not trade places in an undo", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(3);
+  puzzle->getShape(0)->setState(0, voxel_c::VX_FILLED);
+  puzzle->getShape(2)->setState(0, voxel_c::VX_FILLED);
+  puzzle->getShape(0)->setName("first");
+  puzzle->getShape(2)->setName("last");
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->getShape(1)->setState(0, voxel_c::VX_FILLED);    // now all alike
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_CLICK_3D, 1);
+  h.undo(puzzle.get());
+
+  CHECK(puzzle->getShape(0)->getName() == "first");
+  CHECK(puzzle->getShape(1)->getState(0) == voxel_c::VX_EMPTY);
+  CHECK(puzzle->getShape(2)->getName() == "last");
+}
+
+TEST_CASE("a burst of counts on one piece is one undo step", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(3);
+  problem_c * pr = puzzle->getProblem(0);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  const auto step = [&](unsigned int shape, unsigned int problem = 0) {
+    h.beginStep({ problem, shape }, shape);
+    pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+    h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_COUNT, 0);
+    h.endStep({ problem, shape });
+  };
+
+  SECTION("one piece") {
+    for (int i = 0; i < 40; i++)
+      step(1);
+    h.undo(puzzle.get());
+    CHECK(pr->getShapeMaximum(1) == 0);
+    CHECK_FALSE(h.canUndo());
+  }
+  SECTION("another piece is another step") {
+    step(1);
+    step(2);
+    h.undo(puzzle.get());
+    CHECK(pr->getShapeMaximum(1) == 1);
+    CHECK(pr->getShapeMaximum(2) == 0);
+  }
+  SECTION("not across a save") {
+    step(1);
+    h.markSaved();
+    step(1);
+    CHECK(h.isModifiedFromSave());
+    h.undo(puzzle.get());
+    CHECK_FALSE(h.isModifiedFromSave());
+    CHECK(pr->getShapeMaximum(1) == 1);
+  }
+  SECTION("not without a step begun") {
+    step(1);
+    pr->setShapeMaximum(1, 5);
+    h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_COUNT, 0);
+    h.undo(puzzle.get());
+    CHECK(pr->getShapeMaximum(1) == 1);
+  }
+}
+
+TEST_CASE("undo goes back to the selection a step found, redo to the one it left", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(2);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  h.beginStep({ 0, 1 });
+  puzzle->addProblem();
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL, 0);
+  h.endStep({ 1, 1 });
+
+  const auto undone = h.undo(puzzle.get());
+  CHECK(undone.selection.problem == 0);
+  CHECK(undone.selection.piece == 1);
+  const auto redone = h.redo(puzzle.get());
+  CHECK(redone.selection.problem == 1);
+  CHECK(redone.selection.piece == 1);
+}
+
+TEST_CASE("a step outside the Puzzle workspace says nothing of its selection", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  // a step that changed nothing leaves nothing behind for the next
+  h.beginStep({ 3, 4 });
+  h.endStep({ 3, 4 });
+  puzzle->getShape(0)->setState(0, voxel_c::VX_FILLED);
+  h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_CLICK_3D, 0);
+
+  CHECK(h.undo(puzzle.get()).selection.problem == puzzleHistory_c::NO_PROBLEM);
+  CHECK(h.redo(puzzle.get()).selection.problem == puzzleHistory_c::NO_PROBLEM);
 }
