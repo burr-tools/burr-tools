@@ -41,6 +41,7 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         elide: Text.ElideRight
         text: root.text
+        textFormat: Text.PlainText
         color: root.isShape ? root.textColor : root.kind === Chip.Count ? Theme.panel : Theme.muted
         font.pixelSize: Theme.fontMicro
         font.weight: root.kind === Chip.Count ? Font.DemiBold : Font.Bold

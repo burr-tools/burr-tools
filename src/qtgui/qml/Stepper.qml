@@ -4,10 +4,10 @@ import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // PR-06 Stepper: [axis] [−] [value] [＋] in one box, h28 (Minimal 26). The value is
-// typed (Enter or leaving the field commits, Esc reverts, invalid text
-// reverts), stepped with ↑ / ↓ or the wheel while focused, and with − / ＋,
-// which repeat while held. It shows `value` and asks for a new one with
-// committed(value); the owner decides (a size may be refused).
+// typed (NumberEntry: Enter or leaving the field commits, Esc goes back to what
+// it was, invalid text reverts), stepped with ↑ / ↓ or the wheel while focused,
+// and with − / ＋, which repeat while held. It shows `value` and asks for a new
+// one with committed(value); the owner decides (a size may be refused).
 Rectangle {
     id: root
     property int value: 1
@@ -16,7 +16,16 @@ Rectangle {
     property string axis
     property color axisColor: Theme.text
     property string tip
+    /* typed digits go through after a short pause, without Enter: for values
+     * something else shows at once (the Puzzle workspace's counts). A pause
+     * commits nothing below liveFrom: 0 removes a piece, and waits for Enter. */
+    property bool commitWhileTyping: false
+    property int liveFrom: from
     signal committed(int value)
+    // a number being typed: from the first key until it is committed or dropped
+    signal entryStarted()
+    signal entryEnded()
+    readonly property bool entering: entry.open
 
     // the decrement, the field and the increment, for tests
     readonly property alias decButton: dec
@@ -34,24 +43,27 @@ Rectangle {
     property bool invalid: false
     Timer { id: invalidTimer; interval: 600; onTriggered: root.invalid = false }
 
-    function ask(v: int): void {
-        const c = Math.max(from, Math.min(to, v))
-        if (c !== value)
-            committed(c)
-    }
+    // what is being typed goes in, or is dropped: for an owner that moves on
+    function commitText(): void { entry.finish() }
+    function dropText(): void { entry.drop() }
 
-    function commitText(): void {
-        const v = parseInt(input.text)
-        if (isNaN(v) || String(v) !== input.text.trim()) {
-            invalid = true
+    NumberEntry {
+        id: entry
+        field: input
+        value: root.value
+        from: root.from
+        to: root.to
+        liveFrom: root.liveFrom
+        live: root.commitWhileTyping
+        onCommitted: (v) => root.committed(v)
+        onStarted: root.entryStarted()
+        onEnded: root.entryEnded()
+        onRejected: {
+            root.invalid = true
             invalidTimer.restart()
-        } else {
-            ask(v)
+            App.status.flash(qsTr("Enter a whole number"))    // the red border alone is hue only
         }
-        input.text = String(value)
     }
-
-    onValueChanged: if (!input.activeFocus) input.text = String(value)
 
     component StepButton: AbstractButton {
         id: sb
@@ -68,7 +80,7 @@ Rectangle {
             color: sb.pressed ? Theme.line : (sb.hovered ? Theme.panel2 : "transparent")
         }
         contentItem: Text {
-            text: sb.sign === "+" ? "+" : "−"
+            text: sb.sign === "+" ? qsTr("+") : qsTr("−")
             color: sb.enabled ? Theme.text : Theme.muted
             font.pixelSize: Theme.fontBody
             horizontalAlignment: Text.AlignHCenter
@@ -82,7 +94,7 @@ Rectangle {
         spacing: 0
         Text {
             id: axisLabel
-            width: 12
+            width: Math.max(12, implicitWidth + 3)     // a word (Min) needs more than a letter
             height: parent.height
             text: root.axis
             color: root.axisColor
@@ -96,7 +108,7 @@ Rectangle {
             sign: "-"
             anchors.verticalCenter: parent.verticalCenter
             enabled: root.value > root.from
-            onClicked: root.ask(root.value - 1)
+            onClicked: entry.step(root.value - 1)
         }
         TextInput {
             id: input
@@ -115,25 +127,21 @@ Rectangle {
             activeFocusOnTab: true
             Accessible.role: Accessible.SpinBox
             Accessible.name: root.tip.length > 0 ? root.tip : root.axis
-            onActiveFocusChanged: if (activeFocus) selectAll(); else root.commitText()
-            Keys.onReturnPressed: root.commitText()
-            Keys.onEnterPressed: root.commitText()
+            onActiveFocusChanged: if (activeFocus) selectAll(); else entry.finish()
+            onTextEdited: entry.edited()
+            Keys.onReturnPressed: entry.finish()
+            Keys.onEnterPressed: entry.finish()
+            // while something is typed Esc is the field's, before the window's Esc ladder
+            Keys.onShortcutOverride: (event) => { if (event.key === Qt.Key_Escape && entry.entering) event.accepted = true }
             Keys.onEscapePressed: (event) => {
-                if (text !== String(root.value)) {
-                    text = String(root.value)
-                    event.accepted = true
-                } else {
-                    event.accepted = false     // nothing to revert: Esc goes on (Focus 2D)
-                }
+                event.accepted = entry.entering   // nothing to revert: Esc goes on (Focus 2D)
+                entry.cancel()
             }
-            Keys.onUpPressed: { root.ask(root.value + 1); text = String(root.value) }
-            Keys.onDownPressed: { root.ask(root.value - 1); text = String(root.value) }
+            Keys.onUpPressed: entry.step(root.value + 1)
+            Keys.onDownPressed: entry.step(root.value - 1)
             WheelHandler {
                 enabled: input.activeFocus
-                onWheel: (event) => {
-                    root.ask(root.value + (event.angleDelta.y > 0 ? 1 : -1))
-                    input.text = String(root.value)
-                }
+                onWheel: (event) => entry.step(root.value + (event.angleDelta.y > 0 ? 1 : -1))
             }
         }
         StepButton {
@@ -142,7 +150,7 @@ Rectangle {
             sign: "+"
             anchors.verticalCenter: parent.verticalCenter
             enabled: root.value < root.to
-            onClicked: root.ask(root.value + 1)
+            onClicked: entry.step(root.value + 1)
         }
     }
     BtToolTip { shown: hover.hovered && !input.activeFocus; text: root.tip }

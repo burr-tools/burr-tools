@@ -41,8 +41,9 @@ namespace {
     float dim[4];
     float outline[4];
     float misc[4];
+    float proj[16];
   };
-  static_assert(sizeof(MeshUniforms) == 192);
+  static_assert(sizeof(MeshUniforms) == 256);
 
   /* the face outline of the flat voxel style (C06, the mock: a 1 dp stroke
    * centred on each side). Each face draws its own half, so a side shared by
@@ -80,8 +81,9 @@ namespace {
   struct LineUniforms {
     float mvp[16];
     float viewport[4];
+    float proj[16];
   };
-  static_assert(sizeof(LineUniforms) == 80);
+  static_assert(sizeof(LineUniforms) == 144);
 
   struct CompositeUniforms {
     float target[4];
@@ -94,8 +96,9 @@ namespace {
     float corner[2] {};
     btui::Rgba8 color;
     float style[4] {};
+    float offset[3] {};
   };
-  static_assert(sizeof(LineVertex) == 52);
+  static_assert(sizeof(LineVertex) == 64);
 
   constexpr int kMeshStride = sizeof(btui::MeshVertex);
 
@@ -440,6 +443,7 @@ void SceneRenderer::Impl::createScenePipelines(void) {
     { 0, 2, QRhiVertexInputAttribute::Float2, offsetof(LineVertex, corner) },
     { 0, 3, QRhiVertexInputAttribute::UNormByte4, offsetof(LineVertex, color) },
     { 0, 4, QRhiVertexInputAttribute::Float4, offsetof(LineVertex, style) },
+    { 0, 5, QRhiVertexInputAttribute::Float3, offsetof(LineVertex, offset) },
   });
 
   const QShader meshVs = burrtoolsShader("mesh.vert.qsb");
@@ -609,6 +613,8 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   mu.outline[1] = d->linear ? 1.0f - std::pow(1.0f - f.outlineStrength, 2.2f) : f.outlineStrength;
   mu.outline[2] = kOutlineDashDp * f.devicePixelRatio;
   mu.misc[0] = lin;
+  mu.misc[1] = f.anchored ? 1.0f : 0.0f;
+  copyMat(mu.proj, proj);
   u->updateDynamicBuffer(d->meshUbo.get(), 0, sizeof(mu), &mu);
 
   MeshUniforms tu = mu;
@@ -638,6 +644,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   lu.viewport[0] = float(px.width());
   lu.viewport[1] = float(px.height());
   lu.viewport[2] = lin;
+  copyMat(lu.proj, proj);
   u->updateDynamicBuffer(d->lineUbo.get(), 0, sizeof(lu), &lu);
   // the depth of the lines' solid core alone (linesFirst)
   lu.viewport[3] = 0.5f;
@@ -674,6 +681,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
       v.style[1] = s.dashDp * f.devicePixelRatio;
       v.style[2] = s.gapDp * f.devicePixelRatio;
       v.style[3] = 0;
+      v.offset[0] = s.offset.x; v.offset[1] = s.offset.y; v.offset[2] = s.offset.z;
       to.push_back(v);
     }
   };

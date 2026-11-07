@@ -73,6 +73,13 @@ QString KeyboardCues::accessKeyText(const QString & label, bool show) {
   return plain.left(at) + QStringLiteral("<u>") + plain.at(at) + QStringLiteral("</u>") + plain.mid(at + 1);
 }
 
+void KeyboardCues::setNavigating(bool on) {
+  if (on == m_navigating)
+    return;
+  m_navigating = on;
+  emit navigatingChanged();
+}
+
 bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
   switch (event->type()) {
     // a key a shortcut takes (Esc: the layout's) arrives only as the
@@ -80,6 +87,14 @@ bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
     case QEvent::ShortcutOverride:
     case QEvent::KeyPress: {
       auto * k = static_cast<QKeyEvent *>(event);
+      switch (k->key()) {
+        case Qt::Key_Tab: case Qt::Key_Backtab:
+        case Qt::Key_Left: case Qt::Key_Right: case Qt::Key_Up: case Qt::Key_Down:
+          setNavigating(true);
+          break;
+        default:
+          break;
+      }
       if (k->key() == Qt::Key_Alt) {
         if (!k->isAutoRepeat())
           m_altAlone = true;
@@ -140,6 +155,7 @@ bool KeyboardCues::eventFilter(QObject * watched, QEvent * event) {
       break;
     }
     case QEvent::MouseButtonPress:
+      setNavigating(false);
       if (const auto * w = qobject_cast<QWindow *>(watched); w && w->type() != Qt::Popup && w->type() != Qt::ToolTip)
         emit windowPressed();
       [[fallthrough]];

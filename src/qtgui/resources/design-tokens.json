@@ -27,6 +27,8 @@
       "axisZ": "#2f6df6",
       "danger": "#d92d20",
       "dangerText": "#b42318",
+      "ok": "#1a7f37",
+      "warn": "#b54708",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "dark": {
@@ -46,6 +48,8 @@
       "axisZ": "#5b9bff",
       "danger": "#ff7066",
       "dangerText": "#ff7066",
+      "ok": "#4cc38a",
+      "warn": "#f5b454",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "glyph": {
@@ -208,8 +212,9 @@
       "drawSwatch": 32,
       "puzzleTile": [
         96,
-        50
+        44
       ],
+      "libraryChip": 26,
       "solverListRow": 28,
       "player": 112,
       "pieceDisplay": 104
@@ -251,8 +256,9 @@
       "drawSwatch": 26,
       "puzzleTile": [
         78,
-        46
+        40
       ],
+      "libraryChip": 24,
       "solverListRow": 26,
       "player": 84,
       "pieceDisplay": 76,

@@ -55,6 +55,11 @@ void StatusController::flash(const QString & text) {
   emit announced(text);
 }
 
+void StatusController::announce(const QString & text) {
+  m_lastMessage = text;
+  emit announced(text);
+}
+
 void StatusController::endFlash(void) {
   if (!m_flashing)
     return;

@@ -29,8 +29,20 @@ Menu {
 
     // an open menu takes Esc before the layout does (Main.qml's Esc ladder)
     readonly property var appWindow: parent && parent.ApplicationWindow ? parent.ApplicationWindow.window : null
-    onAboutToShow: if (appWindow && appWindow.openPopups !== undefined) appWindow.openPopups++
-    onAboutToHide: if (appWindow && appWindow.openPopups !== undefined) appWindow.openPopups--
+    // the window counted in: the item it opened on may be gone by the time it closes
+    property var countedIn: null
+    onAboutToShow: {
+        if (appWindow && appWindow.openPopups !== undefined) {
+            countedIn = appWindow
+            countedIn.openPopups++
+        }
+    }
+    onAboutToHide: {
+        if (countedIn) {
+            countedIn.openPopups--
+            countedIn = null
+        }
+    }
 
     background: Rectangle {
         implicitWidth: 220
