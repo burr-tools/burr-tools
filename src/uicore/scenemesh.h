@@ -107,6 +107,7 @@ namespace btui {
     Rgba8 color;
     float widthDp = 1;
     float dashDp = 0, gapDp = 0;
+    Vec3 offset{};                ///< added after the view's rotation (SceneFrame::anchored); else none
   };
 
   struct ShapeMesh {

@@ -220,3 +220,46 @@ TEST_CASE("every legacy format is written", "[ui][vectorexport]") {
   }
   CHECK(vectorExtension(VectorFormat::EPS) == "eps");
 }
+
+TEST_CASE("objects anchored in the view land at their places on the page", "[ui][vectorexport]") {
+  Scene s(false);
+  VectorInput in = s.input();
+  in.lines = nullptr;
+  const VectorPage plain = projectScene(in);
+
+  // two copies, side by side, as the Puzzle scene places them
+  ShapeMesh two;
+  for (const float x : { -10.0f, 10.0f })
+    for (MeshVertex v : s.mesh.opaque) {
+      v.cell[0] = x;
+      v.cell[1] = v.cell[2] = 0;
+      two.opaque.push_back(v);
+    }
+  in.mesh = &two;
+  in.anchored = true;
+  const VectorPage page = projectScene(in);
+
+  REQUIRE(page.prims.size() == 2 * plain.prims.size());
+  float low = page.width, high = 0, plainLow = page.width, plainHigh = 0;
+  for (const VectorPrimitive & p : page.prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      low = std::min(low, p.xy[i]);
+      high = std::max(high, p.xy[i]);
+    }
+  for (const VectorPrimitive & p : plain.prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      plainLow = std::min(plainLow, p.xy[i]);
+      plainHigh = std::max(plainHigh, p.xy[i]);
+    }
+  CHECK(high - low > 1.5f * (plainHigh - plainLow));
+
+  // and the same mesh not anchored stacks them
+  in.anchored = false;
+  float stackedLow = page.width, stackedHigh = 0;
+  for (const VectorPrimitive & p : projectScene(in).prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      stackedLow = std::min(stackedLow, p.xy[i]);
+      stackedHigh = std::max(stackedHigh, p.xy[i]);
+    }
+  CHECK_THAT(stackedHigh - stackedLow, Catch::Matchers::WithinAbs(plainHigh - plainLow, 0.01));
+}

@@ -64,6 +64,9 @@ namespace btui {
      * 3D view draws the Classic style (SceneFrame::cullBackFaces): its
      * bevelled mesh's seams show the far side */
     bool cullBackFaces = true;
+    /* each vertex's `cell` is its object's place in view space, added after
+     * the view's rotation (SceneFrame::anchored, as the mesh shader does) */
+    bool anchored = false;
   };
 
   struct VectorPrimitive {

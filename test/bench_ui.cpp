@@ -9,8 +9,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
 
+#include "../src/lib/gridtype.h"
+#include "../src/lib/puzzle.h"
+#include "../src/lib/voxel.h"
 #include "../src/uicore/camera.h"
 #include "../src/uicore/depthsort.h"
+#include "../src/uicore/problemlist.h"
+#include "../src/uicore/puzzlescene.h"
 #include "../src/uicore/scenemesh.h"
 #include "../src/uicore/vectorexport.h"
 
@@ -49,6 +54,22 @@ TEST_CASE("building a shape's mesh", "[.][bench][scenemesh]") {
   BENCHMARK("20^3 solid") { return buildShapeMesh(*solid20, blue()).opaque.size(); };
   BENCHMARK("20^3 shell round a variable core") { return buildShapeMesh(*shell20, blue()).translucent.size(); };
   BENCHMARK("50^3 solid") { return buildShapeMesh(*solid50, blue()).opaque.size(); };
+}
+
+TEST_CASE("the Puzzle scene", "[.][bench][puzzlescene]") {
+  auto p = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  p->addShape(1, 1, 1);
+  const unsigned s = p->addShape(16, 16, 16);
+  for (unsigned z = 0; z < 16; z++)
+    for (unsigned y = 0; y < 16; y++)
+      for (unsigned x = 0; x < 16; x++)
+        if ((x + y + z) % 2 == 0)
+          p->getShape(s)->setState(x, y, z, voxel_c::VX_FILLED);
+  btui::newProblem(*p);
+  btui::setPieceCount(*p, 0, int(s), 100, 100);
+  BENCHMARK("a selection: 16^3 checkerboard, 100 copies") {
+    return btui::buildPuzzleScene(*p, 0, -1, btui::MeshOptions{}).objects.size();
+  };
 }
 
 TEST_CASE("the 3D view's depth sort", "[.][bench][depthsort]") {
