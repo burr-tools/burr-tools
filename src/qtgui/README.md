@@ -35,7 +35,8 @@ it can replace it.
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
 | P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
-| P10 onward | Puzzle and Solver workspaces | Next (see *Next phases*); their cards are placeholders |
+| P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle primitives | Done; decisions in *P10 decisions* |
+| P11 Solver | The Solver workspace | Next (see *Next phases*); its cards are placeholders |
 
 ### Deferred to the next phase
 
@@ -61,7 +62,15 @@ below, lists them per phase).
 | Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
 | QML left to the JavaScript engine | `qtgui_qml_aot` | P2–P6's QML was measured only with Qt 6.12 locally, where the report does not compare; on CI's 6.11 it left 731 bindings to the engine against the first cut's 441 (the baseline, raised 2026-10-29 to what is), 757 with the roving Tab stops (2026-10-29): a QML type's members "can be shadowed" and Qt 6.8 has no `final` properties, so each `roving.` lookup in ActionButton and GlyphButton and RovingFocus's own arrays stay with the engine -- a C++ RovingFocus (FINAL properties) would compile them. The rest is typing work: `QVariantMap` / `var` data read by property (the inspector's buttons, the tools' and planes' models -- typed C++ value types or `required` properties), colour bindings 6.11 cannot populate, fonts read as `double` into `int` pixel sizes, untyped functions. Biggest: Inspector 107, VoxelEditorCard 83, Main 71, ShapesCard 33 | P8 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
-| Edits while the solver runs | legacy `threadStopped()` | Shape and colour edits change data an assembler reads; nothing in the new GUI solves yet. `DocumentController::edit` must refuse them while a solve runs | P11 |
+| Edits while the solver runs | legacy `threadStopped()` | Shape, colour and problem edits change data an assembler reads; nothing in the new GUI solves yet. A gate in `DocumentController::edit` alone is too narrow: `strokeEdit`, undo and redo, and replacing the document go round it, and each must be refused while a solve runs. `PuzzleController::apply` goes through `edit`. The solution counts the lists read need the solver's lock then too | P11 |
+| A press that may change nothing still warns | C08 | A stroke's first press asks about solutions before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
+| Small piece buttons | WCAG 2.5.8 (2.2) | The library chip's − and + are 16 x 20, the tile's 22 wide (18 in Minimal): fine for 2.1 AA, short of 2.2's 24 x 24. Wider ones change the fixed sizes of C16 | P8 |
+| The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
+| One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
+| See-through copies sort by object side | C18 | `faceCentres` tells faces apart by `cell` and normal; in this scene `cell` is the object's place, so all faces of one direction in a copy sort as one. Read in the code, not yet seen on screen | P8 |
+| Scrub the layers by dragging | C08 layer strip | Idea, product request 2026-11-07: a click and drag along the layer strip (Entities, right sidebar) moves through the layers quickly; today each chip is a click. An improvement beyond the spec, so it waits until the spec is done | After P8 |
+| Dashed frames and drop zones | C16, C18 | C18's hover frame and C16's drop zones are dashed; Qt Quick has no dashed border without Qt Quick Shapes, not in the build. Hover is a 1 dp accent frame, selection 2 dp, a drop zone the accent border on `accentSoft` | P8 |
+| Gallery references for macOS | test plan | The four new rows have Windows references only: macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle`), and CI requires them there | Before the P10 pull request |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
 | — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 |
@@ -116,6 +125,8 @@ editor); it is not a stable interface yet.
 | `ShapesModel`, `StatusController` | the shape list and its actions (new, duplicate, delete, rename, weight, reorder, each one undo step through `btui::shapelist`), and the status bar |
 | `EditorController` | the voxel editor: tool and quick tool, Mirror and Span, plane and layer, the 2D grid's strokes (one undo step each, `DocumentSession::beginStroke`), grid size; the cursor readout |
 | `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw (the slab from the editor's plane and layer, the ghosts, a Transform button's preview) |
+| `PuzzleController` | the Puzzle workspace (C16, C17): the selected problem and piece, the lists as `RowsModel`s, every change to a problem through `btui::problemlist` as one undo step, the status sentence |
+| `RowsModel` | a list of rows handed over whole, keeping delegates through a change; what a controller works out from the puzzle |
 | `InspectorController` | the inspector: its sections' open state, the voxel type's Transform buttons, whether each operation may run and why not, running it (one undo step) through `btui::shapeops`, the 3D preview of a Transform button |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
 | `KeyboardCues`, `PopupWindowStyle` | Windows' access-key underlines; Windows 11 menu corners and borders |
@@ -534,7 +545,8 @@ column is what the review of #140 asks of the phase.
 | **P4** Voxel editor (C07, C08, C02) — done | The 2D grid, tools, mirror and span, plane and layer, grid size, and the deferred work below | Every mutation path goes through `DocumentSession::edit`. First, a stroke API on the session, so that a paint drag is one coalesced step and no caller touches `puzzleHistory_c` directly. Rules (`expand()`, plane mapping, cell size, blocked shrink) go in uicore with tests |
 | **P5** 3D editing (rest of C06) — done | Edit mode and `E`, quick tools, ghosts under the 3D pointer (the hover preview's second source), picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) — done | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore (`btui::shapeops`), so that legacy can share it |
-| **P10, P11** Puzzle, Solver | C16–C21 | uicore's API changes here the most. Solver results go through `editWithoutUndo` |
+| **P10** Puzzle (C16–C18) — done | The left and right cards, their rails, the scene | The rules in `uicore/problemlist` and `puzzlescene`; legacy's `cb_NewProblem` and the rest stay as they are, with a row in the drift table |
+| **P11** Solver | C19–C21 | Solver results go through `editWithoutUndo` |
 | **P12a** — done, **P8** | Minimal's auto-hiding toolbar; then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
 
 ### Deferred work by phase
@@ -558,8 +570,12 @@ moves to a later phase says why in that table.
   Settings ▸ General ▸ Single-key shortcuts to turn them off).
 - **P6 Inspector** — done: the ActionButton and AccordionSection
   primitives (in the gallery, with reference images).
-- **P11 Solver:** shape and colour edits refused while a solve runs
-  (legacy `threadStopped()`); the solver's progress announced.
+- **P10 Puzzle** — done: the Puzzle keys of P12b (`+ − Del` on the pieces, the
+  problem list's as the Shapes list's, with a scope each and a group in Help);
+  the status sentence; the `puzzleTile` density token; OQ-20 to OQ-24.
+- **P11 Solver:** shape, colour and problem edits refused while a solve runs
+  (legacy `threadStopped()`), strokes, undo, redo and replacing the document
+  included; the solver's progress announced.
 - **P12a Density** — done: Minimal's auto-hiding 3D toolbar (density.md
   section 3): hidden faded and 10 dp up with a 40 x 4 handle; shown for the
   pointer within 72 dp of the view's top (a strip over the canvas, whose
@@ -582,6 +598,9 @@ moves to a later phase says why in that table.
   -- and the screen reader and real-system checks (the shape row's
   actions, the P2 / P3 lists and menus, the accessibility tree); the
   double-click rename test; command enabled-state bumps.
+
+- **After the spec is done:** improvements beyond it, once P8 is through:
+  dragging along the layer strip to scrub through the layers.
 
 Alongside these, and independent of them, are the two **legacy follow-ups**
 from [`gui-migration.md`](../../design-spec/gui-migration.md#the-legacy-gui-while-both-exist):
@@ -806,6 +825,161 @@ Every phase's pull request follows what #140 settled:
 - **QML gets the task numbers as `tasks`**, not the `Task` enum: the
   compiled QML read the enum's values (15, 16, … 40) as undefined.
 
+### P10 decisions
+
+Product decisions of 2026-11-06, unless a line says otherwise.
+
+- **Groups, not "exclusive groups".** The section keeps the library's meaning:
+  a group is a number, and a piece has a count in each group it is in, how
+  many of its copies may be members; the disassembler works out which, and
+  does not take apart what is left of one group. So a piece can be in several
+  groups, which C17's "at most one" (AC-C17-03) did not allow. One copy toggles
+  in a group, several step a count. The table's column is a list of ticks
+  (`GroupPicker`), reading "G1, G2" closed and eliding to its box; a tick takes
+  all the copies. Unticking a group's last member ends the group, but its row
+  stays until the list closes, to be ticked again.
+- **The Groups section always shows**, saying "No groups in this problem"
+  (AC-C17-03 hid it), so that the rail's entry leads somewhere.
+- **The right card is "Piece & rules"**: it holds more than the selected piece.
+  Its sections are accordions, open or shut for the session, from
+  `btui::puzzleSections`, which the rail reads too.
+- **The collapsed rails** (C11 left Puzzle's undefined). Left: the problems'
+  chips, as the Shapes rail's, with + at the bottom. Right: the sections' names
+  turned, the selected piece's chip over its section and a section's count
+  under it; a press opens the card at that section.
+- **The colour matrix names its axes** ("Result colour" over the columns,
+  "Piece colour" up the rows), every swatch carries its colour's name, the
+  header of the cell under the pointer or keys is ringed and a line under the
+  matrix says the cell's rule, and an (i) gives the whole explanation, which
+  Minimal keeps in a tooltip. **No row or column for Default** (OQ-22): the
+  library lets colour 0 go anywhere, in either role, whatever a rule says; the
+  mock's Default ticks did nothing. A line says so.
+- **Any edit removes the solutions it makes wrong, after one warning a
+  session** (2026-11-07). A voxel edit in the 2D grid or the 3D view, the
+  inspector, grid size, deleting a shape, removing a colour, and any change to
+  what a problem asks for clear the solutions of the problems concerned, in the
+  same step, so the next save leaves them out of the file: nothing stale is
+  kept. A voxel edit's go into its undo step (`DocumentSession::editVoxels`,
+  "Voxel edits and solutions" above), so its undo brings them back. One warning, `DocumentController::mayCostSolutions`, says so and that
+  it comes once a session; it replaces the delete and remove questions of P2
+  and P3. Continue runs the held edit (a stroke's first cell; the drag that
+  followed is not replayed), Cancel leaves everything and it asks again next
+  time. Renames, reorders, a shape's weight and a colour's RGB touch no
+  solution, as in legacy; undoing an edit does not warn.
+- **Undo keeps solutions** (a fix to `puzzlehistory`, so legacy's too). A
+  restore rewrote every problem, and clearing a result cleared its solutions:
+  undoing anything, even a voxel paint, lost all of them. A restore now leaves
+  a problem alone when its structure does not change, and moves problems by
+  what they hold, so that a reorder or a delete undone keeps each problem's
+  solutions. A problem using a shape the restore changes gets back the
+  solutions its step kept, or loses its own. The hole limit is in the
+  snapshot too. An undo back to the save reads as unsaved when solutions were
+  lost on the way for good; those a step keeps do not count.
+- **The file's hole limit is shown** (an exception to AC-C17-05). The search
+  still honours `maxHoles`, so a file that has one would otherwise be limited
+  by something no one can see: the summary says so, with a Clear.
+- **No problem, no result.** A new file has no problems, and deleting a shape
+  can leave a problem without a result; the cards and the scene have an empty
+  state for each. C16's confirm "if it would leave no problem" is not needed:
+  Delete is disabled at one problem.
+- **Room for other kinds of problem.** Inputs are placed by what they apply
+  to, the piece, the problem or the whole puzzle: `SectionScope`, and the
+  section table is the one place a section is added. `ProblemKind` has one value
+  and switches without `default:`, so a second one is led to everything it must
+  answer; `goalSlots` lists the shapes a problem names, one today, and the
+  Result card, the scene's top row and the shapes left out of All pieces read
+  it, so a source piece beside the target is a row there. Nothing of this is
+  on screen or in the file yet. **Which scope play and bevel have is open**:
+  #193 makes them the puzzle's, which is not settled, and nothing here assumes it.
+- **The scene** (`btui::buildPuzzleScene`): one mesh, each object's vertices
+  around its own centre and its place carried in `cell`, added after the
+  rotation (`SceneFrame::anchored`, one uniform and a few lines of shader), so
+  a turn rebuilds nothing. Frames, captions and clicks use each object's
+  reach, not its shape, so they stay still while it turns; a click hit-tests
+  the frames (`objectAt`), no ray picking. At most 100 copies are drawn and
+  the rest counted: a count can be 65535.
+- **Sizes, as the Entities cards** (2026-11-07): the first cut followed the
+  mock and read looser than the Entities tab. The sections inside the left
+  card are `accordionHeader` high, not density.md's 36 / 30; the Result is one
+  row, as "Edit shape" is; tiles are 96 x 44 and 78 x 40, not 96 x 50 and 78 x
+  46; matrix cells 30 x 24, not 34 x 28; a library chip's action 30 dp, not 34;
+  a group is one line. Library chips are density.md's 26 / 24, not C16's 28. In
+  Minimal In this puzzle's count chip goes: the header must not cut its title
+  (AC-DEN-02).
+- **All pieces reads as the tiles do** (2026-11-07): − count +, in a fixed width,
+  the count in the tile's words, `0–1` for a range. The action is no longer C16's
+  34 dp "×N +".
+- **A count shows at once, in both directions** (2026-11-07). A typed count goes
+  through after a 350 ms pause, without Enter (`Stepper.commitWhileTyping`,
+  the table's fields), and a field shows a change from elsewhere at once, focused
+  or not, unless it holds what is being typed.
+- **The problems list keeps three rows** at the least (2026-11-07), so that a
+  new problem moves nothing below it and a short window cannot squeeze it away.
+- **The table's chip is as wide as its text** (2026-11-07), up to the column.
+- **A column animates, not its card** (2026-11-07, `CardSlot`, every workspace):
+  the card takes its final width at once, or keeps its width until the column
+  has arrived, and the moving edge uncovers or covers it. Nothing inside reflows
+  frame by frame.
+- **A click shows no focus ring** (2026-11-07, the whole GUI).
+  `KeyboardCues::navigating` is true from Tab or an arrow key until the next mouse
+  press; custom items ring on it, as Controls do on `visualFocus`. Text fields
+  keep their border while they hold the caret.
+- **New colour tokens** `ok` and `warn`, for the summary: the spec names the
+  states, not their values.
+- **Range switch.** On, a fixed N becomes 0 ... N (legacy's min=0, the mock's);
+  Min and Max stay on show while the piece stays selected, though they meet.
+- **A pause commits, and the field stays in use** (product decision 2026-11-07,
+  `NumberEntry`, the Stepper's and the table's one rule). Typing 15 slowly commits
+  1, then 15: the field keeps the keyboard, the range stays on show, the other end
+  comes back to where the typing found it (`holdCounts`), and the whole number is
+  one undo step. A pause commits only a number the field can stay on: a 0 that
+  removes a piece waits for Enter or leaving. Esc goes back to where the typing
+  began, also after a pause committed.
+- **What is typed goes in before anything moves under it**
+  (`PuzzleController::typingEnding`): a selection, an edit, an undo or a drag first
+  commits the field or the rename in progress, to the piece and problem it was
+  typed for. A new document drops it.
+- **Undo moves the selection back** (product decision 2026-11-07): each step of
+  this workspace records the problem and piece it found and left
+  (`puzzleHistory_c::beginStep`, `endStep`); undo goes back to the first, redo to
+  the second. A step from elsewhere leaves the selection alone. A shape delete or
+  move takes the selected piece along, and the undo of one brings it back.
+  Legacy records none and ignores the field.
+- **A held stepper is one undo step** (`AK_PROBLEM_COUNT`): counts of one piece
+  within 800 ms coalesce, as paint strokes do, so a held + cannot push the
+  history's older steps out.
+- **An undo to the save after solutions went reads as unsaved**
+  (`DocumentSession::noteSolutionsLost`): the history holds no solutions, so the
+  file has what the puzzle no longer has.
+- **Undoing a shape move keeps the problems' solutions**
+  (`puzzleHistory_c::matchShapes`): the shapes go back by the library's own
+  exchange, the problems following.
+- **A change that changes nothing never warns**: it is tried on a copy of the
+  puzzle (which holds no solutions) before the warning, and two edits of one
+  gesture share one warning.
+- **Files are checked as they load** (`problem_c`, `puzzle_c`, so legacy too): one
+  `<shapes>` per problem, before its solutions; a shape once per problem; at most
+  63 colours; no negative hole limit. Each could corrupt memory or the lists
+  further on. A result that a hand-edited file also lists as a piece shows as a
+  piece, so that it can be taken out.
+- **Names are plain text** everywhere: `textFormat: Text.PlainText` on every Text
+  showing a label, a tooltip or a file's words. `Text`'s default would render
+  markup in them and load images they name.
+- **The scene has a vertex budget** (`maxSceneVertices`, 3 million) beside the 100
+  copies: copies past it are counted in the same "not drawn" note.
+- **The left card scrolls in a short window, its summary stays**: what is above
+  the strip scrolls by the bar and the wheel, never by dragging, which the lists
+  in it use.
+- **Text on the accent is a token of its own** (product decision 2026-11-07):
+  `onAccent`, white on the light accent and `#0b1220` on the dark one (6.76:1).
+  Darkening the dark accent for white text would have dropped the accent used as
+  text (Orbit, Chips) to 3.3:1. `controlLine` (3:1 on the panels) edges the
+  controls that have no other shape: an unticked matrix cell, a switch that is
+  off. The scene's captions take the text colour.
+- **All pieces is one Tab stop**, like the tiles: arrows select, `+ − Del` and the
+  Menu key act, Enter adds one. A list the keyboard arrives in selects its first
+  piece if none of its pieces is selected, so the ring has somewhere to show.
+
 ## Spec review of the Entities workspace (2026-10-29)
 
 The Shapes tab -- C00 to C14 and C22, the density and keyboard parts --
@@ -844,9 +1018,9 @@ and the mock have it).
 (KDE's Alt+click, text size and high contrast, small screens, the
 screen-reader pass; the OS pointer in the edit cursors and the STL
 style's dimming for every voxel type were done right after, see *P8
-decisions*). AC-C08-07's "recolouring the shape in the app" has
-no control in Entities -- a piece's colour is the Puzzle workspace's
-(C17, P10) -- and is checked there.
+decisions*). AC-C08-07's "recolouring the shape in the app" needs no
+control: a shape's colour is its position (`btui::pieceColor`), C17 has
+none either, and a reorder is the recolour, which the grid follows.
 
 **Added unintentionally.** None found. The ids the QML has beyond the
 spec's are parts of a specified component (headings, the colour menu's

@@ -18,7 +18,9 @@ it as part of the UI. WCAG 2.1 AA is the yardstick.
   same text as `Accessible.description` on the control it explains.
 - **Focus:** buttons take focus on click too (`focusPolicy: Qt.StrongFocus`),
   so Tab goes on from what was last used; the ring shows only for keyboard
-  focus (`visualFocus`). Read-only things are not Tab stops. When a control
+  focus: `visualFocus` on a Control, `activeFocus && App.keyboardCues.navigating`
+  on an item of our own (a list, a grid), never `activeFocus` alone. Fields
+  that hold a caret are the exception. Read-only things are not Tab stops. When a control
   disappears under the user's hands (collapse, a popup closing), give the
   focus to its counterpart (`Main.qml` `keepToggleFocus`, `DisplayMenu`'s
   `onClosed`). Popups that the keyboard should drive take `focus: true`.
