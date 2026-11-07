@@ -64,7 +64,7 @@ Item {
                 width: parent.width - 14
                 text: row.idText
                 fill: Theme.accent
-                textColor: "white"
+                textColor: Theme.onAccent
             }
 
             Accessible.role: Accessible.ListItem

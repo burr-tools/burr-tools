@@ -213,7 +213,7 @@ Card {
         horizontalAlignment: TextInput.AlignHCenter
         color: Theme.text
         selectionColor: Theme.accent
-        selectedTextColor: "white"
+        selectedTextColor: Theme.onAccent
         selectByMouse: true
         font.pixelSize: Theme.fontSecondary
         inputMethodHints: Qt.ImhDigitsOnly
@@ -474,7 +474,7 @@ Card {
                             objectName: "puzzle.problems.row." + row.index + ".chip"
                             text: row.idText
                             fill: Theme.accent
-                            textColor: "white"
+                            textColor: Theme.onAccent
                         }
                         Text {
                             objectName: "puzzle.problems.row." + row.index + ".label"
@@ -502,7 +502,7 @@ Card {
                                 color: Theme.text
                                 placeholderTextColor: Theme.muted
                                 selectionColor: Theme.accent
-                                selectedTextColor: "white"
+                                selectedTextColor: Theme.onAccent
                                 font.pixelSize: Theme.fontBody
                                 leftPadding: 6
                                 rightPadding: 6

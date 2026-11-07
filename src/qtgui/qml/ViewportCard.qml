@@ -160,7 +160,7 @@ Rectangle {
                               bottom: object.above ? parent.top : undefined; bottomMargin: 4 }
                     text: object.caption
                     Accessible.ignored: true
-                    color: object.above ? Theme.accent : Theme.text
+                    color: Theme.text
                     font.pixelSize: Theme.fontMicro
                     font.weight: Font.Bold
                 }
@@ -187,7 +187,7 @@ Rectangle {
             kind: Chip.Header
             text: App.puzzle.problemIdText
             fill: Theme.accent
-            textColor: "white"
+            textColor: Theme.onAccent
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter

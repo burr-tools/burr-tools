@@ -72,11 +72,19 @@ TestCase {
             verify(contrast(Theme.ok, Theme[fill]) >= 3,
                    "ok on " + fill + ": " + contrast(Theme.ok, Theme[fill]).toFixed(2))
         }
-        // primary buttons: white text on the accent
-        if (data.theme === "dark")
-            expectFail("dark", "the dark accent #5b9bff gives white button text 2.77:1 -- a design-token decision is pending")
-        verify(contrast(Qt.color("white"), Theme.accent) >= 4.5,
-               "white on accent: " + contrast(Qt.color("white"), Theme.accent).toFixed(2))
+        // primary buttons, chips and ticks: their text and marks on the accent
+        verify(contrast(Theme.onAccent, Theme.accent) >= 4.5,
+               "onAccent on accent: " + contrast(Theme.onAccent, Theme.accent).toFixed(2))
+        // the accent as text
+        for (const fill of ["panel", "panel2"])
+            verify(contrast(Theme.accent, Theme[fill]) >= (data.theme === "dark" ? 4.5 : 3),
+                   "accent on " + fill + ": " + contrast(Theme.accent, Theme[fill]).toFixed(2))
+        // an unticked matrix cell, a switch that is off
+        for (const fill of ["panel", "panel2"])
+            verify(contrast(Theme.controlLine, Theme[fill]) >= 3,
+                   "controlLine on " + fill + ": " + contrast(Theme.controlLine, Theme[fill]).toFixed(2))
+        // the scene's captions
+        verify(contrast(Theme.text, Theme.canvas) >= 4.5, "text on canvas")
     }
 
     // --- menus fit their text ----------------------------------------------------

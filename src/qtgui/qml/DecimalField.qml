@@ -19,7 +19,7 @@ TextField {
     verticalAlignment: TextInput.AlignVCenter
     color: Theme.text
     selectionColor: Theme.accent
-    selectedTextColor: "white"
+    selectedTextColor: Theme.onAccent
     font.pixelSize: Theme.fontBody
     selectByMouse: true
     inputMethodHints: Qt.ImhFormattedNumbersOnly

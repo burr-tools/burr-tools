@@ -17,7 +17,7 @@ Rectangle {
     radius: Theme.radiusChip
     color: on ? Theme.accent : Theme.panel
     border.width: cursor ? 2 : 1
-    border.color: cursor ? Theme.text : hover.hovered ? Theme.accent : on ? Theme.accent : Theme.line2
+    border.color: cursor ? Theme.text : hover.hovered ? Theme.accent : on ? Theme.accent : Theme.controlLine
 
     HoverHandler { id: hover }
     TapHandler { onTapped: root.toggled() }
@@ -27,6 +27,6 @@ Rectangle {
         visible: root.on
         name: "check"
         size: 14
-        color: "white"
+        color: Theme.onAccent
     }
 }

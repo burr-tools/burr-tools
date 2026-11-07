@@ -129,7 +129,7 @@ Rectangle {
                     elide: Text.ElideRight
                     text: root.groupText
                     Accessible.ignored: true
-                    color: "white"
+                    color: Theme.onAccent
                     font.pixelSize: Theme.fontMicro - 1
                     font.weight: Font.Bold
                 }

@@ -1071,6 +1071,19 @@ TestCase {
         verify(said.indexOf(App.puzzle.summaryTitle) >= 0 || said.length === 1, said.join(" | "))
     }
 
+    // WCAG 1.4.3: the accent is 3.68:1 on the light canvas
+    function test_sceneCaptionsAreInTheTextColour() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.selectPiece(1)
+        waitForRendering(win.contentItem)
+        for (const theme of ["light", "dark"]) {
+            App.settings.theme = theme
+            for (let i = 0; i < App.viewport.sceneObjects.count; i++)
+                compare(item("puzzle.scene.object." + i + ".caption").color, Theme.text)
+        }
+        App.settings.theme = "light"
+    }
+
     function test_the3dViewSaysWhatItShows() {
         App.puzzle.stepPiece(1, 2)
         waitForRendering(win.contentItem)

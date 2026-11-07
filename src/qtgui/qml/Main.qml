@@ -48,7 +48,7 @@ ApplicationWindow {
         button: Theme.panel
         buttonText: Theme.text
         highlight: Theme.accent
-        highlightedText: "white"
+        highlightedText: Theme.onAccent
         toolTipBase: Theme.panel
         toolTipText: Theme.text
         mid: Theme.line2

@@ -118,7 +118,7 @@ Rectangle {
             text: String(root.value)
             color: Theme.text
             selectionColor: Theme.accent
-            selectedTextColor: "white"
+            selectedTextColor: Theme.onAccent
             font.pixelSize: Theme.fontBody
             horizontalAlignment: TextInput.AlignHCenter
             verticalAlignment: TextInput.AlignVCenter

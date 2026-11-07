@@ -64,6 +64,10 @@ class Theme : public QObject {
   Q_PROPERTY(QColor muted READ muted NOTIFY changed FINAL)
   Q_PROPERTY(QColor accent READ accent NOTIFY changed FINAL)
   Q_PROPERTY(QColor accentSoft READ accentSoft NOTIFY changed FINAL)
+  // text and marks on the accent, 4.5:1 in both themes
+  Q_PROPERTY(QColor onAccent READ onAccent NOTIFY changed FINAL)
+  // the edge of a control that has no other shape: 3:1 on the panels (WCAG 1.4.11)
+  Q_PROPERTY(QColor controlLine READ controlLine NOTIFY changed FINAL)
   Q_PROPERTY(QColor accentEdge READ accentEdge NOTIFY changed FINAL)
   Q_PROPERTY(QColor canvas READ canvas NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisX READ axisX NOTIFY changed FINAL)
@@ -185,6 +189,8 @@ public:
   QColor muted(void) const { return col("muted"); }
   QColor accent(void) const { return col("accent"); }
   QColor accentSoft(void) const { return col("accentSoft"); }
+  QColor onAccent(void) const { return col("onAccent"); }
+  QColor controlLine(void) const { return col("controlLine"); }
   /* the accent at 35 %: the faint edge round a selected row */
   QColor accentEdge(void) const { QColor c = accent(); c.setAlphaF(0.35f); return c; }
   QColor canvas(void) const { return col("canvas"); }

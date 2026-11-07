@@ -432,7 +432,7 @@ Card {
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: dot.visible ? -3 : 0
                             text: chip.layerNo + 1
-                            color: chip.current ? "white" : Theme.text
+                            color: chip.current ? Theme.onAccent : Theme.text
                             font.pixelSize: Theme.fontSecondary
                             font.weight: Font.DemiBold
                         }
@@ -444,7 +444,7 @@ Card {
                             width: 5
                             height: 5
                             radius: 2.5
-                            color: chip.current ? "white" : Theme.muted
+                            color: chip.current ? Theme.onAccent : Theme.muted
                         }
                         MouseArea {
                             id: chipMouse

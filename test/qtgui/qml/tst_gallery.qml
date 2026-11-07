@@ -142,7 +142,7 @@ TestCase {
         // a loaded runner can leave the 150 ms animation unfinished after a fixed
         // wait; the off switch's track is the slowest thing to follow the theme
         const track = control("switch.off").background
-        tryVerify(() => near(track.color, Theme.line2, 1), 5000)
+        tryVerify(() => near(track.color, Theme.controlLine, 1), 5000)
     }
 
     function themes() {
@@ -273,7 +273,7 @@ TestCase {
         ])
         // PR-07 switch: off line2 track, on accent track, white knob that moves
         expectColors("switch", [
-            ["switch.off", 25, 9, line2, "switch off track"],
+            ["switch.off", 25, 9, Theme.controlLine, "switch off track"],
             ["switch.off", 9, 9, white, "switch off knob"],
             ["switch.on", 7, 9, accent, "switch on track"],
             ["switch.on", 23, 9, white, "switch on knob"],
