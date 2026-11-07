@@ -88,8 +88,8 @@ public:
   Q_INVOKABLE void addShape(void);
   /* a copy of the row, appended (AC-C01-04) */
   Q_INVOKABLE void duplicateShape(int row);
-  /* Delete, or first deleteConfirmRequested() when the delete would lose
-   * solutions undo cannot restore; the answer comes back as deleteShape(). */
+  /* Delete, after the session's warning when it costs solutions
+   * (DocumentController::mayCostSolutions). */
   Q_INVOKABLE void requestDelete(int row);
   Q_INVOKABLE void deleteShape(int row);
   /* empty clears the label */
@@ -115,13 +115,15 @@ public:
   void refresh(bool reset = false, int want = -1);
 
 signals:
+  /* a delete or a move is about to renumber the shapes, and has: from the
+   * shape moved or gone, to where (-1 gone); from -1 when nothing happened */
+  void shapesRenumbering(void);
+  void shapesRenumbered(int from, int to);
 
   void selectedChanged(void);
   void countChanged(void);
 
   void renameRequested(int row);
-  /* the delete of row would lose solutions: QML asks, then deleteShape() */
-  void deleteConfirmRequested(int row, const QString & idText);
   /* a message for the status bar (App flashes it) */
   void flashRequested(const QString & text);
 

@@ -150,7 +150,8 @@ void ShapesModel::edited(int selectedShape, DocumentController::Change change, i
       }
       break;
     case DocumentController::Change::Palette:
-      break;                                    // no row shows the colours
+    case DocumentController::Change::Problem:
+      break;                                    // no row shows the colours or a problem
     case DocumentController::Change::Structure:
       refresh(false, selectedShape);
       break;
@@ -179,9 +180,7 @@ void ShapesModel::requestDelete(int row) {
     const puzzle_c & p = m_doc->session().puzzle();
     if (!btui::canDeleteShape(p, row))
       return;
-    if (btui::deleteLosesSolutions(p, row))
-      emit deleteConfirmRequested(row, idTextOf(row));
-    else
+    if (m_doc->mayCostSolutions(btui::deleteLosesSolutions(p, row), [this, row] { deleteShape(row); }))
       deleteShape(row);
   });
 }
@@ -196,7 +195,10 @@ void ShapesModel::deleteShape(int row) {
    * are not selected). */
   const int keep = m_selected == row || m_selected < 0 ? std::min(row, n - 2)
                  : m_selected > row ? m_selected - 1 : m_selected;
-  if (!edit(keep, [&](puzzle_c & p) { return btui::deleteShape(p, row) >= 0; }))
+  emit shapesRenumbering();
+  const bool gone = edit(keep, [&](puzzle_c & p) { return btui::deleteShape(p, row) >= 0; });
+  emit shapesRenumbered(gone ? row : -1, -1);
+  if (!gone)
     return;
   // say what went, and that the shapes after it are renumbered (C01)
   if (row < n - 1)
@@ -215,7 +217,10 @@ void ShapesModel::moveShape(int from, int to) {
   if (!isRow(from))
     return;
   to = std::clamp(to, 0, count() - 1);
-  if (edit(to, [&](puzzle_c & p) { return btui::moveShape(p, from, to); }))
+  emit shapesRenumbering();
+  const bool moved = edit(to, [&](puzzle_c & p) { return btui::moveShape(p, from, to); });
+  emit shapesRenumbered(moved ? from : -1, to);
+  if (moved)
     emit flashRequested(tr("Order changed — shapes renumbered S1…S%1").arg(count()));
 }
 

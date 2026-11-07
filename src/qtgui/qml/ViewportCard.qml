@@ -21,12 +21,14 @@ import BurrTools.Ui
 //   │                    └──────────────┘                   │
 //   │        ① the 3D canvas, the whole card                │
 //   │        ⑦ No shape — open a puzzle ... (when empty)    │
+//   │        ⑩ Puzzle: each object's frame and caption      │
 //   │                                                       │
 //   │ ⑥ [Shift] click 1 fixed · [Alt] click 2 variable · …  │
 //   │   Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
 //   └───────────────────────────────────────────────────────┘
 //   ⑧ Minimal: the toolbar hidden, a handle where it is (density.md
 //     section 3); the pointer near the top, Tab, its menu or O P E F show it
+//   ⑨ Puzzle's view tag: [P1] Small · Result [S5]
 Rectangle {
     id: root
     objectName: "entities.viewport"
@@ -113,8 +115,104 @@ Rectangle {
     }
 
     readonly property bool entities: App.layout.workspace === LayoutController.Entities
+    readonly property bool puzzle: App.layout.workspace === LayoutController.Puzzle
     readonly property bool focus2d: App.layout.focus === LayoutController.Focus2d
     readonly property bool compact: focus2d || Theme.minimal
+
+    // --- the Puzzle scene's frames and captions (C18); clicks go to the canvas ---
+    Item { // ⑩
+        objectName: "puzzle.scene"
+        anchors.fill: parent
+        z: -0.5
+        visible: root.puzzle
+        Repeater {
+            model: App.viewport.sceneObjects
+            delegate: Item {
+                id: object
+                required property int index
+                required property string role
+                required property string caption
+                required property real frameX
+                required property real frameY
+                required property real frameSize
+                required property bool selected
+                required property bool hovered
+                readonly property bool above: role !== "piece"
+                objectName: "puzzle.scene.object." + index
+                x: frameX
+                y: frameY
+                width: frameSize
+                height: frameSize
+
+                Rectangle {
+                    objectName: "puzzle.scene.object." + object.index + ".frame"
+                    anchors.fill: parent
+                    visible: object.selected || object.hovered
+                    color: "transparent"
+                    radius: Theme.radiusControl
+                    border.width: object.selected ? 2 : 1
+                    border.color: Theme.accent
+                }
+                Text {
+                    objectName: "puzzle.scene.object." + object.index + ".caption"
+                    anchors { horizontalCenter: parent.horizontalCenter
+                              top: object.above ? undefined : parent.bottom; topMargin: 4
+                              bottom: object.above ? parent.top : undefined; bottomMargin: 4 }
+                    text: object.caption
+                    Accessible.ignored: true
+                    color: object.above ? Theme.accent : Theme.text
+                    font.pixelSize: Theme.fontMicro
+                    font.weight: Font.Bold
+                }
+            }
+        }
+        Text {
+            objectName: "puzzle.scene.hidden"
+            visible: App.viewport.sceneHidden > 0
+            anchors { right: parent.right; bottom: parent.bottom; margins: 14 }
+            text: qsTr("%1 more copies are not shown").arg(App.viewport.sceneHidden)
+            color: Theme.muted
+            font.pixelSize: Theme.fontSecondary
+        }
+    }
+
+    // --- Puzzle's view tag ---
+    Row { // ⑨
+        objectName: "puzzle.viewport.tag"
+        visible: root.puzzle && App.puzzle.problem >= 0
+        anchors { left: parent.left; top: parent.top; margins: 14 }
+        spacing: 8
+        Chip {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: Chip.Header
+            text: App.puzzle.problemIdText
+            fill: Theme.accent
+            textColor: "white"
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: text.length > 0
+            text: App.puzzle.problemLabel
+            textFormat: Text.PlainText
+            color: Theme.text
+            font.pixelSize: Theme.fontSecondary
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: App.puzzle.resultIdText.length > 0
+            text: qsTr("· Result")
+            color: Theme.muted
+            font.pixelSize: Theme.fontSecondary
+        }
+        Chip {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: App.puzzle.resultIdText.length > 0
+            kind: Chip.Header
+            text: App.puzzle.resultIdText
+            fill: App.puzzle.resultColor
+            textColor: App.puzzle.resultTextColor
+        }
+    }
 
     // --- view tag (top left) ---
     Row { // ②
@@ -139,6 +237,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: App.viewport.shapeLabel
+            textFormat: Text.PlainText
             color: Theme.muted
             font.pixelSize: Theme.fontSecondary
         }
@@ -189,7 +288,7 @@ Rectangle {
         }
         function ringed(b: Item): bool {
             const list = shown()
-            return toolbar.activeFocus && list[Math.min(current, list.length - 1)] === b
+            return toolbar.activeFocus && App.keyboardCues.navigating && list[Math.min(current, list.length - 1)] === b
         }
         Keys.onLeftPressed: current = Math.max(0, Math.min(current, shown().length - 1) - 1)
         Keys.onRightPressed: current = Math.min(shown().length - 1, current + 1)
@@ -327,7 +426,9 @@ Rectangle {
         // to assistive tech: what it shows, and the gestures the hint line (hidden
         // in Minimal and Focus 2D) explains
         Accessible.role: Accessible.Graphic
-        Accessible.name: App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
+        Accessible.name: App.layout.workspace === LayoutController.Puzzle && App.puzzle.sceneName.length > 0
+                         ? qsTr("3D view of %1").arg(App.puzzle.sceneName)
+                         : App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
         Accessible.description: App.viewport.navMode === "orbit"
                                 ? qsTr("Drag to orbit, Shift-drag or middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
                                 : qsTr("Drag to pan, Shift-drag to orbit, middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
@@ -410,6 +511,17 @@ Rectangle {
             HintText { text: qsTr("+click") }
             HintText { effect: true; text: qsTr("erase") }
         }
+        // line 1 in Puzzle (C18)
+        Row {
+            objectName: "puzzle.viewport.hint"
+            visible: root.puzzle
+            spacing: 4
+            HintText { text: qsTr("Click a piece") }
+            HintText { effect: true; text: qsTr("select it") }
+            Dot {}
+            HintText { text: qsTr("Drag") }
+            HintText { effect: true; text: qsTr("rotate every piece in place") }
+        }
         // line 2 follows the navigation mode: what a plain drag does first
         Row {
             objectName: "entities.viewport.hint.navigation"
@@ -432,9 +544,9 @@ Rectangle {
         objectName: "entities.viewport.empty"
         anchors.centerIn: parent
         visible: text.length > 0
-        text: !root.entities ? (App.layout.workspace === LayoutController.Puzzle
-                                  ? qsTr("The Puzzle scene arrives with the Puzzle phase")
-                                  : qsTr("The Solver scene arrives with the Solver phase"))
+        text: root.puzzle ? (App.puzzle.problem < 0 ? qsTr("No problem yet — click + New in Problems")
+                             : App.viewport.sceneObjects.count === 0 ? qsTr("Choose a result and add pieces") : "")
+             : !root.entities ? qsTr("The Solver scene arrives with the Solver phase")
              : !App.viewport.hasShape ? qsTr("No shape — open a puzzle or add a shape")
              : !App.viewport.emptyShape ? ""
              : App.viewport.editorVisible && App.viewport.displayLayerSlab

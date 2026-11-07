@@ -155,9 +155,8 @@ void ColoursModel::requestRemove(int id) {
   if (id < 1 || !isColour(id))
     return;
   guarded([&] {
-    if (btui::removeColourLosesSolutions(m_doc->session().puzzle(), id))
-      emit removeConfirmRequested(id, nameOf(id));
-    else
+    if (m_doc->mayCostSolutions(btui::removeColourLosesSolutions(m_doc->session().puzzle(), id),
+                                [this, id] { removeColour(id); }))
       removeColour(id);
   });
 }

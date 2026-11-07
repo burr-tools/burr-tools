@@ -27,6 +27,7 @@
 #include "documentcontroller.h"
 #include "editorcontroller.h"
 #include "inspectorcontroller.h"
+#include "puzzlecontroller.h"
 #include "imageexportcontroller.h"
 #include "keyboardcues.h"
 #include "updatecontroller.h"
@@ -74,6 +75,7 @@ class App : public QObject {
   Q_PROPERTY(EditorController * editor READ editor CONSTANT FINAL)
   Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
   Q_PROPERTY(InspectorController * inspector READ inspector CONSTANT FINAL)
+  Q_PROPERTY(PuzzleController * puzzle READ puzzle CONSTANT FINAL)
   Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
   Q_PROPERTY(StlExportController * stl READ stl CONSTANT FINAL)
   Q_PROPERTY(ImageExportController * images READ images CONSTANT FINAL)
@@ -107,6 +109,7 @@ public:
   EditorController * editor(void) const { return m_editor; }
   ViewportController * viewport(void) const { return m_viewport; }
   InspectorController * inspector(void) const { return m_inspector; }
+  PuzzleController * puzzle(void) const { return m_puzzle; }
   ToolsController * tools(void) const { return m_tools; }
   StlExportController * stl(void) const { return m_stl; }
   ImageExportController * images(void) const { return m_images; }
@@ -162,6 +165,7 @@ private:
   EditorController * m_editor;
   ViewportController * m_viewport;
   InspectorController * m_inspector;
+  PuzzleController * m_puzzle;
   ToolsController * m_tools;
   StlExportController * m_stl;
   ImageExportController * m_images;

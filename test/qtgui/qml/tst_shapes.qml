@@ -369,22 +369,22 @@ TestCase {
         verify(item("entities.shapes.rail.list").activeFocusOnTab)
     }
 
-    function test_aDeleteThatLosesSolutionsAsksFirst() {
+    function test_aDeleteThatLosesSolutionsWarnsFirst() {
         open("SolidSixPieceBurrs")
+        App.document.solutionsWarned = false
         const n = App.shapes.count
         App.shapes.requestDelete(0)
         let dialog = null
-        tryVerify(() => (dialog = findChild(win, "entities.shapes.deleteDialog")) !== null && dialog.opened, 1000)
+        tryVerify(() => (dialog = findChild(win, "shell.solutionsDialog")) !== null && dialog.opened, 1000)
         compare(App.shapes.count, n)
-        verify(dialog.title.indexOf("S1") >= 0)
         verify(App.commands.blocked)                     // counted as modal
-        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.cancel"))
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.cancel"))
         tryVerify(() => !dialog.visible, 1000)
         compare(App.shapes.count, n)
 
         App.shapes.requestDelete(0)
         tryVerify(() => dialog.opened, 1000)
-        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.confirm"))
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.confirm"))
         tryVerify(() => !dialog.visible, 1000)
         compare(App.shapes.count, n - 1)
     }

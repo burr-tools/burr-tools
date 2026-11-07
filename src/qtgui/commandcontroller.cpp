@@ -23,6 +23,7 @@
 #include "documentcontroller.h"
 #include "editorcontroller.h"
 #include "layoutcontroller.h"
+#include "puzzlecontroller.h"
 #include "settingscontroller.h"
 #include "shapesmodel.h"
 #include "stlexportcontroller.h"
@@ -59,9 +60,9 @@ namespace {
 
 CommandController::CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
                                      ViewportController * viewport, EditorController * editor, ShapesModel * shapes,
-                                     QObject * parent) :
+                                     PuzzleController * puzzle, QObject * parent) :
   QObject(parent), m_settings(settings), m_doc(doc), m_layout(layout), m_viewport(viewport), m_editor(editor),
-  m_shapes(shapes)
+  m_shapes(shapes), m_puzzle(puzzle)
 {
   auto bump = [this] { m_revision++; emit revisionChanged(); };
   connect(m_settings, &SettingsController::changed, this, bump);
@@ -70,6 +71,7 @@ CommandController::CommandController(SettingsController * settings, DocumentCont
   connect(m_layout, &LayoutController::changed, this, bump);
   connect(m_shapes, &ShapesModel::selectedChanged, this, bump);
   connect(m_shapes, &ShapesModel::countChanged, this, bump);
+  connect(m_puzzle, &PuzzleController::stateChanged, this, bump);
 }
 
 void CommandController::setBlocked(bool b) {
@@ -197,16 +199,20 @@ QVariantList CommandController::shortcuts(void) const {
 }
 
 QString CommandController::keyInScope(const QString & scope, int key, int modifiers) const {
-  const btui::Scope sc = scope == QLatin1String("shapesList") ? btui::Scope::ShapesList
-                       : scope == QLatin1String("viewport")   ? btui::Scope::Viewport
-                                                              : btui::Scope::Window;
+  const btui::Scope sc = scope == QLatin1String("shapesList")   ? btui::Scope::ShapesList
+                       : scope == QLatin1String("viewport")     ? btui::Scope::Viewport
+                       : scope == QLatin1String("problemsList") ? btui::Scope::ProblemsList
+                       : scope == QLatin1String("puzzlePieces") ? btui::Scope::PuzzlePieces
+                                                                : btui::Scope::Window;
   if (sc == btui::Scope::Window)
     return {};
   // The keypad flag is no part of a shortcut (macOS reports the arrow keys
   // with it), and the main Enter key and the keypad's are one: Qt calls the
   // first Return, the table writes Enter (Return on macOS, for its glyph).
   const auto normal = [](QKeyCombination k) {
-    return QKeyCombination(k.keyboardModifiers() & ~Qt::KeypadModifier,
+    // + is Shift+= on many keyboards and a key of its own on others
+    const Qt::KeyboardModifiers shift = k.key() == Qt::Key_Plus ? Qt::ShiftModifier : Qt::NoModifier;
+    return QKeyCombination(k.keyboardModifiers() & ~(Qt::KeypadModifier | shift),
                            k.key() == Qt::Key_Return ? Qt::Key_Enter : k.key());
   };
   const QKeyCombination pressed = normal(QKeyCombination(Qt::KeyboardModifiers(modifiers), Qt::Key(key)));
@@ -228,6 +234,8 @@ bool CommandController::isEnabled(const QString & key) const {
     return false;
   const int shape = m_shapes->selected();
   const bool inEntities = m_layout->workspace() == LayoutController::Entities;
+  const bool inPuzzle = m_layout->workspace() == LayoutController::Puzzle;
+  const int problem = m_puzzle->problem();
   switch (c->id) {
     case Command::Undo: return m_doc->canUndo();
     case Command::Redo: return m_doc->canRedo();
@@ -254,6 +262,21 @@ bool CommandController::isEnabled(const QString & key) const {
       return inEntities && shape > 0;
     case Command::ShapeMoveLater:
       return inEntities && shape >= 0 && shape < m_shapes->count() - 1;
+    // the Problems list's and the pieces' keys act on the selected problem and piece
+    case Command::ProblemRename:
+    case Command::ProblemDuplicate:
+      return inPuzzle && problem >= 0;
+    case Command::ProblemDelete:
+      return inPuzzle && m_puzzle->canDeleteProblem();
+    case Command::ProblemMoveEarlier:
+      return inPuzzle && problem > 0;
+    case Command::ProblemMoveLater:
+      return inPuzzle && problem >= 0 && problem < m_puzzle->problems()->count() - 1;
+    case Command::PieceMore:
+      return inPuzzle && m_puzzle->pieceShown();
+    case Command::PieceFewer:
+    case Command::PieceRemove:
+      return inPuzzle && m_puzzle->pieceShown() && m_puzzle->pieceMax() > 0;
     case Command::New: case Command::Open: case Command::Import: case Command::Close:
     case Command::Save: case Command::SaveAs: case Command::Convert:
     case Command::ImportAssemblies: case Command::Settings: case Command::Quit:
@@ -438,6 +461,24 @@ QVariantList CommandController::shortcutHelp(void) const {
     row(tr("The shape's menu"), { QVariant(alt({}, tr("Right-click"))) }),
   };
 
+  // the Puzzle workspace (C16): as the Shapes list's, while the list has focus
+  QVariantList problemsList{
+    row(tr("Select the previous / next problem"), { QVariant(alt(keyCaps("Up"))), QVariant(alt(keyCaps("Down"))) }),
+    row(tr("Move the problem earlier / later (renumbers)"), keysOf({ Command::ProblemMoveEarlier, Command::ProblemMoveLater })),
+    row(tr("Rename: Enter commits, Esc cancels"), keysOf({ Command::ProblemRename }) << QVariant(alt({}, tr("Double-click")))),
+    row(tr("Duplicate, as the last problem"), keysOf({ Command::ProblemDuplicate })),
+    row(tr("Delete"), keysOf({ Command::ProblemDelete })),
+    row(tr("Reorder"), { QVariant(alt({}, tr("Drag a row's grip"))) }),
+  };
+
+  QVariantList puzzlePieces{
+    row(tr("Select the previous / next piece"), { QVariant(alt(keyCaps("Left"))), QVariant(alt(keyCaps("Right"))) }),
+    row(tr("One more / one fewer of the selected piece"), keysOf({ Command::PieceMore, Command::PieceFewer })),
+    row(tr("Remove the piece from the puzzle"), keysOf({ Command::PieceRemove })),
+    row(tr("Add a piece"), { QVariant(alt({}, tr("Double-click or drag a chip"))) }),
+    row(tr("The piece's menu"), { QVariant(alt({}, tr("Right-click"))) }),
+  };
+
   QVariantList dialogs{
     row(tr("Close the dialog or menu"), { QVariant(alt({ QStringLiteral("Esc") })) }),
     row(tr("Commit a number field"), { QVariant(alt({ QStringLiteral("Enter") })) }),
@@ -451,6 +492,8 @@ QVariantList CommandController::shortcutHelp(void) const {
     group(tr("Entities"), tr("voxel editor"), entities),
     group(tr("2D grid, focused"), tr("Tab to the voxel editor's grid"), grid2d),
     group(tr("Shapes list"), tr("Entities, with the list focused"), shapesList),
+    group(tr("Problems list"), tr("Puzzle, with the list focused"), problemsList),
+    group(tr("Pieces"), tr("Puzzle, with In this puzzle focused"), puzzlePieces),
     group(tr("Dialogs and menus"), QString(), dialogs),
   };
 }
@@ -517,6 +560,14 @@ void CommandController::run(Command c) {
     case Command::ShapeDelete:      m_shapes->requestDelete(m_shapes->selected()); break;
     case Command::ShapeMoveEarlier: m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() - 1); break;
     case Command::ShapeMoveLater:   m_shapes->moveShape(m_shapes->selected(), m_shapes->selected() + 1); break;
+    case Command::ProblemRename:    emit m_puzzle->renameRequested(m_puzzle->problem()); break;
+    case Command::ProblemDuplicate: m_puzzle->duplicateProblem(m_puzzle->problem()); break;
+    case Command::ProblemDelete:    m_puzzle->deleteProblem(m_puzzle->problem()); break;
+    case Command::ProblemMoveEarlier: m_puzzle->moveProblem(m_puzzle->problem(), m_puzzle->problem() - 1); break;
+    case Command::ProblemMoveLater: m_puzzle->moveProblem(m_puzzle->problem(), m_puzzle->problem() + 1); break;
+    case Command::PieceMore:        m_puzzle->stepPiece(m_puzzle->selectedPiece(), +1); break;
+    case Command::PieceFewer:       m_puzzle->stepPiece(m_puzzle->selectedPiece(), -1); break;
+    case Command::PieceRemove:      m_puzzle->setCount(m_puzzle->selectedPiece(), 0); break;
     case Command::Edit3d:           m_editor->toggleEditMode(); emit toolbarModeUsed(); break;
 
     // the focused 3D view: 15 degrees, 40 dp, a wheel notch; the cube's turns and faces

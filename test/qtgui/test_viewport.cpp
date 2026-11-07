@@ -170,7 +170,7 @@ void TestViewportController::displayOptionsPersist() {
 void TestViewportController::onlyEntitiesShowsTheShape() {
   AppFixture f;
   QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
-  f.app->layout()->setWorkspace(LayoutController::Puzzle);
+  f.app->layout()->setWorkspace(LayoutController::Solver);
   SceneFrame fr = f.app->viewport()->frame(1);
   QVERIFY(!fr.mesh);
   QVERIFY(fr.lines.empty());

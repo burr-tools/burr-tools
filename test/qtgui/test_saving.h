@@ -5,7 +5,7 @@
 
 /* What the Entities workspace edits survives a save: each case edits
  * through the App's controllers (the 2D grid, the 3D view, the inspector,
- * the shapes list, the colours), saves, opens the file in a fresh App and
+ * the shapes list, the colours, the Puzzle workspace), saves, opens the file in a fresh App and
  * compares the whole puzzle with what was on screen before the save. */
 class TestSaving : public QObject {
   Q_OBJECT
@@ -22,6 +22,9 @@ private slots:
   void voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape_data();
   void voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape();
   void undoneEditsAreNotSavedAndASaveIsClean();
+  void everyPuzzleEditIsSaved_data();
+  void everyPuzzleEditIsSaved();
+  void aSavedFileHoldsNoSolutionsOfAnEditedShape();
 };
 
 #endif

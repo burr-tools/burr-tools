@@ -275,6 +275,29 @@ ApplicationWindow {
                     Cell { kind: "compact"; ToolbarButton { iconName: "eye"; caption: "Display"; compact: true } }
                 }
                 GalleryRow {
+                    name: "pieceTile"; label: "PR-22 Piece tile"
+                    Cell { kind: "normal"; PieceTile { idText: "S3"; label: "Arm"; countText: "×1"; stripe: "#e5484d"; dragEnabled: false } }
+                    Cell { kind: "group"; PieceTile { idText: "S4"; label: "Long name"; countText: "0–2"; groupText: "G1"; stripe: "#2f6df6"; dragEnabled: false } }
+                    Cell { kind: "selected"; PieceTile { idText: "S6"; label: "A"; countText: "×3"; stripe: "#2fa85a"; selected: true; dragEnabled: false } }
+                }
+                GalleryRow {
+                    name: "libraryChip"; label: "PR-23 Library chip"
+                    Cell { kind: "normal"; LibraryChip { idText: "S2"; label: "Arm"; swatch: "#e5484d" } }
+                    Cell { kind: "used"; LibraryChip { idText: "S3"; countText: "×2"; swatch: "#2f6df6"; used: true } }
+                    Cell { kind: "selected"; LibraryChip { idText: "S4"; label: "Long piece name"; swatch: "#2fa85a"; selected: true } }
+                }
+                GalleryRow {
+                    name: "summaryStrip"; label: "PR-25 Summary strip"
+                    Cell { kind: "ok"; SummaryStrip { width: 280; ok: true; title: "Pieces can fill the result"; detail: "Result 19 voxels · Pieces n = 4, 19 voxels · Holes: 0" } }
+                    Cell { kind: "warn"; SummaryStrip { width: 280; ok: false; title: "Pieces cannot reach the result"; detail: "Result 19 voxels · Pieces n = 2, 8 voxels · Holes: 11" } }
+                }
+                GalleryRow {
+                    name: "matrixToggle"; label: "PR-26 Matrix toggle"
+                    Cell { kind: "off"; MatrixToggle {} }
+                    Cell { kind: "on"; MatrixToggle { on: true } }
+                    Cell { kind: "cursor"; MatrixToggle { cursor: true } }
+                }
+                GalleryRow {
                     name: "railButton"; label: "PR-21 Rail button"
                     Cell { kind: "normal"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }
                     Cell { kind: "hover"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }

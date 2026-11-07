@@ -22,7 +22,10 @@
 #define BTQT_VIEWPORTCONTROLLER_H
 
 #include "documentcontroller.h"
+#include "rowsmodel.h"
 #include "scenecontroller.h"
+
+#include "../uicore/puzzlescene.h"
 
 #include "../uicore/scenemesh.h"
 #include "../uicore/voxeledit.h"
@@ -34,6 +37,8 @@
 #include <memory>
 #include <optional>
 #include <vector>
+
+class PuzzleController;
 
 class DocumentController;
 class EditorController;
@@ -78,11 +83,16 @@ class ViewportController : public SceneController {
   Q_PROPERTY(QColor shapeColor READ shapeColor NOTIFY sceneChanged FINAL)
   // the text on that colour (the view tag): the shape list's choice, one rule
   Q_PROPERTY(QColor shapeTextColor READ shapeTextColor NOTIFY sceneChanged FINAL)
+  // the Puzzle scene's objects, for their frames and captions (C18)
+  Q_PROPERTY(RowsModel * sceneObjects READ sceneObjects CONSTANT FINAL)
+  // copies too many to draw (btui::maxSceneObjects)
+  Q_PROPERTY(int sceneHidden READ sceneHidden NOTIFY sceneChanged FINAL)
 
 public:
 
   ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                     LayoutController * layout, EditorController * editor, QObject * parent = nullptr);
+                     LayoutController * layout, EditorController * editor, PuzzleController * puzzle,
+                     QObject * parent = nullptr);
 
   /* the modes and options as words (btui/vocabulary.h), for QML */
   QString navMode(void) const;
@@ -110,6 +120,8 @@ public:
   QString shapeLabel(void) const;
   QColor shapeColor(void) const;
   QColor shapeTextColor(void) const;
+  RowsModel * sceneObjects(void) const { return m_objects; }
+  int sceneHidden(void) const { return m_scene.hidden; }
 
   /* Export ▸ Vector Image: write the view as it is now to file in the
    * format btui::VectorFormat names (0 PS, 1 EPS, 2 TeX, 3 PDF, 4 SVG,
@@ -163,6 +175,12 @@ private:
   void edited(DocumentController::Change change);
   void scheduleMesh(void);
   void buildMesh(void);
+  /* the Puzzle scene (C18): its mesh, and the objects' frames on screen */
+  void buildPuzzleMesh(void);
+  void updateObjects(void);
+  bool inPuzzle(void) const;
+  /* the object whose frame holds the point, -1 for none */
+  int objectAt(float x, float y) const;
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
   void addGhosts(SceneFrame & f) const;
@@ -177,6 +195,15 @@ private:
   ShapesModel * m_shapes;
   LayoutController * m_layout;
   EditorController * m_editor;
+  PuzzleController * m_puzzle;
+
+  btui::PuzzleScene m_scene;       ///< without its mesh, which is m_puzzleMesh
+  std::shared_ptr<const btui::ShapeMesh> m_puzzleMesh;
+  RowsModel * m_objects;
+  struct ObjectFrame { float x, y, size; };
+  std::vector<ObjectFrame> m_frames;   ///< on screen, an object's each
+  int m_hoverObject = -1;
+  int m_workspace = -1;            ///< the workspace the mesh is for
 
   const voxel_c * m_shape = nullptr;
   int m_shapeIndex = -1;

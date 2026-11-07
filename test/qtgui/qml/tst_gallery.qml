@@ -91,8 +91,10 @@ TestCase {
         reveal(findChild(win.contentItem, "gallery." + rowName))
         const hover = findChild(win.contentItem, "gallery." + rowName + ".hover")
         const focus = findChild(win.contentItem, "gallery." + rowName + ".focus")
-        if (focus)
+        if (focus) {
+            keyClick(Qt.Key_Up)                          // a ring shows while the keyboard navigates
             focus.control.forceActiveFocus(Qt.TabFocusReason)
+        }
         if (hover)
             mouseMove(hover.control, hover.control.width / 2, hover.control.height / 2)
     }
@@ -151,7 +153,7 @@ TestCase {
 
     function test_everyBuiltPrimitiveHasARow() {
         for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
-                           "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                           "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
@@ -353,7 +355,7 @@ TestCase {
 
     function test_snapshots_data() {
         const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
-                      "railButton", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                      "railButton", "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []

@@ -28,6 +28,8 @@
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 
+#include "../uicore/problemlist.h"
+
 #include <algorithm>
 #include <cstdlib>
 
@@ -81,6 +83,7 @@ EditorController::EditorController(DocumentController * doc, ShapesModel * shape
         bump();                  // the cells' colours
         break;
       case DocumentController::Change::Label:
+      case DocumentController::Change::Problem:
         break;
     }
   });
@@ -169,10 +172,19 @@ bool EditorController::click3d(const btui::Target3d & t, Qt::KeyboardModifiers m
   if (!s || !tool || (t.source != btui::TargetSource::Face && t.source != btui::TargetSource::Slab &&
                       t.source != btui::TargetSource::Origin))
     return false;
+  const int idx = m_shapeIndex;
   const std::vector<btui::Cell3> cells =
       btui::expand(t.cell, { int(s->getX()), int(s->getY()), int(s->getZ()) }, modifiers());
   const unsigned colour = unsigned(drawColour());
-  const int idx = m_shapeIndex;
+  // a click that changes nothing costs nothing: tried on a copy, as the warning comes first
+  const bool costs = guarded([&] {
+    if (!btui::shapeEditCostsSolutions(m_doc->session().puzzle(), idx))
+      return false;
+    const std::unique_ptr<voxel_c> copy(s->getGridType()->getVoxel(s));
+    return btui::applyTool(*copy, cells, *tool, colour);
+  });
+  if (!m_doc->mayCostSolutions(costs, [this, t, m] { click3d(t, m); }))
+    return false;
   bool changed = false;
   guarded([&] {
     m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, idx, idx, { unsigned(idx) },
@@ -350,6 +362,11 @@ void EditorController::setSize(int axis, int steps) {
     return;
   }
   const int idx = m_shapeIndex;
+  if (!m_doc->mayCostSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_applyToAll ? -1 : idx); }),
+                               [this, axis, steps] { setSize(axis, steps); })) {
+    emit sizeChanged();          // the field shows the real size until the answer
+    return;
+  }
   int blocked = 0;
   std::vector<unsigned int> shapes;
   if (m_applyToAll)
@@ -446,6 +463,15 @@ bool EditorController::press(int col, int row, bool rightButton, Qt::KeyboardMod
     return false;
   if (m_stroking)
     release();
+  /* The warning takes this press; the cell it was on is the edit that goes
+   * ahead. The stroke does not start, so the drag and release that follow
+   * do nothing. */
+  if (!m_doc->mayCostSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_shapeIndex); }),
+                               [this, col, row, rightButton, m] {
+                                 press(col, row, rightButton, m);
+                                 release();
+                               }))
+    return true;
   m_keys = keysOf(m);
   m_strokeTool = btui::toolInEffect(btui::Tool(int(m_tool)), btui::currentPlatform(), m_keys, rightButton);
   m_rightDown = rightButton;

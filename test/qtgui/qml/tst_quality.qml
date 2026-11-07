@@ -66,6 +66,11 @@ TestCase {
             // a menu's Delete, highlighted (panel2) or not (panel)
             verify(contrast(Theme.dangerText, Theme[fill]) >= 4.5,
                    "dangerText on " + fill + ": " + contrast(Theme.dangerText, Theme[fill]).toFixed(2))
+            // the Puzzle summary's fit, in the title and the icon
+            verify(contrast(Theme.warn, Theme[fill]) >= 4.5,
+                   "warn on " + fill + ": " + contrast(Theme.warn, Theme[fill]).toFixed(2))
+            verify(contrast(Theme.ok, Theme[fill]) >= 3,
+                   "ok on " + fill + ": " + contrast(Theme.ok, Theme[fill]).toFixed(2))
         }
         // primary buttons: white text on the accent
         if (data.theme === "dark")

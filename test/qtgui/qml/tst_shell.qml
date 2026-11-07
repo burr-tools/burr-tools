@@ -98,6 +98,54 @@ TestCase {
         verify(bar.menuAt(0).itemAt(0).enabled)
     }
 
+    // the column animates, not what is in it: the card is laid out once
+    function test_aCardKeepsItsWidthWhileItsColumnMoves_data() {
+        return [
+            { tag: "entities left", ws: LayoutController.Entities, card: "entities.shapes", slot: "workspace.left", left: true },
+            { tag: "entities right", ws: LayoutController.Entities, card: "entities.editor", slot: "workspace.right", left: false },
+            { tag: "puzzle left", ws: LayoutController.Puzzle, card: "puzzle.left", slot: "workspace.left", left: true },
+            { tag: "puzzle right", ws: LayoutController.Puzzle, card: "puzzle.right", slot: "workspace.right", left: false },
+        ]
+    }
+    function test_aCardKeepsItsWidthWhileItsColumnMoves(data) {
+        App.layout.workspace = data.ws
+        const setCollapsed = (c) => { if (data.left) App.layout.leftCollapsed = c; else App.layout.rightCollapsed = c }
+        const slot = item(data.slot)
+        setCollapsed(true)
+        tryVerify(() => !slot.animating, 2000)
+        const rail = slot.width
+
+        setCollapsed(false)
+        const card = item(data.card)
+        const full = data.left ? App.layout.leftWidth : App.layout.rightWidth
+        compare(card.width, full, "at its width from the start")
+        let between = 0
+        while (slot.animating) {
+            if (slot.width > rail + 1 && slot.width < full - 1)
+                between++
+            compare(card.width, full, "and all the way")
+            // against the column's fixed edge: it does not slide
+            const x = card.mapToItem(slot, 0, 0).x
+            compare(x, data.left ? 0 : slot.width - card.width)
+            wait(10)
+        }
+        verify(between > 0, "the column did animate")
+        compare(slot.width, full)
+        verify(!slot.clip, "only clipped while moving")
+        App.layout.workspace = data.ws
+    }
+
+    function test_aColumnSentBackAtOnceLeavesItsCardRight() {
+        const slot = item("workspace.right")
+        const card = item("entities.editor")
+        const width = App.layout.rightWidth
+        App.layout.toggleFocus2d()
+        App.layout.toggleFocus2d()                       // before the column moved
+        tryVerify(() => !slot.animating, 2000)
+        compare(slot.width, width)
+        compare(card.width, width)
+    }
+
     function test_railSwitchesWorkspaces() {
         // T-C15-1/2
         verify(item("rail-entities").selected)

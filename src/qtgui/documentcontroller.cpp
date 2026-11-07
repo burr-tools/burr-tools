@@ -23,6 +23,7 @@
 #include "localpath.h"
 
 #include "../lib/puzzle.h"
+#include "../uicore/problemlist.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -49,7 +50,10 @@ namespace {
   }
 }
 
-DocumentController::DocumentController(QObject * parent) : QObject(parent) {}
+DocumentController::DocumentController(QObject * parent) : QObject(parent) {
+  // an edit waiting for the solutions warning was an edit of the document that went
+  connect(this, &DocumentController::documentReplaced, this, [this] { m_heldEdit = nullptr; });
+}
 
 QString DocumentController::fileName(void) const {
   return QFileInfo(fromPath(m_session.fileName())).fileName();
@@ -351,8 +355,10 @@ void DocumentController::undo(void) {
   guarded([&] {
     if (!m_session.canUndo())
       return;
+    emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
     auto r = m_session.undo();
+    m_restored = r.selection;
     if (wasStroke)
       emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
@@ -364,8 +370,10 @@ void DocumentController::redo(void) {
   guarded([&] {
     if (!m_session.canRedo())
       return;
+    emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
     auto r = m_session.redo();
+    m_restored = r.selection;
     if (wasStroke)
       emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
@@ -392,6 +400,51 @@ bool DocumentController::convertTo(int type) {
   });
 }
 
+void DocumentController::setSolutionsWarned(bool warned) {
+  if (warned == m_solutionsWarned)
+    return;
+  m_solutionsWarned = warned;
+  emit solutionsWarnedChanged();
+}
+
+bool DocumentController::mayCostSolutions(bool costs, std::function<void()> retry) {
+  if (!costs || m_solutionsWarned)
+    return true;
+  // a second edit of the same gesture waits with the first, under its one warning
+  if (m_heldEdit) {
+    m_heldEdit = [first = std::move(m_heldEdit), second = std::move(retry)] { first(); second(); };
+    return false;
+  }
+  m_heldEdit = std::move(retry);
+  emit solutionsWarningRequested();
+  return false;
+}
+
+namespace {
+  puzzleHistory_c::selection_t selection(int problem, int piece) {
+    return { problem < 0 ? puzzleHistory_c::NO_PROBLEM : unsigned(problem),
+             piece < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(piece) };
+  }
+}
+
+void DocumentController::beginStep(int problem, int piece, unsigned int coalesceKey) {
+  m_session.beginStep(selection(problem, piece), coalesceKey);
+}
+
+void DocumentController::endStep(int problem, int piece) {
+  m_session.endStep(selection(problem, piece));
+}
+
+void DocumentController::resolveSolutionsWarning(bool goOn) {
+  std::function<void()> held = std::move(m_heldEdit);
+  m_heldEdit = nullptr;
+  if (!goOn)
+    return;
+  setSolutionsWarned(true);
+  if (held)
+    guarded([&] { held(); });
+}
+
 DocumentController::Change DocumentController::changeOf(puzzleHistory_c::actionKind_e kind) {
   switch (kind) {
     case puzzleHistory_c::AK_ENTITIES_GRID_PAINT:
@@ -400,9 +453,11 @@ DocumentController::Change DocumentController::changeOf(puzzleHistory_c::actionK
       return Change::Voxels;
     case puzzleHistory_c::AK_COLOR_PALETTE:
       return Change::Palette;
+    case puzzleHistory_c::AK_PROBLEM_STRUCTURAL:
+    case puzzleHistory_c::AK_PROBLEM_COUNT:
+      return Change::Problem;
     case puzzleHistory_c::AK_NONE:
     case puzzleHistory_c::AK_ENTITIES_STRUCTURAL:
-    case puzzleHistory_c::AK_PROBLEM_STRUCTURAL:
       return Change::Structure;
   }
   return Change::Structure;

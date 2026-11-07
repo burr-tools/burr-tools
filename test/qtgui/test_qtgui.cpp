@@ -29,6 +29,7 @@
 #include "test_editor.h"
 #include "test_inspector.h"
 #include "test_voxeltypes.h"
+#include "test_puzzle.h"
 #include "test_saving.h"
 #include "test_viewport.h"
 
@@ -289,6 +290,7 @@ private slots:
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
+                          "CollapsedProblems.qml", "CollapsedSections.qml", "PuzzleLeftCard.qml", "PuzzleRightCard.qml",
                           "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
@@ -1674,7 +1676,7 @@ private slots:
     auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
 
     std::vector<std::unique_ptr<AnySignal>> spies;
-    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes() })
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes(), a->puzzle() })
       spies.push_back(std::make_unique<AnySignal>(o));
     auto happened = [&] {
       int n = int(links.urls.size());
@@ -1700,6 +1702,18 @@ private slots:
       // a shape with one before it
       if (key.startsWith(QLatin1String("shapes.")))
         a->shapes()->select(1);
+      // a problem with one before it, and a piece of it
+      if (key.startsWith(QLatin1String("problems.")) || key.startsWith(QLatin1String("pieces."))) {
+        layout->setWorkspace(LayoutController::Puzzle);
+        PuzzleController * z = a->puzzle();
+        while (z->problems()->count() < 2)
+          z->newProblem();
+        z->selectProblem(key == QLatin1String("problems.moveLater") ? 0 : 1);
+        d->resolveSolutionsWarning(false);
+        z->selectPiece(1);
+        if (z->pieceMax() == 0)
+          z->stepPiece(1, 1);
+      }
       for (auto & s : spies)
         s->clear();
       links.urls.clear();
@@ -1786,6 +1800,35 @@ class TestKeyboardCues : public QObject {
   }
 
 private slots:
+
+  void theKeyboardMovingTheFocusIsToldFromTheMouse() {
+    // a click focuses without a ring; Tab or an arrow starts them, a click ends them
+    KeyboardCues cues;
+    QSignalSpy changed(&cues, &KeyboardCues::navigatingChanged);
+    QVERIFY(!cues.navigating());
+    QWindow w;
+    const auto key = [&](int k) {
+      QKeyEvent e(QEvent::KeyPress, k, Qt::NoModifier);
+      QCoreApplication::sendEvent(&w, &e);
+    };
+    const auto press = [&] {
+      QMouseEvent e(QEvent::MouseButtonPress, QPointF(1, 1), QPointF(1, 1), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+      QCoreApplication::sendEvent(&w, &e);
+    };
+    key(Qt::Key_A);
+    QVERIFY(!cues.navigating());
+    key(Qt::Key_Tab);
+    QVERIFY(cues.navigating());
+    press();
+    QVERIFY(!cues.navigating());
+    key(Qt::Key_Backtab);
+    QVERIFY(cues.navigating());
+    press();
+    key(Qt::Key_Down);
+    QVERIFY(cues.navigating());
+    QCOMPARE(changed.count(), 5);
+  }
+
 
   void altShowsTheAccessKeysUntilTheKeyboardIsDone() {
     // Windows convention: underlines appear from an Alt press until a click,
@@ -2510,13 +2553,11 @@ private slots:
     QVERIFY(used >= 0);
     const int n = m->count();
 
-    QSignalSpy ask(m, &ShapesModel::deleteConfirmRequested);
+    QSignalSpy ask(d, &DocumentController::solutionsWarningRequested);
     m->requestDelete(used);
     QCOMPARE(ask.count(), 1);
-    QCOMPARE(ask.first().at(0).toInt(), used);
-    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("S%1").arg(used + 1));
-    QCOMPARE(m->count(), n);                            // nothing yet: QML asks
-    m->deleteShape(used);                               // the answer
+    QCOMPARE(m->count(), n);                            // nothing yet: QML warns
+    d->resolveSolutionsWarning(true);                   // the answer
     QCOMPARE(m->count(), n - 1);
 
     // a shape no problem uses goes at once
@@ -2743,7 +2784,7 @@ private slots:
       return true;
     });
 
-    QSignalSpy ask(c, &ColoursModel::removeConfirmRequested);
+    QSignalSpy ask(f.app->document(), &DocumentController::solutionsWarningRequested);
     c->select(unused);
     c->requestRemove(unused);                         // goes at once
     QCOMPARE(ask.count(), 0);
@@ -2752,10 +2793,8 @@ private slots:
 
     c->requestRemove(used);
     QCOMPARE(ask.count(), 1);
-    QCOMPARE(ask.first().at(0).toInt(), used);
-    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("C%1").arg(used));
-    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML asks
-    c->removeColour(used);                            // the answer
+    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML warns
+    f.app->document()->resolveSolutionsWarning(true); // the answer
     QCOMPARE(c->count(), before);
 
     c->requestRemove(0);                              // Default cannot go
@@ -2773,8 +2812,8 @@ private slots:
     QCOMPARE(f.app->status()->text(),
              QStringLiteral("Shape <b>S2</b> has <b>%1</b> voxels (%2 fixed, %3 variable)").arg(fx + vr).arg(fx).arg(vr));
 
-    // Puzzle and Solver have their own sentences (later phases)
-    f.app->layout()->setWorkspace(LayoutController::Puzzle);
+    // the Solver has its own sentence (a later phase); Puzzle's is TestPuzzle's
+    f.app->layout()->setWorkspace(LayoutController::Solver);
     QCOMPARE(f.app->status()->text(), QString());
   }
 
@@ -3705,6 +3744,7 @@ int main(int argc, char ** argv) {
   run(TestInspector());
   run(TestVoxelTypes());
   run(TestSaving());
+  run(TestPuzzle());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());
