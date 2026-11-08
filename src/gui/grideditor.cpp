@@ -409,7 +409,7 @@ void gridEditor_c::draw() {
         // background, too subtle to see
         {
           float vr = r/255.0f, vg = g/255.0f, vb = b/255.0f;
-          variablePieceColor(&vr, &vg, &vb);
+          variableCellColor(&vr, &vg, &vb);
           fl_color(int(255*vr), int(255*vg), int(255*vb));
         }
         drawNormalTile(x, y, currentZ, tx, ty, sx, sy);

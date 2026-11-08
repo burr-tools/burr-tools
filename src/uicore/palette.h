@@ -67,13 +67,17 @@ namespace btui {
   inline float lightShade(float f) { return float(1 - 0.9 * (1 - f)); }
 
   /* The look of a variable voxel, in both GUIs: the same hue as the fixed
-   * voxels next to it, a good deal lighter (variableTint), and in the 3D
-   * views see-through at kVariableAlpha, drawn as one layer with the
-   * nearest-surface rule: variable voxels hide each other, show the fixed
-   * voxels and the background through themselves, and are hidden by the
-   * fixed voxels in front of them. "Less there" than a fixed voxel, while
-   * still a region of the piece's colour. */
-  Rgb variableTint(const Rgb & c);
+   * voxels next to it, lighter (variableTint, `toWhite` of the way to
+   * white), and in the 3D views see-through at kVariableAlpha, drawn as one
+   * layer with the nearest-surface rule: variable voxels hide each other,
+   * show the fixed voxels and the background through themselves, and are
+   * hidden by the fixed voxels in front of them. "Less there" than a fixed
+   * voxel, while still a region of the piece's colour. The 3D views whiten
+   * less: blended over the light canvas at half alpha, the 2D editor's
+   * tint would hardly show its hue. */
+  Rgb variableTint(const Rgb & c, float toWhite);
+  inline constexpr float kVariableTintEditor = 0.55f;
+  inline constexpr float kVariableTint3D = 0.25f;
   inline constexpr float kVariableAlpha = 0.5f;
 
   /* the 2D editor's chequerboard: a milder pair than the voxel style's,

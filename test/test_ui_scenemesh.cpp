@@ -300,8 +300,8 @@ TEST_CASE("flat style: variable voxels are a lighter tint of the hue, see-throug
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   REQUIRE_FALSE(m.translucent.empty());
-  const Rgb tint = variableTint({ 0, 0, 1 });
-  CHECK(tint.r > 0.5f);                              // towards white
+  const Rgb tint = variableTint({ 0, 0, 1 }, kVariableTint3D);
+  CHECK(tint.r > 0.2f);                              // towards white
   CHECK(tint.b == 1.0f);                             // still blue
   for (const auto & vert : m.translucent) {
     CHECK(vert.cell[0] == 1.0f);
@@ -385,7 +385,7 @@ TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the vari
     CHECK(vert.color.a == channel8(kVariableAlpha));
   // the two solids looked at together below
   m.opaque.insert(m.opaque.end(), m.translucent.begin(), m.translucent.end());
-  const std::uint8_t shadeB = 255, tintR = channel8(variableTint({ 0, 0, 1 }).r);
+  const std::uint8_t shadeB = 255, tintR = channel8(variableTint({ 0, 0, 1 }, kVariableTint3D).r);
   float lo[2][3] = { { 1e9f, 1e9f, 1e9f }, { 1e9f, 1e9f, 1e9f } }, hi[2][3] = { { -1e9f, -1e9f, -1e9f }, { -1e9f, -1e9f, -1e9f } };
   size_t count[2] = { 0, 0 };
   for (const auto & vert : m.opaque) {

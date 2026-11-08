@@ -60,8 +60,10 @@ unsigned int pieceColorBi(int x, int sub);
 float darkPieceColor(float f);
 float lightPieceColor(float f);
 
-/* the lighter tint of the same hue that marks a variable voxel; the
+/* the lighter tint of the same hue that marks a variable voxel, in the 2D
+ * editor's cells and, whitened less, in the see-through 3D view; the
  * channels are replaced in place, 0 to 1 in and out */
+void variableCellColor(float * r, float * g, float * b);
 void variablePieceColor(float * r, float * g, float * b);
 
 /* the 2D editor's chequerboard shades, milder than the voxel style's */

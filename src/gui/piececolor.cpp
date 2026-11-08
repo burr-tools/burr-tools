@@ -47,8 +47,13 @@ float lightPieceColor(float f) { return btui::lightShade(f); }
 float editorDarkPieceColor(float f) { return btui::editorDarkShade(f); }
 float editorLightPieceColor(float f) { return btui::editorLightShade(f); }
 
+void variableCellColor(float * r, float * g, float * b) {
+  const btui::Rgb v = btui::variableTint({ *r, *g, *b }, btui::kVariableTintEditor);
+  *r = v.r; *g = v.g; *b = v.b;
+}
+
 void variablePieceColor(float * r, float * g, float * b) {
-  const btui::Rgb v = btui::variableTint({ *r, *g, *b });
+  const btui::Rgb v = btui::variableTint({ *r, *g, *b }, btui::kVariableTint3D);
   *r = v.r; *g = v.g; *b = v.b;
 }
 

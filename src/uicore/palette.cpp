@@ -165,9 +165,8 @@ namespace btui {
     return 0.2126f * lin(c.r) + 0.7152f * lin(c.g) + 0.0722f * lin(c.b);
   }
 
-  Rgb variableTint(const Rgb & c) {
-    // just over halfway to white: pale, and still plainly the piece's hue
-    const float k = 0.55f;
+  Rgb variableTint(const Rgb & c, float toWhite) {
+    const float k = toWhite;
     return { c.r + (1 - c.r) * k, c.g + (1 - c.g) * k, c.b + (1 - c.b) * k };
   }
 

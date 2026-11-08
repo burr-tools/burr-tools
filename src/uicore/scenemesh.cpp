@@ -111,7 +111,7 @@ namespace btui {
         if (opt.colors == ColorMode::Voxel && color > 0 && color <= opt.palette.size())
           base = opt.palette[color - 1];
         if (variable)
-          base = variableTint(base);
+          base = variableTint(base, kVariableTint3D);
         Rgba8 c = rgba(base.r, base.g, base.b);
         if (variable)
           c.a = channel(opt.variableAlpha);
@@ -368,7 +368,7 @@ namespace btui {
        * variable region is occluded like any other solid */
       const std::unique_ptr<voxel_c> fixed = fixedVoxels(shape);
       const std::unique_ptr<voxel_c> variable = variableVoxels(shape);
-      const Rgb tint = variableTint(opt.piece);
+      const Rgb tint = variableTint(opt.piece, kVariableTint3D);
       if (!addStlFaces(*fixed, opt.piece, 1.0f, out) || !addStlFaces(*variable, tint, opt.variableAlpha, out)) {
         out.opaque.clear();
         out.translucent.clear();
