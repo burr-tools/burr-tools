@@ -363,13 +363,13 @@ void gridEditor_c::draw() {
 
       // apply the chequerboard pattern
       if ((x+y+currentZ) & 1) {
-        r = int(255*darkPieceColor(pieceColorR(piecenumber)));
-        g = int(255*darkPieceColor(pieceColorG(piecenumber)));
-        b = int(255*darkPieceColor(pieceColorB(piecenumber)));
+        r = int(255*editorDarkPieceColor(pieceColorR(piecenumber)));
+        g = int(255*editorDarkPieceColor(pieceColorG(piecenumber)));
+        b = int(255*editorDarkPieceColor(pieceColorB(piecenumber)));
       } else {
-        r = int(255*lightPieceColor(pieceColorR(piecenumber)));
-        g = int(255*lightPieceColor(pieceColorG(piecenumber)));
-        b = int(255*lightPieceColor(pieceColorB(piecenumber)));
+        r = int(255*editorLightPieceColor(pieceColorR(piecenumber)));
+        g = int(255*editorLightPieceColor(pieceColorG(piecenumber)));
+        b = int(255*editorLightPieceColor(pieceColorB(piecenumber)));
       }
 
       // for empty squares we check the layer below and if the square below is
@@ -388,13 +388,13 @@ void gridEditor_c::draw() {
 
       // apply the chequerboard pattern
       if ((x+y+currentZ) & 1) {
-        r = int(255*darkPieceColor(pieceColorR(piecenumber)));
-        g = int(255*darkPieceColor(pieceColorG(piecenumber)));
-        b = int(255*darkPieceColor(pieceColorB(piecenumber)));
+        r = int(255*editorDarkPieceColor(pieceColorR(piecenumber)));
+        g = int(255*editorDarkPieceColor(pieceColorG(piecenumber)));
+        b = int(255*editorDarkPieceColor(pieceColorB(piecenumber)));
       } else {
-        r = int(255*lightPieceColor(pieceColorR(piecenumber)));
-        g = int(255*lightPieceColor(pieceColorG(piecenumber)));
-        b = int(255*lightPieceColor(pieceColorB(piecenumber)));
+        r = int(255*editorLightPieceColor(pieceColorR(piecenumber)));
+        g = int(255*editorLightPieceColor(pieceColorG(piecenumber)));
+        b = int(255*editorLightPieceColor(pieceColorB(piecenumber)));
       }
 
       // draw the square depending on the state
@@ -404,8 +404,9 @@ void gridEditor_c::draw() {
         drawNormalTile(x, y, currentZ, tx, ty, sx, sy);
         break;
       case voxel_c::VX_VARIABLE:
-        // the whole cell in a darker shade of the same hue; the old inset
-        // square left only a thin rim of background, too subtle to see
+        // the whole cell in a lighter tint of the same hue, "less there"
+        // than a fixed cell; the old inset square left only a thin rim of
+        // background, too subtle to see
         {
           float vr = r/255.0f, vg = g/255.0f, vb = b/255.0f;
           variablePieceColor(&vr, &vg, &vb);

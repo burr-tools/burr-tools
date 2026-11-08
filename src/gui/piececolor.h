@@ -60,9 +60,13 @@ unsigned int pieceColorBi(int x, int sub);
 float darkPieceColor(float f);
 float lightPieceColor(float f);
 
-/* the darker shade of the same hue that marks a variable voxel; the
+/* the lighter tint of the same hue that marks a variable voxel; the
  * channels are replaced in place, 0 to 1 in and out */
 void variablePieceColor(float * r, float * g, float * b);
+
+/* the 2D editor's chequerboard shades, milder than the voxel style's */
+float editorDarkPieceColor(float f);
+float editorLightPieceColor(float f);
 
 /* two macros to directly get the fltk color */
 #define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))

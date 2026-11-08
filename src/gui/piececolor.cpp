@@ -44,8 +44,11 @@ unsigned int pieceColorBi(int x, int sub) { return btui::pieceColor8(x, sub).b; 
 
 float darkPieceColor(float f) { return btui::darkShade(f); }
 float lightPieceColor(float f) { return btui::lightShade(f); }
+float editorDarkPieceColor(float f) { return btui::editorDarkShade(f); }
+float editorLightPieceColor(float f) { return btui::editorLightShade(f); }
+
 void variablePieceColor(float * r, float * g, float * b) {
-  const btui::Rgb v = btui::variableShade({ *r, *g, *b });
+  const btui::Rgb v = btui::variableTint({ *r, *g, *b });
   *r = v.r; *g = v.g; *b = v.b;
 }
 

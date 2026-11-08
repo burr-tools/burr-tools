@@ -59,7 +59,7 @@ private slots:
   void theStlPreviewDrawsTheMeshAndItsInsides();
   void theFlatStyleOutlinesTheShapesEdges();
   void translucencyBlendsInLinearLight();
-  void innerVariableVoxelsShowThroughTheOuterOnes();
+  void variableVoxelsAreOneBodyShowingTheirNearestSurface();
   void theTargetsOutgrowTheViewInSteps();
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();

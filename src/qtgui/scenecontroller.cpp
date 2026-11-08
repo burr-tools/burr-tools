@@ -57,7 +57,9 @@ void SceneController::applyStyle(SceneFrame & f, btui::VoxelStyle style) {
   switch (style) {
     case btui::VoxelStyle::Flat:
     case btui::VoxelStyle::Stl:
-      f.translucentLayers = true;
+      // the see-through variable voxels are one layer: its nearest surface
+      // only, as the FLTK GUI composites them (scenemesh.h, VoxelStyle)
+      f.translucentLayers = false;
       f.cullBackFaces = true;
       return;
     case btui::VoxelStyle::Legacy:
