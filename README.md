@@ -8,7 +8,7 @@ Grab the file for your platform from the
 
 | Platform | Download | Notes |
 | :--- | :--- | :--- |
-| macOS, Apple Silicon (M1/M2/M3/M4) | the `.dmg` disk image | Read the Gatekeeper note below before first launch |
+| macOS 11 Big Sur or later, Apple Silicon (M1/M2/M3/M4) | the `.dmg` disk image | Read the Gatekeeper note below before first launch |
 | macOS, Intel | — | No prebuilt binary; [build from source](BUILD.md) |
 | Windows, 64-bit | the `-windows-x86_64.zip` archive | Unpack and run `burrtools.exe` |
 | Linux, 64-bit | the `-linux-x86_64.tar.gz` archive | Unpack and run `./burrtools` |
@@ -20,6 +20,15 @@ this note — prefer the `.dmg` unless you know you want only the app.
 `burrTxt` and `burrTxt2` are the command-line solvers. They ship inside the
 Linux and Windows archives; the macOS builds publish them as separate
 downloads.
+
+### Preview: the redesigned GUI
+
+A redesigned interface, `burrtools-qt` (Qt 6 Quick), is being built next to
+the classic one; see [`src/qtgui/README.md`](src/qtgui/README.md) for what
+it is and what is done. It is not released yet: preview builds for each
+platform are attached to every CI run (Actions ▸ a run ▸ Artifacts ▸
+`burrtools-qt-<os>`), and [`BUILD.md`](BUILD.md#qt-gui-burrtools-qt) shows how
+to build it.
 
 ### macOS: "BurrTools.app is damaged and can't be opened"
 
@@ -42,6 +51,22 @@ section, and click **Open Anyway** next to the message about BurrTools.
 Note that Control-clicking the app and choosing **Open** — the usual advice
 for unsigned apps — does not get past this particular message, and no longer
 bypasses Gatekeeper at all as of macOS 15 Sequoia.
+
+## Pausing a search and continuing later
+
+You can stop a running search and save the puzzle; opening the file again
+and pressing Continue picks the search up where it stopped, without
+repeating anything it already reported.
+
+This only works with the same BurrTools version that paused the search.
+A paused search saved by a different (for example an older) version cannot
+be continued: BurrTools reports that the saved search state cannot be
+restored. The assemblies found so far stay visible, but the search has to
+be started again from the beginning, which discards them and finds them
+again. Finish long searches with the version that
+started them, or plan to restart them after an upgrade. Puzzle files
+themselves, and completed searches with their solutions, load in every
+version as before.
 
 BurrTools was written by Andreas Röver, small patches provided by
 several authors. Original README below.

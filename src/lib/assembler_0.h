@@ -22,6 +22,7 @@
 #define __DL_ASSEMBLER_H__
 
 #include "assembler.h"
+#include "split_fanout.h"
 
 #include <vector>
 #include <algorithm>
@@ -132,10 +133,9 @@ private:
 
   void iterativeMultiSearch(void);
   bool canUseSimd(void) const;
-  void simdSearch(void);
   std::unique_ptr<ISimdExactCover> createSimdSolver(void) const;
   std::unique_ptr<assembly_c> buildAssembly(const unsigned int *row_nodes, unsigned int count) const;
-  void handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop);
+  bool handleSolution(const unsigned int *row_nodes, unsigned int count, std::stop_token stop, bool & didConsume);
 
   /* this function checks, if the given piece can be placed
    * at the given position inside the result
@@ -233,13 +233,54 @@ private:
     unsigned int row;
   };
 
+  /* A task is either a single prefix path (plain subtree) or a cursor:
+   * cursorCol != 0 means "the rows of column cursorCol below this prefix,
+   * skipping the first cursorSkip of them, still need splitting". Cursors
+   * are created by splitPrefix when a column is too fat to enumerate at
+   * once (see kSplitFanout) and are never searched -- on pop they split
+   * again until exhausted. All cursor fields are 0 on plain tasks.
+   *
+   * restSkip > 0 marks a SIMD rest (engine SIMD only, from a divided
+   * interrupted task -- see ISimdExactCover::SubtreeRemainder): the
+   * branches of the SIMD search frame at depth prefix.size(), starting at
+   * that index of its active-row list. Rests are searched, never split:
+   * the index refers to the SIMD frame's order, not to a DLX column.
+   */
   struct SubtreeTask {
     std::vector<PrefixStep> prefix;
     /* this subtree's fraction of the whole search tree; all tasks, plus the
      * subtrees pruned during generation, sum to 1
      */
     float share = 0;
+    unsigned int cursorCol = 0;
+    unsigned int cursorSkip = 0;
+    uint32_t restSkip = 0;
+    bool hasCursor(void) const { return cursorCol != 0; }
   };
+
+  /* Max children per split (see splitPrefix): a fat column fans out up to K
+   * singleton tasks plus one cursor for the rest instead of one task per
+   * row. Bounds the queue (and with it RAM, save size and parse time) at
+   * ~K per split regardless of column breadth, while keeping refinement
+   * fine enough for load balance. A column with at most K rows yields one
+   * task per row. K is kSplitFanout
+   * unless BURRTOOLS_SPLIT_FANOUT overrides it (see split_fanout.h); read
+   * at the start of every parallel run, before any worker exists.
+   */
+  static constexpr unsigned int kSplitFanout = SplitFanout::kDefault;
+  unsigned int splitFanout = kSplitFanout;
+  // split children queue depth-first unless BURRTOOLS_SPLIT_BREADTH_FIRST
+  // (A/B toggle, see split_fanout.h); read with splitFanout
+  bool splitBreadthFirst = false;
+  // donation (split on demand, DLX and SIMD workers): a running task hands
+  // the untried part of its shallowest open level to the pool when a
+  // sibling waits (see assemblerWorker_c::donate). On unless
+  // BURRTOOLS_NO_DONATE; donateEvery forces a donation every N nodes
+  // (tests). Both read once per run (see split_fanout.h).
+  bool donate = true;
+  unsigned long donateEvery = 0;
+  // donations made since construction (diagnostics and tests)
+  std::atomic<unsigned long> donations{0};
 
   /* The progress the GUI thread reads: the summed share of every task that is
    * done. Seeded from prunedTaskShare once, single-threaded, whenever a
@@ -290,7 +331,16 @@ private:
    */
   float prunedTaskShare = 0.0f;
 
-  std::unordered_set<uint64_t> emittedSignatures;
+  /* Engine that produced the saved remainder: a remainder may hold SIMD
+   * rests (valid only for the SIMD engine), so a resumed run keeps the
+   * engine regardless of the benchmark toggles. NONE when no remainder.
+   */
+  enum RemainderEngine : unsigned int {
+    ENGINE_NONE = 0,
+    ENGINE_DLX = 1,
+    ENGINE_SIMD = 2,
+  };
+  RemainderEngine remainderEngine = ENGINE_NONE;
 
   /* set when a parallel search stopped before finishing.
    *
@@ -298,10 +348,12 @@ private:
    * prefix). A parallel search has no single such point: progress lives in
    * the pool remainder saved back into parallelTasks (see parallelMultiSearch)
    * plus whatever each worker had reached inside the task it was in the
-   * middle of, and the assemblies already handed to the callback are only
-   * remembered in emittedSignatures. Since format 1.6 all of that is
-   * persisted (tasks plus sorted signatures), so a stopped parallel search
-   * reloads as resumable; older payloads and task-less stops are refused.
+   * middle of -- which a stop divides into exact continuation tasks (DLX:
+   * divideRemainder, SIMD: SubtreeRemainder) holding only unexplored
+   * territory. Since format 1.7 all of that is persisted, so a stopped
+   * parallel search reloads as resumable. A task-less stop is refused with
+   * ERR_CAN_NOT_RESTORE_INTERRUPTED; state saved by any other version is
+   * refused earlier, with ERR_CAN_NOT_RESTORE_VERSION.
    */
   bool parallelInterrupted = false;
 
@@ -336,6 +388,13 @@ private:
 
   void generateSubtreeTasks(std::vector<SubtreeTask> & tasks, unsigned int targetTasks, unsigned int maxDepth, float & prunedShare);
   void parallelMultiSearch(unsigned int workers);
+  /* The prefix of a SIMD piece below task (donated or left at a stop):
+   * nodes is its path of row nodes from the root. Steps inside the task's
+   * own prefix are kept verbatim, deeper ones get the DLX column of their
+   * node, so the piece is an ordinary task.
+   */
+  std::vector<PrefixStep> prefixFromNodes(const SubtreeTask & task,
+                                          const std::vector<unsigned int> & nodes) const;
 
   /* true when the next assemble() call will take the parallel path */
   bool willRunParallel(unsigned int threads) const;
@@ -413,6 +472,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers handed to waiting siblings so far
+   * (split on demand); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   /* clamped: the count reaches std::thread creation directly, and an
    * unvalidated value from the CLI or the python binding would otherwise

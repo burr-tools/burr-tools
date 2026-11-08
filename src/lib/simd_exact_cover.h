@@ -22,6 +22,7 @@
 #define __SIMD_EXACT_COVER_H__
 
 #include "bt_assert.h"
+#include "split_fanout.h"
 #include <cstdint>
 #include <vector>
 #include <functional>
@@ -212,11 +213,78 @@ public:
     std::atomic<uint64_t> &iterations
   ) const = 0;
 
+  /**
+   * Remainder of an interrupted subtree search, collected while search()
+   * unwinds after a stop. Every frame on the stack returns through a stop
+   * check, so the trace sees the whole live path:
+   *
+   * - entry check: the node was never explored -- one piece over the full
+   *   path (for the root: the subtree itself, rest position included);
+   * - post-backtrack check in the frame at depth d: its current branch is
+   *   fully searched and the branches after it are untouched -- each
+   *   becomes a piece over the path plus that row, up to `fanout`, then
+   *   one rest piece for the remainder of the list.
+   *
+   * These are disjoint and cover exactly the unexplored leaves; the
+   * searched region is dropped. Solutions found but declined by the stop
+   * are added by the caller (only it knows about delivery). An empty
+   * remainder after a stop means the subtree was fully searched.
+   */
+  struct SubtreeRemainder {
+    struct Piece {
+      std::vector<unsigned int> nodes;
+      // > 0: the branches of the frame at depth nodes.size(), starting at
+      // this index of its active-row list (re-derived identically from
+      // the replayed prefix); 0: the whole subtree under nodes
+      uint32_t restSkip = 0;
+    };
+    unsigned int rootDepth = 0;
+    uint32_t rootRestSkip = 0;
+    // branches per frame emitted as singletons before the rest (the
+    // shared fan-out cap, see split_fanout.h); set by the caller
+    unsigned int fanout = SplitFanout::kDefault;
+    std::vector<Piece> pieces;
+
+    void addPiece(std::vector<unsigned int> nodes, uint32_t restSkip = 0) {
+      pieces.push_back(Piece{std::move(nodes), restSkip});
+    }
+  };
+
+  /**
+   * Split on demand (a running task gives untried work to waiting
+   * siblings, see split_fanout.h): polled from inside the search every `interval` nodes; when wanted() says a sibling
+   * is waiting, the search finds the shallowest frame that still has
+   * untried branches and offers them to give() as one rest (nodes = the
+   * path down to that frame, restSkip = the frame's first untried index,
+   * > 0 always). give() returns whether it took them (it may lose the
+   * claim to another donor); if it did, the frame ends after its current
+   * branch. `fraction` is the structural estimate of the piece's share of
+   * this subtree (product of 1/branching above it x remaining/branching at
+   * it, where a rest's root frame branches only over the candidates it
+   * owns).
+   */
+  struct DonationSink {
+    virtual ~DonationSink() = default;
+    virtual bool wanted() = 0;
+    virtual bool give(const std::vector<unsigned int> &nodes, uint32_t restSkip,
+                      double fraction) = 0;
+    uint64_t interval = 256;
+  };
+
+  /**
+   * Search the subtree below the placed prefix. With a non-null remainder,
+   * a stop leaves the unexplored part of the subtree in it (see
+   * SubtreeRemainder). start > 0 resumes a rest piece: the root frame's
+   * branch loop begins at that index.
+   */
   virtual void solveSubtree(
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
     std::stop_token stop,
-    std::atomic<uint64_t> &iterations
+    std::atomic<uint64_t> &iterations,
+    SubtreeRemainder *remainder = nullptr,
+    size_t start = 0,
+    DonationSink *donor = nullptr
   ) const = 0;
 
   virtual unsigned int getNumRows() const = 0;
@@ -264,7 +332,10 @@ public:
     const std::vector<unsigned int> &prefix_node_ids,
     SolutionCallback callback,
     std::stop_token stop,
-    std::atomic<uint64_t> &iterations
+    std::atomic<uint64_t> &iterations,
+    SubtreeRemainder *remainder = nullptr,
+    size_t start = 0,
+    DonationSink *donor = nullptr
   ) const override;
 
   unsigned int getNumRows() const override { return rows.size(); }
@@ -294,7 +365,30 @@ private:
     // batching keeps per-node overhead at one increment plus a predictable
     // branch, while readers still observe advancing -- never frozen -- counts.
     uint64_t flushed_iterations = 0;
+    // Stop-path sink (see SubtreeRemainder); null unless solveSubtree was
+    // given one. Never touched per node.
+    SubtreeRemainder *trace = nullptr;
+    // Donation (see DonationSink); null unless solveSubtree was given one.
+    // Per frame at depth d (live while its branch loop runs): the branch
+    // column, its candidate count (at the root, only those from `start`
+    // on), the first untried index and the loop end -- a donation lowers
+    // frame_end to cut the frame. A frame's untried range only shrinks, so
+    // once found closed it stays closed until the frame is re-registered:
+    // live frames shallower than donate_scan_from are known closed and are
+    // not rescanned.
+    DonationSink *donor = nullptr;
+    uint64_t next_donate_poll = 0;
+    unsigned int root_depth = 0;
+    unsigned int donate_scan_from = 0;
+    std::vector<unsigned int> frame_col;
+    std::vector<uint32_t> frame_count;
+    std::vector<size_t> frame_next;
+    std::vector<size_t> frame_end;
   };
+
+  /* Donate the shallowest frame's untried branches (see DonationSink);
+   * depth is the node being entered, so frames root..depth-1 are live. */
+  void donateFrame(unsigned int depth, SearchContext &ctx) const;
 
   // Publish visited-but-unpublished nodes to the shared counter. Exact:
   // every node is published exactly once (batches of 256 plus remainders).
@@ -312,14 +406,22 @@ private:
   // Recursive hot path: the token is borrowed, not copied, so billions of
   // backtracking nodes pay no atomic refcount traffic. Safe: every caller
   // passes a token owned by a frame that outlives the recursion.
+  // start > 0 resumes a rest: the branch loop of this (root) frame begins
+  // at that index of its active-row list. Recursive calls pass 0.
   void search(
     unsigned int depth,
     const BitsetType &occupied,
     SearchContext &ctx,
     SolutionCallback &callback,
     const std::stop_token &stop,
-    std::atomic<uint64_t> &iterations
+    std::atomic<uint64_t> &iterations,
+    size_t start = 0
   ) const;
+
+  /* Stop path of the frame at depth: record its untouched branches (from
+   * index next) into ctx.trace. */
+  void recordFrame(unsigned int depth, unsigned int best_col, size_t next,
+                   size_t end, SearchContext &ctx) const;
 
   void filterRows(
     const std::vector<uint32_t> &src,

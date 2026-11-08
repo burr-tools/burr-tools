@@ -32,6 +32,8 @@
 #include "lib/solution.h"
 #include "tools/xml.h"
 #include "tools/gzstream.h"
+#include "tools/envvars.h"
+#include "tools/cliargs.h"
 
 #include <stdlib.h>
 
@@ -102,10 +104,13 @@ public:
   }
 };
 
-void usage(void) {
+/* The usage; with full (-h, --help) the environment variables too, which
+ * a wrong command line would only scroll the usage away with. */
+void usage(bool full = false) {
 
   cout << "burrTxt [options] file [options]\n\n";
   cout << "  file: puzzle file with the puzzle definition to solve\n\n";
+  cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
@@ -120,6 +125,8 @@ void usage(void) {
   cout << "     s0 print solutions with the only the used pieces\n";
   cout << "     s1 print solutions including the assemblies\n";
   cout << "     c  print comment\n";
+  if (full)
+    btenv::print(cout, { btenv::Scope::Solver });
 }
 
 int main(int argv, char* args[]) {
@@ -127,6 +134,11 @@ int main(int argv, char* args[]) {
   if (argv < 1) {
     usage();
     return 2;
+  }
+
+  if (btcli::wantsHelp(argv, args)) {
+    usage(true);
+    return 0;
   }
 
   int state = 0;
@@ -280,6 +292,23 @@ int main(int argv, char* args[]) {
     return 0;
   }
 
+  /* not every space grid has a solver, and fewer still have a disassembler:
+   * building one for such a grid fails on the missing movement cache inside
+   * a worker, where nothing catches it */
+  const unsigned int caps = p.getGridType()->getCapabilities();
+
+  if (assemble && !(caps & gridType_c::CAP_ASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have an assembler (yet)\n";
+    return 2;
+  }
+
+  if ((disassemble || !assemble) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
+    if (assemble)
+      cout << "drop -d to just assemble the puzzle\n";
+    return 2;
+  }
+
   if (allProblems)
     {
       firstProblem = 0;
@@ -328,7 +357,9 @@ int main(int argv, char* args[]) {
       case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
       case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
       case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-        /* all other errors should not occur */
+      case assembler_c::ERR_CAN_NOT_START:
+        /* all other errors should not occur (CAN_NOT_START is rejected at
+         * run/setAssembler level, never by matrix creation) */
         printf("Oops internal error\n");
         return 0;
       }

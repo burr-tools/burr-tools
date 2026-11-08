@@ -14,8 +14,8 @@ test` and about 8.9s for `just test-all`; the difference is almost entirely the
 one Minkowski random-shapes stress case. Compilation is extra and can dominate:
 re-running with nothing changed is 1.6s against 8.9s, editing a single file is
 about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
-against 21.0s. Use `just test` while iterating and `just test-all` before
-calling a task done.
+against 21.0s. Use `just test` while iterating; what else to run before
+calling a task done is in rule 7 of section 3.
 
 `just docs` requires `doxygen` and `graphviz` (`brew install doxygen graphviz` on macOS,
 `apt-get install doxygen graphviz` on Linux). Without graphviz it still produces a complete
@@ -26,6 +26,16 @@ the result from `master` to https://burr-tools.github.io/burr-tools/.
 Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
 On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
 Apple Clang emits coverage data that plain `gcov` cannot parse.
+
+**Coverage is reported per area.** The library (`src/lib`, `src/tools`, `src/halfedge`)
+is the figure compared across PRs; `src/uicore` (Catch2 `[ui]` cases) and `src/qtgui`
+(the Qt suites, C++ only — gcov does not see QML) are reported beside it. When Qt ≥ 6.8
+is found, the coverage build includes the Qt GUI and runs its suites too. The library
+figure comes from the non-`[ui]` cases alone, captured before the GUI suites run, so it
+does not depend on whether Qt was found. CI measures in two jobs: `coverage` builds
+without Qt (`-Dqt_gui=disabled`) for the library and `src/uicore`, `coverage-qt` builds
+the Qt GUI for `src/qtgui`, and `coverage-report` comments both; a broken Qt install
+costs only the Qt GUI's figure.
 
 **First `just coverage` run is slow.** It configures a fresh `build-cov` directory and
 compiles all subprojects under instrumentation from scratch — expect several minutes,
@@ -55,9 +65,11 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 
 - **`src/lib/`**: Core domain logic. Contains voxel grids (`voxel*.cpp`), polycube symmetries (`symmetries_*.cpp`), puzzle definitions (`puzzle.cpp`, `problem.cpp`), assembly/disassembly algorithms, and solver engines (`assembler_*.cpp`, `disassembler_*.cpp`, `solvethread.cpp`).
 - **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
+- **`src/qtgui/`**: `burrtools-qt`, the redesigned Qt 6 Quick GUI (a preview next to the FLTK one): C++ controllers, the QML module `BurrTools.Ui` (`qml/`), the QRhi 3D renderer (`scenerenderer.cpp`, `shaders/`). Read [`src/qtgui/AGENTS.md`](src/qtgui/AGENTS.md) (rules for authors and reviewers: wireframes, accessibility, threading, tests) and [`src/qtgui/README.md`](src/qtgui/README.md) first; the spec is `design-spec/BurrTools-SPEC-FULL-FINAL-v6.md` (every spec document in one file, each part marked `<!-- FILE: path -->`).
+- **`src/uicore/`**: Toolkit-free UI logic shared by the Qt GUI and its tests (command table, camera, view cube, scene meshes, layout, settings store). No Qt or FLTK here; see [`src/uicore/AGENTS.md`](src/uicore/AGENTS.md).
 - **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
 - **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite
+- **`test/`**: Catch2 v3 automated regression test suite (`test_ui_*.cpp` cover `src/uicore`); **`test/qtgui/`** holds the Qt Test and Qt Quick Test suites and the gallery's reference images (`snapshots/<os>/`, rewritten with `just update-snapshots`).
 - **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
 - **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
 - **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
@@ -86,10 +98,18 @@ just build-tsan     # ThreadSanitizer (critical for solver data races)
 5. **Third-Party Boundaries:**
    - Never edit files inside `subprojects/` or `src/lua/`.
    - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
-6. **Quality Verification:**
-   - After making code modifications, always verify that `just build`, `just test-all` (regression tests, fast and slow), and `just check` (static analysis) pass cleanly. `just test` is the quick loop to use while iterating; run `just test-all` before calling a task done, since it is what CI runs.
-   - Always run `just test-regression` before creating a PR to verify that solver output matches the known-good 0.7.1 release output across all example puzzles.
-   - Before pushing, also run `just build-release` and `just test-release`: the dev `build/` dir has neither `--werror` nor `NDEBUG`, so it cannot catch the warnings and assert-behavior tests that fail CI's release jobs. A green `just test-all` alone is not sufficient.
+6. **Compatibility is only between released versions:**
+   - "Released" means a tagged version (`v0.8.0`, ...), not whatever is on `master`. File formats, saved search state (assembler `ASSEMBLER_VERSION`s), CLI behaviour and APIs only need to stay compatible with what a release shipped. Changing a format introduced after the last release needs no version bump, no reader for the intermediate layout and no migration; bump only when the released format changes. Check with `git show <tag>:<file>` which version a release actually carried.
+   - Saved *search state* is stricter still: a paused search resumes only with the version that saved it (README, "Pausing a search and continuing later").
+7. **Quality Verification -- what to run locally, and what CI covers:**
+   - Locally, verify what CI cannot, or not cheaply: `just build` and `just test` in the dev `build/` dir (assertions live), plus the cases your change touches, run as often as their risk warrants. A change to threading or timing deserves a stress loop (hundreds of runs, under load, and pinned to one CPU where the OS allows it: `taskset -c 0` on Linux, `start /affinity 1` on Windows; macOS cannot pin a process): CI runs a test once, so a flaky test is found there one failure at a time.
+   - Leave the rest to CI rather than repeating it: `build-linux` (GCC) and `build-macos` (Apple Clang) build with `--werror -Db_ndebug=true` and run `just test-all`, `build-linux` also `just check` (so `just build-release`/`just test-release` add nothing before a push); Windows is MinGW cross-built and run under wine (`build-windows`) and built natively with MSYS2 UCRT64 (`qt-windows`, for pushes to master, tags and PRs touching the Qt GUI; `qt-linux` is the Qt GUI's job for every PR); `coverage` and the sanitizers run `test_burrtools` with assertions live. A toolchain CI does not use (MSVC, say) is yours to check. Run any of them locally when CI reported a failure there, or when you need the answer before pushing.
+   - Before pushing a restack (every PR of a stack at once), at least build and run `just test` at the stack's top and at every PR that changes an interface the PRs above it use: one failure there costs a CI run on each PR above it.
+   - `just test-regression` is not run by CI. Run it before opening or updating a PR that can change solver output (assembler, disassembler, grids, puzzle loading), to check that it still matches the known-good 0.7.1 output across all example puzzles.
+7. **Qt GUI: QML panels and dialogs, environment variables:**
+   - Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
+   - Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.
+   - A new `BURRTOOLS_*` environment variable goes into [`src/tools/envvars.h`](src/tools/envvars.h), which the programs' `--help` prints; `test_envvars.cpp` fails on one the code reads but the table does not list.
 
 ---
 
@@ -127,6 +147,8 @@ Caveats: snapshots from different machines are not comparable (absolute times de
 
 Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:
 
+The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) apply to fresh runs only: a resumed search keeps the engine that saved its remainder, because the remainder's tasks are only valid for that engine.
+
 | Environment Variable | Effect | Purpose |
 | :--- | :--- | :--- |
 | `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
@@ -138,6 +160,10 @@ Solver engines support runtime feature toggles via environment variables to allo
 | `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
 | `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and by the disassembly pool, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
 | `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
+| `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
+| `BURRTOOLS_SPLIT_BREADTH_FIRST=1` | Queues assembler_0's dynamically split child tasks at the back of the pool (breadth-first order) instead of the front (depth-first, the default). | A/B the depth-first order: queue/remainder size (breadth-first grows towards every node of the split depth on wide puzzles) and long-tail wall time. |
+| `BURRTOOLS_NO_DONATE=1` | Disables split on demand in every engine: running tasks no longer hand their shallowest open level to waiting siblings. assembler_0 falls back to its eager pop-time splitting (shallow prefixes, starving siblings); assembler_1's tasks then run as seeded. See `design/2026-10-17-split-on-demand.md`. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
+| `BURRTOOLS_DONATE_EVERY=N` | Tests only: additionally donate every N search nodes whether or not a sibling is waiting, so donation paths run deterministically, even single-threaded. | Exercise the donation/cut/divide interplay on small puzzles. |
 
 ### Running an Interleaved A/B Benchmark
 
@@ -172,7 +198,11 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 | Job | Catches | Why the other jobs miss it |
 | :--- | :--- | :--- |
 | `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
-| `tsan-parallel` | Data races in the parallel assembler and disassembler. | No other job runs a sanitizer. |
+| `tsan-parallel` | Data races in the parallel assembler and disassembler. | The only ThreadSanitizer run (ASan and UBSan: `sanitizers`). |
+| `qt-linux`, `qt-windows`, `qt-macos` | Breakage in `burrtools-qt`: controllers, QML, renders (WARP on Windows, lavapipe Vulkan on Linux — required, not skipped), gallery reference images (Windows). Each uploads a preview build. `qt-linux` runs for every PR; the other two, `coverage-qt` and the Qt suites under the sanitizers run on master, tags and PRs touching Qt GUI paths. | The legacy jobs build without Qt. |
+| `sanitizers` | Memory errors and undefined behaviour (ASan + UBSan) in `test_burrtools` (leaks too) and the Qt suites (renders on lavapipe). | Leaks are not checked in the Qt suites: Qt and Mesa are not instrumented. |
+| `qt-profile.yml` (on demand) | Nothing: reports only — start-up times, a QML trace, a heap profile, the `src/uicore` micro-benchmarks (artifact `qt-profile`). | Not a check: shared runners are too noisy to fail on time. |
+| `qt-standalone.yml` (on demand only) | A static `burrtools-qt.exe` that still loads an MSYS2 library, or fails its self-check. Attaches the standalone program to a release when given its tag. | Too slow for every push (550 MB static Qt download). |
 
 ### Rules for SIMD and intrinsics
 
@@ -188,6 +218,7 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 ### Rules for the TLA+ protocol specs (`spec/`)
 
 - The PlusCal models in `spec/` check protocol shape (token accounting, pop/finish pairing, quiescence, ordered merge) over all small-instance interleavings. They are the backstop for the defect class TSan cannot see (lost wakeups, hangs, token leaks).
-- Any PR touching `src/lib/thread_budget.h`, `src/lib/assembler_pool.h`, `src/lib/disassemblerpool.h`, `src/lib/assembler.h` or `src/lib/solvethread.h` must state "spec unaffected" or update the spec; `just spec-check` must pass.
+- Any PR touching `src/lib/thread_budget.h`, `src/lib/assembler_pool.h`, `src/lib/disassemblerpool.h`, `src/lib/assembler.h` or `src/lib/solvethread.h` must state "spec unaffected" or update the spec.
+- `just spec-check` reads only `spec/` (it translates and model-checks the `.tla`/`.cfg` files, never the C++), so run it only when something under `spec/` changed. Re-running it after a C++-only change re-proves the unchanged models and costs minutes for nothing.
 - Invariant names (`SPEC-BUDGET-1`, `SPEC-POOL-1`, …) are stable IDs quoted in both the spec and the `src/lib` comments. Rename on both sides or neither.
 - Never hand-edit the generated TLA+ translation in `spec/*.tla` — edit the `--algorithm` PlusCal and re-run `pcal.trans` via `just spec-check`.

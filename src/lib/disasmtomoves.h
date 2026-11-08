@@ -50,6 +50,13 @@ public:
   /** piece moving at this time */
   virtual bool moving(unsigned int piece) = 0;
 
+  /**
+   * the piece is on its way out of view: its alpha runs from 1 to 0 over
+   * the current step. The display composites such pieces over the ones
+   * that are coming into view at the same time
+   */
+  virtual bool fadingOut(unsigned int piece) = 0;
+
   // no copying and assigning
   piecePositions_c(const piecePositions_c&) = delete;
   piecePositions_c& operator=(const piecePositions_c&) = delete;
@@ -75,6 +82,9 @@ class disasmToMoves_c : public piecePositions_c {
 
   /** this array contains the information, if a piece is currently moving, or not */
   std::vector<bool> mv;
+
+  /** per piece: its alpha is interpolated from 1 down to 0 in the current step */
+  std::vector<bool> fading;
 
   /**
    * the number of the last used piece this is NOT identical with
@@ -111,6 +121,7 @@ public:
   virtual float getZ(unsigned int piece) override;
   virtual float getA(unsigned int piece) override;
   virtual bool moving(unsigned int piece) override;
+  virtual bool fadingOut(unsigned int piece) override;
 
   // no copying and assigning
   disasmToMoves_c(const disasmToMoves_c&) = delete;
@@ -131,6 +142,7 @@ class fixedPositions_c : public piecePositions_c {
     virtual float getZ(unsigned int piece) override;
     virtual float getA(unsigned int piece) override;
     virtual bool moving(unsigned int piece) override;
+    virtual bool fadingOut(unsigned int piece) override;
 
     // no copying and assigning
     fixedPositions_c(const fixedPositions_c&) = delete;

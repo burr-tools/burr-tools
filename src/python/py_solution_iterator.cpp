@@ -136,7 +136,7 @@ void SolutionIterator::worker_run(std::stop_token st) {
     const gridType_c * gt = problem->getPuzzle().getGridType();
 
     // Every front end normalises shape hotspots before solving (burrTxt,
-    // burrTxt2, the GUI and lib_interface all call initHotspot() on every
+    // burrTxt2 and the GUI all call initHotspot() on every
     // shape): hotspot coordinates feed placement output, and a stored
     // non-canonical hotspot would make this path disagree with the rest.
     // This must stay a normalisation, not a cache prewarm -- the assemblers

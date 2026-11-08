@@ -22,6 +22,7 @@
 #define __ASSEMBLER_1_H__
 
 #include "assembler.h"
+#include "simd_huang_cover.h"
 
 #include <vector>
 #include <set>
@@ -101,7 +102,29 @@ private:
     std::vector<unsigned int> column_stack;
     std::vector<unsigned int> rows;
     std::vector<unsigned int> hidden_rows;
+    /* Root depth of the task's territory: the stack size the search must
+     * pop below to finish. Write-back overwrites the five stacks with the
+     * live (deeper) frontier, so the root would be lost without this --
+     * and resuming with the live size as base exits early, abandoning the
+     * ancestor levels' remaining alternatives. Set at generation, never
+     * touched by write-back.
+     */
+    unsigned int baseDepth = 0;
+    /* Stack indices of frames whose remaining rows were donated (split on
+     * demand): such a frame ends after its current row. Saved with the
+     * stacks, so a written-back task keeps them.
+     */
+    std::vector<unsigned int> cuts;
+    // progress units this task carries (see TaskUnits); not saved -- a
+    // task read from a file is a whole one
+    size_t units = TaskUnits::kWhole;
   };
+
+  // tasks donated by running workers to idle siblings (diagnostics, tests)
+  std::atomic<unsigned long> donations{0};
+  // of those, the ones a donated piece gave from its own root frame (tests:
+  // the frame it resumes between two rows must stay divisible)
+  std::atomic<unsigned long> redonations{0};
 
   void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
   void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
@@ -111,13 +134,18 @@ private:
   bool willRunParallel(unsigned int threads) const;
 
   bool canUseSimd(void) const;
-  void simdSearch(void);
   std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
 
   friend class assemblerWorker_1;
 
+  /* grants test/test_solver.cpp read access to totalTasks/completedTasks,
+   * to assert that donations and stops conserve progress units directly
+   * (getFinished() reports 1 for any completed search, whatever the
+   * counters say).
+   */
+  friend struct Assembler1UnitsTestAccess;
+
   std::vector<SubtreeTask_1> parallelTasks;
-  std::unordered_set<uint64_t> emittedSignatures;
 
   /* getFinished() has two progress sources and this picks between them: the
    * task-based one used for the whole of a parallel run, and the
@@ -178,43 +206,26 @@ private:
    * not running.
    */
   std::atomic<bool> searchComplete{false};
-  /* Serial dedup gate (issue #118): set whenever a run may already have
-   * reported assemblies that a serial re-search would repeat -- at the end
-   * of setPosition() when signatures were restored, and on every parallel
-   * stop. Serial solution() then suppresses re-reports instead of
-   * duplicating every one. Deliberately NOT set on fresh runs (signatures
-   * empty there): duplicate suppression on a fresh search would mask search
-   * bugs that the SIMD-vs-DLX equivalence tests must catch. Cleared together
-   * with emittedSignatures whenever a run completes or a fresh matrix is
-   * built.
-   */
-  bool resumeDedup = false;
-
   /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
    * resume (issue #111): interrupted in-flight tasks plus the pool
    * remainder, filled by parallelSolve on stop. The next assemble() feeds
    * them back as seeds instead of regenerating everything. Persisted by
-   * save() (format 2.2) for cross-session resume, like parallelTasks.
+   * save() for cross-session resume, like parallelTasks.
    */
-  std::vector<std::vector<unsigned int>> pendingHuangPrefixes;
+  std::vector<HuangSeed> pendingHuangPrefixes;
+  /* The solver setPosition() built to check that the restored seeds
+   * replay; the resumed run takes it instead of building a second one.
+   * Set only together with restored seeds, and dropped with them.
+   */
+  std::unique_ptr<ISimdHuangCover> restoredSimdSolver;
 
   /* Pristine base matrix saved before search starts */
   /* set when a parallel search stopped before finishing. save() records
    * the flag; setPosition() refuses reloads that carry it WITHOUT task
-   * data (format 2.1 and serial-SIMD stops), but resumes reloads whose
-   * pool remainder was persisted alongside it (format 2.2).
+   * data (format 2.1 task-less stops), but resumes reloads whose
+   * pool remainder was persisted alongside it.
    */
   bool parallelInterrupted = false;
-
-  /* set when simdSearch() ran to completion.
-   *
-   * The SIMD search keeps its position inside the solver, so next_row_stack /
-   * task_stack -- what the progress estimate below is derived from -- never
-   * move. Completion therefore needs its own flag: "idle and iterations > 0"
-   * also holds after setPosition() restores a saved state, and between two
-   * assemble() calls, before any search has run.
-   */
-  std::atomic<bool> simdCompleted{false};
 
   std::vector<unsigned int> base_left;
   std::vector<unsigned int> base_right;
@@ -407,6 +418,9 @@ public:
   void assemble(assembler_cb * callback) override;
   int getErrorsParam(void) override { return errorsParam; }
   float getFinished(void) const override;
+  /** Number of tasks running workers donated to idle siblings so far (see
+   * split_fanout.h); diagnostics only. */
+  unsigned long getDonations(void) const { return donations.load(std::memory_order_relaxed); }
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   void setNumThreads(unsigned int threads) override { numThreads = std::min(threads, 256u); }
   unsigned int getNumThreads(void) const override { return numThreads; }

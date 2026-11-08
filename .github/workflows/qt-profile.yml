@@ -1,0 +1,81 @@
+name: Qt profile
+
+# Profiles of burrtools-qt, on demand: start-up time (cold and warm), a QML
+# profile (qmlprofiler), a heap profile (heaptrack) and the src/uicore
+# micro-benchmarks. Reports, not checks -- shared runners are too noisy to
+# fail on -- uploaded as the artifact `qt-profile`, with a summary on the
+# run's page. The same profiles run locally through `just startup-time`,
+# `just profile-qml`, `just heap-qt` and `just bench-ui`
+# (scripts/profile-qt.sh; design/2026-10-08-qtgui-performance-guide.md).
+#
+#   Actions > Qt profile > Run workflow (any branch)
+on:
+  workflow_dispatch:
+    inputs:
+      puzzle:
+        description: 'The puzzle to open (a path in the repository)'
+        required: false
+        default: 'examples/PelikanBurr.xmpuzzle'
+
+jobs:
+  linux:
+    name: Profile burrtools-qt (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
+          libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev heaptrack \
+          libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers \
+          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+        pip install --user "meson>=1.7"
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.*'
+        modules: 'qtshadertools'
+        cache: true
+
+    # optimised, with debug info for the profiles, and QML debugging so
+    # qmlprofiler can attach
+    - name: Build
+      run: |
+        meson setup build-prof --buildtype=debugoptimized -Dqt_gui=enabled -Dqml_debug=true -Dpython=disabled
+        ninja -C build-prof
+
+    - name: Profile
+      env:
+        QT_QPA_PLATFORM: offscreen
+        BURRTOOLS_PROFILE_PUZZLE: ${{ inputs.puzzle }}
+      run: |
+        bash scripts/profile-qt.sh build-prof profile startup qml heap
+        ./build-prof/test_burrtools "[bench]" --benchmark-samples 30 | tee profile/bench.txt
+
+    - name: Summary
+      if: always()
+      run: |
+        {
+          echo "## burrtools-qt profile (${{ inputs.puzzle }})"
+          for f in startup.txt heap-summary.txt bench.txt; do
+            [ -f "profile/$f" ] || continue
+            echo "### $f"; echo '```'; cat "profile/$f"; echo '```'
+          done
+          echo "The QML trace (qml.qtd) and the heap profile are in the qt-profile artifact."
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload the profiles
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: qt-profile
+        path: profile/
+        retention-days: 30

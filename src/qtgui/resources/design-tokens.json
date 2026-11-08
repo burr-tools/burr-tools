@@ -1,0 +1,259 @@
+{
+  "unit": "dp",
+  "referenceWindow": {
+    "width": 1600,
+    "height": 1000
+  },
+  "canonicalDisplay": {
+    "width": 2560,
+    "height": 1600,
+    "uiScale": 1.6
+  },
+  "color": {
+    "light": {
+      "outer": "#dde1e8",
+      "bg": "#eceff4",
+      "panel": "#ffffff",
+      "panel2": "#f3f5f8",
+      "line": "#dde1e8",
+      "line2": "#c6ccd7",
+      "text": "#1a1f29",
+      "muted": "#667085",
+      "accent": "#2f6df6",
+      "accentSoft": "rgba(47,109,246,0.12)",
+      "canvas": "#e4e8ef",
+      "axisX": "#e5484d",
+      "axisY": "#2fa85a",
+      "axisZ": "#2f6df6",
+      "danger": "#d92d20",
+      "scrim": "rgba(10,12,16,0.5)"
+    },
+    "dark": {
+      "outer": "#08090b",
+      "bg": "#111318",
+      "panel": "#1a1d24",
+      "panel2": "#222630",
+      "line": "#2b303b",
+      "line2": "#3a4150",
+      "text": "#e7eaf0",
+      "muted": "#8d96a6",
+      "accent": "#5b9bff",
+      "accentSoft": "rgba(91,155,255,0.16)",
+      "canvas": "#0f1115",
+      "axisX": "#ff6b70",
+      "axisY": "#4bd17f",
+      "axisZ": "#5b9bff",
+      "danger": "#ff7066",
+      "scrim": "rgba(10,12,16,0.5)"
+    },
+    "glyph": {
+      "fixedRed": "#ff3b3b",
+      "variableLime": "#8be000",
+      "gold": "#ffc400",
+      "eraserPink": "#ff9ec4",
+      "eraserStroke": "#b04f7c",
+      "barX": "#e0245e",
+      "barY": "#2fb463",
+      "barZ": "#1aa7d6"
+    }
+  },
+  "font": {
+    "family": "-apple-system, 'Segoe UI', Inter, Roboto, 'Helvetica Neue', Arial, sans-serif",
+    "mono": "ui-monospace, Menlo, Consolas, monospace",
+    "lineHeight": 1.35,
+    "size": {
+      "dialogTitle": 15,
+      "body": 13,
+      "actionTitle": 12.5,
+      "secondary": 12,
+      "micro": 11,
+      "glyphCaption": 10.5,
+      "keyBadge": 9.5
+    }
+  },
+  "spacing": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16
+  ],
+  "radius": {
+    "chip": 6,
+    "control": 8,
+    "popup": 10,
+    "card": 12,
+    "dialog": 14
+  },
+  "layout": {
+    "topBar": 40,
+    "statusBar": 28,
+    "workspacePadding": 8,
+    "gap": 8,
+    "leftWidth": 288,
+    "rightWidth": 400,
+    "railWidth": 56,
+    "focus2dCentreWidth": 360,
+    "cardHeader": 44,
+    "shapeRow": 42,
+    "sectionHeader": 40,
+    "minWindow": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "control": {
+    "iconButton": 28,
+    "toolbarIcon": 32,
+    "rowAction": 24,
+    "stepperHeight": 30,
+    "segmentHeight": 24,
+    "switch": {
+      "w": 32,
+      "h": 18
+    },
+    "layerChip": {
+      "w": 36,
+      "h": 28
+    },
+    "layerStripWidth": 54,
+    "toolbarButton": {
+      "w": 54,
+      "h": 52,
+      "compact": 34
+    },
+    "toolButtonHeight": 58,
+    "mirrorSpanButtonHeight": 54,
+    "planeButton": {
+      "w": 62,
+      "h": 56
+    },
+    "transformButtonHeight": 50,
+    "surfaceButtonHeight": 56,
+    "actionButtonMinHeight": 48,
+    "bigSwatch": 40,
+    "swatch": 26,
+    "popupItem": 30,
+    "dropdown": {
+      "h": 30,
+      "minW": 120
+    },
+    "gridSizeRow": {
+      "padding": [
+        8,
+        12,
+        10
+      ]
+    },
+    "toolbarButtons": 7
+  },
+  "motion": {
+    "columnMs": 200,
+    "chevronMs": 150,
+    "switchMs": 150,
+    "flashMs": 2400,
+    "tooltipDelayMs": 500
+  },
+  "dialog": {
+    "settings": {
+      "w": 780,
+      "h": 580,
+      "navW": 200,
+      "headerH": 56,
+      "footerH": 56
+    }
+  },
+  "density": {
+    "default": "standard",
+    "standard": {
+      "topBar": 36,
+      "statusBar": 24,
+      "workspaceRail": 60,
+      "leftCard": 320,
+      "rightCard": 340,
+      "collapsedRail": 48,
+      "bodyPadding": 4,
+      "cardGap": 4,
+      "cardRadius": 8,
+      "cardHeader": 36,
+      "listRow": 34,
+      "accordionHeader": 32,
+      "button": 28,
+      "stepper": 28,
+      "segmentedButton": 22,
+      "toolStrip": 48,
+      "mirrorSpan": 44,
+      "plane": [
+        54,
+        46
+      ],
+      "transform": 42,
+      "actionButtonMin": 40,
+      "toolbarButton": [
+        48,
+        44
+      ],
+      "layerStrip": 48,
+      "layerChip": [
+        32,
+        24
+      ],
+      "puzzleTile": [
+        96,
+        50
+      ],
+      "solverListRow": 28,
+      "player": 112,
+      "pieceDisplay": 104
+    },
+    "minimal": {
+      "topBar": 32,
+      "statusBar": 22,
+      "workspaceRail": 44,
+      "leftCard": 264,
+      "rightCard": 320,
+      "collapsedRail": 40,
+      "bodyPadding": 0,
+      "cardGap": 1,
+      "cardRadius": 0,
+      "cardHeader": 30,
+      "listRow": 30,
+      "accordionHeader": 28,
+      "button": 26,
+      "stepper": 26,
+      "segmentedButton": 22,
+      "toolStrip": 36,
+      "mirrorSpan": 32,
+      "plane": [
+        38,
+        34
+      ],
+      "transform": 30,
+      "actionButton": 32,
+      "toolbarButton": [
+        34,
+        32
+      ],
+      "layerStrip": 40,
+      "layerChip": [
+        30,
+        22
+      ],
+      "puzzleTile": [
+        78,
+        46
+      ],
+      "solverListRow": 26,
+      "player": 84,
+      "pieceDisplay": 76,
+      "toolbarAutoHide": {
+        "revealZone": 72,
+        "hideDelayMs": 700,
+        "fadeMs": 160
+      }
+    }
+  }
+}

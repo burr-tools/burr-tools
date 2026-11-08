@@ -433,6 +433,10 @@ public:
    *
    * The set assembler will be reset to a saved state, when that information is
    * available. If not simply set the assembler
+   *
+   * Lifecycle misuse (saved state without SS_SOLVING, or a fresh assembler
+   * without SS_UNSOLVED / with nonzero counters) throws assert_exception.
+   * Undecodable saved state stays a recoverable error return.
    */
   assembler_c::errState setAssembler(std::unique_ptr<assembler_c> assm);
   /** get the assembler */
@@ -457,8 +461,19 @@ public:
   void addSolution(assembly_c * assm, separation_c * disasm, unsigned int pos = 0xFFFFFFFF);
   /** once finished analysing call finishedSolving for finish off all actions.
    * After that call no more modifications are possible, no more addSOlution, incNumAssemblies and so on.
+   *
+   * Idempotent on SS_SOLVED (the GUI debug stepper re-marks a stepped
+   * search); any other non-SOLVING state throws assert_exception in all
+   * build modes, so a SOLVING -> SOLVED flip can never be skipped or
+   * duplicated by mistake.
    * */
-  void finishedSolving(void) { solveState = SS_SOLVED; }
+  void finishedSolving(void) {
+    if (solveState == SS_SOLVED)
+      return;
+    if (solveState != SS_SOLVING)
+      bt_te("problem_c::finishedSolving: requires SS_SOLVING");
+    solveState = SS_SOLVED;
+  }
 
   /** transfer the problem into the unknown state */
   void makeUnknown(void);
@@ -530,9 +545,9 @@ public:
   /**
    * Assemblies found but never disassembled because a run stopped with a
    * full disassembly queue (see disassemblerPool_c::requestStop). They must
-   * be re-submitted on the next run: the assembler's emitted-signatures
-   * dedup persists across runs, so without this they would be suppressed
-   * forever on pause/continue. Guarded by solutionMutex, like solutions.
+   * be re-submitted on the next run: the assembler's resume holds only
+   * territory it had not searched yet, so without this they would be lost
+   * on pause/continue. Guarded by solutionMutex, like solutions.
    */
   void stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v);
   /** Move all stashed assemblies out (submit order preserved). */
