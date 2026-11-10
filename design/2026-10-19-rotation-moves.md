@@ -644,6 +644,14 @@ like-for-like comparison.
 
 ## Open
 
+* **Family only at play 0.03 / bevel 0.04** (2026-11-03,
+  [`rotation-study/results/2026-11-03-test-tics.md`](rotation-study/results/2026-11-03-test-tics.md)):
+  the test TICs come apart, the L puzzles do not. Their route needs larger
+  wiggles, more ramp holds and a "shift, then turn about an off-centre
+  point" path; L 36's last turn needs a little more play or bevel. A fixed
+  off-centre axis alone does not help; at the printed model the planner's
+  grid, not the motion class, was the limit (a local polish of its path
+  clears the TICs' blocked turns).
 * **Physical ground truth**: grssam's verified moves (Clutch 4 and
   others) as a regression table; why printed TICs need more bevel than
   printed.
