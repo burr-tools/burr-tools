@@ -206,8 +206,11 @@ bool hasRotationData(const separation_c * s)
 bool hasRotationData(const problem_c & pr)
 {
   for (unsigned int i = 0; i < pr.getNumberOfSavedSolutions(); i++)
-    if (hasRotationData(pr.getSavedSolution(i)->getDisassembly()))
+  {
+    const solution_c * s = pr.getSavedSolution(i);
+    if (s->getPlay() || hasRotationData(s->getDisassembly()))
       return true;
+  }
   return false;
 }
 
@@ -215,7 +218,7 @@ bool hasRotationData(const problem_c & pr)
 
 void puzzle_c::save(xmlWriter_c & xml) const
 {
-  bool v3 = false;
+  bool v3 = rotationModel.has_value();
   for (const auto & pr : problems)
     v3 = v3 || hasRotationData(*pr);
 

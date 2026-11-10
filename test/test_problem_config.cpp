@@ -678,6 +678,7 @@ TEST_CASE("puzzle: the pieces' play and bevel are saved with the puzzle", "[prob
 
   /* unset, nothing is written */
   auto plain = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("<puzzle version=\"2\">") != std::string::npos);
     CHECK(text.find("rotationPlay") == std::string::npos);
   });
   CHECK_FALSE(plain->getRotationModel());
@@ -685,7 +686,7 @@ TEST_CASE("puzzle: the pieces' play and bevel are saved with the puzzle", "[prob
   f.puzzle->setRotationModel({ 0.0126, 0.0317 });
   auto p = reloadEdited(*f.puzzle, [](std::string & text) {
     /* on the puzzle, not on a problem: the problems share the pieces */
-    CHECK(text.find("<puzzle version=\"2\" rotationPlay=\"0.0126\" rotationBevel=\"0.0317\"") != std::string::npos);
+    CHECK(text.find("<puzzle version=\"3\" rotationPlay=\"0.0126\" rotationBevel=\"0.0317\"") != std::string::npos);
   });
   REQUIRE(p->getRotationModel());
   CHECK(p->getRotationModel()->play == 0.0126);
@@ -773,7 +774,9 @@ TEST_CASE("solution: the measured play is saved with the solution", "[problem][r
   CHECK_FALSE(s->getPlay());
   s->setPlay({ 0.0616, 0.0348, 0.032 });
 
-  auto p = reloadEdited(*f.puzzle, [](std::string &) {});
+  auto p = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("<puzzle version=\"3\">") != std::string::npos);
+  });
   const problem_c * pr = p->getProblem(0);
   REQUIRE(pr->getNumberOfSavedSolutions() == 2);
   REQUIRE(pr->getSavedSolution(0)->getPlay());

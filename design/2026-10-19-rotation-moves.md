@@ -325,10 +325,12 @@ block.
   [waypoints]/>`, with `axis` x, y or z, `angle` 90 or -90 degrees
   (right-handed about the axis) and `pieces` the pieces that follow the
   path. A disassembly that uses no turn saves exactly
-  as one without rotation moves. A puzzle saved with a rotation
-  disassembly writes `<puzzle version="3">` so older BurrTools versions
-  reject it cleanly instead of skipping `<dt>` and `<rotation>`; plain
-  puzzles stay at `version="2"`. Planned waypoints are saved with 17
+  as one without rotation moves. A puzzle saved with rotation data (a
+  rotation disassembly, the puzzle's `rotationPlay`/`rotationBevel` or a
+  solution's `playUpper`/`playLower`/`playBevel`) writes `<puzzle
+  version="3">` so older BurrTools versions reject it cleanly instead of
+  skipping `<dt>` and `<rotation>`; plain puzzles stay at `version="2"`.
+  Planned waypoints are saved with 17
   digits, so the loaded polyline is bit for bit the certified one; the
   loader rejects truncated paths and impossible orientations. Rotation
   moves are in no release, so the format changes freely (AGENTS.md

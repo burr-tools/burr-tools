@@ -91,6 +91,7 @@ def main():
         if os.path.exists(written):
             with gzip.open(written, "rt") as f:
                 xml = f.read()
+            check(label, '<puzzle version="3"' in xml, "puzzle version was not bumped to 3")
             check(label, 'rotationPlay="0.07" rotationBevel="0.04"' in xml, "the model is not in the file")
             check(label, 'playBevel="0.04"' in xml and "playUpper=" in xml, "the measured play is not in the file")
             check(label, 'state="2"' in xml and 'solutions="1"' in xml, "the problem is not solved in the file")
