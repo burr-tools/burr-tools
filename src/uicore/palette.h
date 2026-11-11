@@ -90,13 +90,15 @@ namespace btui {
   float relativeLuminance(const Rgb & c);
   float contrastRatio(const Rgb & a, const Rgb & b);
 
-  /* Whether text on this colour -- the shape's -- is white rather than
-   * black: whichever contrasts more, by WCAG's measure, so the better of
-   * the two (always at least 4.5:1) is the one drawn. Legacy's weighted
-   * channel sum (contrastPieceColor) chose white on red, magenta and some
-   * greens at 3 to 4:1. One rule for every chip, list and the 3D view's
-   * tag. */
-  bool prefersWhiteText(const Rgb & background);
+  /* Whether text on a shape's colour is white rather than black: white on
+   * the colours for a light background, black on the lighter ones for a
+   * dark background. The colours of a set are built at about one
+   * lightness, so one text colour reads on all of them, and a list of
+   * chips looks even; choosing per colour whichever contrasts more put
+   * black on some chips and white on their neighbours. White is at least
+   * 3:1 on the light-background colours (lowest on cyan and mustard), black
+   * at least 4.5:1 on the dark-background ones. One rule for every chip,
+   * list and the 3D view's tag. */
   bool prefersWhiteText(int shape);
 }
 

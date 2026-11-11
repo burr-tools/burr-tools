@@ -175,11 +175,7 @@ namespace btui {
     return (std::max(la, lb) + 0.05f) / (std::min(la, lb) + 0.05f);
   }
 
-  bool prefersWhiteText(const Rgb & background) {
-    return contrastRatio(background, { 1, 1, 1 }) > contrastRatio(background, { 0, 0, 0 });
-  }
-
-  bool prefersWhiteText(int shape) {
-    return prefersWhiteText(pieceColor(shape));
+  bool prefersWhiteText(int /*shape*/) {
+    return !darkBackground;
   }
 }

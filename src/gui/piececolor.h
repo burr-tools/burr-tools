@@ -74,8 +74,8 @@ float editorLightPieceColor(float f);
 #define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))
 #define fltkPieceColor(x) fl_rgb_color(pieceColorRi(x), pieceColorGi(x), pieceColorBi(x))
 
-/* a function that returns an fltk color (either black or white) with a big contrast
- * to the piece color
+/* the fltk color of text on the piece color: white, which reads on all of
+ * them (btui::prefersWhiteText)
  */
 Fl_Color contrastPieceColor(int x);
 

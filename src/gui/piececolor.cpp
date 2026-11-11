@@ -58,8 +58,5 @@ void variablePieceColor(float * r, float * g, float * b) {
 }
 
 Fl_Color contrastPieceColor(int x) {
-  if (3*pieceColorRi(x) + 6*pieceColorGi(x) + pieceColorBi(x) < 1275)
-    return fl_rgb_color(255, 255, 255);
-  else
-    return fl_rgb_color(0, 0, 0);
+  return btui::prefersWhiteText(x) ? fl_rgb_color(255, 255, 255) : fl_rgb_color(0, 0, 0);
 }

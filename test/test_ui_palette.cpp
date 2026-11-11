@@ -103,19 +103,20 @@ TEST_CASE("copies of a shape get distinct colours inside [0, 1]", "[ui][palette]
   }
 }
 
-TEST_CASE("chip text is whichever of white and black contrasts more, always at least 4.5:1", "[ui][palette]") {
-  CHECK(prefersWhiteText(0));        // blue
-  CHECK_FALSE(prefersWhiteText(1));  // green: black 4.6:1, white 4.5:1
-  CHECK(prefersWhiteText(2));        // red
-  CHECK(prefersWhiteText(6));        // purple
+TEST_CASE("chip text is white on the light-background colours and black on the dark-background ones", "[ui][palette]") {
   const Rgb white{ 1, 1, 1 }, black{ 0, 0, 0 };
   for (int shape = 0; shape < 120; shape++) {
     INFO("shape " << shape);
-    const Rgb c = pieceColor(shape);
-    const float onWhite = contrastRatio(c, white), onBlack = contrastRatio(c, black);
-    CHECK(prefersWhiteText(shape) == (onWhite > onBlack));
-    CHECK(std::max(onWhite, onBlack) >= 4.5f);
+    CHECK(prefersWhiteText(shape));
+    CHECK(contrastRatio(pieceColor(shape), white) >= 3.0f);
   }
+  setPieceColorsForDarkBackground(true);
+  for (int shape = 0; shape < 120; shape++) {
+    INFO("shape " << shape << ", dark background");
+    CHECK_FALSE(prefersWhiteText(shape));
+    CHECK(contrastRatio(pieceColor(shape), black) >= 4.5f);
+  }
+  setPieceColorsForDarkBackground(false);
   CHECK_THAT(contrastRatio(white, black), Catch::Matchers::WithinAbs(21.0, 1e-3));
 }
 
