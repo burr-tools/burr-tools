@@ -54,10 +54,10 @@ struct stlExportDialog_c::parameterField_c {
   Fl_Widget * w;
 };
 
-/* the longest side of the mesh's bounding box */
+/* the longest side of the mesh's bounding box, 0 for an empty mesh */
 static double longestSide(const Polyhedron & p)
 {
-  bt_assert(p.vBegin() != p.vEnd());
+  if (p.vBegin() == p.vEnd()) return 0;
   Vector3Df lo = (*p.vBegin())->position();
   Vector3Df hi = lo;
   for (Polyhedron::const_vertex_iterator it = p.vBegin(); it != p.vEnd(); ++it)
@@ -335,6 +335,15 @@ void stlExportDialog_c::cb_Update3DView(void)
     }
 
     const double length = longestSide(*p);
+
+    /* an empty mesh (an empty shape) has nothing to show or to fit to,
+     * the next mesh is fitted afresh */
+    if (length <= 0) {
+      view3D->getView()->showNothing();
+      previewLength = 0;
+      return;
+    }
+
     view3D->getView()->showMesh(p.release());
 
     if (refit || previewLength <= 0)

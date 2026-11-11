@@ -366,7 +366,10 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
     snprintf(line, sizeof line, "Solution %u: %u piece types, %u pieces", sol + 1, (unsigned int)shapeIds.size(), total);
     LFl_Box * info = new LFl_Box(0, 1, 3, 1);
     info->copy_label(line);
-    info->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    /* at its own width, like the other labels: an inside-aligned label is
+     * drawn with a margin its minimum size doesn't count, and ran into the
+     * frame's right edge */
+    info->stretchLeft();
 
     fr->end();
   }

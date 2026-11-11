@@ -631,3 +631,10 @@ TEST_CASE("stl export: the coplanar merge the writer runs changes nothing for th
       REQUIRE(volume(*merged) == Approx(volume(*raw)).epsilon(1e-3));
     }
 }
+
+TEST_CASE("volume: an empty mesh has none", "[stl]") {
+  /* the mesh of an empty shape: there is no vertex to measure from, which
+     the STL export dialogs' status line used to crash on */
+  Polyhedron empty;
+  REQUIRE(volume(empty) == 0);
+}
