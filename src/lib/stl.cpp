@@ -72,7 +72,71 @@ const char * basename(const char * name) {
 #endif
 
 
+/* write the triangles of one polyhedron to an STL file that is open */
+static void writeTriangles(FILE * f, bool binaryMode, const Polyhedron & poly, unsigned long & triangleCount)
+{
+  for(Polyhedron::const_face_iterator it=poly.fBegin(); it!=poly.fEnd(); ++it)
+  {
+    const Face* fc = *it;
+
+    if (fc->hole())
+      continue;
+
+    Vector3Df normalVector = fc->normal();
+    if (std::isnan(normalVector.x()) || std::isnan(normalVector.y()) || std::isnan(normalVector.z()))
+      normalVector = Vector3Df(0, 0, 0);
+    const float * normal = normalVector.getData();
+
+    Face::const_edge_circulator e = fc->begin();
+    Face::const_edge_circulator sentinel = e;
+    ++e;
+    Vector3Df start = (*e)->dst()->position();
+    ++e;
+
+    do
+    {
+      const float * v1 = start.getData();
+      const float * v2 = (*e)->dst()->position().getData();
+      ++e;
+      const float * v3 = (*e)->dst()->position().getData();
+
+      if (binaryMode)
+      {
+        // write normal vector
+        if (fwrite(normal, 3, 4, f) != 4) throw stlException_c("Could not write file");
+
+        // write the 3 vertices
+        if (fwrite(v1, 3, 4, f) != 4) throw stlException_c("Coult not write file");
+        if (fwrite(v2, 3, 4, f) != 4) throw stlException_c("Coult not write file");
+        if (fwrite(v3, 3, 4, f) != 4) throw stlException_c("Coult not write file");
+
+        // attribute
+        int i = 0;
+        if (fwrite(&i, 1, 2, f) != 2) throw stlException_c("Coult not write file");
+
+        triangleCount++;
+      }
+      else
+      {
+        fprintf(f,"  facet normal %9.4e %9.4e %9.4e\n", normal[0], normal[1], normal[2]);
+        fprintf(f,"    outer loop\n");
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v1[0], v1[1], v1[2]);
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v2[0], v2[1], v2[2]);
+        fprintf(f,"      vertex %9.4e %9.4e %9.4e\n", v3[0], v3[1], v3[2]);
+        fprintf(f,"    endloop\n");
+        fprintf(f,"  endfacet\n");
+      }
+    } while (e != sentinel);
+  }
+
+}
+
 void stlExporter_c::write(const char * fname, const voxel_c & v)
+{
+  write(fname, std::vector<const voxel_c *>{ &v });
+}
+
+void stlExporter_c::write(const char * fname, const std::vector<const voxel_c *> & shapes)
 {
   std::unique_ptr<FILE, int(*)(FILE*)> f(nullptr, &fclose);
   unsigned long triangleCount = 0;
@@ -102,68 +166,19 @@ void stlExporter_c::write(const char * fname, const voxel_c & v)
     fprintf(f.get(), "solid %s\n", title);
   }
 
-  // try to generate the polyhedron, there might be problems along the way,
-  // like wrong parameters, or things like that
-  std::unique_ptr<Polyhedron> poly(getMesh(v));
-  if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
-
-  /* connected coplanar faces merged and re-triangulated with fewer,
-   * larger triangles: the meshers keep every vertex of a face's outline */
-  poly.reset(mergeCoplanarFaces(*poly));
-
-  // write out the generated polyhedron
-  for(Polyhedron::const_face_iterator it=poly->fBegin(); it!=poly->fEnd(); ++it)
+  // each shape is meshed on its own, so each keeps its own offset and bevel
+  for (const voxel_c * v : shapes)
   {
-    const Face* fc = *it;
+    // try to generate the polyhedron, there might be problems along the way,
+    // like wrong parameters, or things like that
+    std::unique_ptr<Polyhedron> poly(getMesh(*v));
+    if (!poly) throw stlException_c("Something went wrong when generating the STL polyhedron");
 
-    if (fc->hole())
-      continue;
+    /* connected coplanar faces merged and re-triangulated with fewer,
+     * larger triangles: the meshers keep every vertex of a face's outline */
+    poly.reset(mergeCoplanarFaces(*poly));
 
-    Vector3Df normalVector = fc->normal();
-    if (std::isnan(normalVector.x()) || std::isnan(normalVector.y()) || std::isnan(normalVector.z()))
-      normalVector = Vector3Df(0, 0, 0);
-    const float * normal = normalVector.getData();
-
-    Face::const_edge_circulator e = fc->begin();
-    Face::const_edge_circulator sentinel = e;
-    ++e;
-    Vector3Df start = (*e)->dst()->position();
-    ++e;
-
-    do
-    {
-      const float * v1 = start.getData();
-      const float * v2 = (*e)->dst()->position().getData();
-      ++e;
-      const float * v3 = (*e)->dst()->position().getData();
-
-      if (binaryMode)
-      {
-        // write normal vector
-        if (fwrite(normal, 3, 4, f.get()) != 4) throw stlException_c("Could not write file");
-
-        // write the 3 vertices
-        if (fwrite(v1, 3, 4, f.get()) != 4) throw stlException_c("Coult not write file");
-        if (fwrite(v2, 3, 4, f.get()) != 4) throw stlException_c("Coult not write file");
-        if (fwrite(v3, 3, 4, f.get()) != 4) throw stlException_c("Coult not write file");
-
-        // attribute
-        int i = 0;
-        if (fwrite(&i, 1, 2, f.get()) != 2) throw stlException_c("Coult not write file");
-
-        triangleCount++;
-      }
-      else
-      {
-        fprintf(f.get(),"  facet normal %9.4e %9.4e %9.4e\n", normal[0], normal[1], normal[2]);
-        fprintf(f.get(),"    outer loop\n");
-        fprintf(f.get(),"      vertex %9.4e %9.4e %9.4e\n", v1[0], v1[1], v1[2]);
-        fprintf(f.get(),"      vertex %9.4e %9.4e %9.4e\n", v2[0], v2[1], v2[2]);
-        fprintf(f.get(),"      vertex %9.4e %9.4e %9.4e\n", v3[0], v3[1], v3[2]);
-        fprintf(f.get(),"    endloop\n");
-        fprintf(f.get(),"  endfacet\n");
-      }
-    } while (e != sentinel);
+    writeTriangles(f.get(), binaryMode, *poly, triangleCount);
   }
 
   if (binaryMode)
