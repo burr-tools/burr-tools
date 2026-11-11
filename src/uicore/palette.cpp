@@ -76,8 +76,18 @@ namespace btui {
     /* Shape x's place on the anchor cycle, 0 to 8: the first eight shapes
      * are the anchors; the next eight the hues halfway between neighbouring
      * anchors; the next sixteen the quarter points, and so on, each level
-     * halving the gaps the level before left. Within a level the places are
-     * taken with a stride, so that consecutive shapes are far apart in hue. */
+     * halving the gaps the level before left.
+     *
+     * Every eight shapes go round the anchors in the first eight's order,
+     * each a step off its anchor: shape 9 is a variation of shape 1's
+     * colour, shape 10 of shape 2's, and so on, and consecutive shapes are
+     * as far apart in hue as the first eight are. The steps of a level are
+     * taken nearest the anchor first, to one side and then the other: half
+     * a gap down (level 1); a quarter up, a quarter down (level 2); an
+     * eighth up, an eighth down, three eighths up, three eighths down
+     * (level 3). Level 1 goes down because half a gap up from blue, shape
+     * 9, is as much purple's, shape 7's two places before it; half a gap
+     * down it shares its hue with cyan, shape 4. */
     float cyclePosition(int x) {
       if (x < 0) x = 0;
       if (x < ANCHORS)
@@ -91,10 +101,19 @@ namespace btui {
         places *= 2;
       }
       const int k = x - first;
-      // a stride coprime with the count (a power of two, so any odd one)
-      const int stride = ((3 * places) / 8) | 1;
-      const int place = (k * stride) % places;
-      return (float(place) + 0.5f) * float(ANCHORS) / float(places);
+      const int anchor = firstEight[k % ANCHORS];
+      const int round = k / ANCHORS;             // which time round the anchors, in this level
+      const int steps = 2 * places / ANCHORS;    // a gap in steps of this level: 2, 4, 8 ...
+
+      // the odd number of steps off the anchor: 1, -1, 3, -3 ... Level 1 has
+      // only the one (a step down from an anchor is a step up from the one
+      // before), taken downwards.
+      int off = 2 * (round / 2) + 1;
+      if (round % 2 == 1 || places == ANCHORS) off = -off;
+
+      float place = float(anchor) + float(off) / float(steps);
+      if (place < 0) place += float(ANCHORS);
+      return place;
     }
 
     Okhsl baseHsl(int x) {

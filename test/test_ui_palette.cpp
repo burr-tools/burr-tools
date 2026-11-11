@@ -83,10 +83,27 @@ TEST_CASE("later shapes halve the gaps between the hues before them", "[ui][pale
       INFO("shapes " << x << " and " << y);
       CHECK((std::fabs(a.r - b.r) + std::fabs(a.g - b.g) + std::fabs(a.b - b.b)) > 0.02f);
     }
-  // shape 9 lies between red (25) and brown (55) in hue: redder than brown, browner than red
-  const Rgb red = pieceColor(2), brown = pieceColor(7), mid = pieceColor(8);
+  // shape 16 lies between red (25) and brown (55) in hue: redder than brown, browner than red
+  const Rgb red = pieceColor(2), brown = pieceColor(7), mid = pieceColor(15);
   CHECK(mid.g > red.g);
   CHECK(mid.g < brown.g);
+}
+
+TEST_CASE("every eight shapes are variations of the first eight, in their order", "[ui][palette]") {
+  // shape 17 is nearer shape 1's colour than any other of the first eight's,
+  // shape 18 nearer shape 2's, and so on: a quarter of a gap off their
+  // anchors. The half steps (shapes 9 to 16) follow the same order, but lie
+  // as near the anchor before in hue as their own.
+  auto dist = [](const Rgb & a, const Rgb & b) {
+    return std::fabs(a.r - b.r) + std::fabs(a.g - b.g) + std::fabs(a.b - b.b);
+  };
+  for (int x = 16; x < 24; x++) {
+    INFO("shape " << x);
+    int nearest = 0;
+    for (int y = 1; y < 8; y++)
+      if (dist(pieceColor(x), pieceColor(y)) < dist(pieceColor(x), pieceColor(nearest))) nearest = y;
+    CHECK(nearest == x % 8);
+  }
 }
 
 TEST_CASE("copies of a shape get distinct colours inside [0, 1]", "[ui][palette]") {
