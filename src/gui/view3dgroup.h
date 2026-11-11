@@ -38,6 +38,8 @@ class LView3dGroup : public Fl_Group, public layoutable_c {
   Fl_Callback * zoomChangeCb = nullptr;
   void * zoomChangeUser = nullptr;
 
+  bool zoomRangeFollowsContent = false;
+
   void setSliderFollowingContent(double v);
 
 public:
@@ -67,6 +69,13 @@ public:
 
   // multiplies the view distance by factor (> 1 zooms out)
   void scaleZoom(double factor);
+
+  /* Whether a zoom that follows the content (fitToContent(), scaleZoom(),
+   * the Home animation) may widen the slider's range, for a view whose
+   * content isn't in unit cells: an STL preview is in millimetres, and its
+   * fit can lie outside the range. Off by default, where such a zoom is cut
+   * off at the ends of the range. */
+  void setZoomRangeFollowsContent(bool on) { zoomRangeFollowsContent = on; }
 
   static void zoomAnimCbStub(void * u, double sz);
 

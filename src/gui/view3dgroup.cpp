@@ -83,13 +83,19 @@ void LView3dGroup::goHome(void) {
   View3D->startHomeAnim(targetSize);  /* animates rotation, pan, and zoom */
 }
 
-/* Put the slider at v. A zoom that follows the content (a fit, or one kept
- * relative to it) can lie outside the slider's range -- an STL preview is
- * in millimetres, not unit cells -- and widens the range rather than being
- * cut off; the user's own zooming stays within the range. */
+/* Put the slider at v, a zoom that follows the content (a fit, or one kept
+ * relative to it). It is cut off at the ends of the slider's range, unless
+ * the range follows the content (setZoomRangeFollowsContent()) and is
+ * widened instead; the user's own zooming stays within the range either
+ * way. */
 void LView3dGroup::setSliderFollowingContent(double v) {
-  if (v < slider->minimum()) slider->minimum(v);
-  if (v > slider->maximum()) slider->maximum(v);
+  if (zoomRangeFollowsContent) {
+    if (v < slider->minimum()) slider->minimum(v);
+    if (v > slider->maximum()) slider->maximum(v);
+  } else {
+    if (v < slider->minimum()) v = slider->minimum();
+    if (v > slider->maximum()) v = slider->maximum();
+  }
   slider->value(v);
 }
 

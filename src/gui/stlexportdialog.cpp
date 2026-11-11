@@ -211,6 +211,9 @@ void stlExportDialog_c::addStatusAndPreview(int row)
   view3D = new LView3dGroup(1, 0, 1, row);
   view3D->setMinimumSize(400, 400);
   view3D->weight(1, 0);
+  /* the mesh is in millimetres, its fit can lie outside the zoom slider's
+   * range */
+  view3D->setZoomRangeFollowsContent(true);
   /* the preview shows the exporter's own mesh: plain faces, whatever
    * style the main window is in (the edge-line style would draw a line
    * along every bevel boundary) */

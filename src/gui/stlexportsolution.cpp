@@ -41,9 +41,12 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
+#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -65,6 +68,48 @@ namespace {
       if (!isalnum((unsigned char)c) && c != '-' && c != '_')
         out[i] = '_';
     }
+    return out;
+  }
+
+  /* The file names, without folder and extension, of the per-piece export:
+   * one per entry of names, the shapes' names, numbers being their shape
+   * numbers.
+   *
+   * A file is named after its shape as in 0.8.0: the shape's name made
+   * safe, or S<n> for a shape without one. Two shapes can come out as the
+   * same file, though: safeName() maps "a b" and "a_b" to one name, and a
+   * file system may ignore case. Named shapes that clash get their shape
+   * number in front (S<n>_<name>), which keeps them apart.               */
+  std::vector<std::string> pieceFileNames(const std::vector<std::string> & names,
+                                          const std::vector<unsigned int> & numbers)
+  {
+    auto key = [](std::string s) {
+      for (char & c : s) c = (char)tolower((unsigned char)c);
+      return s;
+    };
+    auto num = [&numbers](size_t i) { return "S" + std::to_string(numbers[i]); };
+
+    std::vector<std::string> out;
+    std::map<std::string, int> count;
+    for (size_t i = 0; i < names.size(); i++) {
+      out.push_back(names[i].empty() ? num(i) : safeName(names[i]));
+      count[key(out[i])]++;
+    }
+
+    for (size_t i = 0; i < names.size(); i++)
+      if (!names[i].empty() && count[key(out[i])] > 1)
+        out[i] = num(i) + "_" + out[i];
+
+    /* a name can still be taken when a shape is called like another one's
+     * numbered name ("S5_a"); the later one gets its number in front until
+     * it is free */
+    std::set<std::string> used;
+    for (size_t i = 0; i < out.size(); i++) {
+      while (used.count(key(out[i])))
+        out[i] = num(i) + "_" + out[i];
+      used.insert(key(out[i]));
+    }
+
     return out;
   }
 
@@ -251,19 +296,17 @@ void stlExportSolution_c::exportSeparate(void)
     return;
   }
 
-  /* one file per piece type, named by its shape number so no two names
-   * can be the same, even on a file system that ignores case, and by the
-   * shape's name when it has one */
-  std::vector<std::string> fnames;
+  /* one file per piece type, named after its shape */
+  std::vector<std::string> names;
+  std::vector<unsigned int> numbers;
   for (unsigned int shapeId : shapeIds) {
-    char num[32];
-    snprintf(num, sizeof num, "S%u", shapeId + 1);
-    std::string name = num;
-    const std::string & shapeName = puzzle->getShape(shapeId)->getName();
-    if (!shapeName.empty())
-      name += "_" + safeName(shapeName);
-    fnames.push_back((std::filesystem::path(folder()) / (name + ".stl")).string());
+    names.push_back(puzzle->getShape(shapeId)->getName());
+    numbers.push_back(shapeId + 1);
   }
+
+  std::vector<std::string> fnames;
+  for (const std::string & name : pieceFileNames(names, numbers))
+    fnames.push_back((std::filesystem::path(folder()) / (name + ".stl")).string());
 
   /* check for existing files once before starting */
   int existing = 0;
