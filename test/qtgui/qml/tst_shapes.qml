@@ -87,6 +87,11 @@ TestCase {
         mouseRelease(l, 10, y0 + dy)
     }
     function contextMenu() { return item("entities.shapes").contextMenu }
+    // row i's actions shown and taking presses (from the event after they showed)
+    function actionsReady(i) {
+        const a = item("entities.shapes.row." + i + ".actions")
+        tryVerify(() => a.opacity === 1 && a.enabled, 1000)
+    }
 
     function test_theHeaderHasItsParts() {
         // C01's header ids: the header, its count, + New, the collapse button
@@ -100,14 +105,56 @@ TestCase {
         // AC-C01-01
         App.shapes.select(0)
         mouseMove(win.contentItem, 800, 500)             // away from the list
-        verify(item("entities.shapes.row.0.duplicate").visible)
-        // the others have none: a row's actions are made when it shows them
-        compare(findChild(win.contentItem, "entities.shapes.row.1.duplicate"), null)
+        actionsReady(0)
+        // the others have theirs laid out, unseen, taking no press and not read out
+        const hidden = item("entities.shapes.row.1.actions")
+        compare(hidden.opacity, 0)
+        verify(!hidden.enabled)
+        verify(item("entities.shapes.row.1.duplicate").Accessible.ignored)
+        verify(!item("entities.shapes.row.0.duplicate").Accessible.ignored)
         mouseMove(row(1), 60, row(1).height / 2)
-        tryVerify(() => findChild(win.contentItem, "entities.shapes.row.1.duplicate") !== null
-                        && item("entities.shapes.row.1.duplicate").visible)
+        actionsReady(1)
+        verify(!item("entities.shapes.row.1.duplicate").Accessible.ignored)
         // the row's buttons are no Tab stops: the list is one
         verify(!item("entities.shapes.row.1.delete").activeFocusOnTab)
+    }
+
+    SignalSpy { id: deleteAsked; target: App.shapes; signalName: "deleteConfirmRequested" }
+
+    function test_aClickRightAfterThePointerArrivesOnlySelects() {
+        // PR 181 review: the pointer lands on a row and clicks at once (a pen,
+        // a touch, a row moving under a still pointer). The row's buttons show
+        // under that press and must not take it: wherever it lands, it selects
+        // the row and does nothing else -- no rename, duplicate, weight or delete.
+        const before = App.shapes.count
+        const weights = []
+        for (let i = 0; i < before; i++)
+            weights.push(App.shapes.weightOf(i))
+        deleteAsked.clear()
+        // from the chip across the buttons, short of the list's scroll bar
+        // (it lies over the rows' right edge and takes presses there)
+        const bar = list().ScrollBar.vertical
+        const xEnd = bar.mapToItem(row(0), 0, 0).x
+        let target = 1
+        for (let x = 24; x < xEnd; x += 6) {
+            App.shapes.select(0)
+            mouseMove(win.contentItem, 800, 500)         // away from the list
+            waitForRendering(win.contentItem)
+            const r = row(target)                         // a row of its own each time: no double-click
+            mouseMove(r, x, r.height / 2)
+            mouseClick(r, x, r.height / 2)
+            waitForRendering(win.contentItem)
+            const at = "row " + target + ", x " + x
+            compare(App.shapes.count, before, at)
+            compare(App.shapes.selected, target, at)
+            compare(list().editingRow, -1, at)
+            compare(deleteAsked.count, 0, at)
+            for (let i = 0; i < before; i++)
+                compare(App.shapes.weightOf(i), weights[i], at + ", weight of " + i)
+            target = target % (before - 1) + 1
+            if (target === 1)
+                wait(Qt.styleHints.mouseDoubleClickInterval + 50)
+        }
     }
 
     function test_newAndDuplicateAppendAndSelect() {
@@ -118,6 +165,7 @@ TestCase {
         compare(App.shapes.selected, n)
         App.shapes.select(1)
         mouseMove(row(1), 60, row(1).height / 2)
+        actionsReady(1)
         mouseClick(item("entities.shapes.row.1.duplicate"))
         compare(App.shapes.count, n + 2)
         compare(App.shapes.selected, n + 1)
@@ -159,7 +207,7 @@ TestCase {
     function test_theWeightButtonsAndBadge() {
         // AC-C01-06: W+ / W- on the row, the badge iff the weight is not 1, W- stops at 0
         App.shapes.select(2)
-        waitForRendering(win.contentItem)
+        actionsReady(2)
         const w = App.shapes.weightOf(2)
         mouseClick(item("entities.shapes.row.2.weightUp"))
         compare(App.shapes.weightOf(2), w + 1)

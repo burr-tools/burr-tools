@@ -269,6 +269,22 @@ Card {
             readonly property bool editing: list.editingRow === index
             readonly property bool dragged: list.dragFrom === index
             readonly property bool showActions: (hover.hovered || selected) && !editing && list.dragFrom < 0
+            // The actions take presses only from the event after they showed:
+            // a press that arrives with the pointer (a pen, a touch, a row
+            // moving under a still pointer) hovers the row and lands at once,
+            // and must select it, not hit a button the user never saw.
+            property bool actionsArmed: false
+            onShowActionsChanged: {
+                actionsArmed = false
+                if (showActions)
+                    armTimer.restart()
+            }
+            Component.onCompleted: if (showActions) armTimer.restart()
+            Timer { // the next turn of the event loop, after the press that showed them
+                id: armTimer
+                interval: 0
+                onTriggered: row.actionsArmed = row.showActions
+            }
             // while another row is dragged: one row up or down, to open the gap it would drop into
             readonly property real shift: {
                 const from = list.dragFrom, to = list.dropTo
@@ -412,48 +428,56 @@ Card {
                     visible: row.weight !== 1
                     text: "W" + row.weight
                 }
-                // only the hovered or selected row has its actions: made for that row alone
-                Loader { // ⑩
-                    active: row.showActions
-                    visible: active
-                    sourceComponent: Row {
-                        spacing: 0
-                        RowIconButton {
-                            objectName: "entities.shapes.row." + row.index + ".rename"
-                            iconName: "edit"
-                            tip: qsTr("Rename (%1, or double-click)").arg(root.renameKeys)
-                            onClicked: list.startRename(row.index)
-                        }
-                        RowIconButton {
-                            objectName: "entities.shapes.row." + row.index + ".duplicate"
-                            iconName: "copy"
-                            tip: qsTr("Duplicate, as the last shape (%1)").arg(root.duplicateKeys)
-                            onClicked: App.shapes.duplicateShape(row.index)
-                        }
-                        WeightButton {
-                            objectName: "entities.shapes.row." + row.index + ".weightDown"
-                            text: qsTr("W−")
-                            spoken: qsTr("Decrease weight")
-                            tip: qsTr("Weight −1 — %1").arg(root.weightTip)
-                            enabled: row.weight > 0
-                            onClicked: App.shapes.changeWeight(row.index, -1)
-                        }
-                        WeightButton {
-                            objectName: "entities.shapes.row." + row.index + ".weightUp"
-                            text: qsTr("W+")
-                            spoken: qsTr("Increase weight")
-                            tip: qsTr("Weight +1 — %1").arg(root.weightTip)
-                            onClicked: App.shapes.changeWeight(row.index, +1)
-                        }
-                        RowIconButton {
-                            objectName: "entities.shapes.row." + row.index + ".delete"
-                            iconName: "trash"
-                            dangerHover: true
-                            enabled: App.shapes.canDelete
-                            tip: App.shapes.canDelete ? qsTr("Delete (%1)").arg(root.deleteKeys)
-                                                      : qsTr("The only shape cannot be deleted")
-                            onClicked: App.shapes.requestDelete(row.index)
-                        }
+                // Every row has its actions, laid out where they show; only the
+                // hovered or selected row shows them, and they take presses once
+                // armed. (Made on demand, they took the press that made them,
+                // before their row had placed them: PR 181 review.)
+                Row { // ⑩
+                    objectName: "entities.shapes.row." + row.index + ".actions"
+                    visible: !row.editing        // the rename field takes the room
+                    opacity: row.showActions ? 1 : 0
+                    enabled: row.actionsArmed
+                    spacing: 0
+                    RowIconButton {
+                        objectName: "entities.shapes.row." + row.index + ".rename"
+                        Accessible.ignored: !row.showActions     // hidden: not read out
+                        iconName: "edit"
+                        tip: qsTr("Rename (%1, or double-click)").arg(root.renameKeys)
+                        onClicked: list.startRename(row.index)
+                    }
+                    RowIconButton {
+                        objectName: "entities.shapes.row." + row.index + ".duplicate"
+                        Accessible.ignored: !row.showActions     // hidden: not read out
+                        iconName: "copy"
+                        tip: qsTr("Duplicate, as the last shape (%1)").arg(root.duplicateKeys)
+                        onClicked: App.shapes.duplicateShape(row.index)
+                    }
+                    WeightButton {
+                        objectName: "entities.shapes.row." + row.index + ".weightDown"
+                        Accessible.ignored: !row.showActions     // hidden: not read out
+                        text: qsTr("W−")
+                        spoken: qsTr("Decrease weight")
+                        tip: qsTr("Weight −1 — %1").arg(root.weightTip)
+                        enabled: row.weight > 0
+                        onClicked: App.shapes.changeWeight(row.index, -1)
+                    }
+                    WeightButton {
+                        objectName: "entities.shapes.row." + row.index + ".weightUp"
+                        Accessible.ignored: !row.showActions     // hidden: not read out
+                        text: qsTr("W+")
+                        spoken: qsTr("Increase weight")
+                        tip: qsTr("Weight +1 — %1").arg(root.weightTip)
+                        onClicked: App.shapes.changeWeight(row.index, +1)
+                    }
+                    RowIconButton {
+                        objectName: "entities.shapes.row." + row.index + ".delete"
+                        Accessible.ignored: !row.showActions     // hidden: not read out
+                        iconName: "trash"
+                        dangerHover: true
+                        enabled: App.shapes.canDelete
+                        tip: App.shapes.canDelete ? qsTr("Delete (%1)").arg(root.deleteKeys)
+                                                  : qsTr("The only shape cannot be deleted")
+                        onClicked: App.shapes.requestDelete(row.index)
                     }
                 }
             }
