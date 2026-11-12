@@ -24,6 +24,7 @@
 #include "../lib/problem.h"
 #include "../lib/ps3dloader.h"
 #include "../lib/puzzle.h"
+#include "../lib/voxel.h"
 
 #include "../tools/fileexists.h"
 #include "../tools/gzstream.h"
@@ -45,7 +46,8 @@ namespace btui {
   DocumentSession::~DocumentSession(void) = default;
 
   void DocumentSession::adopt(std::unique_ptr<puzzle_c> p) {
-    stroking = false;     // the history starts afresh: the stroke goes with the old puzzle
+    stroking = strokeDirty = false;   // the history starts afresh: the stroke goes with the old puzzle
+    strokeLost.clear();
     puz = std::move(p);
     hist->reset(puz.get());
   }
@@ -237,7 +239,7 @@ namespace btui {
     return true;
   }
 
-  bool DocumentSession::isModified(void) const { return hist->isModifiedFromSave(); }
+  bool DocumentSession::isModified(void) const { return hist->isModifiedFromSave() || strokeChanged(); }
 
   void DocumentSession::markModified(void) { hist->markModified(); }
 
@@ -253,7 +255,7 @@ namespace btui {
     hist->markModified();
   }
 
-  bool DocumentSession::canUndo(void) const { return hist->canUndo(); }
+  bool DocumentSession::canUndo(void) const { return hist->canUndo() || strokeChanged(); }
   bool DocumentSession::canRedo(void) const { return hist->canRedo(); }
 
   puzzleHistory_c::undoResult_t DocumentSession::undo(void) {
@@ -269,6 +271,7 @@ namespace btui {
   void DocumentSession::beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {
     endStroke();
     stroking = true;
+    strokeDirty = false;
     strokeKind = kind;
     strokeShape = selectedShape;
     hist->beginStroke(kind);
@@ -278,7 +281,70 @@ namespace btui {
     if (!stroking)
       return false;
     stroking = false;
-    return hist->endStroke(puz.get(), strokeShape);
+    strokeDirty = false;
+    const bool took = hist->endStroke(puz.get(), strokeShape);
+    keepDiscarded(std::move(strokeLost), took);
+    strokeLost.clear();
+    return took;
+  }
+
+  void DocumentSession::markStrokeChanged(void) {
+    strokeDirty = true;
+    hist->markStrokeDirty();
+    if (strokeShape != puzzleHistory_c::NO_SHAPE)
+      for (auto & l : discardUsing({ strokeShape }))
+        strokeLost.push_back(std::move(l));
+  }
+
+  DocumentSession::ShapeCopies::ShapeCopies(void) = default;
+  DocumentSession::ShapeCopies::~ShapeCopies(void) = default;
+  DocumentSession::ShapeCopies::ShapeCopies(ShapeCopies &&) noexcept = default;
+
+  DocumentSession::ShapeCopies DocumentSession::copyShapes(const std::vector<unsigned int> & shapes) const {
+    ShapeCopies copies;
+    copies.shapes.reserve(shapes.size());
+    for (unsigned int s : shapes)
+      if (s < puz->getNumberOfShapes())
+        copies.shapes.emplace_back(s, std::unique_ptr<voxel_c>(puz->getGridType()->getVoxel(*puz->getShape(s))));
+    return copies;
+  }
+
+  puzzleHistory_c::discarded_t DocumentSession::discardChanged(const ShapeCopies & before) {
+    std::vector<unsigned int> changed;
+    for (const auto & [s, copy] : before.shapes)
+      if (s >= puz->getNumberOfShapes() || !(*puz->getShape(s) == *copy))
+        changed.push_back(s);
+    return discardUsing(changed);
+  }
+
+  puzzleHistory_c::discarded_t DocumentSession::discardUsing(const std::vector<unsigned int> & shapes) {
+    puzzleHistory_c::discarded_t lost;
+    if (shapes.empty())
+      return lost;
+    for (unsigned int k = 0; k < puz->getNumberOfProblems(); k++) {
+      problem_c * pr = puz->getProblem(k);
+      bool uses = false;
+      for (unsigned int s : shapes)
+        uses = uses || pr->usesShape(s);
+      if (!uses)
+        continue;
+      problem_c::solveRecord_t r;
+      pr->swapSolveRecord(r);
+      if (!r.empty())
+        lost.emplace_back(k, std::move(r));
+    }
+    return lost;
+  }
+
+  void DocumentSession::keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded) {
+    if (lost.empty())
+      return;
+    if (recorded && hist->keepDiscarded(std::move(lost)))
+      return;
+    // no step to keep them in: the edit changed nothing after all
+    for (auto & [k, r] : lost)
+      if (k < puz->getNumberOfProblems())
+        puz->getProblem(k)->swapSolveRecord(r);
   }
 
   void DocumentSession::splitStroke(void) {

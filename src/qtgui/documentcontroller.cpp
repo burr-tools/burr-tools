@@ -351,7 +351,10 @@ void DocumentController::undo(void) {
   guarded([&] {
     if (!m_session.canUndo())
       return;
+    const bool wasStroke = m_session.inStroke();
     auto r = m_session.undo();
+    if (wasStroke)
+      emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
     emit stateChanged();
   });
@@ -361,7 +364,10 @@ void DocumentController::redo(void) {
   guarded([&] {
     if (!m_session.canRedo())
       return;
+    const bool wasStroke = m_session.inStroke();
     auto r = m_session.redo();
+    if (wasStroke)
+      emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
     emit stateChanged();
   });

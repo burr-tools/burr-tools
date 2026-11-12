@@ -54,11 +54,20 @@ EditorController::EditorController(DocumentController * doc, ShapesModel * shape
     refreshShape();
     emit shapeChanged();         // another voxel type: the planes
   });
+  connect(m_doc, &DocumentController::strokeInterrupted, this, [this] {
+    // an undo, redo or another edit mid-drag ended the stroke (DocumentSession):
+    // the drag paints no more, rather than on as an edit per cell
+    if (m_stroking && !m_area) {
+      m_stroking = m_rightDown = false;
+      emit toolChanged();
+    }
+  });
   connect(m_doc, &DocumentController::historyApplied, this, [this] {
-    // an undo mid-drag ended the stroke (DocumentSession): the drag paints no more
+    // an undo mid-drag: an Area drag ends too (a paint drag ended at strokeInterrupted)
     if (m_stroking) {
       m_stroking = m_rightDown = m_area = false;
       emit toolChanged();
+      emit previewChanged();
     }
     contentEdited();
   });
@@ -166,8 +175,8 @@ bool EditorController::click3d(const btui::Target3d & t, Qt::KeyboardModifiers m
   const int idx = m_shapeIndex;
   bool changed = false;
   guarded([&] {
-    m_doc->edit(puzzleHistory_c::AK_ENTITIES_CLICK_3D, DocumentController::Change::Voxels, idx, idx,
-                [&](puzzle_c & p) { return changed = btui::applyTool(*p.getShape(unsigned(idx)), cells, *tool, colour); });
+    m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, idx, idx, { unsigned(idx) },
+                      [&](puzzle_c & p) { return changed = btui::applyTool(*p.getShape(unsigned(idx)), cells, *tool, colour); });
   });
   return changed;
 }
@@ -342,9 +351,15 @@ void EditorController::setSize(int axis, int steps) {
   }
   const int idx = m_shapeIndex;
   int blocked = 0;
+  std::vector<unsigned int> shapes;
+  if (m_applyToAll)
+    for (unsigned int i = 0; i < m_doc->session().puzzle().getNumberOfShapes(); i++)
+      shapes.push_back(i);
+  else
+    shapes.push_back(unsigned(idx));
   guarded([&] {
-    m_doc->edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, DocumentController::Change::Voxels,
-                m_applyToAll ? -1 : idx, idx, [&](puzzle_c & p) {
+    m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, m_applyToAll ? -1 : idx, idx, shapes,
+                      [&](puzzle_c & p) {
       if (m_applyToAll) {
         const btui::ResizeAllResult r = btui::resizeAllShapes(p, axis, delta);
         blocked = r.blocked;

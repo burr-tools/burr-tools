@@ -163,15 +163,40 @@ public:
   }
 
   template <class F> bool edit(puzzleHistory_c::actionKind_e kind, Change change, int shape, int selectedShape, F && f) {
+    return tellEdit(change, shape, selectedShape, [&] {
+      return m_session.edit(kind, sessionShape(selectedShape), std::forward<F>(f));
+    });
+  }
+
+  /* An edit of the voxels of shapes (DocumentSession::editVoxels): as
+   * edit(), and the problems using a shape it changed lose their solutions
+   * -- to the undo step, which brings them back. shape: the one changed,
+   * -1 for several. */
+  template <class F> bool editVoxels(puzzleHistory_c::actionKind_e kind, int shape, int selectedShape,
+                                     const std::vector<unsigned int> & shapes, F && f) {
+    return tellEdit(Change::Voxels, shape, selectedShape, [&] {
+      return m_session.editVoxels(kind, sessionShape(selectedShape), shapes, std::forward<F>(f));
+    });
+  }
+
+private:
+
+  static unsigned int sessionShape(int shape) { return shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape); }
+
+  /* run an edit of the session (g), and tell the views what it changed */
+  template <class G> bool tellEdit(Change change, int shape, int selectedShape, G && g) {
     const bool wasStroke = m_session.inStroke();
     bool changed;
     try {
-      changed = m_session.edit(kind, selectedShape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(selectedShape),
-                               std::forward<F>(f));
+      changed = g();
     } catch (...) {
+      if (wasStroke)
+        emit strokeInterrupted();
       edited(selectedShape, change, shape);
       throw;
     }
+    if (wasStroke)
+      emit strokeInterrupted();  // the drag goes on, but its stroke is over
     if (changed)
       edited(selectedShape, change, shape);
     else if (wasStroke)
@@ -179,20 +204,28 @@ public:
     return changed;
   }
 
+public:
+
   /* A stroke of the voxel editor (DocumentSession::beginStroke): each
    * strokeEdit() is shown at once (puzzleEdited, Voxels), the undo step is
-   * taken at endStroke(). */
+   * taken at endStroke(). The stroke's first change makes the document
+   * unsaved and undoable at once (stateChanged), not at the release. */
   void beginStroke(puzzleHistory_c::actionKind_e kind, int shape);
   template <class F> bool strokeEdit(int shape, F && f) {
+    const bool clean = !m_session.strokeChanged();
     bool changed;
     try {
       changed = m_session.strokeEdit(std::forward<F>(f));
     } catch (...) {
       emit puzzleEdited(shape, Change::Voxels, shape);
+      if (clean && m_session.strokeChanged())
+        emit stateChanged();
       throw;
     }
     if (changed)
       emit puzzleEdited(shape, Change::Voxels, shape);
+    if (clean && m_session.strokeChanged())
+      emit stateChanged();       // the title's *, Undo enabled
     return changed;
   }
   void endStroke(void);
@@ -205,6 +238,10 @@ signals:
   void documentReplaced(void);
   /* undo/redo changed the puzzle; tab and shape say where (puzzleHistory_c) */
   void historyApplied(int tab, int selectedShape);
+  /* An open stroke was ended by something else than endStroke(): an undo,
+   * a redo or another edit while the button is still down. What it painted
+   * is a step of its own; the drag that made it must paint no more. */
+  void strokeInterrupted(void);
   /* Shapes or problems changed in place (not undo/redo): what changed, and
    * to which shape (-1: several, or none). selectedShape is the selection
    * the change asks for; -1 = no preference. */

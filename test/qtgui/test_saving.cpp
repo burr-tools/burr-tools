@@ -32,7 +32,8 @@ namespace {
 
   /* The whole puzzle as lines of text, so a failed comparison names what
    * differs: the type, the colours, each shape's size, label, weight and
-   * every voxel that is not empty, each problem's result and parts. */
+   * every voxel that is not empty, each problem's result, parts, how far
+   * its search is and the solutions it keeps. */
   QStringList describe(const puzzle_c & p) {
     QStringList out;
     out << QStringLiteral("type %1").arg(int(p.getGridType()->getType()));
@@ -52,6 +53,8 @@ namespace {
     for (unsigned int i = 0; i < p.getNumberOfProblems(); i++) {
       const problem_c & q = *p.getProblem(i);
       out << QStringLiteral("P%1 result %2").arg(i + 1).arg(q.resultValid() ? int(q.getResultId()) : -1);
+      out << QStringLiteral("P%1 search state %2, %3 solutions kept").arg(i + 1).arg(int(q.getSolveState()))
+                 .arg(q.getNumberOfSavedSolutions());
       for (unsigned int part = 0; part < q.getNumberOfParts(); part++)
         out << QStringLiteral("  P%1 part S%2 %3..%4").arg(i + 1).arg(q.getShapeIdOfPart(part) + 1)
                    .arg(q.getPartMinimum(part)).arg(q.getPartMaximum(part));
@@ -427,6 +430,99 @@ void TestSaving::problemsFollowTheirShapesThroughASave() {
   const QStringList before = f.saveAndReopen();
   QCOMPARE(describe(f.puzzle()), before);
   check();
+}
+
+void TestSaving::voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape_data() {
+  QTest::addColumn<int>("edit");
+  QTest::newRow("2D stroke") << 0;
+  QTest::newRow("3D click") << 1;
+  QTest::newRow("grid size") << 2;
+  QTest::newRow("inspector") << 3;
+}
+
+void TestSaving::voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape() {
+  // PR 181 review: an edit of a solved problem's shape left its solutions,
+  // and the file held a "solved" problem whose solution no longer fit. Each
+  // voxel edit drops them (as legacy's changeShape() did) into its undo
+  // step: undo brings them back, redo drops them again, the file holds none.
+  QFETCH(int, edit);
+  SaveFixture f{ gridType_c::GT_BRICKS };
+  const QString copy = f.dir.filePath(QStringLiteral("pelikan.xmpuzzle"));   // never the example itself
+  QVERIFY(QFile::copy(QStringLiteral("examples/PelikanBurr.xmpuzzle"), copy));
+  QVERIFY(f.app->document()->loadPath(copy));
+  auto solved = [&] {
+    const problem_c & q = *f.puzzle().getProblem(0);
+    return q.getSolveState() == SS_SOLVED && q.getNumberOfSavedSolutions() > 0;
+  };
+  auto unsolved = [&] {
+    const problem_c & q = *f.puzzle().getProblem(0);
+    return q.getSolveState() == SS_UNSOLVED && q.getNumberOfSavedSolutions() == 0;
+  };
+  QVERIFY(solved());
+  const unsigned used = f.puzzle().getProblem(0)->getShapeIdOfPart(0);
+  f.app->shapes()->select(int(used));
+  EditorController * e = f.editor();
+  const QStringList start = describe(f.puzzle());
+
+  switch (edit) {
+    case 0: {                                        // the right button erases the first filled cell it meets
+      VoxelGridItem g;
+      g.setSize(QSizeF(480, 360));
+      g.setEditor(e);
+      for (int layer = 0; layer < int(f.puzzle().getShape(used)->getZ()) && describe(f.puzzle()) == start; layer++) {
+        e->setLayer(layer);
+        for (const QPoint & c : layerCells(g)) {
+          QVERIFY(e->press(c.x(), c.y(), true, Qt::NoModifier));
+          e->release();
+          if (describe(f.puzzle()) != start)
+            break;
+        }
+      }
+      break;
+    }
+    case 1: {                                        // the Erase quick tool on a filled voxel
+      const voxel_c & v = *f.puzzle().getShape(used);
+      btui::Target3d t;
+      t.source = btui::TargetSource::Slab;
+      for (unsigned i = 0; i < v.getXYZ(); i++)
+        if (v.getState(i) == voxel_c::VX_FILLED) {
+          t.cell = { int(i % v.getX()), int((i / v.getX()) % v.getY()), int(i / (v.getX() * v.getY())) };
+          break;
+        }
+      QVERIFY(e->click3d(t, kErase));
+      break;
+    }
+    case 2:
+      e->setSize(0, e->size(0) + 1);
+      break;
+    case 3: {
+      // the first transform that changes the piece (a symmetric piece's flip does not)
+      InspectorController * in = f.app->inspector();
+      for (const QVariant & b : in->transformButtons()) {
+        const int task = b.toMap().value(QStringLiteral("task")).toInt();
+        if (!in->allowed(task))
+          continue;
+        in->run(task);
+        if (describe(f.puzzle()) != start)
+          break;
+      }
+      // a piece that fills its grid turns nowhere: ×2 then
+      if (describe(f.puzzle()) == start && in->scaleShown())
+        in->run(in->tasks().value(QStringLiteral("scale2")).toInt());
+      break;
+    }
+  }
+  QVERIFY2(describe(f.puzzle()) != start, "the edit changed the shape");
+  QVERIFY(unsolved());
+  QVERIFY(f.app->document()->modified());
+  f.app->document()->undo();
+  QVERIFY2(solved(), "undo brings the solutions back");
+  f.app->document()->redo();
+  QVERIFY2(unsolved(), "redo drops them again");
+
+  const QStringList before = f.saveAndReopen();
+  QCOMPARE(describe(f.puzzle()), before);
+  QVERIFY2(unsolved(), "the file holds no stale solution");
 }
 
 void TestSaving::undoneEditsAreNotSavedAndASaveIsClean() {

@@ -28,6 +28,7 @@
 #include <QGuiApplication>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QUrl>
 #include <QTest>
 
 #include <algorithm>
@@ -224,6 +225,55 @@ void TestEditor::anUndoDuringADragEndsIt() {
   QCOMPARE(f.filled(), 0);
   d->redo();
   QCOMPARE(f.filled(), 2);
+}
+
+void TestEditor::anEditDuringADragEndsItsStroke() {
+  // PR 181 review: another edit with the button still down (a shortcut's
+  // weight change) ends the stroke; the rest of the drag paints nothing,
+  // rather than going on as an edit per cell that merges only by time
+  EditorFixture f;
+  DocumentController * d = f.app->document();
+  f.editor()->press(0, 0, false, Qt::NoModifier);
+  f.editor()->dragTo(1, 0);
+  d->editStructure(0, [](puzzle_c & p) { p.getShape(0)->setWeight(2); return true; });
+  QVERIFY(!f.editor()->stroking());
+  f.editor()->dragTo(2, 0);
+  f.editor()->release();
+  QCOMPARE(f.filled(), 2);
+  d->undo();                                   // the weight
+  QCOMPARE(f.filled(), 2);
+  d->undo();                                   // the stroke so far, one step
+  QCOMPARE(f.filled(), 0);
+}
+
+void TestEditor::theFirstStrokeAfterOpeningIsUnsavedAndUndoableAtOnce() {
+  // PR 181 review: the title's * waited for the release; and with no step
+  // before it, Ctrl+Z was off for the whole first drag after opening
+  EditorFixture f;
+  DocumentController * d = f.app->document();
+  const QString file = f.dir.filePath(QStringLiteral("s.xmpuzzle"));
+  d->saveAsFile(QUrl::fromLocalFile(file));
+  QVERIFY(d->loadPath(file));
+  f.app->shapes()->select(0);
+  QVERIFY(!d->canUndo());
+  QVERIFY(!d->modified());
+  QSignalSpy state(d, &DocumentController::stateChanged);
+  f.editor()->press(0, 0, false, Qt::NoModifier);
+  QVERIFY(f.editor()->stroking());
+  QVERIFY(d->modified());
+  QVERIFY(d->canUndo());
+  QVERIFY(!state.isEmpty());
+  const qsizetype once = state.count();
+  f.editor()->dragTo(1, 0);
+  f.editor()->dragTo(2, 0);
+  QCOMPARE(state.count(), once);               // once a stroke, not once a cell
+  d->undo();
+  QCOMPARE(f.filled(), 0);
+  QVERIFY(!f.editor()->stroking());
+  QVERIFY(!d->modified());
+  f.editor()->dragTo(3, 0);
+  f.editor()->release();
+  QCOMPARE(f.filled(), 0);
 }
 
 void TestEditor::theRightButtonErasesWhateverTheToolAndModifiers() {

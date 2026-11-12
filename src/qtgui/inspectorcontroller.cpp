@@ -226,8 +226,8 @@ void InspectorController::run(int task) {
       return;
     }
     btui::OpResult r;
-    m_doc->edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, DocumentController::Change::Voxels,
-                shapes.size() > 1 ? -1 : s, s, [&](puzzle_c & p) {
+    m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, shapes.size() > 1 ? -1 : s, s, shapes,
+                      [&](puzzle_c & p) {
       r = btui::runTask(p, shapes, task);
       return r.changed;
     });

@@ -16,6 +16,7 @@
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 
+#include <algorithm>
 #include <chrono>
 
 puzzleHistory_c::puzzleHistory_c(void) :
@@ -126,36 +127,44 @@ puzzleHistory_c::capture(const puzzle_c * puzzle,
     snap->colors.push_back((uint32_t)r | (uint32_t)g << 8 | (uint32_t)b << 16);
   }
 
-  for (unsigned int p = 0; p < puzzle->getNumberOfProblems(); p++) {
-    const problem_c * pr = puzzle->getProblem(p);
-    problemSnap_t ps;
-    ps.name = pr->getName();
-    ps.resultValid = pr->resultValid();
-    ps.resultId = ps.resultValid ? pr->getResultId() : 0;
-    ps.colorConstraints = pr->getColorConstraints();
-
-    for (unsigned int i = 0; i < pr->getNumberOfParts(); i++) {
-      partSnap_t part;
-      part.shapeId = pr->getShapeIdOfPart(i);
-      part.min     = pr->getPartMinimum(i);
-      part.max     = pr->getPartMaximum(i);
-      unsigned short ng = pr->getNumberOfPartGroups(i);
-      for (unsigned short g = 0; g < ng; g++) {
-        groupSnap_t gs;
-        gs.group = pr->getPartGroupId(i, g);
-        gs.count = pr->getPartGroupCount(i, g);
-        part.groups.push_back(gs);
-      }
-      ps.parts.push_back(part);
-    }
-    snap->problems.push_back(std::move(ps));
-  }
+  for (unsigned int p = 0; p < puzzle->getNumberOfProblems(); p++)
+    snap->problems.push_back(snapProblem(puzzle->getProblem(p)));
 
   return snap;
 }
 
-void puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const {
-  // --- shapes ---
+puzzleHistory_c::problemSnap_t puzzleHistory_c::snapProblem(const problem_c * pr) {
+  problemSnap_t ps;
+  ps.name = pr->getName();
+  ps.resultValid = pr->resultValid();
+  ps.resultId = ps.resultValid ? pr->getResultId() : 0;
+  ps.colorConstraints = pr->getColorConstraints();
+
+  for (unsigned int i = 0; i < pr->getNumberOfParts(); i++) {
+    partSnap_t part;
+    part.shapeId = pr->getShapeIdOfPart(i);
+    part.min     = pr->getPartMinimum(i);
+    part.max     = pr->getPartMaximum(i);
+    unsigned short ng = pr->getNumberOfPartGroups(i);
+    for (unsigned short g = 0; g < ng; g++) {
+      groupSnap_t gs;
+      gs.group = pr->getPartGroupId(i, g);
+      gs.count = pr->getPartGroupCount(i, g);
+      part.groups.push_back(gs);
+    }
+    ps.parts.push_back(part);
+  }
+  return ps;
+}
+
+std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const {
+  // --- shapes --- and which of them this changes (their problems' solutions no longer fit) ---
+  std::vector<unsigned int> changedShapes;
+  const size_t shapesBefore = puzzle->getNumberOfShapes();
+  for (size_t i = 0; i < std::max(shapesBefore, snap->shapes.size()); i++)
+    if (i >= shapesBefore || i >= snap->shapes.size() || !(*puzzle->getShape(unsigned(i)) == *snap->shapes[i]))
+      changedShapes.push_back(unsigned(i));
+
   std::vector<std::unique_ptr<voxel_c>> clones;
   clones.reserve(snap->shapes.size());
   for (unsigned int i = 0; i < snap->shapes.size(); i++)
@@ -168,6 +177,7 @@ void puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const 
   // --- problems --- adjust count first so the restore loop always sees the right size ---
   while (puzzle->getNumberOfProblems() > snap->problems.size())
     puzzle->removeProblem(puzzle->getNumberOfProblems() - 1);
+  const unsigned int problemsKept = puzzle->getNumberOfProblems();
   while (puzzle->getNumberOfProblems() < snap->problems.size())
     puzzle->addProblem();
 
@@ -176,6 +186,14 @@ void puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const 
     const problemSnap_t & ps = snap->problems[p];
 
     pr->setName(ps.name);
+
+    /* A problem the step did not change is left as it is: rebuilding it
+     * goes through setters (clearResult, ...) that drop its solutions, so
+     * every undo used to drop every problem's -- a rename's undo too. The
+     * solutions of one using a shape the restore changed are settled by
+     * the caller (settleSolutions). */
+    if (p < problemsKept && sameStructure(snapProblem(pr), ps))
+      continue;
 
     // Collect part shape-IDs before clearing: the while-loop pattern of
     // calling getShapeIdOfPart(0) inside the loop is safe only if the
@@ -208,6 +226,23 @@ void puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const 
 
     pr->setColorConstraints(ps.colorConstraints);
   }
+  return changedShapes;
+}
+
+bool puzzleHistory_c::sameStructure(const problemSnap_t & a, const problemSnap_t & b) {
+  if (a.resultValid != b.resultValid || (a.resultValid && a.resultId != b.resultId) ||
+      a.colorConstraints != b.colorConstraints || a.parts.size() != b.parts.size())
+    return false;
+  for (size_t i = 0; i < a.parts.size(); i++) {
+    const partSnap_t & x = a.parts[i];
+    const partSnap_t & y = b.parts[i];
+    if (x.shapeId != y.shapeId || x.min != y.min || x.max != y.max || x.groups.size() != y.groups.size())
+      return false;
+    for (size_t g = 0; g < x.groups.size(); g++)
+      if (x.groups[g].group != y.groups[g].group || x.groups[g].count != y.groups[g].count)
+        return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +301,9 @@ void puzzleHistory_c::pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
   if (canCoalesce(kind, selectedShape)) {
     // Replace current snapshot; share unchanged shapes from the one before it.
     const snapshot_t * prevSnap = (cursor > 0) ? snapshots[cursor - 1].get() : nullptr;
+    discarded_t discarded = std::move(snapshots[cursor]->discarded);   // the step's, still
     snapshots[cursor] = capture(puzzle, selectedShape, kind, prevSnap);
+    snapshots[cursor]->discarded = std::move(discarded);
   } else {
     /* A save point in the redo tail goes with it: the new step would land on
      * its index, and the document would read as saved though it differs. */
@@ -308,7 +345,7 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::undo(puzzle_c * puzzle) {
     return { NO_SHAPE, TAB_ENTITIES };
   cursor--;
   lastKind = AK_NONE;
-  restore(puzzle, snapshots[cursor].get());
+  settleSolutions(puzzle, restore(puzzle, snapshots[cursor].get()), *snapshots[cursor + 1]);
   /* Tab and shape come from the action we just undid (cursor+1), not from
    * the baseline we restored to — the baseline has kind=AK_NONE which maps
    * to TAB_ENTITIES regardless of which tab the user was working on. */
@@ -321,9 +358,51 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
     return { NO_SHAPE, TAB_ENTITIES };
   cursor++;
   lastKind = AK_NONE;
-  restore(puzzle, snapshots[cursor].get());
+  settleSolutions(puzzle, restore(puzzle, snapshots[cursor].get()), *snapshots[cursor]);
   return { snapshots[cursor]->selectedShape,
            tabForAction(snapshots[cursor]->kind) };
+}
+
+bool puzzleHistory_c::keepDiscarded(discarded_t && d) {
+  if (d.empty())
+    return true;
+  if (cursor == 0 || cursor >= snapshots.size())
+    return false;
+  discarded_t & kept = snapshots[cursor]->discarded;
+  for (auto & [problem, record] : d) {
+    bool held = false;
+    for (const auto & k : kept)
+      held = held || k.first == problem;
+    if (!held)
+      kept.emplace_back(problem, std::move(record));
+  }
+  d.clear();
+  return true;
+}
+
+void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const std::vector<unsigned int> & changedShapes,
+                                      snapshot_t & step) {
+  /* the solutions the step kept go back (undo) or out again (redo); the
+   * step's problems are the restored state's, a voxel edit keeps them */
+  std::vector<bool> settled(puzzle->getNumberOfProblems(), false);
+  for (auto & [problem, record] : step.discarded)
+    if (problem < puzzle->getNumberOfProblems()) {
+      puzzle->getProblem(problem)->swapSolveRecord(record);
+      settled[problem] = true;
+    }
+  /* the others using a shape the restore changed: theirs no longer fit */
+  if (changedShapes.empty())
+    return;
+  for (unsigned int k = 0; k < puzzle->getNumberOfProblems(); k++) {
+    if (settled[k])
+      continue;
+    problem_c * pr = puzzle->getProblem(k);
+    for (unsigned int s : changedShapes)
+      if (pr->usesShape(s)) {
+        pr->removeAllSolutions();
+        break;
+      }
+  }
 }
 
 void puzzleHistory_c::markSaved(void) {

@@ -76,7 +76,9 @@ stale `libburr_qtgui.a` ("thin archive" errors) is fixed by deleting it.
 - **The puzzle changes through the document.** A controller changes the
   puzzle with `DocumentController::editStructure(shape, f)`, which makes
   it one undo step and tells the views; `session().puzzle()` is
-  read-only (`src/uicore/AGENTS.md`).
+  read-only (`src/uicore/AGENTS.md`). A change to shapes' voxels goes
+  through `editVoxels(kind, shape, selected, shapes, f)`, so the problems
+  using them lose their stale solutions (undo brings them back).
 - **State in controllers, not QML.** QML binds to controller properties and
   calls `Q_INVOKABLE`s; it does not keep the truth. New concern, new
   controller owned by `App` (constructor in `app.cpp`, a `CONSTANT`

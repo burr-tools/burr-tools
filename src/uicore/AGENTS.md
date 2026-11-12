@@ -24,9 +24,9 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | :--- | :--- |
 | `commands` | **the command table**: every menu item and shortcut once — key, label (`&` access key), menu, divider, shortcuts per platform, the legacy callback it replaces, the macOS/Windows label and menu differences |
 | `layoutmodel` | workspaces, card collapse per workspace, Focus 2D / 3D (the editor's share, `kFocus2dEditorShare`), the column widths for a window width and density |
-| `documentsession` | open, save (beside the file, then renamed over it), import, new, the modified state, undo / redo |
+| `documentsession` | open, save (beside the file, then renamed over it), import, new, the modified state, undo / redo; a voxel edit drops the solutions of the problems using the shape into its undo step (`editVoxels`, strokes) |
 | `drawcolours` | the puzzle's colours as the Drawing colour footer edits them: names, add (up to the library's 63), edit, remove (and whether it loses solutions) |
-| `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit) — **shared with the legacy GUI** |
+| `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit; the solve records a step dropped, swapped back by its undo; problems a step did not change are left alone, solutions and all) — **shared with the legacy GUI** |
 | `settingsstore` | the settings file: `key = value` lines, typed reads with defaults, an atomic save |
 | `camera`, `viewcube`, `vecmath` | the 3D view's camera (orbit, pan, zoom, eased animations, projections) and the view cube's faces, edges, corners and hit testing |
 | `scenemesh` | the vertices the 3D view draws for a shape, per voxel style (Flat, Classic, STL; STL faces cut at the cells' walls, so they dim by layer), each vertex carrying its voxel; ghosts, a Transform button's result and hint; picking meshes and ray picks |
@@ -95,7 +95,10 @@ just bench-ui                          # the benchmarks, release build
   change goes through `edit(kind, shape, f)` — one undo step when `f`
   returns that it changed something, recorded even if `f` throws — or
   `editWithoutUndo(f)` for what is not an undo step (solver results), so
-  no change can miss its step.
+  no change can miss its step. A change to shapes' voxels or size goes
+  through `editVoxels(kind, shape, shapes, f)` (or a stroke), naming the
+  shapes `f` may change: the problems using one whose voxels changed lose
+  their solutions, kept in the step for its undo.
 - **Files:** write beside the target and rename over it; report failure,
   never a partial write as success (`DocumentSession::writePuzzle`,
   `SettingsStore::save`).

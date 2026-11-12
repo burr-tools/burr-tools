@@ -365,7 +365,17 @@ the network.
   contrast (`prefersWhiteText`), not white with a shadow (PR-08).
   **Dragging a row** moves the other rows aside (150 ms, `motion.reorderMs`)
   to open the gap it drops into, in place of AC-C01-07's 2 dp drop line
-  (product decision, 2026-10-27).
+  (product decision, 2026-10-27). A row's buttons are built with the row
+  and shown on hover or selection; they take a press only from the event
+  after they showed, so a tap or pen press on a row selects it rather than
+  hitting a button it never saw (PR 181 review).
+- **Voxel edits and solutions** (PR 181 review): a voxel edit -- a stroke,
+  a 3D click, the grid size, an inspector task -- drops the solutions and
+  search state of the problems using that shape, as legacy's
+  `changeShape()` does, without asking. Unlike legacy, the undo step keeps
+  them: undo brings them back, redo drops them again. An undo also leaves
+  alone every problem the step did not change (it used to drop all
+  problems' solutions, in both GUIs).
 - **Drawing colour** (P3): **Remove colour asks first** when a problem
   whose shapes use the colour has solutions or a search in progress
   (legacy clears all of those problems' solutions without asking; the same

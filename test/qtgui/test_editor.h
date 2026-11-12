@@ -14,6 +14,8 @@ private slots:
   void anAreaIsPlacedOnReleaseAsOneStep();
   void areaModeIsRememberedAndSeededFromLegacy();
   void anUndoDuringADragEndsIt();
+  void anEditDuringADragEndsItsStroke();
+  void theFirstStrokeAfterOpeningIsUnsavedAndUndoableAtOnce();
   void theRightButtonErasesWhateverTheToolAndModifiers();
   void theQuickToolIsCapturedAtThePress();
   void theToolInEffectFollowsTheModifiersHeldOverTheGrid();

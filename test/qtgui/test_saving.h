@@ -19,6 +19,8 @@ private slots:
   void transformsGridSizeAndScaleAreSaved();
   void eachShapeKeepsItsOwnEdits();
   void problemsFollowTheirShapesThroughASave();
+  void voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape_data();
+  void voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape();
   void undoneEditsAreNotSavedAndASaveIsClean();
 };
 
