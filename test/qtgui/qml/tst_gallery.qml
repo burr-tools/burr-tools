@@ -194,8 +194,9 @@ TestCase {
             { tag: "glyph button 62x48", cell: "glyphButton.normal", w: 62, h: 48 },
             { tag: "mirror / span glyph button h44", cell: "glyphButton.axis", h: 44 },
             { tag: "stepper h28", cell: "stepper.normal", h: 28 },
-            // density.md §1 (Standard): action button min-h 40, accordion header h32
-            { tag: "action button min-h 40", cell: "actionButton.normal", h: 40, w: 160 },
+            // density.md §1 (Standard): action button min-h 40, accordion header h32;
+            // the button grows with its text, so a taller UI font (Noto Sans: 41.7) passes
+            { tag: "action button min-h 40", cell: "actionButton.normal", minH: 40, w: 160 },
             { tag: "closed accordion: its header and the 1 dp line", cell: "accordion.closed", h: 33 },
         ]
     }
@@ -207,6 +208,8 @@ TestCase {
             compare(c.height, data.h)
         if (data.minW !== undefined)
             verify(c.width >= data.minW)
+        if (data.minH !== undefined)
+            verify(c.height >= data.minH)
     }
 
     function test_tooltipFollowsTheTokens() {
