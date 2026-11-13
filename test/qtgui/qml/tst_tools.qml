@@ -201,7 +201,11 @@ TestCase {
         field.text = "20"
         field.editingFinished()
         compare(stl.parameter(0).value, 20)
-        compare(field.text, "20.00")
+        compare(field.text, "20")           // four significant digits, as the legacy field
+        // the puzzle stores no model: bevel and offset stay the mm of earlier
+        // releases, and the note says what turns are checked for
+        compare(inside(d, "export.stl.param.field.4").text, "0.01")
+        verify(inside(d, "export.stl.modelNote").text.indexOf("but rotation moves are checked for") >= 0)
         verify(stl.volumeText !== before)
         verify(inside(d, "export.stl.param.field.0") === field)    // the field stayed
 

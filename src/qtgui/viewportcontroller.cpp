@@ -35,6 +35,7 @@
 #include "../uicore/vocabulary.h"
 
 #include "../lib/puzzle.h"
+#include "../lib/rotationtables.h"
 #include "../lib/voxel.h"
 
 #include <QFile>
@@ -251,6 +252,7 @@ void ViewportController::buildMesh(void) {
     opt.style = m_voxelStyle;
     opt.piece = btui::pieceColor(m_shapeIndex);
     opt.colors = colourViewValue();
+    opt.stlModel = p.getRotationModel();
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
       p.getColor(i, &r, &g, &b);
