@@ -113,7 +113,7 @@ struct solverSettings_t {
  * | rotation.mode      | BURRTOOLS_ROT_MODE=off\|fast\|balanced\|slow     |
  *
  * rotation.mode only says how turns are decided when a front end turns
- * rotation moves on (burrTxt -R, the GUI); off then means none.
+ * rotation moves on (burrTxt -R, the GUI, Python); off then means none.
  *
  * splitFanout and donateEvery have no variable: only tests choose them.
  *

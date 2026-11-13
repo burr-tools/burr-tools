@@ -8,6 +8,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/rotationtables.h"
 #include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
@@ -22,7 +23,8 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
                                    bool reduce,
                                    bool keep_rotations,
                                    bool keep_mirror,
-                                   unsigned int threads)
+                                   unsigned int threads,
+                                   rotationMode_e rotation_mode)
   : puzzle(std::move(puz)),
     problem_idx(problem_idx),
     disassemble(disassemble),
@@ -45,6 +47,7 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
   if (threads > 0) {
     config.threads = threads;
   }
+  config.rotation.mode = rotation_mode;
   settings = config.resolve();
 
   worker_thread = std::jthread([this](std::stop_token st) { worker_run(st); });
@@ -189,9 +192,21 @@ void SolutionIterator::worker_run(std::stop_token st) {
       return;
     }
 
+    std::shared_ptr<rotationContext_c> rotation;
     if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-      disasm = std::make_unique<disassembler_0_c>(*problem, settings);
+      // Rotation tables are shared and kept between solves (see
+      // sharedRotationTables), so solving designs of one size in sequence
+      // builds them once.
+      // ROTATION_OFF gives no context
+      rotation = rotationContextFor(*problem, settings.rotation);
+      disasm = std::make_unique<disassembler_0_c>(*problem, settings, rotation);
     }
+    // A stopped iterator yields nothing more (push_item drops it), so the
+    // planner runs of the disassembly in progress are cut short.
+    std::stop_callback stopPlanner(st, [rotation]() {
+      if (rotation)
+        rotation->stop();
+    });
 
     unsigned int asm_count{0};
     unsigned int sol_count{0};
