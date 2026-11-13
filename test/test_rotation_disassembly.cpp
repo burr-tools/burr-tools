@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "test_helpers.h"
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disasmtomoves.h"
@@ -50,7 +51,7 @@ class collect_c : public assembler_cb {
 };
 
 std::vector<std::unique_ptr<assembly_c>> assembleAll(problem_c & problem) {
-  std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem);
+  std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem, bttest::settings());
   REQUIRE(assm != nullptr);
   REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
   collect_c cb;
@@ -200,8 +201,8 @@ const aaa_t & aaa(void) {
     problem_c & problem = *r.puzzle->getProblem(0);
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
-    r.withoutRotations = disassembler_0_c(problem).disassemble(r.assemblies[0].get());
-    r.withRotations = disassembler_0_c(problem, rotationContextFor(problem, defaultRotationSettings()))
+    r.withoutRotations = disassembler_0_c(problem, bttest::settings()).disassemble(r.assemblies[0].get());
+    r.withRotations = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, rotationSettings_t{}))
                         .disassemble(r.assemblies[0].get());
     return r;
   }();
@@ -226,7 +227,7 @@ const alPackino_t & alPackino(void) {
     problem_c & problem = *r.puzzle->getProblem(0);
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
-    r.tables = rotationTablesFor(problem, defaultRotationSettings());
+    r.tables = rotationTablesFor(problem, rotationSettings_t{});
     REQUIRE(r.tables != nullptr);
     return r;
   }();
@@ -283,7 +284,7 @@ TEST_CASE("rotation moves do not grow the search node", "[rotations][disasm]") {
 TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations][disasm]") {
 
   const problem_c & problem = *aaa().puzzle->getProblem(0);
-  const rotationSettings_t settings = defaultRotationSettings();
+  const rotationSettings_t settings = rotationSettings_t{};
 
   /* translations alone cannot take it apart */
   CHECK(aaa().withoutRotations == nullptr);
@@ -604,9 +605,9 @@ std::unique_ptr<puzzle_c> cubeAndDominoBar(void) {
 unsigned int checkAgainstBruteForce(const problem_c & problem, const assembly_c * assembly, unsigned int maxNodes,
                                     bool expectRotations) {
 
-  auto context = rotationContextFor(problem, defaultRotationSettings());
+  auto context = rotationContextFor(problem, rotationSettings_t{});
   REQUIRE(context != nullptr);
-  movementAnalysator_c analysator(problem, context);
+  movementAnalysator_c analysator(problem, bttest::settings(), context);
 
   std::vector<unsigned int> pieces;
   for (unsigned int i = 0; i < assembly->placementCount(); i++)
@@ -684,7 +685,7 @@ TEST_CASE("disassemblies without rotation moves record no orientations", "[rotat
   problem_c & problem = *puzzle->getProblem(0);
 
   for (const auto & a : assembleAll(problem)) {
-    std::unique_ptr<separation_c> da = disassembler_0_c(problem).disassemble(a.get());
+    std::unique_ptr<separation_c> da = disassembler_0_c(problem, bttest::settings()).disassemble(a.get());
     if (!da)
       continue;
     CHECK(da->sumRotations() == 0);
@@ -715,7 +716,7 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
   for (bool rotations : { false, true }) {
     INFO("rotation moves " << rotations);
     std::unique_ptr<separation_c> da =
-      disassembler_0_c(problem, rotations ? context : nullptr).disassemble(assemblies[0].get());
+      disassembler_0_c(problem, bttest::settings(), rotations ? context : nullptr).disassemble(assemblies[0].get());
     REQUIRE(da != nullptr);
     CHECK(da->sumRotations() == 0);
     CHECK_FALSE(da->getState(0)->hasTrans());
@@ -779,9 +780,9 @@ TEST_CASE("rotation moves between identical pieces in different orientations", "
   const problem_c & problem = *alPackino().puzzle->getProblem(0);
   const std::vector<std::unique_ptr<assembly_c>> & assemblies = alPackino().assemblies;
 
-  const rotationSettings_t settings = defaultRotationSettings();
+  const rotationSettings_t settings = rotationSettings_t{};
   std::unique_ptr<separation_c> da =
-    disassembler_0_c(problem, rotationContextFor(problem, settings)).disassemble(assemblies[0].get());
+    disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, settings)).disassemble(assemblies[0].get());
   REQUIRE(da != nullptr);
   if (da->sumRotations() > 0) {
     replay_c replay(problem, settings.model);
@@ -808,7 +809,7 @@ TEST_CASE("pool workers sharing a rotation context disassemble like one", "[rota
     }
     return out.str();
   };
-  const std::string serial = text(disassembler_0_c(problem, rotationContextFor(problem, defaultRotationSettings()))
+  const std::string serial = text(disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, rotationSettings_t{}))
                                     .disassemble(assemblies[0].get()).get());
   REQUIRE_FALSE(serial.empty());
 
@@ -816,12 +817,12 @@ TEST_CASE("pool workers sharing a rotation context disassemble like one", "[rota
   std::vector<std::string> results;
   std::mutex resultsMutex;
   {
-    disassemblerPool_c pool(problem, 4,
+    disassemblerPool_c pool(problem, bttest::withThreads(4),
       [&](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c> s) {
         std::lock_guard<std::mutex> lock(resultsMutex);
         results.push_back(text(s.get()));
       },
-      rotationContextFor(problem, defaultRotationSettings(), true));
+      rotationContextFor(problem, rotationSettings_t{}, true));
     for (unsigned int i = 0; i < copies; i++)
       pool.submit(std::make_unique<assembly_c>(assemblies[0].get()));
     pool.finish();
@@ -848,7 +849,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
   const problem_c & problem = *puzzle->getProblem(0);
   auto assemblies = assembleAll(*puzzle->getProblem(0));
   REQUIRE(assemblies.size() == 1);
-  rotationSettings_t settings = defaultRotationSettings();
+  rotationSettings_t settings = rotationSettings_t{};
   settings.model.play = 0.0813;   // tables no other case builds
 
   auto text = [](const separation_c * s) {
@@ -871,7 +872,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
         open.wait();
         return rotationTablesFor(problem, settings);
       }).share());
-    disassemblerPool_c pool(problem, 4,
+    disassemblerPool_c pool(problem, bttest::withThreads(4),
       [&](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c> s) {
         std::lock_guard<std::mutex> lock(pooledMutex);
         pooled.insert(text(s.get()));
@@ -887,7 +888,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
 
   std::multiset<std::string> serial;
   for (const auto & a : assemblies) {
-    const std::string one = text(disassembler_0_c(problem, rotationContextFor(problem, settings)).disassemble(a.get()).get());
+    const std::string one = text(disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, settings)).disassemble(a.get()).get());
     for (unsigned int i = 0; i < copies; i++)
       serial.insert(one);
   }
@@ -951,7 +952,7 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
     for (bool rotations : { false, true }) {
       INFO("rotation moves " << rotations);
       std::unique_ptr<separation_c> da =
-        disassembler_0_c(problem, rotations ? context : nullptr).disassemble(&turned);
+        disassembler_0_c(problem, bttest::settings(), rotations ? context : nullptr).disassemble(&turned);
       REQUIRE(da != nullptr);
       CHECK(da->sumRotations() == 0);
       CHECK_FALSE(da->getState(0)->hasTrans());
@@ -993,7 +994,7 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
     /* exchangeParts swaps neighbours: bubble the part to the front */
     for (unsigned int j = first; j > 0; j--)
       problem.exchangeParts(j - 1, j);
-    auto context = rotationContextFor(problem, defaultRotationSettings());
+    auto context = rotationContextFor(problem, rotationSettings_t{});
     REQUIRE(context != nullptr);
 
     /* it comes apart only with turns, so states reached by translations
@@ -1001,7 +1002,7 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
     auto assemblies = assembleAll(problem);
     REQUIRE(assemblies.size() == 1);
     const std::unique_ptr<assembly_c> & assembly = assemblies[0];
-    CHECK(disassembler_0_c(problem, context).disassemble(assembly.get()) != nullptr);
+    CHECK(disassembler_0_c(problem, bttest::settings(), context).disassemble(assembly.get()) != nullptr);
 
     /* piece p of this order is original piece orig(p) */
     auto orig = [&](unsigned int p) { return p == 0 ? first : (p <= first ? p - 1 : p); };
@@ -1013,7 +1014,7 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
       return configOf(o);
     };
 
-    movementAnalysator_c analysator(problem, context);
+    movementAnalysator_c analysator(problem, bttest::settings(), context);
     std::vector<unsigned int> pieces;
     for (unsigned int i = 0; i < assembly->placementCount(); i++)
       pieces.push_back(i);

@@ -21,6 +21,7 @@
 
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include <optional>
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
@@ -31,6 +32,7 @@
 #include "lib/rotationtables.h"
 #include "lib/voxel.h"
 #include "lib/solution.h"
+#include <stdexcept>
 #include "tools/xml.h"
 #include "tools/gzstream.h"
 #include "tools/envvars.h"
@@ -51,7 +53,12 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 bool rotationMoves;
-rotationSettings_t rotationSettings = defaultRotationSettings();
+/* what the command line chooses; resolved against the environment and the
+ * defaults once the arguments are read */
+solverConfig_t solverConfig;
+/* -m: the model of the pieces for -R, in place of the default */
+std::optional<rotationGeometry::model_t> cliModel;
+solverSettings_t settings;
 
 std::unique_ptr<disassembler_c> d;
 
@@ -68,7 +75,7 @@ static void printLevel(const std::string & level, const separation_c * da) {
 static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
   if (!rotationMoves)
     return nullptr;
-  auto context = rotationContextFor(problem, rotationSettings);
+  auto context = rotationContextFor(problem, settings.rotation);
   if (!context)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
   return context;
@@ -97,11 +104,11 @@ public:
   problem_c * puzzle;
   std::unique_ptr<disassemblerPool_c> pool;
 
-  asm_cb(problem_c * p, unsigned int threads) : pn(p->getNumberOfPieces()), puzzle(p) {
+  explicit asm_cb(problem_c * p) : pn(p->getNumberOfPieces()), puzzle(p) {
     if (disassemble) {
       pool = std::make_unique<disassemblerPool_c>(
         *p,
-        threads,
+        settings,
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
           if (da) {
             Solutions++;
@@ -161,7 +168,7 @@ void usage(bool full = false) {
   cout << "  -n    don't print a newline at the end of the line\n";
   cout << "  -o n  select the problem to solve\n";
   cout << "  -o all solves all problems in file\n";
-  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  cout << "  -t n  set number of worker threads for solver (0 = auto, default: BURRTOOLS_THREADS, else auto)\n";
   cout << "  -x    only redisassemble the given solutions\n";
   cout << "  -a    ask for information about the current puzzle, the next letters must be:\n";
   cout << "     s0 print solutions with the only the used pieces\n";
@@ -198,7 +205,6 @@ int main(int argv, char* args[]) {
   bool reduce = false;
   bool newline = true;
   bool ask = false;
-  unsigned int threads = 0;
   enum {
     W_NUM_SOLUTIONS,
     W_SOLUTION_PIECES,
@@ -230,7 +236,7 @@ int main(int argv, char* args[]) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
-        rotationSettings.model = { play, chamfer };
+        cliModel = rotationGeometry::model_t{ play, chamfer };
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -253,7 +259,7 @@ int main(int argv, char* args[]) {
           cout << "-t requires a non-negative number\n";
           return 1;
         }
-        threads = (unsigned int)t;
+        solverConfig.threads = (unsigned int)t;
         i++;
       } else if (strcmp(args[i], "-o") == 0) {
         if (strcmp(args[i+1],"all")==0)
@@ -295,6 +301,15 @@ int main(int argv, char* args[]) {
     usage();
     return 1;
   }
+
+  try {
+    settings = solverConfig.resolve();
+  } catch (const std::invalid_argument & e) {
+    cerr << e.what() << "\n";
+    return 1;
+  }
+  if (cliModel)
+    settings.rotation.model = *cliModel;
 
   auto str = openGzFile(args[filenumber]);
   if (!str) {
@@ -392,7 +407,7 @@ int main(int argv, char* args[]) {
 
       problem_c * problem = p.getProblem(pr);
 
-      auto assm = p.getGridType()->findAssembler(*problem);
+      auto assm = p.getGridType()->findAssembler(*problem, settings);
 
       switch (assm->createMatrix(false, false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
@@ -431,10 +446,7 @@ int main(int argv, char* args[]) {
       if (allProblems)
         cout << "problem: " << problem->getName() << endl;
 
-      asm_cb a(problem, threads);
-
-      if (threads > 0)
-        assm->setNumThreads(threads);
+      asm_cb a(problem);
 
       assm->assemble(&a);
       a.finish();
@@ -453,7 +465,7 @@ int main(int argv, char* args[]) {
       problem_c * problem = p.getProblem(pr);
 
       auto context = rotationContext(*problem);
-      d = std::make_unique<disassembler_0_c>(*problem, context);
+      d = std::make_unique<disassembler_0_c>(*problem, settings, context);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <numbers>
 #include <tuple>
 #include <map>
 #include <set>
@@ -184,17 +185,17 @@ bool prismBits(const std::vector<vec3> & normals, bits_s & b, std::string & err)
     for (int s = -1; s <= 1; s += 2) {
       double a = std::atan2(s * n[w], s * n[u]);
       bool seen = false;
-      for (double o : az) if (std::fabs(std::remainder(o - a, 2 * M_PI)) < 1e-6) seen = true;
+      for (double o : az) if (std::fabs(std::remainder(o - a, 2 * std::numbers::pi)) < 1e-6) seen = true;
       if (!seen) az.push_back(a);
     }
   }
   if (az.size() != 6) { err = "prism grid: expected 6 in-plane facet directions"; return false; }
   std::sort(az.begin(), az.end());
-  const double c30 = std::cos(M_PI / 6);
+  const double c30 = std::cos(std::numbers::pi / 6);
   for (int s = -1; s <= 1; s += 2)
     for (double a : az) {
       /* the prism's vertices lie between adjacent facet directions */
-      double m = a + M_PI / 6, r = 1 / c30;
+      double m = a + std::numbers::pi / 6, r = 1 / c30;
       double p[3]; p[u] = r * std::cos(m); p[w] = r * std::sin(m); p[axis] = s;
       b.offset.push_back(vec3(p[0], p[1], p[2]));
     }
@@ -202,7 +203,7 @@ bool prismBits(const std::vector<vec3> & normals, bits_s & b, std::string & err)
     /* the bipyramid's equatorial vertices between the facet directions,
      * apexes at the equatorial apothem: faces on the facet directions at
      * 45 degrees, reach 1 along every facet normal and along the axis */
-    double m = a + M_PI / 6, r = 1 / c30;
+    double m = a + std::numbers::pi / 6, r = 1 / c30;
     double p[3]; p[u] = r * std::cos(m); p[w] = r * std::sin(m); p[axis] = 0;
     b.chamfer.push_back(vec3(p[0], p[1], p[2]));
   }

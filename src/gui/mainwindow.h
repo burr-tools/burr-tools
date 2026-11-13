@@ -25,6 +25,7 @@
 
 #include "Layouter.h"
 #include "solveprogresscache.h"
+#include "../lib/solver_config.h"
 
 #include <memory>
 
@@ -164,9 +165,14 @@ class mainWindow_c : public LFl_Double_Window {
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
   Fl_Check_Button *RotationMoves;
 
+  /* the solver settings for this GUI: its preferences, the rest from the
+   * environment and the defaults (solverConfig_t); false, after telling the
+   * user, when a BURRTOOLS_ variable is malformed */
+  bool solverSettings(solverSettings_t & out);
+
   /* the rotation context for disassembling the given problem right here
    * when the Rotation Moves option is on, nullptr otherwise */
-  std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr);
+  std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr, const solverSettings_t & settings);
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;

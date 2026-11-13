@@ -43,15 +43,14 @@ class disassemblerNode_c;
  * neither builds nor touches anything here.
  */
 struct rotationSettings_t {
-  rotationGeometry::model_t model;
-  std::vector<double> amounts;   ///< shift amounts of the wiggle and slide paths
+  /** PR #50's implicit model (play 0.081, sharp edges) until physical
+   *  calibration provides better defaults */
+  rotationGeometry::model_t model = { 0.081, 0 };
+  /** shift amounts of the wiggle and slide paths: every 0.05 from 0.05 to
+   *  0.45 (145 paths per sense; see the TIC results in
+   *  design/2026-10-19-rotation-moves.md) */
+  std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
 };
-
-/** The settings used when the caller has no others: PR #50's implicit
- *  model (play 0.081, sharp edges) until physical calibration provides
- *  better defaults, and shift amounts every 0.05 from 0.05 to 0.45 (145
- *  paths per sense; see the TIC results in design/2026-10-19-rotation-moves.md). */
-rotationSettings_t defaultRotationSettings(void);
 
 /** Table radius for a problem: the largest filled extent of its result and
  *  of its pieces, plus one. That covers every turn of a single piece and of
