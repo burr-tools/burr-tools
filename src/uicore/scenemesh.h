@@ -59,9 +59,11 @@ namespace btui {
    * `edge` draws the face outlines in the shader: xyz are the vertex's
    * barycentric coordinates in its triangle -- each is the distance to the
    * opposite edge -- plus kNoOutline where that edge is not part of a face's
-   * outline (the diagonals of a fanned face); w is 1 for a dashed outline.
-   * The default is no outline at all. */
+   * outline (the diagonals of a fanned face), or plus kThinOutline where it
+   * is drawn thin and faint (the boundary between two voxels across a flat
+   * face); w is 1 for a dashed outline. The default is no outline at all. */
   inline constexpr float kNoOutline = 2.0f;
+  inline constexpr float kThinOutline = 4.0f;
   struct MeshVertex {
     float pos[3]{};
     float normal[3]{};
@@ -73,29 +75,31 @@ namespace btui {
 
   enum class ColorMode { Piece, Voxel };
 
-  /* How voxels look (Settings ▸ 3D view ▸ Voxel style).
-   *   Flat    the redesign's: plain faces in the voxel's colour, every voxel
-   *           face outlined, variable voxels slightly see-through
-   *           (variableAlpha) with a dashed outline (C06, the mock)
+  /* How voxels look (Settings ▸ 3D view ▸ Voxel style). In the flat and STL
+   * styles a variable voxel is a lighter tint of the piece's hue, see-through
+   * (variableTint, kVariableAlpha), drawn as one layer with the nearest-
+   * surface rule (SceneFrame::translucentLayers off): variable voxels hide
+   * each other, the fixed voxels and the background show through them, and
+   * the fixed voxels in front hide them -- as the FLTK GUI draws them.
+   *   Flat    the redesign's: plain faces in the voxel's colour; the shape's
+   *           edges outlined in full, the boundaries between voxels across a
+   *           flat face in a thin, fainter line
    *   Legacy  legacy BurrTools': bevelled voxels in alternating light and
    *           dark shades, variable voxels opaque with a black marker
    *   Stl     the shape as Export ▸ STL makes it (voxel_c::getSTLMesh, the
    *           view's bevel and gap): chamfered edges, no outlines, the shape's
-   *           colour; only the fixed voxels -- an exported piece is solid,
-   *           and variable voxels are not drawn */
+   *           colour; the fixed voxels as one solid and the variable voxels
+   *           as another, see-through, with the export's gap between them */
   enum class VoxelStyle { Flat, Legacy, Stl };
-
   struct MeshOptions {
     VoxelStyle style = VoxelStyle::Flat;
     ColorMode colors = ColorMode::Piece;
     Rgb piece{ 0.5f, 0.5f, 0.5f };   ///< the shape's colour
     std::vector<Rgb> palette;        ///< the puzzle's colours; voxel colour i uses palette[i-1]
-    /* the flat style's variable voxels: translucent, so the variable voxels
-     * inside show through the outer ones, layer over layer (C06 and the mock
-     * say 50 %; user decision). 1 draws them opaque. */
-    float variableAlpha = 0.6f;
+    /* the alpha of the variable voxels in the flat and STL styles; 1 draws
+     * them opaque, a solid like the fixed voxels */
+    float variableAlpha = kVariableAlpha;
   };
-
   struct ShapeMesh {
     std::vector<MeshVertex> opaque;       ///< fixed voxels, triangles
     std::vector<MeshVertex> translucent;  ///< variable voxels, triangles, alpha from MeshOptions

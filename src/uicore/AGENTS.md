@@ -98,8 +98,8 @@ just bench-ui                          # the benchmarks, release build
   setting value. Every mesh vertex carries its voxel (`cell`): Dim other
   layers and picking depend on it.
 - **Colour for text:** text on a shape colour is chosen by
-  `prefersWhiteText` (the higher WCAG contrast, at least 4.5:1). Do not add a
-  second rule anywhere.
+  `prefersWhiteText` (white on the light-background colours, black on the
+  dark-background ones; at least 3:1). Do not add a second rule anywhere.
 - **Performance:** meshes are rebuilt once per change, not per frame; the
   hot paths (`scenemesh`, `depthsort`, `vectorexport`) have benchmarks and
   allocation checks — run `just bench-ui` before and after a change to

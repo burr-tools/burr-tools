@@ -190,6 +190,7 @@ gui_src = [
   'src/uicore/puzzlehistory.cpp',
   # the piece colours, which src/gui/piececolor.cpp wraps
   'src/uicore/palette.cpp',
+  'src/uicore/okhsl.cpp',
 ]
 
 # Vendored third-party C sources, built separately so that their warnings can be
@@ -442,6 +443,7 @@ libburr_uicore = static_library('burr_uicore', [
     'src/uicore/imagepages.cpp',
     'src/uicore/layoutmodel.cpp',
     'src/uicore/palette.cpp',
+    'src/uicore/okhsl.cpp',
     'src/uicore/puzzlehistory.cpp',
     'src/uicore/puzzletools.cpp',
     'src/uicore/scenemesh.cpp',

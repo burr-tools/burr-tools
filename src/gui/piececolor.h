@@ -60,12 +60,22 @@ unsigned int pieceColorBi(int x, int sub);
 float darkPieceColor(float f);
 float lightPieceColor(float f);
 
+/* the lighter tint of the same hue that marks a variable voxel, in the 2D
+ * editor's cells and, whitened less, in the see-through 3D view; the
+ * channels are replaced in place, 0 to 1 in and out */
+void variableCellColor(float * r, float * g, float * b);
+void variablePieceColor(float * r, float * g, float * b);
+
+/* the 2D editor's chequerboard shades, milder than the voxel style's */
+float editorDarkPieceColor(float f);
+float editorLightPieceColor(float f);
+
 /* two macros to directly get the fltk color */
 #define fltkSubPieceColor(x,y) fl_rgb_color(pieceColorRi(x, y), pieceColorGi(x, y), pieceColorBi(x, y))
 #define fltkPieceColor(x) fl_rgb_color(pieceColorRi(x), pieceColorGi(x), pieceColorBi(x))
 
-/* a function that returns an fltk color (either black or white) with a big contrast
- * to the piece color
+/* the fltk color of text on the piece color: white, which reads on all of
+ * them (btui::prefersWhiteText)
  */
 Fl_Color contrastPieceColor(int x);
 

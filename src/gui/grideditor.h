@@ -180,11 +180,10 @@ public:
   virtual void calcParameters(int *sx, int *sy, int *tx, int *ty) = 0;
 
   /* the following function all do draw a little bit of one tile
-   * The first draws the colour part of a normal tile, this should fill
-   * out the tile completely, the 2nd draws the colour part of a variable tile
-   * this should leave 3 pixels empty to the edge of the tile. Both functions
-   * do not draw the frame around the tile, just the inside. You don't need
-   * to take care of the colour, just draw
+   * The first draws the colour part of a tile, this should fill out the
+   * tile completely (a variable tile is the same shape in a darker colour).
+   * It does not draw the frame around the tile, just the inside. You don't
+   * need to take care of the colour, just draw
    *
    * If follows the frame drawing function. Just draw a frame around the tile
    * keep in mind to properly merge with the neighbours otherwise the frames might
@@ -198,7 +197,6 @@ public:
    * it. Eventually I will provide a better way to do that
    */
   virtual void drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
-  virtual void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;
   virtual void drawTileCursor(int x, int y, int z, int tx, int ty, int sx, int sy) = 0;

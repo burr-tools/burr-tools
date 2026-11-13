@@ -94,43 +94,6 @@ void gridEditor_1_c::drawNormalTile(int x, int y, int, int tx, int ty, int s, in
   fl_polygon(x1, y1, x2, y2, x3, y3);
 }
 
-void gridEditor_1_c::drawVariableTile(int x, int y, int, int tx, int ty, int s, int s2) {
-  int x1, y1, x2, x3, y3;
-  int x1v, y1v, x2v, y2v, x3v, y3v;
-
-  /* find out the coordinates of the 3 corners of the triangle */
-  if ((x+y) & 1) {
-    // triangle with base at the top
-
-    x1 = tx+s*x/2;
-    y1 = ty-s2-y*s2;
-    x2 = x1+s;
-    x3 = x1+s/2;
-    y3 = y1+s2;
-
-    y1v = y2v = y1 + 3;
-    x1v = x1 + 5;
-    x2v = x2 - 5;
-    x3v = x3;
-    y3v = y3 - 6;
-
-  } else {
-
-    x1 = tx+s*x/2;
-    y1 = ty-y*s2;
-    x2 = x1+s;
-    x3 = x1+s/2;
-    y3 = y1-s2;
-
-    y1v = y2v = y1 - 3;
-    x1v = x1 + 5;
-    x2v = x2 - 5;
-    x3v = x3;
-    y3v = y3 + 6;
-  }
-  fl_polygon(x1v, y1v, x2v, y2v, x3v, y3v);
-}
-
 void gridEditor_1_c::drawTileFrame(int x, int y, int, int tx, int ty, int s, int s2) {
   int x1, y1, x2, y2, x3, y3;
 

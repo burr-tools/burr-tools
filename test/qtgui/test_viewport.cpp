@@ -783,8 +783,9 @@ void TestRender::framesDoNotAllocatePerTriangle() {
   // orbiting a translucent shape sorts its triangles again every frame; the
   // sort and the line list keep their storage, so what a frame allocates (in
   // our code -- Qt keeps its own) is small and does not grow with the mesh.
-  // Sorting into new lists, a 12^3 shape of variable voxels (~20k
-  // triangles) took some 400 KB a frame.
+  // Sorting into new lists, a 16^3 chequerboard of variable voxels (~25k
+  // triangles: every other voxel, each a body of its own) took some 400 KB
+  // a frame.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(96, 72)));
   AppFixture f;
@@ -795,8 +796,11 @@ void TestRender::framesDoNotAllocatePerTriangle() {
     for (unsigned z = 0; z < edge; z++)
       for (unsigned y = 0; y < edge; y++)
         for (unsigned x = 0; x < edge; x++)
-          v->setState(x, y, z, voxel_c::VX_VARIABLE);
-    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, btui::MeshOptions{}));
+          if ((x + y + z) % 2 == 0)
+            v->setState(x, y, z, voxel_c::VX_VARIABLE);
+    btui::MeshOptions seeThrough;
+    seeThrough.variableAlpha = 0.6f;
+    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, seeThrough));
   };
   auto perFrame = [&](const std::shared_ptr<const btui::ShapeMesh> & mesh, quint64 revision) {
     btui::Camera cam;
@@ -827,10 +831,10 @@ void TestRender::framesDoNotAllocatePerTriangle() {
   };
   // the counter does see this program's allocations
   QCOMPARE(btui::test::probeAllocation(4000), std::size_t(4000));
-  const auto small = variableCube(2), big = variableCube(12);
+  const auto small = variableCube(2), big = variableCube(16);
   QVERIFY(big->translucent.size() / 3 > 20000);
   const std::size_t smallBytes = perFrame(small, 1), bigBytes = perFrame(big, 2);
-  const QString got = QStringLiteral("per frame: %1 B for 2^3, %2 B for 12^3").arg(smallBytes).arg(bigBytes);
+  const QString got = QStringLiteral("per frame: %1 B for 2^3, %2 B for 16^3").arg(smallBytes).arg(bigBytes);
   qInfo().noquote() << got;
   QVERIFY2(bigBytes < 8192, qPrintable(got));
   QVERIFY2(bigBytes <= smallBytes + 1024, qPrintable(got));
@@ -927,12 +931,12 @@ void TestRender::translucencyBlendsInLinearLight() {
            qPrintable(QStringLiteral("%1, expected %2").arg(px.red()).arg(expected)));
 }
 
-void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
+void TestRender::variableVoxelsAreOneBodyShowingTheirNearestSurface() {
   // The flat style: two variable voxels one behind the other, red and green.
-  // Every translucent layer is blended, farthest first: the pixel takes
-  // both (alpha 1 - (1 - a)^2) and the near voxel's colour leads -- from
-  // either side, so the sorting follows the view. Legacy's rule (nearest
-  // surface only) gives one layer.
+  // They are one see-through body with no face between them, and the
+  // renderer blends its nearest surface only: from the front the pixel is
+  // the red voxel's at the variable alpha, from the back the green one's,
+  // in both compositing modes -- never both colours piled up.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(64, 64)));
   AppFixture f;
@@ -954,6 +958,8 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
   }
   auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*v, opt));
   QVERIFY(!mesh->translucent.empty());
+  QVERIFY(mesh->opaque.empty());
+  QCOMPARE(mesh->translucent.size(), std::size_t(10 * 2 * 3));   // the outer faces of the pair
 
   auto look = [&](btui::Vec3 from, bool layers) {
     btui::Camera cam;
@@ -971,22 +977,22 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
     return t.render(fr).pixelColor(32, 32);
   };
   const double a = opt.variableAlpha;
-  const QColor front = look({ 0, 0, 1 }, true);
-  QVERIFY2(std::abs(front.alphaF() - (1 - (1 - a) * (1 - a))) < 0.03, qPrintable(QString::number(front.alphaF())));
-  QVERIFY2(front.red() > front.green() && front.green() > 0,
-           qPrintable(QStringLiteral("red %1 green %2").arg(front.red()).arg(front.green())));
-  const QColor back = look({ 0, 0, -1 }, true);
-  QVERIFY2(back.green() > back.red() && back.red() > 0,
-           qPrintable(QStringLiteral("red %1 green %2").arg(back.red()).arg(back.green())));
-  const QColor nearest = look({ 0, 0, 1 }, false);
-  QVERIFY2(std::abs(nearest.alphaF() - a) < 0.03, qPrintable(QString::number(nearest.alphaF())));
-  QCOMPARE(nearest.green(), 0);
+  for (bool layers : { false, true }) {
+    const QColor front = look({ 0, 0, 1 }, layers);
+    QVERIFY2(std::abs(front.alphaF() - a) < 0.03, qPrintable(QString::number(front.alphaF())));
+    QVERIFY2(front.red() > front.green(), qPrintable(QStringLiteral("red %1 green %2").arg(front.red()).arg(front.green())));
+    const QColor back = look({ 0, 0, -1 }, layers);
+    QVERIFY2(std::abs(back.alphaF() - a) < 0.03, qPrintable(QString::number(back.alphaF())));
+    QVERIFY2(back.green() > back.red(), qPrintable(QStringLiteral("red %1 green %2").arg(back.red()).arg(back.green())));
+  }
 }
 
-void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
-  // C06 / the mock: each voxel face stroked darker; Classic (legacy's
-  // bevels and checker) has no such lines. Rendered with and without the
-  // outline, only the outline pixels change -- and they get darker.
+void TestRender::theFlatStyleOutlinesTheShapesEdges() {
+  // the flat style strokes the shape's edges darker -- a full line where
+  // faces meet at an angle or the colour changes, a thin faint one between
+  // the voxels of a flat region; Classic (legacy's bevels and checker) has
+  // no such lines. Rendered with and without the outline, only the outline
+  // pixels change -- and they get darker.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(320, 240)));
   AppFixture f;
@@ -997,6 +1003,7 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
   v->setDisplayBounds(false);
   QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
 
+  int strong = 0;   // the full lines: much darker
   auto compareOutline = [&](int * darker, int * lighter) {
     SceneFrame fr = v->frame(1);
     fr.lines.clear();
@@ -1004,12 +1011,13 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
     const QImage with = t.render(fr);
     fr.outlineStrength = 0;
     const QImage without = t.render(fr);
-    *darker = *lighter = 0;
+    *darker = *lighter = strong = 0;
     for (int y = 0; y < with.height(); y++)
       for (int x = 0; x < with.width(); x++) {
         const QColor a = with.pixelColor(x, y), b = without.pixelColor(x, y);
         const int d = (a.red() + a.green() + a.blue()) - (b.red() + b.green() + b.blue());
         if (d < -12) (*darker)++;
+        if (d < -70) strong++;
         if (d > 12) (*lighter)++;
       }
     return with;
@@ -1018,8 +1026,13 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
   int darker = 0, lighter = 0;
   const QImage flat = compareOutline(&darker, &lighter);
   saveForInspection(flat, "pelikan-flat");
-  // an 8x8x8 cube shows three faces of 64 voxel faces each: many lines
-  QVERIFY2(darker > 1500, qPrintable(QStringLiteral("%1 outline pixels").arg(darker)));
+  // an 8x8x8 cube shows three faces with nine edges between them, drawn in
+  // full: a few hundred strong pixels, nothing like the 1500 and more that
+  // 64 full-stroked voxel faces per face would give; and the voxel grid
+  // across the faces in thin faint lines: many more pixels, none strong
+  QVERIFY2(strong > 300, qPrintable(QStringLiteral("%1 strong outline pixels").arg(strong)));
+  QVERIFY2(strong < 1500, qPrintable(QStringLiteral("%1 strong outline pixels").arg(strong)));
+  QVERIFY2(darker > strong + 1500, qPrintable(QStringLiteral("%1 outline pixels, %2 strong").arg(darker).arg(strong)));
   QCOMPARE(lighter, 0);
 
   f.app->settings()->setVoxelStyle(QStringLiteral("legacy"));
@@ -1038,6 +1051,32 @@ void TestRender::darkThemeUsesTheDarkCanvas() {
   QImage img = t.render(f.app->viewport()->frame(1));
   QVERIFY(near(img.pixelColor(80, 60), Theme::instance()->canvas()));
   Theme::instance()->setMode(QStringLiteral("light"));
+}
+
+void TestRender::darkThemeRebuildsTheMeshInTheDarkPieceColours() {
+  // the piece colour is baked into the mesh; a theme switch rebuilds it
+  // with the other set, so the drawn shape changes colour with the chips
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(160, 120)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  Theme::instance()->setMode(QStringLiteral("light"));
+  auto restore = qScopeGuard([] { Theme::instance()->setMode(QStringLiteral("light")); });
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor light = t.render(v->frame(1)).pixelColor(80, 60);
+
+  Theme::instance()->setMode(QStringLiteral("dark"));
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor dark = t.render(v->frame(1)).pixelColor(80, 60);
+  QVERIFY(dark != light);
+  // both are the blue of shape 1, the dark set's lighter
+  QVERIFY(light.blue() > light.red() && light.blue() > light.green());
+  QVERIFY(dark.blue() > dark.red() && dark.blue() > dark.green());
+  QVERIFY(dark.lightnessF() > light.lightnessF());
 }
 
 void TestRender::theSlabTintsItsLayer() {
@@ -1064,8 +1103,10 @@ void TestRender::theSlabTintsItsLayer() {
   saveForInspection(with, "slab-on");
   const QColor a = with.pixelColor(160, 120), b = without.pixelColor(160, 120);
   QVERIFY(a != b);
-  // the tint pulls toward the accent (blue)
-  QVERIFY(a.blue() >= b.blue());
+  // a tint, not a repaint: the plate's hue (blue) still dominates under it.
+  // (The earlier check that the blue channel rose sampled a voxel grid line,
+  // which the flat style no longer draws across a flat face.)
+  QVERIFY(a.blue() > a.red() && a.blue() > a.green());
 }
 
 void TestRender::everyGridTypeRenders() {

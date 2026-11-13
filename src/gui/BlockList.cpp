@@ -166,6 +166,15 @@ unsigned int SelectableList::getSelection(void) {
   return currentSelect;
 }
 
+/* Whether the text on a block of this colour is white rather than black.
+ * On a piece colour it is white: they are built at one lightness that white
+ * reads on, so a list of them has one text colour. Any other colour -- one
+ * the user defined, or the grey of an inactive list -- gets whichever
+ * suits how light it is. */
+static bool whiteTextOn(unsigned char r, unsigned char g, unsigned char b, bool pieceColour) {
+  return pieceColour || 3*r + 6*g + 1*b <= 1275;
+}
+
 /* draw a selectable text block with a background colour */
 void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   int w, h;
@@ -191,11 +200,10 @@ void SelectableTextList::blockDraw(unsigned int block, int x, int y) {
   /* draw the coloured rectangle */
   fl_rectf(x, y, w, h, r, g, b);
 
-  /* text colour depends on how light the colour is */
-  if ((int)3*r + 6*g + 1*b > 1275)
-    fl_color(0, 0, 0);
-  else
+  if (whiteTextOn(r, g, b, active() && pieceColours()))
     fl_color(255, 255, 255);
+  else
+    fl_color(0, 0, 0);
 
   /* draw the text */
   fl_font(labelfont(), labelsize());
@@ -248,10 +256,11 @@ void TextList::blockDraw(unsigned int block, int x, int y) {
 
   fl_rectf(x, y, w, h, r, g, b);
 
-  if ((int)3*r + 6*g + 1*b > 1275)
-    fl_color(0, 0, 0);
-  else
+  /* the blocks of a TextList are pieces */
+  if (whiteTextOn(r, g, b, active()))
     fl_color(255, 255, 255);
+  else
+    fl_color(0, 0, 0);
 
   fl_font(labelfont(), labelsize());
   fl_draw(txt, x+4, y+h-2-fl_descent());
@@ -502,7 +511,7 @@ void PieceVisibility::blockDraw(unsigned int block, int x, int y) {
   /* the colour of the label depends on the background colour. If the only frame mode
    * is on we normally have the light background colour, so use the dark colour, too
    */
-  if (((int)3*r + 6*g + 1*b > 1275) || (visState[block] == 2))
+  if (!whiteTextOn(r, g, b, active()) || (visState[block] == 2))
     fl_color(0, 0, 0);
   else
     fl_color(255, 255, 255);

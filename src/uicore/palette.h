@@ -36,6 +36,13 @@ namespace btui {
     float r, g, b;
   };
 
+  /* The piece colours come in a set for a light background (the default,
+   * and all the FLTK GUI has) and one for a dark background: the same hues,
+   * lighter. This switches every colour below for the whole program; a GUI
+   * that switches it has to redraw what shows piece colours. */
+  void setPieceColorsForDarkBackground(bool dark);
+  bool pieceColorsForDarkBackground(void);
+
   /* the base colour of shape number `shape` (0-based) */
   Rgb pieceColor(int shape);
 
@@ -59,18 +66,39 @@ namespace btui {
   inline float darkShade(float f) { return float(f * 0.9); }
   inline float lightShade(float f) { return float(1 - 0.9 * (1 - f)); }
 
+  /* The look of a variable voxel, in both GUIs: the same hue as the fixed
+   * voxels next to it, lighter (variableTint, `toWhite` of the way to
+   * white), and in the 3D views see-through at kVariableAlpha, drawn as one
+   * layer with the nearest-surface rule: variable voxels hide each other,
+   * show the fixed voxels and the background through themselves, and are
+   * hidden by the fixed voxels in front of them. "Less there" than a fixed
+   * voxel, while still a region of the piece's colour. The 3D views whiten
+   * less: blended over the light canvas at half alpha, the 2D editor's
+   * tint would hardly show its hue. */
+  Rgb variableTint(const Rgb & c, float toWhite);
+  inline constexpr float kVariableTintEditor = 0.55f;
+  inline constexpr float kVariableTint3D = 0.25f;
+  inline constexpr float kVariableAlpha = 0.5f;
+
+  /* the 2D editor's chequerboard: a milder pair than the voxel style's,
+   * so that the variable cells' lighter tint stands out from it */
+  inline float editorDarkShade(float f) { return float(f * 0.95); }
+  inline float editorLightShade(float f) { return float(1 - 0.95 * (1 - f)); }
+
   /* WCAG 2 relative luminance of an sRGB colour, and the contrast ratio of
    * two (1 to 21) */
   float relativeLuminance(const Rgb & c);
   float contrastRatio(const Rgb & a, const Rgb & b);
 
-  /* Whether text on this colour -- the shape's -- is white rather than
-   * black: whichever contrasts more, by WCAG's measure, so the better of
-   * the two (always at least 4.5:1) is the one drawn. Legacy's weighted
-   * channel sum (contrastPieceColor) chose white on red, magenta and some
-   * greens at 3 to 4:1. One rule for every chip, list and the 3D view's
-   * tag. */
-  bool prefersWhiteText(const Rgb & background);
+  /* Whether text on a shape's colour is white rather than black: white on
+   * the colours for a light background, black on the lighter ones for a
+   * dark background. The colours of a set are built at about one
+   * lightness, so one text colour reads on all of them, and a list of
+   * chips looks even; choosing per colour whichever contrasts more put
+   * black on some chips and white on their neighbours. White is at least
+   * 3:1 on the light-background colours (lowest on cyan and mustard), black
+   * at least 4.5:1 on the dark-background ones. One rule for every chip,
+   * list and the 3D view's tag. */
   bool prefersWhiteText(int shape);
 }
 

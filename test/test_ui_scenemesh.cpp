@@ -29,6 +29,9 @@ namespace {
     return o;
   }
 
+  // a channel as the mesh stores it (scenemesh.cpp's rgba)
+  std::uint8_t channel8(float v) { return std::uint8_t(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); }
+
   std::unique_ptr<puzzle_c> loadPuzzle(const char * file) {
     auto str = openGzFile(file);
     if (!str) return nullptr;
@@ -164,6 +167,7 @@ namespace {
 
   /* the sides of triangle i of a vertex list that carry an outline: a side's
    * coordinate stays below kNoOutline at all three corners */
+  // the sides of a triangle drawn with a full line (edge offset 0)
   int outlinedSides(const std::vector<MeshVertex> & v, size_t tri) {
     int n = 0;
     for (int side = 0; side < 3; side++) {
@@ -172,6 +176,19 @@ namespace {
         if (v[3 * tri + k].edge[side] >= 1.5f)
           outlined = false;
       n += outlined ? 1 : 0;
+    }
+    return n;
+  }
+
+  // the sides drawn with a thin line (edge offset kThinOutline)
+  int thinSides(const std::vector<MeshVertex> & v, size_t tri) {
+    int n = 0;
+    for (int side = 0; side < 3; side++) {
+      bool thin = true;
+      for (size_t k = 0; k < 3; k++)
+        if (v[3 * tri + k].edge[side] < kThinOutline - 0.5f)
+          thin = false;
+      n += thin ? 1 : 0;
     }
     return n;
   }
@@ -212,51 +229,117 @@ TEST_CASE("flat style: the outline follows each face's sides, not the fan's diag
   const MeshVertex & a = m.opaque[0];
   CHECK((a.edge[0] == 1.0f || a.edge[0] == 1.0f + kNoOutline));
 
-  // a triangle grid's faces are outlined all round
+  // a lone triangular prism: its triangular end faces are outlined all round
   gridType_c tri(gridType_c::GT_TRIANGULAR_PRISM);
-  auto p = bttest::makeVoxel(tri, 2, 2, 1);
-  for (unsigned x = 0; x < 2; x++)
-    for (unsigned y = 0; y < 2; y++)
-      if (p->validCoordinate(x, y, 0)) p->setState(x, y, 0, voxel_c::VX_FILLED);
+  auto p = bttest::makeVoxel(tri, 1, 1, 1);
+  p->setState(0, 0, 0, voxel_c::VX_FILLED);
   const ShapeMesh pm = buildShapeMesh(*p, blue());
   REQUIRE_FALSE(pm.opaque.empty());
   int full = 0;
   for (size_t t = 0; t < pm.opaque.size() / 3; t++)
     full += outlinedSides(pm.opaque, t) == 3 ? 1 : 0;
-  CHECK(full > 0);                                   // the triangular end faces
+  CHECK(full == 2);
 }
 
-TEST_CASE("flat style: variable voxels are slightly see-through with a dashed outline, no marker", "[ui][scenemesh]") {
+TEST_CASE("flat style: a thin line where a face continues in the same plane and colour", "[ui][scenemesh]") {
+  // two cubes side by side: the sides the two top faces (front, back,
+  // bottom) share lie inside one flat region and get a thin line; the
+  // box's own edges a full one. The box has 12 edges, the four along x
+  // split in two where the cubes meet: 16 edge segments, each on two
+  // faces; and 4 shared sides, each on two faces.
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 2, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  const ShapeMesh m = buildShapeMesh(*v, blue());
+  int outlined = 0, thin = 0;
+  for (size_t t = 0; t < m.opaque.size() / 3; t++) {
+    outlined += outlinedSides(m.opaque, t);
+    thin += thinSides(m.opaque, t);
+  }
+  CHECK(outlined == 32);
+  CHECK(thin == 8);
+
+  // a fixed voxel next to a variable one: the colour changes at the
+  // boundary, so the boundary is outlined like an edge (the fixed cube
+  // keeps all six faces, seen through the variable one; the variable one
+  // has five, none against the fixed one)
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  const ShapeMesh b = buildShapeMesh(*v, blue());
+  outlined = 0; thin = 0;
+  for (const auto * list : { &b.opaque, &b.translucent })
+    for (size_t t = 0; t < list->size() / 3; t++) {
+      outlined += outlinedSides(*list, t);
+      thin += thinSides(*list, t);
+    }
+  CHECK(outlined == 6 * 4 + 5 * 4);
+  CHECK(thin == 0);
+
+  // a concave corner is an edge too: an L of three cubes
+  auto l = bttest::makeVoxel(gt, 2, 2, 1);
+  l->setState(0, 0, 0, voxel_c::VX_FILLED);
+  l->setState(1, 0, 0, voxel_c::VX_FILLED);
+  l->setState(0, 1, 0, voxel_c::VX_FILLED);
+  const ShapeMesh lm = buildShapeMesh(*l, blue());
+  // the inner corner's two faces meet at a right angle: both their sides there are outlined
+  bool innerOutlined = false;
+  for (size_t t = 0; t < lm.opaque.size() / 3; t++) {
+    const MeshVertex * tv = &lm.opaque[3 * t];
+    // a face of cube (1,0,0) facing +y, or of cube (0,1,0) facing +x
+    const bool inner = (tv->cell[0] == 1.0f && tv->normal[1] > 0.9f) || (tv->cell[1] == 1.0f && tv->normal[0] > 0.9f);
+    if (inner && outlinedSides(lm.opaque, t) == 2)
+      innerOutlined = true;
+  }
+  CHECK(innerOutlined);
+}
+
+TEST_CASE("flat style: variable voxels are a lighter tint of the hue, see-through, one solid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_FILLED);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   REQUIRE_FALSE(m.translucent.empty());
+  const Rgb tint = variableTint({ 0, 0, 1 }, kVariableTint3D);
+  CHECK(tint.r > 0.2f);                              // towards white
+  CHECK(tint.b == 1.0f);                             // still blue
   for (const auto & vert : m.translucent) {
     CHECK(vert.cell[0] == 1.0f);
-    CHECK(vert.edge[3] == 1.0f);                     // dashed
-    CHECK(vert.color.a == 153);                      // 60 %
-    CHECK(vert.color.b == 255);                      // its colour, not legacy's black marker
+    CHECK(vert.edge[3] == 0.0f);                     // no dashes: the tint and the alpha mark it
+    CHECK(vert.color.a == channel8(kVariableAlpha));
+    CHECK(vert.color.r == channel8(tint.r));
+    CHECK(vert.color.g == channel8(tint.g));
+    CHECK(vert.color.b == 255);
   }
-  for (const auto & vert : m.opaque)
-    CHECK(vert.edge[3] == 0.0f);
+  for (const auto & vert : m.opaque) {
+    CHECK(vert.color.a == 255);
+    CHECK(vert.color.b == 255);
+    CHECK(vert.color.r == 0);
+  }
   // the fixed voxel stays a closed cube, seen through its variable
   // neighbour; the variable one has no face against it
   CHECK(m.opaque.size() == 6 * 2 * 3);
   CHECK(m.translucent.size() == 5 * 2 * 3);
+
+  // variableAlpha 1: the variable voxels an opaque solid of the tint
+  MeshOptions o = blue();
+  o.variableAlpha = 1.0f;
+  const ShapeMesh solid = buildShapeMesh(*v, o);
+  CHECK(solid.translucent.empty());
+  CHECK(solid.opaque.size() == (6 + 5) * 2 * 3);
 }
 
-TEST_CASE("flat style: variable neighbours keep the face between them", "[ui][scenemesh]") {
-  // so the inner variable voxels show through the outer ones; each voxel
-  // has its own face there, facing away from the other
+TEST_CASE("flat style: variable neighbours are one body, no face between them", "[ui][scenemesh]") {
+  // the renderer blends the body's nearest surface only (the layer rule),
+  // so a face inside it would never show; legacy's classic style draws
+  // its own surface
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   CHECK(m.opaque.empty());
-  CHECK(m.translucent.size() == 2 * 6 * 2 * 3);      // every face of both voxels
+  CHECK(m.translucent.size() == 10 * 2 * 3);         // the outer faces only
 
   // the classic style keeps legacy's surface only
   MeshOptions classic = blue();
@@ -287,44 +370,60 @@ TEST_CASE("flat style: spheres stay round and draw no facet lines", "[ui][scenem
   }
 }
 
-TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones not drawn", "[ui][scenemesh]") {
+TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones a see-through tinted solid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_FILLED);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   MeshOptions o = blue();
   o.style = VoxelStyle::Stl;
-  const ShapeMesh m = buildShapeMesh(*v, o);
-  CHECK(m.translucent.empty());
+  ShapeMesh m = buildShapeMesh(*v, o);
   REQUIRE_FALSE(m.opaque.empty());
+  REQUIRE_FALSE(m.translucent.empty());
   CHECK(m.opaque.size() > 6 * 2 * 3);              // the chamfers: more than a plain cube's faces
-  float lo[3] = { 1e9f, 1e9f, 1e9f }, hi[3] = { -1e9f, -1e9f, -1e9f };
+  for (const auto & vert : m.translucent)
+    CHECK(vert.color.a == channel8(kVariableAlpha));
+  // the two solids looked at together below
+  m.opaque.insert(m.opaque.end(), m.translucent.begin(), m.translucent.end());
+  const std::uint8_t shadeB = 255, tintR = channel8(variableTint({ 0, 0, 1 }, kVariableTint3D).r);
+  float lo[2][3] = { { 1e9f, 1e9f, 1e9f }, { 1e9f, 1e9f, 1e9f } }, hi[2][3] = { { -1e9f, -1e9f, -1e9f }, { -1e9f, -1e9f, -1e9f } };
+  size_t count[2] = { 0, 0 };
   for (const auto & vert : m.opaque) {
-    CHECK(vert.color.b == 255);
-    CHECK(vert.color.a == 255);
     CHECK(vert.edge[0] == kNoOutline);              // no outlines
-    CHECK(vert.cell[0] == 0.0f);                    // the fixed voxel's, for Dim other layers
-    CHECK(vert.cell[1] == 0.0f);
+    CHECK(vert.cell[1] == 0.0f);                    // each face on its own voxel, for Dim other layers
     CHECK(vert.cell[2] == 0.0f);
+    const int part = vert.cell[0] == 0.0f ? 0 : 1;   // the fixed voxel's solid or the variable one's
+    CHECK(vert.cell[0] == float(part));
+    CHECK(vert.color.b == shadeB);
+    CHECK(vert.color.r == (part == 0 ? 0 : tintR));
+    CHECK(vert.color.a == (part == 0 ? 255 : channel8(kVariableAlpha)));
     CHECK_THAT(std::hypot(vert.normal[0], vert.normal[1], vert.normal[2]), WithinAbs(1.0, 1e-3));
+    count[part]++;
     for (int k = 0; k < 3; k++) {
-      lo[k] = std::min(lo[k], vert.pos[k]);
-      hi[k] = std::max(hi[k], vert.pos[k]);
+      lo[part][k] = std::min(lo[part][k], vert.pos[k]);
+      hi[part][k] = std::max(hi[part][k], vert.pos[k]);
     }
   }
-  // on the voxel grid, in the shape's own units: the fixed cube only
-  // (each side inset by the view's gap, 0.02)
+  // two solids on the voxel grid, in the shape's own units, each inset by
+  // the view's gap (0.02): the fixed cube and, next to it, the variable one
+  CHECK(count[0] > 0);
+  CHECK(count[1] > 0);
   for (int k = 0; k < 3; k++) {
-    CHECK_THAT(lo[k], WithinAbs(0.0, 0.03));
-    CHECK_THAT(hi[k], WithinAbs(1.0, 0.03));
+    CHECK_THAT(lo[0][k], WithinAbs(0.0, 0.03));
+    CHECK_THAT(hi[0][k], WithinAbs(1.0, 0.03));
+    CHECK_THAT(lo[1][k], WithinAbs(k == 0 ? 1.0 : 0.0, 0.03));
+    CHECK_THAT(hi[1][k], WithinAbs(k == 0 ? 2.0 : 1.0, 0.03));
   }
   // the view's bounds stay the whole shape's, so switching styles keeps the camera
   CHECK_THAT(m.boundsMax.x, WithinAbs(2.0, 1e-6));
 
-  // only variable voxels: nothing to draw
+  // only variable voxels: the tinted solid alone
   auto w = bttest::makeVoxel(gt, 1, 1, 1);
   w->setState(0, 0, 0, voxel_c::VX_VARIABLE);
-  CHECK(buildShapeMesh(*w, o).empty());
+  const ShapeMesh onlyVariable = buildShapeMesh(*w, o);
+  CHECK(onlyVariable.opaque.empty());
+  REQUIRE_FALSE(onlyVariable.translucent.empty());
+  CHECK(onlyVariable.translucent.front().color.r == tintR);
 }
 
 TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
