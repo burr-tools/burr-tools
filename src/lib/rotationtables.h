@@ -42,15 +42,26 @@ class disassemblerNode_c;
  * for tables and passes an empty pointer down to its disassemblers, so it
  * neither builds nor touches anything here.
  */
+/** The amounts of the wide family's 16-direction extension (the only
+ *  family the front ends use: the compass paths and this extension). */
+inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55 };
+
 struct rotationSettings_t {
   /** PR #50's implicit model (play 0.081, sharp edges) until physical
    *  calibration provides better defaults */
   rotationGeometry::model_t model = { 0.081, 0 };
-  /** shift amounts of the wiggle and slide paths: every 0.05 from 0.05 to
-   *  0.45 (145 paths per sense; see the TIC results in
-   *  design/2026-10-19-rotation-moves.md) */
+  /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
+   *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
   std::vector<double> amounts = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45 };
+  /** amounts of the 16-direction extension after them
+   *  (rotationGeometry::wideExtension), the wide family. Empty leaves the
+   *  compass part alone, which tests use for its smaller tables; the
+   *  front ends always use the wide family. */
+  std::vector<double> wideAmounts = WIDE_AMOUNTS;
 };
+
+/** The +90° paths of the settings' family, in table order. */
+std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings);
 
 /** Table radius for a problem: the largest filled extent of its result and
  *  of its pieces, plus one. That covers every turn of a single piece and of

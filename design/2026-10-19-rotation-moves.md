@@ -91,7 +91,10 @@ in cube sizes (`rotationGeometry::model_t`):
   neighbouring cubes are `g` apart. `g > 0` is enforced: with `g = 0`
   cubes start in face contact, and a cube turning about a corner it shares
   with a diagonal neighbour touches it throughout, which no finite check
-  can prove clear (one table took 111 s before this was refused).
+  can prove clear (one table took 111 s before this was refused). Front
+  ends and files go further and refuse play below `minPlay` = 0.001: the
+  tables grow without bound as the play shrinks (a build at radius 4 takes
+  1.5 s at 1e-4 and 96 s at 1e-6), and nothing printed is that tight.
 * **bevel** `k` (`chamfer`) — the edges parallel to the turn axis are cut
   at 45°, `k` off each adjacent face; the square cross-section becomes an
   octagon. Printed pieces are beveled, and a bevel approximates sanded
