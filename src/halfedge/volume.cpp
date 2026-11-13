@@ -92,6 +92,9 @@ float volume(const Polyhedron & poly)
 {
     float volume = 0;
 
+    /* an empty mesh (the mesh of an empty shape) has no point to choose */
+    if (poly.fBegin() == poly.fEnd()) return 0;
+
     /* Choose a point, any point as the reference */
     Vector3Df p0 = poly.halfedge(0)->dst()->position();
 
