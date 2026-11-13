@@ -61,6 +61,8 @@ public:
     }
     int is_open() { return opened; }
     gzstreambuf* open( const char* name, int open_mode);
+    // for reading; on success the stream owns fd: close() closes it
+    gzstreambuf* open( int fd);
     gzstreambuf* close();
     ~gzstreambuf() { close(); }
 
@@ -121,5 +123,10 @@ public:
 // exist) -- callers MUST check for that before using the returned stream.
 std::unique_ptr<std::istream> openGzFile(const char * name);
 std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
+
+// the same for an open descriptor: reads compressed or plain data through a
+// duplicate of it, so fd itself stays open and keeps its mode. Returns nullptr
+// if fd is not an open descriptor.
+std::unique_ptr<std::istream> openGzDescriptor(int fd);
 
 #endif

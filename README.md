@@ -21,6 +21,15 @@ this note — prefer the `.dmg` unless you know you want only the app.
 Linux and Windows archives; the macOS builds publish them as separate
 downloads.
 
+All the programs can take the puzzle from a pipe instead of a file, compressed
+or plain, with the file name `-`: `gunzip -c puzzle.xmpuzzle | burrtools -`.
+The command-line solvers also read a pipe when given no file at all. `burrTxt2`
+then writes the solved puzzle to standard output instead of a file, and its
+messages to standard error: `gunzip -c puzzle.xmpuzzle | burrTxt2 -d > solved.xml`.
+As its standard input is taken, input there no longer stops it: killing it does,
+and loses the result. In the GUIs the puzzle has no file behind it, so it opens
+as Untitled and unsaved.
+
 ### Preview: the redesigned GUI
 
 A redesigned interface, `burrtools-qt` (Qt 6 Quick), is being built next to
