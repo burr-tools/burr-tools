@@ -404,6 +404,14 @@ public:
   void setMaxHoles(unsigned int value) { bt_assert(value < 0xFFFFFFFF); maxHoles = value; }
   /** invalidate the value */
   void setMaxHolesInvalid(void) { maxHoles = 0xFFFFFFFF; }
+
+  /** The puzzle's pieces changed (puzzle_c::setRotationModel): the
+   *  solutions become unknown, and when the pieces got tighter (less play
+   *  or a smaller bevel, which adds material) the disassemblies that turn
+   *  are dropped (their assemblies stay): their turns were only proven for
+   *  the old pieces. A disassembly kept only as information cannot tell
+   *  whether it turns and stays. */
+  void piecesChanged(bool tighter);
   //@}
 
   /**

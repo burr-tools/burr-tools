@@ -114,7 +114,7 @@ struct solverSettings_t {
  * | rotation.mode      | BURRTOOLS_ROT_MODE=off\|fast\|balanced\|slow     |
  *
  * rotation.mode only says how turns are decided when a front end turns
- * rotation moves on (burrTxt -R, the GUI); off then means none.
+ * rotation moves on (burrTxt -R, the GUI, Python); off then means none.
  *
  * An unparsable value, or one of the names these had before 2026-10-28, is
  * an error (std::invalid_argument), never silently the default: an A/B run must not

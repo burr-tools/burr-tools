@@ -502,6 +502,59 @@ bool sameCentres(std::vector<std::array<double, 3>> a, std::vector<std::array<do
 
 }
 
+TEST_CASE("a rotation model change resets the problems, and a tighter one drops the disassemblies that turn",
+          "[rotations][disasm]") {
+
+  /* turns are proven for the model they were found with; less play or a
+   * smaller bevel adds material, more of either only removes some. Any
+   * change makes the solutions unknown, so that the user solves again */
+  auto solvedWithTurns = [] {
+    auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+    REQUIRE(puzzle != nullptr);
+    puzzle->setRotationModel(withPlanner().model);
+    problem_c & problem = *puzzle->getProblem(0);
+    auto assemblies = assembleAll(problem);
+    REQUIRE(assemblies.size() == 1);
+    auto da = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, inMode(ROTATION_FAST)))
+                .disassemble(assemblies[0].get());
+    REQUIRE(da != nullptr);
+    REQUIRE(da->sumRotations() > 0);
+    problem.setAssembler(std::make_unique<assembler_0_c>(problem, bttest::settings()));
+    problem.addSolution(new assembly_c(assemblies[0].get()), da.release());
+    problem.incNumAssemblies();
+    problem.incNumSolutions();
+    problem.finishedSolving();
+    return puzzle;
+  };
+  const rotationGeometry::model_t model = withPlanner().model;
+
+  for (rotationGeometry::model_t tighter : { rotationGeometry::model_t{ 0.9 * model.play, model.chamfer },
+                                             rotationGeometry::model_t{ model.play, 0.9 * model.chamfer } }) {
+    auto puzzle = solvedWithTurns();
+    problem_c & problem = *puzzle->getProblem(0);
+    REQUIRE(problem.getSolveState() == SS_SOLVED);
+    /* a front end asks first */
+    CHECK(puzzle->droppedByRotationModel(tighter) == 1);
+    puzzle->setRotationModel(tighter);
+    CHECK(puzzle->droppedByRotationModel(tighter) == 0);
+    CHECK(problem.getSolveState() == SS_UNKNOWN);
+    REQUIRE(problem.getNumberOfSavedSolutions() == 1);
+    CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
+    CHECK(problem.getSavedSolution(0)->getAssembly() != nullptr);
+  }
+
+  /* more play keeps the turns, but the problem is unknown all the same */
+  auto puzzle = solvedWithTurns();
+  problem_c & problem = *puzzle->getProblem(0);
+  CHECK(puzzle->droppedByRotationModel({ model.play * 2, model.chamfer }) == 0);
+  puzzle->setRotationModel({ model.play * 2, model.chamfer });
+  CHECK(problem.getSolveState() == SS_UNKNOWN);
+  CHECK(problem.getSavedSolution(0)->getDisassembly() != nullptr);
+  /* back to the default from more play: tighter again */
+  puzzle->clearRotationModel();
+  CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
+}
+
 TEST_CASE("round trip: a puzzle comes apart again at the play and the bevel its disassembly needs",
           "[rotations][disasm]") {
 

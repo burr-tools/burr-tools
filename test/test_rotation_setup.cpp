@@ -9,6 +9,7 @@
 #include "lib/puzzle.h"
 #include "lib/rotationtables.h"
 #include "lib/solvethread.h"
+#include "lib/stl.h"
 #include "test_helpers.h"
 
 #include <future>
@@ -133,6 +134,26 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
   CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
 }
 
+TEST_CASE("the puzzle's stored model wins over the settings' default", "[rotations]") {
+
+  auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  problem_c & problem = *puzzle->getProblem(0);
+
+  auto plain = rotationContextFor(problem, SMALL);
+  REQUIRE(plain != nullptr);
+  CHECK(plain->getSettings().model.play == SMALL.model.play);
+  CHECK(plain->getSettings().model.chamfer == SMALL.model.chamfer);
+
+  puzzle->setRotationModel({ 0.06, 0.04 });
+  auto stored = rotationContextFor(problem, SMALL);
+  REQUIRE(stored != nullptr);
+  CHECK(stored->getSettings().model.play == 0.06);
+  CHECK(stored->getSettings().model.chamfer == 0.04);
+  /* the rest of the settings are the solver's */
+  CHECK(stored->getSettings().amounts == SMALL.amounts);
+  CHECK(rotationSettingsFor(problem, SMALL).model.chamfer == 0.04);
+}
+
 TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
 
   auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
@@ -236,4 +257,40 @@ TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rot
     solveThread_c noDisassembly(problem, solveThread_c::PAR_ROTATION_MOVES, settings);
     CHECK_FALSE(noDisassembly.rotationMoves());
   }
+}
+
+TEST_CASE("a shape's pieces are checked for the puzzle's model", "[rotations][stl]") {
+
+  puzzle_c puzzle(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const unsigned int piece = puzzle.addShape(1, 1, 1);
+  puzzle.addShape(2, 1, 1);   // a shape no problem uses: the pieces are the same
+  problem_c & a = *puzzle.getProblem(puzzle.addProblem());
+  problem_c & b = *puzzle.getProblem(puzzle.addProblem());
+  a.setShapeMaximum(piece, 1);
+  b.setShapeMaximum(piece, 2);
+
+  const rotationGeometry::model_t def = rotationSettings_t{}.model;
+  CHECK(rotationModelOf(a).play == def.play);
+
+  /* the views draw stored models only */
+  CHECK_FALSE(puzzle.getRotationModel());
+
+  /* the pieces are the puzzle's: every problem and shape has them */
+  puzzle.setRotationModel({ 0.0126, 0.05 });
+  CHECK(rotationModelOf(a).chamfer == 0.05);
+  CHECK(rotationModelOf(b).chamfer == 0.05);
+  CHECK(rotationModelOf(puzzle).play == 0.0126);
+
+  /* the export dialog's note */
+  std::unique_ptr<stlExporter_c> stl(puzzle.getGridType()->getStlExporter());
+  stl->followModel({ 0.0126, 0.05 });
+  CHECK(stlModelNote(*stl, rotationModelOf(puzzle)).find("the pieces rotation moves are checked for")
+        != std::string::npos);
+  stl->setParameter(4, 1.0);
+  CHECK(stlModelNote(*stl, rotationModelOf(puzzle)).find("but rotation moves are checked for play 0.0126")
+        != std::string::npos);
+
+  gridType_c rhombic(gridType_c::GT_RHOMBIC);
+  std::unique_ptr<stlExporter_c> other_grid(rhombic.getStlExporter());
+  CHECK(stlModelNote(*other_grid, def).empty());
 }
