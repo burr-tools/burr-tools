@@ -23,6 +23,10 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <optional>
 #include <cmath>
 #include <numbers>
@@ -54,6 +58,78 @@
 namespace rotationGeometry {
 
 namespace {
+
+/* Boxes alive in all planner runs at once: concurrent runs (the workers of
+ * a Slow solve) share a budget, so their memory stays bounded however many
+ * there are. A run that needs more than is left waits for the others to
+ * finish rather than giving up, so that what a run finds never depends on
+ * what else runs: only maxBoxes and stop end it early. Runs take the budget
+ * in chunks, so the lock is taken a few times per run, not per box: first
+ * a hundredth of it, which most turns stay within (so that many runs at
+ * once fit, rather than wait with the memory unused), then tenths. */
+constexpr size_t FIRST_CHUNKS = 100, CHUNKS = 10;
+struct boxBudget_t {
+  std::mutex m;
+  std::condition_variable freed;
+  size_t budget = 2000000;
+  size_t live = 0;             ///< held by the runs
+  unsigned int runs = 0;       ///< runs holding a share
+  unsigned int waiting = 0;    ///< of them, waiting for room
+};
+boxBudget_t & boxBudget(void) {
+  static boxBudget_t b;
+  return b;
+}
+
+/* One run's share of the budget. */
+class budgetShare_c {
+  size_t held = 0;
+  bool counted = false;       ///< among the runs, from the first hold on
+public:
+  budgetShare_c(void) = default;
+  ~budgetShare_c(void) {
+    if (!counted)
+      return;
+    boxBudget_t & b = boxBudget();
+    {
+      std::lock_guard<std::mutex> lock(b.m);
+      b.live -= held;
+      b.runs--;
+    }
+    b.freed.notify_all();
+  }
+  budgetShare_c(const budgetShare_c &) = delete;
+  budgetShare_c & operator=(const budgetShare_c &) = delete;
+
+  /* Room for n boxes. Waits while other runs hold the budget, except when
+   * every other run waits as well: then this one goes on past the budget
+   * (by at most one run's maxBoxes and a chunk), as otherwise none would
+   * ever go on.
+   * False only when told to stop while waiting. */
+  bool hold(size_t n, const std::atomic<bool> * stop) {
+    if (n <= held)
+      return true;
+    boxBudget_t & b = boxBudget();
+    std::unique_lock<std::mutex> lock(b.m);
+    if (!counted) {
+      b.runs++;
+      counted = true;
+    }
+    const size_t chunk = std::max<size_t>(b.budget / (held == 0 ? FIRST_CHUNKS : CHUNKS), 1);
+    const size_t want = (n - held + chunk - 1) / chunk * chunk;
+    while (b.live + want > b.budget && b.waiting + 1 < b.runs) {
+      if (stop && stop->load(std::memory_order_relaxed))
+        return false;
+      b.waiting++;
+      /* timed: a stop is a flag, not a notification */
+      b.freed.wait_for(lock, std::chrono::milliseconds(20));
+      b.waiting--;
+    }
+    b.live += want;
+    held += want;
+    return true;
+  }
+};
 
 class poseBoxes_c {
 
@@ -112,6 +188,8 @@ class poseBoxes_c {
    * to the resolution at once follows every crevice to its end first. */
   double level;
   std::vector<pair_t> allPairs;
+  /* before the boxes: given back once they are freed */
+  budgetShare_c share;       ///< room for the boxes, see boxBudget_t
   std::vector<box_t> boxes;
 
   /* the cube's outline and its support along its own edge normals */
@@ -355,6 +433,9 @@ class poseBoxes_c {
 
 public:
 
+  poseBoxes_c(const poseBoxes_c &) = delete;
+  poseBoxes_c & operator=(const poseBoxes_c &) = delete;
+
   /* removal_: nullptr for the quarter turn of sense; else the goal, with
    * goalScene the scene whose pairs are the goal obstacles (ignored for a
    * slide in the plane, whose obstacles are the scene's own), sense unused */
@@ -553,7 +634,7 @@ public:
         break;
       }
 
-      if (boxes.size() >= settings.maxBoxes) {
+      if (boxes.size() >= settings.maxBoxes || !share.hold(boxes.size(), settings.stop)) {
         res.gaveUp = true;
         break;
       }
@@ -569,6 +650,18 @@ public:
   }
 };
 
+}
+
+size_t setPlannerBoxBudget(size_t boxes) {
+  boxBudget_t & b = boxBudget();
+  size_t before;
+  {
+    std::lock_guard<std::mutex> lock(b.m);
+    before = b.budget;
+    b.budget = boxes;
+  }
+  b.freed.notify_all();
+  return before;
 }
 
 turnDecision_t decideTurn(const planarScene_c & scene, unsigned int sense, const decideSettings_t & settings) {

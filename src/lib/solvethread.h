@@ -167,8 +167,10 @@ class solveThread_c : public assembler_cb {
     static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
     static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
     // with PAR_DISASSM: also allow pieces to turn by 90° while disassembling
-    // (cube grids only); builds or reuses the rotation tables in the
-    // constructor, without it no rotation code runs at all
+    // (cube grids only), in the mode settings.rotation.mode says (fast,
+    // balanced, slow; off is the same as leaving the flag out); builds or
+    // reuses the rotation tables in the constructor, without it no
+    // rotation code runs at all
     static const int PAR_ROTATION_MOVES =     0x80;
 
     // create all the necessary data structures to start the thread later on;
