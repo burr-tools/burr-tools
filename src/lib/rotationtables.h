@@ -36,6 +36,7 @@
 
 class problem_c;
 class puzzle_c;
+class stlExporter_c;
 class disassemblerNode_c;
 
 /**
@@ -431,6 +432,22 @@ rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
  *  puzzle has none, so that a saved file says which pieces its
  *  disassemblies are for. The front ends call it before such a solve. */
 void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings);
+
+/** For an STL export dialog: whether the exporter's bevel and offset make
+ *  the pieces the turns are checked for (`expected`, from rotationModelOf). */
+struct stlModelState_t {
+  enum match_e {
+    NO_CUBES,      ///< the exporter does not make cubes: nothing to say
+    MATCHES,       ///< the pieces are the ones the turns are checked for
+    DIFFERS        ///< they are not: `now` against `expected`
+  } match = NO_CUBES;
+  rotationGeometry::model_t now, expected;
+};
+stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
+
+/** stlModelState as an English sentence, for the FLTK dialogs (the Qt one
+ *  formats it with its translations); empty for NO_CUBES */
+std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::model_t & expected);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not
