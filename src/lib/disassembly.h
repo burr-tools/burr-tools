@@ -96,9 +96,9 @@ class disassembly_c
  * along the path. Everything needed to replay the exact checked motion.
  */
 struct stateRotation_t {
-  unsigned int axis;                ///< 0 = X, 1 = Y, 2 = Z
-  int pivotU, pivotV;               ///< in-plane pivot, doubled cell units, rotationGeometry frames
-  rotationGeometry::pathSpec_t path;
+  unsigned int axis = 0;            ///< 0 = X, 1 = Y, 2 = Z
+  int pivotU = 0, pivotV = 0;       ///< in-plane pivot, doubled cell units, rotationGeometry frames
+  rotationGeometry::pathSpec_t path = {};
   /** the turning pieces, as indices into the separation's pieces; a
    *  turn need not change a piece's orientation id (symmetric pieces) */
   std::vector<unsigned int> pieces;

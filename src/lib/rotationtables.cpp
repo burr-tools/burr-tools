@@ -37,6 +37,13 @@
 
 using rotationGeometry::rotationTables_c;
 
+std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_t & settings) {
+  std::vector<rotationGeometry::pathSpec_t> family = rotationGeometry::compassFamily(settings.amounts);
+  for (rotationGeometry::pathSpec_t & s : rotationGeometry::wideExtension(settings.amounts, settings.wideAmounts))
+    family.push_back(std::move(s));
+  return family;
+}
+
 int rotationRadiusFor(const problem_c & problem) {
   auto extent = [](const voxel_c * v) {
     return (int)std::max({ v->boundX2() - v->boundX1(), v->boundY2() - v->boundY1(), v->boundZ2() - v->boundZ1() }) + 1;
@@ -56,7 +63,8 @@ struct cacheEntry_t {
 };
 
 bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
-  return a.model.play == b.model.play && a.model.chamfer == b.model.chamfer && a.amounts == b.amounts;
+  return a.model.play == b.model.play && a.model.chamfer == b.model.chamfer &&
+         a.amounts == b.amounts && a.wideAmounts == b.wideAmounts;
 }
 
 typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_t;
@@ -106,7 +114,7 @@ sharedRotationTables(const rotationSettings_t & settings, int radius) {
       if (auto tables = e.tables.lock())
         return tables;
 
-  auto tables = std::make_shared<const rotationTables_c>(settings.model, radius, settings.amounts);
+  auto tables = std::make_shared<const rotationTables_c>(settings.model, radius, rotationFamily(settings));
   cache.push_back({ settings, radius, tables });
   return tables;
 }
