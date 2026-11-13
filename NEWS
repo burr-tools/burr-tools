@@ -1,3 +1,15 @@
+------------- Next version (unreleased -- DRAFT)
+
+Compatibility Notes:
+- The solver's environment variables are switches without a NO_ prefix
+  now. The names 0.8 shipped are refused with an error that names the
+  replacement: BURRTOOLS_NO_SIMD is BURRTOOLS_BITPARALLEL=0,
+  BURRTOOLS_NO_VECTOR, _NO_AVX2 and _NO_NEON are BURRTOOLS_VECTOR=scalar,
+  BURRTOOLS_NO_AVX512 is BURRTOOLS_VECTOR=avx2, BURRTOOLS_NO_DISASM_SIMD is
+  BURRTOOLS_DISASM_VECTOR=0, BURRTOOLS_NO_DISASM_POOL is
+  BURRTOOLS_DISASM_POOL=0 and BURRTOOLS_NO_BUDGET is
+  BURRTOOLS_THREAD_BUDGET=0. A number with a sign or blanks is refused.
+
 ------------- Version 0.8.0 Oct 2026
 
 BurrTools 0.8 is the largest release in over a decade. The editor gains undo

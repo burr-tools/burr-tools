@@ -9,6 +9,7 @@
 #include "lib/puzzle.h"
 #include "lib/rotationtables.h"
 #include "lib/solvethread.h"
+#include "test_helpers.h"
 
 #include <future>
 #include <memory>
@@ -137,30 +138,33 @@ TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rot
   REQUIRE(context != nullptr);
 
   SECTION("single disassembler") {
-    CHECK_FALSE(disassembler_0_c(problem).rotationMoves());
-    CHECK(disassembler_0_c(problem, context).rotationMoves());
+    CHECK_FALSE(disassembler_0_c(problem, bttest::settings()).rotationMoves());
+    CHECK(disassembler_0_c(problem, bttest::settings(), context).rotationMoves());
   }
 
   SECTION("disassembler pool") {
     auto ignore = [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {};
     for (unsigned int threads : { 1u, 2u }) {
-      disassemblerPool_c off(problem, threads, ignore);
+      disassemblerPool_c off(problem, bttest::withThreads(threads), ignore);
       CHECK(off.getRotationContext() == nullptr);
-      disassemblerPool_c on(problem, threads, ignore, context);
+      disassemblerPool_c on(problem, bttest::withThreads(threads), ignore, context);
       CHECK(on.getRotationContext() == context.get());
     }
   }
 
   SECTION("solver") {
     /* while the tables are alive the solver reuses them instead of building */
-    solveThread_c plain(problem, solveThread_c::PAR_DISASSM, 2, SMALL);
+    solverSettings_t settings;
+    settings.threads = 2;
+    settings.rotation = SMALL;
+    solveThread_c plain(problem, solveThread_c::PAR_DISASSM, settings);
     CHECK_FALSE(plain.rotationMoves());
 
-    solveThread_c rotating(problem, solveThread_c::PAR_DISASSM | solveThread_c::PAR_ROTATION_MOVES, 2, SMALL);
+    solveThread_c rotating(problem, solveThread_c::PAR_DISASSM | solveThread_c::PAR_ROTATION_MOVES, settings);
     CHECK(rotating.rotationMoves());
 
     /* rotation moves are part of the disassembly: nothing without it */
-    solveThread_c noDisassembly(problem, solveThread_c::PAR_ROTATION_MOVES, 2, SMALL);
+    solveThread_c noDisassembly(problem, solveThread_c::PAR_ROTATION_MOVES, settings);
     CHECK_FALSE(noDisassembly.rotationMoves());
   }
 }
