@@ -21,6 +21,8 @@
 
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include <cstdlib>
+#include <string>
 #include <optional>
 #include "lib/assembler.h"
 #include "lib/assembly.h"
@@ -53,6 +55,7 @@ bool printDisassemble;
 bool printSolutions;
 bool quiet;
 bool rotationMoves;
+bool reportPlay;
 /* what the command line chooses; resolved against the environment and the
  * defaults once the arguments are read */
 solverConfig_t solverConfig;
@@ -62,13 +65,35 @@ solverSettings_t settings;
 
 std::unique_ptr<disassembler_c> d;
 
-/* the level line, with the number of rotation moves when there are any */
-static void printLevel(const std::string & level, const separation_c * da) {
+/* with -P, the play a disassembly with turns needs; this also replaces
+ * the turns' paths by those with the most room (see optimizeTurns). Slow:
+ * only when the play is printed (used) */
+static std::optional<turnPlay_t> measurePlay(separation_c * da, const assembly_c * a, const problem_c & problem, bool used) {
+  if (!reportPlay || !used || !da->sumRotations())
+    return std::nullopt;
+  return optimizeTurns(da, a, problem, settings.rotation);
+}
+
+/* the level line, with the number of rotation moves when there are any,
+ * and the play measurePlay found */
+static void printLevel(const std::string & level, const separation_c * da, const std::optional<turnPlay_t> & play) {
   unsigned int rotations = da->sumRotations();
-  if (rotations)
-    printf("level: %s, %u rotation%s\n", level.c_str(), rotations, rotations == 1 ? "" : "s");
-  else
+  if (!rotations) {
     printf("level: %s\n", level.c_str());
+    return;
+  }
+  printf("level: %s, %u rotation%s", level.c_str(), rotations, rotations == 1 ? "" : "s");
+  if (play) {
+    if (play->failed)
+      printf(", a turn needs more play than the planner tries");
+    else
+      printf(", works at play %.4f, not below %.4f", play->upper, play->lower);
+    if (play->bevelFailed)
+      printf("; at this play no bevel makes every turn");
+    else
+      printf("; at this play it works with bevel %.4f, not below %.4f", play->bevelUpper, play->bevelLower);
+  }
+  printf("\n");
 }
 
 /* the rotation context for -R, nullptr without it: then no rotation code runs */
@@ -76,7 +101,7 @@ static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & prob
   if (!rotationMoves)
     return nullptr;
   auto context = rotationContextFor(problem, settings.rotation);
-  if (!context)
+  if (!context && settings.rotation.mode != ROTATION_OFF)
     cerr << "rotation moves are only available for cube grids, ignoring -R\n";
   return context;
 }
@@ -88,10 +113,22 @@ static void reportSkippedRotations(const rotationContext_c * context) {
   if (context->getSkipped() & rotationContext_c::SKIP_RADIUS)
     cerr << "note: rotation moves of groups wider than the rotation tables (radius "
          << context->tables().getRadius() << ") may have been missed\n";
+  if (context->getSkipped() & rotationContext_c::SKIP_PLANNER)
+    cerr << "note: the planner left some turns undecided, which may have been missed\n";
   if (context->getSkipped() & rotationContext_c::SKIP_PIECES)
     cerr << "note: rotation moves were not considered in (sub)problems of more than 32 pieces\n";
   if (context->getSkipped() & rotationContext_c::SKIP_GROUPS)
     cerr << "note: with very many loosely blocked pieces, turns of several groups together were not tried\n";
+
+  /* BURRTOOLS_ROT_STATS=1: how the turns were decided (benchmarking) */
+  if (settings.rotation.stats) {
+    const rotationContext_c::stats_t st = context->getStats();
+    fprintf(stderr, "rotation stats: candidates %llu family %llu gate %llu planned %llu possible %llu impossible %llu "
+            "undecided %llu planner %.3f s impossible %.3f s worst %.3f s\n",
+            (unsigned long long)st.candidates, (unsigned long long)st.family, (unsigned long long)st.gate,
+            (unsigned long long)st.planned, (unsigned long long)st.possible, (unsigned long long)st.impossible,
+            (unsigned long long)st.undecided, st.plannerSeconds, st.impossibleSeconds, st.worstSeconds);
+  }
 }
 
 class asm_cb : public assembler_cb {
@@ -112,13 +149,14 @@ public:
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
           if (da) {
             Solutions++;
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *puzzle, !quiet || allProblems);
 
             if (printSolutions)
               print(a.get(), puzzle);
 
             if (!quiet || allProblems)
             {
-              printLevel(da->movesText(), da.get());
+              printLevel(da->movesText(), da.get(), play);
             }
 
             if (printDisassemble)
@@ -158,11 +196,19 @@ void usage(bool full = false) {
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
   cout << "  -r    reduce the placements bevore starting to solve the puzzle\n";
-  cout << "  -R    with -d or -x: also allow pieces to turn by 90 degrees (cube grids)\n";
-  cout << "  -m play,bevel  physical model for -R, in cube sizes (default 0.081,0):\n";
-  cout << "        gap between cubes, length a 45 degree bevel\n";
-  cout << "        cuts off each face (a puzzlecad $burr_bevel b on cubes of size s is\n";
-  cout << "        b / (1.414 s))\n";
+  cout << "  -R [fast|balanced|slow]  with -d or -x: also allow pieces to turn by 90 degrees\n";
+  cout << "        (cube grids). Every mode takes only turns proven at the model's play:\n";
+  cout << "          fast      the fixed paths only\n";
+  cout << "          balanced  (without a mode, unless BURRTOOLS_ROT_MODE says otherwise) also\n";
+  cout << "                    plans turns the fixed paths make with more play\n";
+  cout << "          slow      also plans every other turn whose end pose is free\n";
+  cout << "  -m play,bevel  physical model for -R, in cube sizes (default 0.002,0.03, the STL\n";
+  cout << "        export's, made for slides; turns usually need more, see -P): gap between\n";
+  cout << "        cubes, length a 45 degree bevel cuts off each face; from puzzlecad's\n";
+  cout << "        $burr_inset i, $burr_bevel b, $burr_scale s: play 2 i / s, bevel b / (1.414 s)\n";
+  cout << "  -P    with -R: print the play each disassembly needs, and the bevel at the model's play,\n";
+  cout << "        with optimized turn paths: it works at the upper value, no motion the planner\n";
+  cout << "        tries works below the lower\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -197,6 +243,8 @@ int main(int argv, char* args[]) {
   printSolutions = false;
   quiet = false;
   rotationMoves = false;
+  reportPlay = false;
+  bool turnOptions = false;   // -m or -P, which act on rotation moves
   bool assemble = true;
   unsigned int problem = 0;
   unsigned int firstProblem = 0;
@@ -226,17 +274,29 @@ int main(int argv, char* args[]) {
         printSolutions = true;
       else if (strcmp(args[i], "-r") == 0)
         reduce = true;
-      else if (strcmp(args[i], "-R") == 0)
+      else if (strcmp(args[i], "-R") == 0) {
         rotationMoves = true;
+        /* an optional mode; without one BURRTOOLS_ROT_MODE, else balanced */
+        if (i+1 < argv) {
+          const std::optional<rotationMode_e> mode = rotationModeFromName(args[i+1]);
+          if (mode) {
+            solverConfig.rotation.mode = *mode;
+            i++;
+          }
+        }
+      }
+      else if (strcmp(args[i], "-P") == 0)
+        reportPlay = turnOptions = true;
       else if (strcmp(args[i], "-m") == 0) {
         double play, chamfer;
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &play, &chamfer, &rest) != 2 ||
-            !(play > 0 && play < 1 && chamfer >= 0 && chamfer < 0.5 * (1 - play))) {
+            !rotationGeometry::validModel({ play, chamfer })) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
         cliModel = rotationGeometry::model_t{ play, chamfer };
+        turnOptions = true;
         i++;
       }
       else if (strcmp(args[i], "-n") == 0)
@@ -301,6 +361,9 @@ int main(int argv, char* args[]) {
     usage();
     return 1;
   }
+
+  if (turnOptions && !(rotationMoves && (disassemble || !assemble)))
+    cerr << "note: -m and -P only act with -R and -d or -x, ignoring them\n";
 
   try {
     settings = solverConfig.resolve();
@@ -390,6 +453,12 @@ int main(int argv, char* args[]) {
       firstProblem = problem;
       lastProblem = problem+1;
     }
+
+  /* once, for every problem that checks turns (-d or -x) */
+  if (rotationMoves && settings.rotation.mode != ROTATION_OFF && (disassemble || !assemble) && !cliModel)
+    cerr << "note: turns are checked for the default play 0.002 and bevel 0.03, made for slides;"
+            " turns usually need more: set them with -m\n";
+
   if (assemble) {
 
     for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
@@ -469,19 +538,22 @@ int main(int argv, char* args[]) {
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
-        if (problem->getSavedSolution(sol)->getAssembly()) {
+        solution_c * solution = problem->getSavedSolution(sol);
+        if (solution->getAssembly()) {
 
-          auto da = d->disassemble(problem->getSavedSolution(sol)->getAssembly());
+          auto da = d->disassemble(solution->getAssembly());
 
           if (da) {
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), solution->getAssembly(), *problem, !quiet);
+
             if (printSolutions)
-              print(problem->getSavedSolution(sol)->getAssembly(), problem);
+              print(solution->getAssembly(), problem);
 
             if (!quiet)
-              printLevel(std::to_string(da->getMoves()), da.get());
+              printLevel(std::to_string(da->getMoves()), da.get(), play);
 
             if (printDisassemble)
-              print(da.get(), problem->getSavedSolution(sol)->getAssembly(),problem);
+              print(da.get(), solution->getAssembly(), problem);
           }
         }
       }

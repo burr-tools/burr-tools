@@ -41,8 +41,9 @@
  * Physical model: every cube is an axis-aligned cube of side 1 - play,
  * centred in its grid cell, whose edges parallel to the rotation axis are
  * beveled at 45° by chamfer. play = 0.081, chamfer = 0 is the model the
- * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly; the solver's
- * default adds puzzlecad's bevel (rotationSettings_t::model).
+ * Fortran SimpleRot code and PR #50's rotationRules_c use implicitly. The
+ * solver's default is the STL export's pieces, play 0.002 and bevel 0.03
+ * (rotationSettings_t::model).
  */
 namespace rotationGeometry {
 
@@ -309,7 +310,10 @@ namespace rotationGeometry {
     double margin = 1e-4;
     /** give up (undecided) beyond this many boxes: a few hundred bytes
      *  each. Turns at a printed play take up to some ten thousand, only
-     *  hairline passages more. */
+     *  hairline passages more. Runs at the same time (a solve's workers)
+     *  also share a budget of a few of these: a run that would exceed it
+     *  waits for room, so a run's answer does not depend on the others
+     *  (setPlannerBoxBudget). */
     size_t maxBoxes = 500000;
     /** set from another thread to give up at once; nullptr: never */
     const std::atomic<bool> * stop = nullptr;
@@ -352,6 +356,11 @@ namespace rotationGeometry {
    * impossible at a play is impossible at every smaller one.
    */
   turnDecision_t decideTurn(const planarScene_c & scene, unsigned int sense, const decideSettings_t & settings);
+
+  /** The boxes all planner runs at the same time may hold together
+   *  (decideSettings_t::maxBoxes), 2 000 000 unless set; returns the one
+   *  before. For tests. */
+  size_t setPlannerBoxBudget(size_t boxes);
 
   /** The answer to "can the moving cubes make this turn", see answerTurn. */
   struct turnVerdict_t {

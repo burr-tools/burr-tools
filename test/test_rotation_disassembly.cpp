@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "test_helpers.h"
 #include "lib/assembler.h"
+#include "lib/assembler_0.h"
 #include "lib/assembly.h"
 #include "lib/disasmtomoves.h"
 #include "lib/disassembler_0.h"
@@ -38,6 +40,26 @@
 using namespace rotationGeometry;
 
 namespace {
+
+/* the default settings (balanced), at play 0.081 with a bevel of 0.032
+ * (PR #50's play, puzzlecad's bevel), which these tests were written for;
+ * the default is the STL export's tight one, made for slides. Balanced's
+ * gate reaches the planned turn of AAA_most_rotations (a gate of 0.02 more
+ * play did not), so its disassembly has a planned path, which the replay
+ * and animation tests then cover. */
+rotationSettings_t withPlanner(void) {
+  rotationSettings_t s = rotationSettings_t{};
+  s.model = { 0.081, 0.032 };
+  s.mode = ROTATION_BALANCED;
+  return s;
+}
+
+/* the same in another mode */
+rotationSettings_t inMode(rotationMode_e mode) {
+  rotationSettings_t s = withPlanner();
+  s.mode = mode;
+  return s;
+}
 
 typedef std::tuple<int, int, int> key_t;
 
@@ -202,7 +224,7 @@ const aaa_t & aaa(void) {
     r.assemblies = assembleAll(problem);
     REQUIRE(r.assemblies.size() == 1);
     r.withoutRotations = disassembler_0_c(problem, bttest::settings()).disassemble(r.assemblies[0].get());
-    r.withRotations = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, rotationSettings_t{}))
+    r.withRotations = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, withPlanner()))
                         .disassemble(r.assemblies[0].get());
     return r;
   }();
@@ -281,10 +303,45 @@ TEST_CASE("rotation moves do not grow the search node", "[rotations][disasm]") {
     CHECK(sizeof(disassemblerNode_c) == 48);
 }
 
+TEST_CASE("the planner copes with family tables larger than its relaxed ones", "[rotations][disasm]") {
+
+  /* The cache serves a request from any tables of the same settings with
+   * at least the requested radius, so a context can get family tables
+   * larger than its relaxed ones. The search must then only turn cubes
+   * both cover (it threw "cube outside the tables" before), and find what
+   * it finds with tables of the problem's own radius. One more than the
+   * problem's radius is enough for that: the search threw with it too,
+   * and the tables' cost grows steeply with their radius. */
+  auto puzzle = puzzle_c::load("examples/AAA_most_rotations.xmpuzzle");
+  REQUIRE(puzzle != nullptr);
+  problem_c & problem = *puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const int radius = rotationRadiusFor(problem);
+
+  releaseRotationTables();
+  /* the relaxed tables are derived from the family's, at their radius,
+   * unless the cache has them already: here at the problem's */
+  rotationSettings_t relaxedSettings = settings;
+  relaxedSettings.model.play = rotationGatePlay(settings.model);
+  auto relaxed = sharedRotationTables(relaxedSettings, radius);
+  auto larger = sharedRotationTables(settings, radius + 1);
+  auto context = rotationContextFor(problem, settings);
+  REQUIRE(context != nullptr);
+  REQUIRE(context->tables().getRadius() > context->closureTables().getRadius());
+
+  auto assemblies = assembleAll(problem);
+  REQUIRE(assemblies.size() == 1);
+  auto da = disassembler_0_c(problem, bttest::settings(), context).disassemble(assemblies[0].get());
+  REQUIRE(da != nullptr);
+  CHECK(da->movesText() == "2.3");
+
+  releaseRotationTables();
+}
+
 TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations][disasm]") {
 
   const problem_c & problem = *aaa().puzzle->getProblem(0);
-  const rotationSettings_t settings = rotationSettings_t{};
+  const rotationSettings_t settings = withPlanner();
 
   /* translations alone cannot take it apart */
   CHECK(aaa().withoutRotations == nullptr);
@@ -292,10 +349,29 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
   const separation_c * da = aaa().withRotations.get();
   REQUIRE(da != nullptr);
 
-  /* the shortest disassembly the breadth-first search finds; changes when
-   * the default model or the path family changes */
-  CHECK(da->movesText() == "2.4");
+  /* the shortest disassembly the breadth-first search finds, with the
+   * planner; changes when the default model, the path family or the
+   * planner changes (2.4 with the compass family alone: the planner, like
+   * the wide family, finds a turn that saves a move) */
+  CHECK(da->movesText() == "2.3");
   CHECK(da->sumRotations() == 2);
+
+  /* one of its turns is planned: what the replay below covers */
+  {
+    unsigned int planned = 0;
+    std::vector<const separation_c *> todo = { da };
+    while (!todo.empty()) {
+      const separation_c * s = todo.back();
+      todo.pop_back();
+      for (unsigned int i = 0; i <= s->getMoves(); i++)
+        if (s->getState(i)->getRotation() && s->getState(i)->getRotation()->path.kind == PATH_PLANNED)
+          planned++;
+      for (const separation_c * c : { s->getLeft(), s->getRemoved() })
+        if (c)
+          todo.push_back(c);
+    }
+    CHECK(planned >= 1);
+  }
 
   SECTION("every step replays as a valid motion") {
     replay_c replay(problem, settings.model);
@@ -345,6 +421,31 @@ TEST_CASE("AAA_most_rotations comes apart only with rotation moves", "[rotations
     std::istringstream v4In(v4);
     xmlParser_c v4Pars(v4In);
     CHECK_THROWS_AS(puzzle_c(v4Pars), xmlParserException_c);
+  }
+
+  SECTION("a solution with an orientation the grid does not have is rejected") {
+    solution_c sol(std::make_unique<assembly_c>(aaa().assemblies[0].get()), 0, std::make_unique<separation_c>(da), 0);
+    std::ostringstream out;
+    {
+      xmlWriter_c xml(out);
+      sol.save(xml);
+    }
+    const gridType_c * gt = problem.getPuzzle().getGridType();
+    auto load = [&](const std::string & text) {
+      std::istringstream in(text);
+      xmlParser_c pars(in);
+      pars.nextTag();
+      solution_c(pars, problem.getNumberOfPieces(), gt);
+    };
+    CHECK_NOTHROW(load(out.str()));
+
+    /* the first piece's orientation in the first state that has them */
+    std::string bad = out.str();
+    const size_t dt = bad.find("<dt>");
+    REQUIRE(dt != std::string::npos);
+    const size_t first = dt + 4, end = bad.find_first_of(" <", first);
+    bad.replace(first, end - first, std::to_string(gt->getSymmetries()->getNumTransformationsMirror()));
+    CHECK_THROWS(load(bad));
   }
 }
 
@@ -399,6 +500,35 @@ bool sameCentres(std::vector<std::array<double, 3>> a, std::vector<std::array<do
   return true;
 }
 
+}
+
+TEST_CASE("round trip: a puzzle comes apart again at the play and the bevel its disassembly needs",
+          "[rotations][disasm]") {
+
+  /* solve at a model, measure what the disassembly needs, solve again
+   * there: the search and the measurement ask the same question, so the
+   * puzzle must come apart (the acceptance test of answerTurn's use in
+   * both, design/2026-11-11-rotation-consistent-solver.md step 4) */
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const separation_c * found = aaa().withRotations.get();
+  REQUIRE(found != nullptr);
+  const rotationSettings_t settings = withPlanner();
+
+  separation_c copy(found);
+  const turnPlay_t need = optimizeTurns(&copy, aaa().assemblies[0].get(), problem, settings);
+  REQUIRE_FALSE(need.failed);
+  REQUIRE_FALSE(need.bevelFailed);
+  CHECK(need.upper <= settings.model.play);
+  CHECK(need.bevelUpper <= settings.model.chamfer);
+
+  for (const model_t & m : { model_t{ need.upper, settings.model.chamfer }, model_t{ settings.model.play, need.bevelUpper } }) {
+    INFO("play " << m.play << " bevel " << m.chamfer);
+    rotationSettings_t at = settings;
+    at.model = m;   // the puzzle stores none, so the settings' model applies
+    auto da = disassembler_0_c(problem, bttest::settings(), rotationContextFor(problem, at))
+                .disassemble(aaa().assemblies[0].get());
+    CHECK(da != nullptr);
+  }
 }
 
 TEST_CASE("the animation of every rotation starts and ends on the recorded states", "[rotations][disasm]") {
@@ -502,7 +632,7 @@ config_t configOf(const problem_c & problem, const disassemblerNode_c * n) {
  * all axes, end pose free and not a no-op, some path of the family clear.
  * Piece 0 stays in place: a group with it ends as the rest turned the other
  * way. */
-std::set<config_t> bruteRotations(const problem_c & problem, const rotationContext_c & context,
+std::set<config_t> bruteRotations(const problem_c & problem, rotationContext_c & context,
                                   const disassemblerNode_c * node, unsigned int * canonicalized) {
   const rotationTables_c & tables = context.tables();
   const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
@@ -516,7 +646,7 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationConte
   };
 
   std::set<config_t> out;
-  const int reach = 2 * tables.getRadius();
+  const int reach = 2 * std::min(tables.getRadius(), context.closureTables().getRadius());
   for (uint32_t group = 1; group + 1 < (1u << pn); group++)
     for (unsigned int axis = 0; axis < 3; axis++) {
       std::vector<cell_t> moving, stat;
@@ -559,7 +689,9 @@ std::set<config_t> bruteRotations(const problem_c & problem, const rotationConte
                 own = own || (c.x == e.x && c.y == e.y && c.z == e.z);
               unchanged = unchanged && own;
             }
-            if (blocked || unchanged || tables.firstClear(moving, stat, axis, hx, hy, hz, sense) < 0)
+            /* the same question the search asks: the family, and with the
+             * planner the turns the gate lets through */
+            if (blocked || unchanged || context.turnPath(moving, stat, occupancy_c(stat), axis, hx, hy, hz, sense) < 0)
               continue;
             /* the cells turned about the pivot */
             std::vector<std::vector<cell_t>> after = world;
@@ -603,9 +735,9 @@ std::unique_ptr<puzzle_c> cubeAndDominoBar(void) {
 /* Returns how many of the exhaustive moves turn a symmetric piece into an
  * orientation the search replaces by its canonical one. */
 unsigned int checkAgainstBruteForce(const problem_c & problem, const assembly_c * assembly, unsigned int maxNodes,
-                                    bool expectRotations) {
+                                    bool expectRotations, const rotationSettings_t & settings = {}) {
 
-  auto context = rotationContextFor(problem, rotationSettings_t{});
+  auto context = rotationContextFor(problem, settings);
   REQUIRE(context != nullptr);
   movementAnalysator_c analysator(problem, bttest::settings(), context);
 
@@ -655,6 +787,120 @@ TEST_CASE("the closure-based rotation search finds exactly the moves of an exhau
   checkAgainstBruteForce(*aaa().puzzle->getProblem(0), aaa().assemblies[0].get(), 15, true);
 }
 
+/* with the planner the groups come from the relaxed tables' relation, and
+ * a turn no family path makes can be planned: still exactly the moves an
+ * exhaustive search asking the same question finds */
+TEST_CASE("the closure-based rotation search with the planner finds exactly the moves of an exhaustive one",
+          "[rotations][disasm]") {
+  checkAgainstBruteForce(*aaa().puzzle->getProblem(0), aaa().assemblies[0].get(), 15, true, withPlanner());
+  auto puzzle = cubeAndDominoBar();
+  problem_c & problem = *puzzle->getProblem(0);
+  auto assemblies = assembleAll(problem);
+  REQUIRE_FALSE(assemblies.empty());
+  for (const auto & a : assemblies)
+    checkAgainstBruteForce(problem, a.get(), 15, true, withPlanner());
+}
+
+/* slow takes its groups from the end pose alone and plans every turn the
+ * family misses: still exactly the moves of an exhaustive search asking
+ * the same question, so the end-pose relation loses no group */
+TEST_CASE("the closure-based rotation search in slow mode finds exactly the moves of an exhaustive one",
+          "[rotations][disasm]") {
+  checkAgainstBruteForce(*aaa().puzzle->getProblem(0), aaa().assemblies[0].get(), 6, true, inMode(ROTATION_SLOW));
+  auto puzzle = cubeAndDominoBar();
+  problem_c & problem = *puzzle->getProblem(0);
+  auto assemblies = assembleAll(problem);
+  REQUIRE_FALSE(assemblies.empty());
+  for (const auto & a : assemblies)
+    checkAgainstBruteForce(problem, a.get(), 15, true, inMode(ROTATION_SLOW));
+}
+
+/* The end-pose relation: every family path is blocked where a cube turns
+ * onto another, so the pivot endPosePivot names is one of those the tables
+ * list for the pair, and turning the moving cube about it lands on the
+ * static one. */
+TEST_CASE("endPosePivot is where a turning cube lands on another", "[rotations]") {
+  const rotationTables_c & tables = *sharedRotationTables(inMode(ROTATION_FAST), 3);
+  for (unsigned int sense = 0; sense < 2; sense++)
+    for (int du = -6; du <= 6; du += 2)
+      for (int dv = -6; dv <= 6; dv += 2) {
+        if (!du && !dv)
+          continue;
+        int ou, ov;
+        REQUIRE(endPosePivot(sense, du, dv, &ou, &ov));
+        INFO("sense " << sense << " offset " << du << "," << dv << " pivot offset " << ou << "," << ov);
+        /* turning the moving cube (at ou, ov from the pivot) about axis Z */
+        int x = 0, y = 0, z = 0;
+        turnAbout(&x, &y, &z, -ou, -ov, 0, 2, sense);
+        CHECK(2 * x == du);
+        CHECK(2 * y == dv);
+        const auto & pivots = tables.pivotsBlockedAt(sense, du, dv);
+        CHECK(std::find(pivots.begin(), pivots.end(), std::pair<int, int>{ ou, ov }) != pivots.end());
+      }
+  int ou, ov;
+  CHECK_FALSE(endPosePivot(0, 1, 2, &ou, &ov));
+}
+
+/* Each mode finds what the one before it finds: fast's turns are clear on
+ * a family path at the play, balanced plans the turns its gate passes,
+ * slow every turn with a free end pose. So in every state the turns are
+ * nested, and a puzzle that comes apart in one comes apart in the next. */
+TEST_CASE("fast, balanced and slow find nested sets of turns", "[rotations][disasm]") {
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const assembly_c * assembly = aaa().assemblies[0].get();
+  const rotationMode_e modes[] = { ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW };
+
+  std::vector<std::shared_ptr<rotationContext_c>> contexts;
+  for (rotationMode_e m : modes)
+    contexts.push_back(rotationContextFor(problem, inMode(m)));
+
+  /* the states translations reach, each mode's turns there */
+  std::vector<unsigned int> pieces;
+  for (unsigned int i = 0; i < assembly->placementCount(); i++)
+    pieces.push_back(i);
+  movementAnalysator_c walk(problem, bttest::settings(), contexts[0]);
+  std::vector<disassemblerNode_c *> nodes = { new disassemblerNode_c(assembly) };
+  size_t turns[3] = { 0, 0, 0 }, moreThanBalanced = 0;
+  for (size_t at = 0; at < nodes.size() && at < 12; at++) {
+    std::set<config_t> found[3];
+    for (size_t m = 0; m < 3; m++) {
+      movementAnalysator_c analysator(problem, bttest::settings(), contexts[m]);
+      std::vector<disassemblerNode_c *> next;
+      analysator.completeFind(nodes[at], pieces, &next);
+      for (disassemblerNode_c * n : next) {
+        if (n->isRotation())
+          found[m].insert(configOf(problem, n));
+        if (m == 0 && !n->isRotation() && !n->is_separation() && nodes.size() < 12)
+          nodes.push_back(n);
+        else if (n->decRefCount())
+          delete n;
+      }
+      turns[m] += found[m].size();
+    }
+    INFO("search state " << at);
+    CHECK(std::includes(found[1].begin(), found[1].end(), found[0].begin(), found[0].end()));
+    CHECK(std::includes(found[2].begin(), found[2].end(), found[1].begin(), found[1].end()));
+    moreThanBalanced += found[2].size() - found[1].size();
+  }
+  for (disassemblerNode_c * n : nodes)
+    if (n->decRefCount())
+      delete n;
+  /* each mode adds turns here (2026-11-13, 12 states: fast 11, balanced
+   * 56, slow 79): balanced the planned turns its gate passes, slow turns
+   * no family path makes even at the gate's play */
+  INFO("fast " << turns[0] << ", balanced " << turns[1] << ", slow " << turns[2]);
+  CHECK(turns[1] > turns[0]);
+  CHECK(moreThanBalanced > 0);
+
+  /* what comes apart */
+  bool apart[3];
+  for (size_t m = 0; m < 3; m++)
+    apart[m] = disassembler_0_c(problem, bttest::settings(), contexts[m]).disassemble(assembly) != nullptr;
+  CHECK((!apart[0] || apart[1]));
+  CHECK((!apart[1] || apart[2]));
+  CHECK(apart[1]);
+}
+
 /* the bar's pieces are symmetric: most turns end in an orientation that the
  * search replaces by its canonical one, with its own hotspot */
 TEST_CASE("the closure-based rotation search agrees on symmetric pieces", "[rotations][disasm]") {
@@ -667,14 +913,19 @@ TEST_CASE("the closure-based rotation search agrees on symmetric pieces", "[rota
 }
 
 /* a tight burr: no piece can turn in the first states, and the closures must
- * agree with the exhaustive search on that; slow because of larger tables */
+ * agree with the exhaustive search on that. Its tables are large (radius
+ * 9), so the compass family: without the 16-direction extension they cost
+ * a fraction, the search reaches the same states (translations only), and
+ * the exhaustive search checks the paths the closures use */
 TEST_CASE("the closure-based rotation search agrees on a tight burr", "[rotations][disasm][stress]") {
   auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(puzzle != nullptr);
   problem_c & problem = *puzzle->getProblem(0);
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  checkAgainstBruteForce(problem, assemblies[0].get(), 3, false);
+  rotationSettings_t compass;
+  compass.wideAmounts = {};
+  checkAgainstBruteForce(problem, assemblies[0].get(), 3, false, compass);
 }
 
 TEST_CASE("disassemblies without rotation moves record no orientations", "[rotations][disasm]") {
@@ -710,7 +961,9 @@ TEST_CASE("a disassembly that uses no rotation records no orientations, rotation
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
+  /* a family of a few paths (one compass amount, no 16-direction
+   * extension): which turns there are does not matter here */
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 }, {} });
   REQUIRE(context != nullptr);
 
   for (bool rotations : { false, true }) {
@@ -747,7 +1000,7 @@ TEST_CASE("dropping a rotation context does not wait for its tables", "[rotation
 
   std::promise<void> gate, done;
   std::future<void> finished = done.get_future();
-  auto context = std::make_shared<rotationContext_c>(problem,
+  auto context = std::make_shared<rotationContext_c>(problem, rotationSettings_t{},
     std::async(std::launch::async, [open = gate.get_future(), done = std::move(done)]() mutable {
       open.wait();
       done.set_value();
@@ -851,6 +1104,8 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
   REQUIRE(assemblies.size() == 1);
   rotationSettings_t settings = rotationSettings_t{};
   settings.model.play = 0.0813;   // tables no other case builds
+  settings.wideAmounts = {};      // the compass family: cheap to build
+  settings.mode = ROTATION_FAST;  // one set of tables, which the context waits for
 
   auto text = [](const separation_c * s) {
     std::ostringstream out;
@@ -867,7 +1122,7 @@ TEST_CASE("pool workers that start before their rotation tables are built disass
   {
     std::promise<void> gate;
     std::shared_future<void> open = gate.get_future().share();
-    auto context = std::make_shared<rotationContext_c>(problem,
+    auto context = std::make_shared<rotationContext_c>(problem, settings,
       std::async(std::launch::async, [&problem, settings, open] {
         open.wait();
         return rotationTablesFor(problem, settings);
@@ -920,7 +1175,9 @@ TEST_CASE("pieces placed in a symmetric orientation come back in it when no rota
 
   auto assemblies = assembleAll(problem);
   REQUIRE_FALSE(assemblies.empty());
-  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 } });
+  /* a family of a few paths (one compass amount, no 16-direction
+   * extension): which turns there are does not matter here */
+  auto context = rotationContextFor(problem, { { 0.081, 0 }, { 0.2 }, {} });
   REQUIRE(context != nullptr);
   const unsigned int orientations = puzzle->getGridType()->getSymmetries()->getNumTransformations();
 
@@ -986,6 +1243,12 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
   const char * file = "examples/AAA_most_rotations.xmpuzzle";
   const unsigned int parts = puzzle_c::load(file)->getProblem(0)->getNumberOfParts();
   std::vector<std::map<config_t, size_t>> turnsAt(parts);
+  /* in every mode */
+  const rotationMode_e mode = GENERATE(ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW);
+  rotationSettings_t settings = inMode(mode);
+  if (mode == ROTATION_FAST)
+    settings.model = rotationSettings_t{}.model;
+  INFO("mode " << rotationModeName(mode));
 
   for (unsigned int first = 0; first < parts; first++) {
     auto puzzle = puzzle_c::load(file);
@@ -994,7 +1257,7 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
     /* exchangeParts swaps neighbours: bubble the part to the front */
     for (unsigned int j = first; j > 0; j--)
       problem.exchangeParts(j - 1, j);
-    auto context = rotationContextFor(problem, rotationSettings_t{});
+    auto context = rotationContextFor(problem, settings);
     REQUIRE(context != nullptr);
 
     /* it comes apart only with turns, so states reached by translations
@@ -1054,4 +1317,66 @@ TEST_CASE("rotation moves do not depend on which piece comes first", "[rotations
   /* the orders must share enough states, and some of them must offer turns */
   CHECK(compared >= 2 * (parts - 1));
   CHECK(withTurns > 0);
+}
+
+TEST_CASE("optimizeTurns never measures more play than the turns were found at", "[rotations][disasm]") {
+
+  /* the planner can miss a path the disassembly recorded (it wants its
+   * margin); the recorded path still proves the turn at the model's play.
+   * A planner given a single box decides nothing, so only the recorded
+   * paths can prove the turns here */
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  rotationSettings_t settings = withPlanner();
+  settings.decide.maxBoxes = 1;
+  REQUIRE(aaa().withRotations != nullptr);
+  separation_c copy(aaa().withRotations.get());
+  REQUIRE(copy.sumRotations() > 0);
+
+  const turnPlay_t play = optimizeTurns(&copy, aaa().assemblies[0].get(), problem, settings);
+  CHECK_FALSE(play.failed);
+  CHECK(play.upper <= settings.model.play);
+  CHECK(play.lower <= play.upper);
+}
+
+TEST_CASE("optimizeTurns reports its progress and stops when asked", "[rotations][disasm]") {
+
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const rotationSettings_t settings = withPlanner();
+  const separation_c * found = aaa().withRotations.get();
+  REQUIRE(found != nullptr);
+  const unsigned int turns = found->sumRotations();
+  REQUIRE(turns > 0);
+  const assembly_c * assembly = aaa().assemblies[0].get();
+
+  /* every turn counted, bounds measured, and the paths it keeps replay
+   * clear at the model's play */
+  {
+    separation_c copy(found);
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(done == turns);
+    CHECK_FALSE(play.stopped);
+    CHECK(play.rotations);
+    CHECK(play.upper > 0);
+    CHECK(play.lower <= play.upper);
+    CHECK(copy.movesText() == found->movesText());
+    replay_c replay(problem, settings.model);
+    replay.check(copy);
+    CHECK(replay.rotations == turns);
+  }
+
+  /* stopped before the first turn: nothing done, nothing valid */
+  {
+    separation_c copy(found);
+    std::atomic<bool> stop{ true };
+    std::atomic<unsigned int> done{ 0 };
+    optimizeControl_t control;
+    control.stop = &stop;
+    control.done = &done;
+    const turnPlay_t play = optimizeTurns(&copy, assembly, problem, settings, control);
+    CHECK(play.stopped);
+    CHECK(done == 0);
+  }
 }

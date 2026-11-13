@@ -26,6 +26,7 @@
 #include "disassembly.h"
 #include "puzzle.h"
 #include "solution.h"
+#include "rotationtables.h"
 
 #include "../tools/xml.h"
 
@@ -892,6 +893,25 @@ void problem_c::removeAllSolutions(void) {
   numAssemblies = 0;
   numSolutions = 0;
   usedTime = 0;
+  /* a running solve that starts over (a resume that failed) finds
+   * everything from here on with its own mode */
+  solveRotationMode = runRotationMode;
+  solveRotationModeMixed = false;
+}
+
+void problem_c::noteSolveRotationMode(rotationMode_e mode) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  runRotationMode = mode;
+  if (solveState == SS_UNSOLVED) {
+    solveRotationMode = mode;
+    solveRotationModeMixed = false;
+  } else if (solveRotationMode && *solveRotationMode != mode)
+    solveRotationModeMixed = true;
+}
+
+bool problem_c::solvedWithRotationMode(rotationMode_e mode) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  return !solveRotationModeMixed && (!solveRotationMode || *solveRotationMode == mode);
 }
 
 void problem_c::removeSolution(unsigned int sol) {
