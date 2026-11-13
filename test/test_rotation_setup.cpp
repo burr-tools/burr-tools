@@ -133,6 +133,26 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
   CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
 }
 
+TEST_CASE("the puzzle's stored model wins over the settings' default", "[rotations]") {
+
+  auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  problem_c & problem = *puzzle->getProblem(0);
+
+  auto plain = rotationContextFor(problem, SMALL);
+  REQUIRE(plain != nullptr);
+  CHECK(plain->getSettings().model.play == SMALL.model.play);
+  CHECK(plain->getSettings().model.chamfer == SMALL.model.chamfer);
+
+  puzzle->setRotationModel({ 0.06, 0.04 });
+  auto stored = rotationContextFor(problem, SMALL);
+  REQUIRE(stored != nullptr);
+  CHECK(stored->getSettings().model.play == 0.06);
+  CHECK(stored->getSettings().model.chamfer == 0.04);
+  /* the rest of the settings are the solver's */
+  CHECK(stored->getSettings().amounts == SMALL.amounts);
+  CHECK(rotationSettingsFor(problem, SMALL).model.chamfer == 0.04);
+}
+
 TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
 
   auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");

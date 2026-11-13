@@ -1,5 +1,6 @@
 import unittest
 import os
+import tempfile
 import burrtools
 
 class TestBurrTools(unittest.TestCase):
@@ -35,6 +36,56 @@ class TestBurrTools(unittest.TestCase):
         self.assertEqual(sol.level, 98)
         self.assertGreater(sol.total_moves, 0)
         self.assertEqual(len(sol.placements), 7)
+
+    # The solver and its turns are tested in C++ (test_rotation_*.cpp);
+    # these only check that the bindings hand the mode and the model over.
+    # A large play keeps the solves cheap.
+    rotations_path = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "AAA_most_rotations.xmpuzzle")
+
+    def test_rotation_moves(self):
+        puzzle = burrtools.load(self.rotations_path)
+        prob = puzzle.problems[0]
+        puzzle.rotation_model = (0.3, 0.0)
+
+        # without turns (off, the default) the single assembly does not
+        # come apart; with them it does
+        self.assertEqual(list(prob.solve(disassemble=True)), [])
+        self.assertEqual(list(prob.solve(disassemble=True, rotations="off")), [])
+        solutions = list(prob.solve(disassemble=True, rotations="fast"))
+        self.assertEqual([s.moves_text for s in solutions], ["2.3"])
+
+        with self.assertRaises(ValueError):
+            prob.solve(disassemble=True, rotations="quick")
+        with self.assertRaises(TypeError):
+            prob.solve(disassemble=True, rotations=True)
+
+        burrtools.release_rotation_tables()
+
+    def test_rotation_model(self):
+        puzzle = burrtools.load(self.rotations_path)
+        prob = puzzle.problems[0]
+
+        # the default until one is set, the STL export's play and bevel
+        self.assertEqual(puzzle.rotation_model, (0.002, 0.03))
+
+        # the stored model reaches the solver: at a tighter play the pieces
+        # come apart differently than at 0.3 (2.3, test_rotation_moves)
+        puzzle.rotation_model = (0.05, 0.0)
+        self.assertEqual(puzzle.rotation_model, (0.05, 0.0))
+        solutions = list(prob.solve(disassemble=True, rotations="fast"))
+        self.assertEqual(len(solutions), 1)
+        self.assertNotEqual(solutions[0].moves_text, "2.3")
+
+        # saved with the puzzle
+        with tempfile.TemporaryDirectory() as tmp:
+            saved = os.path.join(tmp, "model.xmpuzzle")
+            puzzle.save(saved)
+            self.assertEqual(burrtools.load(saved).rotation_model, (0.05, 0.0))
+
+        with self.assertRaises(ValueError):
+            puzzle.rotation_model = (0.1, 0.5)
+        puzzle.rotation_model = None
+        self.assertEqual(puzzle.rotation_model, (0.002, 0.03))
 
     def test_solve_assemblies_only(self):
         puzzle = burrtools.load(self.puzzle_path)
