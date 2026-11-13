@@ -1,0 +1,5 @@
+# Qt GUI: QML panels and dialogs, environment variables
+
+- Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
+- Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.
+- A new `BURRTOOLS_*` environment variable goes into [`src/tools/envvars.h`](src/tools/envvars.h), which the programs' `--help` prints; `test_envvars.cpp` fails on one the code reads but the table does not list.
