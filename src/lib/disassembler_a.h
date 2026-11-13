@@ -105,15 +105,15 @@ class disassembler_a_c : public disassembler_c {
      * construct the disassembler for this concrete problem.
      * The problem can not be changed, once you done that but
      * you can analyse many assemblies for disassembability.
-     * Rotation moves are considered iff rotationTables is given (see
-     * rotationTablesFor); the tables may be shared between disassemblers.
+     * Rotation moves are considered iff rotationContext is given (see
+     * rotationContextFor); it is shared by all disassemblers of a solve.
      */
     disassembler_a_c(const problem_c & puz,
-                     std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables = nullptr);
+                     std::shared_ptr<rotationContext_c> rotationContext = nullptr);
     ~disassembler_a_c(void);
 
     /** True if this disassembler considers rotation moves. */
-    bool rotationMoves(void) const { return analyse->getRotationTables() != nullptr; }
+    bool rotationMoves(void) const { return analyse->getRotationContext() != nullptr; }
 
     /**
      * Disassemble an assembly of the puzzle.
