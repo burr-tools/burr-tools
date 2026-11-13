@@ -73,7 +73,7 @@ void usage(std::ostream & out, bool full = false) {
   out << "  -r    keep rotated solutions\n";
   out << "  -p    drop disassemblies and replace by information about disassembly\n";
   out << "  -b    selecte problem, else 0\n";
-  out << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  out << "  -t n  set number of worker threads for solver (0 = auto, default: BURRTOOLS_THREADS, else auto)\n";
   if (full)
     btenv::print(out, { btenv::Scope::Solver });
 }
@@ -121,7 +121,8 @@ static int solve(int argv, char* args[]) {
   int filenumber = 0;
   int firstProblem = 0;
   int lastProblem = 1;
-  unsigned int threads = 0;
+  /* what the command line chooses, the rest from the environment */
+  solverConfig_t config;
 
   /* only told once the file is known, and with it where messages go */
   const char * argError = nullptr;
@@ -163,7 +164,7 @@ static int solve(int argv, char* args[]) {
           argError = "-t requires a non-negative number\n";
       }
       else
-        threads = (unsigned int)t;
+        config.threads = (unsigned int)t;
       i++;
     }
     else
@@ -188,10 +189,17 @@ static int solve(int argv, char* args[]) {
     return 1;
   }
 
+  solverSettings_t settings;
+  try {
+    settings = config.resolve();
+  } catch (const std::invalid_argument & e) {
+    cerr << e.what() << "\n";
+    return 1;
+  }
+
   std::string stdinError;
   bool damaged = false;
   auto str = fromStdin ? btcli::openStdin(stdinError, damaged) : openGzFile(file);
-
   if (!str) {
     if (damaged) {
       log << "could not load the puzzle: " << stdinError << "\n";
@@ -285,7 +293,7 @@ static int solve(int argv, char* args[]) {
       continue;
     }
 
-    solveThread_c assmThread(*problem, par, threads);
+    solveThread_c assmThread(*problem, par, settings);
 
     if (!assmThread.start(false)) {
       log << "Could not start Solver\n";

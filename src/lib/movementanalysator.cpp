@@ -19,7 +19,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "movementanalysator.h"
-#include "simd_config.h"
 
 #include "bt_assert.h"
 #include "movementcache.h"
@@ -122,9 +121,6 @@ void movementAnalysator_c::prepareFill(void) {
 #include <arm_neon.h>
 #endif
 
-static bool simdDisabled() {
-  return !SimdConfig::isDisassemblerSimdEnabled();
-}
 
 #if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
 __attribute__((target("avx512f")))
@@ -235,20 +231,6 @@ static void rfw_scalar(unsigned int * block, unsigned int n) {
   }
 }
 
-void movementAnalysator_c::selectKernels(void) {
-
-  use_avx512_kernel = false;
-  use_avx2_kernel = false;
-  use_neon_kernel = false;
-
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  use_avx512_kernel = __builtin_cpu_supports("avx512f") && !simdDisabled() && SimdConfig::isAvx512Allowed();
-  use_avx2_kernel = __builtin_cpu_supports("avx2") && !simdDisabled();
-#elif defined(__aarch64__) || defined(__ARM_NEON)
-  use_neon_kernel = !simdDisabled();
-#endif
-}
-
 void movementAnalysator_c::closureFull(void) {
 
   const unsigned int n = pieces->size();
@@ -261,7 +243,7 @@ void movementAnalysator_c::closureFull(void) {
 
   /* Roy-Floyd-Warshall all-pairs shortest paths on movement constraints.
    * Planar memory layout enables contiguous vector loads/stores/mins.
-   * Kernel choice was resolved by selectKernels() at run entry. */
+   * Kernel choice was fixed by the constructor, from the settings. */
   for (unsigned int d = 0; d < dirs; d++) {
     // 1. Pack direction d into contiguous planar block
     for (unsigned int y = 0; y < n; y++) {
@@ -539,7 +521,7 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
+movementAnalysator_c::movementAnalysator_c(const problem_c & problem, const solverSettings_t & settings,
                                            std::shared_ptr<rotationContext_c> rotationContext) :
   cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
@@ -553,6 +535,11 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
   nextstate(-1),
   maxstep((unsigned int) -1),
   rotation(std::move(rotationContext)) {
+
+  /* the RFW closure kernel, fixed for the analyser's life */
+  use_avx512_kernel = settings.disassemblerVector && settings.avx512();
+  use_avx2_kernel = settings.disassemblerVector && settings.avx2();
+  use_neon_kernel = settings.disassemblerVector && settings.neon();
 
   /* we assert that there must be a cache, otherwise no disassembly
    * analysis is possible anyway and this should not
@@ -993,7 +980,6 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
 
   /* Same per-run kernel resolution as disassemble(): this is the other
    * run entry point (used e.g. by the GUI movement browser). */
-  selectKernels();
 
   init_find(searchnode, pieces);
 

@@ -23,22 +23,16 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <cstdlib>
 #include <functional>
 #include <mutex>
 #include <stop_token>
 
 #include "bt_assert.h"
 
-/**
- * Kill switch (benchmarking only): with BURRTOOLS_NO_BUDGET=1 every budget
- * pointer is treated as null and both pools behave exactly as without any
- * cap, so capped vs uncapped can be A/B measured from the same build.
- */
-inline bool threadBudgetEnabled() {
-  static const bool enabled = std::getenv("BURRTOOLS_NO_BUDGET") == nullptr;
-  return enabled;
-}
+/* Kill switch (benchmarking only): with solverSettings_t::threadBudget
+ * false (BURRTOOLS_THREAD_BUDGET=0) solveThread_c creates no budget, the
+ * pointer stays null and both pools behave exactly as without any cap, so
+ * capped vs uncapped can be A/B measured from the same build. */
 
 /**
  * Concurrency architecture note (the one place that states the whole

@@ -19,25 +19,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "simd_exact_cover.h"
-#include "simd_config.h"
 
 #include <cstdlib>
 
 template <typename BitsetType>
-SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int pieces)
+SimdExactCover<BitsetType>::SimdExactCover(unsigned int cols, unsigned int pieces, const solverSettings_t & settings)
   : num_columns(cols), num_pieces(pieces)
 {
   bt_assert(num_columns <= BitsetType::NUM_WORDS * 64);
 
-#if (defined(__x86_64__) || defined(_M_X64)) && (defined(__GNUC__) || defined(__clang__))
-  use_avx2 = __builtin_cpu_supports("avx2") && SimdConfig::isVectorAccelerationEnabled();
-  use_avx512 = __builtin_cpu_supports("avx512f") && SimdConfig::isAvx512Allowed();
-#else
-  use_avx2 = false;
-  use_avx512 = false;
-#endif
-
-  use_neon = SimdConfig::isNeonAllowed();
+  use_avx2 = settings.avx2();
+  use_avx512 = settings.avx512();
+  use_neon = settings.neon();
 }
 
 template <typename BitsetType>
