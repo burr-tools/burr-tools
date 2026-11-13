@@ -14,9 +14,12 @@
 
 #include <deque>
 #include <memory>
+#include <optional>
 #include <set>
 #include <stdint.h>
 #include <vector>
+
+#include "../lib/rotationgeometry.h"
 
 class puzzle_c;
 class voxel_c;
@@ -25,8 +28,9 @@ class voxel_c;
  * Session-scoped undo/redo for all puzzle edits (Entities, Puzzle, and Solver
  * tabs). Snapshots live in RAM and are cleared when a new puzzle is loaded.
  *
- * Each snapshot captures: shape voxel data, colour palette, and per-problem
- * structure (piece counts, result, groups, colour constraints, name). Solutions
+ * Each snapshot captures: shape voxel data, colour palette, the pieces' play
+ * and bevel (the rotation model), and per-problem structure (piece counts,
+ * result, groups, colour constraints, name). Solutions
  * and disassemblies are intentionally excluded — those are large and are already
  * guarded by confirmation dialogs.
  *
@@ -138,6 +142,7 @@ private:
     std::vector<std::shared_ptr<const voxel_c>> shapes; ///< COW — unchanged shapes shared across snapshots
     std::vector<uint32_t> colors;                       ///< R | G<<8 | B<<16
     std::vector<problemSnap_t> problems;
+    std::optional<rotationGeometry::model_t> rotationModel;
     unsigned int selectedShape;
     actionKind_e kind;
 

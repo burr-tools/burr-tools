@@ -59,15 +59,17 @@ bool reportPlay;
 /* what the command line chooses; resolved against the environment and the
  * defaults once the arguments are read */
 solverConfig_t solverConfig;
-/* -m: the model of the pieces for -R, in place of the default */
+/* -m: the model of the pieces, in place of what the puzzle file stores */
 std::optional<rotationGeometry::model_t> cliModel;
+/* -w: the file the solved puzzle is written to, nullptr without it */
+const char * writeFile = nullptr;
 solverSettings_t settings;
 
 std::unique_ptr<disassembler_c> d;
 
 /* with -P, the play a disassembly with turns needs; this also replaces
  * the turns' paths by those with the most room (see optimizeTurns). Slow:
- * only when the play is printed (used) */
+ * only when the play is printed or stored (used) */
 static std::optional<turnPlay_t> measurePlay(separation_c * da, const assembly_c * a, const problem_c & problem, bool used) {
   if (!reportPlay || !used || !da->sumRotations())
     return std::nullopt;
@@ -94,6 +96,22 @@ static void printLevel(const std::string & level, const separation_c * da, const
       printf("; at this play it works with bevel %.4f, not below %.4f", play->bevelUpper, play->bevelLower);
   }
   printf("\n");
+}
+
+/* -w: keep the measured play with the solution, at the problem's bevel,
+ * and the bevel at its play */
+static void keepPlay(solution_c * s, const std::optional<turnPlay_t> & play, const problem_c & problem) {
+  if (play && !play->failed) {
+    const rotationGeometry::model_t model = rotationSettingsFor(problem, settings.rotation).model;
+    solutionPlay_t p{ play->upper, play->lower, model.chamfer };
+    if (!play->bevelFailed) {
+      p.hasBevel = true;
+      p.bevelUpper = play->bevelUpper;
+      p.bevelLower = play->bevelLower;
+      p.bevelPlay = model.play;
+    }
+    s->setPlay(p);
+  }
 }
 
 /* the rotation context for -R, nullptr without it: then no rotation code runs */
@@ -149,7 +167,7 @@ public:
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
           if (da) {
             Solutions++;
-            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *puzzle, !quiet || allProblems);
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *puzzle, !quiet || allProblems || writeFile);
 
             if (printSolutions)
               print(a.get(), puzzle);
@@ -161,7 +179,17 @@ public:
 
             if (printDisassemble)
               print(da.get(), a.get(), puzzle);
+
+            if (writeFile) {
+              /* added, then counted, as the GUI's solve thread does */
+              auto guard = puzzle->lockSolutions();
+              puzzle->addSolution(a.release(), da.release());
+              keepPlay(puzzle->getSavedSolution(puzzle->getNumberOfSavedSolutions() - 1), play, *puzzle);
+              puzzle->incNumSolutions();
+            }
           }
+          if (writeFile)
+            puzzle->incNumAssemblies();
         },
         rotationContext(*p)
       );
@@ -174,8 +202,14 @@ public:
 
     if (disassemble) {
       pool->submit(std::move(a));
-    } else if (printSolutions)
-      print(a.get(), puzzle);
+    } else {
+      if (printSolutions)
+        print(a.get(), puzzle);
+      if (writeFile) {
+        puzzle->addSolution(a.release());
+        puzzle->incNumAssemblies();
+      }
+    }
 
     return true;
   }
@@ -202,13 +236,16 @@ void usage(bool full = false) {
   cout << "          balanced  (without a mode, unless BURRTOOLS_ROT_MODE says otherwise) also\n";
   cout << "                    plans turns the fixed paths make with more play\n";
   cout << "          slow      also plans every other turn whose end pose is free\n";
-  cout << "  -m play,bevel  physical model for -R, in cube sizes (default 0.002,0.03, the STL\n";
-  cout << "        export's, made for slides; turns usually need more, see -P): gap between\n";
-  cout << "        cubes, length a 45 degree bevel cuts off each face; from puzzlecad's\n";
-  cout << "        $burr_inset i, $burr_bevel b, $burr_scale s: play 2 i / s, bevel b / (1.414 s)\n";
+  cout << "  -m play,bevel  physical model for -R, in cube sizes, in place of the one the file\n";
+  cout << "        stores (else 0.002,0.03, the STL export's, made for slides; turns usually\n";
+  cout << "        need more, see -P): gap between cubes, length a 45 degree bevel cuts\n";
+  cout << "        off each face; from puzzlecad's $burr_inset i, $burr_bevel b, $burr_scale s:\n";
+  cout << "        play 2 i / s, bevel b / (1.414 s)\n";
   cout << "  -P    with -R: print the play each disassembly needs, and the bevel at the model's play,\n";
   cout << "        with optimized turn paths: it works at the upper value, no motion the planner\n";
   cout << "        tries works below the lower\n";
+  cout << "  -w file  write the puzzle to file: the solutions found (or with -x, those\n";
+  cout << "        disassembled again), the model they are for and with -P the measured play\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -291,7 +328,7 @@ int main(int argv, char* args[]) {
         double play, chamfer;
         char rest;
         if (i+1 >= argv || sscanf(args[i+1], "%lf,%lf%c", &play, &chamfer, &rest) != 2 ||
-            !rotationGeometry::validModel({ play, chamfer })) {
+            !puzzle_c::validRotationModel({ play, chamfer })) {
           cout << "-m requires play,bevel with 0 < play < 1 and the bevel below half a cube\n";
           return 1;
         }
@@ -301,6 +338,13 @@ int main(int argv, char* args[]) {
       }
       else if (strcmp(args[i], "-n") == 0)
         newline = false;
+      else if (strcmp(args[i], "-w") == 0) {
+        if (i+1 >= argv) {
+          cout << "-w requires a file name\n";
+          return 1;
+        }
+        writeFile = args[++i];
+      }
       else if (strcmp(args[i], "-x") == 0)
         assemble = false;
       else if (strcmp(args[i], "-t") == 0) {
@@ -371,8 +415,6 @@ int main(int argv, char* args[]) {
     cerr << e.what() << "\n";
     return 1;
   }
-  if (cliModel)
-    settings.rotation.model = *cliModel;
 
   auto str = openGzFile(args[filenumber]);
   if (!str) {
@@ -381,6 +423,9 @@ int main(int argv, char* args[]) {
   }
   xmlParser_c pars(*str);
   puzzle_c p(pars);
+  /* -m: the pieces as they are, the puzzle's model, replacing the file's */
+  if (cliModel)
+    p.setRotationModel(*cliModel);
 
   if (ask) {
 
@@ -455,7 +500,7 @@ int main(int argv, char* args[]) {
     }
 
   /* once, for every problem that checks turns (-d or -x) */
-  if (rotationMoves && settings.rotation.mode != ROTATION_OFF && (disassemble || !assemble) && !cliModel)
+  if (rotationMoves && settings.rotation.mode != ROTATION_OFF && (disassemble || !assemble) && !p.getRotationModel())
     cerr << "note: turns are checked for the default play 0.002 and bevel 0.03, made for slides;"
             " turns usually need more: set them with -m\n";
 
@@ -475,6 +520,13 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem ; pr++) {
 
       problem_c * problem = p.getProblem(pr);
+
+      if (writeFile) {
+        /* the file says which pieces its disassemblies are for */
+        if (rotationMoves)
+          storeSolveRotationModel(p, settings.rotation);
+        problem->removeAllSolutions();
+      }
 
       auto assm = p.getGridType()->findAssembler(*problem, settings);
 
@@ -515,14 +567,24 @@ int main(int argv, char* args[]) {
       if (allProblems)
         cout << "problem: " << problem->getName() << endl;
 
+      /* with -w the problem runs the assembler, so it is solving while the
+       * solutions come in, and solved after */
+      assembler_c * run = assm.get();
+      if (writeFile) {
+        problem->setAssembler(std::move(assm));
+        run = problem->getAssembler();
+      }
+
       asm_cb a(problem);
 
-      assm->assemble(&a);
+      run->assemble(&a);
       a.finish();
       if (a.pool)
         reportSkippedRotations(a.pool->getRotationContext());
 
-      cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << assm->getIterations() << " iterations ";
+      cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << run->getIterations() << " iterations ";
+      if (writeFile)
+        problem->finishedSolving();
 
       if (newline)
         cout << endl;
@@ -532,6 +594,10 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem; pr ++) {
 
       problem_c * problem = p.getProblem(pr);
+      /* as when assembling: with -w the file says which pieces its
+       * disassemblies are for */
+      if (rotationMoves && writeFile)
+        storeSolveRotationModel(p, settings.rotation);
 
       auto context = rotationContext(*problem);
       d = std::make_unique<disassembler_0_c>(*problem, settings, context);
@@ -543,8 +609,13 @@ int main(int argv, char* args[]) {
 
           auto da = d->disassemble(solution->getAssembly());
 
+          /* no longer comes apart: the old disassembly was for other pieces
+           * or other moves, and goes */
+          if (!da && writeFile)
+            solution->setDisassembly(std::unique_ptr<separation_c>());
+
           if (da) {
-            const std::optional<turnPlay_t> play = measurePlay(da.get(), solution->getAssembly(), *problem, !quiet);
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), solution->getAssembly(), *problem, !quiet || writeFile);
 
             if (printSolutions)
               print(solution->getAssembly(), problem);
@@ -554,12 +625,26 @@ int main(int argv, char* args[]) {
 
             if (printDisassemble)
               print(da.get(), solution->getAssembly(), problem);
+
+            if (writeFile) {
+              solution->setDisassembly(std::move(da));
+              keepPlay(solution, play, *problem);
+            }
           }
         }
       }
 
       d.reset();
       reportSkippedRotations(context.get());
+    }
+  }
+
+  if (writeFile) {
+    try {
+      p.save(writeFile);
+    } catch (const std::runtime_error & e) {
+      cerr << e.what() << "\n";
+      return 2;
     }
   }
 

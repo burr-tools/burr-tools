@@ -4,6 +4,7 @@
 
 #include "lib/assembler_0.h"
 #include "lib/assembly.h"
+#include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
@@ -672,6 +673,107 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
 /* the rotation model                                                  */
 /* ------------------------------------------------------------------ */
 
+TEST_CASE("puzzle: the pieces' play and bevel are saved with the puzzle", "[problem][rotations]") {
+  Fixture f = makeFixture(1);
+  CHECK_FALSE(f.puzzle->getRotationModel());
+
+  /* unset, nothing is written */
+  auto plain = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("<puzzle version=\"2\">") != std::string::npos);
+    CHECK(text.find("rotationPlay") == std::string::npos);
+  });
+  CHECK_FALSE(plain->getRotationModel());
+
+  f.puzzle->setRotationModel({ 0.0126, 0.0317 });
+  auto p = reloadEdited(*f.puzzle, [](std::string & text) {
+    /* on the puzzle, not on a problem: the problems share the pieces */
+    CHECK(text.find("<puzzle version=\"3\" rotationPlay=\"0.0126\" rotationBevel=\"0.0317\"") != std::string::npos);
+  });
+  REQUIRE(p->getRotationModel());
+  CHECK(p->getRotationModel()->play == 0.0126);
+  CHECK(p->getRotationModel()->chamfer == 0.0317);
+
+  /* a copied puzzle keeps it */
+  puzzle_c copy(f.puzzle.get());
+  REQUIRE(copy.getRotationModel());
+  CHECK(copy.getRotationModel()->play == 0.0126);
+
+  f.puzzle->clearRotationModel();
+  CHECK_FALSE(f.puzzle->getRotationModel());
+}
+
+TEST_CASE("puzzle: an invalid rotation model is refused, in a file and by the setter",
+          "[problem][rotations]") {
+  Fixture f = makeFixture(1);
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0, 0.03 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 1, 0 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0.08, -0.01 }));
+  CHECK_THROWS(f.puzzle->setRotationModel({ 0.08, 0.46 }));
+  CHECK_FALSE(f.puzzle->getRotationModel());
+
+  f.puzzle->setRotationModel({ 0.05, 0.03 });
+  for (auto [from, to] : { std::pair{ "rotationPlay=\"0.05\"", "rotationPlay=\"0\"" },
+                           { "rotationPlay=\"0.05\"", "rotationPlay=\"0.05x\"" },
+                           { "rotationPlay=\"0.05\"", "" },
+                           { "rotationBevel=\"0.03\"", "rotationBevel=\"0.6\"" } }) {
+    INFO(from << " -> " << to);
+    CHECK_THROWS(reloadEdited(*f.puzzle, [&](std::string & text) { replaceOnce(text, from, to); }));
+  }
+}
+
+TEST_CASE("solution: the measured bevel is saved with the play", "[problem][rotations]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  const gridType_c & gt = *f.puzzle->getGridType();
+  f.problem->addSolution(assemblyAtX(gt, { 0, 1 }));
+  f.problem->finishedSolving();
+
+  solution_c * s = f.problem->getSavedSolution(0);
+  solutionPlay_t bad = { 0.0616, 0.0348, 0.032, true, 0.02, 0.03, 0.0126 };   // lower above upper
+  CHECK_THROWS(s->setPlay(bad));
+  bad = { 0.0616, 0.0348, 0.032, true, 0.04, 0.03, 0 };   // no play
+  CHECK_THROWS(s->setPlay(bad));
+  s->setPlay({ 0.0616, 0.0348, 0.032, true, 0.0453, 0.0441, 0.0126 });
+
+  auto p = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("bevelUpper=\"0.0453\" bevelLower=\"0.0441\" bevelPlay=\"0.0126\"") != std::string::npos);
+  });
+  REQUIRE(p->getProblem(0)->getSavedSolution(0)->getPlay());
+  const solutionPlay_t back = *p->getProblem(0)->getSavedSolution(0)->getPlay();
+  CHECK(back.hasBevel);
+  CHECK(back.bevelUpper == 0.0453);
+  CHECK(back.bevelLower == 0.0441);
+  CHECK(back.bevelPlay == 0.0126);
+  CHECK(back.upper == 0.0616);
+
+  /* without it, none of the three is written */
+  s->setPlay({ 0.0616, 0.0348, 0.032 });
+  reloadEdited(*f.puzzle, [](std::string & text) { CHECK(text.find("bevelUpper") == std::string::npos); });
+
+  /* in a file, all three or none, and valid */
+  s->setPlay({ 0.0616, 0.0348, 0.032, true, 0.0453, 0.0441, 0.0126 });
+  for (auto [from, to] : { std::pair{ " bevelPlay=\"0.0126\"", "" },
+                           { "bevelLower=\"0.0441\"", "bevelLower=\"0.05\"" },
+                           { "bevelUpper=\"0.0453\"", "bevelUpper=\"x\"" } }) {
+    INFO(from << " -> " << to);
+    CHECK_THROWS(reloadEdited(*f.puzzle, [&](std::string & text) { replaceOnce(text, from, to); }));
+  }
+}
+
+TEST_CASE("xmlDouble: as short as it can be, and exact", "[problem][rotations]") {
+  /* turns are certified at the exact play, so the file must keep it */
+  CHECK(xmlDouble(0.081) == "0.081");
+  CHECK(xmlDouble(0.032) == "0.032");
+  double play = 0.01, hi = 0.2;
+  for (int i = 0; i < 20; i++)
+    play = 0.5 * (play + hi);   // a play a bisection could reach
+  for (double v : { 0.1 + 0.2, 1.0 / 3, play, 0.08099999999999999 }) {
+    double back = 0;
+    INFO(xmlDouble(v));
+    REQUIRE(xmlParseDouble(xmlDouble(v), &back));
+    CHECK(back == v);
+  }
+}
+
 TEST_CASE("problem: which rotation mode the solve state comes from, in memory", "[problem][rotations]") {
   SolvingFixture f = makeSolvingFixture(1, 1);
   problem_c & p = *f.problem;
@@ -707,4 +809,72 @@ TEST_CASE("problem: which rotation mode the solve state comes from, in memory", 
   CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
   auto back = reloadEdited(*f.puzzle, [](std::string &) {});
   CHECK(back->getProblem(0)->solvedWithRotationMode(ROTATION_FAST));
+}
+
+TEST_CASE("puzzle: other pieces make every problem's solutions unknown", "[problem][rotations]") {
+  auto solved = [] {
+    SolvingFixture f = makeSolvingFixture(1, 1);
+    f.problem->finishedSolving();
+    REQUIRE(f.problem->getSolveState() == SS_SOLVED);
+    return f;
+  };
+
+  /* more play and less: either way the user solves again (the
+   * disassemblies that turn: test_rotation_disassembly) */
+  for (rotationGeometry::model_t m : { rotationGeometry::model_t{ 0.07, 0.032 }, rotationGeometry::model_t{ 0.001, 0.01 } }) {
+    SolvingFixture set = solved();
+    set.puzzle->setRotationModel(m);
+    CHECK(set.problem->getSolveState() == SS_UNKNOWN);
+  }
+
+  /* storing the model that applies already (the default) changes nothing */
+  SolvingFixture same = solved();
+  same.puzzle->setRotationModel(rotationSettings_t{}.model);
+  CHECK(same.puzzle->getRotationModel());
+  CHECK(same.problem->getSolveState() == SS_SOLVED);
+
+  /* clearing a model that is not there is no edit */
+  SolvingFixture noEdit = solved();
+  noEdit.puzzle->clearRotationModel();
+  CHECK(noEdit.problem->getSolveState() == SS_SOLVED);
+}
+
+TEST_CASE("solution: the measured play is saved with the solution", "[problem][rotations]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  const gridType_c & gt = *f.puzzle->getGridType();
+  f.problem->addSolution(assemblyAtX(gt, { 0, 1 }));
+  f.problem->addSolution(assemblyAtX(gt, { 3, 0 }));
+  f.problem->finishedSolving();
+
+  solution_c * s = f.problem->getSavedSolution(0);
+  CHECK_FALSE(s->getPlay());
+  CHECK_THROWS(s->setPlay({ 0.05, 0.06, 0.03 }));  // lower above upper
+  CHECK_THROWS(s->setPlay({ 1.0, 0.5, 0.03 }));
+  CHECK_THROWS(s->setPlay({ 0.05, 0.02, -0.01 }));
+  CHECK_FALSE(s->getPlay());
+  s->setPlay({ 0.0616, 0.0348, 0.032 });
+
+  auto p = reloadEdited(*f.puzzle, [](std::string & text) {
+    CHECK(text.find("<puzzle version=\"3\">") != std::string::npos);
+  });
+  const problem_c * pr = p->getProblem(0);
+  REQUIRE(pr->getNumberOfSavedSolutions() == 2);
+  REQUIRE(pr->getSavedSolution(0)->getPlay());
+  CHECK(pr->getSavedSolution(0)->getPlay()->upper == 0.0616);
+  CHECK(pr->getSavedSolution(0)->getPlay()->lower == 0.0348);
+  CHECK(pr->getSavedSolution(0)->getPlay()->bevel == 0.032);
+  CHECK_FALSE(pr->getSavedSolution(1)->getPlay());
+
+  /* a new disassembly drops the play measured for the old one */
+  s->setDisassembly(std::unique_ptr<separation_c>());
+  CHECK_FALSE(s->getPlay());
+
+  /* in a file, all three or none, and valid */
+  s->setPlay({ 0.0616, 0.0348, 0.032 });
+  for (auto [from, to] : { std::pair{ " playBevel=\"0.032\"", "" },
+                           { "playLower=\"0.0348\"", "playLower=\"0.07\"" },
+                           { "playUpper=\"0.0616\"", "playUpper=\"high\"" } }) {
+    INFO(from << " -> " << to);
+    CHECK_THROWS(reloadEdited(*f.puzzle, [&](std::string & text) { replaceOnce(text, from, to); }));
+  }
 }

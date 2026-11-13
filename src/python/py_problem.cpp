@@ -3,6 +3,7 @@
 #include "py_shape.h"
 #include "lib/puzzle.h"
 #include "lib/problem.h"
+#include "lib/rotationtables.h"
 
 #include <stdexcept>
 
@@ -88,7 +89,11 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
                                                     bool reduce,
                                                     bool keep_rotations,
                                                     bool keep_mirror,
-                                                    unsigned int threads) {
+                                                    unsigned int threads,
+                                                    const std::string & rotations) {
+  const std::optional<rotationMode_e> mode = rotationModeFromName(rotations);
+  if (!mode)
+    throw std::invalid_argument("rotations must be \"off\", \"fast\", \"balanced\" or \"slow\"");
   return std::make_unique<SolutionIterator>(
     puzzle,
     problem_idx,
@@ -96,7 +101,8 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
     reduce,
     keep_rotations,
     keep_mirror,
-    threads
+    threads,
+    *mode
   );
 }
 

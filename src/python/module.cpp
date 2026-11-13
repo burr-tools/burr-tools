@@ -6,6 +6,7 @@
 #include "py_shape.h"
 #include "py_problem.h"
 #include "py_puzzle.h"
+#include "lib/rotationtables.h"
 #include "lib/voxel.h"
 
 namespace py = pybind11;
@@ -117,7 +118,12 @@ PYBIND11_MODULE(burrtools, m) {
          py::arg("keep_rotations") = false,
          py::arg("keep_mirror") = false,
          py::arg("threads") = 0,
-         "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores)")
+         py::arg("rotations") = "off",
+         "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores; "
+         "rotations: also allow quarter turns of piece groups when disassembling, cube grids only: "
+         "\"fast\" (the fixed turn paths only), \"balanced\" (also plans turns those paths make with more "
+         "play), \"slow\" (also plans every other turn that ends in a free place) or \"off\" (the "
+         "default). Every mode takes only turns proven at the puzzle's rotation_model)")
     .def("__repr__", [](const PyProblem & p) {
       return "<Problem index=" + std::to_string(p.get_index()) +
              " name='" + p.get_name() +
@@ -130,6 +136,10 @@ PYBIND11_MODULE(burrtools, m) {
     .def_static("load", &PyPuzzle::load, py::arg("filename"), "Load a puzzle from an .xmpuzzle file")
     .def("save", &PyPuzzle::save, py::arg("filename"), "Save the puzzle to an .xmpuzzle file")
     .def_property("comment", &PyPuzzle::get_comment, &PyPuzzle::set_comment, "Puzzle description or comments")
+    .def_property("rotation_model", &PyPuzzle::get_rotation_model, &PyPuzzle::set_rotation_model,
+                  "(play, bevel) of the pieces as printed, in cube sizes, saved with the puzzle: the gap "
+                  "between cubes and the length a 45 degree bevel cuts off each face. Rotation moves are "
+                  "checked against it. Reads the default while none is set; set None to go back to it")
     .def_property_readonly("num_shapes", &PyPuzzle::get_num_shapes, "Number of shapes in the puzzle")
     .def_property_readonly("num_problems", &PyPuzzle::get_num_problems, "Number of problems in the puzzle")
     .def("add_shape", &PyPuzzle::add_shape,
@@ -149,4 +159,7 @@ PYBIND11_MODULE(burrtools, m) {
     });
 
   m.def("load", &PyPuzzle::load, py::arg("filename"), "Load a puzzle from an .xmpuzzle file");
+  m.def("release_rotation_tables", &releaseRotationTables,
+        "Free the rotation tables kept from earlier solves (the two most recently used sets stay alive "
+        "between solves, so designs of one size solved in sequence build them once)");
 }

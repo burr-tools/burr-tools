@@ -8,6 +8,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
+#include "lib/rotationtables.h"
 #include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
@@ -22,14 +23,16 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
                                    bool reduce,
                                    bool keep_rotations,
                                    bool keep_mirror,
-                                   unsigned int threads)
+                                   unsigned int threads,
+                                   rotationMode_e rotation_mode)
   : puzzle(std::move(puz)),
     problem_idx(problem_idx),
     disassemble(disassemble),
     reduce(reduce),
     keep_rotations(keep_rotations),
     keep_mirror(keep_mirror),
-    threads(threads)
+    threads(threads),
+    rotation_mode(rotation_mode)
 {
   if (!puzzle) {
     throw std::invalid_argument("Puzzle pointer is null");
@@ -151,6 +154,7 @@ void SolutionIterator::worker_run(std::stop_token st) {
     if (threads > 0) {
       config.threads = threads;
     }
+    config.rotation.mode = rotation_mode;
     const solverSettings_t settings = config.resolve();
 
     assm = gt->findAssembler(*problem, settings);
@@ -189,7 +193,12 @@ void SolutionIterator::worker_run(std::stop_token st) {
     }
 
     if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-      disasm = std::make_unique<disassembler_0_c>(*problem, settings);
+      // Rotation tables are shared and kept between solves (see
+      // sharedRotationTables), so solving designs of one size in sequence
+      // builds them once.
+      // ROTATION_OFF gives no context
+      std::shared_ptr<rotationContext_c> rotation = rotationContextFor(*problem, settings.rotation);
+      disasm = std::make_unique<disassembler_0_c>(*problem, settings, std::move(rotation));
     }
 
     unsigned int asm_count{0};

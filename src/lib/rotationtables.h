@@ -35,6 +35,7 @@
 #include <vector>
 
 class problem_c;
+class puzzle_c;
 class disassemblerNode_c;
 
 /**
@@ -51,13 +52,13 @@ inline const std::vector<double> WIDE_AMOUNTS = { 0.05, 0.1, 0.15, 0.2, 0.25, 0.
 
 /**
  * How a solve decides turns (design/2026-10-19-rotation-moves.md, "Rotation
- * modes"). Every mode accepts only turns certified at the model's play, so
+ * modes"). Every mode accepts only turns certified at the puzzle's play, so
  * results from any of them hold at that play; the modes differ in how many
  * candidate turns they look at, and so in what they find and what it costs.
  */
 enum rotationMode_e : unsigned char {
   ROTATION_OFF,        ///< no rotation moves: rotationContextFor gives no context
-  ROTATION_FAST,       ///< the fixed path family only, at the model's play
+  ROTATION_FAST,       ///< the fixed path family only, at the puzzle's play
   /** the family at play + max(play, 0.04) (rotationGatePlay) proposes the
    *  turns the family misses at the play, the planner (answerTurn) accepts
    *  those possible at the play */
@@ -73,10 +74,12 @@ const char * rotationModeName(rotationMode_e mode);
 std::optional<rotationMode_e> rotationModeFromName(const std::string & name);
 
 struct rotationSettings_t {
-  /** The model of the pieces: the STL export's defaults from before
-   *  rotation moves (offset 0.01 mm, bevel 0.3 mm on 10 mm cubes). Turns
-   *  usually need more clearance than that; burrTxt says so, and burrTxt
-   *  -P measures what a disassembly needs. */
+  /** The model of a puzzle that stores none (puzzle_c::getRotationModel):
+   *  the STL export's defaults from before rotation moves (offset 0.01 mm,
+   *  bevel 0.3 mm on 10 mm cubes), so a puzzle that never turns exports
+   *  and draws as it always did. Turns usually need more clearance than
+   *  that; the GUI and burrTxt say so, and Optimize Turns / burrTxt -P
+   *  measure what a disassembly needs. */
   rotationGeometry::model_t model = { 0.002, 0.03 };
   /** shift amounts of the compass wiggles and slides: every 0.05 from 0.05
    *  to 0.45 (see the TIC results in design/2026-10-19-rotation-moves.md) */
@@ -90,8 +93,8 @@ struct rotationSettings_t {
    *  rotation moves on without choosing gets */
   rotationMode_e mode = ROTATION_BALANCED;
   /** how a turn is decided: by the solver, and for the play a turn needs
-   *  and the path with the most room (requiredPlay, widestTurn; burrTxt
-   *  -P) */
+   *  and the path with the most room (requiredPlay, widestTurn; Optimize
+   *  Turns and burrTxt -P) */
   rotationGeometry::decideSettings_t decide = {};
   /** BURRTOOLS_ROT_STATS=1: a front end reports how the turns were decided
    *  (rotationContext_c::getStats; benchmarking) */
@@ -405,6 +408,29 @@ struct optimizeControl_t {
  */
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
                          const optimizeControl_t & control = {});
+
+/**
+ * The settings a problem's rotation moves use: the given ones with the
+ * puzzle's model when it stores one (puzzle_c::getRotationModel). The model
+ * describes the pieces, so it belongs to the puzzle; the rest is how the
+ * solver searches. rotationContextFor and optimizeTurns apply it
+ * themselves.
+ */
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
+
+/** The model a problem's rotation moves are checked for: its puzzle's, else
+ *  the default (rotationSettings_t::model). */
+rotationGeometry::model_t rotationModelOf(const problem_c & problem);
+
+/** The pieces of a puzzle: its model, else the default. The same for every
+ *  shape and problem; the 3D views' STL style draws only a stored one
+ *  (puzzle_c::getRotationModel), so a puzzle without keeps their own look. */
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
+
+/** A solve that turns pieces stores the model it checks them for when the
+ *  puzzle has none, so that a saved file says which pieces its
+ *  disassemblies are for. The front ends call it before such a solve. */
+void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings);
 
 /**
  * A rotation context for a problem, or nullptr when rotation moves are not
