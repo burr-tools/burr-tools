@@ -65,6 +65,8 @@ namespace btenv {
     { "BURRTOOLS_SPLIT_ORDER", Scope::Solver, "depth|breadth", "breadth: assembler 0 queues the tasks a split makes at the back of the pool instead of the front (benchmarking)" },
     { "BURRTOOLS_DONATE", Scope::Solver, "0|1", "0: running tasks no longer hand work to idle workers on demand: assembler 0 splits eagerly at pop time, assembler 1's tasks run as seeded (benchmarking)" },
     { "BURRTOOLS_DONATE_EVERY", Scope::Solver, "<n>", "also donate every n search nodes whether or not a worker is waiting, so donation runs deterministically even single-threaded (testing)" },
+    { "BURRTOOLS_ROT_MODE", Scope::Solver, "off|fast|balanced|slow", "how rotation moves decide turns where a program turns them on without choosing (burrTxt -R without a mode): fast, the fixed paths only; balanced, the default, also the planner on the turns the fixed paths make with more play; slow, the planner on every turn they miss (benchmarking)" },
+    { "BURRTOOLS_ROT_STATS", Scope::Solver, "0|1", "1: burrTxt prints per problem how rotation moves were decided: candidates, family, gate, planner answers and time (benchmarking)" },
 
     // both GUIs
     { "BURRTOOLS_UPDATE_VERSION_OVERRIDE", Scope::Gui, "<version>", "the update check (Help > Check for updates) compares against this version instead of the program's (testing)" },

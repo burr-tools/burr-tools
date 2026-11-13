@@ -445,6 +445,21 @@ void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
 }
 
 static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolProbSel(static_cast<LBlockListGroup_c*>(o)); }
+
+/* the menu's order, see the RotationMoves choice */
+static const rotationMode_e rotationModes[] = { ROTATION_OFF, ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW };
+
+rotationMode_e mainWindow_c::rotationMode(void) const {
+  const int v = RotationMoves->value();
+  return (v >= 0 && v < (int)std::size(rotationModes)) ? rotationModes[v] : ROTATION_OFF;
+}
+
+static void cb_RotationMode_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_RotationMode(); }
+void mainWindow_c::cb_RotationMode(void) {
+  /* the solver tab says whether the results were found with this mode */
+  updateInterface();
+}
+
 void mainWindow_c::cb_SolProbSel(LBlockListGroup_c* grp) {
   int reason = grp->getReason();
 
@@ -1115,14 +1130,21 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
   if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
   if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
-  if (RotationMoves->value() != 0) par |= solveThread_c::PAR_ROTATION_MOVES;
+  if (rotationMode() != ROTATION_OFF) par |= solveThread_c::PAR_ROTATION_MOVES;
 
   /* with rotation moves the solver builds its tables in the background;
    * a thread count of 0 in the preferences leaves it to the environment */
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  assmThread = std::make_unique<solveThread_c>(*puzzle->getProblem(prob), par, settings);
+
+  /* which mode the results come from, so that the tab can say when the
+   * choice differs (in memory only, like the choice) */
+  problem_c * solved = puzzle->getProblem(prob);
+  if (par & solveThread_c::PAR_DISASSM)
+    solved->noteSolveRotationMode(rotationMode());
+
+  assmThread = std::make_unique<solveThread_c>(*solved, par, settings);
 
   assmThread->setSortMethod(sortMethod->value());
   assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
@@ -1371,6 +1393,8 @@ bool mainWindow_c::solverSettings(solverSettings_t & out) {
   solverConfig_t solver;
   if (config.numThreads() > 0)
     solver.threads = config.numThreads();
+  /* the solver tab chooses the mode; without rotation moves it is not used */
+  solver.rotation.mode = rotationMode();
   try {
     out = solver.resolve();
   } catch (const std::invalid_argument & e) {
@@ -1382,7 +1406,7 @@ bool mainWindow_c::solverSettings(solverSettings_t & out) {
 }
 
 std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(const problem_c & pr, const solverSettings_t & settings) {
-  if (!RotationMoves->value())
+  if (rotationMode() == ROTATION_OFF)
     return nullptr;
   /* the add-disassembly actions run here on the UI thread anyway; building
    * the tables takes a moment the first time */
@@ -2391,6 +2415,9 @@ void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
    */
   solveProgress.clear();
 
+  /* the rotation tables kept for the next solve were for the old pieces */
+  releaseRotationTables();
+
   auto nggt = std::make_unique<guiGridType_c>(puzzle->getGridType());
 
   // now replace all gridtype dependent gui elements with
@@ -3264,7 +3291,7 @@ void mainWindow_c::updateInterface(void) {
         RotationMoves->activate();
       else {
         RotationMoves->deactivate();
-        RotationMoves->value(0);
+        RotationMoves->value(0);   // Off
       }
 
       if (ggt->getGridType()->getCapabilities() & gridType_c::CAP_DISASSEMBLE &&
@@ -3430,7 +3457,10 @@ void mainWindow_c::updateInterface(void) {
         break;
       case solveThread_c::ACT_FINISHED:
         /* limits of the rotation tables made the search skip some turns */
-        OutputActivity->value(assmThread->rotationsSkipped() ? "finished, turns may be missing" : "finished");
+        if (!pr->solvedWithRotationMode(rotationMode()))
+          OutputActivity->value("finished, with other rotation moves");
+        else
+          OutputActivity->value(assmThread->rotationsSkipped() ? "finished, turns may be missing" : "finished");
         break;
       case solveThread_c::ACT_WAIT_TO_STOP:
         OutputActivity->value("please wait");
@@ -3509,11 +3539,13 @@ void mainWindow_c::updateInterface(void) {
           BtnCont->deactivate();
           break;
         case SS_SOLVED:
-          OutputActivity->value("finished");
+          /* every mode accepts only certified turns, so the results stay;
+           * other rotation moves may find more, or fewer, by solving again */
+          OutputActivity->value(pr->solvedWithRotationMode(rotationMode()) ? "finished" : "finished, with other rotation moves");
           BtnCont->deactivate();
           break;
         case SS_SOLVING:
-          OutputActivity->value("pause");
+          OutputActivity->value(pr->solvedWithRotationMode(rotationMode()) ? "pause" : "pause, with other rotation moves");
           // a refused restore keeps SS_SOLVING but drops the saved state
           // (lifecycle T2c): nothing left to continue
           if (pr->canStartSolving())
@@ -4199,9 +4231,30 @@ void mainWindow_c::CreateSolveTab(void) {
     KeepRotations->tooltip(" Don't remove solutions that are rotations of other solutions ");
     KeepRotations->clear_visible_focus();
 
-    RotationMoves = new LFl_Check_Button("Rotation Moves", 0, 3, 1, 1);
-    RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only) ");
-    RotationMoves->clear_visible_focus();
+    {
+      layouter_c * r = new layouter_c(0, 3, 2, 1);
+      new LFl_Box("Rotation moves: ", 0, 0, 1, 1);
+      RotationMoves = new LFl_Choice(1, 0, 1, 1);
+      static_cast<LFl_Choice*>(RotationMoves)->weight(1, 0);
+      /* the order of rotationModes */
+      RotationMoves->add("Off");
+      RotationMoves->add("Fast");
+      RotationMoves->add("Balanced");
+      RotationMoves->add("Slow");
+      RotationMoves->value(0);
+      RotationMoves->callback(cb_RotationMode_stub, this);
+      RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only).\n"
+                             " Every mode takes only turns proven possible for the pieces' play and bevel,\n"
+                             " so results stay valid when you change the mode:\n"
+                             "   Fast: only the fixed turn paths.\n"
+                             "   Balanced (the usual choice): also plans turns those paths make with more play.\n"
+                             "   Slow: also plans every other turn that ends in a free place; can take long.\n"
+                             " The pieces are the STL export's, made for slides (play 0.002, bevel 0.03); turns\n"
+                             " usually need more clearance. ");
+      RotationMoves->clear_visible_focus();
+      r->end();
+    }
+
 
     o->end();
 

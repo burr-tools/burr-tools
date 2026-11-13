@@ -47,8 +47,8 @@ The engine-selection toggles (`BURRTOOLS_BITPARALLEL`, `BURRTOOLS_HUANG_MEM_MB`)
 | `BURRTOOLS_DONATE=0\|1` | `0` disables split on demand in every engine: running tasks no longer hand their shallowest open level to waiting siblings. assembler_0 falls back to its eager pop-time splitting (shallow prefixes, starving siblings); assembler_1's tasks then run as seeded. See `design/2026-10-17-split-on-demand.md`. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
 | `BURRTOOLS_DONATE_EVERY=N` | Tests only: additionally donate every N search nodes whether or not a sibling is waiting, so donation paths run deterministically, even single-threaded. | Exercise the donation/cut/divide interplay on small puzzles. |
 | `BURRTOOLS_THREAD_BUDGET=0\|1` | `0` runs the assembly and disassembly pools without the shared thread budget (`src/lib/thread_budget.h`). | A/B capped vs uncapped scheduling. |
-| `BURRTOOLS_ROT_PLANNER=0\|1` | Turns the rotation planner off or on where the front end does not choose (`burrTxt -Q` and `-M` do). See `design/2026-10-19-rotation-moves.md`. | A/B the planner's extra turns and cost. |
-| `BURRTOOLS_ROT_FAMILY=compass\|wide` | The fixed rotation path family: `wide` (the default: 16 directions, wiggles, slides and ramps, amounts to 0.55: 881 paths per sense) or `compass` (8 directions, wiggles and slides: 145 paths, about 5 times faster standalone). | A/B the wide family's extra turns against its table-build cost. |
+| `BURRTOOLS_ROT_MODE=off\|fast\|balanced\|slow` | How rotation moves decide turns where the front end turns them on without choosing a mode (`burrTxt -R` alone; `-R fast` etc. and the GUI's choice choose). Default `balanced`. See `design/2026-10-19-rotation-moves.md`, "Rotation modes". | A/B the modes' turns and cost. |
+| `BURRTOOLS_ROT_STATS=1` | burrTxt prints per problem how turns were decided (candidates, family, gate, planner answers and seconds). | Count what the planner does. |
 
 ### Running an Interleaved A/B Benchmark
 

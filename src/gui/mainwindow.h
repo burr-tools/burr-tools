@@ -163,7 +163,11 @@ class mainWindow_c : public LFl_Double_Window {
 
   layouter_c *TabSolve;
   Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
-  Fl_Check_Button *RotationMoves;
+  /* Rotation moves: Off, Fast, Balanced, Slow (rotationMode()); per solve,
+   * never saved */
+  Fl_Choice *RotationMoves;
+  /* the mode RotationMoves chooses, ROTATION_OFF for off */
+  rotationMode_e rotationMode(void) const;
 
   /* the solver settings for this GUI: its preferences, the rest from the
    * environment and the defaults (solverConfig_t); false, after telling the
@@ -171,7 +175,7 @@ class mainWindow_c : public LFl_Double_Window {
   bool solverSettings(solverSettings_t & out);
 
   /* the rotation context for disassembling the given problem right here
-   * when the Rotation Moves option is on, nullptr otherwise */
+   * with the mode RotationMoves chooses, nullptr when it is off */
   std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr, const solverSettings_t & settings);
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
@@ -404,6 +408,7 @@ public:
   void cb_Coment(void);
   void cb_Toggle3D(void);
   void cb_SolProbSel(LBlockListGroup_c* reason);
+  void cb_RotationMode(void);
 
   void cb_ShapeGroup(void);
   void cb_ImageExport(void);

@@ -23,7 +23,9 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <array>
 #include <bit>
+#include <cstdint>
 #include <cmath>
 #include <iterator>
 #include <limits>
@@ -31,6 +33,8 @@
 #include <numbers>
 #include <atomic>
 #include <optional>
+#include <queue>
+#include <unordered_map>
 #include <thread>
 
 namespace rotationGeometry {
@@ -209,37 +213,55 @@ planarScene_c::planarScene_c(const std::vector<cell_t> & moving, const std::vect
    * a corner it shares with a diagonal neighbour touches it all the way: no
    * finite check can prove that clear, every such turn would come out
    * undecided. Real pieces always have play. */
-  if (!(model.play > 0 && model.chamfer >= 0 && half > 0 && model.chamfer < half))
+  if (!validModel(model))
     bt_te("planarScene_c: needs play > 0, chamfer >= 0 and a cube larger than its chamfer");
 
   double pu, pv;
   inPlane(0.5 * pivotHx, 0.5 * pivotHy, 0.5 * pivotHz, axis, &pu, &pv);
 
-  std::map<int, layer_t> byLayer;
+  /* the layers of the moving cubes, ascending along the axis, built in
+   * place: a table build makes millions of one-cube scenes, and a map
+   * beside the layers was one more allocation each */
+  auto layerOf = [this](int a) {
+    return std::lower_bound(layers.begin(), layers.end(), a,
+                            [](const layer_t & l, int key) { return l.axial < key; });
+  };
   for (const cell_t & c : moving) {
     square_t sq;
     inPlane(c.x, c.y, c.z, axis, &sq.u, &sq.v);
     sq.u -= pu;
     sq.v -= pv;
-    byLayer[axial(c, axis)].moving.push_back(sq);
+    const int a = (int)axial(c, axis);
+    auto l = layerOf(a);
+    if (l == layers.end() || l->axial != a)
+      l = layers.insert(l, layer_t{ a, {}, {} });
+    l->moving.push_back(sq);
     rho = std::max(rho, std::sqrt(sq.u * sq.u + sq.v * sq.v) + half * std::sqrt(2.0));
   }
 
   /* static cubes on layers without moving cubes can never be hit */
   for (const cell_t & c : stat) {
-    auto it = byLayer.find(axial(c, axis));
-    if (it == byLayer.end())
+    const int a = (int)axial(c, axis);
+    const auto l = layerOf(a);
+    if (l == layers.end() || l->axial != a)
       continue;
     square_t sq;
     inPlane(c.x, c.y, c.z, axis, &sq.u, &sq.v);
     sq.u -= pu;
     sq.v -= pv;
-    it->second.stat.push_back(sq);
+    l->stat.push_back(sq);
   }
 
-  for (auto & l : byLayer)
-    if (!l.second.stat.empty())
-      layers.push_back(std::move(l.second));
+  std::erase_if(layers, [](const layer_t & l) { return l.stat.empty(); });
+}
+
+std::vector<planarScene_c::pair_t> planarScene_c::pairs(void) const {
+  std::vector<pair_t> out;
+  for (const layer_t & l : layers)
+    for (const square_t & m : l.moving)
+      for (const square_t & s : l.stat)
+        out.push_back({ m.u, m.v, s.u, s.v });
+  return out;
 }
 
 double planarScene_c::clearance(const pose_t & p) const {
@@ -310,7 +332,11 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
    * So clearance(mid) >= lipschitz * halfwidth proves an interval clear. */
   const double lipschitz = std::hypot(b.du - a.du, b.dv - a.dv) + rho * std::fabs(b.theta - a.theta);
 
-  std::vector<std::pair<double, double>> todo = { { 0.0, 1.0 } };
+  /* the intervals still to decide; one buffer per thread, as a table build
+   * certifies millions of segments (and an allocation costs much more
+   * under AddressSanitizer than the few classify calls most of them need) */
+  thread_local std::vector<std::pair<double, double>> todo;
+  todo.assign(1, { 0.0, 1.0 });
   while (!todo.empty()) {
     auto [s0, s1] = todo.back();
     todo.pop_back();
@@ -359,12 +385,12 @@ verdict_e planarScene_c::certifyPath(const std::vector<pose_t> & waypoints) cons
 }
 
 verdict_e planarScene_c::certifyQuarterTurn(unsigned int sense) const {
-  return certifyPath(makePath({ PATH_PURE, sense, 0, 0, 0 }));
+  return certifyPath(makePath({ PATH_PURE, sense }));
 }
 
 path_t makePath(const pathSpec_t & spec) {
 
-  if (spec.sense > 1 || (spec.kind != PATH_PURE && spec.kind != PATH_WIGGLE && spec.kind != PATH_SLIDE))
+  if (spec.sense > 1 || (unsigned int)spec.kind > PATH_RAMP)
     bt_te("makePath: sense must be 0 or 1, kind one of pathKind_e");
 
   const double end = (spec.sense == 0) ? std::numbers::pi / 2 : -std::numbers::pi / 2;
@@ -372,15 +398,34 @@ path_t makePath(const pathSpec_t & spec) {
   if (spec.kind == PATH_PURE)
     return { { 0, 0, 0 }, { end, 0, 0 } };
 
-  if ((spec.dirU == 0 && spec.dirV == 0) || std::abs(spec.dirU) > 1 || std::abs(spec.dirV) > 1 || !(spec.amount > 0))
-    bt_te("makePath: shifts need a compass direction and a positive amount");
+  if (spec.kind == PATH_PLANNED) {
+    if (spec.waypoints.size() < 2 || spec.waypoints.back().theta != end)
+      bt_te("makePath: a planned path needs waypoints ending at the quarter turn");
+    return spec.waypoints;
+  }
 
-  const double len = std::hypot((double)spec.dirU, (double)spec.dirV);
-  const double su = spec.amount * spec.dirU / len;
-  const double sv = spec.amount * spec.dirV / len;
+  if (spec.dir < 0 || spec.dir >= DIRECTIONS || !(spec.amount > 0))
+    bt_te("makePath: shifts need a direction and a positive amount");
+
+  double su, sv;
+  directionVector(spec.dir, &su, &sv);
+  su *= spec.amount;
+  sv *= spec.amount;
 
   if (spec.kind == PATH_SLIDE)
     return { { 0, 0, 0 }, { 0, su, sv }, { end, su, sv }, { end, 0, 0 } };
+
+  if (spec.kind == PATH_RAMP) {
+    if (spec.holdFrom <= 0 || spec.holdTo < spec.holdFrom || spec.holdTo >= 90)
+      bt_te("makePath: a ramp needs 0 < holdFrom <= holdTo < 90");
+    /* reversed (reversePath), out by a and held to b is out by 90 - b and
+     * held to 90 - a, in the other sense: families hold both */
+    path_t path = { { 0, 0, 0 }, { end * spec.holdFrom / 90, su, sv } };
+    if (spec.holdTo > spec.holdFrom)
+      path.push_back({ end * spec.holdTo / 90, su, sv });
+    path.push_back({ end, 0, 0 });
+    return path;
+  }
 
   /* The shift follows the bulge of a square turning about its centre: its
    * extent along an axis grows by cos θ + sin θ - 1 (in half sides), 0 at
@@ -401,6 +446,56 @@ path_t makePath(const pathSpec_t & spec) {
   return path;
 }
 
+void directionVector(int dir, double * u, double * v) {
+  bt_assert(dir >= 0 && dir < DIRECTIONS);
+  /* the compass directions as before 16 directions, (1, 1) / √2 and not
+   * cos 45°, which may differ in the last bit */
+  static const int compass[8][2] = { { 1, 0 }, { 1, 1 }, { 0, 1 }, { -1, 1 }, { -1, 0 }, { -1, -1 }, { 0, -1 }, { 1, -1 } };
+  if (dir % 2 == 0) {
+    const double len = std::hypot((double)compass[dir / 2][0], (double)compass[dir / 2][1]);
+    *u = compass[dir / 2][0] / len;
+    *v = compass[dir / 2][1] / len;
+  } else {
+    const double a = 2 * std::numbers::pi * dir / DIRECTIONS;
+    *u = std::cos(a);
+    *v = std::sin(a);
+  }
+}
+
+namespace {
+
+std::vector<double> ascending(std::vector<double> amounts) {
+  std::sort(amounts.begin(), amounts.end());
+  amounts.erase(std::unique(amounts.begin(), amounts.end()), amounts.end());
+  return amounts;
+}
+
+}
+
+std::vector<pathSpec_t> compassFamily(const std::vector<double> & amounts) {
+  std::vector<pathSpec_t> family = { { PATH_PURE, 0, 0, 0 } };
+  for (double amount : ascending(amounts))
+    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE })
+      for (int dir = 0; dir < DIRECTIONS; dir += 2)
+        family.push_back({ kind, 0, dir, amount });
+  return family;
+}
+
+std::vector<pathSpec_t> wideExtension(const std::vector<double> & compass, const std::vector<double> & wide) {
+  std::vector<pathSpec_t> family;
+  for (double amount : ascending(wide)) {
+    const bool inCompass = std::find(compass.begin(), compass.end(), amount) != compass.end();
+    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE })
+      for (int dir = 0; dir < DIRECTIONS; dir++)
+        if (!inCompass || dir % 2)
+          family.push_back({ kind, 0, dir, amount });
+    for (auto [from, to] : { std::pair{ 45, 45 }, std::pair{ 15, 45 }, std::pair{ 45, 75 } })
+      for (int dir = 0; dir < DIRECTIONS; dir++)
+        family.push_back({ PATH_RAMP, 0, dir, amount, {}, from, to });
+  }
+  return family;
+}
+
 pose_t poseAt(const path_t & path, double t) {
 
   bt_assert(!path.empty());
@@ -417,6 +512,129 @@ pose_t poseAt(const path_t & path, double t) {
   return { a.theta + local * (b.theta - a.theta),
            a.du + local * (b.du - a.du),
            a.dv + local * (b.dv - a.dv) };
+}
+
+namespace {
+
+/* No point of the moving group moves further than this over the segment
+ * (see certifySegment). */
+double segmentLipschitz(const pose_t & a, const pose_t & b, double rho) {
+  return std::hypot(b.du - a.du, b.dv - a.dv) + rho * std::fabs(b.theta - a.theta);
+}
+
+pose_t lerp(const pose_t & a, const pose_t & b, double s) {
+  return { a.theta + s * (b.theta - a.theta), a.du + s * (b.du - a.du), a.dv + s * (b.dv - a.dv) };
+}
+
+}
+
+double planarScene_c::segmentMinimum(const pose_t & a, const pose_t & b, double eps, double stopBelow) const {
+
+  const double lipschitz = segmentLipschitz(a, b, rho);
+
+  /* Piyavskii-style branch and bound: an interval of half width w around a
+   * sample with clearance c has no clearance below c - lipschitz·w. Refine
+   * the interval with the lowest such bound until it is within eps of the
+   * lowest sample, which makes it a lower bound within eps of the minimum. */
+  struct interval_t {
+    double lower, s0, s1;
+    bool operator<(const interval_t & o) const { return lower > o.lower; }
+  };
+  std::priority_queue<interval_t> todo;
+
+  double best = std::min(clearance(a), clearance(b));
+
+  auto push = [&](double s0, double s1) {
+    const double c = clearance(lerp(a, b, 0.5 * (s0 + s1)));
+    best = std::min(best, c);
+    todo.push({ c - 0.5 * (s1 - s0) * lipschitz, s0, s1 });
+  };
+  push(0, 1);
+
+  while (true) {
+    if (best < stopBelow)
+      return best;
+    const interval_t i = todo.top();
+    if (i.lower >= best - eps || (i.s1 - i.s0) * lipschitz < MIN_DISPLACEMENT)
+      return std::min(i.lower, best);
+    todo.pop();
+    const double sm = 0.5 * (i.s0 + i.s1);
+    push(i.s0, sm);
+    push(sm, i.s1);
+  }
+}
+
+double planarScene_c::minClearance(const std::vector<pose_t> & waypoints, double eps) const {
+
+  bt_assert(!waypoints.empty());
+  if (waypoints.size() == 1)
+    return clearance(waypoints[0]);
+
+  double result = std::numeric_limits<double>::max();
+  for (size_t i = 0; i + 1 < waypoints.size(); i++)
+    result = std::min(result, segmentMinimum(waypoints[i], waypoints[i + 1], eps, -std::numeric_limits<double>::max()));
+  return result;
+}
+
+bool planarScene_c::clearanceAtLeast(const std::vector<pose_t> & waypoints, double threshold) const {
+
+  bt_assert(!waypoints.empty());
+  if (clearance(waypoints[0]) < threshold)
+    return false;
+
+  for (size_t i = 0; i + 1 < waypoints.size(); i++) {
+    const pose_t & a = waypoints[i];
+    const pose_t & b = waypoints[i + 1];
+    const double lipschitz = segmentLipschitz(a, b, rho);
+    thread_local std::vector<std::pair<double, double>> todo;   // as in certifySegment
+    todo.assign(1, { 0.0, 1.0 });
+    while (!todo.empty()) {
+      auto [s0, s1] = todo.back();
+      todo.pop_back();
+      const double sm = 0.5 * (s0 + s1);
+      const double c = clearance(lerp(a, b, sm));
+      if (c < threshold || (s1 - s0) * lipschitz < MIN_DISPLACEMENT)
+        return false;
+      /* the sample proves sm ± (c - threshold) / lipschitz */
+      const double w = (lipschitz > 0) ? (c - threshold) / lipschitz : 1;
+      if (sm - w > s0)
+        todo.push_back({ s0, sm - w });
+      if (sm + w < s1)
+        todo.push_back({ sm + w, s1 });
+    }
+  }
+  return true;
+}
+
+bool validModel(const model_t & model) {
+  return model.play > 0 && model.chamfer >= 0 && model.chamfer < 0.5 * (1.0 - model.play);
+}
+
+path_t reversePath(const path_t & path) {
+  bt_assert(!path.empty());
+  const double end = path.back().theta;
+  path_t r;
+  for (auto it = path.rbegin(); it != path.rend(); ++it)
+    r.push_back({ it->theta - end, it->du, it->dv });
+  return r;
+}
+
+/* The polyline with fewer waypoints: from each kept waypoint jump to the
+ * farthest one the straight segment reaches with at least `keep` clearance. */
+path_t shortcutPath(const planarScene_c & scene, const path_t & full, double keep) {
+  path_t path = { full[0] };
+  size_t i = 0;
+  while (i + 1 < full.size()) {
+    size_t j = full.size() - 1;
+    size_t step = j - i;
+    while (j > i + 1 && !scene.clearanceAtLeast({ full[i], full[j] }, keep)) {
+      step = std::max<size_t>(1, step / 2);
+      j = (j - i > step) ? j - step : i + 1;
+    }
+    path.push_back(full[j]);
+    i = j;
+  }
+  return path;
 }
 
 namespace {
@@ -494,7 +712,8 @@ pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
 
       /* place the pivot at the origin's centre or corner in the Z frame,
        * where (u, v) = (x, y); the cells follow from the doubled offsets */
-      const cell_t moving = { (du + parity) / 2, (dv + parity) / 2, 0 };
+      const std::vector<cell_t> moving = { { (du + parity) / 2, (dv + parity) / 2, 0 } };
+      std::vector<cell_t> stat(1);   // one blocker at a time, the vectors reused
       std::vector<std::pair<int, int>> & entry = table[index(du, dv)];
 
       for (int su = -reach + parity; su <= reach; su += 2)
@@ -503,11 +722,32 @@ pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
             continue;
           if (quarterArcDistance(0.5 * su, 0.5 * sv, 0.5 * du, 0.5 * dv, angle > 0) > hitRange)
             continue;
-          const cell_t stat = { (su + parity) / 2, (sv + parity) / 2, 0 };
-          planarScene_c scene({ moving }, { stat }, 2, parity, parity, 0, model);
+          stat[0] = { (su + parity) / 2, (sv + parity) / 2, 0 };
+          planarScene_c scene(moving, stat, 2, parity, parity, 0, model);
           if (scene.certifyPath(path) != PATH_CLEAR)
             entry.push_back({ su, sv });
         }
+    }
+}
+
+pathTable_c::pathTable_c(const model_t & model, const pathTable_c & tighter) :
+  pathTable_c(tighter.radius, tighter.spec)
+{
+  const path_t path = makePath(spec);
+  std::vector<cell_t> moving(1), stat(1);
+  for (int du = -2 * radius; du <= 2 * radius; du++)
+    for (int dv = -2 * radius; dv <= 2 * radius; dv++) {
+      const int parity = du & 1;
+      if ((dv & 1) != parity)
+        continue;
+      moving[0] = { (du + parity) / 2, (dv + parity) / 2, 0 };
+      std::vector<std::pair<int, int>> & entry = table[index(du, dv)];
+      for (const auto & [su, sv] : tighter.table[index(du, dv)]) {
+        stat[0] = { (su + parity) / 2, (sv + parity) / 2, 0 };
+        planarScene_c scene(moving, stat, 2, parity, parity, 0, model);
+        if (scene.certifyPath(path) != PATH_CLEAR)
+          entry.push_back({ su, sv });
+      }
     }
 }
 
@@ -545,8 +785,7 @@ bool pathTable_c::blocked(const std::vector<cell_t> & moving, const std::vector<
 pathTable_c pathTable_c::turned(void) const {
 
   pathSpec_t s = spec;
-  s.dirU = -spec.dirV;
-  s.dirV = spec.dirU;
+  s.dir = (spec.dir + DIRECTIONS / 4) % DIRECTIONS;
 
   pathTable_c t(radius, s);
   for (int du = -2 * radius; du <= 2 * radius; du++)
@@ -560,7 +799,7 @@ pathTable_c pathTable_c::mirrored(void) const {
 
   pathSpec_t s = spec;
   s.sense = 1 - spec.sense;
-  s.dirV = -spec.dirV;
+  s.dir = (DIRECTIONS - spec.dir) % DIRECTIONS;
 
   pathTable_c t(radius, s);
   for (int du = -2 * radius; du <= 2 * radius; du++)
@@ -570,54 +809,109 @@ pathTable_c pathTable_c::mirrored(void) const {
   return t;
 }
 
-rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<double> & amounts) :
+namespace {
+
+/* a path's direction reduced to the first quarter (0 to 3 sixteenths):
+ * the table that is computed, the others are turned copies */
+pathSpec_t baseOf(pathSpec_t s) {
+  if (s.kind != PATH_PURE)
+    s.dir %= DIRECTIONS / 4;
+  return s;
+}
+
+bool sameSpec(const pathSpec_t & a, const pathSpec_t & b) {
+  return a.kind == b.kind && a.dir == b.dir && a.amount == b.amount && a.holdFrom == b.holdFrom && a.holdTo == b.holdTo;
+}
+
+/* f(0) to f(n - 1), independent, on up to one thread per core */
+template <class F> void inParallel(size_t n, F f) {
+  std::atomic<size_t> next{0};
+  auto work = [&]() {
+    for (size_t i; (i = next++) < n; )
+      f(i);
+  };
+  const unsigned int threads = std::max(1u, std::min<unsigned int>(std::thread::hardware_concurrency(), n));
+  std::vector<std::jthread> pool;
+  for (unsigned int t = 1; t < threads; t++)
+    pool.emplace_back(work);
+  work();
+}
+
+}
+
+rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<pathSpec_t> & family) :
   radius(r)
 {
-  /* the tables computed with the checker: the pure turn and, per amount
-   * and kind, directions (1,0) and (1,1); they are independent, so they
-   * are built in parallel */
-  std::vector<pathSpec_t> specs = { { PATH_PURE, 0, 0, 0, 0 } };
-  std::vector<double> ascending = amounts;
-  std::sort(ascending.begin(), ascending.end());
-  ascending.erase(std::unique(ascending.begin(), ascending.end()), ascending.end());
-  for (double amount : ascending)
-    for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE }) {
-      specs.push_back({ kind, 0, 1, 0, amount });
-      specs.push_back({ kind, 0, 1, 1, amount });
-    }
-
-  std::vector<std::optional<pathTable_c>> built(specs.size());
-  {
-    std::atomic<size_t> next{0};
-    auto work = [&]() {
-      for (size_t i; (i = next++) < specs.size(); )
-        built[i].emplace(model, r, specs[i]);
-    };
-    const unsigned int threads = std::max(1u, std::min<unsigned int>(std::thread::hardware_concurrency(), specs.size()));
-    std::vector<std::jthread> pool;
-    for (unsigned int t = 1; t < threads; t++)
-      pool.emplace_back(work);
-    work();
+  /* the tables computed with the checker: each path's direction reduced
+   * to the first quarter (0 to 3), once per distinct path; they are
+   * independent, so they are built in parallel. The others are turned
+   * copies: turning the whole scene about the pivot commutes with the
+   * motion. */
+  std::vector<pathSpec_t> specs;
+  std::vector<size_t> baseIndex;
+  for (const pathSpec_t & s : family) {
+    if (s.sense != 0 || s.kind == PATH_PLANNED)
+      bt_te("rotationTables_c: a family holds fixed +90° paths");
+    const pathSpec_t b = baseOf(s);
+    size_t i = 0;
+    while (i < specs.size() && !sameSpec(specs[i], b))
+      i++;
+    if (i == specs.size())
+      specs.push_back(b);
+    baseIndex.push_back(i);
   }
 
-  tables[0].push_back(std::move(*built[0]));
+  std::vector<std::optional<pathTable_c>> built(specs.size());
+  inParallel(specs.size(), [&](size_t i) { built[i].emplace(model, r, specs[i]); });
+  assemble(family, baseIndex, built);
+}
 
-  size_t base = 1;
-  for (size_t a = 0; a < ascending.size(); a++)
-    for (int kind = 0; kind < 2; kind++, base += 2) {
-      /* the 8 compass directions counter-clockwise from (1,0) alternate
-       * between turned copies of (1,0) and of (1,1) */
-      pathTable_c axisDir = std::move(*built[base]);
-      pathTable_c diagonal = std::move(*built[base + 1]);
-      for (int k = 0; k < 4; k++) {
-        if (k > 0) {
-          axisDir = axisDir.turned();
-          diagonal = diagonal.turned();
-        }
-        tables[0].push_back(axisDir);
-        tables[0].push_back(diagonal);
-      }
+rotationTables_c::rotationTables_c(const model_t & model, const rotationTables_c & tighter) :
+  radius(tighter.radius)
+{
+  /* tighter's +90° tables turned back to their direction in the first
+   * quarter: the distinct tables it was built from */
+  const std::vector<pathTable_c> & family = tighter.tables[0];
+  std::vector<size_t> baseIndex;
+  std::vector<const pathTable_c *> first;   // a family table per distinct one
+  std::vector<pathSpec_t> specs;
+  for (const pathTable_c & t : family) {
+    const pathSpec_t b = baseOf(t.getSpec());
+    size_t i = 0;
+    while (i < specs.size() && !sameSpec(specs[i], b))
+      i++;
+    if (i == specs.size()) {
+      specs.push_back(b);
+      first.push_back(&t);
     }
+    baseIndex.push_back(i);
+  }
+
+  std::vector<std::optional<pathTable_c>> built(specs.size());
+  inParallel(specs.size(), [&](size_t i) {
+    pathTable_c base = *first[i];
+    if (base.getSpec().kind != PATH_PURE)
+      for (int k = base.getSpec().dir / (DIRECTIONS / 4); k % 4 != 0; k++)
+        base = base.turned();
+    built[i].emplace(model, base);
+  });
+
+  std::vector<pathSpec_t> specsOfFamily;
+  for (const pathTable_c & t : family)
+    specsOfFamily.push_back(t.getSpec());
+  assemble(specsOfFamily, baseIndex, built);
+}
+
+void rotationTables_c::assemble(const std::vector<pathSpec_t> & family, const std::vector<size_t> & baseIndex,
+                                std::vector<std::optional<pathTable_c>> & built) {
+
+  for (size_t i = 0; i < family.size(); i++) {
+    pathTable_c t = *built[baseIndex[i]];
+    if (family[i].kind != PATH_PURE)
+      for (int k = 0; k < family[i].dir / (DIRECTIONS / 4); k++)
+        t = t.turned();
+    tables[0].push_back(std::move(t));
+  }
 
   for (const pathTable_c & t : tables[0])
     tables[1].push_back(t.mirrored());
@@ -674,6 +968,7 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
   }
 
   /* the inverse: static cube relative to moving cube -> moving cube offsets */
+  const int r = radius;
   const int w = 4 * r + 1;
   for (unsigned int sense = 0; sense < 2; sense++)
     for (int e = 0; e < w * w; e++)
@@ -772,10 +1067,10 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occup
    * is the first clear one */
   const size_t n = tables[sense].size();
   const uint64_t lastWord = (n % 64) ? (uint64_t(1) << (n % 64)) - 1 : ~uint64_t(0);
-  uint64_t local[8];
+  uint64_t local[16];
   std::vector<uint64_t> heap;
   uint64_t * blocked = local;
-  if (words > 8) {
+  if (words > 16) {
     heap.assign(words, 0);
     blocked = heap.data();
   } else
