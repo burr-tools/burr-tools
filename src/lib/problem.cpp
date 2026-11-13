@@ -1114,6 +1114,18 @@ void problem_c::sortSolutions(int by) {
   }
 }
 
+void problem_c::piecesChanged(bool tighter)
+{
+  if (tighter) {
+    auto guard = lockSolutions();
+    for (auto & s : solutions)
+      if (s->getDisassembly() && s->getDisassembly()->sumRotations() > 0)
+        s->setDisassembly(nullptr);
+  }
+  if (solveState == SS_SOLVING || solveState == SS_SOLVED)
+    makeUnknown();
+}
+
 void problem_c::editProblem(void)
 {
   if (solveState == SS_SOLVING || solveState == SS_SOLVED)

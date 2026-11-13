@@ -72,6 +72,30 @@ TEST_CASE("undo restores shape voxel state", "[gui][history]") {
   CHECK(puzzle->getShape(0)->get(0, 0, 0) == voxel_c::VX_FILLED);
 }
 
+TEST_CASE("undo and redo restore the pieces' play and bevel", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  puzzle->setRotationModel({ 0.05, 0.04 });
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  puzzle->setRotationModel({ 0.03, 0.04 });
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+
+  h.undo(puzzle.get());
+  REQUIRE(puzzle->getRotationModel());
+  CHECK(puzzle->getRotationModel()->play == 0.05);
+
+  /* back to the baseline: no model stored */
+  h.undo(puzzle.get());
+  CHECK_FALSE(puzzle->getRotationModel());
+
+  h.redo(puzzle.get());
+  h.redo(puzzle.get());
+  REQUIRE(puzzle->getRotationModel());
+  CHECK(puzzle->getRotationModel()->play == 0.03);
+}
+
 TEST_CASE("redo after undo reapplies the state", "[gui][history]") {
   auto puzzle = makePuzzleWithShapes(1);
   puzzleHistory_c h;

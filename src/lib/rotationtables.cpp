@@ -472,13 +472,33 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
   return { rotationGeometry::PATH_PLANNED, sense, 0, 0, *plannedPaths[index - family] };
 }
 
-std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background) {
+rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings) {
+  if (problem.getPuzzle().getRotationModel())
+    settings.model = *problem.getPuzzle().getRotationModel();
+  return settings;
+}
 
-  if (settings.mode == ROTATION_OFF ||
+rotationGeometry::model_t rotationModelOf(const problem_c & problem) {
+  return rotationModelOf(problem.getPuzzle());
+}
+
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle) {
+  return puzzle.getRotationModel().value_or(rotationSettings_t{}.model);
+}
+
+void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings) {
+  if (!puzzle.getRotationModel())
+    puzzle.setRotationModel(settings.model);
+}
+
+std::shared_ptr<rotationContext_c>
+rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background) {
+
+  if (given.mode == ROTATION_OFF ||
       problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
     return nullptr;
 
+  const rotationSettings_t settings = rotationSettingsFor(problem, given);
   const int radius = rotationRadiusFor(problem);
   auto tablesOf = [background, radius](const rotationSettings_t & s) {
     if (background)
@@ -588,7 +608,7 @@ rotationGeometry::knownPath_t recordedPath(const turnScene_t & t) {
 turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & given,
                          const optimizeControl_t & control) {
   turnPlay_t result;
-  rotationSettings_t settings = given;
+  rotationSettings_t settings = rotationSettingsFor(problem, given);
   settings.decide.stop = control.stop;
 
   auto each = [&](turnScene_t & t) {

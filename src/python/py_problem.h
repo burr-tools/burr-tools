@@ -33,7 +33,8 @@ public:
                                           bool reduce = false,
                                           bool keep_rotations = false,
                                           bool keep_mirror = false,
-                                          unsigned int threads = 0);
+                                          unsigned int threads = 0,
+                                          const std::string & rotations = "off");
 
 private:
   std::shared_ptr<puzzle_c> puzzle;

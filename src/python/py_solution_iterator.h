@@ -1,6 +1,7 @@
 #pragma once
 
 #include "py_solution.h"
+#include "lib/rotationtables.h"
 
 #include <memory>
 #include <deque>
@@ -40,7 +41,8 @@ public:
                    bool reduce = false,
                    bool keep_rotations = false,
                    bool keep_mirror = false,
-                   unsigned int threads = 0);
+                   unsigned int threads = 0,
+                   rotationMode_e rotation_mode = ROTATION_OFF);
   ~SolutionIterator();
 
   SolutionIterator* iter() { return this; }
@@ -64,6 +66,7 @@ private:
   bool keep_rotations;
   bool keep_mirror;
   unsigned int threads;
+  rotationMode_e rotation_mode;   ///< ROTATION_OFF: no rotation moves
 
   std::unique_ptr<assembler_c> assm;
   std::unique_ptr<disassembler_c> disasm;

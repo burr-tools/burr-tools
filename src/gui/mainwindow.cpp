@@ -59,6 +59,7 @@
 #include "assmimportwindow.h"
 #include "bulkrangewindow.h"
 #include "stlexportsolution.h"
+#include "optimizeturns.h"
 
 #include "LFl_Tile.h"
 
@@ -445,6 +446,39 @@ void mainWindow_c::cb_PcSel(LBlockListGroup_c* grp) {
 }
 
 static void cb_SolProbSel_stub(Fl_Widget* o, void* v) { static_cast<mainWindow_c*>(v)->cb_SolProbSel(static_cast<LBlockListGroup_c*>(o)); }
+
+static void cb_RotationModel_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_RotationModel(); }
+void mainWindow_c::cb_RotationModel(void) {
+
+  if (assmThread)
+    return;
+
+  const rotationGeometry::model_t model = { RotationPlay->value(), RotationBevel->value() };
+  const rotationGeometry::model_t now = rotationModelOf(*puzzle);
+  if (model.play == now.play && model.chamfer == now.chamfer)
+    return;
+
+  const unsigned int dropped = puzzle_c::validRotationModel(model) ? puzzle->droppedByRotationModel(model) : 0;
+  if (!puzzle_c::validRotationModel(model))
+    fl_message("The play must be above 0 and below 1, the bevel at least 0 and below half a cube.");
+  else if (dropped == 0 ||
+           fl_choice("With less play or bevel, the %u disassemblies that turn pieces are dropped:\n"
+                     "they may no longer work. Undo does not bring them back.",
+                     "Cancel", "Drop them", 0, dropped)) {
+    /* other pieces are an edit of every problem: their solutions become
+     * unknown, and tighter ones drop the disassemblies that turn, which
+     * the animation may still point into */
+    disassemble.reset();
+    puzzle->setRotationModel(model);
+    puzzleHistory->record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+    /* undo restores the model, not what it dropped: never back to saved */
+    if (dropped)
+      puzzleHistory->markModified();
+    /* the views' STL style draws the pieces of this model */
+    activateProblem(problemSelector->getSelection());
+  }
+  updateInterface();
+}
 
 /* the menu's order, see the RotationMoves choice */
 static const rotationMode_e rotationModes[] = { ROTATION_OFF, ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW };
@@ -952,6 +986,56 @@ void mainWindow_c::cb_ExportSolutionSTL(void) {
     Fl::wait();
 }
 
+/* the selected solution's disassembly, if it turns pieces: what Optimize
+ * Turns works on */
+static const separation_c * turningDisassembly(const problem_c * pr, int sol) {
+  if (sol < 0 || unsigned(sol) >= pr->getNumberOfSavedSolutions())
+    return nullptr;
+  const separation_c * da = pr->getSavedSolution(sol)->getDisassembly();
+  return (da && da->sumRotations() > 0) ? da : nullptr;
+}
+
+static void cb_OptimizeTurns_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_OptimizeTurns(); }
+void mainWindow_c::cb_OptimizeTurns(void) {
+
+  unsigned int prob = solutionProblem->getSelection();
+  if (prob >= puzzle->getNumberOfProblems() || assmThread)
+    return;
+  problem_c * pr = puzzle->getProblem(prob);
+  const int sol = (int)SolutionSel->value() - 1;
+  if (!turningDisassembly(pr, sol))
+    return;
+
+  solverSettings_t settings;
+  if (!solverSettings(settings))
+    return;
+
+  std::unique_ptr<separation_c> optimized;
+  solutionPlay_t play;
+  {
+    optimizeTurnsWindow_c w(pr, pr->getSavedSolution(sol), settings.rotation);
+    w.show();
+    while (w.visible())
+      Fl::wait();
+    optimized = w.takeDisassembly();
+    play = w.play();
+  }
+
+  /* the window worked on a copy and only reports; Keep stores what it
+   * measured with the solution, and the paths with the most room. The
+   * animation must not point into the old disassembly then
+   * (activateSolution below rebuilds it) */
+  if (optimized) {
+    disassemble.reset();
+    solution_c * s = pr->getSavedSolution(sol);
+    s->setDisassembly(std::move(optimized));
+    s->setPlay(play);
+    puzzleHistory->markModified();
+  }
+  activateSolution(prob, sol);
+  updateInterface();
+}
+
 static void cb_BtnPlacementBrowser_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnPlacementBrowser(); }
 void mainWindow_c::cb_BtnPlacementBrowser(void) {
 
@@ -1138,9 +1222,13 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (!solverSettings(settings))
     return;
 
+  /* a fresh solve with turns stores the model it uses, so the file says
+   * which pieces its disassemblies are for */
+  problem_c * solved = puzzle->getProblem(prob);
+  if (par & solveThread_c::PAR_ROTATION_MOVES)
+    storeSolveRotationModel(*puzzle, settings.rotation);
   /* which mode the results come from, so that the tab can say when the
    * choice differs (in memory only, like the choice) */
-  problem_c * solved = puzzle->getProblem(prob);
   if (par & solveThread_c::PAR_DISASSM)
     solved->noteSolveRotationMode(rotationMode());
 
@@ -2539,6 +2627,30 @@ void mainWindow_c::rememberFollow(problem_c * pr, unsigned int idx) {
   }
 }
 
+/* the play a solution's disassembly was measured to need (burrTxt -P -w),
+ * for the moves line: it works at the upper end, not below the lower; the
+ * tooltip has the details and the bevel they hold at */
+static std::string playText(const solution_c * s) {
+  if (!s->getPlay())
+    return "";
+  char text[40];
+  snprintf(text, sizeof(text), ", play %.3f..%.3f", s->getPlay()->lower, s->getPlay()->upper);
+  return text;
+}
+
+static std::string movesTooltip(const solution_c * s) {
+  if (!s->getPlay())
+    return " Steps for complete disassembly ";
+  const solutionPlay_t & p = *s->getPlay();
+  char text[400];
+  int n = snprintf(text, sizeof(text), " Steps for complete disassembly. It works at play %.4f; no motion the "
+                   "planner tries works below %.4f. Both at bevel %.4f.", p.upper, p.lower, p.bevel);
+  if (p.hasBevel && n > 0 && (size_t)n < sizeof(text))
+    snprintf(text + n, sizeof(text) - n, " At play %.4f it works with bevel %.4f, not below %.4f.",
+             p.bevelPlay, p.bevelUpper, p.bevelLower);
+  return std::string(text) + " ";
+}
+
 void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
 
   disassemble.reset();
@@ -2578,8 +2690,10 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       const auto * dis = pr->getSavedSolution(num)->getDisassembly();
-      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")";
+      std::string levelText = std::to_string(dis->sumMoves()) + " (" + dis->movesText() + ")" +
+                              playText(pr->getSavedSolution(num));
       MovesInfo->value(levelText.c_str());
+      MovesInfo->copy_tooltip(movesTooltip(pr->getSavedSolution(num)).c_str());
 
       disassemble = std::make_unique<disasmToMoves_c>(pr->getSavedSolution(num)->getDisassembly(),
                                       2*getResultShape(*pr)->getBiggestDimension(),
@@ -2603,8 +2717,10 @@ void mainWindow_c::activateSolution(unsigned int prob, unsigned int num) {
       MovesInfo->show();
 
       const auto * disInfo = pr->getSavedSolution(num)->getDisassemblyInfo();
-      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")";
+      std::string levelText = std::to_string(disInfo->sumMoves()) + " (" + disInfo->movesText() + ")" +
+                              playText(pr->getSavedSolution(num));
       MovesInfo->value(levelText.c_str());
+      MovesInfo->copy_tooltip(movesTooltip(pr->getSavedSolution(num)).c_str());
 
       if (prob < puzzle->getNumberOfProblems()) View3D->getView()->showAssembly(puzzle->getProblem(prob), num);
       View3D->getView()->updateVisibility(PcVis);
@@ -2845,6 +2961,21 @@ void mainWindow_c::updateInterface(void) {
 
     problem_c * pr = (problemSelector->getSelection() < puzzle->getNumberOfProblems())
       ? puzzle->getProblem(problemSelector->getSelection()) : 0;
+
+    /* the puzzle's pieces, else the default; cube grids only, not while a
+     * solve reads them */
+    {
+      const rotationGeometry::model_t model = rotationModelOf(*puzzle);
+      RotationPlay->value(model.play);
+      RotationBevel->value(model.chamfer);
+      if (ggt->getGridType()->getType() == gridType_c::GT_BRICKS && !assmThread) {
+        RotationPlay->activate();
+        RotationBevel->activate();
+      } else {
+        RotationPlay->deactivate();
+        RotationBevel->deactivate();
+      }
+    }
 
     // problem tab
     PiecesCountList->setPuzzle(pr);
@@ -3317,6 +3448,11 @@ void mainWindow_c::updateInterface(void) {
       {
         BtnExportSolutionSTL->deactivate();
       }
+
+      if (!assmThread && turningDisassembly(pr, (int)SolutionSel->value() - 1))
+        BtnOptimizeTurns->activate();
+      else
+        BtnOptimizeTurns->deactivate();
     } else {
 
       // no valid problem available, hide all information
@@ -4020,9 +4156,36 @@ void mainWindow_c::CreateProblemTab(void) {
     layouter_c * group = new layouter_c(0, 0);
     group->box(FL_FLAT_BOX);
 
-    new LSeparator_c(0, 0, 1, 1, "Problems", false);
+    /* the pieces as printed: shapes are shared by the problems, so their
+     * play and bevel belong to the puzzle */
+    new LSeparator_c(0, 0, 1, 1, "Pieces", false);
+    {
+      layouter_c * m = new layouter_c(0, 1, 1, 1);
+      new LFl_Box("Play ", 0, 0, 1, 1);
+      RotationPlay = new LFl_Value_Input(1, 0, 1, 1);
+      new LFl_Box(" Bevel ", 2, 0, 1, 1);
+      RotationBevel = new LFl_Value_Input(3, 0, 1, 1);
+      RotationPlay->tooltip(" Gap between neighbouring cubes, in cube sizes, saved with the puzzle: rotation\n"
+                            " moves are checked against it and the STL export makes it. From puzzlecad:\n"
+                            " 2 $burr_inset / $burr_scale. The default 0.002 is made for slides: turns usually\n"
+                            " need more (around 0.05 with sharp edges, less with a bevel) ");
+      RotationBevel->tooltip(" Length a 45 degree bevel cuts off each cube face, in cube sizes, saved with the\n"
+                             " puzzle. From puzzlecad: $burr_bevel / (1.414 $burr_scale). A bevel lets pieces\n"
+                             " turn with less play: around 0.1 at the 0.01 play of a 3D print ");
+      for (Fl_Value_Input * in : { RotationPlay, RotationBevel }) {
+        in->step(0.0001);
+        in->bounds(0, 1);
+        in->when(FL_WHEN_RELEASE | FL_WHEN_ENTER_KEY);
+        in->callback(cb_RotationModel_stub, this);
+        static_cast<LFl_Value_Input*>(in)->weight(1, 0);
+      }
+      m->end();
+    }
+    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
 
-    layouter_c * o = new layouter_c(0, 1);
+    new LSeparator_c(0, 3, 1, 1, "Problems", true);
+
+    layouter_c * o = new layouter_c(0, 4);
 
     BtnNewProb = new LFlatButton_c(0, 0, 1, 1, "New", " Add another problem ", cb_NewProblem_stub, this);
     static_cast<LFlatButton_c*>(BtnNewProb)->weight(1, 0);
@@ -4043,10 +4206,10 @@ void mainWindow_c::CreateProblemTab(void) {
 
     o->end();
 
-    (new LFl_Box(0, 2))->setMinimumSize(0, SZ_GAP);
+    (new LFl_Box(0, 5))->setMinimumSize(0, SZ_GAP);
 
     problemSelector = new ProblemSelector(0, 0, 100, 100, puzzle.get());
-    LBlockListGroup_c * probGroup = new LBlockListGroup_c(0, 3, 1, 1, problemSelector);
+    LBlockListGroup_c * probGroup = new LBlockListGroup_c(0, 6, 1, 1, problemSelector);
     probGroup->callback(cb_ProbSel_stub, this);
     probGroup->tooltip(" Select problem to edit ");
     probGroup->weight(1, 1);
@@ -4244,13 +4407,14 @@ void mainWindow_c::CreateSolveTab(void) {
       RotationMoves->value(0);
       RotationMoves->callback(cb_RotationMode_stub, this);
       RotationMoves->tooltip(" When disassembling, also let pieces turn by 90 degrees (cube grids only).\n"
-                             " Every mode takes only turns proven possible for the pieces' play and bevel,\n"
-                             " so results stay valid when you change the mode:\n"
+                             " Every mode takes only turns proven possible at the Play and Bevel of the\n"
+                             " Pieces (Problems tab), so results stay valid when you change the mode:\n"
                              "   Fast: only the fixed turn paths.\n"
                              "   Balanced (the usual choice): also plans turns those paths make with more play.\n"
                              "   Slow: also plans every other turn that ends in a free place; can take long.\n"
-                             " The pieces are the STL export's, made for slides (play 0.002, bevel 0.03); turns\n"
-                             " usually need more clearance. ");
+                             " The Play and Bevel defaults are the STL export's, made for slides; turns usually\n"
+                             " need more clearance: a play around 0.05 with sharp edges, or a bevel around 0.1\n"
+                             " at the 0.01 play of a 3D print. Optimize Turns measures what a solution needs. ");
       RotationMoves->clear_visible_focus();
       r->end();
     }
@@ -4521,6 +4685,12 @@ void mainWindow_c::CreateSolveTab(void) {
         " Export the pieces of the currently selected solution to STL: each piece type to its own file, or all pieces assembled in one file ",
         cb_ExportSolutionSTL_stub, this);
     static_cast<LFlatButton_c*>(BtnExportSolutionSTL)->weight(1, 0);
+
+    BtnOptimizeTurns = new LFlatButton_c(1, 0, 1, 1, "Optimize Turns",
+        " Measure the play and bevel the selected solution's turns need at the puzzle's pieces, "
+        "and give them the paths with the most room ",
+        cb_OptimizeTurns_stub, this);
+    static_cast<LFlatButton_c*>(BtnOptimizeTurns)->weight(1, 0);
 
     o->end();
 
