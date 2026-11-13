@@ -111,10 +111,14 @@ struct solverSettings_t {
  * | donate             | BURRTOOLS_DONATE=0\|1                             |
  * | donateEvery        | BURRTOOLS_DONATE_EVERY=N                          |
  * | threadBudget       | BURRTOOLS_THREAD_BUDGET=0\|1                      |
+ * | rotation.mode      | BURRTOOLS_ROT_MODE=off\|fast\|balanced\|slow     |
+ *
+ * rotation.mode only says how turns are decided when a front end turns
+ * rotation moves on (burrTxt -R, the GUI); off then means none.
  *
  * An unparsable value, or one of the names these had before 2026-10-28, is
- * an error (std::invalid_argument), never silently the default: an A/B run
- * must not measure the same code twice.
+ * an error (std::invalid_argument), never silently the default: an A/B run must not
+ * measure the same code twice.
  */
 struct solverConfig_t {
   std::optional<unsigned int> threads;
@@ -128,6 +132,7 @@ struct solverConfig_t {
   std::optional<bool> donate;
   std::optional<unsigned long> donateEvery;
   std::optional<bool> threadBudget;
+  rotationConfig_t rotation = {};
 
   solverSettings_t resolve(void) const;
 };

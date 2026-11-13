@@ -292,6 +292,14 @@ public:
   /** get the separation for the pieces that were left over */
   const separation_c * getRemoved(void) const { return removed.get(); }
 
+  /** the same, for changing the recorded rotation paths (see optimizeTurns) */
+  state_c * editState(unsigned int num) {
+    bt_assert(num < states.size());
+    return states[num].get();
+  }
+  separation_c * editLeft(void) { return left.get(); }
+  separation_c * editRemoved(void) { return removed.get(); }
+
   /**
    * add a new state to the FRONT of the current state list.
    * this is necessary because the list is generated when back

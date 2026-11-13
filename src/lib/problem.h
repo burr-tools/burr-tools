@@ -33,6 +33,7 @@
 #include <string>
 #include <mutex>
 #include <atomic>
+#include <optional>
 
 #include <stdint.h>
 
@@ -46,6 +47,7 @@ class part_c;
 class solution_c;
 class xmlWriter_c;
 class xmlParser_c;
+enum rotationMode_e : unsigned char;   // rotationtables.h
 
 /**
  * this state reflects how far we are with solving this problem
@@ -179,6 +181,18 @@ private:
    * the time used up to get to the current state in the solving progress (in seconds)
    */
   std::atomic<unsigned long> usedTime{0};
+
+  /**
+   * the rotation mode the solve state was found with (noteSolveRotationMode),
+   * unset when unknown; mixed: runs with different modes. In memory only,
+   * like the GUI's choice it comes from; never saved. runRotationMode: the
+   * mode of the latest run, which is what a solve state that run starts
+   * over (removeAllSolutions) is found with. Guarded by solutionMutex: the
+   * solver thread starts over too
+   */
+  std::optional<rotationMode_e> solveRotationMode;
+  std::optional<rotationMode_e> runRotationMode;
+  bool solveRotationModeMixed = false;
 
   /**
    * number of holes maximally allowed
@@ -514,6 +528,18 @@ public:
   unsigned long getUsedTime(void) const { bt_assert(solveState.load() != SS_UNSOLVED); return usedTime.load(); }
   /** get number of solutions that were stored */
   unsigned int getNumberOfSavedSolutions(void) const { return solutions.size(); }
+
+  /** A front end starts a solver run that disassembles, with this rotation
+   *  mode (ROTATION_OFF without rotation moves). The first run of a fresh
+   *  solve (SS_UNSOLVED) records it, a later run with another mode makes
+   *  the record mixed. In memory only. */
+  void noteSolveRotationMode(rotationMode_e mode);
+  /** False if the solve state was found, in whole or in part, with another
+   *  rotation mode than this one (the front end can then suggest solving
+   *  again); true if it was found with this one or nothing is known (a
+   *  solve loaded from a file, or one that did not disassemble). Every mode
+   *  accepts only certified turns, so the results stay valid either way. */
+  bool solvedWithRotationMode(rotationMode_e mode) const;
 
   /**
    * Acquire the lock guarding the solution list. A caller that reads a saved

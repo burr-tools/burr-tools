@@ -16,8 +16,9 @@
 
 namespace {
 
-/* pure turns only keep the table builds in these tests short */
-const rotationSettings_t SMALL = { { 0.081, 0 }, {} };
+/* pure turns only keep the table builds in these tests short; fast, so
+ * that a context has one set of tables */
+const rotationSettings_t SMALL = { { 0.081, 0 }, {}, {}, ROTATION_FAST };
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
   auto p = puzzle_c::load(path);
@@ -48,7 +49,8 @@ std::shared_ptr<rotationContext_c> pelikanContext(void) {
 TEST_CASE("rotation tables are shared per settings and freed with their last user", "[rotations]") {
 
   /* settings of its own, so tables other tests keep alive do not interfere */
-  const rotationSettings_t settings = { { 0.07, 0 }, {} };
+  const rotationSettings_t settings = { { 0.07, 0 }, {}, {} };
+  releaseRotationTables();
 
   auto a = sharedRotationTables(settings, 3);
   REQUIRE(a != nullptr);
@@ -63,13 +65,44 @@ TEST_CASE("rotation tables are shared per settings and freed with their last use
   auto c = sharedRotationTables(settings, 4);
   CHECK(c != a);
   CHECK(c->getRadius() == 4);
-  auto d = sharedRotationTables({ { 0.05, 0 }, {} }, 3);
+  auto d = sharedRotationTables({ { 0.05, 0 }, {}, {} }, 3);
   CHECK(d != a);
 
-  /* the cache does not keep tables alive: no singleton lifetime */
+  /* c serves everything a did, so a is not kept */
   std::weak_ptr<const rotationGeometry::rotationTables_c> watch = a;
   a.reset();
   b.reset();
+  CHECK(watch.expired());
+
+  /* the two most recent sets (d, c) outlive their users until released */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watchC = c, watchD = d;
+  c.reset();
+  d.reset();
+  CHECK_FALSE(watchC.expired());
+  CHECK_FALSE(watchD.expired());
+  releaseRotationTables();
+  CHECK(watchC.expired());
+  CHECK(watchD.expired());
+}
+
+TEST_CASE("the most recently used rotation tables are kept for the next solve", "[rotations]") {
+
+  const rotationSettings_t first = { { 0.071, 0 }, {}, {} }, second = { { 0.072, 0 }, {}, {} }, third = { { 0.073, 0 }, {}, {} };
+  releaseRotationTables();
+
+  /* one design after another: the second request is served by the kept set */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watch = sharedRotationTables(first, 2);
+  REQUIRE_FALSE(watch.expired());
+  CHECK(sharedRotationTables(first, 2) == watch.lock());
+
+  /* a third set of settings pushes out the least recently used one */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watchSecond = sharedRotationTables(second, 2);
+  CHECK(sharedRotationTables(first, 2) == watch.lock());   // first is now the most recent
+  sharedRotationTables(third, 2);
+  CHECK_FALSE(watch.expired());
+  CHECK(watchSecond.expired());
+
+  releaseRotationTables();
   CHECK(watch.expired());
 }
 
@@ -100,9 +133,45 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
   CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
 }
 
+TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
+
+  auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  problem_c & problem = *puzzle->getProblem(0);
+  auto in = [](rotationMode_e mode) {
+    rotationSettings_t s = SMALL;
+    s.mode = mode;
+    return s;
+  };
+
+  /* off: none at all, as without rotation moves */
+  CHECK(rotationContextFor(problem, in(ROTATION_OFF)) == nullptr);
+
+  /* fast: the family only, its groups from the family's tables */
+  auto fast = rotationContextFor(problem, in(ROTATION_FAST));
+  REQUIRE(fast != nullptr);
+  CHECK_FALSE(fast->planner());
+  CHECK_FALSE(fast->endPoseClosure());
+  CHECK(&fast->closureTables() == &fast->tables());
+
+  /* balanced: a second set of tables, the gate, at play + max(play, 0.04) */
+  auto balanced = rotationContextFor(problem, in(ROTATION_BALANCED));
+  REQUIRE(balanced != nullptr);
+  CHECK(balanced->planner());
+  CHECK_FALSE(balanced->endPoseClosure());
+  CHECK(&balanced->closureTables() != &balanced->tables());
+  CHECK(balanced->closureTables().getRadius() == balanced->tables().getRadius());
+
+  /* slow: no second set; its groups come from the end pose */
+  auto slow = rotationContextFor(problem, in(ROTATION_SLOW));
+  REQUIRE(slow != nullptr);
+  CHECK(slow->planner());
+  CHECK(slow->endPoseClosure());
+  CHECK(&slow->closureTables() == &slow->tables());
+}
+
 TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {
 
-  rotationContext_c context(pelikan(), std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
+  rotationContext_c context(pelikan(), rotationSettings_t{}, std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
   const rotationPairKey_t key = { 1, 2 }, other = { 1, 3 };
 
   const rotationPivotSet_t * found = nullptr;
