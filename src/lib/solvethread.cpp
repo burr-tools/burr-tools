@@ -243,7 +243,8 @@ void solveThread_c::run(void){
   }
 }
 
-solveThread_c::solveThread_c(problem_c & puz, int par, unsigned int threads) :
+solveThread_c::solveThread_c(problem_c & puz, int par, unsigned int threads,
+                             const rotationSettings_t & rotation) :
 action(ACT_PREPARATION),
 puzzle(puz),
 parameters(par),
@@ -265,18 +266,30 @@ assm(0)
      * (non-inline) pools with budgeting enabled -- otherwise null and all
      * budget call sites behave exactly as without any cap.
      */
+    /* Rotation tables are built (or taken from the cache) here, before any
+     * worker thread exists, and then only read; without the flag none are
+     * requested and the disassemblers skip rotation moves entirely. */
+    std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables;
+    if (par & PAR_ROTATION_MOVES)
+      rotationTables = rotationTablesFor(puz, rotation);
+
     disasm_pool = std::make_unique<disassemblerPool_c>(
       puz,
       numThreads,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
-      }
+      },
+      std::move(rotationTables)
     );
     if (threadBudgetEnabled() && !disasm_pool->isInline()) {
       threadBudget_ = std::make_unique<ThreadBudget>(disasm_pool->threadCount());
       disasm_pool->setBudget(threadBudget_.get());
     }
   }
+}
+
+bool solveThread_c::rotationMoves(void) const {
+  return disasm_pool && disasm_pool->getRotationTables();
 }
 
 solveThread_c::~solveThread_c(void) {
