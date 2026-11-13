@@ -114,14 +114,45 @@ void stlExporter_0_c::setParameter(unsigned int idx, double value)
 {
   switch (idx)
   {
-    case 0: cube_scale = value; return;
+    case 0: cube_scale = value; applyModel(); return;
     case 1: cube_scale_y = value; return;
     case 2: cube_scale_z = value; return;
-    case 3: bevel = value; return;
-    case 4: shrink = value; return;
+    /* set by hand: no longer the followed model's (unless unchanged) */
+    case 3: if (value != bevel) following.reset(); bevel = value; return;
+    case 4: if (value != shrink) following.reset(); shrink = value; return;
     case 5: interiorChamfers = (value != 0); return;
     default: return;
   }
+}
+
+/* The model's play is the gap between two cubes, the offset moves each
+ * face in, so play = 2 offset / unit; both bevels are the leg cut off a
+ * face, bevel = bevel / unit. */
+bool stlExporter_0_c::followModel(const rotationGeometry::model_t & model)
+{
+  if (!cubes)
+    return false;
+  following = model;
+  applyModel();
+  return true;
+}
+
+void stlExporter_0_c::applyModel(void)
+{
+  if (!following)
+    return;
+  shrink = 0.5 * following->play * cube_scale;
+  bevel = following->chamfer * cube_scale;
+}
+
+std::optional<rotationGeometry::model_t> stlExporter_0_c::currentModel(void) const
+{
+  /* a stretched unit makes no cubes, and the rotation model has none */
+  if (!cubes || cube_scale < Epsilon ||
+      (cube_scale_y > Epsilon && cube_scale_y != cube_scale) ||
+      (cube_scale_z > Epsilon && cube_scale_z != cube_scale))
+    return std::nullopt;
+  return rotationGeometry::model_t{ 2 * shrink / cube_scale, bevel / cube_scale };
 }
 
 const char * stlExporter_0_c::getParameterTooltip(unsigned int idx) const

@@ -62,9 +62,15 @@ class stlExportSolution_c : public stlExportDialog_c {
     void exportAssembled(void);
     void exportSeparate(void);
 
+    /* the problem of the solution */
+    unsigned int problemIndex;
+
   protected:
 
     std::unique_ptr<Polyhedron> previewMesh(std::string & text) override;
+
+    /* the pieces this problem's rotation moves are checked for */
+    rotationGeometry::model_t expectedModel(void) const override;
 
   public:
 

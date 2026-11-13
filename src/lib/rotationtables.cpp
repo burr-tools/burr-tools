@@ -26,6 +26,7 @@
 #include "gridtype.h"
 #include "problem.h"
 #include "puzzle.h"
+#include "stl.h"
 #include "symmetries.h"
 #include "voxel.h"
 
@@ -33,6 +34,7 @@
 #include <array>
 #include <chrono>
 #include <climits>
+#include <cstdio>
 #include <cmath>
 #include <cstdlib>
 #include <numbers>
@@ -489,6 +491,36 @@ rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle) {
 void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings) {
   if (!puzzle.getRotationModel())
     puzzle.setRotationModel(settings.model);
+}
+
+stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected) {
+  stlModelState_t state;
+  const std::optional<rotationGeometry::model_t> now = stl.currentModel();
+  if (!now)
+    return state;
+  state.now = *now;
+  state.expected = expected;
+  state.match = std::abs(now->play - expected.play) < 1e-6 && std::abs(now->chamfer - expected.chamfer) < 1e-6
+                  ? stlModelState_t::MATCHES : stlModelState_t::DIFFERS;
+  return state;
+}
+
+std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::model_t & expected) {
+  const stlModelState_t s = stlModelState(stl, expected);
+  char text[200];
+  switch (s.match) {
+    case stlModelState_t::NO_CUBES:
+      return "";
+    case stlModelState_t::MATCHES:
+      snprintf(text, sizeof(text), "Play %.4f, bevel %.4f: the pieces rotation moves are checked for.",
+               s.now.play, s.now.chamfer);
+      break;
+    case stlModelState_t::DIFFERS:
+      snprintf(text, sizeof(text), "Play %.4f, bevel %.4f, but rotation moves are checked for play %.4f, "
+               "bevel %.4f.", s.now.play, s.now.chamfer, s.expected.play, s.expected.chamfer);
+      break;
+  }
+  return text;
 }
 
 std::shared_ptr<rotationContext_c>

@@ -28,6 +28,7 @@
 #include "../lib/puzzle.h"
 #include "../lib/gridtype.h"
 #include "../lib/bt_assert.h"
+#include "../lib/rotationtables.h"
 
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/vertex.h"
@@ -53,6 +54,13 @@ struct stlExportDialog_c::parameterField_c {
   stlExporter_c::parameterTypes type;
   Fl_Widget * w;
 };
+
+std::string stlParameterText(const stlExporter_c & stl, unsigned int idx)
+{
+  char val[32];
+  snprintf(val, sizeof(val), "%.4g", stl.getParameter(idx));
+  return val;
+}
 
 /* the longest side of the mesh's bounding box, 0 for an empty mesh */
 static double longestSide(const Polyhedron & p)
@@ -136,8 +144,7 @@ void stlExportDialog_c::addParameterFrame(int row)
         (new LFl_Box(stl->getParameterName(i), 0, i))->stretchRight();
         (new LFl_Box(1, i))->setMinimumSize(5, 0);
         LFl_Float_Input * in = new LFl_Float_Input(2, i, 1, 1);
-        char val[16]; snprintf(val, sizeof val, "%2.2f", stl->getParameter(i));
-        in->value(val); in->weight(1, 0);
+        in->value(stlParameterText(*stl, i).c_str()); in->weight(1, 0);
         inp->w = in;
         break;
       }
@@ -164,6 +171,11 @@ void stlExportDialog_c::addParameterFrame(int row)
     inp->w->tooltip(stl->getParameterTooltip(i));
     params.push_back(std::move(inp));
   }
+
+  modelNote = new LFl_Box(0, stl->numParameters(), 3, 1);
+  modelNote->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+  modelNote->labelsize(12);
+  modelNote->setMinimumSize(220, 32);
 
   fr->end();
 }
@@ -247,13 +259,34 @@ bool stlExportDialog_c::mayWrite(const std::string & fname) const
          fl_choice("File exists overwrite?", "Cancel", "Overwrite", 0) != 0;
 }
 
+void stlExportDialog_c::showParameters(void)
+{
+  for (unsigned int i = 0; i < stl->numParameters(); i++)
+    if (params[i]->type == stlExporter_c::PAR_TYP_DOUBLE || params[i]->type == stlExporter_c::PAR_TYP_POS_DOUBLE) {
+      LFl_Float_Input * in = static_cast<LFl_Float_Input*>(params[i]->w);
+      const std::string text = stlParameterText(*stl, i);
+      if (text != in->value())
+        in->value(text.c_str());
+    }
+}
+
 void stlExportDialog_c::applyParameters(void)
 {
   for (unsigned int i = 0; i < stl->numParameters(); i++) {
     switch (params[i]->type) {
       case stlExporter_c::PAR_TYP_DOUBLE:
       case stlExporter_c::PAR_TYP_POS_DOUBLE:
-        stl->setParameter(i, atof(static_cast<LFl_Float_Input*>(params[i]->w)->value()));
+        {
+          /* only an edited field: the text shown is rounded, and would stop
+           * bevel and offset from following the model. Setting the value
+           * (showParameters) clears the flag, as does the field's callback
+           * once it returns */
+          LFl_Float_Input * in = static_cast<LFl_Float_Input*>(params[i]->w);
+          if (in->changed()) {
+            stl->setParameter(i, atof(in->value()));
+            in->clear_changed();
+          }
+        }
         break;
       case stlExporter_c::PAR_TYP_POS_INTEGER:
         {
@@ -275,6 +308,14 @@ void stlExportDialog_c::applyParameters(void)
   }
 
   stl->setBinaryMode(Binary->value() != 0);
+
+  /* the pieces of what is exported, as long as bevel and offset follow a model */
+  const rotationGeometry::model_t model = expectedModel();
+  if (stl->followsModel())
+    stl->followModel(model);
+  showParameters();
+  if (modelNote)
+    modelNote->copy_label(stlModelNote(*stl, model).c_str());
 }
 
 std::unique_ptr<Polyhedron> stlExportDialog_c::mesh(const voxel_c & v) const

@@ -34,6 +34,7 @@
 #include "Layouter.h"
 
 #include "../lib/stl.h"
+#include "../lib/rotationgeometry.h"
 
 #include <vector>
 #include <memory>
@@ -44,6 +45,13 @@ class voxel_c;
 class Polyhedron;
 class LView3dGroup;
 class ButtonGroup_c;
+
+/* The text an STL dialog shows for a parameter of type double: four
+ * significant digits (an offset of 0.405 mm, not 0.41). The dialogs hand
+ * the exporter only the fields the user edited, so the bevel and offset
+ * the exporter derives from the rotation model (stlExporter_c::followModel)
+ * are not overwritten by their rounded text. */
+std::string stlParameterText(const stlExporter_c & stl, unsigned int idx);
 
 class stlExportDialog_c : public LFl_Double_Window {
 
@@ -62,6 +70,9 @@ class stlExportDialog_c : public LFl_Double_Window {
     LFl_Input * Pname = nullptr;
     LFl_Check_Button * Binary = nullptr;
     LFl_Box * status = nullptr;
+
+    /* whether bevel and offset make the pieces rotation moves are checked for */
+    LFl_Box * modelNote = nullptr;
 
     /* puzzleFile is the path the current puzzle was loaded from, or empty
      * when it has never been saved. It supplies the default output folder;
@@ -97,7 +108,14 @@ class stlExportDialog_c : public LFl_Double_Window {
      * dialog already asked about it, or the user agrees to replace it */
     bool mayWrite(const std::string & fname) const;
 
-    /* set the exporter's parameters and binary mode from the fields */
+    /* the rotation model of the pieces being exported; bevel and offset
+     * follow it until one is set by hand */
+    virtual rotationGeometry::model_t expectedModel(void) const = 0;
+
+    /* set the exporter's parameters and binary mode from the fields: only
+     * the doubles whose text was edited go to the exporter, which may
+     * derive others (bevel and offset from the unit size, or from the
+     * model), then every double shows the exporter's value */
     void applyParameters(void);
 
     /* the exporter's mesh of a shape, throws when it can't make one */
@@ -132,6 +150,9 @@ class stlExportDialog_c : public LFl_Double_Window {
   private:
 
     struct parameterField_c;
+
+    /* every double field shows the exporter's value */
+    void showParameters(void);
     std::vector<std::unique_ptr<parameterField_c>> params;
 
     LView3dGroup * view3D = nullptr;
