@@ -7,6 +7,7 @@
 #include "lib/gridtype.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
+#include "lib/rotationtables.h"
 #include "lib/solution.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
@@ -665,4 +666,45 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
         == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
   CHECK(pr->getSolveState() == SS_SOLVING);
   CHECK_FALSE(pr->canStartSolving());
+}
+
+/* ------------------------------------------------------------------ */
+/* the rotation model                                                  */
+/* ------------------------------------------------------------------ */
+
+TEST_CASE("problem: which rotation mode the solve state comes from, in memory", "[problem][rotations]") {
+  SolvingFixture f = makeSolvingFixture(1, 1);
+  problem_c & p = *f.problem;
+  p.removeAllSolutions();   // a fresh problem, as before a GUI's Start
+
+  /* nothing known: no reason to suggest solving again */
+  for (rotationMode_e m : { ROTATION_OFF, ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW })
+    CHECK(p.solvedWithRotationMode(m));
+
+  /* a fresh solve records its mode */
+  p.noteSolveRotationMode(ROTATION_FAST);
+  CHECK(p.solvedWithRotationMode(ROTATION_FAST));
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_BALANCED));
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_OFF));
+
+  /* continuing with the same mode keeps it, with another one mixes them */
+  p.setAssembler(std::make_unique<assembler_0_c>(p, bttest::settings()));
+  REQUIRE(p.getSolveState() == SS_SOLVING);
+  p.noteSolveRotationMode(ROTATION_FAST);
+  CHECK(p.solvedWithRotationMode(ROTATION_FAST));
+  p.noteSolveRotationMode(ROTATION_SLOW);
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_SLOW));
+
+  /* starting over (a resume that failed, inside the latest run) leaves what
+   * that run finds, with its mode; the record is never saved */
+  p.removeAllSolutions();
+  CHECK(p.solvedWithRotationMode(ROTATION_SLOW));
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
+  p.noteSolveRotationMode(ROTATION_SLOW);
+  p.setAssembler(std::make_unique<assembler_0_c>(p, bttest::settings()));
+  p.finishedSolving();
+  CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
+  auto back = reloadEdited(*f.puzzle, [](std::string &) {});
+  CHECK(back->getProblem(0)->solvedWithRotationMode(ROTATION_FAST));
 }

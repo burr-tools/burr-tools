@@ -110,6 +110,10 @@ struct solverSettings_t {
  * | splitBreadthFirst  | BURRTOOLS_SPLIT_ORDER=depth\|breadth              |
  * | donate             | BURRTOOLS_DONATE=0\|1                             |
  * | threadBudget       | BURRTOOLS_THREAD_BUDGET=0\|1                      |
+ * | rotation.mode      | BURRTOOLS_ROT_MODE=off\|fast\|balanced\|slow     |
+ *
+ * rotation.mode only says how turns are decided when a front end turns
+ * rotation moves on (burrTxt -R, the GUI); off then means none.
  *
  * splitFanout and donateEvery have no variable: only tests choose them.
  *
@@ -130,6 +134,7 @@ struct solverConfig_t {
   std::optional<bool> donate;
   std::optional<unsigned long> donateEvery;
   std::optional<bool> threadBudget;
+  rotationConfig_t rotation = {};
 
   /** the most threads a front end or BURRTOOLS_THREADS may ask for */
   static constexpr unsigned int maxThreads = 4096;

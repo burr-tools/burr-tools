@@ -11,6 +11,7 @@
 #include <numbers>
 #include <random>
 #include <sstream>
+#include <thread>
 #include <vector>
 
 /* The turn planner (rotationGeometry::decideTurn), the motion with the most
@@ -180,6 +181,37 @@ TEST_CASE("a wide passage is found before the crevices are followed to their end
   const path_t path = usablePath(scene, d);
   CHECK(scene.certifyPath(path) == PATH_CLEAR);
   CHECK(scene.minClearance(path) > 0.0005);   // 0.0023
+}
+
+TEST_CASE("runs at the same time wait for room rather than give up", "[rotations]") {
+  /* the GalacTIC turn above takes some 20 000 boxes; four runs share room
+   * for 12 288, so each waits for the others in turn, and every one finds
+   * what a run alone finds */
+  const crowellTurn_t t = {
+    { {1,0,1}, {1,1,1}, {2,1,1}, {2,2,1}, {2,2,2}, {3,2,2}, {1,3,0}, {0,3,1}, {1,3,1}, {0,4,1}, {1,4,1},
+      {2,4,1}, {1,2,2}, {1,3,2}, {0,4,2}, {0,1,-1}, {3,1,-1}, {0,2,-1}, {3,2,-1}, {0,3,-1}, {3,3,-1}, {0,4,-1},
+      {1,4,-1}, {2,4,-1}, {3,4,-1}, {0,1,0}, {3,1,0}, {3,4,0}, {0,1,1}, {3,1,1}, {3,4,1}, {0,1,2}, {2,1,2},
+      {3,1,2}, {0,2,2}, {0,3,2}, {3,3,2}, {1,4,2}, {2,4,2}, {3,4,2} },
+    { {1,1,-1}, {1,2,-1}, {0,2,0}, {1,2,0} },
+    2, 0, -1, 1, 0
+  };
+  const planarScene_c scene = sceneOf(t, { 0.0108, 0.0653 });
+  const turnDecision_t alone = decideTurn(scene, t.sense, decideSettings_t());
+  REQUIRE(alone.answer == TURN_POSSIBLE);
+  REQUIRE(alone.boxes > 3 * 4096);
+
+  struct restore_t { size_t before; ~restore_t() { setPlannerBoxBudget(before); } } restore{ setPlannerBoxBudget(3 * 4096) };
+  std::vector<turnDecision_t> found(4);
+  {
+    std::vector<std::jthread> runs;
+    for (turnDecision_t & d : found)
+      runs.emplace_back([&scene, &t, &d] { d = decideTurn(scene, t.sense, decideSettings_t()); });
+  }
+  for (const turnDecision_t & d : found) {
+    CHECK(d.answer == TURN_POSSIBLE);
+    CHECK_FALSE(d.gaveUp);
+    CHECK(d.boxes == alone.boxes);
+  }
 }
 
 TEST_CASE("a turn through a wall is impossible at every play and with every bevel", "[rotations]") {
