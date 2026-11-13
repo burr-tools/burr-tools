@@ -374,7 +374,7 @@ TEST_CASE("problem: a fresh problem holds no assembler", "[problem][assembler]")
      pointer elsewhere; this one was not pinned at all. */
   assembler_c * raw = nullptr;
   {
-    auto assm = std::make_unique<assembler_0_c>(*f.problem);
+    auto assm = std::make_unique<assembler_0_c>(*f.problem, bttest::settings());
     raw = assm.get();
     f.problem->setAssembler(std::move(assm));
   }
@@ -422,7 +422,7 @@ SolvingFixture makeSolvingFixture(unsigned int maxA, unsigned int maxB) {
   f.problem->setShapeMaximum(f.shapeA, maxA);
   f.problem->setShapeMaximum(f.shapeB, maxB);
 
-  f.problem->setAssembler(std::make_unique<assembler_0_c>(*f.problem));
+  f.problem->setAssembler(std::make_unique<assembler_0_c>(*f.problem, bttest::settings()));
 
   return f;
 }
@@ -661,7 +661,7 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
   REQUIRE(pr->getSolveState() == SS_SOLVING);
   REQUIRE(pr->canStartSolving());
 
-  CHECK(pr->setAssembler(std::make_unique<assembler_0_c>(*pr))
+  CHECK(pr->setAssembler(std::make_unique<assembler_0_c>(*pr, bttest::settings()))
         == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
   CHECK(pr->getSolveState() == SS_SOLVING);
   CHECK_FALSE(pr->canStartSolving());

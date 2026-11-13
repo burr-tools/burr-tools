@@ -124,7 +124,7 @@ TEST_CASE("assembler: pieces holding more cells than the result is rejected as t
   /* a four-cell result and pieces totalling five */
   Fixture f = bars(4, {3, 2});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_TOO_MANY_UNITS);
 
@@ -139,7 +139,7 @@ TEST_CASE("assembler: pieces holding fewer cells than the result is rejected as 
   /* a six-cell result and pieces totalling four */
   Fixture f = bars(6, {3, 1});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_TOO_FEW_UNITS);
   REQUIRE(assm.getErrorsParam() == 2);
@@ -160,7 +160,7 @@ TEST_CASE("assembler: variable cells in the result absorb a shortfall rather tha
   res->setState(4, 0, 0, voxel_c::VX_VARIABLE);
   res->setState(5, 0, 0, voxel_c::VX_VARIABLE);
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 }
@@ -197,7 +197,7 @@ TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before
   problem->setShapeMinimum(single, 1);
   problem->setShapeMaximum(single, 1);
 
-  assembler_0_c assm(*problem);
+  assembler_0_c assm(*problem, bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_CAN_NOT_PLACE);
 
@@ -220,7 +220,7 @@ TEST_CASE("assembler: a well-formed problem passes createMatrix", "[assembler][c
      everything. */
   Fixture f = bars(5, {3, 2});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 }
@@ -265,7 +265,7 @@ TEST_CASE("assembler: findAssembler picks assembler_0 when it can and assembler_
      eligibility instead would pass even against a findAssembler that had
      lost its assembler_0 branch altogether. */
   {
-    std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem);
+    std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem, bttest::settings());
     REQUIRE(a != nullptr);
 
     REQUIRE(assembler_0_c::canHandle(*f.problem));   // both are eligible...
@@ -279,7 +279,7 @@ TEST_CASE("assembler: findAssembler picks assembler_0 when it can and assembler_
   f.problem->setShapeMaximum(0, 2);
 
   {
-    std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem);
+    std::unique_ptr<assembler_c> a = gt.findAssembler(*f.problem, bttest::settings());
     REQUIRE(a != nullptr);
     REQUIRE_FALSE(assembler_0_c::canHandle(*f.problem));
 
@@ -297,7 +297,7 @@ TEST_CASE("assembler: createMatrix on a range problem is rejected by assembler_0
   f.problem->setShapeMinimum(0, 1);
   f.problem->setShapeMaximum(0, 2);
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
 
   /* canHandle is consulted inside createMatrix too, so constructing
      assembler_0 directly on an unsuitable problem fails cleanly rather
@@ -359,7 +359,7 @@ TEST_CASE("assembler: a one-dimensional puzzle yields the assemblies its geometr
      draft of this case asserted two and was wrong about why. */
   Fixture f = bars(6, {2, 4});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -381,7 +381,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
 
   int total = 0;
   {
-    assembler_0_c assm(*f.problem);
+    assembler_0_c assm(*f.problem, bttest::settings());
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
     CountingCallback cb;
@@ -391,7 +391,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
 
   REQUIRE(total > 1);
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -405,7 +405,7 @@ TEST_CASE("assembler: stopped() reports idleness -- and stop() before a run is c
           "[assembler][config]") {
   Fixture f = bars(6, {1, 2, 3});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   /* Two things here read the wrong way round from their names, and both
@@ -440,7 +440,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
 
   int total = 0;
   {
-    assembler_0_c assm(*f.problem);
+    assembler_0_c assm(*f.problem, bttest::settings());
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
@@ -463,7 +463,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
     }
   };
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   StoppingCallback cb;
@@ -480,7 +480,7 @@ TEST_CASE("assembler: getFinished reports completion between zero and one",
           "[assembler][config]") {
   Fixture f = bars(6, {1, 2, 3});
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   REQUIRE(assm.getFinished() >= 0.0f);
@@ -515,7 +515,7 @@ TEST_CASE("assembler: a range lets assembler_1 use a different number of pieces"
 
   REQUIRE_FALSE(assembler_0_c::canHandle(*problem));
 
-  assembler_1_c assm(*problem);
+  assembler_1_c assm(*problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -541,7 +541,7 @@ TEST_CASE("assembler: assembler_0 ignores the hole limit entirely",
 
   int withoutLimit = 0;
   {
-    assembler_0_c assm(*f.problem);
+    assembler_0_c assm(*f.problem, bttest::settings());
     REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
@@ -553,7 +553,7 @@ TEST_CASE("assembler: assembler_0 ignores the hole limit entirely",
   f.problem->setMaxHoles(0);
   REQUIRE(f.problem->getMaxHoles() == 0);
 
-  assembler_0_c assm(*f.problem);
+  assembler_0_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -603,7 +603,7 @@ int assembliesUnderHoleLimit(int maxHoles) {
   Fixture f = rangedWithVariableResult();
   if (maxHoles >= 0) f.problem->setMaxHoles(maxHoles);
 
-  assembler_1_c assm(*f.problem);
+  assembler_1_c assm(*f.problem, bttest::settings());
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -673,7 +673,7 @@ SolveCheck resolve(const char * path, unsigned int problemIdx, bool keepMirror) 
   const gridType_c * gt = problem->getPuzzle().getGridType();
   REQUIRE(gt != nullptr);
 
-  std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem);
+  std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
   REQUIRE(assm->createMatrix(keepMirror, false, false) == assembler_c::ERR_NONE);
 
@@ -766,7 +766,7 @@ TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
     problem_c * problem = p->getProblem(0);
     REQUIRE(problem != nullptr);
 
-    std::unique_ptr<assembler_c> assm = p->getGridType()->findAssembler(*problem);
+    std::unique_ptr<assembler_c> assm = p->getGridType()->findAssembler(*problem, bttest::settings());
     REQUIRE(assm != nullptr);
     REQUIRE(assm->createMatrix(keepMirror, keepRotations, false) == assembler_c::ERR_NONE);
 
@@ -837,7 +837,7 @@ TEST_CASE("assembler: the bundled counts span both assemblers and more than one 
        off canHandle() instead would be inferring which implementation ran
        from which one was allowed to, and the case would keep claiming
        both were exercised however findAssembler actually chose. */
-    std::unique_ptr<assembler_c> a = p->getGridType()->findAssembler(*problem);
+    std::unique_ptr<assembler_c> a = p->getGridType()->findAssembler(*problem, bttest::settings());
     REQUIRE(a != nullptr);
 
     const std::string kind = assemblerKind(a.get());

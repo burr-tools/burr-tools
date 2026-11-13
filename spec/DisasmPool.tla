@@ -12,7 +12,7 @@
 (* abstracted as appending to `delivered`.                                *)
 (*                                                                         *)
 (* NOT MODELED (deliberate gaps, see README.md):                          *)
-(*   - Inline mode (num_threads == 1 / BURRTOOLS_NO_DISASM_POOL):          *)
+(*   - Inline mode (num_threads == 1 / BURRTOOLS_DISASM_POOL=0):           *)
 (*     sequential under inline_mutex, ordered by construction.             *)
 (*   - Shared ThreadBudget contention: workers process one job at a time  *)
 (*     (capacity M by construction). Tying the budget to the assembly     *)
