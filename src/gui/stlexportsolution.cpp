@@ -30,6 +30,7 @@
 #include "../lib/assembly.h"
 #include "../lib/voxel.h"
 #include "../lib/bt_assert.h"
+#include "../lib/rotationtables.h"
 
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/face.h"
@@ -185,6 +186,11 @@ namespace {
 static void cb_Mode_stub(Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_Mode(); }
 static void cb_PieceSelect_stub(Fl_Widget*, void* v) { ((stlExportSolution_c*)v)->cb_NewPreviewSubject(); }
 
+rotationGeometry::model_t stlExportSolution_c::expectedModel(void) const
+{
+  return rotationModelOf(*puzzle->getProblem(problemIndex));
+}
+
 bool stlExportSolution_c::assembled(void) const { return ModeAssembled->value() != 0; }
 
 void stlExportSolution_c::activateModeFields(void)
@@ -336,7 +342,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
                                          const std::string & puzzleFile,
                                          unsigned int prob,
                                          unsigned int sol)
-  : stlExportDialog_c(p, puzzleFile, "Export Solution to STL")
+  : stlExportDialog_c(p, puzzleFile, "Export Solution to STL"), problemIndex(prob)
 {
   const problem_c * pr = p->getProblem(prob);
 
@@ -378,6 +384,9 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
 
     addOutputFrame(1, defName);
   }
+
+  /* the pieces this problem's rotation moves are checked for */
+  stl->followModel(rotationModelOf(*pr));
 
   addParameterFrame(2);
 

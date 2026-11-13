@@ -33,6 +33,7 @@
 class xmlWriter_c;
 class xmlParser_c;
 class Polyhedron;
+namespace rotationGeometry { struct model_t; }
 
 /** \file voxel.h
  * Contains the voxel base class and the class that gets thrown on load errors
@@ -756,6 +757,17 @@ public:
    * a small gap between adjacent pieces of an assembly
    */
   virtual Polyhedron * getSTLMesh(void) const;
+
+  /**
+   * The same for pieces of a given play and bevel, those rotation moves are
+   * checked for (rotationGeometry::model_t): on the cube grid the STL
+   * export's mesh with each face play / 2 in and bevelled by the model's
+   * bevel, as the export makes it when it follows the model
+   * (stlExporter_c::followModel). Other grids have no rotation moves and
+   * draw getSTLMesh(), as does the cube grid when its mesher cannot make
+   * these values.
+   */
+  Polyhedron * getSTLMeshFor(const rotationGeometry::model_t & model) const;
 
   /**
    * this function must return a polygon that is the connecting face to the neighbour n for the

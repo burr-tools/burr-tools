@@ -68,6 +68,9 @@ class StlExportController : public SceneController {
   /* where the save dialog starts and what it suggests */
   Q_PROPERTY(QUrl folder READ folder NOTIFY shapeChanged FINAL)
   Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY shapeChanged FINAL)
+  /* whether bevel and offset make the pieces rotation moves are checked
+   * for (stlModelState, in translated words); empty for grids without cubes */
+  Q_PROPERTY(QString modelNote READ modelNote NOTIFY valuesChanged FINAL)
 
 public:
 
@@ -96,6 +99,7 @@ public:
   bool hasMesh(void) const { return m_mesh != nullptr; }
   QUrl folder(void) const;
   QString suggestedName(void) const;
+  QString modelNote(void) const;
 
   /* The dialog opens: a fresh exporter for the puzzle's grid with its
    * default parameters, the main view's shape, and its preview. */
@@ -126,6 +130,9 @@ private:
 
   void rebuild(void);
   void makeExporter(void);
+  /* bevel and offset from the puzzle's pieces (rotationModelOf): when the
+   * exporter is new (start), else only while it still follows them */
+  void followShapeModel(bool start);
   void documentChanged(void);
 
   DocumentController * m_doc;
