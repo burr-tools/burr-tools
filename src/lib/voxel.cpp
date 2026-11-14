@@ -1133,7 +1133,7 @@ Polyhedron * voxel_c::getSTLMesh(void) const
   std::string err = "grid without a chamfer mesher";
   if (minkMesh::handles(*this))
   {
-    Polyhedron * p = minkMesh::polyhedron(*this, 0.02, 0.05, true, err);
+    Polyhedron * p = minkMesh::polyhedron(*this, 0.02, 0.05, true, true, err);
     if (p) return p;
   }
   fprintf(stderr, "chamfer mesher failed for the 3D view: %s\n", err.c_str());
