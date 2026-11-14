@@ -920,6 +920,31 @@ bool problem_c::solveRecord_t::empty(void) const {
          solveState == SS_UNSOLVED && numAssemblies == 0 && numSolutions == 0 && usedTime == 0;
 }
 
+namespace {
+  size_t solveBytes(const std::vector<std::unique_ptr<solution_c>> & solutions,
+                    const std::vector<std::unique_ptr<assembly_c>> & stash,
+                    const assembler_c * assm, const std::string & state, const std::string & version) {
+    size_t bytes = state.capacity() + version.capacity() +
+                   (solutions.capacity() + stash.capacity()) * sizeof(void *);
+    for (const auto & s : solutions)
+      bytes += s->memoryBytes();
+    for (const auto & a : stash)
+      bytes += a->memoryBytes();
+    if (assm)
+      bytes += assm->memoryBytes();
+    return bytes;
+  }
+}
+
+size_t problem_c::solveRecord_t::memoryBytes(void) const {
+  return sizeof(*this) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
+}
+
+size_t problem_c::solveRecordBytes(void) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  return sizeof(solveRecord_t) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
+}
+
 void problem_c::swapSolveRecord(solveRecord_t & r) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.swap(r.solutions);

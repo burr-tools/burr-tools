@@ -386,7 +386,14 @@ the network.
   `changeShape()` does, without asking. Unlike legacy, the undo step keeps
   them: undo brings them back, redo drops them again. An undo also leaves
   alone every problem the step did not change (it used to drop all
-  problems' solutions, in both GUIs).
+  problems' solutions, in both GUIs). What the steps keep is held to a
+  memory budget, 512 MiB for every open history together
+  (`puzzleHistory_c::setSolutionBudget`, counted by the library's
+  `memoryBytes()` estimates: solutions, disassemblies, a paused search).
+  An edit whose solutions do not fit asks first, every time
+  (`DocumentController::mayDropSolutions`), since they are then lost for
+  good; the steps keep nothing until steps that hold some go (pushed out
+  by the undo depth, a redo tail dropped, another file opened).
 - **Drawing colour** (P3): **Remove colour asks first** when a problem
   whose shapes use the colour has solutions or a search in progress
   (legacy clears all of those problems' solutions without asking; the same
@@ -860,7 +867,9 @@ Product decisions of 2026-11-06, unless a line says otherwise.
   what a problem asks for clear the solutions of the problems concerned, in the
   same step, so the next save leaves them out of the file: nothing stale is
   kept. A voxel edit's go into its undo step (`DocumentSession::editVoxels`,
-  "Voxel edits and solutions" above), so its undo brings them back. One warning, `DocumentController::mayCostSolutions`, says so and that
+  "Voxel edits and solutions" above), so its undo brings them back, and it
+  goes on without a warning (unless they are too big to keep, above). For the
+  rest one warning, `DocumentController::mayCostSolutions`, says so and that
   it comes once a session; it replaces the delete and remove questions of P2
   and P3. Continue runs the held edit (a stroke's first cell; the drag that
   followed is not replayed), Cancel leaves everything and it asks again next

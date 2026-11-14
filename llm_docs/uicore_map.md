@@ -7,7 +7,7 @@
 | `documentsession` | open, save (beside the file, then renamed over it), import, new, the modified state, undo / redo; a voxel edit drops the solutions of the problems using the shape into its undo step (`editVoxels`, strokes) |
 | `drawcolours` | the puzzle's colours as the Drawing colour footer edits them: names, add (up to the library's 63), edit, remove (and whether it loses solutions) |
 | `shapecolours` | what a shape is shown in: Classic (the `palette` table) or Muted, per theme; not compiled into legacy |
-| `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit, the Puzzle selection around a step; the solve records a step dropped, swapped back by its undo; problems a step did not change are left alone, solutions and all) — **shared with the legacy GUI** |
+| `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit, the Puzzle selection around a step; the solve records a step dropped, swapped back by its undo, to one memory budget for the process; problems a step did not change are left alone, solutions and all) — **shared with the legacy GUI** |
 | `settingsstore` | the settings file: `key = value` lines, typed reads with defaults, an atomic save |
 | `camera`, `viewcube`, `vecmath` | the 3D view's camera (orbit, pan, zoom, eased animations, projections) and the view cube's faces, edges, corners and hit testing |
 | `scenemesh` | the vertices the 3D view draws for a shape, per voxel style (Flat, Classic, STL; STL faces cut at the cells' walls, so they dim by layer), each vertex carrying its voxel; ghosts, a Transform button's result and hint; picking meshes and ray picks |

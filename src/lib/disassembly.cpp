@@ -712,3 +712,12 @@ unsigned int separationInfo_c::getNumSequences(void) const
   return values.size();
 }
 
+
+size_t separation_c::memoryBytes(void) const {
+  size_t bytes = sizeof(*this) + pieces.capacity() * sizeof(unsigned int);
+  for (const auto & s : states)
+    bytes += sizeof(s) + s->memoryBytes();
+  if (removed) bytes += removed->memoryBytes();
+  if (left) bytes += left->memoryBytes();
+  return bytes;
+}

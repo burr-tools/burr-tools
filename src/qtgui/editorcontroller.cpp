@@ -183,7 +183,7 @@ bool EditorController::click3d(const btui::Target3d & t, Qt::KeyboardModifiers m
     const std::unique_ptr<voxel_c> copy(s->getGridType()->getVoxel(s));
     return btui::applyTool(*copy, cells, *tool, colour);
   });
-  if (!m_doc->mayCostSolutions(costs, [this, t, m] { click3d(t, m); }))
+  if (!m_doc->mayDropSolutions(costs, { unsigned(idx) }, [this, t, m] { click3d(t, m); }))
     return false;
   bool changed = false;
   guarded([&] {
@@ -362,18 +362,18 @@ void EditorController::setSize(int axis, int steps) {
     return;
   }
   const int idx = m_shapeIndex;
-  if (!m_doc->mayCostSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_applyToAll ? -1 : idx); }),
-                               [this, axis, steps] { setSize(axis, steps); })) {
-    emit sizeChanged();          // the field shows the real size until the answer
-    return;
-  }
-  int blocked = 0;
   std::vector<unsigned int> shapes;
   if (m_applyToAll)
     for (unsigned int i = 0; i < m_doc->session().puzzle().getNumberOfShapes(); i++)
       shapes.push_back(i);
   else
     shapes.push_back(unsigned(idx));
+  if (!m_doc->mayDropSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_applyToAll ? -1 : idx); }),
+                               shapes, [this, axis, steps] { setSize(axis, steps); })) {
+    emit sizeChanged();          // the field shows the real size until the answer
+    return;
+  }
+  int blocked = 0;
   guarded([&] {
     m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, m_applyToAll ? -1 : idx, idx, shapes,
                       [&](puzzle_c & p) {
@@ -466,7 +466,8 @@ bool EditorController::press(int col, int row, bool rightButton, Qt::KeyboardMod
   /* The warning takes this press; the cell it was on is the edit that goes
    * ahead. The stroke does not start, so the drag and release that follow
    * do nothing. */
-  if (!m_doc->mayCostSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_shapeIndex); }),
+  if (!m_doc->mayDropSolutions(guarded([&] { return btui::shapeEditCostsSolutions(m_doc->session().puzzle(), m_shapeIndex); }),
+                               { unsigned(m_shapeIndex) },
                                [this, col, row, rightButton, m] {
                                  press(col, row, rightButton, m);
                                  release();

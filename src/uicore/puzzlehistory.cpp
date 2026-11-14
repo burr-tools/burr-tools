@@ -17,7 +17,51 @@
 #include "../lib/voxel.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+
+namespace {
+  /* every history's kept records together, and the budget for them; the
+   * histories live on the GUI thread, the atomics only make that cheap to
+   * get wrong */
+  std::atomic<size_t> keptTotal{0};
+  std::atomic<size_t> keptBudget{puzzleHistory_c::DEFAULT_SOLUTION_BUDGET};
+}
+
+puzzleHistory_c::snapshot_t::~snapshot_t(void) {
+  keptTotal -= keptBytes;
+}
+
+void puzzleHistory_c::recount(snapshot_t & step) {
+  const size_t bytes = bytesIn(step.discarded);
+  keptTotal -= step.keptBytes;
+  keptTotal += bytes;
+  step.keptBytes = bytes;
+}
+
+void puzzleHistory_c::setSolutionBudget(size_t bytes) {
+  keptBudget = bytes;
+}
+
+size_t puzzleHistory_c::solutionBudget(void) {
+  return keptBudget;
+}
+
+size_t puzzleHistory_c::solutionBytesKept(void) {
+  return keptTotal;
+}
+
+size_t puzzleHistory_c::bytesIn(const discarded_t & d) {
+  size_t bytes = d.capacity() * sizeof(discarded_t::value_type);
+  for (const auto & kept : d)
+    bytes += kept.second.memoryBytes();
+  return bytes;
+}
+
+bool puzzleHistory_c::roomForSolutions(size_t bytes) {
+  const size_t total = keptTotal, budget = keptBudget;
+  return total <= budget && bytes <= budget - total;
+}
 
 puzzleHistory_c::puzzleHistory_c(void) :
   cursor(0),
@@ -421,9 +465,11 @@ void puzzleHistory_c::pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
     // Replace current snapshot; share unchanged shapes from the one before it.
     const snapshot_t * prevSnap = (cursor > 0) ? snapshots[cursor - 1].get() : nullptr;
     discarded_t discarded = std::move(snapshots[cursor]->discarded);   // the step's, still
+    recount(*snapshots[cursor]);
     const selection_t before = snapshots[cursor]->before;    // the burst's first
     snapshots[cursor] = capture(puzzle, selectedShape, kind, prevSnap);
     snapshots[cursor]->discarded = std::move(discarded);
+    recount(*snapshots[cursor]);
     snapshots[cursor]->before = before;
     snapshots[cursor]->after = stepBefore;
   } else {
@@ -506,21 +552,27 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
            snapshots[cursor]->after };
 }
 
-bool puzzleHistory_c::keepDiscarded(discarded_t && d) {
+puzzleHistory_c::keep_e puzzleHistory_c::keepDiscarded(discarded_t && d) {
   if (d.empty())
-    return true;
+    return KEPT;
   if (cursor == 0 || cursor >= snapshots.size())
-    return false;
+    return NO_STEP;
   discarded_t & kept = snapshots[cursor]->discarded;
-  for (auto & [problem, record] : d) {
-    bool held = false;
-    for (const auto & k : kept)
-      held = held || k.first == problem;
-    if (!held)
+  auto held = [&kept](unsigned int problem) {
+    return std::any_of(kept.begin(), kept.end(), [problem](const auto & k) { return k.first == problem; });
+  };
+  size_t bytes = 0;
+  for (const auto & [problem, record] : d)
+    if (!held(problem))
+      bytes += sizeof(discarded_t::value_type) + record.memoryBytes();
+  if (!roomForSolutions(bytes))
+    return NO_ROOM;
+  for (auto & [problem, record] : d)
+    if (!held(problem))
       kept.emplace_back(problem, std::move(record));
-  }
   d.clear();
-  return true;
+  recount(*snapshots[cursor]);
+  return KEPT;
 }
 
 long puzzleHistory_c::solutionsIn(const discarded_t & d) {
@@ -547,6 +599,7 @@ void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const std::vector<unsig
       puzzle->getProblem(problem)->swapSolveRecord(record);
       settled[problem] = true;
     }
+  recount(step);   // it holds what the problems held
   /* the others using a shape the restore changed: theirs no longer fit */
   if (changedShapes.empty())
     return;

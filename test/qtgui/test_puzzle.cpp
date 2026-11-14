@@ -454,29 +454,75 @@ void TestPuzzle::everyVoxelEditRemovesTheSolutionsOfItsProblems() {
   f.app->shapes()->select(shape);
   EditorController * e = f.app->editor();
   const QPoint cell = f.aimAtAVoxel(shape);
+  const int solutions = int(f.problem().getNumberOfSavedSolutions());
   QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
 
-  // a stroke: the press is held, nothing starts, and the answer applies its cell
+  // the undo step keeps them: no warning, and undo brings them back
+  QVERIFY(e->press(cell.x(), cell.y(), false, Qt::NoModifier));
+  e->dragTo(cell.x() + 1, cell.y());
+  e->release();
+  QCOMPARE(asked.count(), 0);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  QVERIFY(d->modified());
+  d->undo();
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
+  QVERIFY(!d->modified());
+  QVERIFY(!d->solutionsWarned());
+}
+
+namespace {
+  /* the undo history's memory budget for one test, back to what it was after */
+  struct SolutionBudget {
+    size_t was = puzzleHistory_c::solutionBudget();
+    explicit SolutionBudget(size_t bytes) { puzzleHistory_c::setSolutionBudget(bytes); }
+    ~SolutionBudget(void) { puzzleHistory_c::setSolutionBudget(was); }
+  };
+}
+
+void TestPuzzle::solutionsTooBigToKeepWarnEveryTime() {
+  PuzzleFixture f;
+  f.loadSolved();
+  DocumentController * d = f.app->document();
+  f.app->layout()->setWorkspace(LayoutController::Entities);
+  const int shape = int(f.problem().getShapeIdOfPart(0));
+  f.app->shapes()->select(shape);
+  EditorController * e = f.app->editor();
+  const QPoint cell = f.aimAtAVoxel(shape);
+  const int solutions = int(f.problem().getNumberOfSavedSolutions());
+  const SolutionBudget budget(puzzleHistory_c::solutionBytesKept());   // no room
+  d->setSolutionsWarned(true);                   // that warning is not this one
+  QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
+
+  // a stroke: the press is held, nothing starts
   QVERIFY(e->press(cell.x(), cell.y(), false, Qt::NoModifier));
   e->dragTo(cell.x() + 1, cell.y());
   e->release();
   QCOMPARE(asked.count(), 1);
-  QVERIFY(f.problem().getNumberOfSavedSolutions() > 0);
+  QCOMPARE(asked.first().first().toBool(), true);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
   QVERIFY(!d->modified());
+  d->resolveSolutionsWarning(false);             // cancelled: nothing changed
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
+  QVERIFY(!d->modified());
+
+  // asked again, every time; going on applies the cell and loses them for good
+  QVERIFY(e->press(cell.x(), cell.y(), false, Qt::NoModifier));
+  e->release();
+  QCOMPARE(asked.count(), 2);
   d->resolveSolutionsWarning(true);
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
-  QVERIFY(d->modified());
   QVERIFY(d->canUndo());
-
-  // told once: a stroke on the next solved file goes at once, and clears
-  f.loadSolved();
-  const int next = int(f.problem().getShapeIdOfPart(0));
-  f.app->shapes()->select(next);
-  const QPoint again = f.aimAtAVoxel(next);
-  e->press(again.x(), again.y(), false, Qt::NoModifier);
-  e->release();
-  QCOMPARE(asked.count(), 1);
+  d->undo();
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  QVERIFY(d->modified());                        // the file still has them
+
+  f.loadSolved();
+  f.app->shapes()->select(shape);
+  const QPoint again = f.aimAtAVoxel(shape);
+  QVERIFY(e->press(again.x(), again.y(), false, Qt::NoModifier));
+  e->release();
+  QCOMPARE(asked.count(), 3);
+  d->resolveSolutionsWarning(false);
 }
 
 void TestPuzzle::inspectorGridAndClickEditsRemoveSolutions_data() {
@@ -494,7 +540,8 @@ void TestPuzzle::inspectorGridAndClickEditsRemoveSolutions() {
   f.app->layout()->setWorkspace(LayoutController::Entities);
   const int shape = int(f.problem().getShapeIdOfPart(0));
   f.app->shapes()->select(shape);
-  d->setSolutionsWarned(true);                   // the warning is the other test's
+  const int solutions = int(f.problem().getNumberOfSavedSolutions());
+  QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
   EditorController * e = f.app->editor();
   switch (kind) {
     case 0:
@@ -522,6 +569,9 @@ void TestPuzzle::inspectorGridAndClickEditsRemoveSolutions() {
   }
   QVERIFY(d->modified());
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  QCOMPARE(asked.count(), 0);                    // its undo step keeps them
+  d->undo();
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
 }
 
 void TestPuzzle::aShapeNoSolvedProblemUsesNeverWarns() {

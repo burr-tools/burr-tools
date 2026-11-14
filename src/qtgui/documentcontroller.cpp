@@ -410,13 +410,25 @@ void DocumentController::setSolutionsWarned(bool warned) {
 bool DocumentController::mayCostSolutions(bool costs, std::function<void()> retry) {
   if (!costs || m_solutionsWarned)
     return true;
+  return holdForWarning(std::move(retry), false);
+}
+
+bool DocumentController::mayDropSolutions(bool drops, const std::vector<unsigned int> & shapes,
+                                          std::function<void()> retry) {
+  if (!drops || m_dropAnswered || m_session.keepsSolutionsOf(shapes))
+    return true;
+  return holdForWarning(std::move(retry), true);
+}
+
+bool DocumentController::holdForWarning(std::function<void()> retry, bool tooBigToKeep) {
   // a second edit of the same gesture waits with the first, under its one warning
   if (m_heldEdit) {
     m_heldEdit = [first = std::move(m_heldEdit), second = std::move(retry)] { first(); second(); };
     return false;
   }
   m_heldEdit = std::move(retry);
-  emit solutionsWarningRequested();
+  m_heldTooBig = tooBigToKeep;
+  emit solutionsWarningRequested(tooBigToKeep);
   return false;
 }
 
@@ -438,11 +450,17 @@ void DocumentController::endStep(int problem, int piece) {
 void DocumentController::resolveSolutionsWarning(bool goOn) {
   std::function<void()> held = std::move(m_heldEdit);
   m_heldEdit = nullptr;
+  const bool tooBig = std::exchange(m_heldTooBig, false);
   if (!goOn)
     return;
-  setSolutionsWarned(true);
-  if (held)
-    guarded([&] { held(); });
+  if (!tooBig)                 // that one asks each time: each is a loss undo cannot mend
+    setSolutionsWarned(true);
+  if (!held)
+    return;
+  // the edit the answer was for goes ahead: its own question is not asked again
+  const bool wasAnswered = std::exchange(m_dropAnswered, tooBig);
+  guarded([&] { held(); });
+  m_dropAnswered = wasAnswered;
 }
 
 DocumentController::Change DocumentController::changeOf(puzzleHistory_c::actionKind_e kind) {

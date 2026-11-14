@@ -15,6 +15,7 @@
 #include "../lib/problem.h"
 
 #include <deque>
+#include <cstddef>
 #include <memory>
 #include <set>
 #include <stdint.h>
@@ -35,7 +36,11 @@ class voxel_c;
  * guarded by confirmation dialogs. The exception is what an edit itself
  * discarded (keepDiscarded): the problems' solve records, moved into that
  * step, not copied, so that undoing it puts them back. Only the redesigned
- * GUI hands any over; for the legacy GUI nothing changes.
+ * GUI hands any over; for the legacy GUI nothing changes. What the steps
+ * keep is held to a memory budget shared by every history of the process
+ * (setSolutionBudget): over it, a step keeps nothing and the edit loses its
+ * solutions for good, until steps that keep some go (evicted, a redo tail
+ * dropped, a document closed).
  *
  * Thread safety: record(), undo(), and redo() must only be called from the
  * main (GUI) thread. Callers are responsible for disabling undo/redo while a
@@ -129,13 +134,19 @@ public:
   /** Solve records an edit discarded: the problem's index and what it held. */
   typedef std::vector<std::pair<unsigned int, problem_c::solveRecord_t>> discarded_t;
 
+  /** How keepDiscarded() went. */
+  enum keep_e {
+    KEPT,       ///< the step holds them
+    NO_STEP,    ///< there is no step to keep them in (step 0); d as it was
+    NO_ROOM,    ///< they do not fit in the budget (roomForSolutions); d as it was
+  };
+
   /** Keep what the step just recorded discarded (a voxel edit drops the
    *  solutions of the problems using that shape): undoing the step swaps
    *  the records back into their problems, redoing it swaps them out again.
    *  A step that already holds a record for a problem (a coalesced paint)
-   *  keeps its own, the state before the whole step. False, and d left as
-   *  it was, when there is no step to keep them in (step 0). */
-  bool keepDiscarded(discarded_t && d);
+   *  keeps its own, the state before the whole step. All of d or none. */
+  keep_e keepDiscarded(discarded_t && d);
 
   /** What the records hold, counted as DocumentSession counts a problem's:
    *  its saved solutions, and one for a search state past unsolved. */
@@ -143,6 +154,20 @@ public:
   /** The same over every step's kept records: an undo or redo moves them
    *  between the steps and the problems, and loses none. */
   long solutionsKept(void) const;
+
+  /** The memory budget for kept records, over every history of the process
+   *  together. An undo or redo only swaps records with the puzzle, so it
+   *  may leave the histories over it; keepDiscarded() then keeps nothing
+   *  until they are under it again. */
+  static const size_t DEFAULT_SOLUTION_BUDGET = size_t(512) << 20;
+  static void setSolutionBudget(size_t bytes);
+  static size_t solutionBudget(void);
+  /** what every history of the process keeps now, in bytes */
+  static size_t solutionBytesKept(void);
+  /** the bytes records take (solveRecord_t::memoryBytes) */
+  static size_t bytesIn(const discarded_t & d);
+  /** records of this many bytes more would fit in the budget */
+  static bool roomForSolutions(size_t bytes);
 
   /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
    *  limit drops the oldest undo steps at once, then the redo steps furthest
@@ -194,11 +219,15 @@ private:
     /* What this step discarded while in the state after it, what undoing it
      * put back while in the state before it: swapped at each undo / redo. */
     discarded_t discarded;
+    size_t keptBytes = 0;                               ///< bytesIn(discarded), as counted in the process's total (recount)
     selection_t before, after;                          ///< the selection around this step (beginStep, endStep)
 
     snapshot_t(void) : selectedShape(NO_SHAPE), kind(AK_NONE) {}
-    ~snapshot_t(void) = default;
+    ~snapshot_t(void);                                  ///< takes its keptBytes off the total
   };
+
+  /* the step's keptBytes measured again, and the total with it */
+  static void recount(snapshot_t & step);
 
   std::deque<std::unique_ptr<snapshot_t>> snapshots;
   unsigned int cursor;

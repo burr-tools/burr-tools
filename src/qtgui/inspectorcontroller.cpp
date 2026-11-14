@@ -230,7 +230,7 @@ void InspectorController::run(int task) {
     const bool costs = std::any_of(shapes.begin(), shapes.end(), [&](unsigned int shape) {
       return btui::shapeEditCostsSolutions(before, int(shape));
     });
-    if (!m_doc->mayCostSolutions(costs, [this, task] { run(task); }))
+    if (!m_doc->mayDropSolutions(costs, shapes, [this, task] { run(task); }))
       return;
     btui::OpResult r;
     m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, shapes.size() > 1 ? -1 : s, s, shapes,

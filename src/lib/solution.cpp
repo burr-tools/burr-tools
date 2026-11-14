@@ -196,3 +196,11 @@ void solution_c::addNonPlacedPieces(unsigned int start, unsigned int count)
     tree->addNonPlacedPieces(start, count);
 }
 
+
+size_t solution_c::memoryBytes(void) const {
+  size_t bytes = sizeof(*this);
+  if (assembly) bytes += assembly->memoryBytes();
+  if (tree) bytes += tree->memoryBytes();
+  if (treeInfo) bytes += treeInfo->memoryBytes();
+  return bytes;
+}

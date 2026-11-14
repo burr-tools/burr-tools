@@ -156,7 +156,8 @@ namespace btui {
        * solutions and search state, as legacy's changeShape() did; they are
        * kept in the undo step, so undo brings them back and redo drops them
        * again (PR 181 review: a saved file kept solutions that no longer fit
-       * its pieces).
+       * its pieces). Kept only while the history's memory budget has room
+       * (keepsSolutionsOf); otherwise they are lost for good.
        */
       template <class F> bool editVoxels(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape,
                                          const std::vector<unsigned int> & shapes, F && f) {
@@ -173,6 +174,12 @@ namespace btui {
         keepDiscarded(discardChanged(before), changed);
         return changed;
       }
+
+      /* An edit of these shapes' voxels would keep the solutions it drops
+       * in its undo step: they fit in the history's memory budget
+       * (puzzleHistory_c::roomForSolutions), with what an open stroke holds.
+       * True when there is nothing to drop. */
+      bool keepsSolutionsOf(const std::vector<unsigned int> & shapes) const;
 
       /* Change the puzzle without an undo step, but as unsaved (solver
        * results; the comment goes through setComment()). */
@@ -245,7 +252,8 @@ namespace btui {
        * matches its copy, or one of shapes, swapped out of them */
       puzzleHistory_c::discarded_t discardChanged(const ShapeCopies & before);
       puzzleHistory_c::discarded_t discardUsing(const std::vector<unsigned int> & shapes);
-      /* into the step just recorded; with no step, back into the problems */
+      /* into the step just recorded; with no step, back into the problems;
+       * with no room in the history's budget, lost for good */
       void keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded);
 
       /* the current state as one undo step */

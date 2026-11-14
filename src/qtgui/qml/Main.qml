@@ -493,7 +493,8 @@ ApplicationWindow {
     Loader { id: shortcutsDialog; active: false; source: "KeyboardShortcutsDialog.qml" }
     Loader { id: updateDialog; active: false; source: "UpdateDialog.qml" }
     Loader { id: setRangeDialog; active: false; source: "SetRangeDialog.qml" }
-    // an edit would cost solutions: said once a session (DocumentController::mayCostSolutions)
+    // an edit would cost solutions: said once a session (DocumentController::mayCostSolutions),
+    // or each time a voxel edit's are too big for the undo history (mayDropSolutions)
     Loader {
         id: solutionsDialog
         active: false
@@ -739,12 +740,17 @@ ApplicationWindow {
 
     Connections {
         target: App.document
-        function onSolutionsWarningRequested() {
+        function onSolutionsWarningRequested(tooBigToKeep: bool) {
             solutionsDialog.active = true
             const d = solutionsDialog.item as ConfirmDialog
-            d.ask(qsTr("Edits remove stored solutions"),
-                  qsTr("This edit removes the stored solutions of the problems it touches, and saving then removes them from the file. Solving the problem again finds them; Undo does not bring them back.\n\nThis warning appears once a session. Later edits remove solutions without asking."),
-                  qsTr("Continue"))
+            if (tooBigToKeep)
+                d.ask(qsTr("Solutions too large to keep for Undo"),
+                      qsTr("This edit removes the stored solutions of the problems using this shape. Undo usually brings them back, but these are too large to keep in memory, so they are lost, and saving then removes them from the file. Solving the problem again finds them."),
+                      qsTr("Continue"))
+            else
+                d.ask(qsTr("Edits remove stored solutions"),
+                      qsTr("This edit removes the stored solutions of the problems it touches, and saving then removes them from the file. Solving the problem again finds them; Undo does not bring them back.\n\nThis warning appears once a session. Later edits like it remove solutions without asking."),
+                      qsTr("Continue"))
         }
     }
     Connections {

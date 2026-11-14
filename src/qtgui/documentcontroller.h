@@ -30,6 +30,7 @@
 
 #include <functional>
 #include <utility>
+#include <vector>
 
 /* The document as the GUI sees it: file name, modified state, undo/redo,
  * and the New / Open / Import / Save / Save as / Quit flows.
@@ -87,6 +88,12 @@ public:
    * saying whether it costs solutions: true means go on now; false means the
    * warning is up and `retry` runs if the user goes on. */
   bool mayCostSolutions(bool costs, std::function<void()> retry);
+  /* A voxel edit of these shapes asks here instead (editVoxels), saying
+   * whether it drops solutions. Its undo step keeps them, so it goes on
+   * without a word -- unless they are too big for the history's memory
+   * budget (DocumentSession::keepsSolutionsOf): then they would be lost for
+   * good, and the warning says so every time. */
+  bool mayDropSolutions(bool drops, const std::vector<unsigned int> & shapes, std::function<void()> retry);
   /* the answer to solutionsWarningRequested() */
   Q_INVOKABLE void resolveSolutionsWarning(bool goOn);
 
@@ -272,9 +279,10 @@ signals:
   void puzzleEdited(int selectedShape, DocumentController::Change change, int shape);
 
   void solutionsWarnedChanged(void);
-  /* an edit would cost solutions, the first this session: QML warns, then
-   * resolveSolutionsWarning() */
-  void solutionsWarningRequested(void);
+  /* an edit would cost solutions, the first this session; or tooBigToKeep,
+   * a voxel edit whose solutions the undo history has no room for: QML
+   * warns, then resolveSolutionsWarning() */
+  void solutionsWarningRequested(bool tooBigToKeep);
 
   void confirmDiscardRequested(const QString & action);
   void newFileTypeRequested(void);
@@ -296,11 +304,15 @@ private:
   void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
   void setPending(Pending p);
+  /* the edit waits for the warning (mayCostSolutions, mayDropSolutions) */
+  bool holdForWarning(std::function<void()> retry, bool tooBigToKeep);
 
   btui::DocumentSession m_session;
   Pending m_pending = Pending::None;
   bool m_solutionsWarned = false;
   std::function<void()> m_heldEdit;      ///< the edit the solutions warning holds
+  bool m_heldTooBig = false;             ///< ... warned of as too big to keep (mayDropSolutions)
+  bool m_dropAnswered = false;           ///< that warning's held edit is running: it goes ahead
   puzzleHistory_c::selection_t m_restored; ///< what the last undo or redo selected
   QString m_pendingPath;
   bool m_continueAfterSaveAs = false;

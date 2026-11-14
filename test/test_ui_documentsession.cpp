@@ -692,3 +692,100 @@ TEST_CASE("an undo back to the save reads clean when the solutions a voxel edit 
   CHECK(solved(d, 0) == f.before);
   CHECK_FALSE(d.isModified());
 }
+
+// --- the memory the kept solutions take ---------------------------------------
+// (the steps of every history keep records to one budget: over it, an edit
+// loses its solutions for good, and the GUI warns first, keepsSolutionsOf)
+
+namespace {
+  /* the budget for one test, back to what it was after */
+  struct Budget {
+    size_t was = puzzleHistory_c::solutionBudget();
+    explicit Budget(size_t bytes) { puzzleHistory_c::setSolutionBudget(bytes); }
+    ~Budget(void) { puzzleHistory_c::setSolutionBudget(was); }
+  };
+}
+
+TEST_CASE("the solutions the history keeps are counted, and the count goes with the steps", "[ui][document]") {
+  const size_t base = puzzleHistory_c::solutionBytesKept();
+  {
+    Pelikan f;
+    DocumentSession & d = f.d;
+    const size_t record = d.puzzle().getProblem(0)->solveRecordBytes();
+    CHECK(record > sizeof(problem_c::solveRecord_t));   // the solution with its disassembly
+    d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+    const size_t kept = puzzleHistory_c::solutionBytesKept() - base;
+    CHECK(kept >= record);
+    // an undo swaps the records with the problem's, now holding nothing much
+    d.undo();
+    CHECK(puzzleHistory_c::solutionBytesKept() - base < kept);
+    d.redo();
+    CHECK(puzzleHistory_c::solutionBytesKept() - base == kept);
+
+    // a second document's history counts against the same total
+    {
+      Pelikan g;
+      g.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, g.used, { g.used }, flip(g.used));
+      CHECK(puzzleHistory_c::solutionBytesKept() - base == 2 * kept);
+    }
+    CHECK(puzzleHistory_c::solutionBytesKept() - base == kept);
+
+    // the undo, then a new edit: the redo step and what it kept go
+    d.undo();
+    const unsigned int other = f.unusedShape();
+    d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, other, { other }, flip(other));
+    CHECK(puzzleHistory_c::solutionBytesKept() == base);
+  }
+  CHECK(puzzleHistory_c::solutionBytesKept() == base);
+}
+
+TEST_CASE("solutions too big for the history's budget are lost for good, and the document reads unsaved", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  const Budget b(puzzleHistory_c::solutionBytesKept());   // no room left
+  CHECK_FALSE(d.keepsSolutionsOf({ f.used }));
+  const unsigned int other = f.unusedShape();
+  CHECK(d.keepsSolutionsOf({ other }));                    // nothing to keep
+
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  CHECK(unsolved(d, 0));
+  d.undo();
+  d.undo();                                                // to the file as loaded
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+}
+
+TEST_CASE("a stroke over the budget loses its solutions; with room again the next edit keeps them", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  {
+    const Budget b(puzzleHistory_c::solutionBytesKept());
+    d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, f.used);
+    d.strokeEdit(flip(f.used));
+    CHECK_FALSE(d.keepsSolutionsOf({ f.used }));           // what the open stroke holds counts
+    CHECK(d.endStroke());
+    d.undo();
+    CHECK(unsolved(d, 0));
+    CHECK(d.isModified());
+  }
+  // the budget back: a reload's solutions are kept again
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  CHECK(d.keepsSolutionsOf({ f.used }));
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+}
+
+TEST_CASE("a budget that fits one edit's solutions but not two keeps the first, loses the second", "[ui][document]") {
+  Pelikan f, g;
+  const size_t record = f.d.puzzle().getProblem(0)->solveRecordBytes();
+  const Budget b(puzzleHistory_c::solutionBytesKept() + record + record / 2);
+  CHECK(f.d.keepsSolutionsOf({ f.used }));
+  f.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  CHECK_FALSE(g.d.keepsSolutionsOf({ g.used }));            // the other document's history is full too
+  g.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, g.used, { g.used }, flip(g.used));
+  g.d.undo();
+  CHECK(unsolved(g.d, 0));
+  f.d.undo();
+  CHECK(solved(f.d, 0) == f.before);
+}

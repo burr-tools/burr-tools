@@ -30,6 +30,7 @@
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
+#include <algorithm>
 #include <fstream>
 #include <random>
 #include <string>
@@ -367,12 +368,32 @@ namespace btui {
   void DocumentSession::keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded) {
     if (lost.empty())
       return;
-    if (recorded && hist->keepDiscarded(std::move(lost)))
-      return;
+    if (recorded)
+      switch (hist->keepDiscarded(std::move(lost))) {
+        case puzzleHistory_c::KEPT:
+          return;
+        case puzzleHistory_c::NO_ROOM:
+          // too big for the history: gone, and the file still has them
+          lost.clear();
+          hist->markModified();
+          return;
+        case puzzleHistory_c::NO_STEP:
+          break;
+      }
     // no step to keep them in: the edit changed nothing after all
     for (auto & [k, r] : lost)
       if (k < puz->getNumberOfProblems())
         puz->getProblem(k)->swapSolveRecord(r);
+  }
+
+  bool DocumentSession::keepsSolutionsOf(const std::vector<unsigned int> & shapes) const {
+    size_t bytes = puzzleHistory_c::bytesIn(strokeLost);
+    for (unsigned int k = 0; k < puz->getNumberOfProblems(); k++) {
+      const problem_c * pr = puz->getProblem(k);
+      if (std::any_of(shapes.begin(), shapes.end(), [pr](unsigned int s) { return pr->usesShape(s); }))
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + pr->solveRecordBytes();
+    }
+    return puzzleHistory_c::roomForSolutions(bytes);
   }
 
   void DocumentSession::splitStroke(void) {

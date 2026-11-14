@@ -27,6 +27,7 @@ private slots:
   void renamingAndReorderingNeverWarn();
   void deletingAProblemWithSolutionsWarns();
   void everyVoxelEditRemovesTheSolutionsOfItsProblems();
+  void solutionsTooBigToKeepWarnEveryTime();
   void inspectorGridAndClickEditsRemoveSolutions_data();
   void inspectorGridAndClickEditsRemoveSolutions();
   void aShapeNoSolvedProblemUsesNeverWarns();

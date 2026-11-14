@@ -21,10 +21,12 @@ For `src/qtgui/`. QML rules are in `llm_docs/qt_gui_qml.md`.
   using them lose their stale solutions (undo brings them back).
 - **An edit that costs solutions asks first.** Any edit removes the solutions
   it makes wrong: `DocumentController::mayCostSolutions(costs, retry)` before
-  it, for the session's one warning; a voxel edit's go through `editVoxels`
-  (or a stroke) into its undo step, a problem's by `PuzzleController::change`.
-  `costs` says the edit would do something: a change that changes nothing
-  must not spend the warning.
+  it, for the session's one warning; a problem's by `PuzzleController::change`.
+  A voxel edit's go through `editVoxels` (or a stroke) into its undo step, so
+  it asks `mayDropSolutions(drops, shapes, retry)` instead, which warns only
+  when they are too big for the history's memory budget, and then every time.
+  `costs` / `drops` say the edit would do something: a change that changes
+  nothing must not spend the warning.
 - **State in controllers, not QML.** QML binds to controller properties and
   calls `Q_INVOKABLE`s; it does not keep the truth. New concern, new
   controller owned by `App` (constructor in `app.cpp`, a `CONSTANT`
