@@ -23,7 +23,9 @@ For targeted information, consult these:
 - FLTK widgets (`src/gui/`) -> `llm_docs/fltk_gui.md`
 - Solver threads, shared solver state, or solver tests -> `llm_docs/solver_rules.md`
 - File formats, saved search state, CLI/API changes -> `llm_docs/compatibility.md`
-- Qt GUI / QML / new `BURRTOOLS_*` env var -> `llm_docs/qt_gui_rules.md`
+- Qt GUI (`src/qtgui/`, QML) -> `src/qtgui/AGENTS.md`, an index into `llm_docs/qt_gui_*.md`
+- Toolkit-free UI logic (`src/uicore/`) -> `src/uicore/AGENTS.md`, an index into `llm_docs/uicore_*.md`
+- A new `BURRTOOLS_*` env var -> `llm_docs/qt_gui_rules.md`
 - Performance work, benchmarks, solver env-var toggles -> `llm_docs/benchmarking.md`
 - CI failures, SIMD/intrinsics, TSan, `spec/` TLA+ models, `src/lib` pool/budget headers -> `llm_docs/ci_gates.md`
 - What to run before pushing/opening a PR (restacks, `just test-regression`) -> `llm_docs/verification.md`

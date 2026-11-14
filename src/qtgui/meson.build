@@ -8,11 +8,15 @@ fs = import('fs')
 # module built in qml/meson.build.
 qtgui_moc_headers = files(
   'app.h',
+  'coloursmodel.h',
   'commandcontroller.h',
   'documentcontroller.h',
+  'editorcontroller.h',
+  'inspectorcontroller.h',
   'imageexportcontroller.h',
   'keyboardcues.h',
   'layoutcontroller.h',
+  'nativedialogs.h',
   'popupwindowstyle.h',
   'scenecontroller.h',
   'settingscontroller.h',
@@ -24,6 +28,7 @@ qtgui_moc_headers = files(
   'updatecontroller.h',
   'viewcubeitem.h',
   'viewportcontroller.h',
+  'voxelgriditem.h',
   'voxelviewport.h',
 )
 
@@ -106,6 +111,30 @@ if host_machine.system() == 'windows'
   qtgui_platform_deps += cxx.find_library('dwmapi')
   # the window's Direct3D 11 device, made early (earlydevice.cpp)
   qtgui_platform_deps += [cxx.find_library('d3d11'), cxx.find_library('dxgi')]
+  # the system's arrow and pointer size (systempointer.cpp), its reduce motion (systemmotion.cpp)
+  qtgui_platform_deps += [cxx.find_library('user32'), cxx.find_library('advapi32')]
+endif
+# Windows: the manifest naming common controls 6, for the task dialog that
+# asks to save (nativedialogs.cpp), in burrtools-qt and test_qtgui
+qtgui_win_res = []
+if host_machine.system() == 'windows'
+  qtgui_win_res = wm.compile_resources('burrtools-qt.rc',
+    depend_files: files('burrtools-qt.manifest'),
+    include_directories: include_directories('.'))
+endif
+# the system's arrow and reduce motion on macOS (*_mac.mm); elsewhere the .cpp
+qtgui_platform_src = ['systemmotion.cpp', 'systempointer.cpp']
+if host_machine.system() == 'darwin'
+  qtgui_platform_src += ['systemmotion_mac.mm', 'systempointer_mac.mm']
+  qtgui_platform_deps += [cocoa_dep]
+endif
+# Linux and the BSDs: the frame dark with the theme on X11 (windowframe.cpp,
+# _GTK_THEME_VARIANT), with libxcb's headers; KDE's scheme needs none
+if host_machine.system() not in ['windows', 'darwin']
+  xcb_dep = dependency('xcb', required: false)
+  if xcb_dep.found()
+    qtgui_platform_deps += declare_dependency(compile_args: '-DBURRTOOLS_HAVE_XCB=1', dependencies: xcb_dep)
+  endif
 endif
 
 # Everything except main(), so test_qtgui can link the same code. It is
@@ -114,13 +143,18 @@ endif
 # plain static link would drop them.
 libburr_qtgui = static_library('burr_qtgui', [
     'app.cpp',
+    'coloursmodel.cpp',
     'commandcontroller.cpp',
     'documentcontroller.cpp',
+    'editcursor.cpp',
+    'editorcontroller.cpp',
+    'inspectorcontroller.cpp',
     'earlydevice.cpp',
     'iconprovider.cpp',
     'imageexportcontroller.cpp',
     'keyboardcues.cpp',
     'layoutcontroller.cpp',
+    'nativedialogs.cpp',
     'offscreenrenderer.cpp',
     'pipelinecache.cpp',
     'popupwindowstyle.cpp',
@@ -132,12 +166,15 @@ libburr_qtgui = static_library('burr_qtgui', [
     'shapesmodel.cpp',
     'statuscontroller.cpp',
     'stlexportcontroller.cpp',
+    qtgui_platform_src,
     'theme.cpp',
     'toolscontroller.cpp',
     'updatecontroller.cpp',
     'viewcubeitem.cpp',
     'viewportcontroller.cpp',
+    'voxelgriditem.cpp',
     'voxelviewport.cpp',
+    'windowframe.cpp',
     httpget_files,
     updatecheck_files,
     qtgui_shader_src,

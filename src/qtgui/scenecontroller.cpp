@@ -41,15 +41,11 @@ SceneController::SceneController(SettingsController * settings, QObject * parent
 }
 
 void SceneController::readSettings(void) {
-  m_camera.setRotationMethod(m_settings->rotationMethod() == QLatin1String("arcball")
-                               ? btui::Camera::RotationMethod::Arcball : btui::Camera::RotationMethod::Drag);
-  m_camera.setProjection(m_settings->stringValue(QStringLiteral("view.projection"), QStringLiteral("perspective"))
-                             == QLatin1String("orthographic")
-                           ? btui::Camera::Projection::Orthographic : btui::Camera::Projection::Perspective);
+  m_camera.setRotationMethod(m_settings->rotationMethodValue());
+  m_camera.setProjection(btui::kProjections.parse(
+      m_settings->stringValue(QStringLiteral("view.projection"), QString()).toStdString()));
   m_lighting = m_settings->lighting();
-  const QString style = m_settings->voxelStyle();
-  m_voxelStyle = style == QLatin1String("legacy") ? btui::VoxelStyle::Legacy
-               : style == QLatin1String("stl")    ? btui::VoxelStyle::Stl : btui::VoxelStyle::Flat;
+  m_voxelStyle = m_settings->voxelStyleValue();
   m_samples = m_settings->antialiasingSamples();
 }
 
@@ -86,6 +82,12 @@ SceneFrame SceneController::frame(float devicePixelRatio) const {
 // --- animation -------------------------------------------------------------
 
 void SceneController::startTicking(void) {
+  // reduced motion (the system's): a snap, a turn or the eased zoom ends at once
+  if (const Theme * t = Theme::instance(); t && t->reducedMotion()) {
+    m_camera.tick(1.0e6f);
+    m_timer.stop();
+    return;
+  }
   if (!m_timer.isActive()) {
     m_clock.start();
     m_timer.start();
@@ -154,6 +156,7 @@ void SceneController::pointerMove(float x, float y) {
     }
     m_lastX = m_pressX;
     m_lastY = m_pressY;
+    navigationStarted();
   }
 
   if (m_gesture == Gesture::Orbit) {
@@ -188,6 +191,51 @@ void SceneController::pointerCancel(void) {
   m_gesture = Gesture::None;
   m_button = Qt::NoButton;
   emit frameChanged();
+}
+
+void SceneController::pointerHover(float, float, Qt::KeyboardModifiers) {}
+
+void SceneController::pointerLeave(void) {}
+
+void SceneController::orbitStep(float rightDeg, float upDeg) {
+  m_camera.cancelAnimation();
+  // about the view's up axis, then its right axis: the view's own frame
+  const btui::Quat q = btui::Quat::axisAngle({ 1, 0, 0 }, btui::radians(-upDeg)) *
+                       btui::Quat::axisAngle({ 0, 1, 0 }, btui::radians(rightDeg)) * m_camera.orientation();
+  m_camera.setOrientation(q);
+  emit frameChanged();
+}
+
+void SceneController::panStep(float dxDp, float dyDp) {
+  m_camera.cancelAnimation();
+  m_camera.panBy(dxDp, dyDp);
+  emit frameChanged();
+}
+
+void SceneController::zoomStep(int notches) {
+  wheel(notches * 120 * (m_settings->reverseScroll() ? -1 : 1));
+  emit frameChanged();
+}
+
+void SceneController::turn(btui::ViewCube::Arrow a) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Arrow;
+  h.arrow = a;
+  cubeClick(h);
+}
+
+void SceneController::roll(int direction) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Roll;
+  h.roll = direction;
+  cubeClick(h);
+}
+
+void SceneController::viewFrom(btui::CubeDir face) {
+  btui::ViewCube::Hit h;
+  h.kind = btui::ViewCube::Kind::Region;
+  h.dir = face;
+  cubeClick(h);
 }
 
 void SceneController::wheel(int angleDeltaY) {

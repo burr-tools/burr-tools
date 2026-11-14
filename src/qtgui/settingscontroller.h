@@ -22,6 +22,7 @@
 #define BTQT_SETTINGSCONTROLLER_H
 
 #include "../uicore/settingsstore.h"
+#include "../uicore/vocabulary.h"
 
 #include <QObject>
 #include <QString>
@@ -46,6 +47,11 @@ class SettingsController : public QObject {
   Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed FINAL)
   Q_PROPERTY(QString density READ density WRITE setDensity NOTIFY changed FINAL)
   Q_PROPERTY(bool tooltips READ tooltips WRITE setTooltips NOTIFY changed FINAL)
+  /* the window-wide one-character shortcuts (O, P, F, E, 1-4): WCAG 2.1.4
+   * lets a user who types by voice or one finger turn them off */
+  Q_PROPERTY(bool singleKeyShortcuts READ singleKeyShortcuts WRITE setSingleKeyShortcuts NOTIFY changed FINAL)
+  /* the voxel editor's Area mode (legacy "rubberband"; EditorController) */
+  Q_PROPERTY(bool areaMode READ areaMode WRITE setAreaMode NOTIFY changed FINAL)
   // Help > Check for updates, at launch too (at most daily; legacy checkForUpdates)
   Q_PROPERTY(bool checkForUpdates READ checkForUpdates WRITE setCheckForUpdates NOTIFY changed FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube WRITE setShowViewCube NOTIFY changed FINAL)
@@ -89,11 +95,23 @@ public:
   QString file(void) const;
   static QString defaultLegacyFile(void);
 
+  /* the typed values of the word settings (btui/vocabulary.h); the
+   * QString properties are their words, for QML */
+  btui::ThemeChoice themeValue(void) const;
+  btui::Density densityValue(void) const;
+  btui::Camera::RotationMethod rotationMethodValue(void) const;
+  btui::VoxelStyle voxelStyleValue(void) const;
+  btui::Antialiasing antialiasingValue(void) const;
+
   QString theme(void) const;
   void setTheme(const QString & v);
   QString density(void) const;
   void setDensity(const QString & v);
   bool tooltips(void) const;
+  bool singleKeyShortcuts(void) const;
+  void setSingleKeyShortcuts(bool v);
+  bool areaMode(void) const;
+  void setAreaMode(bool v);
   void setTooltips(bool v);
   bool checkForUpdates(void) const;
   void setCheckForUpdates(bool v);
@@ -163,6 +181,11 @@ private:
   void write(void);
   void save(void);
   void applyToTheme(void);
+  template <class E, std::size_t N>
+  E wordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def) const;
+  /* false when the value is already set */
+  template <class E, std::size_t N>
+  bool setWordSetting(const char * key, const btui::Vocabulary<E, N> & v, E def, E value);
 
   btui::SettingsStore m_store;
   QTimer m_saveTimer;              ///< runs while a change waits to be written
