@@ -1268,6 +1268,9 @@ void voxelFrame_c::hideMarker(void) {
 
 void voxelFrame_c::showNothing(void) {
   clearSpaces();
+  /* or the view keeps showing what it last drew until something else
+   * makes it redraw */
+  redraw();
 }
 
 void voxelFrame_c::setInsideVisible(bool on)

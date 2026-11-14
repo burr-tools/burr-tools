@@ -249,7 +249,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -323,15 +323,18 @@ jobs:
   # touched far more often than the specs. Gate the expensive job on all
   # paths that can change its outcome.
   #
-  # The Qt GUI's jobs are gated too. qt-linux is the Qt GUI's default
-  # platform: it runs for every pull request, whatever it touches (lavapipe
-  # renders there, and it is required to), and the Qt suites it runs notice
-  # a library change that breaks the Qt GUI. The rest -- qt-windows,
-  # qt-macos, coverage-qt and the Qt suites in sanitizers -- run for pushes,
-  # tags and manual runs, and for a pull request only when it touches the
-  # Qt GUI or what it is built from besides the library (src/qtgui,
-  # src/uicore, test/qtgui, the build files). A Windows- or macOS-only
-  # break from anything else is thus caught on master itself.
+  # The Qt GUI's jobs are gated too. qt-macos is the Qt GUI's default
+  # platform: it runs for every pull request, whatever it touches, and the
+  # Qt suites it runs notice a library change that breaks the Qt GUI.
+  # macOS is the one Clang build of the Qt GUI, with its own frameworks and
+  # arm64, where a library change can break what Linux and Windows (both
+  # GCC, x86-64) do not see. The rest -- qt-linux, qt-windows, coverage-qt
+  # and the Qt suites in sanitizers -- run for pushes, tags and manual runs,
+  # and for a pull request only when it touches the Qt GUI or what it is
+  # built from besides the library (src/qtgui, src/uicore, test/qtgui, the
+  # build files). A Linux- or Windows-only break from anything else (the
+  # lavapipe renders, say, which macOS may skip without Metal) is thus
+  # caught on master itself.
   #
   # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
   # in sanitizers, coverage -- run when a pull request touches what that
@@ -418,8 +421,10 @@ jobs:
         if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "build=true" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::Qt GUI built on Linux only: this PR touches no Qt GUI paths (qt-linux runs anyway)"
           echo "build=false" >> "$GITHUB_OUTPUT"
+        fi
+        if [ "$EVENT" = pull_request ] && [ "$CHANGED" != true ]; then
+          echo "::notice::Qt GUI built on macOS only: this PR touches no Qt GUI paths (qt-macos runs anyway)"
         fi
     - name: Decide whether test_burrtools's own jobs run
       id: core
@@ -563,7 +568,7 @@ jobs:
         sudo apt-get install -y libboost-all-dev ninja-build build-essential cmake freeglut3-dev libgl-dev \
           libglu1-mesa-dev libpng-dev mesa-common-dev zlib1g-dev libcurl4-openssl-dev gcovr \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
@@ -1001,6 +1006,7 @@ jobs:
   qt-linux:
     name: Qt GUI (Linux)
     needs: changes
+    if: needs.changes.outputs.qt == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -1014,7 +1020,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ninja-build build-essential cmake libgl-dev libglu1-mesa-dev libpng-dev zlib1g-dev libcurl4-openssl-dev \
           libxkbcommon-dev libxkbcommon-x11-0 libegl1 libfontconfig1 libvulkan-dev libvulkan1 mesa-vulkan-drivers vulkan-tools \
-          xvfb libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+          xvfb libxcb1-dev libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 imagemagick
         pip install --user "meson>=1.7"
 
@@ -1211,8 +1217,8 @@ jobs:
 
   qt-macos:
     name: Qt GUI (macOS)
+    # every pull request, whatever it touches (the changes job says why)
     needs: changes
-    if: needs.changes.outputs.qt == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
@@ -1249,8 +1255,23 @@ jobs:
 
     # The render tests try Metal and skip where the runner offers none (not
     # yet known for these VMs; the test log says which backend was used).
+    # The gallery's reference images exist for macOS
+    # (test/qtgui/snapshots/macos), so a missing one fails too.
     - name: Test
+      env:
+        BURRTOOLS_REQUIRE_SNAPSHOTS: '1'
       run: meson test -C build-qt --suite fast --print-errorlogs
+
+    # The suites run offscreen, where AppKit draws no NSCursor image and the
+    # system-arrow test skips: run it once on the window server, so
+    # systempointer_mac.mm is exercised, not only compiled. The other test
+    # classes report the function as not found, so the exit status says
+    # nothing: TestEditor's own line does.
+    - name: The system's arrow (cocoa)
+      run: |
+        ./build-qt/test/qtgui/test_qtgui -platform cocoa theCursorsDrawOnTheSystemsArrow > "$RUNNER_TEMP/arrow.txt" 2>&1 || true
+        grep 'TestEditor::' "$RUNNER_TEMP/arrow.txt"
+        grep -q 'PASS   : TestEditor::theCursorsDrawOnTheSystemsArrow()' "$RUNNER_TEMP/arrow.txt"
 
     - name: Upload the test log
       if: failure()
@@ -1260,9 +1281,9 @@ jobs:
         path: build-qt/meson-logs/testlog.txt
         if-no-files-found: ignore
 
-    # no macOS reference images yet: the grabs, to commit as snapshots/macos
-    - name: Upload gallery grabs
-      if: always()
+    # grabs that did not match their reference, with the reference and a diff
+    - name: Upload gallery differences
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: gallery-snapshots-macos
@@ -1288,11 +1309,12 @@ jobs:
   # job: every run saves a new entry (keys cannot be overwritten), and a
   # restack would otherwise leave one more full set per PR in the 10 GB.
   # Runs once every job that saves a cache is done, whether it passed or
-  # not. A pull request from a fork gets a read-only token; its entries are
-  # left to GitHub's own eviction.
+  # not. A pull request from a fork gets a read-only token, so the job
+  # does not run for one (the DELETE would be refused with 403 and show
+  # the job as failed); its entries are left to GitHub's own eviction.
   ccache-prune:
     needs: [changes, build-linux, clang-x86-64, tsan-parallel, coverage, coverage-qt, build-windows, build-macos, qt-linux, qt-windows, qt-macos]
-    if: always() && needs.changes.result == 'success' && github.event_name == 'pull_request'
+    if: always() && needs.changes.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:

@@ -1,224 +1,31 @@
-# AGENTS.md — BurrTools Guidelines for AI Coding Assistants
+This repository contains **BurrTools**, an application for designing, solving, and analyzing 3D interlocking burr puzzles.
+It is primarily written in C++20 using the FLTK GUI library, OpenGL, and the Meson build system.
 
-This repository contains **BurrTools**, an application for designing, solving, and analyzing 3D interlocking burr puzzles. It is primarily written in C++20 using the FLTK GUI library, OpenGL, and the Meson build system.
+## Build System & Common Commands
 
----
+Use [`just`](justfile) to execute tasks. Do not invoke ad-hoc build steps when a target exists in the `justfile`. Run bare `just` for the authoritative, up-to-date recipe list.
 
-## 1. Build System & Common Commands
+For targeted information, consult these:
 
-Always use [`just`](justfile) to execute build, test, and quality control tasks. Do not invoke ad-hoc build steps when a target exists in the `justfile`. Run bare `just` for the authoritative, up-to-date recipe list (a copy here would rot -- it already has once); only workflows with non-obvious semantics are spelled out below.
-
-**Test suite timings.** The test recipes build first, so what you wait for is
-compilation plus test execution. Test execution alone is about 1.6s for `just
-test` and about 8.9s for `just test-all`; the difference is almost entirely the
-one Minkowski random-shapes stress case. Compilation is extra and can dominate:
-re-running with nothing changed is 1.6s against 8.9s, editing a single file is
-about 3.4s against 10.0s, and editing a widely-included header is about 13.6s
-against 21.0s. Use `just test` while iterating; what else to run before
-calling a task done is in rule 7 of section 3.
-
-`just docs` requires `doxygen` and `graphviz` (`brew install doxygen graphviz` on macOS,
-`apt-get install doxygen graphviz` on Linux). Without graphviz it still produces a complete
-site, minus the diagrams. It fails on any doxygen warning, so a stale `@param` or a broken
-`\ref` is a build error, not a silently mangled page; CI runs the same recipe and publishes
-the result from `master` to https://burr-tools.github.io/burr-tools/.
-
-Coverage requires `gcovr` (`brew install gcovr` on macOS, `apt-get install gcovr` on Linux).
-On macOS the recipes pass `--gcov-executable "xcrun llvm-cov gcov"` automatically, because
-Apple Clang emits coverage data that plain `gcov` cannot parse.
-
-**Coverage is reported per area.** The library (`src/lib`, `src/tools`, `src/halfedge`)
-is the figure compared across PRs; `src/uicore` (Catch2 `[ui]` cases) and `src/qtgui`
-(the Qt suites, C++ only — gcov does not see QML) are reported beside it. When Qt ≥ 6.8
-is found, the coverage build includes the Qt GUI and runs its suites too. The library
-figure comes from the non-`[ui]` cases alone, captured before the GUI suites run, so it
-does not depend on whether Qt was found. CI measures in two jobs: `coverage` builds
-without Qt (`-Dqt_gui=disabled`) for the library and `src/uicore`, `coverage-qt` builds
-the Qt GUI for `src/qtgui`, and `coverage-report` comments both; a broken Qt install
-costs only the Qt GUI's figure.
-
-**First `just coverage` run is slow.** It configures a fresh `build-cov` directory and
-compiles all subprojects under instrumentation from scratch — expect several minutes,
-not the sub-second/few-second times above. Subsequent runs are incremental and much
-faster.
-
-**Coverage numbers are toolchain-specific.** The line/branch denominator itself is
-compiler-dependent, so the macOS/Apple Clang percentage and the Linux/gcc CI percentage
-will differ. The Linux CI number is the canonical one for comparing coverage across PRs.
-
-For running filtered or verbose test cases directly:
-```bash
-./build/test_burrtools "[solver]"             # Run all solver tests
-./build/test_burrtools "Pelikan Burr*"        # Run specific puzzle test case
-./build/test_burrtools -s                     # Run with verbose assertion output
-```
-
-For sanitizer builds when diagnosing memory corruption or concurrency issues:
-```bash
-just build-asan     # AddressSanitizer & UndefinedBehaviorSanitizer
-just build-tsan     # ThreadSanitizer (critical for solver data races)
-```
-
----
-
-## 2. Codebase Architecture
-
-- **`src/lib/`**: Core domain logic. Contains voxel grids (`voxel*.cpp`), polycube symmetries (`symmetries_*.cpp`), puzzle definitions (`puzzle.cpp`, `problem.cpp`), assembly/disassembly algorithms, and solver engines (`assembler_*.cpp`, `disassembler_*.cpp`, `solvethread.cpp`).
-- **`src/gui/`**: FLTK-based graphical user interface and OpenGL 3D viewports (`mainwindow.cpp`, `view3dgroup.cpp`, `arcball.cpp`, `viewcube.cpp`).
-- **`src/qtgui/`**: `burrtools-qt`, the redesigned Qt 6 Quick GUI (a preview next to the FLTK one): C++ controllers, the QML module `BurrTools.Ui` (`qml/`), the QRhi 3D renderer (`scenerenderer.cpp`, `shaders/`). Read [`src/qtgui/AGENTS.md`](src/qtgui/AGENTS.md) (rules for authors and reviewers: wireframes, accessibility, threading, tests) and [`src/qtgui/README.md`](src/qtgui/README.md) first; the spec is `design-spec/BurrTools-SPEC-FULL-FINAL-v6.md` (every spec document in one file, each part marked `<!-- FILE: path -->`).
-- **`src/uicore/`**: Toolkit-free UI logic shared by the Qt GUI and its tests (command table, camera, view cube, scene meshes, layout, settings store). No Qt or FLTK here; see [`src/uicore/AGENTS.md`](src/uicore/AGENTS.md).
-- **`src/halfedge/`**: Half-edge data structure for 3D polyhedron mesh manipulation and STL export.
-- **`src/tools/`**: XML parser/writer (`xml.cpp`), file existence helpers, and gzip stream wrappers (`gzstream.cpp`).
-- **`test/`**: Catch2 v3 automated regression test suite (`test_ui_*.cpp` cover `src/uicore`); **`test/qtgui/`** holds the Qt Test and Qt Quick Test suites and the gallery's reference images (`snapshots/<os>/`, rewritten with `just update-snapshots`).
-- **`design/`**: Durable design docs and specs (e.g. the test coverage stack design).
-- **`src/lua/`**: Bundled Lua 5.x C interpreter. **Do not modify.**
-- **`subprojects/`**: External dependencies managed by Meson (`fltk`, `catch2`). **Do not modify.**
-- **`build/compile_commands.json`**: Compilation database generated by Meson, consumed by clang-tidy, cppcheck, and IDE language servers.
-
----
-
-## 3. Important Development & Architecture Rules
-
-1. **Assertions & Control Flow:**
-   - BurrTools uses custom assertions defined in [`src/lib/bt_assert.h`](src/lib/bt_assert.h).
-   - Use `bt_assert(condition)` for runtime checks. In debug builds, it throws `assert_exception` through the `[[noreturn]]` function `bt_te()`.
-   - `bt_assert` compiles to `((void)0)` under `NDEBUG`: its expression must be side-effect-free. For checks that mutate (e.g. `vx->transform(t)` inside a validity check), use `bt_assert2(...)`, which always evaluates its argument and only skips the throw in release. Hiding a mutating call in `bt_assert` silently drops the mutation in release builds -- this has shipped real bugs (untransformed assemblies).
-   - Never use assert-like macros (including `bt_assert`) for control flow. Input validation that callers rely on (e.g. rejecting out-of-range table indices) must throw unconditionally via `bt_te()`, never via an assert that vanishes in release.
-2. **FLTK Widget Ownership:**
-   - FLTK widgets constructed between an `Fl_Group`'s `begin()` and `end()` are automatically adopted by the enclosing group.
-   - Do not manually `delete` FLTK child widgets owned by groups; the parent destructor handles them.
-3. **Thread Safety in Solvers:**
-   - BurrTools solvers run worker threads in the background while the FLTK GUI polls metrics on the main thread.
-   - Any state shared across threads (e.g., `iterations`, `finished`, solutions list) must use `std::atomic` or be guarded with explicit mutex locks (`pr->lockSolutions()`). Never strip concurrency synchronization.
-4. **Testing & Solver Invariants:**
-   - All regression tests live in `test/` using Catch2 v3.
-   - Test solver correctness using rotation- and permutation-invariant properties: assembly count, disassemblable solution count, disassembly move levels (`da->movesText()`), and piece placement counts.
-   - **Do not assert exact iteration counts in regression tests**; iterations measure internal search-tree node visits and will break on valid search heuristic optimizations.
-   - Tests that assert debug-only behavior (a `bt_assert` throwing, `assert_log` recording, bounds checks) must be guarded with `#ifndef NDEBUG`: CI builds and tests the release binary too, where those checks compile away. Precedent: `test_halfedge.cpp`.
-5. **Third-Party Boundaries:**
-   - Never edit files inside `subprojects/` or `src/lua/`.
-   - Ensure tools and regexes ignore these directories so static analysis and formatting stay focused on BurrTools sources (`burr-tools/src/(?!lua/).*`).
-6. **Compatibility is only between released versions:**
-   - "Released" means a tagged version (`v0.8.0`, ...), not whatever is on `master`. File formats, saved search state (assembler `ASSEMBLER_VERSION`s), CLI behaviour and APIs only need to stay compatible with what a release shipped. Changing a format introduced after the last release needs no version bump, no reader for the intermediate layout and no migration; bump only when the released format changes. Check with `git show <tag>:<file>` which version a release actually carried.
-   - Saved *search state* is stricter still: a paused search resumes only with the version that saved it (README, "Pausing a search and continuing later").
-7. **Quality Verification -- what to run locally, and what CI covers:**
-   - Locally, verify what CI cannot, or not cheaply: `just build` and `just test` in the dev `build/` dir (assertions live), plus the cases your change touches, run as often as their risk warrants. A change to threading or timing deserves a stress loop (hundreds of runs, under load, and pinned to one CPU where the OS allows it: `taskset -c 0` on Linux, `start /affinity 1` on Windows; macOS cannot pin a process): CI runs a test once, so a flaky test is found there one failure at a time.
-   - Leave the rest to CI rather than repeating it: `build-linux` (GCC) and `build-macos` (Apple Clang) build with `--werror -Db_ndebug=true` and run `just test-all`, `build-linux` also `just check` (so `just build-release`/`just test-release` add nothing before a push); Windows is MinGW cross-built and run under wine (`build-windows`) and built natively with MSYS2 UCRT64 (`qt-windows`, for pushes to master, tags and PRs touching the Qt GUI; `qt-linux` is the Qt GUI's job for every PR); `coverage` and the sanitizers run `test_burrtools` with assertions live. A toolchain CI does not use (MSVC, say) is yours to check. Run any of them locally when CI reported a failure there, or when you need the answer before pushing.
-   - Before pushing a restack (every PR of a stack at once), at least build and run `just test` at the stack's top and at every PR that changes an interface the PRs above it use: one failure there costs a CI run on each PR above it.
-   - `just test-regression` is not run by CI. Run it before opening or updating a PR that can change solver output (assembler, disassembler, grids, puzzle loading), to check that it still matches the known-good 0.7.1 output across all example puzzles.
-7. **Qt GUI: QML panels and dialogs, environment variables:**
-   - Every panel and dialog QML file in `src/qtgui/qml/` opens with a `// Wireframe` comment: an ASCII drawing of the UI it builds, its parts numbered ① ② …, each number marking once — as a trailing `// ①` — the line that opens that part's code. Give a new panel or dialog one from the start (a new panel also goes into the list in `everyPanelAndDialogHasAWireframeNumberedToItsCode`, `test/qtgui/test_qtgui.cpp`; `*Dialog.qml` files are found by name), and keep drawing and numbers in step when parts are added, moved or removed. Convention and example: [`src/qtgui/README.md`](src/qtgui/README.md), "Reading the QML".
-   - Give new on-screen items an `objectName`: the tests find items by it, and `BURRTOOLS_QML_OUTLINES=1` labels the one under the mouse with it.
-   - A new `BURRTOOLS_*` environment variable goes into [`src/tools/envvars.h`](src/tools/envvars.h), which the programs' `--help` prints; `test_envvars.cpp` fails on one the code reads but the table does not list.
-
----
-
-## 4. Benchmarking & Performance Verification
-
-Always use the standardized benchmark infrastructure in [`bench/`](bench/) to validate optimizations across the full puzzle corpus. **Never benchmark on a single puzzle in isolation and extrapolate results.** All AI agents working on performance optimizations in this repository MUST follow this protocol.
-
-### Standardized Tooling
-
-- **[`bench/bench_solve.py`](bench/bench_solve.py)**: Interleaved, multi-run A/B testing measuring wall time, user/sys CPU time, multi-core utilization, and peak RSS across the 10-puzzle curated corpus.
-- **[`bench/run_suite.sh`](bench/run_suite.sh)**: Shell wrapper for automated full-suite regression and speedup reporting.
-- **[`bench/run_snapshot.sh`](bench/run_snapshot.sh)** (`just bench`): Single-commit snapshot over the fixed corpus (including the Jack Krijnen Supernova problems), always with disassembly. Stores point-in-time measurements as `bench/results/results_<timestamp>_<hash>[-dirty]_<subject-slug>.csv` for later comparison.
-
-### Point-in-Time Snapshots and Regression Checks Without Old Code
-
-`just bench` records the current commit's solver performance (3 runs per puzzle by default) into a self-identifying CSV under [`bench/results/`](bench/results/). Because each file carries its timestamp, git hash, and commit subject in its name, a later commit can be regression-checked by diffing its snapshot against a stored older one — no checkout, rebuild, or re-run of the old code needed. Each CSV additionally starts with `#`-prefixed provenance lines (UTC timestamp, mode/binaries, full git commit + subject, clean/dirty worktree state, hostname + CPU count, runs/timeout/threads/disassemble settings) written by `bench_solve.py`, so a stored file is interpretable on its own:
-
-```bash
-just bench                                   # snapshot current HEAD (builds first), then compare against previous snapshot
-just bench --runs 5                          # more runs per puzzle
-just bench --threads 1                       # single-thread throughput snapshot
-just bench --runs 1 <puzzle>...              # one-off subset (replaces corpus)
-just bench --no-compare                      # snapshot only, skip the comparison
-
-# Compare two snapshots (CSVs share the same header/column layout):
-diff bench/results/results_20260923_114837_4280734-*.csv \
-     bench/results/results_20260924_090112_*.csv
-```
-
-Caveats: snapshots from different machines are not comparable (absolute times depend on hardware); correctness columns (assemblies/solutions/iterations) in the CSV double as the regression signal and are machine-independent. A `-dirty` suffix marks runs from a worktree with uncommitted changes.
-
-**Benchmarks must use the release binary.** `just bench` builds and measures `build-rel/burrTxt` (`--buildtype=release -Db_ndebug=true` via `just build-release`). Never publish timings from the default `build/` dir: it carries `_GLIBCXX_ASSERTIONS` and live `bt_assert` checks, which cost ~15–30% solver time in the exact-cover hot loops (every `vector::operator[]` gains a bounds check). See `design/2026-09-24-benchmark-speedup-analysis.md` §7. The same applies to hand-rolled A/B comparisons: build both binaries with `-Db_ndebug=true`, or the numbers measure assertion overhead instead of your change.
-
-### Benchmarking Alternatives via Environment Variables
-
-Solver engines support runtime feature toggles via environment variables to allow clean, side-by-side A/B benchmarking from the exact same build:
-
-The engine-selection toggles (`BURRTOOLS_NO_SIMD`, `BURRTOOLS_HUANG_MEM_MB`) apply to fresh runs only: a resumed search keeps the engine that saved its remainder, because the remainder's tasks are only valid for that engine.
-
-| Environment Variable | Effect | Purpose |
-| :--- | :--- | :--- |
-| `BURRTOOLS_NO_SIMD=1` | Disables the SIMD bit-parallel solver in **both** assemblers (`assembler_0_c` and `assembler_1_c`), forcing classical DLX. Also read by the `SimdExactCover` / `SimdHuangCover256` constructors. | Measure pure speedup of SIMD bit-parallel exact cover against the Knuth DLX baseline. |
-| `BURRTOOLS_NO_VECTOR=1` | Disables architecture-specific vector SIMD instructions (AVX2, AVX-512 on x86-64, NEON on ARM) across all exact cover solvers and disassembler closure, falling back to portable 64-bit scalar word loops. Replaces needing platform-specific flags. | Clean, architecture-agnostic benchmark isolation of algorithmic gains (0-cost backtracking, cache locality) from vector intrinsics. |
-| `BURRTOOLS_NO_AVX2=1` | Disables the AVX2 and AVX-512 kernels **on x86-64**, falling back to the portable 64-bit word scalar loop. No effect on ARM -- use `BURRTOOLS_NO_NEON` there. | Isolate the algorithmic gain (0-cost backtracking, cache locality) from x86 vector intrinsics. |
-| `BURRTOOLS_NO_AVX512=1` | Disables AVX-512 vector instructions in SIMD solver and disassembler closure. | Isolate AVX-512 vector performance gains from AVX2. |
-| `BURRTOOLS_NO_NEON=1` | Disables the NEON kernels **on ARM**, falling back to the same scalar loop. Honoured by `SimdExactCover` and `SimdHuangCover256`. | The ARM equivalent of `BURRTOOLS_NO_AVX2`; without it an A/B on Apple Silicon silently measures the same code twice. |
-| `BURRTOOLS_NO_DISASM_SIMD=1` | Disables vector instructions in disassembler Roy-Floyd-Warshall closure. | Measure pure disassembler vector speedup. |
-| `BURRTOOLS_NO_DISASM_POOL=1` | Disables multi-threaded disassembly pool, running disassemblies synchronously. | Measure speedup and scaling of parallel disassembly pool against synchronous baseline. |
-| `BURRTOOLS_THREADS=N` | Forces solver to use $N$ worker threads (default: `hardware_concurrency`, clamped to `assembler_c::MAX_THREADS`). **Note:** read independently by the assembler and by the disassembly pool, so `N` may yield `2N` workers overall. | Measure thread scaling curves (e.g. 1, 2, 4, 8 cores). |
-| `BURRTOOLS_HUANG_MEM_MB=N` | Overrides the Huang-SIMD memory budget in MB (default 256; `0` disables the SIMD path via the budget). | A/B the SIMD-vs-DLX tradeoff near the refusal threshold without rebuilding. |
-| `BURRTOOLS_SPLIT_FANOUT=N` | Fan-out cap for dividing one search level into tasks (default 16, see `src/lib/split_fanout.h`): assembler_0 runtime splits and the stop-time remainders of every engine emit at most N singletons plus one rest. Any N >= 1 is exact. | Tests set it to 1-2 so small puzzles exercise every rest path that only wide levels reach at the default. |
-| `BURRTOOLS_SPLIT_BREADTH_FIRST=1` | Queues assembler_0's dynamically split child tasks at the back of the pool (breadth-first order) instead of the front (depth-first, the default). | A/B the depth-first order: queue/remainder size (breadth-first grows towards every node of the split depth on wide puzzles) and long-tail wall time. |
-| `BURRTOOLS_NO_DONATE=1` | Disables split on demand in every engine: running tasks no longer hand their shallowest open level to waiting siblings. assembler_0 falls back to its eager pop-time splitting (shallow prefixes, starving siblings); assembler_1's tasks then run as seeded. See `design/2026-10-17-split-on-demand.md`. | A/B donation against pop-time splitting: tail idle time and wall time on skewed puzzles. |
-| `BURRTOOLS_DONATE_EVERY=N` | Tests only: additionally donate every N search nodes whether or not a sibling is waiting, so donation paths run deterministically, even single-threaded. | Exercise the donation/cut/divide interplay on small puzzles. |
-
-### Running an Interleaved A/B Benchmark
-
-New solver optimizations MUST ship a runtime environment variable toggle (e.g. `BURRTOOLS_NO_SIMD=1`) enabling clean, interleaved A/B benchmarking from the exact same build without recompilation.
-
-To compare an optimization against the baseline using `bench/bench_solve.py`:
-
-```bash
-# 1. Create a wrapper for the baseline (e.g. DLX fallback)
-cat << 'EOF' > build/burrTxt-base
-#!/bin/sh
-exec env BURRTOOLS_NO_SIMD=1 $(dirname "$0")/burrTxt "$@"
-EOF
-chmod +x build/burrTxt-base
-
-# 2. Run interleaved comparison across the entire curated corpus
-#    --no-disassemble: isolate assembler performance
-#    --threads 1: test single-thread throughput (omit for all-core parallel test)
-python3 bench/bench_solve.py --ab build/burrTxt-base build/burrTxt --no-disassemble --runs 3
-
-# 3. Clean up the wrapper
-rm build/burrTxt-base
-```
+`llm_docs/coverage_tests.md` -- coverage and test suite docs
+`llm_docs/architecture.md` -- code architecture
 
 
----
+## Rules
 
-## 5. Continuous Integration Gates
+1. **Assertions:** use `bt_assert(cond)` (`src/lib/bt_assert.h`) for runtime checks. It vanishes under `NDEBUG`, so the expression must be side-effect-free; use `bt_assert2` for mutating checks. Never use assert macros for control flow: validation callers rely on throws unconditionally via `bt_te()`.
+2. **Third-party code:** never edit `subprojects/` or `src/lua/`; keep tools and regexes ignoring them.
+3. **Tests** live in `test/` (Catch2 v3). Tests asserting debug-only behavior (`bt_assert` throwing, `assert_log`, bounds checks) need `#ifndef NDEBUG` (CI also tests release). Precedent: `test_halfedge.cpp`.
+4. **Verify** with `just build` and `just test`; leave the rest to CI.
 
-Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifically to catch defect classes the other jobs are structurally blind to. Do not weaken or skip them.
+## Consult when the task touches...
 
-| Job | Catches | Why the other jobs miss it |
-| :--- | :--- | :--- |
-| `clang-x86-64` | GCC-only constructs that Clang ignores or rejects, most importantly `#pragma GCC target(...)`. | Linux and Windows build with GCC; the macOS runner is arm64, where the x86 intrinsic blocks are excluded by the preprocessor. An x86-64 Clang build is otherwise untested. |
-| `tsan-parallel` | Data races in the parallel assembler and disassembler. | The only ThreadSanitizer run (ASan and UBSan: `sanitizers`). |
-| `qt-linux`, `qt-windows`, `qt-macos` | Breakage in `burrtools-qt`: controllers, QML, renders (WARP on Windows, lavapipe Vulkan on Linux — required, not skipped), gallery reference images (Windows). Each uploads a preview build. `qt-linux` runs for every PR; the other two, `coverage-qt` and the Qt suites under the sanitizers run on master, tags and PRs touching Qt GUI paths. | The legacy jobs build without Qt. |
-| `sanitizers` | Memory errors and undefined behaviour (ASan + UBSan) in `test_burrtools` (leaks too) and the Qt suites (renders on lavapipe). | Leaks are not checked in the Qt suites: Qt and Mesa are not instrumented. |
-| `qt-profile.yml` (on demand) | Nothing: reports only — start-up times, a QML trace, a heap profile, the `src/uicore` micro-benchmarks (artifact `qt-profile`). | Not a check: shared runners are too noisy to fail on time. |
-| `qt-standalone.yml` (on demand only) | A static `burrtools-qt.exe` that still loads an MSYS2 library, or fails its self-check. Attaches the standalone program to a release when given its tag. | Too slow for every push (550 MB static Qt download). |
-
-### Rules for SIMD and intrinsics
-
-- Use `__attribute__((target("avx2")))` on individual functions. **Never** use `#pragma GCC target(...)`: Clang parses it as an unknown pragma, ignores it, and then fails on every intrinsic in the block.
-- Gate every ISA path behind runtime detection (`__builtin_cpu_supports`), and keep a working scalar fallback.
-
-### Rules for the ThreadSanitizer job
-
-- The job runs the `[parallel]` tag. **At least one test in that tag must use a puzzle whose result shape has a symmetry breaker** (currently `examples/Bermuda.xmpuzzle`).
-- This is not incidental. `avoidTransformedAssemblies` is only enabled by `checkForTransformedAssemblies()`, called from `createMatrix()` and only when a symmetry breaker is found. Puzzles without one never call `assembly_c::smallerRotationExists()` from a worker thread, so a TSan run over only those puzzles reports **zero races while real ones remain** — a false negative that has already let races ship.
-- Compare assembly *multisets* between serial and parallel runs, never just counts. A run that loses one assembly and duplicates another passes a count check.
-
-### Rules for the TLA+ protocol specs (`spec/`)
-
-- The PlusCal models in `spec/` check protocol shape (token accounting, pop/finish pairing, quiescence, ordered merge) over all small-instance interleavings. They are the backstop for the defect class TSan cannot see (lost wakeups, hangs, token leaks).
-- Any PR touching `src/lib/thread_budget.h`, `src/lib/assembler_pool.h`, `src/lib/disassemblerpool.h`, `src/lib/assembler.h` or `src/lib/solvethread.h` must state "spec unaffected" or update the spec.
-- `just spec-check` reads only `spec/` (it translates and model-checks the `.tla`/`.cfg` files, never the C++), so run it only when something under `spec/` changed. Re-running it after a C++-only change re-proves the unchanged models and costs minutes for nothing.
-- Invariant names (`SPEC-BUDGET-1`, `SPEC-POOL-1`, …) are stable IDs quoted in both the spec and the `src/lib` comments. Rename on both sides or neither.
-- Never hand-edit the generated TLA+ translation in `spec/*.tla` — edit the `--algorithm` PlusCal and re-run `pcal.trans` via `just spec-check`.
+- FLTK widgets (`src/gui/`) -> `llm_docs/fltk_gui.md`
+- Solver threads, shared solver state, or solver tests -> `llm_docs/solver_rules.md`
+- File formats, saved search state, CLI/API changes -> `llm_docs/compatibility.md`
+- Qt GUI (`src/qtgui/`, QML) -> `src/qtgui/AGENTS.md`, an index into `llm_docs/qt_gui_*.md`
+- Toolkit-free UI logic (`src/uicore/`) -> `src/uicore/AGENTS.md`, an index into `llm_docs/uicore_*.md`
+- A new `BURRTOOLS_*` env var -> `llm_docs/qt_gui_rules.md`
+- Performance work, benchmarks, solver env-var toggles -> `llm_docs/benchmarking.md`
+- CI failures, SIMD/intrinsics, TSan, `spec/` TLA+ models, `src/lib` pool/budget headers -> `llm_docs/ci_gates.md`
+- What to run before pushing/opening a PR (restacks, `just test-regression`) -> `llm_docs/verification.md`

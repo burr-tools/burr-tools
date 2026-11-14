@@ -351,7 +351,10 @@ void DocumentController::undo(void) {
   guarded([&] {
     if (!m_session.canUndo())
       return;
+    const bool wasStroke = m_session.inStroke();
     auto r = m_session.undo();
+    if (wasStroke)
+      emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
     emit stateChanged();
   });
@@ -361,7 +364,10 @@ void DocumentController::redo(void) {
   guarded([&] {
     if (!m_session.canRedo())
       return;
+    const bool wasStroke = m_session.inStroke();
     auto r = m_session.redo();
+    if (wasStroke)
+      emit strokeInterrupted();
     emit historyApplied(int(r.tab), r.selectedShape == puzzleHistory_c::NO_SHAPE ? -1 : int(r.selectedShape));
     emit stateChanged();
   });
@@ -386,7 +392,35 @@ bool DocumentController::convertTo(int type) {
   });
 }
 
-void DocumentController::structureEdited(int selectedShape) {
-  emit puzzleEdited(selectedShape);
+DocumentController::Change DocumentController::changeOf(puzzleHistory_c::actionKind_e kind) {
+  switch (kind) {
+    case puzzleHistory_c::AK_ENTITIES_GRID_PAINT:
+    case puzzleHistory_c::AK_ENTITIES_TRANSFORM:
+    case puzzleHistory_c::AK_ENTITIES_CLICK_3D:
+      return Change::Voxels;
+    case puzzleHistory_c::AK_COLOR_PALETTE:
+      return Change::Palette;
+    case puzzleHistory_c::AK_NONE:
+    case puzzleHistory_c::AK_ENTITIES_STRUCTURAL:
+    case puzzleHistory_c::AK_PROBLEM_STRUCTURAL:
+      return Change::Structure;
+  }
+  return Change::Structure;
+}
+
+void DocumentController::edited(int selectedShape, Change change, int shape) {
+  emit puzzleEdited(selectedShape, change, shape);
   emit stateChanged();
+}
+
+void DocumentController::beginStroke(puzzleHistory_c::actionKind_e kind, int shape) {
+  const bool ended = m_session.inStroke();
+  m_session.beginStroke(kind, shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape));
+  if (ended)
+    emit stateChanged();
+}
+
+void DocumentController::endStroke(void) {
+  if (m_session.endStroke())
+    emit stateChanged();       // a new undo step, and unsaved
 }

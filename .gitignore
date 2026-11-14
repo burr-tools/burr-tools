@@ -1,5 +1,6 @@
 *#
 *~
+*.bak
 admin/
 src/burrTxt
 src/burrTxt2

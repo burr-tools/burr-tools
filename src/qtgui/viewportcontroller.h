@@ -21,15 +21,22 @@
 #ifndef BTQT_VIEWPORTCONTROLLER_H
 #define BTQT_VIEWPORTCONTROLLER_H
 
+#include "documentcontroller.h"
 #include "scenecontroller.h"
+
+#include "../uicore/scenemesh.h"
+#include "../uicore/voxeledit.h"
 
 #include <QColor>
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
 
 #include <memory>
+#include <optional>
+#include <vector>
 
 class DocumentController;
+class EditorController;
 class LayoutController;
 class SettingsController;
 class ShapesModel;
@@ -42,10 +49,13 @@ class ShapesModel;
  * is the spec's: left-drag does what the toolbar mode says, Shift+left-drag
  * the other thing, middle-drag always pans, the wheel always zooms, and a
  * press that moves less than 4 dp before release is a click, which never
- * navigates (and, from the editing phase on, edits).
+ * navigates but edits: the quick tool the modifiers pick, or in Edit mode
+ * the voxel editor's tool (C06 3D editing), at the target the pointer
+ * picks (btui::target3d) -- a voxel's face, the active layer's slab, or in
+ * an empty shape without the slab the origin.
  *
- * Plane and layer are owned here until the voxel editor (phase P4) takes
- * them over; PgUp / PgDn already step the layer.
+ * The plane and the active layer are the voxel editor's (EditorController);
+ * the view draws them as its slab while the editor is on screen.
  */
 class ViewportController : public SceneController {
   Q_OBJECT
@@ -59,9 +69,6 @@ class ViewportController : public SceneController {
   Q_PROPERTY(bool displayDimOtherLayers READ displayDimOtherLayers WRITE setDisplayDimOtherLayers NOTIFY optionsChanged FINAL)
   Q_PROPERTY(QString projection READ projection WRITE setProjection NOTIFY optionsChanged FINAL)
   Q_PROPERTY(QString colourView READ colourView WRITE setColourView NOTIFY optionsChanged FINAL)
-  Q_PROPERTY(int plane READ plane WRITE setPlane NOTIFY layerChanged FINAL)
-  Q_PROPERTY(int layer READ layer WRITE setLayer NOTIFY layerChanged FINAL)
-  Q_PROPERTY(int layerCount READ layerCount NOTIFY layerChanged FINAL)
   Q_PROPERTY(bool editorVisible READ editorVisible NOTIFY optionsChanged FINAL)
   Q_PROPERTY(bool showViewCube READ showViewCube NOTIFY optionsChanged FINAL)
   Q_PROPERTY(bool hasShape READ hasShape NOTIFY sceneChanged FINAL)
@@ -75,9 +82,10 @@ class ViewportController : public SceneController {
 public:
 
   ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                     LayoutController * layout, QObject * parent = nullptr);
+                     LayoutController * layout, EditorController * editor, QObject * parent = nullptr);
 
-  QString navMode(void) const { return m_pan ? QStringLiteral("pan") : QStringLiteral("orbit"); }
+  /* the modes and options as words (btui/vocabulary.h), for QML */
+  QString navMode(void) const;
   void setNavMode(const QString & m);
   bool displayAxes(void) const { return m_display.axes; }
   void setDisplayAxes(bool v);
@@ -91,11 +99,7 @@ public:
   void setProjection(const QString & p);
   QString colourView(void) const;
   void setColourView(const QString & v);
-  int plane(void) const { return m_plane; }
-  void setPlane(int p);
-  int layer(void) const { return m_layer; }
-  void setLayer(int l);
-  int layerCount(void) const;
+  btui::ColorMode colourViewValue(void) const;
   bool editorVisible(void) const;
   bool showViewCube(void) const;
   bool hasShape(void) const { return m_shape != nullptr; }
@@ -106,8 +110,6 @@ public:
   QString shapeLabel(void) const;
   QColor shapeColor(void) const;
   QColor shapeTextColor(void) const;
-
-  Q_INVOKABLE void layerStep(int delta);
 
   /* Export ▸ Vector Image: write the view as it is now to file in the
    * format btui::VectorFormat names (0 PS, 1 EPS, 2 TeX, 3 PDF, 4 SVG,
@@ -121,24 +123,60 @@ public:
   /* the frame to draw now; colours come from the theme */
   SceneFrame frame(float devicePixelRatio) const override;
 
+  // --- 3D editing (C06) ------------------------------------------------------
+
+  void pointerHover(float x, float y, Qt::KeyboardModifiers mods) override;
+  void pointerLeave(void) override;
+  int editCursorTool(void) const override;
+  QColor editCursorColour(void) const override;
+  /* where a click at (x, y) with these modifiers would act */
+  btui::Target3d targetAt(float x, float y, Qt::KeyboardModifiers mods);
+
+  // --- Transform preview (C04) -------------------------------------------------
+
+  /* A Transform button under the pointer or focus (InspectorController):
+   * the shape as the task leaves it, as a ghost in the shape's colour at
+   * 50 %, and the hint -- an arc about a rotation's axis, a double arrow
+   * along a mirror's normal, an arrow along a nudge -- in the colour of the
+   * axis it mostly runs along, danger when the task is blocked (no ghost
+   * then). Shown until cleared. */
+  struct TransformPreview {
+    std::shared_ptr<const voxel_c> result;   ///< null: blocked, or nothing to show
+    bool hint = false;
+    btui::TransformHint kind = btui::TransformHint::Rotate;
+    btui::Vec3 axis{ 0, 0, 1 };
+    float angleDeg = 0;
+    bool blocked = false;
+  };
+  void setTransformPreview(TransformPreview p);
+  void clearTransformPreview(void);
+  bool transformPreviewShown(void) const { return m_transform.has_value(); }
+
 signals:
 
   void optionsChanged(void);
-  void layerChanged(void);
   void sceneChanged(void);
 
 private:
 
   void refreshShape(void);
+  void edited(DocumentController::Change change);
   void scheduleMesh(void);
   void buildMesh(void);
-  void clampLayer(void);
   void readDisplay(void);
   void setDisplay(const char * key, bool & option, bool v);
+  void addGhosts(SceneFrame & f) const;
+  void addTransformPreview(SceneFrame & f) const;
+  void updateSlab(void);
+  void click(float x, float y, Qt::KeyboardModifiers mods);
+  void navigationStarted(void) override;
+  /* the slab is drawn: its option on and the voxel editor on screen */
+  bool slabShown(void) const;
 
   DocumentController * m_doc;
   ShapesModel * m_shapes;
   LayoutController * m_layout;
+  EditorController * m_editor;
 
   const voxel_c * m_shape = nullptr;
   int m_shapeIndex = -1;
@@ -147,9 +185,19 @@ private:
   btui::VoxelStyle m_meshStyle = btui::VoxelStyle::Flat;   ///< the voxel style m_mesh was built in
   bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
   bool m_meshQueued = false;       ///< a buildMesh() is posted
-
-  int m_plane = 0;
-  int m_layer = 0;
+  /* the layer slab of the shape as m_mesh shows it, the editor's plane and
+   * layer: measured from the layer's cells (btui::layerSlab), so kept, not
+   * measured every frame */
+  btui::Box m_slab{};
+  bool m_hasSlab = false;
+  /* what the pointer is picked against: the shape's voxels (with the mesh)
+   * and the active layer's cells (with the slab) */
+  std::vector<btui::PickTriangle> m_pick;
+  bool m_pickDirty = false;        ///< m_pick is not the mesh's shape's: made on the next pick
+  std::vector<btui::PickTriangle> m_layerPick;
+  bool m_layerPickDirty = true;    ///< made on the first pick that needs it, not per layer step
+  float m_hoverX = -1, m_hoverY = -1;
+  std::optional<TransformPreview> m_transform;
 
   /* the persisted Display options, kept here for frame() (readDisplay) */
   struct Display {

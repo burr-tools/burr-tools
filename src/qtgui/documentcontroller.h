@@ -139,19 +139,96 @@ public:
    * -1 keeps the current shape selection where possible.
    */
   template <class F> bool editStructure(int selectedShape, F && f) {
+    return edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, selectedShape, std::forward<F>(f));
+  }
+
+  /* What an edit changed, so that each view refreshes only what shows it
+   * (puzzleEdited): a rename does not rebuild the 3D view's mesh. */
+  enum class Change {
+    Structure,    ///< shapes or problems added, removed, reordered; anything else
+    Voxels,       ///< the voxels or the size of a shape (shape -1: of several)
+    Label,        ///< a shape's name or weight
+    Palette,      ///< the colour list
+  };
+  Q_ENUM(Change)
+
+  /* the change an undo step of a kind makes */
+  static Change changeOf(puzzleHistory_c::actionKind_e kind);
+
+  /* The same as one undo step of another kind: the colour list
+   * (AK_COLOR_PALETTE), the voxel editor's grid size. The change is the
+   * kind's (changeOf); the second form names it, and the shape it is to. */
+  template <class F> bool edit(puzzleHistory_c::actionKind_e kind, int selectedShape, F && f) {
+    return edit(kind, changeOf(kind), selectedShape, selectedShape, std::forward<F>(f));
+  }
+
+  template <class F> bool edit(puzzleHistory_c::actionKind_e kind, Change change, int shape, int selectedShape, F && f) {
+    return tellEdit(change, shape, selectedShape, [&] {
+      return m_session.edit(kind, sessionShape(selectedShape), std::forward<F>(f));
+    });
+  }
+
+  /* An edit of the voxels of shapes (DocumentSession::editVoxels): as
+   * edit(), and the problems using a shape it changed lose their solutions
+   * -- to the undo step, which brings them back. shape: the one changed,
+   * -1 for several. */
+  template <class F> bool editVoxels(puzzleHistory_c::actionKind_e kind, int shape, int selectedShape,
+                                     const std::vector<unsigned int> & shapes, F && f) {
+    return tellEdit(Change::Voxels, shape, selectedShape, [&] {
+      return m_session.editVoxels(kind, sessionShape(selectedShape), shapes, std::forward<F>(f));
+    });
+  }
+
+private:
+
+  static unsigned int sessionShape(int shape) { return shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape); }
+
+  /* run an edit of the session (g), and tell the views what it changed */
+  template <class G> bool tellEdit(Change change, int shape, int selectedShape, G && g) {
+    const bool wasStroke = m_session.inStroke();
     bool changed;
     try {
-      changed = m_session.edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL,
-                               selectedShape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(selectedShape),
-                               std::forward<F>(f));
+      changed = g();
     } catch (...) {
-      structureEdited(selectedShape);
+      if (wasStroke)
+        emit strokeInterrupted();
+      edited(selectedShape, change, shape);
+      throw;
+    }
+    if (wasStroke)
+      emit strokeInterrupted();  // the drag goes on, but its stroke is over
+    if (changed)
+      edited(selectedShape, change, shape);
+    else if (wasStroke)
+      emit stateChanged();       // the stroke it ended may be a step
+    return changed;
+  }
+
+public:
+
+  /* A stroke of the voxel editor (DocumentSession::beginStroke): each
+   * strokeEdit() is shown at once (puzzleEdited, Voxels), the undo step is
+   * taken at endStroke(). The stroke's first change makes the document
+   * unsaved and undoable at once (stateChanged), not at the release. */
+  void beginStroke(puzzleHistory_c::actionKind_e kind, int shape);
+  template <class F> bool strokeEdit(int shape, F && f) {
+    const bool clean = !m_session.strokeChanged();
+    bool changed;
+    try {
+      changed = m_session.strokeEdit(std::forward<F>(f));
+    } catch (...) {
+      emit puzzleEdited(shape, Change::Voxels, shape);
+      if (clean && m_session.strokeChanged())
+        emit stateChanged();
       throw;
     }
     if (changed)
-      structureEdited(selectedShape);
+      emit puzzleEdited(shape, Change::Voxels, shape);
+    if (clean && m_session.strokeChanged())
+      emit stateChanged();       // the title's *, Undo enabled
     return changed;
   }
+  void endStroke(void);
 
 signals:
 
@@ -161,8 +238,14 @@ signals:
   void documentReplaced(void);
   /* undo/redo changed the puzzle; tab and shape say where (puzzleHistory_c) */
   void historyApplied(int tab, int selectedShape);
-  /* shapes or problems changed in place (not undo/redo); -1 = no preference */
-  void puzzleEdited(int selectedShape);
+  /* An open stroke was ended by something else than endStroke(): an undo,
+   * a redo or another edit while the button is still down. What it painted
+   * is a step of its own; the drag that made it must paint no more. */
+  void strokeInterrupted(void);
+  /* Shapes or problems changed in place (not undo/redo): what changed, and
+   * to which shape (-1: several, or none). selectedShape is the selection
+   * the change asks for; -1 = no preference. */
+  void puzzleEdited(int selectedShape, DocumentController::Change change, int shape);
 
   void confirmDiscardRequested(const QString & action);
   void newFileTypeRequested(void);
@@ -180,8 +263,8 @@ private:
 
   void start(Pending p, const char * action);
   void proceed(void);
-  /* editStructure() changed the puzzle: the views repaint */
-  void structureEdited(int selectedShape);
+  /* edit() changed the puzzle: the views repaint */
+  void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
   void setPending(Pending p);
 

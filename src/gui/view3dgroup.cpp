@@ -83,21 +83,34 @@ void LView3dGroup::goHome(void) {
   View3D->startHomeAnim(targetSize);  /* animates rotation, pan, and zoom */
 }
 
+/* Put the slider at v, a zoom that follows the content (a fit, or one kept
+ * relative to it). It is cut off at the ends of the slider's range, unless
+ * the range follows the content (setZoomRangeFollowsContent()) and is
+ * widened instead; the user's own zooming stays within the range either
+ * way. */
+void LView3dGroup::setSliderFollowingContent(double v) {
+  if (zoomRangeFollowsContent) {
+    if (v < slider->minimum()) slider->minimum(v);
+    if (v > slider->maximum()) slider->maximum(v);
+  } else {
+    if (v < slider->minimum()) v = slider->minimum();
+    if (v > slider->maximum()) v = slider->maximum();
+  }
+  slider->value(v);
+}
+
 void LView3dGroup::zoomAnimCbStub(void * u, double sz) {
-  LView3dGroup * self = static_cast<LView3dGroup *>(u);
-  double v = 6.0 - log(sz);
-  if (v < self->slider->minimum()) v = self->slider->minimum();
-  if (v > self->slider->maximum()) v = self->slider->maximum();
-  self->slider->value(v);
+  static_cast<LView3dGroup *>(u)->setSliderFollowingContent(6.0 - log(sz));
 }
 
 void LView3dGroup::fitToContent(void) {
-  double sz = View3D->computeFitSize();
-  double v = 6.0 - log(sz);
-  if (v < slider->minimum()) v = slider->minimum();
-  if (v > slider->maximum()) v = slider->maximum();
-  slider->value(v);
-  View3D->setSize(exp(6 - v));
+  setSliderFollowingContent(6.0 - log(View3D->computeFitSize()));
+  cb_slider();
+}
+
+void LView3dGroup::scaleZoom(double factor) {
+  setSliderFollowingContent(slider->value() - log(factor));
+  cb_slider();
 }
 
 void LView3dGroup::applyWheelZoom(int dy) {

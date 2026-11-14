@@ -128,9 +128,9 @@ void UpdateController::start(bool manual) {
   m_inFlight = shared;
   m_manual = manual;
   const std::string agent = std::string("BurrTools/") + BURRTOOLS_VERSION;
-  std::thread([shared, agent] {
+  std::thread([shared, agent, fetch = m_fetch] {
     try {
-      shared->http = httpGet(LATEST_RELEASE_API, agent, timeoutSeconds);
+      shared->http = fetch ? fetch() : httpGet(LATEST_RELEASE_API, agent, timeoutSeconds);
       if (shared->http.kind == HttpResult::Kind::Ok)
         shared->parsed = parseLatestRelease(shared->http.body);
     } catch (const std::exception & e) {

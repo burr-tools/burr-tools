@@ -85,6 +85,32 @@ public:
 
   static constexpr float kClickSlopDp = 4.0f;
 
+  /* the pointer over the view without a button, and the modifiers held
+   * (also when only those change); it left. The main view edits from it
+   * (C06): the ghost and the cursor follow. */
+  virtual void pointerHover(float x, float y, Qt::KeyboardModifiers mods);
+  virtual void pointerLeave(void);
+  /* orbiting or panning with the pointer: the view shows the grab cursor */
+  bool navigating(void) const { return m_gesture == Gesture::Orbit || m_gesture == Gesture::Pan; }
+  bool panning(void) const { return m_gesture == Gesture::Pan; }
+  /* the edit tool whose cursor the view shows, -1 for none, and its colour
+   * (invalid: Default) -- the main view's, when a click would edit */
+  virtual int editCursorTool(void) const { return -1; }
+  virtual QColor editCursorColour(void) const { return {}; }
+
+  // --- the keyboard, while the view has focus (WCAG 2.1.1) ----------------
+
+  /* orbit by degrees about the view's own axes, at once */
+  void orbitStep(float rightDeg, float upDeg);
+  /* pan by dp, at once */
+  void panStep(float dxDp, float dyDp);
+  /* zoom by wheel notches, eased as the wheel's (+ in) */
+  void zoomStep(int notches);
+  /* the view cube's 90 degree turns and rolls, and its faces, animated */
+  void turn(btui::ViewCube::Arrow a);
+  void roll(int direction);
+  void viewFrom(btui::CubeDir face);
+
   // --- the view cube ------------------------------------------------------
 
   const btui::ViewCube::Hit & cubeHover(void) const { return m_cubeHover; }
@@ -131,6 +157,9 @@ protected:
   void readSettings(void);
 
   void startTicking(void);
+
+  /* a drag began to orbit or pan: the pointer navigates, not edits */
+  virtual void navigationStarted(void) {}
 
   SettingsController * m_settings;
   btui::Camera m_camera;
