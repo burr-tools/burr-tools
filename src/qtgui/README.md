@@ -37,7 +37,7 @@ it can replace it.
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
 | — Puzzle review (2026-11-14) | The Puzzle tab against the spec: every AC of C16–C18 and those of C11, C15 and the density that name it, the element ids, the test plan's T-C16 … T-C18 | Done; findings in *Spec review of the Puzzle workspace* below |
 | P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle, DashedFrame primitives | Done (third cut); decisions in *P10 decisions* |
-| P11 Solver | The Solver workspace | Next (see *Next phases*); its cards are placeholders |
+| P11 Solver (C19, C20, C21) | Solver card: the problem, What to check, Search options (n changed), Prepare / Start / Continue / Stop with the progress bar, activity, counters and times, Placements / Movements / Step; Solutions card: List (sortable headers, DA marks, moves bars) and Slider views, the empty states, the disassembly player (0.5×–8×, fixed height), Manage (remove with hover preview and confirmation, delete and analyse disassemblies in the background), Export Solution to STL, the piece chips; the 3D scene of the selected solution at the player's move, wireframe pieces (hull edges, Show through solid pieces), the assembler's state, the docked explorer drawer; edits refused while a solve or an analysis runs; the PieceChipButton and DaMark primitives | First cut, 2026-11-13; decisions in *P11 decisions*, plan and resolved open questions in [`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md) |
 
 ### Deferred to the next phase
 
@@ -57,14 +57,18 @@ below, lists them per phase).
 | — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
 | — Dark-theme button text | WCAG 1.4.3 | White on the dark danger button (2.71:1): a design-token decision (dark text, as `onAccent` took for the accent, or a darker token). The accent button's was fixed 2026-11-07 (`onAccent`, 6.76:1) | P8 |
 | — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; toggled toolbar icons differ by hue only (the list now rings its selection when focused). The control borders and the unchecked switch and matrix cell were fixed 2026-11-07 (`controlLine`, 3:1 on the panels) | P8 |
-| — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 (the solver's progress: P11) |
+| — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced. The solver's is done (P11): a named ProgressBar, the run's start, end and stop announced | P8 |
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
 | QML left to the JavaScript engine | `qtgui_qml_aot` | P2–P6's QML was measured only with Qt 6.12 locally, where the report does not compare; on CI's 6.11 it left 731 bindings to the engine against the first cut's 441 (the baseline, raised 2026-10-29 to what is), 757 with the roving Tab stops (2026-10-29): a QML type's members "can be shadowed" and Qt 6.8 has no `final` properties, so each `roving.` lookup in ActionButton and GlyphButton and RovingFocus's own arrays stay with the engine -- a C++ RovingFocus (FINAL properties) would compile them. The rest is typing work: `QVariantMap` / `var` data read by property (the inspector's buttons, the tools' and planes' models -- typed C++ value types or `required` properties), colour bindings 6.11 cannot populate, fonts read as `double` into `int` pixel sizes, untyped functions. Biggest: Inspector 107, VoxelEditorCard 83, Main 71, ShapesCard 33. The Puzzle workspace took it to 917 (baseline raised 2026-11-15, from CI's 6.11 report): PuzzleLeftCard 73, PuzzleRightCard 37, GroupPicker 16, the collapsed rails 13, DashedFrame's Canvas 9, ScrollToFocus 9, NumberEntry 8; the new files have not had the typing pass yet | P8 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
-| Edits while the solver runs | legacy `threadStopped()` | Shape, colour and problem edits change data an assembler reads; nothing in the new GUI solves yet. A gate in `DocumentController::edit` alone is too narrow: `strokeEdit`, undo and redo, and replacing the document go round it, and each must be refused while a solve runs. `PuzzleController::apply` goes through `edit`. The solution counts the lists read need the solver's lock then too | P11 |
 | A press that may change nothing still warns | C08 | Only when the solutions are too big for the undo history to keep (a voxel edit asks nothing otherwise, since 2026-11-14): a stroke's first press asks before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
 | Deletes keep their solutions for undo | PR 181 review | Voxel edits and changes to what a problem asks for keep theirs in the undo step (2026-11-14). A problem's delete, a shape's delete and a colour's remove still clear them for good behind the once-a-session warning: the history's kept records go by problem index, which a delete moves | P8 |
+| Solution counts read without the lock | P11 | `ToolsController` (the Status dialog) and `ImageExportController` read a problem's saved solutions without `lockSolutions()`; while a solve runs the thread may change them. Every edit is refused then (`DocumentController::busy`), but these dialogs only read: they want the lock or to wait for the solve | P8 |
+| The solver QML's AOT count | `qtgui_qml_aot` | The Solver's QML was measured with Qt 6.12 only (SolverRightCard 192, SolverLeftCard 92, ExplorerDrawer 48 bindings left to the engine there; most are the known QColor, font and shadowable-method causes above). CI's 6.11 sets the baseline for the new files | With the P11 pull request |
+| Legacy's movement tree | C21, OQ-28 | The Movements drawer lists the selected solution's disassembly piece by piece and drives the player; legacy's tree of disassembler nodes (analyse a node, the next levels, add a movement, prune) is not ported | After P8 |
+| Fade-out of removed pieces as a setting | legacy `fadeout` | Pieces that leave the assembly fade (legacy's default); legacy's setting to turn that off has no Settings row yet | P8 |
+| Gallery references for macOS (P11) | test plan | `pieceChip` and `daMark` have Windows references only, and `radioCard` (its outer focus ring) is new on Windows only: `just update-snapshots pieceChip,daMark,radioCard` on a Mac | Before the P11 pull request |
 | Small piece buttons | WCAG 2.5.8 (2.2) | The library chip's − and + are 16 x 20, the tile's 22 wide (18 in Minimal): fine for 2.1 AA, short of 2.2's 24 x 24. Wider ones change the fixed sizes of C16 | P8 |
 | The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
 | One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
@@ -124,6 +128,7 @@ editor); it is not a stable interface yet.
 | `EditorController` | the voxel editor: tool and quick tool, Mirror and Span, plane and layer, the 2D grid's strokes (one undo step each, `DocumentSession::beginStroke`), grid size; the cursor readout |
 | `ViewportController` (a `SceneController`) | the 3D view: camera, gestures, display options, the frame to draw (the slab from the editor's plane and layer, the ghosts, a Transform button's preview) |
 | `PuzzleController` | the Puzzle workspace (C16, C17): the selected problem and piece, the lists as `RowsModel`s, every change to a problem through `btui::problemlist` as one undo step, the status sentence |
+| `SolverController` | the Solver workspace (C19–C21): the problem and its search options, the one `solveThread_c` (polled ten times a second, as legacy's `update()`), the background analysis, the solutions as the list shows them, the player, the piece chips, Manage, the scene of the selected solution (`btui::SolutionScene`); the rules are `btui::solver`'s. Results change the puzzle through `DocumentController::editResults` (unsaved, no undo step); while it runs the document is busy |
 | `RowsModel` | a list of rows handed over whole, keeping delegates through a change; what a controller works out from the puzzle |
 | `InspectorController` | the inspector: its sections' open state, the voxel type's Transform buttons, whether each operation may run and why not, running it (one undo step) through `btui::shapeops`, the 3D preview of a Transform button |
 | `StlExportController`, `ImageExportController`, `ToolsController` | the export dialogs and the puzzle tools |
@@ -585,6 +590,11 @@ moves to a later phase says why in that table.
 - **P11 Solver:** shape, colour and problem edits refused while a solve runs
   (legacy `threadStopped()`), strokes, undo, redo and replacing the document
   included; the solver's progress announced.
+- **P11 Solver** — done (first cut): shape, colour and problem edits refused
+  while a solve or an analysis runs (legacy `threadStopped()`), strokes, undo,
+  redo, replacing the document and saving included (`DocumentController::busy`);
+  the solver's progress announced; the `solverListRow`, `player` and
+  `pieceDisplay` density tokens read.
 - **P12a Density** — done: Minimal's auto-hiding 3D toolbar (density.md
   section 3): hidden faded and 10 dp up with a 40 x 4 handle; shown for the
   pointer within 72 dp of the view's top (a strip over the canvas, whose
@@ -1165,6 +1175,107 @@ Product decisions of 2026-11-06, unless a line says otherwise.
   held + or − repeating across Ctrl+Z would record a new step and drop the redo.
   The button halts until it goes up; a new press steps again (`Stepper`, so every
   stepper).
+
+### P11 decisions
+
+The plan, the spec's open questions OQ-25 to OQ-33 answered from legacy's
+source, and the order of the work are in
+[`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md).
+Decisions of 2026-11-13, to be confirmed by the product owner:
+
+- **Keep every, not Drop below level** (OQ-26). Legacy's *Drop* is the
+  solver's `solutionDrop`: keep only every n-th solution. There is no level
+  limit in the solver; the row says what it does.
+- **Sort found solutions by** maps onto the solver's own sorts (OQ-27):
+  Search order and Number of pieces are `SRT_UNSORT` (pieces through the
+  live sort), Level and Moves `SRT_LEVEL` / `SRT_COMPLETE_MOVES`, which at the
+  limit keep the most complex. Without the disassembly they fall back to
+  Search order, as AC-C19-03 says.
+- **Continue is enabled after Prepare** (OQ-29; the spec's table disables
+  it): legacy's Continue runs a prepared search, and Start would throw the
+  preparation away.
+- **Delete the disassembly keeps the level** (OQ-25): legacy's
+  `removeDisassembly()` turns a stored disassembly into its level, so D DA
+  and D A DA make solutions *level only*, not *not checked*.
+- **Cannot be disassembled is remembered for the session only**: the file
+  has no mark for an assembly an analysis could not take apart; after a
+  reload such assemblies read *not checked* again.
+- **Options per problem, for the session** (the spec says "with file"): the
+  file format has no place for them; a problem seen the first time checks the
+  disassembly when its stored solutions carry one, so a file's results show
+  as they were kept.
+- **The Solver's own problem**, adopted from the Puzzle workspace when the
+  Solver opens and nothing runs (legacy keeps a separate selector).
+- **The busy gate** is `DocumentController::busy`: every path that changes
+  or replaces the puzzle asks first and says "Stop the solver first" in the
+  status bar; quitting stops the solve as legacy's window does. The solver's
+  results go in through `editResults`.
+- **The scene** builds each piece's mesh once per solution and voxel style
+  and only moves them for a move position (`btui::SolutionScene`), so the
+  player redraws every frame. A wireframe piece is its hull's edges
+  (`btui::hullEdges`, from the flat faces whatever the voxel style) and a
+  6 % tint; Show through solid pieces draws them as the hover ghosts' lines
+  are drawn, off draws them depth-tested; back edges are fainter either way.
+  Heavier shapes stay still because the disassembler already moves the
+  lighter side (`movementAnalysator_c::newNode`), AC-C21-06.
+- **The explorer drawer** (OQ-28): Placements lists each piece with the
+  assembler's placements for it and the pieces the stepped state places;
+  Step and Run are C19's. Movements lists the selected disassembly piece by
+  piece and drives the player. Legacy's movement tree waits (deferred).
+- **Export Solution to STL** is the Export ▸ STL dialog in a solution mode:
+  the solution's shapes, the exporter's parameters and preview, a folder,
+  one file per shape (legacy's names), one overwrite question.
+- **The solver's keys** are claimed before window shortcuts
+  (`ShortcutOverride`) while the list, the solution slider, the seekbar or a
+  chip has the focus: otherwise PageDown or Space went to a window command.
+  Esc is the player's only while it plays (it pauses).
+
+Changed after the review of 2026-11-13 (the review's items, all fixed):
+
+- **Options follow their problem** through an edit that adds, removes or
+  moves problems (kept by the problem itself, not its row); an undo or redo
+  rebuilds the problems and forgets them, as does another document.
+- **An edit forgets the search state it no longer matches**: a prepared
+  search, the assembler's stepped state and the explorer drawer showing it,
+  "cannot be disassembled" marks and the progress floor.
+- **Quitting stops the solver first** (the window's close and the Quit
+  command alike), then asks about unsaved changes; the program's end and an
+  internal-error rescue stop it too.
+- **The list's empty states** say why: *Search not finished* after Prepare
+  or a stop before the first assembly, *No solutions kept* when all were
+  removed or Keep every dropped them; the 3D view's message follows.
+- **1000+ results:** the list rebuilds only when its rows change (one
+  `dataChanged` for the changed span), the scene of a slider drag is built
+  once a frame (`scrubTo`), delegates are reused, and a settings change
+  rebuilds the scene only when the voxel style or shape colours changed.
+- **Keyboard:** the sort headers are one Tab stop (Left/Right move, Space or
+  Enter sorts), the two mode cards a roving pair (Up/Down), a Run button that
+  greys out under the keys hands them on (Start to Stop, then Continue or
+  Start), the drawer closing gives them back to its button, the remove dialog
+  gives them back to the list. Chips show a 2 dp outer ring.
+- **Hidden chips** follow PR-30: the whole chip at 42 % opacity, grey, a
+  hollow dashed swatch. The faded label is below 4.5:1 by design (kept after
+  review, 2026-11-13); the keyboard ring stays at full strength, and the
+  name is in the tooltip and the accessible name.
+- **The delete preview** tints the rows with `dangerSoft` (a new colour
+  token, both themes) and strikes their text through.
+- **Undo and redo ask before they drop solutions** (decided 2026-11-14): the
+  history keeps no solutions (they can be large), so an undo or redo that
+  would empty a problem holding saved solutions or a running or finished
+  search asks first, under the session's one solutions warning
+  (`mayCostSolutions`), whose text now names undo and redo. The history
+  answers by a dry run of the same restore on a copy of the puzzle without
+  its solutions (`puzzleHistory_c::undoCostsSolutions`), made only when a
+  problem holds any. Keeping solutions on the redo stack was considered and
+  dropped for its memory.
+- **A colour rule no voxel falls under costs no solutions** (2026-11-14): an
+  undo or redo whose only change to a problem is in colour rules that none
+  of its pieces and result can be placed under (a rule matters only when a
+  piece has its piece colour and the result its result colour) restores the
+  rules and keeps the solutions. Undoing Add colour, which gives every
+  problem the new colour's own rule, used to empty every solved problem;
+  it now keeps them, and asks nothing. The legacy GUI shares the history and
+  gets the same.
 
 ## Spec review of the Entities workspace (2026-10-29)
 
