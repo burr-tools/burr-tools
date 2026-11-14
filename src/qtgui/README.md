@@ -35,6 +35,7 @@ it can replace it.
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
 | P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
+| — Puzzle review (2026-11-14) | The Puzzle tab against the spec: every AC of C16–C18 and those of C11, C15 and the density that name it, the element ids, the test plan's T-C16 … T-C18 | Done; findings in *Spec review of the Puzzle workspace* below |
 | P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle primitives | Done (third cut); decisions in *P10 decisions* |
 | P11 Solver | The Solver workspace | Next (see *Next phases*); its cards are placeholders |
 
@@ -1185,3 +1186,56 @@ spec's are parts of a specified component (headings, the colour menu's
 items, the Display menu's rows, focus rings) or of a decision listed
 above (`entities.editor.tool.area`, `entities.viewport.toolbar.handle`,
 `entities.fit.allShapes`).
+
+## Spec review of the Puzzle workspace (2026-11-14)
+
+The Puzzle tab -- C16, C17, C18, and AC-C11-02, AC-C11-04, AC-C15-03 and
+AC-DEN-02, which name it -- read against what is built on the third cut:
+each acceptance criterion against the code and the tests, the test plan's
+T-C16-1 … T-C18-4, and the contract's element ids (overview/06 §10)
+against the QML's `objectName`s.
+
+**Every criterion is met**, or changed by a recorded decision (*P10
+decisions*, the deferred table). The tests check most of them; the gaps
+are below.
+
+| AC | Built | Tested by | Note |
+| :--- | :--- | :--- | :--- |
+| C16-01 | P-ids by position; labels by double-click, the pencil and Enter (F2 stays Save, as C01); reorder by the grip renumbers; New, Duplicate, Delete as undo steps | `tst_puzzle` (reorder, Enter, the list's keys), `TestPuzzle::problemsAreAddedCopiedAndDeletedAsUndoSteps`, `test_ui_problemlist` | Double-click and the pencil are not driven by a test (QtTest's double-click, as C01) |
+| C16-02 | The Result card's "N voxels · can hold A–B", Change… with every shape, the piece menu's Set as result | `theResultIsNoPiece`, `test_theMenusAct` (opens it), uicore | |
+| C16-03 | Fixed tiles (96 x 44, a decision), the stepper always shown, 0 leaves | `test_tilesStepAndLeave`, `countsStepAndLeaveAtZero` | "Never moves other tiles" (T-C16-3) is not checked: the test reads the stepped tile's width only |
+| C16-04 | +, double-click and drag add; − at 1, the menu and a drag onto All pieces remove; the drop zone shown while dragging | `test_aChipDraggedInAddsAndATileDraggedOutRemoves`, `test_aLibraryChipAdds`, `test_aChipsMinusTakesOneAway` | The zone is solid, not dashed (deferred row). Double-click add and the menu's Remove are not driven by a test |
+| C16-05 | Chips and Table on the same model; a typed count after a pause | `test_theTableEditsTheSameData`, the field and GroupPicker tests | A table edit is checked in the model, not in the chips, scene and summary; switching back is not checked |
+| C16-06 | The summary's titles, totals and derived holes; the legacy status sentence | `theSummaryAndStatusSayTheTotals`, uicore | The file's hole limit is shown with a Clear (a decision) |
+| C16-07 | One selection, from a tile, a library chip, a table row, a 3D copy | `aClickSelectsAPieceNotTheResult`, `test_aRowsFieldSelectsItsPiece`, `test_aLibraryChipAdds` | No test checks that every view highlights the piece (T-C16-7's "all agree") |
+| C16-08 | Set range for all: Min ≥ 0, Max ≥ 1 and not below Min | `test_setRangeForAllAppliesFromItsDialog`, `test_setRangeTakesWhatIsTypedAtEnter`, uicore | The dialog raising Max with Min is in uicore's test, not the dialog's |
+| C17-01, 02 | One stepper; the switch shows Min and Max inside their boxes; min ≤ max; off keeps Max | `aRangeStaysOnShowWhileItsNumbersMeet`, `test_minAndMaxStayInTheirBoxes`, `aCancelledRangeLeavesTheSwitchOff` | |
+| C17-03 | Groups as the library has them: several per piece, a count each; the section always shown | `aPieceCanBeInSeveralGroups`, the GroupPicker tests, uicore | Changed on purpose (*P10 decisions*) |
+| C17-04 | The matrix, the three presets, rules per problem; no Default row | `theColourMatrixHasNoDefault`, uicore's presets, the keyboard tests | Cells 30 x 24 (a decision) |
+| C17-05 | No hole input; the file's limit shown, with a Clear | `theHoleLimitShowsAndClears` | The exception is a decision |
+| C18-01 | One object per copy, "k/N", optional copies see-through with dashed outlines and "(optional)" | `theSceneHasAnObjectPerCopy`, `test_ui_puzzlescene` | |
+| C18-02 | Each object turns about its own centre; frames stay; pan and zoom move the layout | `framesStayPutWhileTheObjectsTurn`, `panAndZoomMoveTheWholeLayout` | |
+| C18-03 | Hover frame, click selects every copy, the result not selectable | `aClickSelectsAPieceNotTheResult` | The hover frame is solid (deferred row) |
+| C18-04 | No Edit button, tool keys, slab, dim or overlays; the Display menu's Show items hidden | `test_theViewportHasNoEditing`, `tst_viewport` (the hint), the command table's `inEntities` | The Display menu's rows in Puzzle are not checked by a test |
+| C18-05 | Every voxel type's own geometry, from the Entities meshers | `test_ui_puzzlescene` ("every voxel type and style makes its scene") | Built per type, not drawn and looked at per type ("spheres touch") |
+| C11-02, 04 | Both Puzzle cards collapse to rails, per workspace | `tst_shell` (the Puzzle cards' columns) | The 960 dp test with both cards collapsed runs in Entities only |
+| C15-03 | The problem and piece kept across a switch: `PuzzleController` holds them | -- | No test switches away and back and checks them; `listsOnlyFollowWhileTheWorkspaceShows` checks the lists catch up |
+| DEN-02 | Three tiles a row, both densities | `test_theCardFollowsTheDensity` | |
+
+**Changed on purpose, not recorded until now.**
+
+| Item | Spec | Now |
+| :--- | :--- | :--- |
+| Element ids | overview/06 §10 names the mock's ids (`#pz-problems`, `.ut[data-u]`, `.mxc[data-i][data-j]` …), and the implementation guide wants them as `objectName`s | The dotted ids of the Entities tab's form, one for each: `puzzle.problems.list` / `.new`, `puzzle.result` / `puzzle.goal.result.change`, `puzzle.used` with `.tile.<i>` and `.row.<i>`, `puzzle.used.view` / `.more`, `puzzle.library.header` / `.chip.<i>`, `puzzle.summary`, `puzzle.piece.rangeSwitch` / `.min` / `.max` / `.group.<g>`, `puzzle.section.groups`, `puzzle.rules.cell.<piece>.<result>` (by colour name, not index) and `.identity` / `.all` / `.clear` |
+| The selected piece's fixed count | C17: the label "Copies in the puzzle", a 150 dp stepper, "Fixed count" under it | One line, "Copies, fixed count" ("Not in this puzzle" at 0), beside a 112 dp stepper, as the card's other rows |
+
+**Still open, knowingly.** The test gaps in the table above, and the
+deferred rows: dashed frames and drop zones, see-through copies' sorting,
+the library chip's small buttons, the macOS references, Puzzle changes
+keeping their solutions for undo, the matrix at many colours and the
+scene's one mesh.
+
+**Added unintentionally.** None found. The ids beyond the contract's are
+parts of a specified component (the rails, the sections, the menus, the
+Set range dialog, the axis names and the cell readout of the matrix) or of
+a decision listed above (`puzzle.summary.holeLimit`, `puzzle.dragGhost`).
