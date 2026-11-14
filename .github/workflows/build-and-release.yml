@@ -6,12 +6,15 @@ on:
       - master
     tags:
       - 'v*.*.*'
-  # edited: for a change of the PR's base (the changes job decides). A
-  # retarget changes what the gates below decide -- a PR that moves to
-  # master must run the sanitizers -- and without it the PR would keep the
-  # checks of its old base, its skipped jobs counting as passed.
+  # Not `edited`: that event is also every edit of a PR's title or
+  # description, whose run skipped every job under the jobs' own names and
+  # so hid the real run's checks for the same commit, a failure included
+  # (skipped counts as passed). A change of the PR's base -- which changes
+  # what the gates below decide: a PR that moves to master must run the
+  # sanitizers -- is pr-base-changed.yml's: it starts this workflow by hand
+  # on the PR's branch.
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -30,13 +33,8 @@ permissions:
 # result matters. What is lost is which of those merges broke master, if one
 # did. A manual run of master is in the same group. Tags have a group each
 # (the ref), so a release run is never cancelled by a push.
-#
-# An edit of a PR's title or description starts a run too (`edited` covers
-# title, body and base, and the trigger cannot tell them apart). That run
-# gets a group of its own, so it cancels nothing; every job then skips, as
-# they all need the changes job, which runs only for a changed base.
 concurrency:
-  group: ${{ github.workflow }}-${{ (github.event.action == 'edited' && !github.event.changes.base) && github.run_id || github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -234,7 +232,8 @@ jobs:
     # Not in the middle of a stack: 15-33 minutes on each of its PRs, for
     # memory errors that are rare and still caught before the stack merges,
     # when its bottom PR targets master (into_default, see changes; a PR
-    # retargeted to master runs again), or on master itself.
+    # retargeted to master runs again: pr-base-changed.yml), or on master
+    # itself.
     if: needs.changes.outputs.into_default == 'true' && (needs.changes.outputs.core == 'true' || needs.changes.outputs.qt == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -343,13 +342,8 @@ jobs:
   # GUI's, those inputs can be listed exactly. (test_envvars also scans
   # src/gui, src/qtgui, scripts and bench; the build jobs, which always run,
   # run it too.)
-  #
-  # Every job needs this one, which skips for an edit that leaves the base
-  # alone (see the trigger and the concurrency group at the top), so such
-  # an edit runs nothing.
   changes:
     name: Detect changed areas
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     permissions:
       contents: read
