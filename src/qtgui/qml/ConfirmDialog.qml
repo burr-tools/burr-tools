@@ -9,8 +9,8 @@ import BurrTools.Ui
 //
 // Wireframe (each number marks its code below):
 //
-//   ┌ Edits remove stored solutions ────────────┐
-//   │ ① This edit removes the stored solutions  │
+//   ┌ Changes remove stored solutions ──────────┐
+//   │ ① This change removes the stored solutions│
 //   │   of the problems it touches ...          │
 //   ├───────────────────────────────────────────┤
 //   │ ②                   [Cancel] [Continue]   │

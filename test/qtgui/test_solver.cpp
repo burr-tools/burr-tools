@@ -721,3 +721,47 @@ void TestSolver::quittingStopsTheSolverFirst() {
   QVERIFY(!d->busy());
   QCOMPARE(refused.count(), 0);
 }
+
+void TestSolver::anUndoThatCostsSolutionsAsksOnceASession() {
+  // the history keeps no solutions: an undo or redo that would drop some asks
+  // first, under the session's one warning; Cancel leaves everything as it was
+  SolverFixture f;
+  DocumentController * d = f.app->document();
+  QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
+  const unsigned int shape = f.problem().getShapeIdOfPart(0);
+  const unsigned int max = f.problem().getShapeMaximum(shape);
+  const auto setMax = [&](unsigned int m) {
+    return d->editStructure(-1, [&](puzzle_c & p) { p.getProblem(0)->setShapeMaximum(shape, m); return true; });
+  };
+  QVERIFY(setMax(max + 1));
+  QVERIFY(setMax(max));                           // back as it was, two steps on
+
+  d->undo();                                      // nothing at stake: no question
+  d->redo();
+  QCOMPARE(asked.count(), 0);
+  QCOMPARE(f.problem().getShapeMaximum(shape), max);
+
+  QVERIFY(f.solve(false));
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 12);
+  d->undo();
+  QCOMPARE(asked.count(), 1);
+  QCOMPARE(f.problem().getShapeMaximum(shape), max);         // nothing yet
+  d->resolveSolutionsWarning(false);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 12);
+  QCOMPARE(f.solver()->shownCount(), 12);
+  QVERIFY(!d->solutionsWarned());
+
+  d->undo();
+  QCOMPARE(asked.count(), 2);
+  d->resolveSolutionsWarning(true);
+  QCOMPARE(f.problem().getShapeMaximum(shape), max + 1);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+
+  // told once: a redo, a solve and an undo that costs them just go
+  d->redo();
+  QVERIFY(f.solve(false));
+  d->undo();
+  QCOMPARE(asked.count(), 2);
+  QCOMPARE(f.problem().getShapeMaximum(shape), max + 1);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+}

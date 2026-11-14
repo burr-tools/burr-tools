@@ -813,8 +813,8 @@ ApplicationWindow {
                       qsTr("This edit removes the stored solutions of the problems it touches. Undo usually brings them back, but these are too large to keep in memory, so they are lost, and saving then removes them from the file. Solving the problem again finds them."),
                       qsTr("Continue"))
             else
-                d.ask(qsTr("Edits remove stored solutions"),
-                      qsTr("This edit removes the stored solutions of the problems it touches, and saving then removes them from the file. Solving the problem again finds them; Undo does not bring them back.\n\nThis warning appears once a session. Later edits like it remove solutions without asking."),
+                d.ask(qsTr("Changes remove stored solutions"),
+                      qsTr("This change removes the stored solutions of the problems it touches, and saving then removes them from the file. Solving the problem again finds them; Undo and Redo do not bring them back.\n\nThis warning appears once a session. Later edits, undos and redos like it remove solutions without asking."),
                       qsTr("Continue"))
         }
     }

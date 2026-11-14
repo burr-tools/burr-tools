@@ -108,9 +108,14 @@ TestCase {
         compare(item("entities.editor.colour.name").text, "C1")
         verify(swatch(1).selected)
         verify(!swatch(0).selected)
-        // one undo step
+        // one undo step; it takes back the colour's own placement rule too,
+        // which no voxel falls under: the stored solution stays, no warning
+        App.document.solutionsWarned = false
         App.document.undo()
         compare(App.colours.count, 1)
+        const dialog = findChild(win, "shell.solutionsDialog")
+        verify(dialog === null || !dialog.opened)
+        verify(!App.document.solutionsWarned)
         compare(item("entities.editor.colour.name").text, "Default")
     }
 

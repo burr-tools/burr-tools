@@ -39,6 +39,7 @@ private slots:
   void scrubbingSelectsAtOnceAndDrawsOnceAFrame();
   void theExplorerClosesWhenTheSelectionCannotShowIt();
   void quittingStopsTheSolverFirst();
+  void anUndoThatCostsSolutionsAsksOnceASession();
 };
 
 #endif

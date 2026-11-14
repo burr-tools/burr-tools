@@ -383,6 +383,9 @@ void DocumentController::undo(void) {
   guarded([&] {
     if (!m_session.canUndo() || refuseWhileBusy())
       return;
+    // the history keeps no solutions: the session's one warning first
+    if (!mayCostSolutions(m_session.undoCostsSolutions(), [this] { undo(); }))
+      return;
     emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
     auto r = m_session.undo();
@@ -397,6 +400,8 @@ void DocumentController::undo(void) {
 void DocumentController::redo(void) {
   guarded([&] {
     if (!m_session.canRedo() || refuseWhileBusy())
+      return;
+    if (!mayCostSolutions(m_session.redoCostsSolutions(), [this] { redo(); }))
       return;
     emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
