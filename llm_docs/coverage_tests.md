@@ -45,6 +45,7 @@ For running filtered or verbose test cases directly:
 
 For sanitizer builds when diagnosing memory corruption or concurrency issues:
 ```bash
-just build-asan     # AddressSanitizer & UndefinedBehaviorSanitizer
+just test-asan      # AddressSanitizer & UndefinedBehaviorSanitizer over test_burrtools (when to run: verification.md)
+just test-asan-qt   # the same over the Qt GUI's suites
 just build-tsan     # ThreadSanitizer (critical for solver data races)
 ```
