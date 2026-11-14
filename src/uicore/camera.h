@@ -23,6 +23,8 @@
 
 #include "vecmath.h"
 
+#include <algorithm>
+
 /* The 3D view's camera (spec C06 navigation, C13 view cube).
  *
  * The camera orbits a target -- the centre of what is shown -- at a distance
@@ -98,6 +100,12 @@ namespace btui {
       Mat4 viewMatrix(void) const;
       Mat4 projectionMatrix(void) const;
       void clipPlanes(float * zNear, float * zFar) const;
+
+      /* How far content may reach beyond the framed sphere along the view
+       * axis, in world units: the clip planes take it in, the framing does
+       * not (the Solver's pieces leaving the assembly, C21). 0 by default. */
+      void setDepthReach(float reach) { depthReach = std::max(0.0f, reach); }
+      float depthReachValue(void) const { return depthReach; }
 
       /* world units per dp at the target's depth */
       float worldPerDp(void) const;
@@ -175,6 +183,7 @@ namespace btui {
       float vw = 800, vh = 600;
       Vec3 centre;
       float radius = 1;
+      float depthReach = 0;             ///< setDepthReach
       Projection proj = Projection::Perspective;
       RotationMethod method = RotationMethod::Drag;
 
