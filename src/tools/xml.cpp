@@ -22,6 +22,8 @@
 
 #include <string.h>
 
+#include <charconv>
+#include <cmath>
 #include <locale>
 #include <sstream>
 
@@ -1185,26 +1187,23 @@ void xmlParser_c::skipSubTree()
 
 
 std::string xmlDouble(double value) {
-  /* the fewest digits from 10 up that read back as exactly this value;
-   * streams rather than std::to_chars, whose double overload macOS's
-   * libc++ has only from 13.3 on (see vectorexport.cpp) */
-  std::string text;
-  for (int digits = 10; digits <= 17; digits++) {
-    std::ostringstream out;
-    out.imbue(std::locale::classic());
-    out.precision(digits);
-    out << value;
-    text = out.str();
-    double back;
-    if (xmlParseDouble(text, &back) && back == value)
-      break;
-  }
-  return text;
+  /* the shortest text that reads back as exactly this value, independent
+   * of the C locale */
+  char buf[32];   // the longest shortest double, "-2.2250738585072014e-308", is 24
+  return std::string(buf, std::to_chars(buf, buf + sizeof(buf), value).ptr);
 }
 
 bool xmlParseDouble(const std::string & text, double * value) {
+  /* the whole text one finite number: from_chars takes "inf" and "nan",
+   * which no attribute written with xmlDouble holds */
+  /* std::from_chars for double needs macOS 26, so read with a stream pinned
+   * to the classic locale */
+  if (text.empty() || std::isspace(static_cast<unsigned char>(text[0]))) return false;
   std::istringstream in(text);
   in.imbue(std::locale::classic());
-  in >> *value;
-  return !text.empty() && !in.fail() && in.peek() == std::char_traits<char>::eof();
+  double v;
+  in >> v;
+  if (in.fail() || in.peek() != std::char_traits<char>::eof() || !std::isfinite(v)) return false;
+  *value = v;
+  return true;
 }
