@@ -34,6 +34,7 @@
 #include <vector>
 
 class voxel_c;
+class gridType_c;
 class puzzle_c;
 class problem_c;
 class assembly_c;
@@ -203,6 +204,13 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     assembly_c * curAssembly; // the currently shown assembly (if there is one)
 
+    /* For disassemblies with rotation moves: every piece entry's untransformed
+     * shape and the orientation its mesh currently has, so updatePositions()
+     * can re-orient pieces. Empty when no assembly is shown. */
+    const gridType_c * entryGrid = nullptr;
+    std::vector<const voxel_c *> entryBase;
+    std::vector<int> entryOrient;
+
     /* Draws the voxelspace. */
     void drawVoxelSpace();
 
@@ -262,6 +270,13 @@ class voxelFrame_c : public Fl_Gl_Window {
       /* the hotspot in drawing units; CenterTranslateRoateScale positions the
        * entry by it. A mesh has none. */
       float hot[3] = { 0.0f, 0.0f, 0.0f };
+
+      /* a piece in the middle of a rotation move, see piecePositions_c::turn_t */
+      bool turning = false;
+      float turnAngle = 0.0f;
+      unsigned int turnAxis = 0;
+      float turnPivot[3] = { 0.0f, 0.0f, 0.0f };
+      float turnShift[3] = { 0.0f, 0.0f, 0.0f };
 
     };
 
