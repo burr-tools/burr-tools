@@ -26,6 +26,13 @@
   `Popup`'s rows need a frame to be laid out before a test clicks them.
 - Collapsing is per workspace: a test that collapses a card in Puzzle resets
   it there, before leaving for Entities.
+- A TapHandler never sees TestCase's double-click (`mouseDoubleClick`,
+  `mouseDoubleClickSequence`, two `mouseClick`s): QtTest moves its clock a
+  double-click interval on after each release, so every press is a first tap.
+  Use `Snapshots.doubleClick(item, x, y)` (`import BurrTools.Test`): two presses
+  10 ms apart on QtTest's clock, a gap on each side. A delegate rebuilt by the
+  first click (a library chip that gained a count) is found again before the
+  second.
 - The Qt Quick message dialogs are in-window and modal on Windows and Linux:
   count them in `modalOpen`, and dismiss them in tests.
 - A C++ enum whose values do not count up from 0 reads as `undefined` in

@@ -59,6 +59,11 @@ public:
   /* the grab's size in device pixels, and the window's device-pixel ratio */
   Q_INVOKABLE QSize grabSize(QQuickItem * item) const;
   Q_INVOKABLE qreal ratio(QQuickItem * item) const;
+
+  /* A double-click at x, y (dp, in the item's own coordinates), as a person
+   * makes one: two presses 10 ms apart. A TapHandler's doubleTapped needs
+   * that; TestCase's mouseDoubleClickSequence leaves each press a first tap. */
+  Q_INVOKABLE void doubleClick(QQuickItem * item, qreal x, qreal y) const;
 };
 
 #endif

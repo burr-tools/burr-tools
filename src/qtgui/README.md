@@ -60,7 +60,6 @@ below, lists them per phase).
 | — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 (the solver's progress: P11) |
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
-| Double-click to rename, tested | AC-C01-03 | QtTest's double-click reaches a TapHandler as two single taps, so `tst_shapes` opens the field where the handler does instead of through the gesture; the colour swatches use a MouseArea, whose double-click QtTest can send -- the row could too, beside its DragHandler | P8 |
 | QML left to the JavaScript engine | `qtgui_qml_aot` | P2–P6's QML was measured only with Qt 6.12 locally, where the report does not compare; on CI's 6.11 it left 731 bindings to the engine against the first cut's 441 (the baseline, raised 2026-10-29 to what is), 757 with the roving Tab stops (2026-10-29): a QML type's members "can be shadowed" and Qt 6.8 has no `final` properties, so each `roving.` lookup in ActionButton and GlyphButton and RovingFocus's own arrays stay with the engine -- a C++ RovingFocus (FINAL properties) would compile them. The rest is typing work: `QVariantMap` / `var` data read by property (the inspector's buttons, the tools' and planes' models -- typed C++ value types or `required` properties), colour bindings 6.11 cannot populate, fonts read as `double` into `int` pixel sizes, untyped functions. Biggest: Inspector 107, VoxelEditorCard 83, Main 71, ShapesCard 33 | P8 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape, colour and problem edits change data an assembler reads; nothing in the new GUI solves yet. A gate in `DocumentController::edit` alone is too narrow: `strokeEdit`, undo and redo, and replacing the document go round it, and each must be refused while a solve runs. `PuzzleController::apply` goes through `edit`. The solution counts the lists read need the solver's lock then too | P11 |
@@ -609,7 +608,8 @@ moves to a later phase says why in that table.
   contrast, progress and errors announced, lists by keyboard, small items
   -- and the screen reader and real-system checks (the shape row's
   actions, the P2 / P3 lists and menus, the accessibility tree); the
-  double-click rename test; command enabled-state bumps.
+  double-click rename test (done 2026-11-14: `Snapshots.doubleClick`);
+  command enabled-state bumps.
 
 - **After the spec is done:** improvements beyond it, once P8 is through:
   [Ideas for after the redesign](#ideas-for-after-the-redesign) below.
@@ -1196,19 +1196,21 @@ T-C16-1 … T-C18-4, and the contract's element ids (overview/06 §10)
 against the QML's `objectName`s.
 
 **Every criterion is met**, or changed by a recorded decision (*P10
-decisions*, the deferred table). The tests check most of them; the gaps
-are below.
+decisions*, the deferred table). The review found parts of ten left
+unchecked by the tests; each has a test since (the Note column).
+`Snapshots.doubleClick` (the QML tests' C++ helper) makes a double-click a
+TapHandler takes as one: TestCase's own leaves each press a first tap.
 
 | AC | Built | Tested by | Note |
 | :--- | :--- | :--- | :--- |
-| C16-01 | P-ids by position; labels by double-click, the pencil and Enter (F2 stays Save, as C01); reorder by the grip renumbers; New, Duplicate, Delete as undo steps | `tst_puzzle` (reorder, Enter, the list's keys), `TestPuzzle::problemsAreAddedCopiedAndDeletedAsUndoSteps`, `test_ui_problemlist` | Double-click and the pencil are not driven by a test (QtTest's double-click, as C01) |
+| C16-01 | P-ids by position; labels by double-click, the pencil and Enter (F2 stays Save, as C01); reorder by the grip renumbers; New, Duplicate, Delete as undo steps | `tst_puzzle` (reorder, Enter, the list's keys), `TestPuzzle::problemsAreAddedCopiedAndDeletedAsUndoSteps`, `test_ui_problemlist` | Double-click and pencil: `test_aProblemRenamesByDoubleClickAndByThePencil` (since the review) |
 | C16-02 | The Result card's "N voxels · can hold A–B", Change… with every shape, the piece menu's Set as result | `theResultIsNoPiece`, `test_theMenusAct` (opens it), uicore | |
-| C16-03 | Fixed tiles (96 x 44, a decision), the stepper always shown, 0 leaves | `test_tilesStepAndLeave`, `countsStepAndLeaveAtZero` | "Never moves other tiles" (T-C16-3) is not checked: the test reads the stepped tile's width only |
-| C16-04 | +, double-click and drag add; − at 1, the menu and a drag onto All pieces remove; the drop zone shown while dragging | `test_aChipDraggedInAddsAndATileDraggedOutRemoves`, `test_aLibraryChipAdds`, `test_aChipsMinusTakesOneAway` | The zone is solid, not dashed (deferred row). Double-click add and the menu's Remove are not driven by a test |
-| C16-05 | Chips and Table on the same model; a typed count after a pause | `test_theTableEditsTheSameData`, the field and GroupPicker tests | A table edit is checked in the model, not in the chips, scene and summary; switching back is not checked |
+| C16-03 | Fixed tiles (96 x 44, a decision), the stepper always shown, 0 leaves | `test_tilesStepAndLeave`, `countsStepAndLeaveAtZero` | Neighbours: `test_aCountChangeMovesNoOtherTile`, held presses too (since the review) |
+| C16-04 | +, double-click and drag add; − at 1, the menu and a drag onto All pieces remove; the drop zone shown while dragging | `test_aChipDraggedInAddsAndATileDraggedOutRemoves`, `test_aLibraryChipAdds`, `test_aChipsMinusTakesOneAway` | The zone is solid, not dashed (deferred row). Double-click add and the menu's Remove: `test_aDoubleClickAddsAndTheMenuRemoves` (since the review) |
+| C16-05 | Chips and Table on the same model; a typed count after a pause | `test_theTableEditsTheSameData`, the field and GroupPicker tests | The chips, scene and summary, and switching back: `test_aTableEditReachesTheChipsTheSceneAndTheSummary` (since the review) |
 | C16-06 | The summary's titles, totals and derived holes; the legacy status sentence | `theSummaryAndStatusSayTheTotals`, uicore | The file's hole limit is shown with a Clear (a decision) |
-| C16-07 | One selection, from a tile, a library chip, a table row, a 3D copy | `aClickSelectsAPieceNotTheResult`, `test_aRowsFieldSelectsItsPiece`, `test_aLibraryChipAdds` | No test checks that every view highlights the piece (T-C16-7's "all agree") |
-| C16-08 | Set range for all: Min ≥ 0, Max ≥ 1 and not below Min | `test_setRangeForAllAppliesFromItsDialog`, `test_setRangeTakesWhatIsTypedAtEnter`, uicore | The dialog raising Max with Min is in uicore's test, not the dialog's |
+| C16-07 | One selection, from a tile, a library chip, a table row, a 3D copy | `aClickSelectsAPieceNotTheResult`, `test_aRowsFieldSelectsItsPiece`, `test_aLibraryChipAdds` | Every view agrees: `test_aSelectionShowsInEveryView` (since the review) |
+| C16-08 | Set range for all: Min ≥ 0, Max ≥ 1 and not below Min | `test_setRangeForAllAppliesFromItsDialog`, `test_setRangeTakesWhatIsTypedAtEnter`, uicore | The dialog itself: `test_setRangeRaisesMaxWithMin` (since the review) |
 | C17-01, 02 | One stepper; the switch shows Min and Max inside their boxes; min ≤ max; off keeps Max | `aRangeStaysOnShowWhileItsNumbersMeet`, `test_minAndMaxStayInTheirBoxes`, `aCancelledRangeLeavesTheSwitchOff` | |
 | C17-03 | Groups as the library has them: several per piece, a count each; the section always shown | `aPieceCanBeInSeveralGroups`, the GroupPicker tests, uicore | Changed on purpose (*P10 decisions*) |
 | C17-04 | The matrix, the three presets, rules per problem; no Default row | `theColourMatrixHasNoDefault`, uicore's presets, the keyboard tests | Cells 30 x 24 (a decision) |
@@ -1216,10 +1218,10 @@ are below.
 | C18-01 | One object per copy, "k/N", optional copies see-through with dashed outlines and "(optional)" | `theSceneHasAnObjectPerCopy`, `test_ui_puzzlescene` | |
 | C18-02 | Each object turns about its own centre; frames stay; pan and zoom move the layout | `framesStayPutWhileTheObjectsTurn`, `panAndZoomMoveTheWholeLayout` | |
 | C18-03 | Hover frame, click selects every copy, the result not selectable | `aClickSelectsAPieceNotTheResult` | The hover frame is solid (deferred row) |
-| C18-04 | No Edit button, tool keys, slab, dim or overlays; the Display menu's Show items hidden | `test_theViewportHasNoEditing`, `tst_viewport` (the hint), the command table's `inEntities` | The Display menu's rows in Puzzle are not checked by a test |
-| C18-05 | Every voxel type's own geometry, from the Entities meshers | `test_ui_puzzlescene` ("every voxel type and style makes its scene") | Built per type, not drawn and looked at per type ("spheres touch") |
-| C11-02, 04 | Both Puzzle cards collapse to rails, per workspace | `tst_shell` (the Puzzle cards' columns) | The 960 dp test with both cards collapsed runs in Entities only |
-| C15-03 | The problem and piece kept across a switch: `PuzzleController` holds them | -- | No test switches away and back and checks them; `listsOnlyFollowWhileTheWorkspaceShows` checks the lists catch up |
+| C18-04 | No Edit button, tool keys, slab, dim or overlays; the Display menu's Show items hidden | `test_theViewportHasNoEditing`, `tst_viewport` (the hint), the command table's `inEntities` | The Display menu: `test_theDisplayMenuHoldsOnlyProjectionAndColour` (since the review) |
+| C18-05 | Every voxel type's own geometry, from the Entities meshers | `test_ui_puzzlescene` ("every voxel type and style makes its scene") | Drawn per type: `TestPuzzle::everyVoxelTypeDrawsItsScene`; spheres touch: `test_ui_scenemesh` (since the review) |
+| C11-02, 04 | Both Puzzle cards collapse to rails, per workspace | `tst_shell` (the Puzzle cards' columns) | The 960 dp test with both cards collapsed runs in Puzzle too (since the review) |
+| C15-03 | The problem and piece kept across a switch: `PuzzleController` holds them | `tst_puzzle` | `test_aWorkspaceSwitchKeepsTheProblemAndThePiece` (since the review) |
 | DEN-02 | Three tiles a row, both densities | `test_theCardFollowsTheDensity` | |
 
 **Changed on purpose, not recorded until now.**
@@ -1229,8 +1231,7 @@ are below.
 | Element ids | overview/06 §10 names the mock's ids (`#pz-problems`, `.ut[data-u]`, `.mxc[data-i][data-j]` …), and the implementation guide wants them as `objectName`s | The dotted ids of the Entities tab's form, one for each: `puzzle.problems.list` / `.new`, `puzzle.result` / `puzzle.goal.result.change`, `puzzle.used` with `.tile.<i>` and `.row.<i>`, `puzzle.used.view` / `.more`, `puzzle.library.header` / `.chip.<i>`, `puzzle.summary`, `puzzle.piece.rangeSwitch` / `.min` / `.max` / `.group.<g>`, `puzzle.section.groups`, `puzzle.rules.cell.<piece>.<result>` (by colour name, not index) and `.identity` / `.all` / `.clear` |
 | The selected piece's fixed count | C17: the label "Copies in the puzzle", a 150 dp stepper, "Fixed count" under it | One line, "Copies, fixed count" ("Not in this puzzle" at 0), beside a 112 dp stepper, as the card's other rows |
 
-**Still open, knowingly.** The test gaps in the table above, and the
-deferred rows: dashed frames and drop zones, see-through copies' sorting,
+**Still open, knowingly.** The deferred rows: dashed frames and drop zones, see-through copies' sorting,
 the library chip's small buttons, the macOS references, Puzzle changes
 keeping their solutions for undo, the matrix at many colours and the
 scene's one mesh.

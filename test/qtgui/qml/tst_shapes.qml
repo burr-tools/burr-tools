@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtTest
 import BurrTools.Ui
+import BurrTools.Test
 
 // The Shapes card (C01) through the real Main.qml: the row's actions, inline
 // rename, the list's keys, the context menu, drag to reorder, the rail's +
@@ -199,12 +200,12 @@ TestCase {
         App.shapes.select(1)
         waitForRendering(win.contentItem)
         // A double-click opens it (the row's TapHandler: onDoubleTapped ->
-        // startRename). QtTest's double-click reaches a TapHandler as two single
-        // taps -- their timestamps are too far apart -- and its doubleTapped
-        // cannot be sent from QML (a QEventPoint argument), so the test starts
-        // where that handler goes; Enter, below, starts it by the real key.
+        // startRename): Snapshots.doubleClick, two presses 10 ms apart, as
+        // TestCase's own double-click leaves each press a first tap
         verify(findChild(r, "entities.shapes.row.1.tap") !== null)
-        list().startRename(1)
+        const at = findChild(r, "entities.shapes.row.1.label")
+        verify(at !== null)
+        Snapshots.doubleClick(at, 4, at.height / 2)
         let field = null
         tryVerify(() => (field = findChild(r, "entities.shapes.row.1.labelField")) !== null && field.activeFocus, 1000)
         field.text = "Arm"

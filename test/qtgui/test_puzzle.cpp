@@ -744,6 +744,48 @@ void TestPuzzle::theSceneDrawsEachObjectInItsFrame() {
   check();
 }
 
+void TestPuzzle::everyVoxelTypeDrawsItsScene_data() {
+  QTest::addColumn<int>("type");
+  QTest::newRow("bricks") << int(gridType_c::GT_BRICKS);
+  QTest::newRow("prisms") << int(gridType_c::GT_TRIANGULAR_PRISM);
+  QTest::newRow("spheres") << int(gridType_c::GT_SPHERES);
+  QTest::newRow("rhombic") << int(gridType_c::GT_RHOMBIC);
+  QTest::newRow("tetra-octa") << int(gridType_c::GT_TETRA_OCTA);
+}
+
+void TestPuzzle::everyVoxelTypeDrawsItsScene() {
+  // AC-C18-05, T-C18-4: each voxel type's scene drawn, every object where its frame is
+  QFETCH(int, type);
+  PuzzleFixture f;
+  f.app->document()->newDocument(type);
+  f.app->document()->editStructure(0, [&](puzzle_c & p) {
+    for (unsigned k = 0; k < 2; k++) {
+      const unsigned i = p.addShape(4 - k, 4 - k, 4 - k);
+      voxel_c * s = p.getShape(i);
+      for (unsigned z = 0; z < s->getZ(); z++)
+        for (unsigned y = 0; y < s->getY(); y++)
+          for (unsigned x = 0; x < s->getX(); x++)
+            if (s->validCoordinate(int(x), int(y), int(z)))
+              s->setState(x, y, z, voxel_c::VX_FILLED);
+    }
+    return true;
+  });
+  f.puzzle()->newProblem();
+  f.puzzle()->stepPiece(1, 2);
+  f.puzzle()->selectPiece(1);
+  f.flush();
+  QCOMPARE(f.viewport()->sceneObjects()->count(), 4);      // the result, Selected, two copies
+  OffscreenRenderer renderer{ OffscreenRenderer::Backend::Software };
+  GPU_OR_SKIP(renderer.isValid());
+  const SceneFrame frame = f.viewport()->frame(1);
+  const QImage img = renderer.render(frame, QSize(800, 800));
+  QVERIFY(!img.isNull());
+  for (int i = 0; i < f.viewport()->sceneObjects()->count(); i++) {
+    const QPoint at = f.frameCentre(i).toPoint();
+    QVERIFY2(img.pixelColor(at) != frame.clear, qPrintable(QStringLiteral("nothing drawn at object %1").arg(i)));
+  }
+}
+
 void TestPuzzle::theCameraGoesBackToTheShapeInEntities() {
   PuzzleFixture f;
   f.puzzle()->stepPiece(1, 4);

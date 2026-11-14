@@ -39,6 +39,8 @@ private slots:
   void framesStayPutWhileTheObjectsTurn();
   void panAndZoomMoveTheWholeLayout();
   void theSceneDrawsEachObjectInItsFrame();
+  void everyVoxelTypeDrawsItsScene_data();
+  void everyVoxelTypeDrawsItsScene();
   void theCameraGoesBackToTheShapeInEntities();
   void piecesAndProblemsKeysWorkOnlyInPuzzle();
   void aChangeThatChangesNothingDoesNotWarn();

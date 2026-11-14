@@ -6,6 +6,7 @@
 #include <QFileInfo>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QTest>
 #include <QtGlobal>
 
 #include <algorithm>
@@ -193,4 +194,15 @@ QSize Snapshots::grabSize(QQuickItem * item) const {
 
 qreal Snapshots::ratio(QQuickItem * item) const {
   return item && item->window() ? item->window()->effectiveDevicePixelRatio() : 1.0;
+}
+
+void Snapshots::doubleClick(QQuickItem * item, qreal x, qreal y) const {
+  if (!item || !item->window())
+    return;
+  const QPoint at = item->mapToScene(QPointF(x, y)).toPoint();
+  /* QTest's clock moves only with its events: without a gap a second double-
+   * click would be the third and fourth taps of the first */
+  QTest::lastMouseTimestamp += 2 * QTest::mouseDoubleClickInterval;
+  QTest::mouseDClick(item->window(), Qt::LeftButton, Qt::NoModifier, at, 10);
+  QTest::lastMouseTimestamp += 2 * QTest::mouseDoubleClickInterval;
 }

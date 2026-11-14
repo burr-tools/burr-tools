@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtTest
 import BurrTools.Ui
+import BurrTools.Test
 
 // The Puzzle workspace through the real Main.qml: the cards, the rails, the
 // labelled colour matrix, the keys and the density (test plan T-C16, T-C17).
@@ -1481,5 +1482,222 @@ TestCase {
         compare(findChild(win.contentItem, "entities.viewport.toolbar.edit").visible, false)
         verify(item("puzzle.viewport.hint").visible)
         verify(!item("entities.viewport.hint.tools").visible)
+    }
+
+    // --- the gaps the spec review of 2026-11-14 found ---------------------------
+
+    // AC-C16-01: a double-click and the pencil rename too, as Enter does
+    function test_aProblemRenamesByDoubleClickAndByThePencil() {
+        waitForRendering(win.contentItem)
+        const row = item("puzzle.problems.row.0")
+        Snapshots.doubleClick(row, 60, row.height / 2)
+        let field = null
+        tryVerify(() => (field = findChild(win.contentItem, "puzzle.problems.row.0.labelField")) !== null
+                        && field.activeFocus, 1000)
+        keyClick(Qt.Key_Escape)
+        tryVerify(() => findChild(win.contentItem, "puzzle.problems.row.0.labelField") === null, 1000)
+
+        problemActionsReady(0)                      // row 0 is selected: its actions show
+        mouseClick(item("puzzle.problems.row.0.rename"))
+        tryVerify(() => (field = findChild(win.contentItem, "puzzle.problems.row.0.labelField")) !== null
+                        && field.activeFocus, 1000)
+        keyClick(Qt.Key_A)
+        keyClick(Qt.Key_Return)
+        tryVerify(() => App.puzzle.problems.value(0, "label").toLowerCase() === "a", 1000)
+    }
+
+    // AC-C16-03, T-C16-3: + and − change one tile and move no other
+    function test_aCountChangeMovesNoOtherTile() {
+        for (const shape of [1, 2, 3])
+            App.puzzle.stepPiece(shape, 1)
+        waitForRendering(win.contentItem)
+        const tile = item("puzzle.used.tile.1")
+        const where = name => {
+            const t = item(name)
+            const p = t.mapToItem(win.contentItem, 0, 0)
+            return [p.x, p.y, t.width, t.height].join(",")
+        }
+        const others = ["puzzle.used.tile.2", "puzzle.used.tile.3"]
+        const before = others.map(where)
+        const own = [tile.width, tile.height].join(",")
+        mouseMove(tile, tile.width / 2, tile.height / 2)
+        for (let i = 0; i < 2; i++) {
+            mouseClick(tile.plusButton)
+            compare(others.map(where), before, "after + " + (i + 1))
+            compare([tile.width, tile.height].join(","), own)
+        }
+        compare(App.puzzle.copiesOf(1), 3)
+        compare(App.puzzle.pieces.value(0, "countText"), "×3")
+        mousePress(tile.minusButton)                // held down: nothing moves either
+        compare(others.map(where), before, "while pressed")
+        mouseRelease(tile.minusButton)
+        mouseClick(tile.minusButton)
+        compare(others.map(where), before)
+        mouseClick(tile.minusButton)               // 3 → 0: the tile leaves
+        tryVerify(() => findChild(win.contentItem, "puzzle.used.tile.1") === null, 1000)
+        compare(App.puzzle.pieces.count, 2)
+    }
+
+    // AC-C16-04: a double-click adds one, a piece present gains one; the menu's Remove takes it out
+    function test_aDoubleClickAddsAndTheMenuRemoves() {
+        waitForRendering(win.contentItem)
+        const chip = item("puzzle.library.chip.2")
+        Snapshots.doubleClick(chip, 12, chip.height / 2)
+        tryCompare(App.puzzle.pieces, "count", 1)
+        compare(App.puzzle.copiesOf(2), 1)
+        waitForRendering(win.contentItem)
+        const again = item("puzzle.library.chip.2")     // the row is built anew for its count
+        Snapshots.doubleClick(again, 12, again.height / 2)
+        tryVerify(() => App.puzzle.copiesOf(2) === 2, 1000, "a piece present gains one: " + App.puzzle.copiesOf(2))
+
+        waitForRendering(win.contentItem)
+        const card = item("puzzle.left")
+        mouseClick(item("puzzle.used.tile.2"), 40, 8, Qt.RightButton)
+        tryVerify(() => card.pieceContextMenu.opened, 2000, "the menu opens")
+        mouseClick(findChild(card.pieceContextMenu.contentItem, "puzzle.pieceMenu.remove"))
+        tryCompare(App.puzzle.pieces, "count", 0)
+        compare(App.puzzle.copiesOf(2), 0)
+    }
+
+    // AC-C16-05, T-C16-5: what the table changes shows in the chips, the scene and the summary
+    function test_aTableEditReachesTheChipsTheSceneAndTheSummary() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        const objects = App.viewport.sceneObjects
+        const copies = () => {
+            let n = 0
+            for (let i = 0; i < objects.count; i++)
+                if (objects.value(i, "role") === "piece" && objects.value(i, "shape") === 1)
+                    n++
+            return n
+        }
+        tryVerify(() => copies() === 1, 1000)
+        const summary = App.puzzle.summaryDetail
+
+        typeIn(item("puzzle.used.row.1.min"), [Qt.Key_3])
+        keyClick(Qt.Key_Return)
+        compare(App.puzzle.copiesOf(1), 3)
+        tryVerify(() => copies() === 3, 1000, "the scene has a copy each")
+        verify(App.puzzle.summaryDetail !== summary, App.puzzle.summaryDetail)
+
+        mouseClick(item("puzzle.used.row.1.range"))     // a range 0–3: optional copies
+        tryVerify(() => objects.value(objects.count - 1, "caption").indexOf("(optional)") >= 0, 1000)
+        verify(App.puzzle.summaryDetail.indexOf("Holes depend on the counts") >= 0, App.puzzle.summaryDetail)
+
+        // back to the chips: the same data
+        App.puzzle.piecesView = "chips"
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.used.tile.1").countText, "0–3")
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.used.row.1.max").text, "3")
+    }
+
+    // AC-C16-07, T-C16-7: wherever a piece is selected, every view shows it
+    function test_aSelectionShowsInEveryView() {
+        App.puzzle.stepPiece(1, 2)
+        App.puzzle.stepPiece(2, 1)
+        waitForRendering(win.contentItem)
+        const objects = App.viewport.sceneObjects
+        const agree = (shape) => {
+            compare(App.puzzle.selectedPiece, shape)
+            compare(item("puzzle.used.tile." + shape).selected, true)
+            compare(item("puzzle.used.tile." + (3 - shape)).selected, false)
+            compare(item("puzzle.library.chip." + shape).selected, true)
+            compare(item("puzzle.piece.chip").text, "S" + (shape + 1))
+            // the 3D view: the Selected slot, and a frame on each copy of it alone
+            tryVerify(() => {
+                let slot = false, framed = 0, wrong = 0
+                for (let i = 0; i < objects.count; i++) {
+                    const mine = objects.value(i, "shape") === shape
+                    if (objects.value(i, "role") === "selected")
+                        slot = mine
+                    else if (objects.value(i, "role") === "piece") {
+                        if (objects.value(i, "selected"))
+                            mine ? framed++ : wrong++
+                    }
+                }
+                return slot && framed === App.puzzle.copiesOf(shape) && wrong === 0
+            }, 1000, "the scene follows S" + (shape + 1))
+        }
+        mouseClick(item("puzzle.used.tile.2"), 40, 8)      // a tile
+        agree(2)
+        mouseClick(item("puzzle.library.chip.1"), 12, 10)  // a library chip
+        agree(1)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        mouseClick(item("puzzle.used.row.2.chip"))          // a table row
+        compare(item("puzzle.used.row.2").selected, true)
+        compare(item("puzzle.used.row.1").selected, false)
+        App.puzzle.piecesView = "chips"
+        waitForRendering(win.contentItem)
+        agree(2)
+        // a copy in the 3D view
+        let copy = -1
+        for (let i = 0; i < objects.count && copy < 0; i++)
+            if (objects.value(i, "role") === "piece" && objects.value(i, "shape") === 1)
+                copy = i
+        verify(copy >= 0)
+        const view = item("entities.viewport.surface")
+        const size = objects.value(copy, "frameSize")
+        mouseClick(view, objects.value(copy, "frameX") + size / 2, objects.value(copy, "frameY") + size / 2)
+        agree(1)
+    }
+
+    // AC-C16-08, T-C16-8: in the dialog, Min above Max raises Max
+    function test_setRangeRaisesMaxWithMin() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.stepPiece(2, 1)
+        waitForRendering(win.contentItem)
+        item("puzzle.left").setRangeRequested()
+        let dialog = null
+        tryVerify(() => (dialog = findChild(win, "puzzle.setRange.dialog")) !== null && dialog.opened, 2000)
+        const min = findChild(dialog.contentItem, "puzzle.setRange.min")
+        const max = findChild(dialog.contentItem, "puzzle.setRange.max")
+        compare(max.value, 1)
+        mouseClick(min.incButton)
+        mouseClick(min.incButton)
+        mouseClick(min.incButton)
+        compare(min.value, 3)
+        compare(max.value, 3, "Max never below Min")
+        verify(!max.decButton.enabled, "and cannot go below it")
+        mouseClick(findChild(dialog.footer, "puzzle.setRange.apply"))
+        tryVerify(() => !dialog.visible, 1000)
+        compare(App.puzzle.pieces.value(0, "countText"), "×3")
+        compare(App.puzzle.pieces.value(1, "countText"), "×3")
+    }
+
+    // AC-C18-04, C18: the Display menu has Projection and Voxel colour, no Show items
+    function test_theDisplayMenuHoldsOnlyProjectionAndColour() {
+        waitForRendering(win.contentItem)
+        mouseClick(item("entities.viewport.toolbar.display"))
+        let menu = null
+        tryVerify(() => (menu = findChild(win, "entities.viewport.display.menu")) !== null && menu.opened, 2000)
+        for (const name of ["axes", "bounds", "layer", "dim"])
+            compare(findChild(menu.contentItem, "entities.viewport.display." + name).visible, false, name)
+        for (const name of ["persp", "ortho", "colourPiece", "colourVoxel"])
+            compare(findChild(menu.contentItem, "entities.viewport.display." + name).visible, true, name)
+        menu.close()
+        tryVerify(() => !menu.visible, 1000)
+    }
+
+    // AC-C15-03: the problem and the piece are where they were after a visit to another workspace
+    function test_aWorkspaceSwitchKeepsTheProblemAndThePiece() {
+        App.puzzle.newProblem()
+        App.puzzle.stepPiece(2, 1)
+        App.puzzle.selectPiece(2)
+        waitForRendering(win.contentItem)
+        compare(App.puzzle.problem, 1)
+        App.layout.workspace = LayoutController.Entities
+        waitForRendering(win.contentItem)
+        App.layout.workspace = LayoutController.Solver
+        waitForRendering(win.contentItem)
+        App.layout.workspace = LayoutController.Puzzle
+        waitForRendering(win.contentItem)
+        compare(App.puzzle.problem, 1)
+        compare(App.puzzle.selectedPiece, 2)
+        verify(item("puzzle.problems.row.1").selected)
+        verify(item("puzzle.used.tile.2").selected)
     }
 }

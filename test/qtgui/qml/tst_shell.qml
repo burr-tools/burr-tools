@@ -739,13 +739,21 @@ TestCase {
     }
 
     function test_narrowWindowWithBothCardsCollapsedStaysUsable_data() {
-        return [ { tag: "standard", density: "standard" }, { tag: "minimal", density: "minimal" } ]
+        // AC-C11-04 names the Puzzle tab's cards (spec review 2026-11-14)
+        return [
+            { tag: "standard", density: "standard", puzzle: false },
+            { tag: "minimal", density: "minimal", puzzle: false },
+            { tag: "puzzle standard", density: "standard", puzzle: true },
+            { tag: "puzzle minimal", density: "minimal", puzzle: true },
+        ]
     }
     function test_narrowWindowWithBothCardsCollapsedStaysUsable(data) {
         // T-C11-6 / AC-C11-04: 960 dp wide, both cards collapsed -- toolbar,
         // view cube, hint and status bar remain usable
         App.settings.density = data.density
         App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
+        if (data.puzzle)
+            App.layout.workspace = LayoutController.Puzzle
         win.width = 960
         win.height = 640
         compare(win.width, 960)                      // the window's minimum allows it
@@ -767,7 +775,8 @@ TestCase {
         }
         const bar = rectOf(item("entities.viewport.toolbar"))
         verify(within(bar, view), "toolbar inside the viewport")
-        const buttons = ["orbit", "pan", "edit", "display", "focus"].map(n => item("entities.viewport.toolbar." + n))
+        const names = data.puzzle ? ["orbit", "pan", "display", "focus"] : ["orbit", "pan", "edit", "display", "focus"]
+        const buttons = names.map(n => item("entities.viewport.toolbar." + n))
         for (let i = 0; i < buttons.length; i++) {
             verify(buttons[i].visible && buttons[i].width >= 30, buttons[i].objectName)
             verify(within(rectOf(buttons[i]), bar), buttons[i].objectName + " inside the toolbar")
@@ -783,7 +792,13 @@ TestCase {
         verify(!overlaps(c, bar), "cube clear of the toolbar")
 
         // the hint (Standard; Minimal moves it into tooltips): whole, clear of both
-        const hint = item("entities.viewport.hint")
+        const hint = item(data.puzzle ? "puzzle.viewport.hint" : "entities.viewport.hint")
+        if (data.puzzle) {
+            // the problem's tag: inside the view, clear of the toolbar and cube
+            const tag = rectOf(item("puzzle.viewport.tag"))
+            verify(within(tag, view), "tag inside the viewport")
+            verify(!overlaps(tag, bar) && !overlaps(tag, c), "tag clear of toolbar and cube")
+        }
         if (data.density === "standard") {
             verify(hint.visible)
             const h = rectOf(hint)
@@ -806,11 +821,14 @@ TestCase {
         // and it all still works
         mouseClick(buttons[1])
         compare(App.viewport.navMode, "pan")
-        mouseClick(buttons[4])
+        mouseClick(buttons[buttons.length - 1])       // Focus
         compare(App.layout.focus, LayoutController.Focus3d)
         App.layout.escape()
         mouseClick(item("workspace.right.rail.expand"))
         verify(!App.layout.rightCollapsed)
+        // collapsing is per workspace: init() opens Entities' cards only
+        App.layout.leftCollapsed = false
+        App.layout.workspace = LayoutController.Entities
     }
 
     function test_collapseTakesTwoHundredMillisecondsAndLeavesNothingStale() {
