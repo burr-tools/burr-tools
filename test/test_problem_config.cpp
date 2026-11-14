@@ -773,6 +773,12 @@ TEST_CASE("xmlDouble: as short as it can be, and exact", "[problem][rotations]")
     REQUIRE(xmlParseDouble(xmlDouble(v), &back));
     CHECK(back == v);
   }
+  /* only the whole text as one finite number */
+  double back = 0;
+  for (const char * text : { "", "inf", "-inf", "nan", "0.5x", "0.5 ", "x" }) {
+    INFO(text);
+    CHECK_FALSE(xmlParseDouble(text, &back));
+  }
 }
 
 TEST_CASE("problem: which rotation mode the solve state comes from, in memory", "[problem][rotations]") {
