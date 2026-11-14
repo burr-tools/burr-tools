@@ -68,7 +68,6 @@ below, lists them per phase).
 | The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
 | One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
 | See-through copies sort by object side | C18 | `faceCentres` tells faces apart by `cell` and normal; in this scene `cell` is the object's place, so all faces of one direction in a copy sort as one. Read in the code, not yet seen on screen | P8 |
-| Scrub the layers by dragging | C08 layer strip | Idea, product request 2026-11-07: a click and drag along the layer strip (Entities, right sidebar) moves through the layers quickly; today each chip is a click. An improvement beyond the spec, so it waits until the spec is done | After P8 |
 | Dashed frames and drop zones | C16, C18 | C18's hover frame and C16's drop zones are dashed; Qt Quick has no dashed border without Qt Quick Shapes, not in the build. Hover is a 1 dp accent frame, selection 2 dp, a drop zone the accent border on `accentSoft` | P8 |
 | Gallery references for macOS | test plan | The four new rows have Windows references only: macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle`), and CI requires them there | Before the P10 pull request |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
@@ -607,7 +606,7 @@ moves to a later phase says why in that table.
   double-click rename test; command enabled-state bumps.
 
 - **After the spec is done:** improvements beyond it, once P8 is through:
-  dragging along the layer strip to scrub through the layers.
+  [Ideas for after the redesign](#ideas-for-after-the-redesign) below.
 
 Alongside these, and independent of them, are the two **legacy follow-ups**
 from [`gui-migration.md`](../../design-spec/gui-migration.md#the-legacy-gui-while-both-exist):
@@ -621,6 +620,128 @@ Every phase's pull request follows what #140 settled:
 - a change that reaches legacy in a commit of its own, listed in the
   description;
 - no merges from master inside the series.
+
+### Ideas for after the redesign
+
+Product ideas beyond the spec, for once P8 is through and the FLTK program
+is gone: none is planned for a phase. Each says what it is and the work it
+would take; open questions are the product's to settle before it starts.
+
+1. **Scrub the layers by dragging** (C08 layer strip; product request
+   2026-11-07). A click and drag along the layer strip in the Entities
+   right sidebar moves through the layers as the pointer passes them, as a
+   slider would; today each chip is a click of its own. The work: a
+   DragHandler on the strip that maps the pointer to a layer and calls
+   `EditorController::setLayer`, so a drag never paints; the keys stay as
+   they are; a test that a drag from the first chip to the last visits each
+   layer once.
+
+2. **A New menu for shapes: standard pieces and results** (C01 Shapes
+   sidebar). The Shapes card's + New gets a drop-down beside it, a searchable
+   grid of ready-made shapes in tabs: the common families (six-piece burr
+   pieces, 12- and 18-piece burrs, framed burrs, board burrs, ...) and one
+   tab of standard result shapes. A shape picked there is added as a copy,
+   as + New adds an empty one, in one undo step.
+   - Picking a result shape while the Shapes list is empty also adds the
+     pieces that result takes (six for a six-piece burr), so the puzzle is
+     ready to set up.
+   - The work: a library of shapes shipped as resources, each with its voxel
+     type, family, name and search words (a few `.xmpuzzle` files read at
+     start-up, or one index file); its rules in uicore (which shapes fit the
+     document's voxel type, what a result brings with it) with Catch2 tests;
+     a popup primitive with tabs, a search field and a grid of thumbnails
+     drawn as the Shapes list's are; the add through `editStructure`.
+   - Open: which pieces a result brings (blank sticks to carve, or a known
+     solvable set); how the families are named and numbered; whether the
+     library also covers the other voxel types or the cubes only at first.
+
+3. **A New menu for problems: a problem from the pieces** (C16 Problems).
+   The Problems list's + New gets a drop-down too. Its first entry sets up a
+   problem from the shapes there are: it decides which shape is the result
+   and puts one copy of each other shape in as a piece.
+   - The rule, in `uicore/problemlist` with tests: the result is the shape
+     the others fill. Their voxels together lie between its fixed voxels and
+     its fixed plus variable ones; failing that, the largest shape. With more
+     than one candidate it takes the largest and says which it took; Undo
+     takes it all back. When the pieces cannot fill it, the problem is made
+     all the same and the status says by how many voxels they differ.
+   - Later entries could be a copy of the selected problem with its rules
+     (Duplicate is there already) or a problem per result shape.
+
+4. **More voxel styles and materials** (C06 Display menu, `btui::VoxelStyle`).
+   Today a voxel is Flat, Legacy or STL, in the shape colours (Muted or
+   Classic). Materials would make a shape look like what it is made of:
+   metallic in a choice of metals (brass, copper, steel, aluminium, gold),
+   wooden in a choice of woods, 3D printed with the printer's layer lines.
+   - The work: a material per shape, or one for the puzzle, as a setting and
+     in the file only if the product wants it kept with the puzzle. The mesh
+     shaders (`shaders/mesh.frag`) get the materials:
+     - metal: a specular term and a small environment map;
+     - wood: a grain computed in the object's own space, so it runs on
+       across voxels instead of restarting on each;
+     - print: lines along the print direction at the layer height.
+   - The shaders are compiled ahead for every backend (`qsb`, the Direct3D
+     form with `-Ddxbc`), so every material costs start-up and build time,
+     measured as the performance guide does. Image export draws through the
+     same renderer, so it shows the materials too. STL export and the
+     legacy palette are unaffected.
+   - Open: per shape or per puzzle; whether a material keeps the shape's
+     colour (tinted metal or wood) or replaces it, and how a piece is then
+     told apart (the S number, as on Muted chips).
+
+5. **A background for the 3D view** (C06). The view clears to the theme's
+   flat `canvas` colour (`SceneController` hands it to the renderer as
+   `clear`). A choice in Settings or the Display menu: the theme's colour, a
+   colour of one's own, a soft gradient, or a picture. The work: a
+   background pass in `scenerenderer` before the scene (a full-view quad,
+   a gradient or a texture), behind see-through voxels as the clear colour
+   is now; the view cube, the edit cursors and the axis lines checked
+   against each background for contrast; image export offering the same
+   choice or a transparent background.
+
+6. **More colour themes, and themes that can be added** (C12). The spec
+   allows exactly Light, Dark and System (AC-C12-08), so this changes the
+   spec. Today a theme is two colour tables chosen by one flag, so making
+   themes extensible takes this work:
+   - **Tokens per theme.** `design-tokens.json` has `color.light` and
+     `color.dark`, and `Theme` reads them into two tables (`m_light`,
+     `m_darkColors`) chosen by `m_dark`. Instead: a list of named themes,
+     each naming a base (light or dark) and overriding only the tokens it
+     changes, the rest coming from its base; `Theme` keeps the active
+     theme's table, and `dark` becomes "the base is dark".
+   - **What is light-or-dark today stays tied to the base:**
+     - the native dialogs and title bar (`QStyleHints::setColorScheme`);
+     - the pre-tinted glyph folders (`resources/glyphs/light`, `dark`), and
+       `glyphFolder`;
+     - the edit cursors' `dark` flag (`editcursor::glyph`);
+     - the shape colours' lightness band (`ShapeColours`, Muted made per
+       theme).
+
+     A theme whose surfaces differ much from its base needs the glyphs
+     tinted at load (as `Icon` tints the icons) instead of two fixed folders,
+     and the shape colours derived from its own panel colour.
+   - **Colours still in code** move into tokens: the view cube's axis
+     colours and label inks (`viewcubeitem.cpp`), the fallbacks in
+     `scenecontroller.cpp` and `viewcubeitem.cpp`, and any other `QColor`
+     literal outside `theme.cpp` (a test can grep for them, as
+     `check_density_tokens.py` does for density).
+   - **Contrast as a rule, not a review.** `tst_quality.qml` checks its
+     pairs in light and dark; it would loop over every theme, so a theme that
+     fails 4.5:1 for text or 3:1 for borders and focus does not ship. A
+     user's own theme gets the same check when it loads, and a warning
+     rather than a refusal.
+   - **Settings.** Theme becomes a list (System, Light, Dark, then the
+     others); System picks a light and a dark theme to follow the
+     operating system with. The setting stores the theme's name, and an
+     unknown name falls back to System.
+   - **A user's own themes** (optional): JSON files in the settings folder
+     with the same keys, read at start-up and listed with the others,
+     validated (known tokens, colours that parse) and contrast-checked.
+   - **Tests and references.** The gallery's reference images are per theme
+     today (`*-light`, `*-dark`); new built-in themes would add a set each,
+     so either a few gallery rows per extra theme or the contrast check
+     alone stands for them. High contrast (a P8 accessibility row) would be
+     the first theme to take this route.
 
 ### P2 decisions
 
