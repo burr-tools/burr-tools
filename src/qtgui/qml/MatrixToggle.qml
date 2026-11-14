@@ -9,6 +9,9 @@ Rectangle {
     property bool on: false
     property bool cursor: false      // the keyboard's cell
     property bool hovered: hover.hovered
+    // the pointer has the highlight: false while the keys hold it, so the hover mark
+    // does not show beside the keyboard's (as the voxel editor's 2D grid)
+    property bool pointerShown: true
 
     signal toggled()
 
@@ -17,7 +20,7 @@ Rectangle {
     radius: Theme.radiusChip
     color: on ? Theme.accent : Theme.panel
     border.width: cursor ? 2 : 1
-    border.color: cursor ? Theme.text : hover.hovered ? Theme.accent : on ? Theme.accent : Theme.controlLine
+    border.color: cursor ? Theme.text : hover.hovered && pointerShown ? Theme.accent : on ? Theme.accent : Theme.controlLine
 
     HoverHandler { id: hover }
     TapHandler { onTapped: root.toggled() }

@@ -154,6 +154,57 @@ TestCase {
         tryVerify(() => item("puzzle.rules.cell.C1.C2").on)
     }
 
+    // as the 2D grid's (TestEditor::theKeysAndThePointerTakeTheHighlightInTurn): with the
+    // pointer resting on a cell, the arrows' cell is the one shown -- the readout, the
+    // headers, Space -- until the pointer moves; the arrows then go on from the pointer's
+    function test_theKeysAndThePointerTakeTheMatrixHighlightInTurn() {
+        addColours()
+        const grid = item("puzzle.rules.grid")
+        const text = item("puzzle.rules.cellText")
+        const cell = name => item("puzzle.rules.cell." + name)
+        const shows = name => text.text.indexOf("Piece " + name.replace(".", " on result ") + ":") === 0
+
+        // a click focuses the matrix; then the resting pointer has the highlight
+        mouseClick(cell("C1.C1"))
+        verify(grid.activeFocus)
+        mouseMove(cell("C3.C3"))
+        tryVerify(() => shows("C3.C3"), 1000, text.text)
+
+        // the arrows go on from the pointer's cell, and take the highlight
+        keyClick(Qt.Key_Left)
+        verify(shows("C3.C2"), text.text)
+        verify(cell("C3.C2").cursor)
+        verify(!cell("C3.C3").pointerShown)       // no hover mark beside the keyboard's
+        compare(item("puzzle.rules.piece.C3").border.width, 2)
+        compare(item("puzzle.rules.result.C2").border.width, 2)
+        compare(item("puzzle.rules.result.C3").border.width, 1)
+        mouseMove(cell("C3.C3"))                  // where the pointer rests: not a move
+        verify(shows("C3.C2"), text.text)
+        const on32 = cell("C3.C2").on, on33 = cell("C3.C3").on
+        keyClick(Qt.Key_Space)                    // applied where it is shown
+        compare(cell("C3.C2").on, !on32)
+        compare(cell("C3.C3").on, on33)
+
+        // the pointer moves: the highlight is its again
+        mouseMove(cell("C3.C3"), cell("C3.C3").width / 2 + 3, cell("C3.C3").height / 2)
+        tryVerify(() => shows("C3.C3"), 1000, text.text)
+        verify(!cell("C3.C2").cursor)
+        verify(cell("C3.C3").pointerShown)
+
+        // focus away while the keys hold it: the highlight back under the pointer
+        keyClick(Qt.Key_Up)
+        verify(shows("C2.C3"), text.text)
+        keyClick(Qt.Key_Tab)
+        verify(!grid.activeFocus)
+        verify(shows("C3.C3"), text.text)
+
+        // Tab in again: the keys' cell is shown, wherever the pointer rests
+        grid.forceActiveFocus(Qt.TabFocusReason)
+        verify(shows("C2.C3"), text.text)
+        verify(cell("C2.C3").cursor)
+        verify(!cell("C3.C3").pointerShown)
+    }
+
     function test_noGroupsSaysSo() {
         compare(textOf("puzzle.groups.empty"), "No groups in this problem")
         verify(item("puzzle.groups.empty").visible)

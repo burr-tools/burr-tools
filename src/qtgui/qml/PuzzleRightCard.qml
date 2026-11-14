@@ -443,6 +443,32 @@ Card {
             property int hoverResult: -1
             property int cursorPiece: 0     // indices into the colours, not ids
             property int cursorResult: 0
+            /* As the 2D grid's (VoxelGridItem): the keys hold the highlight, the
+             * pointer's hover ignored until it moves off where it rested. Qt Quick
+             * repeats a hover at a still pointer after each frame, and a scroll
+             * moves the cells under it; neither is a move. */
+            property bool keysHold: false
+            property real pointerX: -1      // the pointer's last scene position over the cells
+            property real pointerY: -1
+            property bool focusByPointer: false        // a click is focusing the matrix
+
+            readonly property bool pointerShown: hoverPiece >= 0 && !keysHold
+
+            function pointerAt(x: real, y: real): void {
+                if (keysHold && x === pointerX && y === pointerY)
+                    return
+                keysHold = false
+                pointerX = x
+                pointerY = y
+            }
+            // the arrows, Space and Enter take the highlight from the pointer, going on from its cell
+            function takeKeys(): void {
+                if (!keysHold && hoverPiece >= 0) {
+                    cursorPiece = hoverPiece
+                    cursorResult = hoverResult
+                }
+                keysHold = true
+            }
             readonly property int colourCount: App.puzzle.colours.count
             readonly property real swatchWidth: 30
             readonly property real cellWidth: 30
@@ -453,8 +479,9 @@ Card {
             function colourId(i: int): int { return App.puzzle.colours.value(i, "colour") }
             function colourName(i: int): string { return App.puzzle.colours.value(i, "name") }
 
-            readonly property int shownPiece: hoverPiece >= 0 ? hoverPiece : matrix.activeFocus && App.keyboardCues.navigating ? cursorPiece : -1
-            readonly property int shownResult: hoverResult >= 0 ? hoverResult : matrix.activeFocus && App.keyboardCues.navigating ? cursorResult : -1
+            readonly property bool cursorShown: matrix.activeFocus && App.keyboardCues.navigating && !pointerShown
+            readonly property int shownPiece: pointerShown ? hoverPiece : cursorShown ? cursorPiece : -1
+            readonly property int shownResult: pointerShown ? hoverResult : cursorShown ? cursorResult : -1
             readonly property string cellText: {
                 if (shownPiece < 0 || shownResult < 0 || shownPiece >= colourCount || shownResult >= colourCount)
                     return qsTr("Move to a cell to read its rule.")
@@ -577,7 +604,18 @@ Card {
                     Accessible.name: qsTr("Colour rules: rows are piece colours, columns are result colours")
                     Accessible.description: rules.cellText
 
+                    // Tab: the keys' cell is the one shown, wherever the pointer rests; a click's is the pointer's
+                    onActiveFocusChanged: rules.keysHold = matrix.activeFocus && !rules.focusByPointer
+
+                    // the pointer over the cells: a move takes the highlight back from the keys
+                    HoverHandler {
+                        id: pointerOver
+                        onPointChanged: rules.pointerAt(pointerOver.point.scenePosition.x, pointerOver.point.scenePosition.y)
+                        onHoveredChanged: if (!pointerOver.hovered) rules.keysHold = false
+                    }
+
                     function moveCursor(dp: int, dr: int): void {
+                        rules.takeKeys()
                         const n = rules.colourCount
                         rules.cursorPiece = Math.max(0, Math.min(n - 1, rules.cursorPiece + dp))
                         rules.cursorResult = Math.max(0, Math.min(n - 1, rules.cursorResult + dr))
@@ -589,6 +627,7 @@ Card {
                         App.status.announce(rules.cellText)
                     }
                     function toggleCursor(): void {
+                        rules.takeKeys()
                         App.puzzle.toggleRule(rules.colourId(rules.cursorPiece), rules.colourId(rules.cursorResult))
                         App.status.announce(rules.cellText)
                     }
@@ -659,7 +698,8 @@ Card {
                                         width: rules.cellWidth
                                         height: rules.cellHeight
                                         on: allowed
-                                        cursor: matrix.activeFocus && App.keyboardCues.navigating && rules.cursorPiece === row && rules.cursorResult === column
+                                        cursor: rules.cursorShown && rules.cursorPiece === cell.row && rules.cursorResult === cell.column
+                                        pointerShown: !rules.keysHold
                                         Accessible.role: Accessible.CheckBox
                                         Accessible.name: qsTr("Piece %1 on result %2").arg(pieceName).arg(resultName)
                                         Accessible.checkable: true
@@ -675,8 +715,13 @@ Card {
                                             }
                                         }
                                         onToggled: {
+                                            // a click focuses the matrix too, so the keys go on from the clicked cell
                                             rules.cursorPiece = row
                                             rules.cursorResult = column
+                                            rules.focusByPointer = true
+                                            matrix.forceActiveFocus(Qt.MouseFocusReason)
+                                            rules.focusByPointer = false
+                                            rules.keysHold = false
                                             App.puzzle.toggleRule(pieceColour, resultColour)
                                         }
                                     }
