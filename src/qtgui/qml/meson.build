@@ -32,6 +32,7 @@ qtgui_qml_files = files(
   'ConvertDialog.qml',
   'DecimalField.qml',
   'DisplayMenu.qml',
+  'DashedFrame.qml',
   'Dropdown.qml',
   'Gallery.qml',
   'Glyph.qml',

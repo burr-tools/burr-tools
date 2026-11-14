@@ -3348,6 +3348,10 @@ are the owner's; the rest the implementation's, measured or argued there.
 | C02 | ±1 voxel | ±1 step of the voxel type (5 rhombic, 3 tetra-octa) | legacy's fields |
 | C06 targets | voxel faces only | + the slab as 2D grid off voxels; + origin in an empty shape | product decisions 2026-10-27/28 |
 | C06 Edit button | override = dashed outline | override drawn as `on` | product decision 2026-10-27 |
+| C16 new problem | result = first shape | no result until chosen; the row names the shape by code and label | product decision 2026-11-14 |
+| C16 P-chip | accent-blue chip | neutral chip (panel2, line2 border, text colour) | the accent reads as selected; problems have no colour (product decision 2026-11-14) |
+| C16 Change… list | chip, label, voxel count | shape picture, code, label, voxels; the current result's row selected; the largest shape's count in the accent | easier to tell shapes apart; hints at the likely result without looking selected (product decisions 2026-11-14, -15) |
+| C18 optional copies | translucent, dashed outlines | drawn as the fixed copies; the caption says "(optional)" | dashes read as a broken grid at screen size (product decision 2026-11-14) |
 | C06 slab | one layer step thick | the layer's cells as drawn | spheres overlap (product decision 2026-10-27) |
 | C06 ghosts | — behind voxels; Paint on all voxels | 35 % behind voxels; only cells that change | find inner cells; one rule with the 2D preview |
 | C06 voxels | variable 50 % | 60 %; Classic and STL styles | earlier phases |

@@ -66,6 +66,7 @@ TEST_CASE("the Puzzle scene", "[.][bench][puzzlescene]") {
         if ((x + y + z) % 2 == 0)
           p->getShape(s)->setState(x, y, z, voxel_c::VX_FILLED);
   btui::newProblem(*p);
+  btui::setResult(*p, 0, 0);
   btui::setPieceCount(*p, 0, int(s), 100, 100);
   BENCHMARK("a selection: 16^3 checkerboard, 100 copies") {
     return btui::buildPuzzleScene(*p, 0, -1, btui::MeshOptions{}).objects.size();

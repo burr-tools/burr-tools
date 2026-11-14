@@ -315,16 +315,16 @@ void puzzleHistory_c::matchShapes(puzzle_c * puzzle, const snapshot_t * snap) co
   }
 }
 
-std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const {
+puzzleHistory_c::restored_t puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const {
   matchShapes(puzzle, snap);
 
   // --- which shapes this restore changes: their problems' solutions no longer fit (settleSolutions) ---
   const unsigned int shapesNow = puzzle->getNumberOfShapes();
   const unsigned int shapesThen = (unsigned int)snap->shapes.size();
-  std::vector<unsigned int> changedShapes;
+  restored_t out;
   for (unsigned int i = 0; i < std::max(shapesNow, shapesThen); i++)
     if (i >= shapesNow || i >= shapesThen || !sameVoxels(*puzzle->getShape(i), *snap->shapes[i]))
-      changedShapes.push_back(i);
+      out.changedShapes.push_back(i);
 
   // --- problems --- the right number, each where the snapshot has it ---
   while (puzzle->getNumberOfProblems() < snap->problems.size())
@@ -338,10 +338,13 @@ std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snap
    * a restore with fewer shapes would leave ids past the end. The snapshot
    * holds no solutions: a problem whose structure it does not change is left
    * alone, and keeps them -- rebuilding goes through setters (clearResult,
-   * ...) that drop them, so every undo used to drop every problem's. The
-   * solutions of one using a shape the restore changed are settled by the
-   * caller (settleSolutions), which may swap back those the step kept. */
+   * ...) that drop them, so every undo used to drop every problem's. One it
+   * rebuilds holds its solve record aside meanwhile and gets it back after:
+   * the caller settles the solutions of the problems it rebuilt and of those
+   * using a shape it changed (settleSolutions), and may swap back those the
+   * step kept. */
   std::vector<bool> rebuild(snap->problems.size(), false);
+  std::vector<problem_c::solveRecord_t> aside(snap->problems.size());
   for (unsigned int p = 0; p < snap->problems.size(); p++) {
     problem_c * pr = puzzle->getProblem(p);
     const problemSnap_t & ps = snap->problems[p];
@@ -351,8 +354,9 @@ std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snap
     if (sameStructure(*pr, ps))
       continue;
     rebuild[p] = true;
+    out.rebuiltProblems.push_back(p);
 
-    pr->removeAllSolutions();
+    pr->swapSolveRecord(aside[p]);
 
     std::vector<unsigned int> partIds;
     partIds.reserve(pr->getNumberOfParts());
@@ -401,7 +405,9 @@ std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snap
     else
       pr->setMaxHolesInvalid();
   }
-  return changedShapes;
+  for (unsigned int p : out.rebuiltProblems)
+    puzzle->getProblem(p)->swapSolveRecord(aside[p]);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -589,10 +595,10 @@ long puzzleHistory_c::solutionsKept(void) const {
   return held;
 }
 
-void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const std::vector<unsigned int> & changedShapes,
-                                      snapshot_t & step) {
+void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const restored_t & restored, snapshot_t & step) {
   /* the solutions the step kept go back (undo) or out again (redo); the
-   * step's problems are the restored state's, a voxel edit keeps them */
+   * step's problems are the restored state's, a voxel edit or a change to
+   * what a problem asks for keeps them */
   std::vector<bool> settled(puzzle->getNumberOfProblems(), false);
   for (auto & [problem, record] : step.discarded)
     if (problem < puzzle->getNumberOfProblems()) {
@@ -600,14 +606,18 @@ void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const std::vector<unsig
       settled[problem] = true;
     }
   recount(step);   // it holds what the problems held
-  /* the others using a shape the restore changed: theirs no longer fit */
-  if (changedShapes.empty())
+  /* the others the restore rebuilt or that use a shape it changed: theirs
+   * no longer fit */
+  for (unsigned int k : restored.rebuiltProblems)
+    if (k < puzzle->getNumberOfProblems() && !settled[k])
+      puzzle->getProblem(k)->removeAllSolutions();
+  if (restored.changedShapes.empty())
     return;
   for (unsigned int k = 0; k < puzzle->getNumberOfProblems(); k++) {
     if (settled[k])
       continue;
     problem_c * pr = puzzle->getProblem(k);
-    for (unsigned int s : changedShapes)
+    for (unsigned int s : restored.changedShapes)
       if (pr->usesShape(s)) {
         pr->removeAllSolutions();
         break;

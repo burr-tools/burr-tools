@@ -20,6 +20,8 @@
  */
 #include "vectorexport.h"
 
+#include "camera.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -388,6 +390,56 @@ namespace btui {
     std::stable_sort(page.prims.begin(), page.prims.end(),
                      [](const VectorPrimitive & x, const VectorPrimitive & y) { return x.depth > y.depth; });
     return page;
+  }
+
+  VectorPage shapePicture(const voxel_c & shape, Rgb colour, float size, float margin) {
+    VectorPage out;
+    out.width = out.height = size;
+    MeshOptions o;
+    o.piece = colour;
+    o.variableAlpha = 1;
+    const ShapeMesh mesh = buildShapeMesh(shape, o);
+    if (mesh.empty() || size <= 2 * margin)
+      return out;
+
+    Camera camera;
+    camera.setViewport(size, size);
+    camera.setScene((mesh.boundsMin + mesh.boundsMax) * 0.5f,
+                    std::max(0.5f, length(mesh.boundsMax - mesh.boundsMin) * 0.5f));
+    camera.setOrientation(Camera::homeOrientation());
+    camera.setProjection(Camera::Projection::Orthographic);
+    VectorInput in;
+    in.mesh = &mesh;
+    in.view = camera.viewMatrix();
+    in.projection = camera.projectionMatrix();
+    in.width = in.height = size;
+    VectorPage page = projectScene(in);
+
+    // the framing sphere leaves room around the shape: scale it to the square
+    float x0 = size, y0 = size, x1 = 0, y1 = 0;
+    for (const VectorPrimitive & p : page.prims)
+      if (p.kind == VectorPrimitive::Kind::Polygon)
+        for (size_t i = 0; i + 1 < p.xy.size(); i += 2) {
+          x0 = std::min(x0, p.xy[i]);
+          x1 = std::max(x1, p.xy[i]);
+          y0 = std::min(y0, p.xy[i + 1]);
+          y1 = std::max(y1, p.xy[i + 1]);
+        }
+    if (x1 <= x0 || y1 <= y0)
+      return out;
+    const float room = size - 2 * margin;
+    const float k = std::min(room / (x1 - x0), room / (y1 - y0));
+    const float dx = (size - (x1 - x0) * k) / 2 - x0 * k, dy = (size - (y1 - y0) * k) / 2 - y0 * k;
+    for (VectorPrimitive & p : page.prims) {
+      if (p.kind != VectorPrimitive::Kind::Polygon)
+        continue;
+      for (size_t i = 0; i + 1 < p.xy.size(); i += 2) {
+        p.xy[i] = p.xy[i] * k + dx;
+        p.xy[i + 1] = p.xy[i + 1] * k + dy;
+      }
+      out.prims.push_back(std::move(p));
+    }
+    return out;
   }
 
   std::string writeVector(const VectorPage & page, VectorFormat f, const std::string & baseName) {

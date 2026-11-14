@@ -16,13 +16,14 @@ private slots:
   void aMoveKeepsTheSelectionOnItsProblem();
   void theLibraryReadsTheSelectedProblem();
   void theResultIsNoPiece();
+  void aNewProblemHasNoResultUntilOneIsChosen();
   void countsStepAndLeaveAtZero();
   void aRangeStaysOnShowWhileItsNumbersMeet();
   void theSummaryAndStatusSayTheTotals();
   void aPieceCanBeInSeveralGroups();
   void theColourMatrixHasNoDefault();
   void theRailsListComeFromTheSectionTable();
-  void aChangeThatCostsSolutionsWarnsOnceASession();
+  void aPuzzleChangeKeepsItsSolutionsForUndo();
   void cancellingTheWarningChangesNothing();
   void renamingAndReorderingNeverWarn();
   void deletingAProblemWithSolutionsWarns();

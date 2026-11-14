@@ -365,6 +365,19 @@ namespace btui {
     return lost;
   }
 
+  puzzleHistory_c::discarded_t DocumentSession::takeSolutions(const std::vector<unsigned int> & problems) {
+    puzzleHistory_c::discarded_t taken;
+    for (unsigned int k : problems) {
+      if (k >= puz->getNumberOfProblems())
+        continue;
+      problem_c::solveRecord_t r;
+      puz->getProblem(k)->swapSolveRecord(r);
+      if (!r.empty())
+        taken.emplace_back(k, std::move(r));
+    }
+    return taken;
+  }
+
   void DocumentSession::keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded) {
     if (lost.empty())
       return;
@@ -393,6 +406,14 @@ namespace btui {
       if (std::any_of(shapes.begin(), shapes.end(), [pr](unsigned int s) { return pr->usesShape(s); }))
         bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + pr->solveRecordBytes();
     }
+    return puzzleHistory_c::roomForSolutions(bytes);
+  }
+
+  bool DocumentSession::keepsSolutionsOfProblems(const std::vector<unsigned int> & problems) const {
+    size_t bytes = 0;
+    for (unsigned int k : problems)
+      if (k < puz->getNumberOfProblems())
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + puz->getProblem(k)->solveRecordBytes();
     return puzzleHistory_c::roomForSolutions(bytes);
   }
 

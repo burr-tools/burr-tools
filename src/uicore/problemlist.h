@@ -53,8 +53,9 @@ namespace btui {
   // --- the list ----------------------------------------------------------------
 
   /* An empty problem appended to the list, each colour allowed on itself
-   * (legacy cb_NewProblem), its result the first shape (C16; legacy left it
-   * unset). Returns its position. */
+   * (legacy cb_NewProblem), with no result: the user chooses it (product
+   * decision 2026-11-14; C16 took the first shape, legacy left it unset as
+   * here). Returns its position. */
   int newProblem(puzzle_c & p);
 
   /* A copy of problem i appended: result, counts, groups, colour rules and

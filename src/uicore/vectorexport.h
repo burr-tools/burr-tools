@@ -84,6 +84,13 @@ namespace btui {
 
   VectorPage projectScene(const VectorInput & in);
 
+  /* A shape alone as a small picture: its flat-style faces in `colour`,
+   * variable voxels opaque, seen from Home (Camera::homeOrientation)
+   * without perspective, fitted into a size x size square with `margin`
+   * free around it and centred. Polygons only, back to front; empty for an
+   * empty shape. For the shape lists (the Result's Change… menu). */
+  VectorPage shapePicture(const voxel_c & shape, Rgb colour, float size, float margin = 1);
+
   /* the file's content; baseName names the graphic TeX output includes */
   std::string writeVector(const VectorPage & page, VectorFormat f, const std::string & baseName);
 }

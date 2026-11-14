@@ -63,8 +63,7 @@ Item {
                 anchors.centerIn: parent
                 width: parent.width - 14
                 text: row.idText
-                fill: Theme.accent
-                textColor: Theme.onAccent
+                neutral: true
             }
 
             Accessible.role: Accessible.ListItem

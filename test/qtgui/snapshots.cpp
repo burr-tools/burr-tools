@@ -1,6 +1,8 @@
 /* Reference-image checks for the Qt Quick tests (see snapshots.h). */
 #include "snapshots.h"
 
+#include "../../src/uicore/puzzlehistory.h"
+
 #include <QColor>
 #include <QDir>
 #include <QFileInfo>
@@ -194,6 +196,17 @@ QSize Snapshots::grabSize(QQuickItem * item) const {
 
 qreal Snapshots::ratio(QQuickItem * item) const {
   return item && item->window() ? item->window()->effectiveDevicePixelRatio() : 1.0;
+}
+
+void Snapshots::leaveNoRoomForSolutions(bool full) {
+  if (full) {
+    if (m_budget == 0)
+      m_budget = puzzleHistory_c::solutionBudget();
+    puzzleHistory_c::setSolutionBudget(puzzleHistory_c::solutionBytesKept());
+  } else if (m_budget != 0) {
+    puzzleHistory_c::setSolutionBudget(m_budget);
+    m_budget = 0;
+  }
 }
 
 void Snapshots::doubleClick(QQuickItem * item, qreal x, qreal y) const {

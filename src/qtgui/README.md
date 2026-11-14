@@ -36,7 +36,7 @@ it can replace it.
 | P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
 | — Puzzle review (2026-11-14) | The Puzzle tab against the spec: every AC of C16–C18 and those of C11, C15 and the density that name it, the element ids, the test plan's T-C16 … T-C18 | Done; findings in *Spec review of the Puzzle workspace* below |
-| P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle primitives | Done (third cut); decisions in *P10 decisions* |
+| P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle, DashedFrame primitives | Done (third cut); decisions in *P10 decisions* |
 | P11 Solver | The Solver workspace | Next (see *Next phases*); its cards are placeholders |
 
 ### Deferred to the next phase
@@ -64,13 +64,12 @@ below, lists them per phase).
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape, colour and problem edits change data an assembler reads; nothing in the new GUI solves yet. A gate in `DocumentController::edit` alone is too narrow: `strokeEdit`, undo and redo, and replacing the document go round it, and each must be refused while a solve runs. `PuzzleController::apply` goes through `edit`. The solution counts the lists read need the solver's lock then too | P11 |
 | A press that may change nothing still warns | C08 | Only when the solutions are too big for the undo history to keep (a voxel edit asks nothing otherwise, since 2026-11-14): a stroke's first press asks before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
-| Puzzle changes keep their solutions for undo | PR 181 review | A voxel edit's solutions go into its undo step, so undo brings them back. A change to what a problem asks for (counts, result, groups, rules), a problem's delete, a shape's delete and a colour's remove still clear them for good behind the once-a-session warning. Keeping them the same way changes `puzzleHistory_c`, shared with legacy: a product decision | P8 |
+| Deletes keep their solutions for undo | PR 181 review | Voxel edits and changes to what a problem asks for keep theirs in the undo step (2026-11-14). A problem's delete, a shape's delete and a colour's remove still clear them for good behind the once-a-session warning: the history's kept records go by problem index, which a delete moves | P8 |
 | Small piece buttons | WCAG 2.5.8 (2.2) | The library chip's − and + are 16 x 20, the tile's 22 wide (18 in Minimal): fine for 2.1 AA, short of 2.2's 24 x 24. Wider ones change the fixed sizes of C16 | P8 |
 | The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
 | One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
-| See-through copies sort by object side | C18 | `faceCentres` tells faces apart by `cell` and normal; in this scene `cell` is the object's place, so all faces of one direction in a copy sort as one. Read in the code, not yet seen on screen | P8 |
-| Dashed frames and drop zones | C16, C18 | C18's hover frame and C16's drop zones are dashed; Qt Quick has no dashed border without Qt Quick Shapes, not in the build. Hover is a 1 dp accent frame, selection 2 dp, a drop zone the accent border on `accentSoft` | P8 |
-| Gallery references for macOS | test plan | The four new rows have Windows references only, and the contrast tokens of 2026-11-07 changed two rows on Windows only (the dark primary button, the switch): macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle,buttonPrimary,switch`), and CI requires them there | Before the P10 pull request |
+| See-through voxels sort by object side | C18 | `faceCentres` tells faces apart by `cell` and normal; in this scene `cell` is the object's place, so all faces of one direction in a copy sort as one. Only a shape's variable voxels are see-through here since optional copies are drawn solid (2026-11-14). Read in the code, not yet seen on screen | P8 |
+| Gallery references for macOS | test plan | The five new rows and the chip row's neutral cell (2026-11-14) have Windows references only, and the contrast tokens of 2026-11-07 changed two rows on Windows only (the dark primary button, the switch): macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle,dashedFrame,chip,buttonPrimary,switch`), and CI requires them there | Before the P10 pull request |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
 | — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, view-cube labels below contrast. (A drag cut short by Alt+Tab ends the 3D gesture: `VoxelViewport::mouseUngrabEvent`, tested in `test_viewport`) | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 |
@@ -995,8 +994,12 @@ Product decisions of 2026-11-06, unless a line says otherwise.
   same step, so the next save leaves them out of the file: nothing stale is
   kept. A voxel edit's go into its undo step (`DocumentSession::editVoxels`,
   "Voxel edits and solutions" above), so its undo brings them back, and it
-  goes on without a warning (unless they are too big to keep, above). For the
-  rest one warning, `DocumentController::mayCostSolutions`, says so and that
+  goes on without a warning (unless they are too big to keep, above). So do a
+  change to what a problem asks for -- a piece added or removed, a count, the
+  result, groups, colour rules (`DocumentSession::editProblems`, 2026-11-14):
+  the restore holds a rebuilt problem's solutions aside while it rebuilds,
+  and `settleSolutions` swaps back what the step kept or drops them. For the
+  rest -- deleting a problem or a shape, removing a colour -- one warning, `DocumentController::mayCostSolutions`, says so and that
   it comes once a session; it replaces the delete and remove questions of P2
   and P3. Continue runs the held edit (a stroke's first cell; the drag that
   followed is not replayed), Cancel leaves everything and it asks again next
@@ -1034,6 +1037,31 @@ Product decisions of 2026-11-06, unless a line says otherwise.
   reach, not its shape, so they stay still while it turns; a click hit-tests
   the frames (`objectAt`), no ray picking. At most 100 copies are drawn and
   the rest counted: a count can be 65535.
+- **A new problem has no result** (2026-11-14; C16 took the first shape). The
+  Result row says "Result: Please choose a shape" and its button "Choose…";
+  with one, it names the shape by code and label ("Result: S3 Cage"), not
+  C16's "Result piece" for a shape without a label.
+- **The Result's list shows each shape** (2026-11-14): a 28 dp picture from
+  the 3D view's Home angle in the shape's colour (`ShapePicture` over
+  `btui::shapePicture`, QPainter), the code, the label and the voxels. The
+  current result has a selected row's look (`accentSoft`, an accent edge;
+  announced as checked). The shape with the most voxels, the likely result,
+  has its count in the accent, semi-bold: a hint, no tag, and not a row tint,
+  which read as a selection (2026-11-15).
+- **Problem chips are neutral** (2026-11-14): panel2 on a line2 border in the
+  text colour (`Chip.neutral`), in the list, the collapsed rail and the 3D
+  view's tag. C16's accent chips made every row look selected: problems have
+  no colour of their own, and the accent is selection's and the primary
+  button's.
+- **Optional copies look like the others** (2026-11-14). C18 drew a range's
+  copies beyond its minimum translucent with dashed edges; at screen size the
+  dashes read as a broken grid and the copies as faded. They are drawn as the
+  fixed copies, and the caption's "(optional)" tells them apart (AC-C18-01 and
+  T-C18-1 changed on purpose).
+- **Dashed frames on a Canvas** (2026-11-14). C16's drop zones and C18's hover
+  frame are dashed, as specified: `DashedFrame`, a Canvas, since Qt Quick Shapes
+  is not in the build. It repaints only when its size or colour changes. The
+  selection frame stays solid.
 - **Sizes, as the Entities cards** (2026-11-07): the first cut followed the
   mock and read looser than the Entities tab. The sections inside the left
   card are `accordionHeader` high, not density.md's 36 / 30; the Result is one
@@ -1206,7 +1234,7 @@ TapHandler takes as one: TestCase's own leaves each press a first tap.
 | C16-01 | P-ids by position; labels by double-click, the pencil and Enter (F2 stays Save, as C01); reorder by the grip renumbers; New, Duplicate, Delete as undo steps | `tst_puzzle` (reorder, Enter, the list's keys), `TestPuzzle::problemsAreAddedCopiedAndDeletedAsUndoSteps`, `test_ui_problemlist` | Double-click and pencil: `test_aProblemRenamesByDoubleClickAndByThePencil` (since the review) |
 | C16-02 | The Result card's "N voxels · can hold A–B", Change… with every shape, the piece menu's Set as result | `theResultIsNoPiece`, `test_theMenusAct` (opens it), uicore | |
 | C16-03 | Fixed tiles (96 x 44, a decision), the stepper always shown, 0 leaves | `test_tilesStepAndLeave`, `countsStepAndLeaveAtZero` | Neighbours: `test_aCountChangeMovesNoOtherTile`, held presses too (since the review) |
-| C16-04 | +, double-click and drag add; − at 1, the menu and a drag onto All pieces remove; the drop zone shown while dragging | `test_aChipDraggedInAddsAndATileDraggedOutRemoves`, `test_aLibraryChipAdds`, `test_aChipsMinusTakesOneAway` | The zone is solid, not dashed (deferred row). Double-click add and the menu's Remove: `test_aDoubleClickAddsAndTheMenuRemoves` (since the review) |
+| C16-04 | +, double-click and drag add; − at 1, the menu and a drag onto All pieces remove; the drop zone shown while dragging | `test_aChipDraggedInAddsAndATileDraggedOutRemoves`, `test_aLibraryChipAdds`, `test_aChipsMinusTakesOneAway` | The zone is dashed (`DashedFrame`, since the review). Double-click add and the menu's Remove: `test_aDoubleClickAddsAndTheMenuRemoves` (since the review) |
 | C16-05 | Chips and Table on the same model; a typed count after a pause | `test_theTableEditsTheSameData`, the field and GroupPicker tests | The chips, scene and summary, and switching back: `test_aTableEditReachesTheChipsTheSceneAndTheSummary` (since the review) |
 | C16-06 | The summary's titles, totals and derived holes; the legacy status sentence | `theSummaryAndStatusSayTheTotals`, uicore | The file's hole limit is shown with a Clear (a decision) |
 | C16-07 | One selection, from a tile, a library chip, a table row, a 3D copy | `aClickSelectsAPieceNotTheResult`, `test_aRowsFieldSelectsItsPiece`, `test_aLibraryChipAdds` | Every view agrees: `test_aSelectionShowsInEveryView` (since the review) |
@@ -1215,9 +1243,9 @@ TapHandler takes as one: TestCase's own leaves each press a first tap.
 | C17-03 | Groups as the library has them: several per piece, a count each; the section always shown | `aPieceCanBeInSeveralGroups`, the GroupPicker tests, uicore | Changed on purpose (*P10 decisions*) |
 | C17-04 | The matrix, the three presets, rules per problem; no Default row | `theColourMatrixHasNoDefault`, uicore's presets, the keyboard tests | Cells 30 x 24 (a decision) |
 | C17-05 | No hole input; the file's limit shown, with a Clear | `theHoleLimitShowsAndClears` | The exception is a decision |
-| C18-01 | One object per copy, "k/N", optional copies see-through with dashed outlines and "(optional)" | `theSceneHasAnObjectPerCopy`, `test_ui_puzzlescene` | |
+| C18-01 | One object per copy, "k/N", optional copies see-through with dashed outlines and "(optional)" | `theSceneHasAnObjectPerCopy`, `test_ui_puzzlescene` | Optional copies are drawn as the others, captioned "(optional)" (*P10 decisions*, since the review) |
 | C18-02 | Each object turns about its own centre; frames stay; pan and zoom move the layout | `framesStayPutWhileTheObjectsTurn`, `panAndZoomMoveTheWholeLayout` | |
-| C18-03 | Hover frame, click selects every copy, the result not selectable | `aClickSelectsAPieceNotTheResult` | The hover frame is solid (deferred row) |
+| C18-03 | Hover frame, click selects every copy, the result not selectable | `aClickSelectsAPieceNotTheResult` | The hover frame is dashed: `test_aHoveredCopyIsFramedDashedASelectedOneSolid` (since the review) |
 | C18-04 | No Edit button, tool keys, slab, dim or overlays; the Display menu's Show items hidden | `test_theViewportHasNoEditing`, `tst_viewport` (the hint), the command table's `inEntities` | The Display menu: `test_theDisplayMenuHoldsOnlyProjectionAndColour` (since the review) |
 | C18-05 | Every voxel type's own geometry, from the Entities meshers | `test_ui_puzzlescene` ("every voxel type and style makes its scene") | Drawn per type: `TestPuzzle::everyVoxelTypeDrawsItsScene`; spheres touch: `test_ui_scenemesh` (since the review) |
 | C11-02, 04 | Both Puzzle cards collapse to rails, per workspace | `tst_shell` (the Puzzle cards' columns) | The 960 dp test with both cards collapsed runs in Puzzle too (since the review) |
@@ -1231,9 +1259,9 @@ TapHandler takes as one: TestCase's own leaves each press a first tap.
 | Element ids | overview/06 §10 names the mock's ids (`#pz-problems`, `.ut[data-u]`, `.mxc[data-i][data-j]` …), and the implementation guide wants them as `objectName`s | The dotted ids of the Entities tab's form, one for each: `puzzle.problems.list` / `.new`, `puzzle.result` / `puzzle.goal.result.change`, `puzzle.used` with `.tile.<i>` and `.row.<i>`, `puzzle.used.view` / `.more`, `puzzle.library.header` / `.chip.<i>`, `puzzle.summary`, `puzzle.piece.rangeSwitch` / `.min` / `.max` / `.group.<g>`, `puzzle.section.groups`, `puzzle.rules.cell.<piece>.<result>` (by colour name, not index) and `.identity` / `.all` / `.clear` |
 | The selected piece's fixed count | C17: the label "Copies in the puzzle", a 150 dp stepper, "Fixed count" under it | One line, "Copies, fixed count" ("Not in this puzzle" at 0), beside a 112 dp stepper, as the card's other rows |
 
-**Still open, knowingly.** The deferred rows: dashed frames and drop zones, see-through copies' sorting,
-the library chip's small buttons, the macOS references, Puzzle changes
-keeping their solutions for undo, the matrix at many colours and the
+**Still open, knowingly.** The deferred rows: see-through voxels' sorting,
+the library chip's small buttons, the macOS references, deletes keeping
+their solutions for undo, the matrix at many colours and the
 scene's one mesh.
 
 **Added unintentionally.** None found. The ids beyond the contract's are

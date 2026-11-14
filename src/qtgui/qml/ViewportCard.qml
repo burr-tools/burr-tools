@@ -144,14 +144,20 @@ Rectangle {
                 width: frameSize
                 height: frameSize
 
+                // C18: selected, a solid frame; hovered and not selected, a dashed one
                 Rectangle {
                     objectName: "puzzle.scene.object." + object.index + ".frame"
                     anchors.fill: parent
-                    visible: object.selected || object.hovered
+                    visible: object.selected
                     color: "transparent"
                     radius: Theme.radiusControl
-                    border.width: object.selected ? 2 : 1
+                    border.width: 2
                     border.color: Theme.accent
+                }
+                DashedFrame {
+                    objectName: "puzzle.scene.object." + object.index + ".hoverFrame"
+                    anchors.fill: parent
+                    visible: object.hovered && !object.selected
                 }
                 Text {
                     objectName: "puzzle.scene.object." + object.index + ".caption"
@@ -186,8 +192,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             kind: Chip.Header
             text: App.puzzle.problemIdText
-            fill: Theme.accent
-            textColor: Theme.onAccent
+            neutral: true
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter

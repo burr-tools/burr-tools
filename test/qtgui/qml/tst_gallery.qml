@@ -153,7 +153,7 @@ TestCase {
 
     function test_everyBuiltPrimitiveHasARow() {
         for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
-                           "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                           "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
@@ -351,11 +351,35 @@ TestCase {
         expectColors("dropdown", [ ["dropdown.normal", d.width - 0.25, 15, line2, "dropdown right border"] ])
     }
 
+    function test_aDashedFrameHasGapsOnEveryEdge_data() { return themes() }
+    function test_aDashedFrameHasGapsOnEveryEdge(data) {
+        // C16's drop zone and C18's hover frame: dashes along each edge, not a line
+        useTheme(data.theme)
+        arrange("dashedFrame")
+        const off = c => Math.max(Math.abs(c.r - Theme.accent.r), Math.abs(c.g - Theme.accent.g),
+                                  Math.abs(c.b - Theme.accent.b))
+        for (const name of ["dashedFrame.dropZone", "dashedFrame.sceneHover"]) {
+            const f = control(name)
+            const edges = {
+                top: i => [f, 12 + i, 0.5], bottom: i => [f, 12 + i, f.height - 0.5],
+                left: i => [f, 0.5, 12 + i], right: i => [f, f.width - 0.5, 12 + i]
+            }
+            for (const edge in edges) {
+                const points = []
+                for (let i = 0; i < 16; i++)
+                    points.push(edges[edge](i))
+                const d = Snapshots.colors(points).map(off)
+                verify(Math.min(...d) < 0.15, name + " " + edge + ": a dash, " + Math.min(...d))
+                verify(Math.max(...d) > 0.2, name + " " + edge + ": a gap, " + Math.max(...d))
+            }
+        }
+    }
+
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {
         const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
-                      "railButton", "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                      "railButton", "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []

@@ -35,6 +35,8 @@ namespace {
   std::unique_ptr<puzzle_c> withProblem(unsigned n) {
     auto p = shapes(n);
     newProblem(*p);
+    if (n > 0)
+      setResult(*p, 0, 0);
     return p;
   }
 
@@ -51,14 +53,15 @@ TEST_CASE("problems are named by position", "[ui][problemlist]") {
   CHECK(problemId(11) == "P12");
 }
 
-TEST_CASE("a new problem has the first shape as result and each colour on itself", "[ui][problemlist]") {
+TEST_CASE("a new problem has no result and each colour on itself", "[ui][problemlist]") {
+  // product decision 2026-11-14: the user chooses the result
   auto p = shapes(2);
   p->addColor(1, 2, 3);
   p->addColor(4, 5, 6);
   const int k = newProblem(*p);
   REQUIRE(k == 0);
-  CHECK(p->getProblem(0)->resultValid());
-  CHECK(p->getProblem(0)->getResultId() == 0);
+  CHECK_FALSE(p->getProblem(0)->resultValid());
+  CHECK(problemStats(*p, 0).fit == ProblemFit::NoResult);
   CHECK(p->getProblem(0)->getNumberOfParts() == 0);
   CHECK(colourRule(*p, 0, 1, 1));
   CHECK(colourRule(*p, 0, 2, 2));
@@ -444,6 +447,7 @@ TEST_CASE("the totals of a very large count do not overflow", "[ui][problemlist]
   const unsigned big = p->addShape(33, 33, 33);
   p->getShape(big)->setAll(voxel_c::VX_FILLED);
   newProblem(*p);
+  setResult(*p, 0, 0);
   REQUIRE(setPieceCount(*p, 0, 1, maxPieceCount, maxPieceCount));
 
   const ProblemStats st = problemStats(*p, 0);
@@ -458,6 +462,7 @@ TEST_CASE("the group after the last id is the first one free", "[ui][problemlist
   p->addShape(1, 1, 1);
   p->addShape(1, 1, 1);
   newProblem(*p);
+  setResult(*p, 0, 0);
   REQUIRE(setPieceCount(*p, 0, 1, 1, 1));
   REQUIRE(setPieceCount(*p, 0, 2, 1, 1));
   CHECK(nextGroup(*p, 0) == 1);
@@ -476,6 +481,7 @@ TEST_CASE("a result that a file also lists as a piece can be taken out", "[ui][p
   p->addShape(1, 1, 1);
   p->addShape(1, 1, 1);
   newProblem(*p);
+  setResult(*p, 0, 0);
   REQUIRE(isGoalShape(*p, 0, 0));
   CHECK_FALSE(setPieceCount(*p, 0, 0, 1, 1));       // never by adding it
 

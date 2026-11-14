@@ -186,8 +186,8 @@ void PuzzleController::refresh(void) {
           break;
       }
       if (slot.shape < 0) {
-        goal.push_back({ role, title, -1, QString(), tr("No result yet"), QColor(), QColor(),
-                         tr("Choose the shape the pieces must fill") });
+        goal.push_back({ role, title, -1, QString(), tr("Please choose a shape"), QColor(), QColor(),
+                         tr("The shape the pieces must fill") });
         continue;
       }
       if (slot.role == btui::GoalRole::Result) {
@@ -198,7 +198,9 @@ void PuzzleController::refresh(void) {
       const voxel_c * s = p.getShape(unsigned(slot.shape));
       const int fixed = filled(s), total = fixed + variable(s);
       const QString name = QString::fromStdString(s->getName());
-      goal.push_back({ role, title, slot.shape, idOfShape(slot.shape), name.isEmpty() ? tr("Result piece") : name,
+      // the shape's code and label: the chip beside it is too small to read for some
+      goal.push_back({ role, title, slot.shape, idOfShape(slot.shape),
+                       name.isEmpty() ? idOfShape(slot.shape) : tr("%1 %2").arg(idOfShape(slot.shape), name),
                        ShapesModel::chipColor(slot.shape), ShapesModel::chipTextColor(slot.shape),
                        tr("%1 · can hold %2").arg(voxelsText(fixed), rangeText(fixed, total)) });
     }
@@ -447,21 +449,30 @@ bool PuzzleController::wouldCostSolutions(int problem, const Edit & f) const {
   return f(copy);
 }
 
-/* A change to what a problem asks for removes its solutions. */
+/* A change to what a problem asks for removes its solutions, into the undo
+ * step (DocumentController::editProblems): undo brings them back. It warns
+ * only when they are too big for the history to keep. */
 void PuzzleController::changeAs(const Edit & f, puzzleHistory_c::actionKind_e kind, unsigned int coalesceKey) {
   flushTyping();
   guarded([&] {
     const int problem = m_problem;
     const auto clearing = [this, problem, f, kind, coalesceKey] {
       Step step(this, coalesceKey);
-      apply([&](puzzle_c & p) {
+      const Edit change = [&](puzzle_c & p) {
         if (!f(p))
           return false;
         btui::clearProblemSolutions(p, problem);
         return true;
-      }, kind);
+      };
+      if (problem < 0) {
+        apply(change, kind);
+        return;
+      }
+      flushTyping();
+      guarded([&] { m_doc->editProblems(kind, m_shapes->selected(), { unsigned(problem) }, change); });
     };
-    if (m_doc->mayCostSolutions(wouldCostSolutions(problem, f), clearing))
+    const std::vector<unsigned int> problems = problem < 0 ? std::vector<unsigned int>() : std::vector<unsigned int>{ unsigned(problem) };
+    if (m_doc->mayDropProblemSolutions(wouldCostSolutions(problem, f), problems, clearing))
       clearing();
   });
 }

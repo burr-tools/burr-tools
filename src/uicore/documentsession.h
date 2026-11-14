@@ -181,6 +181,28 @@ namespace btui {
        * True when there is nothing to drop. */
       bool keepsSolutionsOf(const std::vector<unsigned int> & shapes) const;
 
+      /* A change to what problems ask for -- piece counts, the result,
+       * groups, colour rules -- as edit(), naming the problems f changes;
+       * f must not add, remove or move problems. Those problems lose their
+       * solutions and search state, kept in the undo step as editVoxels()
+       * keeps them; the same budget (keepsSolutionsOfProblems). */
+      template <class F> bool editProblems(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape,
+                                           const std::vector<unsigned int> & problems, F && f) {
+        puzzleHistory_c::discarded_t taken = takeSolutions(problems);
+        bool changed;
+        try {
+          changed = edit(kind, selectedShape, std::forward<F>(f));
+        } catch (...) {
+          keepDiscarded(std::move(taken), true);   // the step was recorded all the same
+          throw;
+        }
+        keepDiscarded(std::move(taken), changed);
+        return changed;
+      }
+
+      /* editProblems() would keep these problems' solutions in its step */
+      bool keepsSolutionsOfProblems(const std::vector<unsigned int> & problems) const;
+
       /* Change the puzzle without an undo step, but as unsaved (solver
        * results; the comment goes through setComment()). */
       template <class F> void editWithoutUndo(F && f) {
@@ -252,6 +274,8 @@ namespace btui {
        * matches its copy, or one of shapes, swapped out of them */
       puzzleHistory_c::discarded_t discardChanged(const ShapeCopies & before);
       puzzleHistory_c::discarded_t discardUsing(const std::vector<unsigned int> & shapes);
+      /* the problems' solve records, taken out (editProblems) */
+      puzzleHistory_c::discarded_t takeSolutions(const std::vector<unsigned int> & problems);
       /* into the step just recorded; with no step, back into the problems;
        * with no room in the history's budget, lost for good */
       void keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded);

@@ -420,6 +420,13 @@ bool DocumentController::mayDropSolutions(bool drops, const std::vector<unsigned
   return holdForWarning(std::move(retry), true);
 }
 
+bool DocumentController::mayDropProblemSolutions(bool drops, const std::vector<unsigned int> & problems,
+                                                 std::function<void()> retry) {
+  if (!drops || m_dropAnswered || m_session.keepsSolutionsOfProblems(problems))
+    return true;
+  return holdForWarning(std::move(retry), true);
+}
+
 bool DocumentController::holdForWarning(std::function<void()> retry, bool tooBigToKeep) {
   // a second edit of the same gesture waits with the first, under its one warning
   if (m_heldEdit) {

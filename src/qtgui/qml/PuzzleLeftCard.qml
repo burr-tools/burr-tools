@@ -489,8 +489,7 @@ Card {
                         Chip {
                             objectName: "puzzle.problems.row." + row.index + ".chip"
                             text: row.idText
-                            fill: Theme.accent
-                            textColor: Theme.onAccent
+                            neutral: true
                         }
                         Text {
                             objectName: "puzzle.problems.row." + row.index + ".label"
@@ -683,11 +682,14 @@ Card {
                                     id: changeButton
                                     objectName: "puzzle.goal." + slotRow.role + ".change"
                                     small: true
-                                    text: qsTr("Change…")
+                                    text: slotRow.shape >= 0 ? qsTr("Change…") : qsTr("Choose…")
                                     enabled: App.shapes.count > 0
                                     Accessible.description: slotRow.detail
                                     BtToolTip { shown: Theme.minimal && (changeButton.hovered || changeButton.visualFocus); text: slotRow.detail }
-                                    onClicked: resultMenu.popup(changeButton, 0, changeButton.height)
+                                    onClicked: {
+                                        resultMenu.current = slotRow.shape
+                                        resultMenu.popup(changeButton, 0, changeButton.height)
+                                    }
                                 }
                             }
                         }
@@ -968,14 +970,12 @@ Card {
                     }
                 }
 
-                Rectangle { // what a drop would do, drawn over the zone
+                DashedFrame { // what a drop would do, drawn over the zone
                     objectName: "puzzle.used.dropZone"
                     anchors { fill: parent; margins: 2 }
                     visible: root.dragFrom === "library"
-                    radius: Theme.radiusControl
-                    color: Theme.accentSoft
-                    border.width: 2
-                    border.color: Theme.accent
+                    fill: Theme.accentSoft
+                    lineWidth: 2
                 }
             }
 
@@ -1105,14 +1105,12 @@ Card {
                     ScrollToFocus { id: libraryFollower; view: libraryView }
                 }
 
-                Rectangle {
+                DashedFrame {
                     objectName: "puzzle.library.dropZone"
                     anchors { fill: parent; margins: 2 }
                     visible: root.dragFrom === "used"
-                    radius: Theme.radiusControl
-                    color: Theme.accentSoft
-                    border.width: 2
-                    border.color: Theme.accent
+                    fill: Theme.accentSoft
+                    lineWidth: 2
                 }
             }
 
@@ -1215,20 +1213,90 @@ Card {
         }
     }
 
-    AppMenu { // ⑯
+    /* ⑯ Each shape with its picture (as the 3D view's Home shows it), code,
+     * label and voxels. The current result has a selected row's look; the
+     * shape with the most voxels -- the likely result -- has its count in the
+     * accent, a hint only, not a row tint a selection could be mistaken for
+     * (product decisions 2026-11-14 and -15). */
+    AppMenu {
         id: resultMenu
         objectName: "puzzle.resultMenu"
+        /* the result's shape when the menu opened, -1 for none */
+        property int current: -1
+        /* the largest shape's voxels; 0 with one shape, nothing to hint at */
+        readonly property int mostVoxels: {
+            let most = 0
+            for (let i = 0; i < shapeItems.count; i++) {
+                const it = shapeItems.objectAt(i)
+                if (it)
+                    most = Math.max(most, it.voxels)
+            }
+            return shapeItems.count > 1 ? most : 0
+        }
         Instantiator {
+            id: shapeItems
             model: App.shapes
             delegate: AppMenuItem {
+                id: shapeItem
                 required property int index
                 required property string idText
                 required property string label
+                required property color chipColor
                 required property int fixedCount
                 required property int variableCount
+                readonly property int voxels: fixedCount + variableCount
+                readonly property bool largest: resultMenu.mostVoxels > 0 && voxels === resultMenu.mostVoxels
                 objectName: "puzzle.resultMenu.shape." + index
-                text: label.length > 0 ? qsTr("%1 %2 · %3 voxels").arg(idText).arg(label).arg(fixedCount + variableCount)
-                                       : qsTr("%1 · %2 voxels").arg(idText).arg(fixedCount + variableCount)
+                text: label.length > 0 ? qsTr("%1 %2 · %3 voxels").arg(idText).arg(label).arg(voxels)
+                                       : qsTr("%1 · %2 voxels").arg(idText).arg(voxels)
+                Accessible.description: largest ? qsTr("The shape with the most voxels") : ""
+                // not checkable: a click would toggle checked and break the binding
+                readonly property bool current: index === resultMenu.current
+                Accessible.checkable: true
+                Accessible.checked: current
+                implicitHeight: 36
+                leftPadding: 4
+                rightPadding: 8
+                background: Rectangle {
+                    radius: Theme.radiusChip
+                    color: shapeItem.current ? Theme.accentSoft : shapeItem.highlighted ? Theme.panel2 : "transparent"
+                    border.width: shapeItem.current ? 1 : 0
+                    border.color: shapeItem.highlighted ? Theme.accent : Theme.accentEdge
+                }
+                contentItem: RowLayout {
+                    spacing: 8
+                    ShapePicture {
+                        objectName: "puzzle.resultMenu.shape." + shapeItem.index + ".picture"
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        document: App.document
+                        shape: shapeItem.index
+                        colour: shapeItem.chipColor
+                    }
+                    Text {
+                        text: shapeItem.idText
+                        color: Theme.text
+                        font.pixelSize: Theme.fontBody
+                        font.weight: Font.DemiBold
+                    }
+                    Text {
+                        visible: text.length > 0
+                        Layout.maximumWidth: 180
+                        text: shapeItem.label
+                        textFormat: Text.PlainText
+                        elide: Text.ElideRight
+                        color: Theme.text
+                        font.pixelSize: Theme.fontBody
+                    }
+                    Item { Layout.fillWidth: true; Layout.minimumWidth: 16 }
+                    Text {
+                        objectName: "puzzle.resultMenu.shape." + shapeItem.index + ".voxels"
+                        text: qsTr("%1 voxels").arg(shapeItem.voxels)
+                        color: shapeItem.largest ? Theme.accent : Theme.muted
+                        font.pixelSize: Theme.fontSecondary
+                        font.weight: shapeItem.largest ? Font.DemiBold : Font.Normal
+                    }
+                }
                 onTriggered: App.puzzle.setResult(index)
             }
             onObjectAdded: (i, item) => resultMenu.insertItem(i, item as MenuItem)

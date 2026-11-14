@@ -26,7 +26,6 @@
 #include "../lib/voxel.h"
 
 #include <algorithm>
-#include <cmath>
 #include <map>
 
 namespace btui {
@@ -35,7 +34,6 @@ namespace btui {
 
     constexpr int kColumns = 5;           // C18: pieces five to a row
     constexpr float kSpacing = 1.3f;      // an object's width and the room for its caption
-    constexpr float kOptionalAlpha = 0.45f;
 
     /* a shape's mesh around its own centre */
     struct Prepared {
@@ -71,11 +69,9 @@ namespace btui {
           v.cell[0] = o.anchor.x;
           v.cell[1] = o.anchor.y;
           v.cell[2] = o.anchor.z;
-          if (o.optional) {
-            v.color.a = std::uint8_t(std::lround(v.color.a * kOptionalAlpha));
-            v.edge[3] = 1.0f;              // its outline dashed
-          }
-          (o.optional || list == &src.translucent ? dst.translucent : dst.opaque).push_back(v);
+          // an optional copy is drawn as the others (product decision
+          // 2026-11-14, not C18's translucent dashed copy): its caption says it
+          (list == &src.translucent ? dst.translucent : dst.opaque).push_back(v);
         }
       for (LineSeg s : src.edges) {
         s.offset = o.anchor;
@@ -179,7 +175,7 @@ namespace btui {
     size_t opaque = 0, translucent = 0, edges = 0;
     for (const SceneObject & o : scene.objects) {
       const ShapeMesh & m = prepared(o.shape).mesh;
-      (o.optional ? translucent : opaque) += m.opaque.size();
+      opaque += m.opaque.size();
       translucent += m.translucent.size();
       edges += m.edges.size();
     }

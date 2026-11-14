@@ -298,6 +298,12 @@ ApplicationWindow {
                     Cell { kind: "cursor"; MatrixToggle { cursor: true } }
                 }
                 GalleryRow {
+                    // C16's drop zone while dragging, C18's hover frame in the Puzzle scene
+                    name: "dashedFrame"; label: "Dashed frame"
+                    Cell { kind: "dropZone"; DashedFrame { width: 200; height: 48; fill: Theme.accentSoft; lineWidth: 2 } }
+                    Cell { kind: "sceneHover"; DashedFrame { width: 72; height: 72 } }
+                }
+                GalleryRow {
                     name: "railButton"; label: "PR-21 Rail button"
                     Cell { kind: "normal"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }
                     Cell { kind: "hover"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }
@@ -475,6 +481,7 @@ ApplicationWindow {
                     Cell { kind: "shapeDarkText"; Chip { text: "S2"; fill: "#00ff00"; textColor: "black" } }
                     Cell { kind: "wide"; Chip { text: "S128"; fill: "#0000ff"; textColor: "white" } }
                     Cell { kind: "header"; Chip { kind: Chip.Header; text: "S1"; fill: "#0000ff"; textColor: "white" } }
+                    Cell { kind: "problem"; Chip { text: "P1"; neutral: true } }
                     Cell { kind: "count"; Chip { kind: Chip.Count; text: "8" } }
                     Cell { kind: "weight"; Chip { kind: Chip.Weight; text: "W2" } }
                 }

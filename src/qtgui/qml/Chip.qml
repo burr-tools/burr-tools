@@ -11,6 +11,10 @@ import BurrTools.Ui
 //   Count:  h20, muted, a pill
 //   Weight: h18, panel2 on a 1 dp line, radius 5, muted text
 //
+// `neutral` draws a Shape or Header chip without a colour of its own, for
+// what has none: a problem's id (P1), panel2 on a 1 dp line2, in the text
+// colour (product decision 2026-11-14; C16 had the accent).
+//
 // Read-only: a chip names something, its row or button does the work, so
 // the chip's text is not read out on its own (Accessible.ignored).
 Rectangle {
@@ -21,6 +25,7 @@ Rectangle {
     property string text
     property color fill: Theme.muted            // Shape, Header: the shape's colour
     property color textColor: Theme.panel       // Shape, Header: the model's chipTextColor
+    property bool neutral: false                // Shape, Header: no colour of its own (a problem)
 
     readonly property bool isShape: kind === Chip.Shape || kind === Chip.Header
     readonly property real minWidth: kind === Chip.Shape ? 34 : kind === Chip.Header ? 28 : kind === Chip.Count ? 24 : 0
@@ -28,9 +33,9 @@ Rectangle {
     implicitHeight: isShape ? 26 : kind === Chip.Count ? 20 : 18
     implicitWidth: Math.max(minWidth, label.implicitWidth + (kind === Chip.Weight ? 10 : 12))
     radius: isShape ? Theme.radiusChip : kind === Chip.Count ? height / 2 : 5
-    color: isShape ? fill : kind === Chip.Count ? Theme.muted : Theme.panel2
-    border.width: kind === Chip.Weight ? 1 : 0
-    border.color: Theme.line
+    color: isShape && !neutral ? fill : kind === Chip.Count ? Theme.muted : Theme.panel2
+    border.width: kind === Chip.Weight || (isShape && neutral) ? 1 : 0
+    border.color: isShape ? Theme.line2 : Theme.line
 
     Text {
         id: label
@@ -42,7 +47,7 @@ Rectangle {
         elide: Text.ElideRight
         text: root.text
         textFormat: Text.PlainText
-        color: root.isShape ? root.textColor : root.kind === Chip.Count ? Theme.panel : Theme.muted
+        color: root.isShape ? (root.neutral ? Theme.text : root.textColor) : root.kind === Chip.Count ? Theme.panel : Theme.muted
         font.pixelSize: Theme.fontMicro
         font.weight: root.kind === Chip.Count ? Font.DemiBold : Font.Bold
     }

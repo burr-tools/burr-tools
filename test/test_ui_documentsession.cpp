@@ -789,3 +789,63 @@ TEST_CASE("a budget that fits one edit's solutions but not two keeps the first, 
   f.d.undo();
   CHECK(solved(f.d, 0) == f.before);
 }
+
+// --- a change to what a problem asks for, and its solutions (2026-11-14) -------
+
+namespace {
+  /* one more copy of a piece of problem 0, through the library */
+  auto oneMoreCopy(unsigned int shape) {
+    return [shape](puzzle_c & p) {
+      problem_c * pr = p.getProblem(0);
+      pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+      return true;
+    };
+  }
+}
+
+TEST_CASE("a change to a problem's pieces drops its solutions, and undo brings them back", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  CHECK(d.keepsSolutionsOfProblems({ 0 }));
+  CHECK(d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 }, oneMoreCopy(f.used)));
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+  d.undo();                                   // the structure rebuilt, the record swapped back
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());                // the file as loaded, solutions and all
+  d.redo();
+  CHECK(unsolved(d, 0));
+  d.undo();                                   // and again: the record goes back and forth whole
+  CHECK(solved(d, 0) == f.before);
+  CHECK(d.puzzle().getProblem(0)->getSavedSolution(0) != nullptr);
+}
+
+TEST_CASE("a problem change that changes nothing keeps the solutions where they are", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  CHECK_FALSE(d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 },
+                             [](puzzle_c &) { return false; }));
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.canUndo());
+}
+
+TEST_CASE("an undo of a problem change no step kept anything for drops that problem's solutions", "[ui][document]") {
+  // the legacy GUI's path: a plain edit, nothing kept
+  Pelikan f;
+  DocumentSession & d = f.d;
+  d.edit(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, oneMoreCopy(f.used));
+  d.undo();
+  CHECK(unsolved(d, 0));
+}
+
+TEST_CASE("a problem change over the budget loses its solutions for good", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  const Budget b(puzzleHistory_c::solutionBytesKept());   // no room left
+  CHECK_FALSE(d.keepsSolutionsOfProblems({ 0 }));
+  d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 }, oneMoreCopy(f.used));
+  CHECK(unsolved(d, 0));
+  d.undo();
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+}

@@ -35,11 +35,13 @@ TestCase {
             App.shapes.addShape()
         App.layout.workspace = LayoutController.Puzzle
         App.puzzle.newProblem()
+        App.puzzle.setResult(0)            // a new problem has none (2026-11-14)
         App.puzzle.selectPiece(-1)
         waitForRendering(win.contentItem)
     }
 
     function cleanup() {
+        Snapshots.leaveNoRoomForSolutions(false)
         App.settings.density = "standard"
         App.puzzle.piecesView = "chips"
         // collapsing is per workspace, and the layout is the App's
@@ -328,45 +330,127 @@ TestCase {
         return dialog
     }
 
-    // the button itself, not the controller's answer: the first version lost it here
-    function test_continueInTheWarningMakesTheChange() {
+    // the Result's list: a picture of each shape, the one with the most voxels tinted (2026-11-14)
+    function test_theResultListShowsPicturesAndTheLargest() {
+        solved()
+        waitForRendering(win.contentItem)
+        mouseClick(item("puzzle.goal.result.change"))
+        const menu = item("puzzle.left").resultContextMenu
+        tryVerify(() => menu.opened, 2000)
+        waitForRendering(win.contentItem)
+        let most = 0
+        for (let i = 0; i < menu.count; i++)
+            most = Math.max(most, menu.itemAt(i).voxels)
+        verify(most > 0)
+        let tagged = 0, current = 0
+        for (let i = 0; i < menu.count; i++) {
+            const row = menu.itemAt(i)
+            const picture = findChild(row, "puzzle.resultMenu.shape." + i + ".picture")
+            tryVerify(() => picture.faces > 0, 2000, "S" + (i + 1) + " has a picture")
+            compare(row.largest, row.voxels === most, "S" + (i + 1))
+            // the hint is the count in the accent; only the current result has a row's selection
+            compare(findChild(row, "puzzle.resultMenu.shape." + i + ".voxels").color, row.largest ? Theme.accent : Theme.muted)
+            compare(row.current, i === App.puzzle.goal.value(0, "shape"), "S" + (i + 1) + " current")
+            compare(row.background.color, row.current ? Theme.accentSoft : row.highlighted ? Theme.panel2 : Qt.rgba(0, 0, 0, 0))
+            if (row.largest)
+                tagged++
+            if (row.current)
+                current++
+        }
+        verify(tagged >= 1)
+        compare(current, 1)
+        menu.close()
+    }
+
+    // a click picks the result; the next opening marks the new one, not the old
+    function test_theResultListMarksTheCurrentResult() {
+        mouseClick(item("puzzle.goal.result.change"))
+        const menu = item("puzzle.left").resultContextMenu
+        tryVerify(() => menu.opened, 2000)
+        verify(menu.itemAt(0).current)
+        menu.itemAt(1).triggered()
+        tryVerify(() => !menu.opened, 2000)
+        compare(App.puzzle.goal.value(0, "shape"), 1)
+        mouseClick(item("puzzle.goal.result.change"))
+        tryVerify(() => menu.opened, 2000)
+        verify(!menu.itemAt(0).current)
+        verify(menu.itemAt(1).current)
+        menu.close()
+        App.puzzle.newProblem()
+        waitForRendering(win.contentItem)
+        mouseClick(item("puzzle.goal.result.change"))
+        tryVerify(() => menu.opened, 2000)
+        for (let i = 0; i < menu.count; i++)
+            verify(!menu.itemAt(i).current, "no result, none current")
+        menu.close()
+    }
+
+    // a new problem starts with no result, and says so
+    function test_aNewProblemAsksForAResult() {
+        App.puzzle.newProblem()
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.goal.result.name").text, "Result: Please choose a shape")
+        verify(!item("puzzle.goal.result.chip").visible)
+        compare(item("puzzle.goal.result.change").text, "Choose…")
+        App.puzzle.setResult(2)
+        tryCompare(item("puzzle.goal.result.name"), "text", "Result: S3")
+        compare(item("puzzle.goal.result.change").text, "Change…")
+    }
+
+    // a count change keeps its solutions in its undo step: no warning (2026-11-14)
+    function test_aCountChangeAsksNothingAndUndoBringsTheSolutionsBack() {
         solved()
         const shape = App.puzzle.pieces.value(0, "shape")
         const before = App.puzzle.pieces.value(0, "maxCount")
-        App.puzzle.stepPiece(shape, 1)
-        const dialog = warning()
-        verify(App.commands.blocked)                     // counted as modal
-        verify(dialog.text.indexOf("once a session") >= 0, dialog.text)
-        verify(dialog.text.indexOf("without asking") >= 0, dialog.text)
-        compare(App.puzzle.pieces.value(0, "maxCount"), before)
-        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.confirm"))
-        tryVerify(() => !dialog.visible, 1000)
-        compare(App.puzzle.pieces.value(0, "maxCount"), before + 1)
-        compare(App.puzzle.problems.value(0, "solutions"), 0)
-        verify(App.document.solutionsWarned)
-
-        // and no second time
+        const solutions = App.puzzle.problems.value(0, "solutions")
+        verify(solutions > 0)
         App.puzzle.stepPiece(shape, 1)
         wait(50)
-        verify(!dialog.visible)
-        compare(App.puzzle.pieces.value(0, "maxCount"), before + 2)
-    }
-
-    function test_cancelInTheWarningChangesNothing() {
-        solved()
-        const before = App.puzzle.pieces.value(0, "maxCount")
-        const solutions = App.puzzle.problems.value(0, "solutions")
-        App.puzzle.stepPiece(App.puzzle.pieces.value(0, "shape"), 1)
-        const dialog = warning()
-        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.cancel"))
-        tryVerify(() => !dialog.visible, 1000)
+        compare(findChild(win, "shell.solutionsDialog") !== null && findChild(win, "shell.solutionsDialog").opened, false)
+        compare(App.puzzle.pieces.value(0, "maxCount"), before + 1)
+        compare(App.puzzle.problems.value(0, "solutions"), 0)
+        App.document.undo()
         compare(App.puzzle.pieces.value(0, "maxCount"), before)
         compare(App.puzzle.problems.value(0, "solutions"), solutions)
         verify(!App.document.solutionsWarned)
     }
 
+    // the button itself, not the controller's answer: the first version lost it here.
+    // Deleting a solved problem still warns, once a session.
+    function test_continueInTheWarningMakesTheChange() {
+        solved()
+        App.puzzle.newProblem()
+        const count = App.puzzle.problems.count
+        App.puzzle.deleteProblem(0)
+        const dialog = warning()
+        verify(App.commands.blocked)                     // counted as modal
+        verify(dialog.text.indexOf("once a session") >= 0, dialog.text)
+        verify(dialog.text.indexOf("without asking") >= 0, dialog.text)
+        compare(App.puzzle.problems.count, count)
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.confirm"))
+        tryVerify(() => !dialog.visible, 1000)
+        compare(App.puzzle.problems.count, count - 1)
+        verify(App.document.solutionsWarned)
+    }
+
+    function test_cancelInTheWarningChangesNothing() {
+        solved()
+        App.puzzle.newProblem()
+        const count = App.puzzle.problems.count
+        const solutions = App.puzzle.problems.value(0, "solutions")
+        App.puzzle.deleteProblem(0)
+        const dialog = warning()
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.cancel"))
+        tryVerify(() => !dialog.visible, 1000)
+        compare(App.puzzle.problems.count, count)
+        compare(App.puzzle.problems.value(0, "solutions"), solutions)
+        verify(!App.document.solutionsWarned)
+    }
+
+    // too big for the undo history: a group change warns, every time
     function test_thePickerClosesForTheWarningAndKeepsTheTruthOnCancel() {
         solved()
+        Snapshots.leaveNoRoomForSolutions(true)
         App.puzzle.piecesView = "table"
         waitForRendering(win.contentItem)
         const shape = App.puzzle.pieces.value(0, "shape")
@@ -399,6 +483,7 @@ TestCase {
         const used = item("puzzle.used")
         drag(chip, used, 10, chip.height / 2)
         verify(item("puzzle.used.dropZone").visible, "the zone is shown while dragging")
+        verify(item("puzzle.used.dropZone.outline").visible, "with its dashed outline")
         verify(item("puzzle.dragGhost").visible)
         const end = used.mapToItem(win.contentItem, used.width / 2, used.height / 2)
         mouseRelease(win.contentItem, end.x, end.y)
@@ -553,6 +638,7 @@ TestCase {
     function test_allPiecesFollowsTheSelectedProblem() {
         App.puzzle.stepPiece(1, 2)
         App.puzzle.newProblem()
+        App.puzzle.setResult(0)            // the same library rows in both problems
         App.puzzle.setRange(2, 0, 3)
         waitForRendering(win.contentItem)
         const one = item("puzzle.library.chip.1")
@@ -1643,6 +1729,39 @@ TestCase {
         const size = objects.value(copy, "frameSize")
         mouseClick(view, objects.value(copy, "frameX") + size / 2, objects.value(copy, "frameY") + size / 2)
         agree(1)
+    }
+
+    // C18: a hovered copy gets a dashed frame, a selected one a solid frame
+    function test_aHoveredCopyIsFramedDashedASelectedOneSolid() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.stepPiece(2, 1)
+        App.puzzle.selectPiece(1)               // the Selected slot is there before and after
+        waitForRendering(win.contentItem)
+        const objects = App.viewport.sceneObjects
+        let copy = -1
+        for (let i = 0; i < objects.count && copy < 0; i++)
+            if (objects.value(i, "role") === "piece" && objects.value(i, "shape") === 2)
+                copy = i
+        verify(copy >= 0)
+        const view = item("entities.viewport.surface")
+        const size = objects.value(copy, "frameSize")
+        const x = objects.value(copy, "frameX") + size / 2, y = objects.value(copy, "frameY") + size / 2
+        const solid = item("puzzle.scene.object." + copy + ".frame")
+        const dashed = item("puzzle.scene.object." + copy + ".hoverFrame")
+        verify(!solid.visible && !dashed.visible)
+
+        mouseMove(view, x, y)
+        tryVerify(() => objects.value(copy, "hovered"), 1000)
+        verify(dashed.visible, "hovered: dashed")
+        verify(!solid.visible)
+
+        mouseClick(view, x, y)
+        tryCompare(App.puzzle, "selectedPiece", 2)
+        tryVerify(() => solid.visible, 1000, "selected: solid")
+        verify(!dashed.visible, "a selected copy shows no hover frame")
+        mouseMove(view, 2, 2)                   // off every object
+        tryVerify(() => !objects.value(copy, "hovered"), 1000)
+        verify(solid.visible && !dashed.visible)
     }
 
     // AC-C16-08, T-C16-8: in the dialog, Min above Max raises Max

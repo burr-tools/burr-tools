@@ -84,9 +84,7 @@ namespace btui {
     problem_c * pr = p.getProblem(k);
     for (unsigned c = 1; c <= p.colorNumber(); c++)
       pr->allowPlacement(c, c);
-    if (p.getNumberOfShapes() > 0)
-      pr->setResultId(0);
-    return int(k);
+    return int(k);   // no result: the user chooses it (product decision 2026-11-14)
   }
 
   int duplicateProblem(puzzle_c & p, int i) {

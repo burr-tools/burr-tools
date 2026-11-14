@@ -94,6 +94,8 @@ public:
    * budget (DocumentSession::keepsSolutionsOf): then they would be lost for
    * good, and the warning says so every time. */
   bool mayDropSolutions(bool drops, const std::vector<unsigned int> & shapes, std::function<void()> retry);
+  /* The same for a change to what these problems ask for (editProblems). */
+  bool mayDropProblemSolutions(bool drops, const std::vector<unsigned int> & problems, std::function<void()> retry);
   /* the answer to solutionsWarningRequested() */
   Q_INVOKABLE void resolveSolutionsWarning(bool goOn);
 
@@ -201,6 +203,16 @@ public:
     });
   }
 
+  /* A change to what problems ask for (DocumentSession::editProblems):
+   * as edit(), and those problems lose their solutions -- to the undo
+   * step, which brings them back. */
+  template <class F> bool editProblems(puzzleHistory_c::actionKind_e kind, int selectedShape,
+                                       const std::vector<unsigned int> & problems, F && f) {
+    return tellEdit(Change::Problem, -1, selectedShape, [&] {
+      return m_session.editProblems(kind, sessionShape(selectedShape), problems, std::forward<F>(f));
+    });
+  }
+
 private:
 
   static unsigned int sessionShape(int shape) { return shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape); }
@@ -304,7 +316,7 @@ private:
   void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
   void setPending(Pending p);
-  /* the edit waits for the warning (mayCostSolutions, mayDropSolutions) */
+  /* the edit waits for the warning (mayCostSolutions, mayDropSolutions, mayDropProblemSolutions) */
   bool holdForWarning(std::function<void()> retry, bool tooBigToKeep);
 
   btui::DocumentSession m_session;

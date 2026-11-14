@@ -745,7 +745,7 @@ ApplicationWindow {
             const d = solutionsDialog.item as ConfirmDialog
             if (tooBigToKeep)
                 d.ask(qsTr("Solutions too large to keep for Undo"),
-                      qsTr("This edit removes the stored solutions of the problems using this shape. Undo usually brings them back, but these are too large to keep in memory, so they are lost, and saving then removes them from the file. Solving the problem again finds them."),
+                      qsTr("This edit removes the stored solutions of the problems it touches. Undo usually brings them back, but these are too large to keep in memory, so they are lost, and saving then removes them from the file. Solving the problem again finds them."),
                       qsTr("Continue"))
             else
                 d.ask(qsTr("Edits remove stored solutions"),

@@ -30,6 +30,7 @@ namespace {
               s->setState(x, y, z, voxel_c::VX_FILLED);
     }
     newProblem(*p);
+    setResult(*p, 0, 0);
     return p;
   }
 
@@ -65,7 +66,8 @@ TEST_CASE("the Selected slot is left out for none and for the result", "[ui][puz
   CHECK(count(buildPuzzleScene(*p, 0, 9, MeshOptions{}), SceneRole::Selected) == 0);
 }
 
-TEST_CASE("a range's copies beyond its minimum are optional and see-through", "[ui][puzzlescene]") {
+TEST_CASE("a range's copies beyond its minimum are optional and drawn as the others", "[ui][puzzlescene]") {
+  // product decision 2026-11-14: not C18's translucent dashed copies; the caption says "(optional)"
   auto p = puzzle(2);
   setPieceCount(*p, 0, 1, 1, 3);
 
@@ -74,9 +76,15 @@ TEST_CASE("a range's copies beyond its minimum are optional and see-through", "[
   CHECK_FALSE(s.objects[1].optional);
   CHECK(s.objects[2].optional);
   CHECK(s.objects[3].optional);
-  CHECK_FALSE(s.mesh.translucent.empty());
-  for (const MeshVertex & v : s.mesh.translucent)
-    CHECK(int(v.color.a) < 255);
+  CHECK(s.mesh.translucent.empty());
+  for (const MeshVertex & v : s.mesh.opaque) {
+    CHECK(int(v.color.a) == 255);
+    CHECK(v.edge[3] == 0.0f);        // no dashed outline
+  }
+
+  setPieceCount(*p, 0, 1, 3, 3);    // the same copies, all fixed: the same mesh
+  const PuzzleScene fixed = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  CHECK(fixed.mesh.opaque.size() == s.mesh.opaque.size());
 }
 
 TEST_CASE("pieces lie five to a row under the top row, none on another", "[ui][puzzlescene]") {
@@ -162,6 +170,7 @@ TEST_CASE("copies past what a click can wait for are counted, not drawn", "[ui][
         if ((x + y + z) % 2 == 0)
           v->setState(x, y, z, voxel_c::VX_FILLED);
   newProblem(*p);
+  setResult(*p, 0, 0);
   setPieceCount(*p, 0, int(s), 100, 100);
 
   const PuzzleScene scene = buildPuzzleScene(*p, 0, -1, MeshOptions{});

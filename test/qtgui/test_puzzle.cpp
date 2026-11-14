@@ -56,6 +56,7 @@ namespace {
       app->viewport()->setViewportSize(800, 800);
       app->layout()->setWorkspace(LayoutController::Puzzle);
       puzzle()->newProblem();
+      puzzle()->setResult(0);       // a new problem has none (2026-11-14)
       flush();
     }
 
@@ -204,6 +205,24 @@ void TestPuzzle::theLibraryReadsTheSelectedProblem() {
   f.app->document()->undo();                     // the second count, of the other problem
   z->selectProblem(1);
   QCOMPARE(countOf(2), QString());
+}
+
+void TestPuzzle::aNewProblemHasNoResultUntilOneIsChosen() {
+  // product decision 2026-11-14: no shape is taken for the result; the row names it by code and label
+  PuzzleFixture f;
+  PuzzleController * z = f.puzzle();
+  z->newProblem();
+  RowsModel * goal = z->goal();
+  QCOMPARE(goal->value(0, QStringLiteral("shape")).toInt(), -1);
+  QCOMPARE(goal->value(0, QStringLiteral("name")).toString(), QStringLiteral("Please choose a shape"));
+  QVERIFY(!f.problem(1).resultValid());
+  QCOMPARE(z->library()->count(), 3);            // every shape is a piece to choose from
+
+  z->setResult(1);
+  QCOMPARE(goal->value(0, QStringLiteral("name")).toString(), QStringLiteral("S2"));
+  f.app->document()->editStructure(-1, [](puzzle_c & p) { p.getShape(1)->setName("Bar"); return true; });
+  z->refresh();
+  QCOMPARE(goal->value(0, QStringLiteral("name")).toString(), QStringLiteral("S2 Bar"));
 }
 
 void TestPuzzle::theResultIsNoPiece() {
@@ -371,28 +390,47 @@ void TestPuzzle::theRailsListComeFromTheSectionTable() {
   QCOMPARE(requested.first().first().toString(), QStringLiteral("rules"));
 }
 
-void TestPuzzle::aChangeThatCostsSolutionsWarnsOnceASession() {
+namespace {
+  /* the undo history's memory budget for one test, back to what it was after */
+  struct SolutionBudget {
+    size_t was = puzzleHistory_c::solutionBudget();
+    explicit SolutionBudget(size_t bytes) { puzzleHistory_c::setSolutionBudget(bytes); }
+    ~SolutionBudget(void) { puzzleHistory_c::setSolutionBudget(was); }
+  };
+}
+
+void TestPuzzle::aPuzzleChangeKeepsItsSolutionsForUndo() {
   PuzzleFixture f;
   f.loadSolved();
   PuzzleController * z = f.puzzle();
   DocumentController * d = f.app->document();
   const int shape = int(f.problem().getShapeIdOfPart(0));
   const int before = btui::pieceCount(f.doc(), 0, shape).max;
+  const int solutions = int(f.problem().getNumberOfSavedSolutions());
   QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
 
+  // a count change drops them into its undo step, without a word (2026-11-14)
   z->stepPiece(shape, 1);
-  QCOMPARE(asked.count(), 1);
-  QCOMPARE(btui::pieceCount(f.doc(), 0, shape).max, before);     // nothing yet
-
-  d->resolveSolutionsWarning(true);
+  QCOMPARE(asked.count(), 0);
   QCOMPARE(btui::pieceCount(f.doc(), 0, shape).max, before + 1);
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
-
-  // the session has been told: another file's solved problem just goes
-  f.loadSolved();
-  z->stepPiece(int(f.problem().getShapeIdOfPart(0)), 1);
-  QCOMPARE(asked.count(), 1);
+  QVERIFY(d->modified());
+  d->undo();
+  QCOMPARE(btui::pieceCount(f.doc(), 0, shape).max, before);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
+  QVERIFY(!d->modified());
+  d->redo();
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  d->undo();
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
+
+  // the result too
+  z->setResult(shape);
+  QCOMPARE(asked.count(), 0);
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  d->undo();
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
+  QVERIFY(!d->solutionsWarned());
 }
 
 void TestPuzzle::cancellingTheWarningChangesNothing() {
@@ -402,18 +440,26 @@ void TestPuzzle::cancellingTheWarningChangesNothing() {
   DocumentController * d = f.app->document();
   const int solutions = int(f.problem().getNumberOfSavedSolutions());
   const int shape = int(f.problem().getShapeIdOfPart(0));
+  const SolutionBudget budget(puzzleHistory_c::solutionBytesKept());   // no room: it warns
   QSignalSpy asked(d, &DocumentController::solutionsWarningRequested);
 
   z->setCount(shape, 0);
   QCOMPARE(asked.count(), 1);
+  QCOMPARE(asked.first().first().toBool(), true);   // too big to keep
   d->resolveSolutionsWarning(false);
   QVERIFY(btui::pieceCount(f.doc(), 0, shape).inPuzzle());
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
   QVERIFY(!d->modified());
-  QVERIFY(!d->solutionsWarned());                // it asks again next time
 
-  d->resolveSolutionsWarning(true);              // no question open: only the flag
+  d->resolveSolutionsWarning(true);              // no question open: nothing happens
   QVERIFY(!d->modified());
+  z->setCount(shape, 0);                         // it asks again, every time
+  QCOMPARE(asked.count(), 2);
+  d->resolveSolutionsWarning(true);              // going on loses them for good
+  QVERIFY(!btui::pieceCount(f.doc(), 0, shape).inPuzzle());
+  d->undo();
+  QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), 0);
+  QVERIFY(d->modified());
 }
 
 void TestPuzzle::renamingAndReorderingNeverWarn() {
@@ -468,15 +514,6 @@ void TestPuzzle::everyVoxelEditRemovesTheSolutionsOfItsProblems() {
   QCOMPARE(int(f.problem().getNumberOfSavedSolutions()), solutions);
   QVERIFY(!d->modified());
   QVERIFY(!d->solutionsWarned());
-}
-
-namespace {
-  /* the undo history's memory budget for one test, back to what it was after */
-  struct SolutionBudget {
-    size_t was = puzzleHistory_c::solutionBudget();
-    explicit SolutionBudget(size_t bytes) { puzzleHistory_c::setSolutionBudget(bytes); }
-    ~SolutionBudget(void) { puzzleHistory_c::setSolutionBudget(was); }
-  };
 }
 
 void TestPuzzle::solutionsTooBigToKeepWarnEveryTime() {
@@ -771,6 +808,7 @@ void TestPuzzle::everyVoxelTypeDrawsItsScene() {
     return true;
   });
   f.puzzle()->newProblem();
+  f.puzzle()->setResult(0);
   f.puzzle()->stepPiece(1, 2);
   f.puzzle()->selectPiece(1);
   f.flush();
@@ -819,6 +857,7 @@ void TestPuzzle::piecesAndProblemsKeysWorkOnlyInPuzzle() {
 void TestPuzzle::aChangeThatChangesNothingDoesNotWarn() {
   PuzzleFixture f;
   f.loadSolved();
+  const SolutionBudget budget(puzzleHistory_c::solutionBytesKept());   // no room: a change warns
   QSignalSpy asked(f.app->document(), &DocumentController::solutionsWarningRequested);
 
   // the problem's rules are as they are: each colour on itself or nothing to change
@@ -839,6 +878,7 @@ void TestPuzzle::aChangeThatChangesNothingDoesNotWarn() {
 void TestPuzzle::aCancelledRangeLeavesTheSwitchOff() {
   PuzzleFixture f;
   f.loadSolved();
+  const SolutionBudget budget(puzzleHistory_c::solutionBytesKept());   // no room: it warns
   const int shape = int(f.problem().getShapeIdOfPart(0));
   f.puzzle()->selectPiece(shape);
   f.puzzle()->setRangeOn(shape, true);
@@ -973,6 +1013,7 @@ void TestPuzzle::anEditWaitingForAnAnswerGoesWithTheDocument() {
 void TestPuzzle::twoEditsOfOneGestureShareTheWarning() {
   PuzzleFixture f;
   f.loadSolved();
+  const SolutionBudget budget(puzzleHistory_c::solutionBytesKept());   // no room: it warns
   QSignalSpy asked(f.app->document(), &DocumentController::solutionsWarningRequested);
   const int a = int(f.problem().getShapeIdOfPart(0)), b = int(f.problem().getShapeIdOfPart(1));
   const int copiesA = f.puzzle()->copiesOf(a), copiesB = f.puzzle()->copiesOf(b);

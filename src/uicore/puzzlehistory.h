@@ -260,18 +260,23 @@ private:
                                       unsigned int selectedShape,
                                       actionKind_e kind,
                                       const snapshot_t * prevSnap) const;
-  /* Returns the shapes whose voxels it changed. A problem whose structure
-   * the snapshot leaves as it is keeps its solutions. */
-  std::vector<unsigned int> restore(puzzle_c * puzzle, const snapshot_t * snap) const;
+  /* what a restore changed, for settleSolutions */
+  struct restored_t {
+    std::vector<unsigned int> changedShapes;     ///< whose voxels it changed
+    std::vector<unsigned int> rebuiltProblems;   ///< whose structure it changed; they still hold their solutions
+  };
+  /* A problem whose structure the snapshot leaves as it is keeps its
+   * solutions; one it rebuilds keeps them until settleSolutions. */
+  restored_t restore(puzzle_c * puzzle, const snapshot_t * snap) const;
   static problemSnap_t snapProblem(const problem_c * pr);
   void matchProblems(puzzle_c * puzzle, const snapshot_t * snap) const;
   void matchShapes(puzzle_c * puzzle, const snapshot_t * snap) const;
   /* the same parts, result, groups, colour constraints and holes (the name aside) */
   static bool sameStructure(const problem_c & pr, const problemSnap_t & ps);
   /* after a restore: the step's kept solve records swapped in or out, and
-   * the solutions of the other problems using a changed shape dropped */
-  static void settleSolutions(puzzle_c * puzzle, const std::vector<unsigned int> & changedShapes,
-                              snapshot_t & step);
+   * the solutions of the other problems rebuilt or using a changed shape
+   * dropped */
+  static void settleSolutions(puzzle_c * puzzle, const restored_t & restored, snapshot_t & step);
 
   bool canCoalesce(actionKind_e kind, unsigned int selectedShape) const;
   void pushOrReplace(puzzle_c * puzzle, actionKind_e kind,
