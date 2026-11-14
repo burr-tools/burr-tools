@@ -1,0 +1,12 @@
+# Line endings: the repository stores LF, and every checkout gets LF, whatever
+# the git's own core.autocrlf says. Without this, Windows git with
+# autocrlf=true checks out CRLF, MSYS2's git (another home, no autocrlf) then
+# reports every such file as modified, and files rewritten by tools come out
+# LF, so a working tree ends up mixed. eol=lf overrides core.autocrlf.
+* text=auto eol=lf
+
+# never converted, never diffed as text (a gzipped .xmpuzzle is found binary
+# by text=auto; some test files are plain XML)
+*.png      binary
+*.ico      binary
+*.icns     binary
