@@ -119,6 +119,25 @@ TestCase {
         verify(!item("entities.shapes.row.1.delete").activeFocusOnTab)
     }
 
+    function test_aRowWithItsActionsHiddenGivesTheirRoomToTheLabel() {
+        // The actions are placed on every row (PR 181 review), but over it,
+        // not in its layout: a label too long for the row runs past where the
+        // hidden actions start, and stops short of them while they show.
+        App.shapes.renameShape(1, "A label far too long to fit beside the row's actions, however wide the card is")
+        App.shapes.select(0)
+        mouseMove(win.contentItem, 800, 500)             // away from the list
+        waitForRendering(win.contentItem)
+        const label = item("entities.shapes.row.1.label")
+        const actions = item("entities.shapes.row.1.actions")
+        compare(actions.opacity, 0)
+        verify(label.truncated)
+        tryVerify(() => label.mapToItem(row(1), label.width, 0).x > actions.x + actions.width / 2, 1000)
+        mouseMove(row(1), 60, row(1).height / 2)
+        actionsReady(1)
+        tryVerify(() => label.mapToItem(row(1), label.width, 0).x <= actions.x, 1000)
+        verify(label.truncated)
+    }
+
     SignalSpy { id: deleteAsked; target: App.shapes; signalName: "deleteConfirmRequested" }
 
     function test_aClickRightAfterThePointerArrivesOnlySelects() {
