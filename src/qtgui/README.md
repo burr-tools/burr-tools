@@ -18,7 +18,7 @@ it can replace it.
   and the spec's `foundations/qtquick-implementation-guide.md` part.
 - **How to build, run, test and package it:** [`BUILD.md`](../../BUILD.md#qt-gui-burrtools-qt).
 
-## Status: the first cut
+## Status
 
 | Phase | Content | State |
 | :--- | :--- | :--- |
@@ -31,11 +31,11 @@ it can replace it.
 | — 3D view | Camera, gestures with eased wheel zoom, view cube with animated snaps, Home / F, Display menu, three voxel styles, the layer slab and Dim other layers | Done; editing in it since P5 |
 | P2 Shapes sidebar (C01) | New, duplicate, delete (it asks only when solutions would be lost), inline rename, weight, reorder by drag, menu or `Alt+↑/↓`, the row context menu, the list's keys, the rail's `+` and keyboard, the Chip (PR-08) | Done (second cut) |
 | P3 Drawing colour (C09) | The voxel editor's footer: current colour and name, palette (one Tab stop, ← →), the colour menu (Edit, Remove), Add at once with the next preset colour (Edit changes it), the collapsed rail's swatch | Done; the 2D grid paints with it since P4, 3D editing with P5 |
-| P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for all but prisms), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (third cut) |
+| P4 Voxel editor (C07, C08, C02) | The tools 1–4 (keys, a one-stop strip), the quick tools (Shift, Alt, Ctrl; right-click erases), Mirror and Span, the planes (XZ and YZ for all but prisms), the layer strip with its dots, the 2D grid of every voxel type with rulers, hover outline, readout and composed cursors, strokes as one undo step, Grid size with Apply to all and the blocked shrink, the GlyphButton and Stepper | Done (second cut) |
 | P5 3D editing (rest of C06) | Edit mode (the Edit button, `E`) with its on and override states, the quick tools in 3D, picking: a voxel's face, the active layer's slab as a 2D grid, the origin of an empty shape; ghosts and the edit cursors under the 3D pointer, the rejected face outlined; the status line naming the target; the two-line hint; the canvas by keyboard (Tab, ring, orbit, pan, zoom, the cube's turns, rolls and faces); Settings ▸ Single-key shortcuts | Done |
 | P6 Inspector (C03, C04, C05) | Under the Shapes list: the selected shape's head, then three sections that remember whether they are open -- Transform (each voxel type's buttons: the brick matrix, the prism's and the spheres' nudge pads), Fit & scale (Prune, Center, To origin, Minimize, ×2, ×3), Repair & surface (Fill holes, the inner / outer table); each press one undo step, a blocked one saying why; a Transform button under the pointer or focus previews its result in 3D; the ActionButton and AccordionSection | Done |
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
-| P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle primitives | Done; decisions in *P10 decisions* |
+| P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle primitives | Done (third cut); decisions in *P10 decisions* |
 | P11 Solver | The Solver workspace | Next (see *Next phases*); its cards are placeholders |
 
 ### Deferred to the next phase
@@ -54,8 +54,8 @@ below, lists them per phase).
 | **Accessibility** (review of 2026-10-13) | WCAG 2.1 AA, spec P8 | Fixed then: shape list and rail chips as named, selectable list items; status bar role, plain-text name, announcements and kept last message; Display menu focus, arrow keys, Esc and radio rows; Settings named; one contrast-based chip-text rule (the 3D tag too); Status problem cells say "no"; tooltips on keyboard focus and as descriptions; dialogs' initial focus and Enter; toggle and tab states; export / import fields named; Alt kept from the menus while a dialog is up. The rest: | |
 | — Text size and high contrast | WCAG 1.4.4, 1.4.11 | Fonts are constant dp sizes: Windows' "Make text bigger" changes nothing, and chips/buttons have fixed heights that would clip. High-contrast themes are not detected; the tokens override them. Wants a text-scale factor on the font tokens and a high-contrast token set | P8 |
 | — Small screens | WCAG 1.4.10 | The 960 × 640 dp minimum is taller than 1920 × 1080 at 200 % or 1366 × 768 at 150 %; placement lets the minimum win, so the bottom falls off-screen. Clamp to the screen; scroll or collapse to rails below the design minimum | P8 |
-| — Dark-theme button text | WCAG 1.4.3 | White on the dark danger (2.71:1) and accent (2.77:1, a known XFAIL) buttons: a design-token decision (dark text, or darker tokens) | P8 |
-| — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; control borders and unchecked switch/checkbox 1.3–1.6:1 (want a ≥ 3:1 border token); toggled toolbar icons differ by hue only (the list now rings its selection when focused) | P8 |
+| — Dark-theme button text | WCAG 1.4.3 | White on the dark danger button (2.71:1): a design-token decision (dark text, as `onAccent` took for the accent, or a darker token). The accent button's was fixed 2026-11-07 (`onAccent`, 6.76:1) | P8 |
+| — Remaining contrast | WCAG 1.4.3, 1.4.11 | Light theme: muted text on the canvas, bg and accentSoft (4.05–4.32:1), danger on the canvas 3.93; toggled toolbar icons differ by hue only (the list now rings its selection when focused). The control borders and the unchecked switch and matrix cell were fixed 2026-11-07 (`controlLine`, 3:1 on the panels) | P8 |
 | — Progress and errors announced | WCAG 4.1.3 | The Status dialog's progress is drawn rectangles (no ProgressBar), image export's progress text and the STL preview's error are not announced | P8 (the solver's progress: P11) |
 | — Lists by keyboard | WCAG 2.1.1 | The Shortcuts window and off-screen Settings rows cannot be scrolled to by keyboard (the collapsed rail's chips are a Tab stop since P2) | P8 |
 | — Shape row actions by keyboard | WCAG 2.1.1 | The row's buttons are no Tab stops (C01: the list is one); their actions are the list's keys and its context menu (Menu key, Shift+F10). Check with a screen reader that this is found | P8 |
@@ -63,15 +63,16 @@ below, lists them per phase).
 | QML left to the JavaScript engine | `qtgui_qml_aot` | P2–P6's QML was measured only with Qt 6.12 locally, where the report does not compare; on CI's 6.11 it left 731 bindings to the engine against the first cut's 441 (the baseline, raised 2026-10-29 to what is), 757 with the roving Tab stops (2026-10-29): a QML type's members "can be shadowed" and Qt 6.8 has no `final` properties, so each `roving.` lookup in ActionButton and GlyphButton and RovingFocus's own arrays stay with the engine -- a C++ RovingFocus (FINAL properties) would compile them. The rest is typing work: `QVariantMap` / `var` data read by property (the inspector's buttons, the tools' and planes' models -- typed C++ value types or `required` properties), colour bindings 6.11 cannot populate, fonts read as `double` into `int` pixel sizes, untyped functions. Biggest: Inspector 107, VoxelEditorCard 83, Main 71, ShapesCard 33 | P8 |
 | Command enabled-state bumps | performance guide | Selection and count changes now bump `CommandController::revision` too (~80 bindings re-read, < 0.1 ms); coalesce to one per event loop if it shows | P8 |
 | Edits while the solver runs | legacy `threadStopped()` | Shape, colour and problem edits change data an assembler reads; nothing in the new GUI solves yet. A gate in `DocumentController::edit` alone is too narrow: `strokeEdit`, undo and redo, and replacing the document go round it, and each must be refused while a solve runs. `PuzzleController::apply` goes through `edit`. The solution counts the lists read need the solver's lock then too | P11 |
-| A press that may change nothing still warns | C08 | A stroke's first press asks about solutions before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
+| A press that may change nothing still warns | C08 | Only when the solutions are too big for the undo history to keep (a voxel edit asks nothing otherwise, since 2026-11-14): a stroke's first press asks before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
+| Puzzle changes keep their solutions for undo | PR 181 review | A voxel edit's solutions go into its undo step, so undo brings them back. A change to what a problem asks for (counts, result, groups, rules), a problem's delete, a shape's delete and a colour's remove still clear them for good behind the once-a-session warning. Keeping them the same way changes `puzzleHistory_c`, shared with legacy: a product decision | P8 |
 | Small piece buttons | WCAG 2.5.8 (2.2) | The library chip's − and + are 16 x 20, the tile's 22 wide (18 in Minimal): fine for 2.1 AA, short of 2.2's 24 x 24. Wider ones change the fixed sizes of C16 | P8 |
 | The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
 | One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
 | See-through copies sort by object side | C18 | `faceCentres` tells faces apart by `cell` and normal; in this scene `cell` is the object's place, so all faces of one direction in a copy sort as one. Read in the code, not yet seen on screen | P8 |
 | Dashed frames and drop zones | C16, C18 | C18's hover frame and C16's drop zones are dashed; Qt Quick has no dashed border without Qt Quick Shapes, not in the build. Hover is a 1 dp accent frame, selection 2 dp, a drop zone the accent border on `accentSoft` | P8 |
-| Gallery references for macOS | test plan | The four new rows have Windows references only: macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle`), and CI requires them there | Before the P10 pull request |
+| Gallery references for macOS | test plan | The four new rows have Windows references only, and the contrast tokens of 2026-11-07 changed two rows on Windows only (the dark primary button, the switch): macOS's come from a Mac (`just update-snapshots pieceTile,libraryChip,summaryStrip,matrixToggle,buttonPrimary,switch`), and CI requires them there | Before the P10 pull request |
 | Screen reader pass for P2 / P3 | WCAG 4.1.2 | The lists' arrow-key selection (List / ListItem, RadioButton swatches), the menus and the confirmation's text read out -- check with a real screen reader | P8 |
-| — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, a drag cut short by Alt+Tab leaving the 3D gesture running (no `mouseUngrabEvent`), view-cube labels below contrast | P8 |
+| — Small items | | Duplicate names (both "Collapse sidebar"), fragmented texts in the tree, 9.5–10.5 px captions and badges, view-cube labels below contrast. (A drag cut short by Alt+Tab ends the 3D gesture: `VoxelViewport::mouseUngrabEvent`, tested in `test_viewport`) | P8 |
 | — To verify on a real system | | The accessibility tree itself (UI Automation: Accessibility Insights or a `QAccessible` test — the QML tests see the attached properties only), custom controls' checked state while assistive tech is active, focus return after dialogs, tooltips dismissable / hoverable, dialog body text read out, Popup.Window menus in UIA, targets under 24 × 24 dp | P8 |
 
 ## Architecture
@@ -578,7 +579,11 @@ moves to a later phase says why in that table.
   primitives (in the gallery, with reference images).
 - **P10 Puzzle** — done: the Puzzle keys of P12b (`+ − Del` on the pieces, the
   problem list's as the Shapes list's, with a scope each and a group in Help);
-  the status sentence; the `puzzleTile` density token; OQ-20 to OQ-24.
+  the status sentence; the `puzzleTile` density token; OQ-20 to OQ-24; AC-C08-07's
+  recolour, which needs no control (*Spec review* below); PR 181's review read
+  against this workspace (2026-11-14: the problem row's hidden buttons, the
+  colour matrix's keys and hover, a held stepper across an undo). Still before
+  its pull request: the macOS gallery references.
 - **P11 Solver:** shape, colour and problem edits refused while a solve runs
   (legacy `threadStopped()`), strokes, undo, redo and replacing the document
   included; the solver's progress announced.
@@ -1120,6 +1125,18 @@ Product decisions of 2026-11-06, unless a line says otherwise.
 - **All pieces is one Tab stop**, like the tiles: arrows select, `+ − Del` and the
   Menu key act, Enter adds one. A list the keyboard arrives in selects its first
   piece if none of its pieces is selected, so the ring has somewhere to show.
+- **A problem row's buttons take no press before they have shown** (2026-11-14,
+  PR 181 review point 2, as the shape row): rename, duplicate and delete are built
+  with the row, hidden by opacity and armed from the event after they show; a
+  spacer takes their room only while they show.
+- **The colour matrix shows the keys' cell or the pointer's, one at a time**
+  (2026-11-14, as the 2D grid): the arrows take the highlight from a resting
+  pointer, starting from its cell, until the pointer moves; Tab in holds it, a
+  click focuses the matrix (`llm_docs/qt_gui_accessibility.md`).
+- **An undo stops a held stepper button** (2026-11-14, PR 181 review point 5): a
+  held + or − repeating across Ctrl+Z would record a new step and drop the redo.
+  The button halts until it goes up; a new press steps again (`Stepper`, so every
+  stepper).
 
 ## Spec review of the Entities workspace (2026-10-29)
 

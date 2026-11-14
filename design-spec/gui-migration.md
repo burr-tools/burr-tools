@@ -41,7 +41,7 @@ Against:
 The decision held: `burrtools-qt` (Qt 6 Quick, the 3D view on QRhi) is a
 working preview next to the FLTK program, in CI on Linux, Windows and macOS.
 Phase-by-phase status, and what is deferred to the next phase and why, are
-in [`src/qtgui/README.md`](../src/qtgui/README.md#status-the-first-cut).
+in [`src/qtgui/README.md`](../src/qtgui/README.md#status).
 
 Some of the estimates below can now be checked against measurements
 (Windows, release build, PelikanBurr open; details in
