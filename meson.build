@@ -28,7 +28,8 @@ if host_machine.system() == 'windows'
 endif
 
 # Set macOS deployment target: the oldest macOS the legacy binaries (burrtools,
-# burrTxt) and the libraries run on, 11.0 (Big Sur) by default. burrtools-qt
+# burrTxt) and the libraries run on, 13.3 (Ventura) by default, the first whose
+# libc++ has floating-point std::to_chars and from_chars. burrtools-qt
 # targets a later one, qt_macos_deployment_target (below, beside Qt).
 #
 # These are global rather than project arguments deliberately: meson subprojects
