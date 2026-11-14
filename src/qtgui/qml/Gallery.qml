@@ -287,6 +287,19 @@ ApplicationWindow {
                     Cell { kind: "selected"; LibraryChip { idText: "S4"; label: "Long piece name"; swatch: "#2fa85a"; selected: true } }
                 }
                 GalleryRow {
+                    name: "pieceChip"; label: "PR-30 Piece-display chip"
+                    Cell { kind: "solid"; PieceChipButton { text: "S2"; colour: "#e5484d"; pieceState: 0 } }
+                    Cell { kind: "wireframe"; PieceChipButton { text: "S3.1"; colour: "#2f6df6"; pieceState: 1 } }
+                    Cell { kind: "hidden"; PieceChipButton { text: "S5.2"; colour: "#2fa85a"; pieceState: 2 } }
+                }
+                GalleryRow {
+                    name: "daMark"; label: "C20 DA mark"
+                    Cell { kind: "stored"; DaMark { da: 0 } }
+                    Cell { kind: "level"; DaMark { da: 1 } }
+                    Cell { kind: "cannot"; DaMark { da: 2 } }
+                    Cell { kind: "unchecked"; DaMark { da: 3 } }
+                }
+                GalleryRow {
                     name: "summaryStrip"; label: "PR-25 Summary strip"
                     Cell { kind: "ok"; SummaryStrip { width: 280; ok: true; title: "Pieces can fill the result"; detail: "Result 19 voxels · Pieces n = 4, 19 voxels · Holes: 0" } }
                     Cell { kind: "warn"; SummaryStrip { width: 280; ok: false; title: "Pieces cannot reach the result"; detail: "Result 19 voxels · Pieces n = 2, 8 voxels · Holes: 11" } }

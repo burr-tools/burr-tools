@@ -172,7 +172,10 @@ void TestViewportController::onlyEntitiesShowsTheShape() {
   QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
   f.app->layout()->setWorkspace(LayoutController::Solver);
   SceneFrame fr = f.app->viewport()->frame(1);
-  QVERIFY(!fr.mesh);
+  // the Solver draws its selected solution (C21), not the shape, and none of
+  // the shape's overlays (axes, the grid's box)
+  QVERIFY(fr.mesh);
+  QCOMPARE(fr.mesh.get(), f.app->solver()->sceneMesh());
   QVERIFY(fr.lines.empty());
 }
 

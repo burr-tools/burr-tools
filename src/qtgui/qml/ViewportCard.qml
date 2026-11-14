@@ -29,6 +29,9 @@ import BurrTools.Ui
 //   ⑧ Minimal: the toolbar hidden, a handle where it is (density.md
 //     section 3); the pointer near the top, Tab, its menu or O P E F show it
 //   ⑨ Puzzle's view tag: [P1] Small · Result [S5]
+//   ⑪ Solver's view tag: [P1] Small · Solution 3 of 5
+//   ⑫ Solver: "Assembler state — 3 of 6 pieces placed" (accent, top centre)
+//   ⑬ Solver: the explorer drawer docked over the bottom (C21, PR-31)
 Rectangle {
     id: root
     objectName: "entities.viewport"
@@ -116,6 +119,7 @@ Rectangle {
 
     readonly property bool entities: App.layout.workspace === LayoutController.Entities
     readonly property bool puzzle: App.layout.workspace === LayoutController.Puzzle
+    readonly property bool solver: App.layout.workspace === LayoutController.Solver
     readonly property bool focus2d: App.layout.focus === LayoutController.Focus2d
     readonly property bool compact: focus2d || Theme.minimal
 
@@ -217,6 +221,57 @@ Rectangle {
             fill: App.puzzle.resultColor
             textColor: App.puzzle.resultTextColor
         }
+    }
+
+    // --- the Solver's view tag (C21) ---
+    Row { // ⑪
+        objectName: "solver.viewport.tag"
+        visible: root.solver && App.solver.problem >= 0
+        anchors { left: parent.left; top: parent.top; margins: 14 }
+        spacing: 8
+        Chip {
+            anchors.verticalCenter: parent.verticalCenter
+            kind: Chip.Header
+            text: App.solver.problemIdText
+            fill: Theme.accent
+            textColor: Theme.onAccent
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: text.length > 0
+            // a long label stops short of the toolbar
+            width: Math.min(implicitWidth, root.width * 0.25)
+            elide: Text.ElideRight
+            text: App.solver.problemLabel
+            textFormat: Text.PlainText
+            color: Theme.text
+            font.pixelSize: Theme.fontSecondary
+        }
+        Text {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: App.solver.tagText.length > 0 && !App.solver.assemblerStateShown
+            text: qsTr("· %1").arg(App.solver.tagText)
+            textFormat: Text.PlainText
+            color: Theme.muted
+            font.pixelSize: Theme.fontSecondary
+        }
+    }
+    Text { // ⑫
+        objectName: "solver.viewport.assembler"
+        visible: root.solver && App.solver.assemblerStateShown
+        anchors { top: toolbar.bottom; topMargin: 10; horizontalCenter: parent.horizontalCenter }
+        text: App.solver.assemblerCaption
+        textFormat: Text.PlainText
+        color: Theme.accent
+        font.pixelSize: Theme.fontSecondary
+        font.weight: Font.DemiBold
+    }
+    ExplorerDrawer { // ⑬
+        objectName: "solver.drawer"
+        visible: root.solver && App.solver.explorer.length > 0
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }   // PR-31's inset
+        height: 250
+        z: 5
     }
 
     // --- view tag (top left) ---
@@ -433,6 +488,7 @@ Rectangle {
         Accessible.role: Accessible.Graphic
         Accessible.name: App.layout.workspace === LayoutController.Puzzle && App.puzzle.sceneName.length > 0
                          ? qsTr("3D view of %1").arg(App.puzzle.sceneName)
+                         : root.solver ? (App.solver.tagText.length > 0 ? qsTr("3D view of %1 %2").arg(App.solver.problemIdText).arg(App.solver.tagText) : qsTr("3D view"))
                          : App.viewport.hasShape ? qsTr("3D view of %1 %2").arg(App.viewport.shapeId).arg(App.viewport.shapeLabel) : qsTr("3D view")
         Accessible.description: App.viewport.navMode === "orbit"
                                 ? qsTr("Drag to orbit, Shift-drag or middle-drag to pan, wheel to zoom. With the view focused: arrows orbit, Shift+arrows pan, + and − zoom. O orbit mode, P pan mode, Home home view, F fit.")
@@ -484,7 +540,8 @@ Rectangle {
     // --- hint (bottom left) ---
     Column { // ⑥
         objectName: "entities.viewport.hint"
-        visible: !root.focus2d && !Theme.minimal
+        // the explorer drawer covers it: hidden with the drawer open
+        visible: !root.focus2d && !Theme.minimal && !(root.solver && App.solver.explorer.length > 0)
         anchors { left: parent.left; bottom: parent.bottom; margins: 14 }
         spacing: 4
 
@@ -551,7 +608,7 @@ Rectangle {
         visible: text.length > 0
         text: root.puzzle ? (App.puzzle.problem < 0 ? qsTr("No problem yet — click + New in Problems")
                              : App.viewport.sceneObjects.count === 0 ? qsTr("Choose a result and add pieces") : "")
-             : !root.entities ? qsTr("The Solver scene arrives with the Solver phase")
+             : root.solver ? App.solver.sceneMessage
              : !App.viewport.hasShape ? qsTr("No shape — open a puzzle or add a shape")
              : !App.viewport.emptyShape ? ""
              : App.viewport.editorVisible && App.viewport.displayLayerSlab

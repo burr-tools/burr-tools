@@ -20,6 +20,7 @@
  */
 #include "viewportcontroller.h"
 #include "puzzlecontroller.h"
+#include "solvercontroller.h"
 #include "rowsmodel.h"
 
 #include "../uicore/shapelist.h"
@@ -68,8 +69,9 @@ namespace {
 
 ViewportController::ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
                                        LayoutController * layout, EditorController * editor, PuzzleController * puzzle,
-                                       QObject * parent) :
-  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor), m_puzzle(puzzle)
+                                       SolverController * solver, QObject * parent) :
+  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor), m_puzzle(puzzle),
+  m_solver(solver)
 {
   m_objects = new RowsModel({ "role", "shape", "caption", "frameX", "frameY", "frameSize", "selected", "hovered" }, this);
   m_workspace = m_layout->workspace();
@@ -104,6 +106,18 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
   };
   connect(m_puzzle, &PuzzleController::problemChanged, this, puzzleChanged);
   connect(m_puzzle, &PuzzleController::selectedPieceChanged, this, puzzleChanged);
+  // the Solver scene: each move position a new mesh; a new solution framed anew
+  connect(m_solver, &SolverController::sceneChanged, this, [this] {
+    if (!inSolver())
+      return;
+    if (m_solver->framingRevision() != m_solverFraming) {
+      m_solverFraming = m_solver->framingRevision();
+      m_camera.setScene(m_solver->sceneCentre(), m_solver->sceneRadius());
+      // pieces leave the assembly this far: the clip planes reach them (C21)
+      m_camera.setDepthReach(m_solver->sceneReach());
+    }
+    emit frameChanged();
+  });
   // pan, zoom and the card's size move the frames; a turn does not, but costs little
   connect(this, &SceneController::frameChanged, this, &ViewportController::updateObjects);
 
@@ -275,10 +289,21 @@ void ViewportController::buildMesh(void) {
     return;
   m_meshDirty = false;
   if (inPuzzle()) {
+    m_camera.setDepthReach(0);
     buildPuzzleMesh();
     return;
   }
+  if (inSolver()) {
+    m_solverFraming = m_solver->framingRevision();
+    m_camera.setScene(m_solver->sceneCentre(), m_solver->sceneRadius());
+    m_camera.setDepthReach(m_solver->sceneReach());
+    m_meshStyle = m_voxelStyle;
+    emit sceneChanged();
+    emit frameChanged();
+    return;
+  }
   const puzzle_c & p = m_doc->session().puzzle();
+  m_camera.setDepthReach(0);
 
   if (m_shape) {
     btui::MeshOptions opt;
@@ -312,6 +337,36 @@ void ViewportController::buildMesh(void) {
 
   emit sceneChanged();      // emptyShape follows the mesh
   emit frameChanged();
+}
+
+bool ViewportController::inSolver(void) const {
+  return m_layout->workspace() == LayoutController::Solver;
+}
+
+/* A wireframe piece's hull edges (AC-C21-02): the back ones fainter. With
+ * Show through solid pieces they are drawn as the ghosts' lines are, over
+ * everything and faint where solids hide them; without, solids hide them. */
+void ViewportController::addWire(SceneFrame & f) const {
+  const std::vector<btui::HullEdge> & wire = m_solver->wire();
+  const std::vector<btui::Rgba8> & colours = m_solver->wireColours();
+  std::vector<btui::LineSeg> & out = m_solver->xray() ? f.ghostLines : f.lines;
+  out.reserve(out.size() + wire.size());
+  // a normal's depth component in view space: below 0 it faces away
+  auto towardsViewer = [&](btui::Vec3 n) {
+    return f.view(2, 0) * n.x + f.view(2, 1) * n.y + f.view(2, 2) * n.z > 0;
+  };
+  for (size_t i = 0; i < wire.size() && i < colours.size(); i++) {
+    const btui::HullEdge & e = wire[i];
+    btui::Rgba8 c = colours[i];
+    if (!towardsViewer(e.n1) && !towardsViewer(e.n2))
+      c.a = std::uint8_t(c.a * 45 / 100);
+    btui::LineSeg s;
+    s.a = e.a;
+    s.b = e.b;
+    s.color = c;
+    s.widthDp = 1.5f;
+    out.push_back(s);
+  }
 }
 
 bool ViewportController::inPuzzle(void) const {
@@ -558,7 +613,17 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
     return f;
   }
 
-  // the Entities scene; the Solver brings its own in a later phase
+  if (inSolver()) {
+    // nothing to draw is no mesh, as in the other workspaces
+    if (const btui::ShapeMesh * m = m_solver->sceneMesh(); m && !m->empty())
+      f.mesh = m_solver->sceneMeshShared();
+    // its own count, apart from the Entities and Puzzle meshes'
+    f.meshRevision = (quint64(1) << 62) + m_solver->sceneRevision();
+    addWire(f);
+    return f;
+  }
+
+  // the Entities scene
   if (m_layout->workspace() != LayoutController::Entities || !m_shape || !t)
     return f;
 

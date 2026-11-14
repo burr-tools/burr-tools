@@ -28,6 +28,10 @@ FocusScope {
     }
     Keys.onLeftPressed: { const i = indexOfValue(); if (i > 0) activated(options[i - 1].value) }
     Keys.onRightPressed: { const i = indexOfValue(); if (i >= 0 && i < options.length - 1) activated(options[i + 1].value) }
+    // the option on, again: what a second click does (the Solver's sort reverses)
+    Keys.onSpacePressed: { if (indexOfValue() >= 0) activated(value) }
+    Keys.onReturnPressed: { if (indexOfValue() >= 0) activated(value) }
+    Keys.onEnterPressed: { if (indexOfValue() >= 0) activated(value) }
 
     Rectangle {
         anchors.fill: parent

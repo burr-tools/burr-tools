@@ -39,6 +39,7 @@
 #include <vector>
 
 class PuzzleController;
+class SolverController;
 
 class DocumentController;
 class EditorController;
@@ -92,7 +93,7 @@ public:
 
   ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
                      LayoutController * layout, EditorController * editor, PuzzleController * puzzle,
-                     QObject * parent = nullptr);
+                     SolverController * solver, QObject * parent = nullptr);
 
   /* the modes and options as words (btui/vocabulary.h), for QML */
   QString navMode(void) const;
@@ -179,6 +180,9 @@ private:
   void buildPuzzleMesh(void);
   void updateObjects(void);
   bool inPuzzle(void) const;
+  /* the Solver scene (C21): the solver's mesh and its wireframe lines */
+  bool inSolver(void) const;
+  void addWire(SceneFrame & f) const;
   /* the object whose frame holds the point, -1 for none */
   int objectAt(float x, float y) const;
   void readDisplay(void);
@@ -196,6 +200,8 @@ private:
   LayoutController * m_layout;
   EditorController * m_editor;
   PuzzleController * m_puzzle;
+  SolverController * m_solver;
+  quint64 m_solverFraming = 0;     ///< the solver scene the camera last framed
 
   btui::PuzzleScene m_scene;       ///< without its mesh, which is m_puzzleMesh
   std::shared_ptr<const btui::ShapeMesh> m_puzzleMesh;

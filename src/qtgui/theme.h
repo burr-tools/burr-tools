@@ -76,6 +76,7 @@ class Theme : public QObject {
   Q_PROPERTY(QColor axisY READ axisY NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisZ READ axisZ NOTIFY changed FINAL)
   Q_PROPERTY(QColor danger READ danger NOTIFY changed FINAL)
+  Q_PROPERTY(QColor dangerSoft READ dangerSoft NOTIFY changed FINAL)
   /* danger as text on panel and panel2 (a menu's Delete): >= 4.5:1 on both */
   Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed FINAL)
   /* a good and a doubtful state, as text and icon on panel: >= 4.5:1 */
@@ -124,6 +125,16 @@ class Theme : public QObject {
   Q_PROPERTY(double puzzleTileWidth READ puzzleTileWidth NOTIFY changed FINAL)
   Q_PROPERTY(double puzzleTileHeight READ puzzleTileHeight NOTIFY changed FINAL)
   Q_PROPERTY(double libraryChip READ libraryChip NOTIFY changed FINAL)
+  Q_PROPERTY(double solverListRow READ solverListRow NOTIFY changed FINAL)
+  Q_PROPERTY(double player READ player NOTIFY changed FINAL)
+  Q_PROPERTY(double pieceDisplay READ pieceDisplay NOTIFY changed FINAL)
+  Q_PROPERTY(double pieceChip READ pieceChip NOTIFY changed FINAL)
+  Q_PROPERTY(double solverColNumber READ solverColNumber NOTIFY changed FINAL)
+  Q_PROPERTY(double solverColMoves READ solverColMoves NOTIFY changed FINAL)
+  Q_PROPERTY(double solverColPieces READ solverColPieces NOTIFY changed FINAL)
+  Q_PROPERTY(double solverColDa READ solverColDa NOTIFY changed FINAL)
+  Q_PROPERTY(double solverSectionV READ solverSectionV NOTIFY changed FINAL)
+  Q_PROPERTY(double solverSectionH READ solverSectionH NOTIFY changed FINAL)
   Q_PROPERTY(double layerChipWidth READ layerChipWidth NOTIFY changed FINAL)
   Q_PROPERTY(double layerChipHeight READ layerChipHeight NOTIFY changed FINAL)
   Q_PROPERTY(double drawSwatch READ drawSwatch NOTIFY changed FINAL)
@@ -204,6 +215,7 @@ public:
   QColor axisY(void) const { return col("axisY"); }
   QColor axisZ(void) const { return col("axisZ"); }
   QColor danger(void) const { return col("danger"); }
+  QColor dangerSoft(void) const { return col("dangerSoft"); }
   QColor dangerText(void) const { return col("dangerText"); }
   QColor ok(void) const { return col("ok"); }
   QColor warn(void) const { return col("warn"); }
@@ -251,6 +263,16 @@ public:
   qreal puzzleTileWidth(void) const { return dens("puzzleTile.0"); }
   qreal puzzleTileHeight(void) const { return dens("puzzleTile.1"); }
   qreal libraryChip(void) const { return dens("libraryChip"); }
+  qreal solverListRow(void) const { return dens("solverListRow"); }
+  qreal player(void) const { return dens("player"); }
+  qreal pieceDisplay(void) const { return dens("pieceDisplay"); }
+  qreal pieceChip(void) const { return dens("pieceChip"); }
+  qreal solverColNumber(void) const { return dens("solverColumns.0"); }
+  qreal solverColMoves(void) const { return dens("solverColumns.1"); }
+  qreal solverColPieces(void) const { return dens("solverColumns.2"); }
+  qreal solverColDa(void) const { return dens("solverColumns.3"); }
+  qreal solverSectionV(void) const { return dens("solverSection.0"); }
+  qreal solverSectionH(void) const { return dens("solverSection.1"); }
   qreal layerChipWidth(void) const { return dens("layerChip.0"); }
   qreal layerChipHeight(void) const { return dens("layerChip.1"); }
   /* the Drawing colour footer's big swatch */

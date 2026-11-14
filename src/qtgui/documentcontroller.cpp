@@ -129,6 +129,11 @@ void DocumentController::start(Pending p, const char * action) {
   guarded([&] {
     if (m_pending != Pending::None)
       return;
+    // quitting stops the solver first; the other flows replace the puzzle it reads
+    if (p == Pending::Quit && m_busy && m_stopBusy)
+      m_stopBusy();
+    if (refuseWhileBusy())
+      return;
     setPending(p);
     if (m_session.isModified())
       emit confirmDiscardRequested(QString::fromLatin1(action));
@@ -170,7 +175,7 @@ void DocumentController::requestImport(void) { start(Pending::Import, "import an
 void DocumentController::requestQuit(void) { start(Pending::Quit, "quit"); }
 
 void DocumentController::requestOpenPath(const QString & path) {
-  if (m_pending != Pending::None)
+  if (m_pending != Pending::None || refuseWhileBusy())
     return;
   m_pendingPath = path;
   start(Pending::OpenPath, "open that puzzle");
@@ -187,6 +192,11 @@ void DocumentController::resolveDiscard(int choice) {
         break;
 
       case Save:
+        // never while the solver writes the puzzle (Quit stopped it already)
+        if (refuseWhileBusy()) {
+          setPending(Pending::None);
+          break;
+        }
         if (m_session.fileName().empty()) {
           m_continueAfterSaveAs = true;
           emit saveAsRequested();
@@ -209,6 +219,10 @@ void DocumentController::resolveDiscard(int choice) {
 
 void DocumentController::newDocument(int type) {
   guarded([&] {
+    if (refuseWhileBusy()) {
+      setPending(Pending::None);
+      return;
+    }
     if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
       type = gridType_c::GT_BRICKS;
     m_session.newDocument(gridType_c::gridType(type));
@@ -267,6 +281,8 @@ void DocumentController::openFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Open)
       setPending(Pending::None);
+    if (refuseWhileBusy())
+      return;
     const QString path = localPath(file);
     if (path.isEmpty()) {
       emit messageRequested(tr("Open"), tr("Could not open %1").arg(file.toDisplayString()));
@@ -280,6 +296,8 @@ void DocumentController::importFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Import)
       setPending(Pending::None);
+    if (refuseWhileBusy())
+      return;
     const QString path = localPath(file);
     if (path.isEmpty()) {
       emit messageRequested(tr("Import"), tr("Could not open %1").arg(file.toDisplayString()));
@@ -304,6 +322,9 @@ void DocumentController::importFile(const QUrl & file) {
 
 void DocumentController::save(void) {
   guarded([&] {
+    // the solver changes the problem as it writes (legacy cb_Save)
+    if (refuseWhileBusy())
+      return;
     if (m_session.fileName().empty()) {
       emit saveAsRequested();
       return;
@@ -315,11 +336,18 @@ void DocumentController::save(void) {
 }
 
 void DocumentController::requestSaveAs(void) {
+  if (refuseWhileBusy())
+    return;
   emit saveAsRequested();
 }
 
 void DocumentController::saveAsFile(const QUrl & file) {
   guarded([&] {
+    if (refuseWhileBusy()) {
+      if (m_continueAfterSaveAs)
+        setPending(Pending::None);
+      return;
+    }
     const QString path = localPath(file);
     bool ok = false;
     try {
@@ -353,7 +381,7 @@ void DocumentController::cancelFlow(void) {
 
 void DocumentController::undo(void) {
   guarded([&] {
-    if (!m_session.canUndo())
+    if (!m_session.canUndo() || refuseWhileBusy())
       return;
     emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
@@ -368,7 +396,7 @@ void DocumentController::undo(void) {
 
 void DocumentController::redo(void) {
   guarded([&] {
-    if (!m_session.canRedo())
+    if (!m_session.canRedo() || refuseWhileBusy())
       return;
     emit aboutToApplyHistory();
     const bool wasStroke = m_session.inStroke();
@@ -390,6 +418,8 @@ void DocumentController::setComment(const QString & text) {
 
 bool DocumentController::convertTo(int type) {
   return guarded([&] {
+    if (refuseWhileBusy())
+      return false;
     if (type < 0 || type >= gridType_c::GT_NUM_GRIDS || !m_session.convert(gridType_c::gridType(type))) {
       emit messageRequested(tr("Convert"), tr("The puzzle could not be converted."));
       return false;
@@ -407,7 +437,24 @@ void DocumentController::setSolutionsWarned(bool warned) {
   emit solutionsWarnedChanged();
 }
 
+void DocumentController::setBusy(bool busy) {
+  if (busy == m_busy)
+    return;
+  m_busy = busy;
+  emit busyChanged();
+}
+
+bool DocumentController::refuseWhileBusy(void) {
+  if (!m_busy)
+    return false;
+  emit busyRefused(tr("Stop the solver first"));
+  return true;
+}
+
 bool DocumentController::mayCostSolutions(bool costs, std::function<void()> retry) {
+  // no warning for an edit that is then refused
+  if (costs && refuseWhileBusy())
+    return false;
   if (!costs || m_solutionsWarned)
     return true;
   return holdForWarning(std::move(retry), false);
@@ -415,6 +462,9 @@ bool DocumentController::mayCostSolutions(bool costs, std::function<void()> retr
 
 bool DocumentController::mayDropSolutions(bool drops, const std::vector<unsigned int> & shapes,
                                           std::function<void()> retry) {
+  // no warning for an edit that is then refused
+  if (drops && refuseWhileBusy())
+    return false;
   if (!drops || m_dropAnswered || m_session.keepsSolutionsOf(shapes))
     return true;
   return holdForWarning(std::move(retry), true);
@@ -422,6 +472,9 @@ bool DocumentController::mayDropSolutions(bool drops, const std::vector<unsigned
 
 bool DocumentController::mayDropProblemSolutions(bool drops, const std::vector<unsigned int> & problems,
                                                  std::function<void()> retry) {
+  // no warning for an edit that is then refused
+  if (drops && refuseWhileBusy())
+    return false;
   if (!drops || m_dropAnswered || m_session.keepsSolutionsOfProblems(problems))
     return true;
   return holdForWarning(std::move(retry), true);
@@ -494,6 +547,7 @@ void DocumentController::edited(int selectedShape, Change change, int shape) {
 }
 
 void DocumentController::beginStroke(puzzleHistory_c::actionKind_e kind, int shape) {
+  // its strokeEdit()s refuse each; the stroke itself changes nothing
   const bool ended = m_session.inStroke();
   m_session.beginStroke(kind, shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape));
   if (ended)

@@ -153,7 +153,7 @@ TestCase {
 
     function test_everyBuiltPrimitiveHasARow() {
         for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
-                           "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                           "pieceTile", "libraryChip", "pieceChip", "daMark", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
@@ -409,7 +409,7 @@ TestCase {
 
     function test_snapshots_data() {
         const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
-                      "railButton", "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                      "railButton", "pieceTile", "libraryChip", "pieceChip", "daMark", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []

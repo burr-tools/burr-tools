@@ -12,7 +12,8 @@ AbstractButton {
     property bool highlighted: false   // the keyboard's row in a list (Dropdown's highlightedIndex)
 
     implicitHeight: 30
-    implicitWidth: 230
+    // wide enough for its label and hint side by side
+    implicitWidth: Math.max(230, 30 + label.implicitWidth + (hint.length > 0 ? hintText.implicitWidth + 24 : 8))
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus    // a click too: Tab goes on from what was last used
     Accessible.role: radio ? Accessible.RadioButton : Accessible.CheckBox
@@ -37,13 +38,18 @@ AbstractButton {
             color: Theme.accent
         }
         Text {
-            anchors { left: parent.left; leftMargin: 30; verticalCenter: parent.verticalCenter }
+            id: label
+            // up to the hint, never under it
+            anchors { left: parent.left; leftMargin: 30; right: hintText.visible ? hintText.left : parent.right
+                      rightMargin: hintText.visible ? 16 : 8; verticalCenter: parent.verticalCenter }
+            elide: Text.ElideRight
             text: root.text
             Accessible.ignored: true
             color: Theme.text
             font.pixelSize: Theme.fontBody
         }
         Text {
+            id: hintText
             visible: root.hint.length > 0
             anchors { right: parent.right; rightMargin: 8; verticalCenter: parent.verticalCenter }
             text: root.hint

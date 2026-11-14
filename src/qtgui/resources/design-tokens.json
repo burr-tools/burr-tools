@@ -28,6 +28,7 @@
       "axisY": "#2fa85a",
       "axisZ": "#2f6df6",
       "danger": "#d92d20",
+      "dangerSoft": "rgba(217,45,32,0.12)",
       "dangerText": "#b42318",
       "ok": "#1a7f37",
       "warn": "#b54708",
@@ -51,6 +52,7 @@
       "axisY": "#4bd17f",
       "axisZ": "#5b9bff",
       "danger": "#ff7066",
+      "dangerSoft": "rgba(255,112,102,0.16)",
       "dangerText": "#ff7066",
       "ok": "#4cc38a",
       "warn": "#f5b454",
@@ -220,8 +222,19 @@
       ],
       "libraryChip": 26,
       "solverListRow": 28,
+      "solverColumns": [
+        44,
+        96,
+        40,
+        30
+      ],
+      "solverSection": [
+        9,
+        12
+      ],
       "player": 112,
-      "pieceDisplay": 104
+      "pieceDisplay": 104,
+      "pieceChip": 26
     },
     "minimal": {
       "topBar": 32,
@@ -264,8 +277,19 @@
       ],
       "libraryChip": 24,
       "solverListRow": 26,
+      "solverColumns": [
+        34,
+        76,
+        30,
+        24
+      ],
+      "solverSection": [
+        7,
+        10
+      ],
       "player": 84,
       "pieceDisplay": 76,
+      "pieceChip": 24,
       "toolbarAutoHide": {
         "revealZone": 72,
         "hideDelayMs": 700,

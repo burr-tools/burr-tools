@@ -32,6 +32,7 @@
 #include "test_puzzle.h"
 #include "test_builds.h"
 #include "test_saving.h"
+#include "test_solver.h"
 #include "test_viewport.h"
 
 #include "../../src/tools/httpget.h"
@@ -292,6 +293,7 @@ private slots:
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
                           "CollapsedProblems.qml", "CollapsedSections.qml", "PuzzleLeftCard.qml", "PuzzleRightCard.qml",
+                          "SolverLeftCard.qml", "SolverRightCard.qml", "ExplorerDrawer.qml",
                           "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
@@ -723,6 +725,45 @@ class TestDocument : public QObject {
   }
 
 private slots:
+
+  /* the flows that would replace the puzzle wait for the solver; a flow
+   * that is cancelled forgets where it was going */
+  void theDocumentsFlowsWaitForTheSolver() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    // an unsaved puzzle's folder is the working directory's
+    QCOMPARE(d->folder(), QUrl::fromLocalFile(QDir::currentPath()));
+    QSignalSpy open(d, &DocumentController::openFileRequested);
+    d->requestOpen();
+    QCOMPARE(open.count(), 1);
+    QVERIFY(d->flowPending());
+    d->cancelFlow();
+    QVERIFY(!d->flowPending());
+
+    QSignalSpy refused(d, &DocumentController::busyRefused);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    d->setBusy(true);
+    d->newDocument(int(gridType_c::GT_SPHERES));
+    QCOMPARE(replaced.count(), 0);
+    QVERIFY(!d->flowPending());
+    d->openFile(QUrl::fromLocalFile(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->importFile(QUrl::fromLocalFile(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->saveAsFile(QUrl::fromLocalFile(f.file("x.xmpuzzle")));
+    d->save();
+    d->requestOpenPath(QStringLiteral("examples/PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->convertTo(int(gridType_c::GT_SPHERES)));
+    QCOMPARE(replaced.count(), 0);
+    QVERIFY(!QFile::exists(f.file("x.xmpuzzle")));
+    QVERIFY(refused.count() >= 7);
+    d->setBusy(false);
+    // quitting stops the solver instead of waiting for it
+    QSignalSpy quit(d, &DocumentController::quitApproved);
+    d->setBusy(true);
+    d->requestQuit();
+    QCOMPARE(quit.count(), 1);
+    d->setBusy(false);
+  }
 
   /* guarded(): an internal error under an entry point QML calls -- a failed
    * check, or any other std::exception -- is reported (rescue-save, then
@@ -2839,9 +2880,11 @@ private slots:
     QCOMPARE(f.app->status()->text(),
              QStringLiteral("Shape <b>S2</b> has <b>%1</b> voxels (%2 fixed, %3 variable)").arg(fx + vr).arg(fx).arg(vr));
 
-    // the Solver has its own sentence (a later phase); Puzzle's is TestPuzzle's
+    // the Solver's own (C21): the file's results, found with the disassembly;
+    // Puzzle's is TestPuzzle's
     f.app->layout()->setWorkspace(LayoutController::Solver);
-    QCOMPARE(f.app->status()->text(), QString());
+    QCOMPARE(f.app->status()->text(),
+             QStringLiteral("Problem <b>P1</b> — 12 assemblies found, 1 can be disassembled · Activity: finished"));
   }
 
   void theCursorReadoutShowsWhatItIsGiven() {
@@ -3798,6 +3841,7 @@ int main(int argc, char ** argv) {
   run(TestSaving());
   run(TestPuzzle());
   run(TestBuilds());
+  run(TestSolver());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

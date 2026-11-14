@@ -60,6 +60,8 @@ class DocumentController : public QObject {
   Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged FINAL)
   // the warning that edits remove solutions has been answered, this session
   Q_PROPERTY(bool solutionsWarned READ solutionsWarned WRITE setSolutionsWarned NOTIFY solutionsWarnedChanged FINAL)
+  // a solve or an analysis reads the puzzle: nothing may change or replace it
+  Q_PROPERTY(bool busy READ busy NOTIFY busyChanged FINAL)
 
 public:
 
@@ -81,6 +83,20 @@ public:
   bool flowPending(void) const { return m_pending != Pending::None; }
   bool solutionsWarned(void) const { return m_solutionsWarned; }
   void setSolutionsWarned(bool warned);
+
+  /* While a solve or an analysis reads the puzzle (SolverController), every
+   * path that would change or replace it refuses -- the edits, strokes,
+   * undo and redo, New, Open, Import, Convert, Save -- as legacy's
+   * threadStopped() does, with one message (busyRefused). Solver results
+   * change it through session().editWithoutUndo(), which is not gated. */
+  bool busy(void) const { return m_busy; }
+  void setBusy(bool busy);
+  /* true, and the message, while busy: the caller does nothing */
+  bool refuseWhileBusy(void);
+  /* what stops the work that makes the document busy, and waits for it
+   * (SolverController::stopAndWait): Quit runs it before it asks about
+   * unsaved changes, so a Save there writes a puzzle nothing else writes */
+  void setBusyStopper(std::function<void()> stop) { m_stopBusy = std::move(stop); }
 
   /* Any edit removes the solutions it makes wrong, and they leave the file
    * with the next save. They can be found again, so one warning a session
@@ -165,6 +181,16 @@ public:
     return edit(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, selectedShape, std::forward<F>(f));
   }
 
+  /* The solver's results change the puzzle (SolverController): a finished
+   * run, removed solutions, deleted or analysed disassemblies. Not an undo
+   * step and not gated by busy -- the solver is what makes it busy -- but
+   * unsaved, and the views that count solutions are told (resultsChanged). */
+  template <class F> void editResults(F && f) {
+    m_session.editWithoutUndo(std::forward<F>(f));
+    emit resultsChanged();
+    emit stateChanged();
+  }
+
   /* What an edit changed, so that each view refreshes only what shows it
    * (puzzleEdited): a rename does not rebuild the 3D view's mesh. */
   enum class Change {
@@ -219,6 +245,8 @@ private:
 
   /* run an edit of the session (g), and tell the views what it changed */
   template <class G> bool tellEdit(Change change, int shape, int selectedShape, G && g) {
+    if (refuseWhileBusy())
+      return false;
     const bool wasStroke = m_session.inStroke();
     bool changed;
     try {
@@ -253,6 +281,8 @@ public:
    * unsaved and undoable at once (stateChanged), not at the release. */
   void beginStroke(puzzleHistory_c::actionKind_e kind, int shape);
   template <class F> bool strokeEdit(int shape, F && f) {
+    if (refuseWhileBusy())
+      return false;
     const bool clean = !m_session.strokeChanged();
     bool changed;
     try {
@@ -291,6 +321,11 @@ signals:
   void puzzleEdited(int selectedShape, DocumentController::Change change, int shape);
 
   void solutionsWarnedChanged(void);
+  void busyChanged(void);
+  /* editResults(): a problem's solutions or solve state changed */
+  void resultsChanged(void);
+  /* a change was refused while busy: the status bar says why */
+  void busyRefused(const QString & text);
   /* an edit would cost solutions, the first this session; or tooBigToKeep,
    * a voxel edit whose solutions the undo history has no room for: QML
    * warns, then resolveSolutionsWarning() */
@@ -321,6 +356,8 @@ private:
 
   btui::DocumentSession m_session;
   Pending m_pending = Pending::None;
+  bool m_busy = false;
+  std::function<void()> m_stopBusy;
   bool m_solutionsWarned = false;
   std::function<void()> m_heldEdit;      ///< the edit the solutions warning holds
   bool m_heldTooBig = false;             ///< ... warned of as too big to keep (mayDropSolutions)

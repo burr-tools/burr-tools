@@ -121,6 +121,7 @@ ApplicationWindow {
                                       || shown(vectorDialog) || shown(imageDialog)
                                       || shown(shortcutsDialog) || shown(updateDialog)
                                       || shown(solutionsDialog) || shown(setRangeDialog)
+                                      || shown(removeSolutionsDialog)
                                       || chooserShown()
                                       || messageShown(discardDialog) || messageShown(messageDialog)
                                       || messageShown(internalErrorDialog)
@@ -383,15 +384,10 @@ ApplicationWindow {
                                     PuzzleLeftCard { onSetRangeRequested: win.showDialog(setRangeDialog) }
                                 }
                             }
-                            PlaceholderCard {
-                                objectName: "solver.left"
+                            SolverLeftCard {
                                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                                 width: leftSlot.cardWidth
                                 visible: body.ws === LayoutController.Solver && !App.layout.leftShownAsRail
-                                title: qsTr("Solver")
-                                collapseIcon: "panelL"
-                                onCollapseClicked: App.layout.leftCollapsed = true
-                                note: qsTr("Search set-up and the run controls arrive with the Solver phase.")
                             }
                             CollapsedRail {
                                 objectName: "workspace.left.rail"
@@ -442,15 +438,15 @@ ApplicationWindow {
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.rightShownAsRail
                                 sourceComponent: Component { PuzzleRightCard {} }
                             }
-                            PlaceholderCard {
-                                objectName: "solver.right"
+                            SolverRightCard {
                                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
                                 width: rightSlot.cardWidth
                                 visible: body.ws === LayoutController.Solver && !App.layout.rightShownAsRail
-                                title: qsTr("Solutions")
-                                collapseIcon: "panelR"
-                                onCollapseClicked: App.layout.rightCollapsed = true
-                                note: qsTr("The solution list and the disassembly player arrive with the Solver phase.")
+                                onRemoveRequested: (kind) => win.askRemoveSolutions(kind)
+                                onExportRequested: {
+                                    App.stl.solutionShapes = App.solver.selectedShapes()
+                                    win.showDialog(stlDialog)
+                                }
                             }
                             CollapsedRail {
                                 objectName: "workspace.right.rail"
@@ -531,8 +527,46 @@ ApplicationWindow {
         }
     }
 
+    // Manage ▸ Remove assemblies (C20, PR-32): solution deletion is not undoable
+    Loader {
+        id: removeSolutionsDialog
+        active: false
+        sourceComponent: Component {
+            ConfirmDialog {
+                objectName: "solver.removeDialog"
+                onConfirmed: App.solver.removeSolutions(win.removeKind)
+                onClosed: {
+                    App.solver.previewRemove = -1
+                    // the keyboard back where it was (the list), once the dialog has let go
+                    Qt.callLater(win.restoreRemoveFocus)
+                }
+            }
+        }
+    }
+    property int removeKind: -1
+    property Item removeReturnFocus: null
+    function restoreRemoveFocus(): void {
+        const it = win.removeReturnFocus
+        win.removeReturnFocus = null
+        if (it !== null && it.visible && it.enabled)
+            it.forceActiveFocus(App.keyboardCues.navigating ? Qt.TabFocusReason : Qt.OtherFocusReason)
+    }
+    function askRemoveSolutions(kind: int): void {
+        const n = App.solver.removeCount(kind)
+        if (n <= 0)
+            return
+        removeSolutionsDialog.active = true
+        const d = removeSolutionsDialog.item as ConfirmDialog
+        win.removeKind = kind
+        win.removeReturnFocus = win.activeFocusItem
+        App.solver.previewRemove = kind
+        d.ask(n === 1 ? qsTr("Delete 1 solution?") : qsTr("Delete %1 solutions?").arg(n),
+              qsTr("The selected solutions are removed from the problem. Deleted solutions cannot be restored; solving the problem again finds them."),
+              qsTr("Delete"))
+    }
+
     function closeConfirmations() {
-        for (const l of [solutionsDialog])
+        for (const l of [solutionsDialog, removeSolutionsDialog])
             if (shown(l))
                 (l.item as Dialog).close()
     }
@@ -740,6 +774,10 @@ ApplicationWindow {
         function onImportFileRequested() { win.showFileDialog(importDialog) }
         function onSaveAsRequested() { win.showFileDialog(saveDialog) }
         function onQuitApproved() { win.saveGeometry(); win.quitApproved = true; Qt.quit() }
+        function onMessageRequested(title: string, text: string) { win.showMessage(title, text) }
+    }
+    Connections {
+        target: App.solver
         function onMessageRequested(title: string, text: string) { win.showMessage(title, text) }
     }
 

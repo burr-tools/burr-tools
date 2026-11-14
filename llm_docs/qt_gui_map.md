@@ -13,6 +13,7 @@
 | `windowframe` | Linux and the BSDs: the window manager's title bar dark with a dark theme -- X11's `_GTK_THEME_VARIANT`, KDE's `KDE_COLOR_SCHEME_PATH`; a light theme leaves it to the desktop. GNOME on Wayland cannot be reached (Qt's Adwaita decoration reads the portal alone) |
 | `buildqueue` | work left for later (`App.builds`): `BuildQueue`, steps a gap apart after start-up; `BuildJob`, a card built in turn or when needed; `BatchedRows`, a list's rows a batch at a time; tests in `test_builds.cpp` |
 | `puzzlecontroller`, `rowsmodel` | the Puzzle workspace (C16, C17): selection, the lists, each change through `btui::problemlist` as one undo step (`App.puzzle`); the 3D scene's frames are `ViewportController`'s |
+| `solvercontroller` | the Solver workspace (C19–C21): the solver thread and the background analysis, polled; the solutions, the player, the piece chips, Manage; the busy gate it sets on the document (`App.solver`) |
 | `inspectorcontroller` | the inspector (C03–C05): sections' open state, each voxel type's Transform buttons, whether an operation may run and why not, running it through `btui::shapeops`, its 3D preview |
 | `voxelviewport`, `viewcubeitem`, `scenerenderer`, `offscreenrenderer`, `pipelinecache`, `earlydevice`, `shaders/` | the 3D view on QRhi: render thread, offscreen renders, pipeline cache, shaders compiled by `qsb` |
 | `theme.{h,cpp}`, `resources/design-tokens.json` | every colour, size and duration of the spec, light and dark, Standard and Minimal |
@@ -22,6 +23,7 @@
 
 Tests live in `test/qtgui/` (`test_qtgui.cpp`; `test_viewport.cpp`,
 `test_editor.cpp`, `test_inspector.cpp`, `test_puzzle.cpp`,
+`test_solver.cpp`,
 `test_voxeltypes.cpp` -- every voxel type edited end to end --, `test_saving.cpp` -- every kind of edit
 saved and read back --; `qml/tst_*.qml`; snapshots) and
 `test/test_ui_*.cpp` for uicore.

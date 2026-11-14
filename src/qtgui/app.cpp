@@ -89,7 +89,9 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_editor->setAreaMode(m_settings->areaMode());
   connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
   m_puzzle = new PuzzleController(m_document, m_shapes, m_layout, this);
-  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, m_puzzle, this);
+  m_solver = new SolverController(m_settings, m_document, m_layout, m_puzzle, this);
+  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, m_puzzle, m_solver, this);
+  m_document->setBusyStopper([this] { m_solver->stopAndWait(); });
   m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
   m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, m_puzzle, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
@@ -98,6 +100,16 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_inspector, &InspectorController::flashRequested, m_status, &StatusController::flash);
   connect(m_puzzle, &PuzzleController::flashRequested, m_status, &StatusController::flash);
   connect(m_puzzle, &PuzzleController::announceRequested, m_status, &StatusController::announce);
+  connect(m_solver, &SolverController::flashRequested, m_status, &StatusController::flash);
+  connect(m_solver, &SolverController::announceRequested, m_status, &StatusController::announce);
+  connect(m_document, &DocumentController::busyRefused, m_status, &StatusController::flash);
+  // the solutions a problem holds: the Puzzle lists count them
+  connect(m_document, &DocumentController::resultsChanged, m_puzzle, &PuzzleController::refresh);
+  // a piece the solver could place nowhere: shown in Entities, as legacy does
+  connect(m_solver, &SolverController::shapeRequested, this, [this](int shape) {
+    m_layout->setWorkspace(LayoutController::Entities);
+    m_shapes->select(shape);
+  });
   connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
@@ -145,10 +157,15 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_layout, &LayoutController::changed, this, &App::updateStatusText);
   connect(m_puzzle, &PuzzleController::problemChanged, this, &App::updateStatusText);
   connect(m_puzzle, &PuzzleController::stateChanged, this, &App::updateStatusText);
+  connect(m_solver, &SolverController::runChanged, this, &App::updateStatusText);
+  connect(m_solver, &SolverController::problemChanged, this, &App::updateStatusText);
   updateStatusText();
 }
 
 App::~App() {
+  // the solver and an analysis read the document, which goes with the
+  // children below in the order they were made, before them: stop them first
+  m_solver->stopAndWait();
   if (s_app == this)
     s_app = nullptr;
 }
@@ -204,7 +221,7 @@ QString App::version(void) const {
 
 /* The live status sentence. Entities shows the selected shape's counts
  * (legacy StatPieceInfo), Puzzle the problem's totals (legacy
- * StatProblemInfo); the Solver's arrives with that workspace.
+ * StatProblemInfo), the Solver the run's (C21).
  */
 void App::updateStatusText(void) {
   const puzzle_c & p = m_document->session().puzzle();
@@ -215,6 +232,8 @@ void App::updateStatusText(void) {
                                                       v->countState(voxel_c::VX_VARIABLE)));
   } else if (m_layout->workspace() == LayoutController::Puzzle) {
     m_status->setLiveText(m_puzzle->statusText());
+  } else if (m_layout->workspace() == LayoutController::Solver) {
+    m_status->setLiveText(m_solver->statusText());
   } else {
     m_status->setLiveText(QString());
   }
@@ -230,6 +249,17 @@ void App::updateStatusText(void) {
  * this runs in.
  */
 QString App::rescueSave(void) {
+  // nothing else may write the puzzle while it is saved; stopping reports
+  // its own errors here again, so once only
+  static bool rescuing = false;
+  if (!rescuing) {
+    rescuing = true;
+    try {
+      m_solver->stopAndWait();
+    } catch (...) {
+    }
+    rescuing = false;
+  }
   QStringList folders;
   const std::filesystem::path & open = m_document->session().fileName();
   if (!open.empty())

@@ -134,12 +134,20 @@ void RowsModel::setRows(std::vector<Row> rows) {
   const int n = int(rows.size());
   bool changed = n != old;
 
+  // one signal for the span of changed rows: thousands of rows that shift by
+  // one (a sorted insert) are one update, not thousands
+  int first = -1, last = -1;
   for (int i = 0; i < std::min(old, n); i++)
     if (m_rows[size_t(i)] != rows[size_t(i)]) {
-      m_rows[size_t(i)] = rows[size_t(i)];
-      emit dataChanged(index(i), index(i));
-      changed = true;
+      m_rows[size_t(i)] = std::move(rows[size_t(i)]);
+      if (first < 0)
+        first = i;
+      last = i;
     }
+  if (first >= 0) {
+    emit dataChanged(index(first), index(last));
+    changed = true;
+  }
 
   if (n > old) {
     beginInsertRows(QModelIndex(), old, n - 1);
