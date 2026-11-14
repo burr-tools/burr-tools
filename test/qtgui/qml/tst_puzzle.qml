@@ -906,6 +906,81 @@ TestCase {
         compare(list.editingRow, -1)
     }
 
+    // row i of the problems list's actions shown and taking presses (from the event after they showed)
+    function problemActionsReady(i) {
+        const a = item("puzzle.problems.row." + i + ".actions")
+        tryVerify(() => a.opacity === 1 && a.enabled, 1000)
+    }
+
+    function test_aProblemRowsActionsArePlacedButHiddenUntilItShows() {
+        App.puzzle.newProblem()
+        App.puzzle.selectProblem(0)
+        mouseMove(win.contentItem, 800, 900)              // away from the list
+        problemActionsReady(0)
+        const hidden = item("puzzle.problems.row.1.actions")
+        compare(hidden.opacity, 0)
+        verify(!hidden.enabled)
+        verify(item("puzzle.problems.row.1.duplicate").Accessible.ignored)
+        verify(!item("puzzle.problems.row.0.duplicate").Accessible.ignored)
+        const r = item("puzzle.problems.row.1")
+        mouseMove(r, 60, r.height / 2)
+        problemActionsReady(1)
+        verify(!item("puzzle.problems.row.1.duplicate").Accessible.ignored)
+        mouseClick(item("puzzle.problems.row.1.duplicate"))
+        compare(App.puzzle.problems.count, 3)
+    }
+
+    function test_aClickRightAfterThePointerArrivesOnAProblemRowOnlySelects() {
+        // PR 181 review, the shapes list's point 2, for the problems list: the
+        // pointer lands on a row and clicks at once (a pen, a touch, a row moving
+        // under a still pointer). Its buttons show under that press and must not
+        // take it: wherever it lands, it selects the row -- no rename, duplicate
+        // or delete.
+        for (let i = 0; i < 3; i++)
+            App.puzzle.newProblem()
+        waitForRendering(win.contentItem)
+        const before = App.puzzle.problems.count
+        const list = item("puzzle.problems.list")
+        // from the chip across the buttons, short of the list's scroll bar
+        // (it lies over the rows' right edge and takes presses there)
+        const xEnd = list.ScrollBar.vertical.mapToItem(item("puzzle.problems.row.0"), 0, 0).x
+        let target = 1
+        for (let x = 24; x < xEnd; x += 6) {
+            App.puzzle.selectProblem(0)
+            mouseMove(win.contentItem, 800, 900)          // away from the list
+            waitForRendering(win.contentItem)
+            const r = item("puzzle.problems.row." + target)   // a row of its own each time: no double-click
+            mouseMove(r, x, r.height / 2)
+            mouseClick(r, x, r.height / 2)
+            waitForRendering(win.contentItem)
+            const at = "row " + target + ", x " + x
+            compare(App.puzzle.problems.count, before, at)
+            compare(App.puzzle.problem, target, at)
+            compare(list.editingRow, -1, at)
+            target = target % (before - 1) + 1
+            if (target === 1)
+                wait(Qt.styleHints.mouseDoubleClickInterval + 50)
+        }
+    }
+
+    function test_aProblemRowWithItsActionsHiddenGivesTheirRoomToTheLabel() {
+        App.puzzle.newProblem()
+        App.puzzle.renameProblem(1, "A label far too long to fit beside the row's actions, however wide the card is")
+        App.puzzle.selectProblem(0)
+        mouseMove(win.contentItem, 800, 900)              // away from the list
+        waitForRendering(win.contentItem)
+        const r = item("puzzle.problems.row.1")
+        const label = item("puzzle.problems.row.1.label")
+        const actions = item("puzzle.problems.row.1.actions")
+        compare(actions.opacity, 0)
+        verify(label.truncated)
+        tryVerify(() => label.mapToItem(r, label.width, 0).x > actions.x + actions.width / 2, 1000)
+        mouseMove(r, 60, r.height / 2)
+        problemActionsReady(1)
+        tryVerify(() => label.mapToItem(r, label.width, 0).x <= actions.x, 1000)
+        verify(label.truncated)
+    }
+
     // --- what a file or a user wrote ---------------------------------------------------
 
     function textsHolding(root, marker, found) {

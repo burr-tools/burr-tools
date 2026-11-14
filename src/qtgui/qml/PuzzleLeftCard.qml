@@ -409,6 +409,22 @@ Card {
                     readonly property bool editing: list.editingRow === index
                     readonly property bool dragged: list.dragFrom === index
                     readonly property bool showActions: (hover.hovered || selected) && !editing && list.dragFrom < 0
+                    // The actions take presses only from the event after they showed:
+                    // a press that arrives with the pointer (a pen, a touch, a row
+                    // moving under a still pointer) hovers the row and lands at once,
+                    // and must select it, not hit a button the user never saw.
+                    property bool actionsArmed: false
+                    onShowActionsChanged: {
+                        actionsArmed = false
+                        if (showActions)
+                            armTimer.restart()
+                    }
+                    Component.onCompleted: if (showActions) armTimer.restart()
+                    Timer { // the next turn of the event loop, after the press that showed them
+                        id: armTimer
+                        interval: 0
+                        onTriggered: row.actionsArmed = row.showActions
+                    }
                     readonly property real shift: {
                         const from = list.dragFrom, to = list.dropTo
                         if (from < 0 || to < 0 || dragged)
@@ -544,33 +560,49 @@ Card {
                                 onActiveFocusChanged: if (!activeFocus) commit(false)
                             }
                         }
-                        Loader { // ④
-                            active: row.showActions
-                            visible: active
-                            sourceComponent: Row {
-                                spacing: 0
-                                RowIconButton {
-                                    objectName: "puzzle.problems.row." + row.index + ".rename"
-                                    iconName: "edit"
-                                    tip: qsTr("Rename (%1, or double-click)").arg(root.renameKeys)
-                                    onClicked: list.startRename(row.index)
-                                }
-                                RowIconButton {
-                                    objectName: "puzzle.problems.row." + row.index + ".duplicate"
-                                    iconName: "copy"
-                                    tip: qsTr("Duplicate, as the last problem (%1)").arg(root.duplicateKeys)
-                                    onClicked: App.puzzle.duplicateProblem(row.index)
-                                }
-                                RowIconButton {
-                                    objectName: "puzzle.problems.row." + row.index + ".delete"
-                                    iconName: "trash"
-                                    dangerHover: true
-                                    enabled: App.puzzle.canDeleteProblem
-                                    tip: App.puzzle.canDeleteProblem ? qsTr("Delete (%1)").arg(root.deleteKeys)
-                                                                     : qsTr("The only problem cannot be deleted")
-                                    onClicked: App.puzzle.deleteProblem(row.index)
-                                }
-                            }
+                        // the actions' room, taken from the label only while they show
+                        Item {
+                            visible: row.showActions
+                            Layout.preferredWidth: actions.width
+                        }
+                    }
+                    // Every row has its actions, placed where they show; only the
+                    // hovered or selected row shows them, and they take presses once
+                    // armed. (Made on demand, they took the press that made them,
+                    // before their row had placed them: PR 181 review, the shapes
+                    // list.) They lie over the row, not in its layout, so a hidden
+                    // row's label has their room.
+                    Row { // ④
+                        id: actions
+                        objectName: "puzzle.problems.row." + row.index + ".actions"
+                        anchors { right: parent.right; rightMargin: 6; verticalCenter: parent.verticalCenter }
+                        visible: !row.editing        // the rename field takes the room
+                        opacity: row.showActions ? 1 : 0
+                        enabled: row.actionsArmed
+                        spacing: 0
+                        RowIconButton {
+                            objectName: "puzzle.problems.row." + row.index + ".rename"
+                            Accessible.ignored: !row.showActions     // hidden: not read out
+                            iconName: "edit"
+                            tip: qsTr("Rename (%1, or double-click)").arg(root.renameKeys)
+                            onClicked: list.startRename(row.index)
+                        }
+                        RowIconButton {
+                            objectName: "puzzle.problems.row." + row.index + ".duplicate"
+                            Accessible.ignored: !row.showActions     // hidden: not read out
+                            iconName: "copy"
+                            tip: qsTr("Duplicate, as the last problem (%1)").arg(root.duplicateKeys)
+                            onClicked: App.puzzle.duplicateProblem(row.index)
+                        }
+                        RowIconButton {
+                            objectName: "puzzle.problems.row." + row.index + ".delete"
+                            Accessible.ignored: !row.showActions     // hidden: not read out
+                            iconName: "trash"
+                            dangerHover: true
+                            enabled: App.puzzle.canDeleteProblem
+                            tip: App.puzzle.canDeleteProblem ? qsTr("Delete (%1)").arg(root.deleteKeys)
+                                                             : qsTr("The only problem cannot be deleted")
+                            onClicked: App.puzzle.deleteProblem(row.index)
                         }
                     }
                 }
