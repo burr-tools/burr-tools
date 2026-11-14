@@ -85,7 +85,7 @@ TEST_CASE("Muted keeps each hue and takes saturation away", "[ui][shapecolours]"
 
 TEST_CASE("the light and dark tiers of a hue stay apart in Muted", "[ui][shapecolours]") {
   // blue and dark blue, red and dark red: the table's own pairs
-  for (const auto [bright, deep] : { std::pair{ 0, 6 }, std::pair{ 2, 8 }, std::pair{ 1, 7 } })
+  for (const auto & [bright, deep] : { std::pair{ 0, 6 }, std::pair{ 2, 8 }, std::pair{ 1, 7 } })
     for (const bool dark : { true, false }) {
       const ShapeColours c{ ShapePalette::Muted, dark };
       CHECK(relativeLuminance(c.of(bright)) > relativeLuminance(c.of(deep)));

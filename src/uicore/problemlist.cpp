@@ -180,8 +180,8 @@ namespace btui {
   }
 
   bool isGoalShape(const puzzle_c & p, int i, int shape) {
-    const std::vector<GoalSlot> slots = goalSlots(p, i);
-    return std::any_of(slots.begin(), slots.end(), [&](const GoalSlot & s) { return s.shape == shape; });
+    const std::vector<GoalSlot> goal = goalSlots(p, i);
+    return std::any_of(goal.begin(), goal.end(), [&](const GoalSlot & s) { return s.shape == shape; });
   }
 
   std::vector<SectionInfo> puzzleSections(const puzzle_c & p, int i) {
