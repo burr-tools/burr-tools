@@ -60,6 +60,9 @@ private slots:
   void shapeColoursDefaultToMutedAndSwitchBack();
   void everyViewFollowsTheShapeColours();
   void theThemePicksItsMutedSet();
+  void removeAllPiecesEmptiesTheProblemInOneStep();
+  void theMinimumAloneMovesTheRangesFloor();
+  void allPiecesOpensAndShuts();
 };
 
 #endif

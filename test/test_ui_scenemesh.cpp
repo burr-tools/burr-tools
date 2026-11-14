@@ -914,3 +914,36 @@ TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once
   o.style = VoxelStyle::Legacy;
   CHECK(buildShapeMesh(*v, o).edges.empty());
 }
+
+TEST_CASE("classic style: voxel colour paints a coloured voxel in the palette's colour", "[ui][scenemesh]") {
+  // legacy drawShape(): the colour constraint's colour, not the shade checker
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 2, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  v->setColor(1, 0, 0, 1);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Legacy;
+  o.colors = ColorMode::Voxel;
+  o.palette = { { 1, 0, 0 } };
+  ShapeMesh m = buildShapeMesh(*v, o);
+  bool red = false, other = false;
+  for (const auto & vert : m.opaque) {
+    if (vert.cell[0] == 1.0f && vert.color.r == 255 && vert.color.g == 0 && vert.color.b == 0)
+      red = true;
+    if (vert.cell[0] == 0.0f && !(vert.color.r == 255 && vert.color.g == 0))
+      other = true;
+  }
+  CHECK(red);
+  CHECK(other);       // the uncoloured voxel keeps the piece's shades
+}
+
+TEST_CASE("a layer past the last cells is one layer step thick", "[ui][scenemesh]") {
+  // the slab of a layer with no cell of the grid in it: its step, mapped
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 4, 3, 5);
+  const Box s = layerSlab(*v, Plane::XY, 5);
+  CHECK_THAT(s.min.z, WithinAbs(5, 1e-6));
+  CHECK_THAT(s.max.z, WithinAbs(6, 1e-6));
+  CHECK_THAT(s.max.x, WithinAbs(4, 1e-6));
+}

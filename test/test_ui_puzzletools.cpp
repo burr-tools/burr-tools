@@ -136,3 +136,47 @@ TEST_CASE("removing shapes clears the solutions of problems that use them", "[ui
   CHECK(p.getNumberOfShapes() == before - 1);
   CHECK(p.getProblem(prob)->getNumberOfSavedSolutions() == 0);
 }
+
+TEST_CASE("every import filter can only take shapes away, and an existing problem takes them", "[ui][puzzletools]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+  const puzzle_c & p = d.puzzle();
+  unsigned src = 0;
+  for (unsigned i = 0; i < p.getNumberOfProblems(); i++)
+    if (p.getProblem(i)->getNumberOfSavedSolutions() > 1) { src = i; break; }
+
+  auto count = [&](ImportAssembliesOptions o) {
+    o.sourceProblem = src;
+    unsigned added = 0;
+    DocumentSession copy;
+    REQUIRE(copy.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+    copy.editWithoutUndo([&](puzzle_c & q) { added = importAssemblies(q, o); });
+    return added;
+  };
+  const unsigned all = count({});
+  REQUIRE(all > 0);
+  for (int k = 0; k < 5; k++) {
+    ImportAssembliesOptions o;
+    o.dropDisconnected = k == 0;
+    o.dropMirror = k == 1;
+    o.dropSymmetric = k == 2;
+    o.dropNonMillable = k == 3;
+    o.dropNonNotchable = k == 4;
+    CHECK(count(o) <= all);
+  }
+  ImportAssembliesOptions none;
+  none.dropIdentical = false;
+  none.dropDisconnected = false;
+  CHECK(count(none) >= all);
+
+  // into an existing problem: its pieces grow by the new shapes
+  ImportAssembliesOptions o;
+  o.sourceProblem = src;
+  o.destination = ImportAssembliesOptions::Destination::ExistingProblem;
+  o.destinationProblem = src;
+  const unsigned partsBefore = p.getProblem(src)->getNumberOfParts();
+  unsigned added = 0;
+  d.editWithoutUndo([&](puzzle_c & q) { added = importAssemblies(q, o); });
+  REQUIRE(added > 0);
+  CHECK(p.getProblem(src)->getNumberOfParts() == partsBefore + added);
+}

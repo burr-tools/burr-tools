@@ -490,3 +490,14 @@ TEST_CASE("a result that a file also lists as a piece can be taken out", "[ui][p
   CHECK(p->getProblem(0)->getNumberOfParts() == 0);
   CHECK(isGoalShape(*p, 0, 0));
 }
+
+TEST_CASE("a piece's count to zero leaves its groups; a group of none is no group", "[ui][problemlist]") {
+  auto p = withProblem(3);
+  REQUIRE(setPieceCount(*p, 0, 1, 2, 2));
+  REQUIRE(setPieceGroupCount(*p, 0, 1, 1, 2));
+  CHECK(pieceGroupCount(*p, 0, 1, 1) == 2);
+  REQUIRE(setPieceCount(*p, 0, 1, 0, 0));
+  CHECK(pieceGroupCount(*p, 0, 1, 1) == 0);
+  CHECK(problemGroups(*p, 0).empty());
+  CHECK(nextGroup(*p, 0) == 1);
+}

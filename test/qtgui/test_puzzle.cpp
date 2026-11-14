@@ -1141,3 +1141,37 @@ void TestPuzzle::theThemePicksItsMutedSet() {
   f.app->settings()->setTheme(QStringLiteral("light"));
   QCOMPARE(ShapesModel::chipColor(2), classic);
 }
+
+void TestPuzzle::removeAllPiecesEmptiesTheProblemInOneStep() {
+  PuzzleFixture f;
+  f.puzzle()->setCount(1, 2);
+  f.puzzle()->setCount(2, 1);
+  QVERIFY(f.puzzle()->pieces()->count() > 0);
+  f.puzzle()->removeAllPieces();
+  QCOMPARE(f.puzzle()->pieces()->count(), 0);
+  f.app->document()->undo();
+  QVERIFY(f.puzzle()->pieces()->count() > 0);
+}
+
+void TestPuzzle::theMinimumAloneMovesTheRangesFloor() {
+  PuzzleFixture f;
+  f.puzzle()->setRange(1, 1, 3);
+  f.puzzle()->setPieceMin(1, 2);
+  f.puzzle()->selectPiece(1);
+  QCOMPARE(f.puzzle()->pieceMin(), 2);
+  QCOMPARE(f.puzzle()->pieceMax(), 3);
+  // above the top it lifts the top with it
+  f.puzzle()->setPieceMin(1, 5);
+  QCOMPARE(f.puzzle()->pieceMin(), 5);
+  QCOMPARE(f.puzzle()->pieceMax(), 5);
+}
+
+void TestPuzzle::allPiecesOpensAndShuts() {
+  PuzzleFixture f;
+  QSignalSpy view(f.puzzle(), &PuzzleController::viewChanged);
+  const bool was = f.puzzle()->allPiecesOpen();
+  f.puzzle()->setAllPiecesOpen(!was);
+  QCOMPARE(f.puzzle()->allPiecesOpen(), !was);
+  f.puzzle()->setAllPiecesOpen(!was);      // the same again: no signal
+  QCOMPARE(view.count(), 1);
+}

@@ -118,3 +118,14 @@ TEST_CASE("the setting's words", "[ui][shapecolours]") {
   CHECK(kShapePalettes.word(ShapePalette::Classic) == "classic");
   CHECK(kShapePalettes.parse("classic") == ShapePalette::Classic);
 }
+
+TEST_CASE("a muted colour stays inside sRGB even from the most saturated ones", "[ui][shapecolours]") {
+  for (const Rgb & c : { Rgb{ 0, 0, 1 }, Rgb{ 1, 0, 1 }, Rgb{ 0, 1, 0 }, Rgb{ 1, 0, 0 }, Rgb{ 0, 1, 1 } })
+    for (bool dark : { false, true }) {
+      const Rgb m = mutedColour(c, dark);
+      for (float x : { m.r, m.g, m.b }) {
+        CHECK(x >= -0.001f);
+        CHECK(x <= 1.001f);
+      }
+    }
+}

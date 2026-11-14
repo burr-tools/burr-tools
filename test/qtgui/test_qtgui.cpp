@@ -449,6 +449,31 @@ class TestSettings : public QObject {
 
 private slots:
 
+  /* the word settings read back as their values; the same value again
+   * changes nothing and says nothing */
+  void wordSettingsReadBackAndRepeatsAreQuiet() {
+    QTemporaryDir dir;
+    SettingsController s(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("legacy.rc")));
+    s.setRotationMethod(QStringLiteral("drag"));
+    QCOMPARE(s.rotationMethod(), QStringLiteral("drag"));
+    QCOMPARE(s.rotationMethodValue(), btui::Camera::RotationMethod::Drag);
+    s.setTheme(QStringLiteral("dark"));
+    QCOMPARE(s.themeValue(), btui::ThemeChoice::Dark);
+    s.setAntialiasing(QStringLiteral("off"));
+    const btui::Antialiasing aa = s.antialiasingValue();
+    s.setAntialiasing(s.antialiasing());
+    QCOMPARE(s.antialiasingValue(), aa);
+
+    s.setUndoDepth(s.undoDepth());
+    s.setWorkerThreads(s.workerThreads());
+    QSignalSpy changed(&s, &SettingsController::changed);
+    s.setUndoDepth(s.undoDepth());
+    s.setWorkerThreads(s.workerThreads());
+    s.setRotationMethod(s.rotationMethod());
+    s.setTheme(s.theme());
+    QCOMPARE(changed.count(), 0);
+  }
+
   /* A settings file that is there but cannot be read (here a folder in its
    * place) is left as it is, for the user to look at: the session runs on
    * the defaults, changes work in memory and are said not to be saved. */
@@ -3145,6 +3170,31 @@ private slots:
     QVERIFY(!s->hasMesh());
     QCOMPARE(s->parameterCount(), 0);
     QVERIFY(!s->frame(1).mesh);
+  }
+
+  void aSwitchTakesOnlyOnOrOffAndTheFolderIsThePuzzlesOwn() {
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    StlExportController * s = f.app->stl();
+    s->begin();
+    QCOMPARE(s->folder(), f.app->document()->folder());
+    int switches = 0, doubles = 0;
+    for (int i = 0; i < s->parameterCount(); i++) {
+      const QVariantMap p = s->parameter(i);
+      const QString type = p.value(QStringLiteral("type")).toString();
+      if (type == QLatin1String("switch")) {
+        switches++;
+        s->setParameter(i, 7);
+        QCOMPARE(s->parameter(i).value(QStringLiteral("value")).toDouble(), 1.0);
+        s->setParameter(i, 0);
+        QCOMPARE(s->parameter(i).value(QStringLiteral("value")).toDouble(), 0.0);
+      }
+      doubles += type == QLatin1String("double") ? 1 : 0;
+    }
+    QVERIFY(switches > 0);
+    QVERIFY(doubles + switches <= s->parameterCount());
+    s->end();
   }
 
   void parametersAreTypedAndRebuildThePreview() {

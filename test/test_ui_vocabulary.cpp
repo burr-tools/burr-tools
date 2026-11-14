@@ -59,3 +59,8 @@ TEST_CASE("the fallbacks are the defaults the settings had", "[ui][vocabulary]")
   CHECK(samples(Antialiasing::X8) == 8);
   CHECK(kImageModes.fallback == ImageMode::Solution);
 }
+
+TEST_CASE("a value no table names is said as the fallback's word", "[ui][vocabulary]") {
+  CHECK(kThemes.word(ThemeChoice(99)) == kThemes.word(ThemeChoice::System));
+  CHECK(kDensities.parse("no such word") == Density::Standard);
+}
