@@ -6,8 +6,9 @@ import BurrTools.Ui
 // PR-06 Stepper: [axis] [−] [value] [＋] in one box, h28 (Minimal 26). The value is
 // typed (NumberEntry: Enter or leaving the field commits, Esc goes back to what
 // it was, invalid text reverts), stepped with ↑ / ↓ or the wheel while focused,
-// and with − / ＋, which repeat while held. It shows `value` and asks for a new
-// one with committed(value); the owner decides (a size may be refused).
+// and with − / ＋, which repeat while held -- until an undo or redo, which stops
+// the hold until the button goes up. It shows `value` and asks for a new one
+// with committed(value); the owner decides (a size may be refused).
 Rectangle {
     id: root
     property int value: 1
@@ -74,6 +75,13 @@ Rectangle {
         autoRepeat: true
         autoRepeatDelay: 400
         autoRepeatInterval: 80
+        /* An undo or redo (Ctrl+Z) while it is held: the repeats stop, and so
+         * does the click at the release. A step after the undo would record a
+         * new undo step and drop the redo it made. A new press steps again. */
+        property bool halted: false
+        onPressedChanged: if (sb.pressed) sb.halted = false
+        signal stepped()
+        onClicked: if (!sb.halted) sb.stepped()
         Accessible.name: sb.sign === "+" ? qsTr("Increase %1").arg(root.axis) : qsTr("Decrease %1").arg(root.axis)
         background: Rectangle {
             radius: Theme.radiusChip
@@ -108,7 +116,7 @@ Rectangle {
             sign: "-"
             anchors.verticalCenter: parent.verticalCenter
             enabled: root.value > root.from
-            onClicked: entry.step(root.value - 1)
+            onStepped: entry.step(root.value - 1)
         }
         TextInput {
             id: input
@@ -150,7 +158,16 @@ Rectangle {
             sign: "+"
             anchors.verticalCenter: parent.verticalCenter
             enabled: root.value < root.to
-            onClicked: entry.step(root.value + 1)
+            onStepped: entry.step(root.value + 1)
+        }
+    }
+    Connections {
+        target: App.document
+        function onAboutToApplyHistory() {
+            if (dec.pressed)
+                dec.halted = true
+            if (inc.pressed)
+                inc.halted = true
         }
     }
     BtToolTip { shown: hover.hovered && !input.activeFocus; text: root.tip }

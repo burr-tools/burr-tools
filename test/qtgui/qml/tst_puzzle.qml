@@ -879,6 +879,33 @@ TestCase {
         compare(App.puzzle.copiesOf(1), 4)
     }
 
+    // PR 181 review, point 5 for the Puzzle steppers: Ctrl+Z while ＋ is held. The
+    // repeats went on from the count the undo restored, as a new step that dropped
+    // the redo; now the hold stops until the button goes up
+    function test_anUndoStopsAHeldStepUntilTheButtonGoesUp() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.selectPiece(1)
+        waitForRendering(win.contentItem)
+        wait(900)    // past PROBLEM_COUNT_COALESCE_MS: the burst below is a step of its own
+        const stepper = item("puzzle.piece.count")
+        const before = App.puzzle.copiesOf(1)
+        mousePress(stepper.incButton)
+        tryVerify(() => App.puzzle.copiesOf(1) >= before + 3, 3000)   // repeating
+        App.document.undo()
+        const undone = App.puzzle.copiesOf(1)
+        compare(undone, before)
+        verify(App.document.canRedo)
+        wait(400)                                 // five repeats' time
+        compare(App.puzzle.copiesOf(1), undone)
+        mouseRelease(stepper.incButton)
+        compare(App.puzzle.copiesOf(1), undone, "nor at the release")
+        verify(App.document.canRedo)
+
+        // a new press steps again
+        mouseClick(stepper.incButton)
+        compare(App.puzzle.copiesOf(1), undone + 1)
+    }
+
     function test_setRangeTakesWhatIsTypedAtEnter() {
         App.puzzle.stepPiece(1, 1)
         App.puzzle.stepPiece(2, 1)
