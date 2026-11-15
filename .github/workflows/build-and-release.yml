@@ -307,7 +307,9 @@ jobs:
         BURRTOOLS_TEST_QPA: xcb
         BURRTOOLS_OFFSCREEN_RHI: vulkan
         BURRTOOLS_REQUIRE_GPU_TESTS: '1'
-      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+      # instrumented, the suites run several times slower, and the runners vary by a
+      # third: qtgui_qml took 137-146 s of its 180 and timed out on a slow one (2026-11-15)
+      run: xvfb-run -a meson test -C build-asan --print-errorlogs --timeout-multiplier 2 qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
     - name: Upload the test log
       if: failure()

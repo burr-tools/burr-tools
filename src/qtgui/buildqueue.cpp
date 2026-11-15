@@ -27,6 +27,8 @@
 
 BuildQueue::BuildQueue(QObject * parent) : QObject(parent) {
   m_timer.setSingleShot(true);
+  // a few firings a second at most; a coarse one fires on Windows' ~15.6 ms tick, a gap early
+  m_timer.setTimerType(Qt::PreciseTimer);
   connect(&m_timer, &QTimer::timeout, this, &BuildQueue::runNext);
   m_hold.setSingleShot(true);
   connect(&m_hold, &QTimer::timeout, this, [this] { setHolding(false); schedule(); });
