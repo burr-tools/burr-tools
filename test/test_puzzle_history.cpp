@@ -15,6 +15,7 @@
 #include "../src/tools/xml.h"
 
 #include <memory>
+#include <set>
 
 namespace {
 
@@ -836,8 +837,10 @@ TEST_CASE("undoing an edit elsewhere keeps a problem's solutions", "[gui][histor
     h.record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE);
   }
 
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));
   h.undo(puzzle.get());
   CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  CHECK_FALSE(h.redoCostsSolutions(puzzle.get()));
   h.redo(puzzle.get());
   CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
 }
@@ -853,6 +856,7 @@ TEST_CASE("undoing a reorder of the problems brings each its solutions", "[gui][
 
   puzzle->exchangeProblems(0, other);
   h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));
   h.undo(puzzle.get());
 
   CHECK(puzzle->getProblem(0)->getName() == name);
@@ -860,6 +864,7 @@ TEST_CASE("undoing a reorder of the problems brings each its solutions", "[gui][
   CHECK(puzzle->getProblem(other)->getName() == "other");
   CHECK(puzzle->getProblem(other)->getNumberOfSavedSolutions() == 0);
 
+  CHECK_FALSE(h.redoCostsSolutions(puzzle.get()));
   h.redo(puzzle.get());
   CHECK(puzzle->getProblem(0)->getName() == "other");
   CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
@@ -879,6 +884,7 @@ TEST_CASE("undoing the delete of one problem leaves the others their solutions",
   puzzle->removeProblem(0);
   h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
   REQUIRE(puzzle->getProblem(added - 1)->getNumberOfSavedSolutions() == solutions);
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));
   h.undo(puzzle.get());
 
   CHECK(puzzle->getProblem(0)->getName() == "first");
@@ -903,6 +909,164 @@ TEST_CASE("a restore that changes a problem drops its solutions", "[gui][history
     h.record(puzzle.get(), puzzleHistory_c::AK_ENTITIES_GRID_PAINT, shape);
   }
 
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  CHECK(h.undoCostsSolutions(puzzle.get()));
+  // the dry run leaves the puzzle as it was
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  CHECK(h.canUndo());
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
+}
+
+TEST_CASE("a redo that changes a problem holding solutions says so first", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  problem_c * pr = puzzle->getProblem(0);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  const unsigned int shape = pr->getShapeIdOfPart(0);
+  pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  h.undo(puzzle.get());
+  REQUIRE(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
+  CHECK_FALSE(h.redoCostsSolutions(puzzle.get()));
+
+  // solved again after the undo: the same structure, holding solutions
+  auto again = solvedPuzzle();
+  CHECK(h.redoCostsSolutions(again.get()));
+  CHECK_FALSE(h.undoCostsSolutions(again.get()));    // no step back from the baseline
+}
+
+TEST_CASE("an undo that removes a problem holding solutions says so first", "[gui][history]") {
+  auto puzzle = makePuzzleWithShapes(1);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));     // nothing to undo
+  CHECK_FALSE(h.redoCostsSolutions(puzzle.get()));
+
+  // the puzzle before its problems were made, then one made
+  auto solved = solvedPuzzle();
+  puzzle_c before(solved.get());
+  while (before.getNumberOfProblems() > 0)
+    before.removeProblem(0);
+  h.reset(&before);
+  before.addProblem();
+  h.record(&before, puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  CHECK_FALSE(h.undoCostsSolutions(&before));         // the one it removes holds nothing
+
+  // ... and solved since: the undo removes the problem with its solutions
+  const unsigned int solutions = solved->getProblem(0)->getNumberOfSavedSolutions();
+  CHECK(h.undoCostsSolutions(solved.get()));
+  CHECK(solved->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  h.undo(solved.get());
+  CHECK(solved->getNumberOfProblems() == 0);
+}
+
+TEST_CASE("a finished search with no solutions kept counts as held", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  problem_c * pr = puzzle->getProblem(0);
+  while (pr->getNumberOfSavedSolutions() > 0)
+    pr->removeSolution(0);
+  REQUIRE(pr->getSolveState() == SS_SOLVED);
+
+  // the step before has another count (on a copy: an edit marks a solved
+  // problem's state unknown)
+  const unsigned int shape = pr->getShapeIdOfPart(0);
+  puzzle_c before(puzzle.get());
+  before.getProblem(0)->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+  puzzleHistory_c h;
+  h.reset(&before);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  REQUIRE(pr->getSolveState() == SS_SOLVED);
+  CHECK(h.undoCostsSolutions(puzzle.get()));
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getSolveState() == SS_UNSOLVED);
+}
+
+TEST_CASE("an unknown search state with nothing saved holds nothing", "[gui][history]") {
+  // an edit after the search made its counts incomplete: nothing to lose
+  auto puzzle = solvedPuzzle();
+  problem_c * pr = puzzle->getProblem(0);
+  while (pr->getNumberOfSavedSolutions() > 0)
+    pr->removeSolution(0);
+  pr->makeUnknown();
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  const unsigned int shape = pr->getShapeIdOfPart(0);
+  pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));
+}
+
+namespace {
+  // Add colour as the Drawing footer makes it: the colour, and its own rule
+  // in every problem (btui::addColour, legacy cb_AddColor)
+  unsigned int addColourWithItsRule(puzzle_c & p) {
+    p.addColor(10, 200, 30);
+    const unsigned int id = p.colorNumber();
+    for (unsigned int k = 0; k < p.getNumberOfProblems(); k++)
+      p.getProblem(k)->allowPlacement(id, id);
+    return id;
+  }
+
+  // the index of a filled voxel of a shape
+  unsigned int aFilledVoxel(const voxel_c & v) {
+    for (unsigned int i = 0; i < v.getXYZ(); i++)
+      if (v.getState(i) != voxel_c::VX_EMPTY)
+        return i;
+    FAIL("the shape has no filled voxel");
+    return 0;
+  }
+}
+
+TEST_CASE("an Add colour undone and redone keeps the solutions: no voxel has the colour", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  const unsigned int solutions = puzzle->getProblem(0)->getNumberOfSavedSolutions();
+  const std::set<uint32_t> rules = puzzle->getProblem(0)->getColorConstraints();
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  const unsigned int id = addColourWithItsRule(*puzzle);
+  h.record(puzzle.get(), puzzleHistory_c::AK_COLOR_PALETTE);
+  CHECK_FALSE(h.undoCostsSolutions(puzzle.get()));
+  h.undo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  CHECK(puzzle->getProblem(0)->getColorConstraints() == rules);     // the rule went with it
+  CHECK(puzzle->colorNumber() == id - 1);
+
+  CHECK_FALSE(h.redoCostsSolutions(puzzle.get()));
+  h.redo(puzzle.get());
+  CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == solutions);
+  CHECK(puzzle->getProblem(0)->placementAllowed(id, id));
+}
+
+TEST_CASE("a colour rule a piece and the result fall under still costs the solutions", "[gui][history]") {
+  auto puzzle = solvedPuzzle();
+  problem_c * pr = puzzle->getProblem(0);
+  REQUIRE(pr->resultValid());
+  // the colour on a piece and on the result, no rule for it yet
+  puzzle->addColor(10, 200, 30);
+  const unsigned int id = puzzle->colorNumber();
+  voxel_c * piece = puzzle->getShape(pr->getShapeIdOfPart(0));
+  voxel_c * result = puzzle->getShape(pr->getResultId());
+  piece->setColor(aFilledVoxel(*piece), id);
+  result->setColor(aFilledVoxel(*result), id);
+  puzzleHistory_c h;
+  h.reset(puzzle.get());
+
+  SECTION("the colour into itself") {
+    pr->allowPlacement(id, id);
+  }
+  SECTION("only the piece has it: a rule into a colour the result has") {
+    result->setColor(aFilledVoxel(*result), 0);
+    puzzle->addColor(1, 2, 3);
+    const unsigned int other = puzzle->colorNumber();
+    result->setColor(aFilledVoxel(*result), other);
+    h.reset(puzzle.get());
+    pr->allowPlacement(id, other);
+  }
+  h.record(puzzle.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+  CHECK(h.undoCostsSolutions(puzzle.get()));
   h.undo(puzzle.get());
   CHECK(puzzle->getProblem(0)->getNumberOfSavedSolutions() == 0);
 }

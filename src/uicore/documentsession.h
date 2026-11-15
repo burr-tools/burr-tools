@@ -123,6 +123,10 @@ namespace btui {
        */
       bool canUndo(void) const;
       bool canRedo(void) const;
+      /* whether the undo / redo would drop solutions or a search state a
+       * problem holds (the history keeps neither), for the warning before it */
+      bool undoCostsSolutions(void) const { return hist->undoCostsSolutions(puz.get()); }
+      bool redoCostsSolutions(void) const { return hist->redoCostsSolutions(puz.get()); }
       puzzleHistory_c::undoResult_t undo(void);
       puzzleHistory_c::undoResult_t redo(void);
 

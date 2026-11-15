@@ -169,6 +169,15 @@ public:
   /** records of this many bytes more would fit in the budget */
   static bool roomForSolutions(size_t bytes);
 
+  /** Whether undo() / redo() would drop what a problem holds now -- saved
+   *  solutions, or a search running or finished: a problem the step removes,
+   *  or one it rebuilds or whose shapes it changes and holds no record for
+   *  (keepDiscarded). A dry run of the same restore on a copy of the puzzle
+   *  without its solutions, made only when some problem holds any; false
+   *  when there is no step. */
+  bool undoCostsSolutions(const puzzle_c * puzzle) const;
+  bool redoCostsSolutions(const puzzle_c * puzzle) const;
+
   /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
    *  limit drops the oldest undo steps at once, then the redo steps furthest
    *  ahead, down to the depth plus the current state, as record() keeps. */
@@ -266,17 +275,26 @@ private:
     std::vector<unsigned int> rebuiltProblems;   ///< whose structure it changed; they still hold their solutions
   };
   /* A problem whose structure the snapshot leaves as it is keeps its
-   * solutions; one it rebuilds keeps them until settleSolutions. */
-  restored_t restore(puzzle_c * puzzle, const snapshot_t * snap) const;
+   * solutions; one it rebuilds keeps them until settleSolutions. `removed`,
+   * when given, collects the problems it removes, before they go. */
+  restored_t restore(puzzle_c * puzzle, const snapshot_t * snap,
+                     std::vector<const problem_c *> * removed = nullptr) const;
   static problemSnap_t snapProblem(const problem_c * pr);
   void matchProblems(puzzle_c * puzzle, const snapshot_t * snap) const;
   void matchShapes(puzzle_c * puzzle, const snapshot_t * snap) const;
-  /* the same parts, result, groups, colour constraints and holes (the name aside) */
-  static bool sameStructure(const problem_c & pr, const problemSnap_t & ps);
+  /* the same parts, result, groups, colour constraints (unless `rules` is
+   * false) and holes, the name aside */
+  static bool sameStructure(const problem_c & pr, const problemSnap_t & ps, bool rules = true);
+  /* the problems of the restored puzzle whose solutions settleSolutions
+   * drops: rebuilt, or using a shape the restore changed, and no record of
+   * the step's for them */
+  static std::vector<unsigned int> droppedBy(const puzzle_c & puzzle, const restored_t & restored,
+                                             const snapshot_t & step);
   /* after a restore: the step's kept solve records swapped in or out, and
-   * the solutions of the other problems rebuilt or using a changed shape
-   * dropped */
+   * the solutions of the problems droppedBy() names dropped */
   static void settleSolutions(puzzle_c * puzzle, const restored_t & restored, snapshot_t & step);
+  /* undoCostsSolutions, redoCostsSolutions: snap restored, step settled */
+  bool costsSolutions(const puzzle_c * puzzle, const snapshot_t * snap, const snapshot_t & step) const;
 
   bool canCoalesce(actionKind_e kind, unsigned int selectedShape) const;
   void pushOrReplace(puzzle_c * puzzle, actionKind_e kind,

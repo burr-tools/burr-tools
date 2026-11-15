@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <iterator>
+#include <set>
 
 namespace {
   /* every history's kept records together, and the budget for them; the
@@ -210,9 +212,9 @@ puzzleHistory_c::problemSnap_t puzzleHistory_c::snapProblem(const problem_c * pr
 }
 
 /* Whether the problem is what the snapshot holds, name aside. */
-bool puzzleHistory_c::sameStructure(const problem_c & pr, const problemSnap_t & ps) {
+bool puzzleHistory_c::sameStructure(const problem_c & pr, const problemSnap_t & ps, bool rules) {
   if (pr.resultValid() != ps.resultValid || (ps.resultValid && pr.getResultId() != ps.resultId) ||
-      pr.getColorConstraints() != ps.colorConstraints || pr.getNumberOfParts() != ps.parts.size() ||
+      (rules && pr.getColorConstraints() != ps.colorConstraints) || pr.getNumberOfParts() != ps.parts.size() ||
       (pr.maxHolesDefined() ? pr.getMaxHoles() : 0xFFFFFFFF) != ps.maxHoles)
     return false;
   for (unsigned int i = 0; i < ps.parts.size(); i++) {
@@ -294,6 +296,32 @@ namespace {
         return false;
     return true;
   }
+
+  // the colours a shape's voxels have, colour 0 (none) left out
+  template <class Shapes>
+  void addColoursOf(const Shapes & shapes, unsigned int shape, std::set<unsigned int> & colours) {
+    if (shape >= shapes.size())
+      return;
+    const voxel_c & v = *shapes[shape];
+    for (unsigned int i = 0; i < v.getXYZ(); i++)
+      if (v.getState(i) != voxel_c::VX_EMPTY && v.getColor(i) != 0)
+        colours.insert(v.getColor(i));
+  }
+
+  /* A colour rule lets a piece voxel of one colour sit in a result cell of
+   * another (problem_c::allowPlacement stores it as (piece-1) << 16 |
+   * (result-1)). It can change what a search finds only when a piece of the
+   * problem has the one colour and its result the other: whether the two
+   * sets differ in such a rule. */
+  bool rulesThatMatterDiffer(const std::set<uint32_t> & a, const std::set<uint32_t> & b,
+                             const std::set<unsigned int> & pieceColours,
+                             const std::set<unsigned int> & resultColours) {
+    std::vector<uint32_t> differ;
+    std::set_symmetric_difference(a.begin(), a.end(), b.begin(), b.end(), std::back_inserter(differ));
+    return std::any_of(differ.begin(), differ.end(), [&](uint32_t rule) {
+      return pieceColours.count((rule >> 16) + 1) > 0 && resultColours.count((rule & 0xFFFF) + 1) > 0;
+    });
+  }
 }
 
 /* Bring the shapes into the snapshot's order, by the library's own exchange:
@@ -315,7 +343,8 @@ void puzzleHistory_c::matchShapes(puzzle_c * puzzle, const snapshot_t * snap) co
   }
 }
 
-puzzleHistory_c::restored_t puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap) const {
+puzzleHistory_c::restored_t puzzleHistory_c::restore(puzzle_c * puzzle, const snapshot_t * snap,
+                                                    std::vector<const problem_c *> * removed) const {
   matchShapes(puzzle, snap);
 
   // --- which shapes this restore changes: their problems' solutions no longer fit (settleSolutions) ---
@@ -330,8 +359,11 @@ puzzleHistory_c::restored_t puzzleHistory_c::restore(puzzle_c * puzzle, const sn
   while (puzzle->getNumberOfProblems() < snap->problems.size())
     puzzle->addProblem();
   matchProblems(puzzle, snap);
-  while (puzzle->getNumberOfProblems() > snap->problems.size())
+  while (puzzle->getNumberOfProblems() > snap->problems.size()) {
+    if (removed)
+      removed->push_back(puzzle->getProblem(puzzle->getNumberOfProblems() - 1));
     puzzle->removeProblem(puzzle->getNumberOfProblems() - 1);
+  }
 
   /* The problems this restore changes give up their parts while the shapes
    * those name are still there: the library checks each id against them, and
@@ -351,8 +383,24 @@ puzzleHistory_c::restored_t puzzleHistory_c::restore(puzzle_c * puzzle, const sn
 
     pr->setName(ps.name);
 
-    if (sameStructure(*pr, ps))
-      continue;
+    if (sameStructure(*pr, ps, false)) {
+      if (pr->getColorConstraints() == ps.colorConstraints)
+        continue;
+      /* Rules no voxel of the problem falls under change none of its
+       * solutions -- an Add colour's own rule, the new colour in pieces of
+       * it: put them back and keep the solutions. The colours are those of
+       * the snapshot's shapes; a shape the restore changes drops the
+       * solutions anyway (settleSolutions). */
+      std::set<unsigned int> pieceColours, resultColours;
+      for (const partSnap_t & part : ps.parts)
+        addColoursOf(snap->shapes, part.shapeId, pieceColours);
+      if (ps.resultValid)
+        addColoursOf(snap->shapes, ps.resultId, resultColours);
+      if (!rulesThatMatterDiffer(pr->getColorConstraints(), ps.colorConstraints, pieceColours, resultColours)) {
+        pr->setColorConstraints(ps.colorConstraints);
+        continue;
+      }
+    }
     rebuild[p] = true;
     out.rebuiltProblems.push_back(p);
 
@@ -547,6 +595,49 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::undo(puzzle_c * puzzle) {
            snapshots[cursor + 1]->before };
 }
 
+/* The restore and the settling decide which problems lose what they hold
+ * (their matching of shapes and problems is not repeated here, so the
+ * answer cannot drift from what an undo does): run the restore on a copy,
+ * which leaves the solutions behind, and see whether a problem it removes,
+ * or one droppedBy() names, held any. The copy's problems stand in for the
+ * puzzle's by position; one removed is collected before it goes, and no
+ * problem is made after that, so a pointer is never reused. */
+bool puzzleHistory_c::costsSolutions(const puzzle_c * puzzle, const snapshot_t * snap,
+                                     const snapshot_t & step) const {
+  std::vector<bool> holds(puzzle->getNumberOfProblems());
+  for (unsigned int i = 0; i < holds.size(); i++) {
+    const problem_c * pr = puzzle->getProblem(i);
+    // as btui::problemHasSolutions: an unknown state (an edit made the counts
+    // incomplete) with nothing saved holds nothing
+    const solveState_e st = pr->getSolveState();
+    holds[i] = pr->getNumberOfSavedSolutions() > 0 || st == SS_SOLVING || st == SS_SOLVED;
+  }
+  if (std::none_of(holds.begin(), holds.end(), [](bool h) { return h; }))
+    return false;
+
+  puzzle_c trial(puzzle);
+  std::vector<const problem_c *> was(holds.size());
+  for (unsigned int i = 0; i < was.size(); i++)
+    was[i] = trial.getProblem(i);
+  std::vector<const problem_c *> lost;
+  const restored_t restored = restore(&trial, snap, &lost);
+  for (unsigned int k : droppedBy(trial, restored, step))
+    lost.push_back(trial.getProblem(k));
+  for (unsigned int i = 0; i < was.size(); i++)
+    if (holds[i] && std::find(lost.begin(), lost.end(), was[i]) != lost.end())
+      return true;
+  return false;
+}
+
+bool puzzleHistory_c::undoCostsSolutions(const puzzle_c * puzzle) const {
+  // undo(): the snapshot before the step restored, the step settled
+  return canUndo() && costsSolutions(puzzle, snapshots[cursor - 1].get(), *snapshots[cursor]);
+}
+
+bool puzzleHistory_c::redoCostsSolutions(const puzzle_c * puzzle) const {
+  return canRedo() && costsSolutions(puzzle, snapshots[cursor + 1].get(), *snapshots[cursor + 1]);
+}
+
 puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
   if (!canRedo())
     return { NO_SHAPE, TAB_ENTITIES };
@@ -595,34 +686,41 @@ long puzzleHistory_c::solutionsKept(void) const {
   return held;
 }
 
+std::vector<unsigned int> puzzleHistory_c::droppedBy(const puzzle_c & puzzle, const restored_t & restored,
+                                                     const snapshot_t & step) {
+  const unsigned int count = puzzle.getNumberOfProblems();
+  // the step's records go back (undo) or out again (redo): those lose nothing
+  std::vector<bool> settled(count, false);
+  for (const auto & kept : step.discarded)
+    if (kept.first < count)
+      settled[kept.first] = true;
+  std::vector<unsigned int> dropped;
+  for (unsigned int k = 0; k < count; k++) {
+    if (settled[k])
+      continue;
+    const problem_c * pr = puzzle.getProblem(k);
+    const bool rebuilt = std::find(restored.rebuiltProblems.begin(), restored.rebuiltProblems.end(), k)
+                         != restored.rebuiltProblems.end();
+    if (rebuilt || std::any_of(restored.changedShapes.begin(), restored.changedShapes.end(),
+                               [pr](unsigned int s) { return pr->usesShape(s); }))
+      dropped.push_back(k);
+  }
+  return dropped;
+}
+
 void puzzleHistory_c::settleSolutions(puzzle_c * puzzle, const restored_t & restored, snapshot_t & step) {
+  /* the solutions the others held no longer fit them; found first, while
+   * the step's records still name the problems they settle */
+  const std::vector<unsigned int> dropped = droppedBy(*puzzle, restored, step);
   /* the solutions the step kept go back (undo) or out again (redo); the
    * step's problems are the restored state's, a voxel edit or a change to
    * what a problem asks for keeps them */
-  std::vector<bool> settled(puzzle->getNumberOfProblems(), false);
   for (auto & [problem, record] : step.discarded)
-    if (problem < puzzle->getNumberOfProblems()) {
+    if (problem < puzzle->getNumberOfProblems())
       puzzle->getProblem(problem)->swapSolveRecord(record);
-      settled[problem] = true;
-    }
   recount(step);   // it holds what the problems held
-  /* the others the restore rebuilt or that use a shape it changed: theirs
-   * no longer fit */
-  for (unsigned int k : restored.rebuiltProblems)
-    if (k < puzzle->getNumberOfProblems() && !settled[k])
-      puzzle->getProblem(k)->removeAllSolutions();
-  if (restored.changedShapes.empty())
-    return;
-  for (unsigned int k = 0; k < puzzle->getNumberOfProblems(); k++) {
-    if (settled[k])
-      continue;
-    problem_c * pr = puzzle->getProblem(k);
-    for (unsigned int s : restored.changedShapes)
-      if (pr->usesShape(s)) {
-        pr->removeAllSolutions();
-        break;
-      }
-  }
+  for (unsigned int k : dropped)
+    puzzle->getProblem(k)->removeAllSolutions();
 }
 
 void puzzleHistory_c::markSaved(void) {
