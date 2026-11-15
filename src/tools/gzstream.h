@@ -67,6 +67,8 @@ public:
     virtual int     overflow( int c = EOF);
     virtual int     underflow();
     virtual int     sync();
+    // a large read straight from zlib rather than through the small buffer
+    virtual std::streamsize xsgetn( char* s, std::streamsize n);
 };
 
 class gzstreambase : virtual public std::ios {
