@@ -55,6 +55,11 @@ struct solverSettings_t {
    *  duplicate pieces); false: the bit-parallel engine or DLX as chosen by
    *  bitParallel */
   bool cells = false;
+  /** assembler_1: Dancing Cells where the bit-parallel engine does not run
+   *  (matrix over its limits, variable voxels with piece ranges); false:
+   *  dancing links there. Without bitParallel the search is dancing links
+   *  either way. */
+  bool cellsFallback = true;
   /** assembler_1: with piece ranges, still restrict a shape that every
    *  assembly uses exactly once to break the result's symmetry; false: no
    *  such restriction as soon as any shape has a range (benchmarking). It
@@ -113,6 +118,7 @@ struct solverSettings_t {
  * | threads            | BURRTOOLS_THREADS=N                               |
  * | bitParallel        | BURRTOOLS_BITPARALLEL=0\|1                        |
  * | cells              | BURRTOOLS_CELLS=0\|1                              |
+ * | cellsFallback      | BURRTOOLS_CELLS_FALLBACK=0\|1                     |
  * | rangeSymmetryBreaker | BURRTOOLS_RANGE_SYMBREAK=0\|1                  |
  * | vector             | BURRTOOLS_VECTOR=auto\|scalar\|avx2\|avx512\|neon |
  * | disassemblerVector | BURRTOOLS_DISASM_VECTOR=0\|1                      |
@@ -136,6 +142,7 @@ struct solverConfig_t {
   std::optional<unsigned int> threads;
   std::optional<bool> bitParallel;
   std::optional<bool> cells;
+  std::optional<bool> cellsFallback;
   std::optional<bool> rangeSymmetryBreaker;
   std::optional<vectorIsa_e> vector;
   std::optional<bool> disassemblerVector;

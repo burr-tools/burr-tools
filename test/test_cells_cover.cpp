@@ -851,6 +851,58 @@ TEST_CASE("the range symmetry breaker leaves the examples' assemblies alone",
   }
 }
 
+/* Dancing Cells is the engine wherever the bit-parallel one does not run:
+ * a matrix it declines (here through its memory budget) and variable
+ * voxels together with piece ranges, which it does not model. Dancing
+ * links stays the engine with the bit-parallel engines switched off, and
+ * with the fallback switched off.
+ */
+TEST_CASE("Dancing Cells runs where the bit-parallel engine does not",
+          "[cells][assembler][save]") {
+  struct Case {
+    const char * path;
+    bool overBudget; // else: declined for variable voxels with piece ranges
+  };
+  const Case cases[] = {
+    { "examples/CubeInCage.xmpuzzle", true },
+    { "examples/DemoPieceGenerator.xmpuzzle", false },
+  };
+  for (const auto & c : cases) {
+    INFO(c.path);
+    auto p = loadPuzzle(c.path);
+    problem_c & problem = *p->getProblem(0);
+
+    Set links;
+    {
+      ScopedSettings env;
+      env->bitParallel = false;
+      links = solveAll(problem, 4);
+      Recorder cb;
+      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) != 3u);
+    }
+    REQUIRE(links.size() > 3);
+
+    {
+      ScopedSettings env;
+      if (c.overBudget)
+        env->huangMemoryBytes = 0;
+      CHECK(solveAll(problem, 1) == links);
+      CHECK(solveAll(problem, 4) == links);
+      Recorder cb;
+      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) == 3u);
+    }
+    {
+      ScopedSettings env;
+      if (c.overBudget)
+        env->huangMemoryBytes = 0;
+      env->cellsFallback = false;
+      CHECK(solveAll(problem, 4) == links);
+      Recorder cb;
+      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) != 3u);
+    }
+  }
+}
+
 /* The search is divided into tasks before the workers start (so it runs in
  * parallel without split on demand too), at most splitFanout rows of a node
  * singly and one task for the rest. Every division must cover the search
@@ -871,6 +923,7 @@ TEST_CASE("Dancing Cells divides the search into tasks exactly once",
     {
       ScopedSettings env;
       env->bitParallel = false;
+      env->cellsFallback = false;
       baseline = solveAll(problem, 1);
     }
     REQUIRE(baseline.size() > 3);

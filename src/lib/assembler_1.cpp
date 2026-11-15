@@ -3583,14 +3583,16 @@ bool assembler_1_c::canUseSimd(void) const {
 
 /* The Dancing Cells engine takes every matrix: any size, and variable
  * voxels together with piece ranges, which the bit-parallel engine leaves
- * out. For now it runs only when asked for (settings.cells).
+ * out. It runs where that engine does not (settings.cellsFallback), in
+ * place of dancing links, or everywhere (settings.cells). With the
+ * bit-parallel engines switched off the search is dancing links, as ever.
  */
 bool assembler_1_c::canUseCells(void) const {
   if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
     return false;
   if (debug)
     return false;
-  return settings.cells;
+  return settings.cells || (settings.cellsFallback && settings.bitParallel && !canUseSimd());
 }
 
 std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) const {
