@@ -140,6 +140,9 @@ Card {
         }
     }
 
+    // the pieces as tiles, else as the table: one comparison, read by both views
+    readonly property bool chipsShown: App.puzzle.piecesView !== "table"
+
     readonly property string renameKeys: App.commands.shortcutText("problems.rename")
     readonly property string duplicateKeys: App.commands.shortcutText("problems.duplicate")
     readonly property string deleteKeys: App.commands.shortcutText("problems.delete")
@@ -318,6 +321,17 @@ Card {
                 spacing: 2
                 model: App.puzzle.problems
                 currentIndex: App.puzzle.problem
+                /* The selected row in view at once, however it was selected (the arrows,
+                 * the rail, + New): following currentIndex alone, the view glided at
+                 * 400 px/s behind held arrows, moved under reduced motion, and at times
+                 * not at all. */
+                highlightMoveDuration: 0
+                highlightMoveVelocity: -1
+                Connections {
+                    target: App.puzzle
+                    // (none selected, -1: the view clamps it to the first row)
+                    function onProblemChanged() { list.positionViewAtIndex(App.puzzle.problem, ListView.Contain) }
+                }
                 activeFocusOnTab: true
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -688,6 +702,7 @@ Card {
                                     BtToolTip { shown: Theme.minimal && (changeButton.hovered || changeButton.visualFocus); text: slotRow.detail }
                                     onClicked: {
                                         resultMenu.current = slotRow.shape
+                                        resultMenu.wanted = true
                                         resultMenu.popup(changeButton, 0, changeButton.height)
                                     }
                                 }
@@ -738,13 +753,15 @@ Card {
                         iconName: "more-horizontal"
                         tip: qsTr("More for the pieces")
                         onClicked: moreMenu.popup(moreButton, 0, moreButton.height)
+                        // into the table at its first row (the table walks its rows itself)
+                        Keys.onTabPressed: (event) => { event.accepted = table.enter(false) }
                     }
                 }
 
                 FocusScope { // ⑨
                     id: tiles
                     objectName: "puzzle.used.tiles"
-                    visible: App.puzzle.piecesView === "chips"
+                    visible: root.chipsShown
                     anchors { left: parent.left; right: parent.right; top: usedHeader.bottom; bottom: parent.bottom
                               leftMargin: 6; rightMargin: 6; bottomMargin: 4 }
                     activeFocusOnTab: App.puzzle.pieces.count > 0
@@ -771,7 +788,8 @@ Card {
                             spacing: 3
                             Repeater {
                                 id: tileList
-                                model: App.puzzle.pieces
+                                // only the view shown is made: every edit updates what exists
+                                model: root.chipsShown ? App.puzzle.pieces : null
                                 delegate: PieceTile {
                                     id: tile
                                     required property int shape
@@ -814,17 +832,36 @@ Card {
                 ListView { // ⑩
                     id: table
                     objectName: "puzzle.used.table"
-                    visible: App.puzzle.piecesView === "table"
+                    visible: !root.chipsShown
                     anchors { left: parent.left; right: parent.right; top: usedHeader.bottom; bottom: parent.bottom
                               leftMargin: 6; rightMargin: 6; bottomMargin: 4 }
                     clip: true
                     cacheBuffer: 0
                     spacing: 2
-                    model: App.puzzle.pieces
+                    // only the view shown is made (four controls a row, a group list each)
+                    model: root.chipsShown ? null : App.puzzle.pieces
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     Accessible.role: Accessible.Table
                     Accessible.name: qsTr("Pieces in this puzzle")
+
+                    /* Tab and Shift+Tab walk the rows in order and bring each into
+                     * view. The view makes only the rows in sight, so the focus chain
+                     * alone stopped at the last of them (and, once scrolled back, went
+                     * through the rows in the order they were made); the rows hand the
+                     * keyboard on themselves, and the table to what is around it. */
+                    signal rowFocusRequested(int row, bool last)
+                    function focusRow(row: int, last: bool): void {
+                        table.positionViewAtIndex(row, ListView.Contain)
+                        table.forceLayout()
+                        table.rowFocusRequested(row, last)
+                    }
+                    function enter(last: bool): bool {
+                        if (!table.visible || table.count === 0)
+                            return false
+                        table.focusRow(last ? table.count - 1 : 0, last)
+                        return true
+                    }
 
                     // the widths of Count, Range and Group; Shape takes the rest
                     readonly property real countWidth: 92
@@ -877,6 +914,35 @@ Card {
                         Accessible.selected: selected
                         TapHandler { onTapped: App.puzzle.selectPiece(tableRow.shape) }
 
+                        // a control of the row took the keyboard: the row in view (the mouse scrolls for itself)
+                        function focusTaken(): void {
+                            if (App.keyboardCues.navigating)
+                                table.positionViewAtIndex(tableRow.index, ListView.Contain)
+                        }
+                        Connections {
+                            target: table
+                            function onRowFocusRequested(row: int, last: bool) {
+                                if (row === tableRow.index)
+                                    (last ? groupField : minField).forceActiveFocus(Qt.TabFocusReason)
+                            }
+                        }
+                        /* Past the row's last control, the next row's first; before its
+                         * first, the row above's last. On the controls themselves: an
+                         * item that is a Tab stop moves the focus on its own and passes
+                         * no Tab up to its row. */
+                        function tabOut(): void {
+                            if (tableRow.index < table.count - 1)
+                                table.focusRow(tableRow.index + 1, false)
+                            else
+                                libraryHeader.forceActiveFocus(Qt.TabFocusReason)
+                        }
+                        function backtabOut(): void {
+                            if (tableRow.index > 0)
+                                table.focusRow(tableRow.index - 1, true)
+                            else
+                                moreButton.forceActiveFocus(Qt.TabFocusReason)
+                        }
+
                         Row {
                             anchors { fill: parent; leftMargin: 4; rightMargin: 4 }
                             spacing: 4
@@ -910,11 +976,13 @@ Card {
                                 spacing: 2
                                 anchors.verticalCenter: parent.verticalCenter
                                 CountField {
+                                    id: minField
                                     objectName: "puzzle.used.row." + tableRow.shape + ".min"
                                     name: tableRow.rangeOn ? qsTr("%1 minimum").arg(tableRow.idText) : qsTr("%1 count").arg(tableRow.idText)
                                     value: tableRow.rangeOn ? tableRow.minCount : tableRow.maxCount
                                     liveFrom: tableRow.rangeOn ? 0 : 1
-                                    onFocusTaken: App.puzzle.selectPiece(tableRow.shape)
+                                    onFocusTaken: { App.puzzle.selectPiece(tableRow.shape); tableRow.focusTaken() }
+                                    Keys.onBacktabPressed: tableRow.backtabOut()
                                     onEntryStarted: App.puzzle.holdCounts(tableRow.shape)
                                     onEntryEnded: App.puzzle.releaseCounts()
                                     onCommitted: (v) => tableRow.rangeOn ? App.puzzle.setPieceMin(tableRow.shape, v)
@@ -934,7 +1002,7 @@ Card {
                                     from: 1
                                     name: qsTr("%1 maximum").arg(tableRow.idText)
                                     value: tableRow.maxCount
-                                    onFocusTaken: App.puzzle.selectPiece(tableRow.shape)
+                                    onFocusTaken: { App.puzzle.selectPiece(tableRow.shape); tableRow.focusTaken() }
                                     onEntryStarted: App.puzzle.holdCounts(tableRow.shape)
                                     onEntryEnded: App.puzzle.releaseCounts()
                                     onCommitted: (v) => App.puzzle.setPieceMax(tableRow.shape, v)
@@ -945,8 +1013,10 @@ Card {
                                 height: 24
                                 anchors.verticalCenter: parent.verticalCenter
                                 BtSwitch {
+                                    id: rangeField
                                     objectName: "puzzle.used.row." + tableRow.shape + ".range"
                                     anchors.verticalCenter: parent.verticalCenter
+                                    onActiveFocusChanged: if (rangeField.activeFocus) tableRow.focusTaken()
                                     // the state is the model's: a warning may keep it as it is
                                     checkable: false
                                     checked: tableRow.rangeOn
@@ -958,7 +1028,10 @@ Card {
                                 }
                             }
                             GroupPicker {
+                                id: groupField
                                 objectName: "puzzle.used.row." + tableRow.shape + ".group"
+                                onActiveFocusChanged: if (groupField.activeFocus) tableRow.focusTaken()
+                                Keys.onTabPressed: tableRow.tabOut()
                                 width: table.groupWidth
                                 height: 24
                                 anchors.verticalCenter: parent.verticalCenter
@@ -1001,6 +1074,8 @@ Card {
                     Accessible.description: App.puzzle.allPiecesOpen ? qsTr("Expanded. %1").arg(libraryHint.text)
                                                                      : qsTr("Collapsed. %1").arg(libraryHint.text)
                     onClicked: App.puzzle.allPiecesOpen = !App.puzzle.allPiecesOpen
+                    // back into the table at its last row
+                    Keys.onBacktabPressed: (event) => { event.accepted = table.enter(true) }
                     BtToolTip { shown: Theme.minimal && (libraryHeader.hovered || libraryHeader.visualFocus); text: libraryHint.text }
                     background: Rectangle {
                         color: libraryHeader.hovered ? Theme.panel2 : "transparent"
@@ -1076,7 +1151,8 @@ Card {
                             spacing: 3
                             Repeater {
                                 id: libraryList
-                                model: App.puzzle.library
+                                // a chip for every shape: made only while the section is open
+                                model: App.puzzle.allPiecesOpen ? App.puzzle.library : null
                                 delegate: LibraryChip {
                                     id: chip
                                     required property int shape
@@ -1223,6 +1299,10 @@ Card {
         objectName: "puzzle.resultMenu"
         /* the result's shape when the menu opened, -1 for none */
         property int current: -1
+        /* Its rows -- a picture, three texts and a layout each, for every shape --
+         * are made the first time it opens, not with the card, and then follow
+         * the shapes. */
+        property bool wanted: false
         /* the largest shape's voxels; 0 with one shape, nothing to hint at */
         readonly property int mostVoxels: {
             let most = 0
@@ -1235,6 +1315,7 @@ Card {
         }
         Instantiator {
             id: shapeItems
+            active: resultMenu.wanted
             model: App.shapes
             delegate: AppMenuItem {
                 id: shapeItem

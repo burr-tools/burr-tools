@@ -375,6 +375,30 @@ TestCase {
         }
     }
 
+    // A hidden frame does not repaint as it is resized (the Puzzle scene hides one on
+    // every object and resizes them all at each frame of a zoom); shown, it paints once,
+    // at its size then (review 2026-11-15)
+    Component { id: dashedComponent; DashedFrame { objectName: "probe"; width: 60; height: 40 } }
+    SignalSpy { id: dashedPaints; signalName: "painted" }
+    function test_aHiddenDashedFrameDoesNotRepaint() {
+        const f = createTemporaryObject(dashedComponent, win.contentItem, { visible: false })
+        dashedPaints.target = findChild(f, "probe.outline")
+        wait(50)                        // the Canvas's own first paint, once it is available
+        dashedPaints.clear()
+        for (let i = 0; i < 6; i++) {
+            f.width = 61 + i
+            f.color = i % 2 ? Theme.accent : Theme.danger
+            wait(20)
+        }
+        compare(dashedPaints.count, 0, "no paint while hidden")
+        f.visible = true
+        tryVerify(() => dashedPaints.count === 1, 2000)
+        wait(50)
+        compare(dashedPaints.count, 1, "one paint when shown")
+        f.width = 80
+        tryVerify(() => dashedPaints.count === 2, 2000, "and again as it changes while shown")
+    }
+
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {

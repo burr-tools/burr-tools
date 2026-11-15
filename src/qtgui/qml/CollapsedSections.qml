@@ -38,6 +38,8 @@ Item {
         activeFocusOnTab: true
         boundsBehavior: Flickable.StopAtBounds
         keyNavigationEnabled: true
+        highlightMoveDuration: 0         // the current row in view at once, held arrows or reduced motion
+        highlightMoveVelocity: -1
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 4 }
         Accessible.role: Accessible.List
         Accessible.name: qsTr("Sections of Piece & rules")

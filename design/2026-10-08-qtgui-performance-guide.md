@@ -396,6 +396,66 @@ says so). Qt Quick's own shaders stay as the Qt build packaged them.
 | ~~Pick mesh per edit~~ (done 2026-10-28) | `ViewportController::buildMesh`, `btui::buildPickMesh` | P5 rebuilt the pick mesh with every mesh, through the library's flat mesh: ~170 ms per stroke segment on a 16³ half-full shape, against AC-C08-08's 16 ms. | Made when a pick needs it, from the cells' faces (~2 ms; spheres keep the flat mesh); the 3D hover picked once a frame. `TestEditor::theViewIsReadyInTimeAfterAStrokeSegment` holds both under 16 ms. |
 | STL style: cache the mesh | `ViewportController::buildMesh` | The STL look (the library's chamfer mesher) is rebuilt on every selection change; switching between two shapes rebuilds both every time, and each editing stroke (P4) would rebuild it. | A small cache keyed by shape and revision, or the off-thread build above. |
 
+## The Puzzle workspace (third cut), reviewed 2026-11-15
+
+**Method.** The screen was locked, and a locked Windows session does not
+compose the window: Qt stops getting update requests, and "workspace on
+screen" came 2.6-40 s after the first frame in both builds, at ~0.8 s of
+CPU. So nothing here is an on-screen time; take those by hand as "Timing
+start-up by hand" says. Measured instead: release builds with Qt's
+DLLs (the static build has no offscreen platform), `QT_QPA_PLATFORM=offscreen`,
+the second cut (`d09cc299`) against the third, interleaved, medians of 12.
+"Stress" is SolidSixPieceBurrs with its shapes four times over (104
+shapes, 6 problems, 8 colours, no comment). Frame work is Qt's
+`qt.scenegraph.time.renderloop` polish + sync + render (the software
+renderer, so CPU only; the 3D view does not draw offscreen).
+
+**Start-up.** The third cut made every Puzzle card with the workspace,
+though the app always opens in Entities: first paint +20 ms (PelikanBurr)
+and +43 ms (Stress) offscreen, where the workspace is made inside the
+first frame's swap; on screen that cost lands between first paint and app
+ready instead. Fixed; now within 1-5 ms of the second cut:
+
+| Median, ms | 2nd cut | 3rd cut before | 3rd cut after |
+| :--- | ---: | ---: | ---: |
+| PelikanBurr: first paint / app ready | 270 / 331 | 295 / 362 | 275 / 335 |
+| Stress: first paint / app ready | 262 / 332 | 309 / 379 | 266 / 333 |
+
+**What was done.**
+
+- Puzzle's cards are made on its first showing, then kept (`Main.qml`,
+  `body.puzzleSeen`).
+- Only the view of the pieces that shows is made (tiles or table): the
+  hidden table had built its rows -- two fields, a switch and a group
+  picker with its popup each -- and every edit updated both views. "All
+  pieces" makes its chips only while open.
+- The Result list makes its rows (a picture each) when it first opens.
+- `IconButton` and `LibraryChip` make their tooltip popup on the first
+  hover or keyboard focus. Per 200 icon buttons: 18 → 7 ms; per 100 piece
+  tiles 43 → 28 ms, library chips 33 → 24 ms. (`GlyphButton`,
+  `RailButton` and `ToolbarButton` still make theirs at once: few of them.)
+- `DashedFrame` repaints only while shown. A `Canvas` asked to repaint
+  paints hidden too, and the Puzzle scene has a hidden frame on every
+  object, all resized at each frame of a zoom, a pan or a sliding card.
+  Stress, a zoom's animation: frame work 70 → 35 ms, worst frame 13 → 5
+  ms; a card collapsing 51 → 36 ms.
+
+**Interactions after the fixes** (Stress; the call, then the frame work
+that shows it): select a problem or a piece, ± a piece, a rule, undo: 0-5
+ms each. Puzzle ↔ Entities: 3-8 ms + 8-14 ms. Chips ↔ Table: ~9 ms (the view
+is made now). The first switch to Puzzle: 55 ms + 20 ms, most of it the 104
+library chips (0.24 ms each); PelikanBurr 22 ms + 5 ms.
+
+**The 3D scene.** `buildPuzzleScene` runs again on each piece selected
+and each entry into Puzzle: 1-2 ms on the examples (`bench_ui`, "the
+Puzzle scene of an example"), 43 ms on the synthetic worst case (100
+copies of a 16³ checkerboard, near `maxSceneVertices`). Left as it is; a
+mesh cache per shape, or per-object transforms, would be the next step if
+large puzzles show it.
+
+**Open.** On-screen first paint, app ready and GPU frame times of the
+third cut, by hand on an unlocked display, against the table above.
+
 ## History: start-up, measured 2026-10-08
 
 Before any start-up work, the dev build, `burrtools-qt PelikanBurr.xmpuzzle

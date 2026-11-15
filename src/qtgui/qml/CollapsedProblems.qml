@@ -32,6 +32,12 @@ Item {
         spacing: 4
         model: App.puzzle.problems
         currentIndex: App.puzzle.problem
+        highlightMoveDuration: 0         // in view at once, as the card's list
+        highlightMoveVelocity: -1
+        Connections {
+            target: App.puzzle
+            function onProblemChanged() { list.positionViewAtIndex(App.puzzle.problem, ListView.Contain) }
+        }
         activeFocusOnTab: true
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded; width: 4 }

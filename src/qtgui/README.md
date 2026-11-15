@@ -1267,3 +1267,25 @@ scene's one mesh.
 parts of a specified component (the rails, the sections, the menus, the
 Set range dialog, the axis names and the cell readout of the matrix) or of
 a decision listed above (`puzzle.summary.holeLimit`, `puzzle.dragGhost`).
+
+## QML, keyboard and performance review of the Puzzle workspace (2026-11-15)
+
+A Tab walk through the whole workspace, in both views of the pieces, listed
+every control a pointer can use that Tab never reached; the lists' keys
+were held through long lists; start-up and each Puzzle action were timed
+against the second cut (method and numbers: the performance guide,
+"The Puzzle workspace (third cut)").
+
+| Found | Fixed | Test |
+| :--- | :--- | :--- |
+| The table made only the rows in sight, so Tab left it after the last of them: the rest could not be reached from the keyboard | Tab and Shift+Tab walk every row in order, scrolling each into view | `test_tabReachesEveryRowOfTheTable`, `test_tabGoesThroughARangeRow` |
+| ↓ through a long problem list moved the selection out of sight (the view glided after it at 400 px/s, or not at all, and moved under reduced motion) | The list and the rail bring the selected problem into view at once | `test_theSelectedProblemStaysInView` |
+| The Puzzle cards were made with the workspace, though the app opens in Entities: start-up +20-46 ms | Made on Puzzle's first showing, then kept | `test_thePuzzleCardsAreMadeWhenPuzzleFirstShows` |
+| The hidden view of the pieces (tiles or table), the shut All pieces and the Result list's rows were made, and kept up to date, unseen | Made only when shown or first opened | `test_onlyTheShownViewOfThePiecesIsMade`, `test_aShutLibraryMakesNoChips`, `test_theResultListIsMadeWhenItFirstOpens` |
+| Every icon button and library chip made its tooltip popup up front | Made on the first hover or keyboard focus, still after the delay | `test_aButtonsTooltipIsMadeWhenFirstWanted` |
+| The scene's hidden hover frames (a Canvas each) repainted at every frame of a zoom, a pan or a sliding card | `DashedFrame` paints only while shown | `test_aHiddenDashedFrameDoesNotRepaint` |
+| A group list's row read its picker after the picker had gone (a TypeError as table rows were taken down) | Guarded | the warning-free Puzzle tests |
+
+Reached by keys though not Tab stops, as designed: the rows' rename,
+duplicate and delete (Enter, Ctrl+D, Del; Alt+↑/↓ move a problem), a tile's and a chip's − and +
+(−, +), a stepper's buttons (↑, ↓), the matrix's cells (arrows, Space).

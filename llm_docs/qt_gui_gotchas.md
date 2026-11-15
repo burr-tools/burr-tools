@@ -48,6 +48,22 @@
 - Positioners (`Row`, `Column`, `Flow`) lay their children out on the next
   polish: a test reads their geometry after `waitForRendering` or
   `tryVerify`, not at once.
+- An item that is a Tab stop moves the focus on Tab itself: the key never
+  reaches a parent's `Keys.onTabPressed`. Put the handler on the control.
+- A `ListView` makes only the rows in sight: Tab stops at the last of them,
+  and once scrolled back the chain follows the order the rows were made.
+  A list of controls hands the keyboard on row by row and scrolls first
+  (`PuzzleLeftCard`'s table: `focusRow`, `tabOut`, `backtabOut`).
+- A `ListView` following `currentIndex` glides to it at 400 px/s (late for
+  held arrows, moving under reduced motion) or not at all: call
+  `positionViewAtIndex(i, ListView.Contain)` when the selection changes.
+- A `Canvas` asked to `requestPaint()` paints while hidden too; check
+  `visible` first and paint when it shows (`DashedFrame`).
+- A `ToolTip` made with `visible` already true shows at once, skipping its
+  `delay`: make it hidden, then let it show (`IconButton.wantTip`).
+- A locked Windows session does not compose: Qt gets no update requests and
+  the window waits seconds for its next frame. Time start-up on an unlocked
+  display, or offscreen for the QML and C++ part.
 - Windows draws the title bar dark or light from
   `QStyleHints::setColorScheme`; ask for the theme's scheme before the
   first window (`Theme`'s constructor), not only when it changes.

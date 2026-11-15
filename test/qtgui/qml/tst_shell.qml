@@ -146,6 +146,21 @@ TestCase {
         compare(card.width, width)
     }
 
+    // the app opens in Entities: Puzzle's cards are made on its first showing, then kept
+    function test_thePuzzleCardsAreMadeWhenPuzzleFirstShows() {
+        compare(findChild(win.contentItem, "puzzle.left"), null)
+        compare(findChild(win.contentItem, "puzzle.right"), null)
+        App.layout.workspace = LayoutController.Puzzle
+        waitForRendering(win.contentItem)
+        const left = item("puzzle.left")
+        verify(left.visible)
+        verify(item("puzzle.right").visible)
+        App.layout.workspace = LayoutController.Entities
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.left"), left, "kept, not made again")
+        verify(!left.visible)
+    }
+
     function test_railSwitchesWorkspaces() {
         // T-C15-1/2
         verify(item("rail-entities").selected)

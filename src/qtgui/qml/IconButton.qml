@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -20,10 +22,25 @@ AbstractButton {
     Accessible.name: tip
     Accessible.checkable: toggle
     Accessible.checked: toggle && on
-    // the button's tooltip (PR-14), for tests
-    readonly property alias toolTip: tipPopup
-    // on keyboard focus too: the tip holds the shortcut and, in Minimal, the caption
-    BtToolTip { id: tipPopup; shown: root.hovered || root.visualFocus; text: root.tip }
+    /* The button's tooltip (PR-14), made the first time it could show and kept:
+     * a popup for every button cost a card made of many (the Puzzle tiles have
+     * two each) about 0.04 ms a button. On keyboard focus too: the tip holds
+     * the shortcut and, in Minimal, the caption. */
+    property BtToolTip toolTip: null
+    // made hidden, then armed: one made already shown skips the tooltip's delay
+    property bool tipArmed: false
+    Component {
+        id: tipComponent
+        BtToolTip { shown: root.tipArmed && (root.hovered || root.visualFocus); text: root.tip }
+    }
+    function wantTip(): void {
+        if (root.toolTip !== null)
+            return
+        root.toolTip = tipComponent.createObject(root) as BtToolTip
+        root.tipArmed = true
+    }
+    onHoveredChanged: if (root.hovered) root.wantTip()
+    onVisualFocusChanged: if (root.visualFocus) root.wantTip()
 
     background: Rectangle {
         radius: Theme.radiusChip

@@ -120,8 +120,11 @@ AbstractButton {
                     width: parent ? parent.width : implicitWidth
                     implicitHeight: 26
                     text: qsTr("Group %1").arg(modelData)
-                    // through the revision: the call alone would not follow an edit
-                    selected: App.puzzle.groups.revision >= 0 && App.puzzle.pieceGroupCount(root.shape, modelData) > 0
+                    // through the revision: the call alone would not follow an edit. The list
+                    // lives in the overlay: an edit can reach it while a table row and its
+                    // picker are being taken down, with `root` gone first
+                    selected: root !== null && App.puzzle.groups.revision >= 0
+                              && App.puzzle.pieceGroupCount(root.shape, modelData) > 0
                     onClicked: {
                         if (selected)
                             root.unticked = root.unticked.concat([ modelData ])

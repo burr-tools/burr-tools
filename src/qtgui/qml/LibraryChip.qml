@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
@@ -43,11 +45,31 @@ Rectangle {
                           : label.length > 0 ? qsTr("%1 %2").arg(idText).arg(label) : idText
     Accessible.selectable: true
     Accessible.selected: selected
-    Accessible.description: chipTip.text
+    readonly property string tip: qsTr("Drag into the puzzle, double-click or press + to add")
+    Accessible.description: tip
     Accessible.onPressAction: root.tapped()
 
-    HoverHandler { id: hover; cursorShape: Qt.OpenHandCursor }
-    BtToolTip { id: chipTip; shown: hover.hovered || root.focusRing; text: qsTr("Drag into the puzzle, double-click or press + to add") }
+    HoverHandler {
+        id: hover
+        cursorShape: Qt.OpenHandCursor
+        onHoveredChanged: if (hover.hovered) root.wantTip()
+    }
+    onFocusRingChanged: if (root.focusRing) root.wantTip()
+    // the tooltip made the first time it could show, not with each of the shapes' chips
+    property BtToolTip toolTip: null
+    // made hidden, then armed: one made already shown skips the tooltip's delay
+    property bool tipArmed: false
+    Component {
+        id: tipComponent
+        BtToolTip { shown: root.tipArmed && (hover.hovered || root.focusRing); text: root.tip }
+    }
+    function wantTip(): void {
+        if (root.toolTip !== null)
+            return
+        root.toolTip = tipComponent.createObject(root) as BtToolTip
+        root.tipArmed = true
+    }
+    Component.onCompleted: if (root.focusRing) root.wantTip()
     TapHandler {
         id: tap
         onTapped: if (tap.tapCount === 1) root.tapped()

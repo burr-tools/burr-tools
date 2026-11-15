@@ -5,7 +5,10 @@ import BurrTools.Ui
 // C18's hover frame in the Puzzle scene. Qt Quick has no dashed border
 // without Qt Quick Shapes, which is not in the build; a Canvas draws one, as
 // ShortcutKeys' mouse tokens do. It repaints only when its size or looks
-// change, and draws nothing while hidden.
+// change, and only while shown: a Canvas asked to repaint paints hidden too,
+// and the Puzzle scene has a hidden frame on every object, all resized at
+// each frame of a zoom, a pan or a card sliding (review 2026-11-15). Shown
+// again, it paints once.
 Item {
     id: root
     property color color: Theme.accent
@@ -40,13 +43,18 @@ Item {
             c.roundedRect(w / 2, w / 2, width - w, height - w, r, r)
             c.stroke()
         }
-        onWidthChanged: requestPaint()
-        onHeightChanged: requestPaint()
-        onVisibleChanged: if (visible) requestPaint()
+        onWidthChanged: root.repaint()
+        onHeightChanged: root.repaint()
+        onVisibleChanged: root.repaint()
     }
-    onColorChanged: canvas.requestPaint()
-    onLineWidthChanged: canvas.requestPaint()
-    onRadiusChanged: canvas.requestPaint()
-    onDashLengthChanged: canvas.requestPaint()
-    onGapLengthChanged: canvas.requestPaint()
+    // `visible` is the effective one: false under a hidden parent too
+    function repaint(): void {
+        if (canvas.visible)
+            canvas.requestPaint()
+    }
+    onColorChanged: repaint()
+    onLineWidthChanged: repaint()
+    onRadiusChanged: repaint()
+    onDashLengthChanged: repaint()
+    onGapLengthChanged: repaint()
 }

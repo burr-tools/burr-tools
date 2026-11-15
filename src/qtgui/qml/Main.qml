@@ -178,7 +178,8 @@ ApplicationWindow {
             if (!c.visible)
                 continue
             const rail = c as CollapsedRail
-            const card = c as Card
+            const loader = c as Loader          // Puzzle's cards, made on its first showing
+            const card = (loader !== null ? loader.item : c) as Card
             const target = rail !== null ? rail.expandButton : card !== null ? card.collapseButton : null
             if (target !== null && target.visible) {
                 target.forceActiveFocus(visual ? Qt.TabFocusReason : Qt.MouseFocusReason)
@@ -343,6 +344,11 @@ ApplicationWindow {
                         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: statusBar.top; margins: Theme.bodyPadding }
 
                         readonly property int ws: App.layout.workspace
+                        /* Puzzle's cards are made the first time Puzzle shows, then kept:
+                         * the app opens in Entities, and they cost its start 35-50 ms
+                         * (a tile and a chip for every piece and shape) */
+                        property bool puzzleSeen: ws === LayoutController.Puzzle
+                        onWsChanged: if (ws === LayoutController.Puzzle) puzzleSeen = true
                         // the swap's bindings settle first, then the keyboard follows
                         readonly property bool leftRail: App.layout.leftShownAsRail
                         readonly property bool rightRail: App.layout.rightShownAsRail
@@ -360,11 +366,14 @@ ApplicationWindow {
                                 width: leftSlot.cardWidth
                                 visible: body.ws === LayoutController.Entities && !App.layout.leftShownAsRail
                             }
-                            PuzzleLeftCard {
+                            Loader {
                                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                                 width: leftSlot.cardWidth
+                                active: body.puzzleSeen
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.leftShownAsRail
-                                onSetRangeRequested: win.showDialog(setRangeDialog)
+                                sourceComponent: Component {
+                                    PuzzleLeftCard { onSetRangeRequested: win.showDialog(setRangeDialog) }
+                                }
                             }
                             PlaceholderCard {
                                 objectName: "solver.left"
@@ -415,10 +424,12 @@ ApplicationWindow {
                                 width: rightSlot.cardWidth
                                 visible: body.ws === LayoutController.Entities && !App.layout.rightShownAsRail
                             }
-                            PuzzleRightCard {
+                            Loader {
                                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
                                 width: rightSlot.cardWidth
+                                active: body.puzzleSeen
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.rightShownAsRail
+                                sourceComponent: Component { PuzzleRightCard {} }
                             }
                             PlaceholderCard {
                                 objectName: "solver.right"

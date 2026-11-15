@@ -1819,4 +1819,151 @@ TestCase {
         verify(item("puzzle.problems.row.1").selected)
         verify(item("puzzle.used.tile.2").selected)
     }
+
+    // --- the keyboard reaches every row, and the view follows it (review 2026-11-15) ---
+
+    function inView(it, view) {
+        const y = it.mapToItem(view, 0, 0).y
+        return y >= -1 && y + it.height <= view.height + 1
+    }
+    function morePieces(n) {
+        for (let i = 0; i < n; i++)
+            App.shapes.addShape()
+        for (let s = 1; s < App.shapes.count; s++)
+            App.puzzle.stepPiece(s, 1)
+        App.puzzle.selectPiece(-1)
+    }
+
+    // The table makes only the rows in sight: Tab went from the last of them to All
+    // pieces, and the rest could not be reached from the keyboard
+    function test_tabReachesEveryRowOfTheTable() {
+        morePieces(26)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        const table = item("puzzle.used.table")
+        const n = App.puzzle.pieces.count
+        verify(n * table.rowHeight > table.height, "the table must scroll: " + n + " rows in " + table.height)
+        tabTo(item("puzzle.used.more"))
+        const shapes = []
+        for (let i = 0; i < n; i++)
+            shapes.push(App.puzzle.pieces.value(i, "shape"))
+        for (const shape of shapes) {
+            keyClick(Qt.Key_Tab)
+            const min = item("puzzle.used.row." + shape + ".min")
+            verify(min.activeFocus, "S" + (shape + 1) + "'s count, not " + win.activeFocusItem)
+            compare(App.puzzle.selectedPiece, shape)
+            wait(5)
+            verify(inView(min, table), "S" + (shape + 1) + "'s row in view")
+            keyClick(Qt.Key_Tab)
+            verify(item("puzzle.used.row." + shape + ".range").activeFocus)
+            keyClick(Qt.Key_Tab)
+            verify(item("puzzle.used.row." + shape + ".group").activeFocus)
+        }
+        keyClick(Qt.Key_Tab)
+        verify(item("puzzle.library.header").activeFocus, "after the last row, All pieces: " + win.activeFocusItem)
+        // and back, row by row, from the last
+        for (let i = shapes.length - 1; i >= 0; i--) {
+            keyClick(Qt.Key_Backtab)
+            verify(item("puzzle.used.row." + shapes[i] + ".group").activeFocus, "S" + (shapes[i] + 1) + "'s groups, not " + win.activeFocusItem)
+            wait(5)
+            verify(inView(item("puzzle.used.row." + shapes[i] + ".group"), table))
+            keyClick(Qt.Key_Backtab)
+            keyClick(Qt.Key_Backtab)
+            verify(item("puzzle.used.row." + shapes[i] + ".min").activeFocus)
+        }
+        keyClick(Qt.Key_Backtab)
+        verify(item("puzzle.used.more").activeFocus, "before the first row, ⋯: " + win.activeFocusItem)
+    }
+
+    // a range row has two counts: Tab goes through both before the switch
+    function test_tabGoesThroughARangeRow() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.setRange(1, 1, 2)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        tabTo(item("puzzle.used.row.1.min"))
+        keyClick(Qt.Key_Tab)
+        verify(item("puzzle.used.row.1.max").activeFocus)
+        keyClick(Qt.Key_Tab)
+        verify(item("puzzle.used.row.1.range").activeFocus)
+    }
+
+    // ↓ held through a long list: each selected row in view at once, not after a glide
+    function test_theSelectedProblemStaysInView() {
+        for (let i = 0; i < 12; i++)
+            App.puzzle.newProblem()
+        App.puzzle.selectProblem(0)
+        waitForRendering(win.contentItem)
+        const list = item("puzzle.problems.list")
+        verify(list.count * list.pitch > list.height, "the list must scroll")
+        list.forceActiveFocus(Qt.TabFocusReason)
+        for (let i = 1; i < list.count; i++) {
+            keyClick(Qt.Key_Down)
+            compare(App.puzzle.problem, i)
+            wait(5)
+            const row = findChild(win.contentItem, "puzzle.problems.row." + i)
+            verify(row !== null && inView(row, list), "P" + (i + 1) + " in view")
+        }
+        for (let i = list.count - 2; i >= 0; i--) {
+            keyClick(Qt.Key_Up)
+            wait(5)
+            const row = findChild(win.contentItem, "puzzle.problems.row." + i)
+            verify(row !== null && inView(row, list), "P" + (i + 1) + " in view on the way up")
+        }
+    }
+
+    // --- what is made, and when (review 2026-11-15) ---
+
+    // the view not shown is not made: every edit updated both
+    function test_onlyTheShownViewOfThePiecesIsMade() {
+        App.puzzle.stepPiece(1, 1)
+        App.puzzle.stepPiece(2, 1)
+        App.puzzle.piecesView = "chips"
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.used.tile.1"))
+        compare(findChild(win.contentItem, "puzzle.used.row.1"), null)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.used.row.1"))
+        compare(findChild(win.contentItem, "puzzle.used.tile.1"), null)
+        App.puzzle.piecesView = "chips"
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.used.tile.2"))
+    }
+
+    // a shut All pieces makes no chips; opening it does
+    function test_aShutLibraryMakesNoChips() {
+        App.puzzle.allPiecesOpen = false
+        waitForRendering(win.contentItem)
+        compare(findChild(win.contentItem, "puzzle.library.chip.1"), null)
+        App.puzzle.allPiecesOpen = true
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.library.chip.1").visible)
+    }
+
+    // the Result's list makes its rows (a picture each) when it first opens, then follows the shapes
+    function test_theResultListIsMadeWhenItFirstOpens() {
+        const menu = item("puzzle.left").resultContextMenu
+        compare(menu.count, 0)
+        mouseClick(item("puzzle.goal.result.change"))
+        tryVerify(() => menu.opened, 2000)
+        compare(menu.count, App.shapes.count)
+        menu.close()
+        tryVerify(() => !menu.visible, 1000)
+        App.shapes.addShape()
+        compare(menu.count, App.shapes.count)
+    }
+
+    // a row's buttons make their tooltips when first hovered, and still wait the delay
+    function test_aButtonsTooltipIsMadeWhenFirstWanted() {
+        App.settings.tooltips = true
+        const more = item("puzzle.used.more")
+        compare(more.toolTip, null)
+        mouseMove(more, more.width / 2, more.height / 2)
+        verify(more.toolTip !== null)
+        verify(!more.toolTip.visible, "not before the delay")
+        tryVerify(() => more.toolTip.visible, 2000)
+        mouseMove(win.contentItem, 5, 5)
+        tryVerify(() => !more.toolTip.visible, 2000)
+    }
 }
