@@ -28,6 +28,17 @@
 
 #include <stdlib.h>
 
+#include <atomic>
+
+namespace {
+  // solution_c::changeCount()
+  std::atomic<uint64_t> changes{0};
+}
+
+uint64_t solution_c::changeCount(void) {
+  return changes.load(std::memory_order_relaxed);
+}
+
 solution_c::solution_c(std::unique_ptr<assembly_c> assm, unsigned int assmNum, std::unique_ptr<separation_c> t, unsigned int solNum) :
   assembly(std::move(assm)), tree(std::move(t)), treeInfo(nullptr), assemblyNum(assmNum), solutionNum(solNum) {}
 
@@ -136,6 +147,7 @@ solution_c::~solution_c(void) = default;
 
 void solution_c::exchangeShape(unsigned int s1, unsigned int s2)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   if (assembly)
     assembly->exchangeShape(s1, s2);
   if (tree)
@@ -158,6 +170,7 @@ disassembly_c * solution_c::getDisassemblyInfo(void)
 
 void solution_c::removeDisassembly(void)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   if (tree)
   {
     if (!treeInfo)
@@ -169,12 +182,14 @@ void solution_c::removeDisassembly(void)
 
 void solution_c::setDisassembly(separation_c * sep)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   tree.reset(sep);
   treeInfo.reset();
 }
 
 void solution_c::setDisassembly(std::unique_ptr<separation_c> sep)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   tree = std::move(sep);
   treeInfo.reset();
 }
@@ -182,6 +197,7 @@ void solution_c::setDisassembly(std::unique_ptr<separation_c> sep)
 
 void solution_c::removePieces(unsigned int start, unsigned int count)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   if (assembly)
     assembly->removePieces(start, count);
   if (tree)
@@ -190,6 +206,7 @@ void solution_c::removePieces(unsigned int start, unsigned int count)
 
 void solution_c::addNonPlacedPieces(unsigned int start, unsigned int count)
 {
+  changes.fetch_add(1, std::memory_order_relaxed);
   if (assembly)
     assembly->addNonPlacedPieces(start, count);
   if (tree)

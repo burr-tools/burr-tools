@@ -21,6 +21,7 @@
 #ifndef __SOLUTION_H__
 #define __SOLUTION_H__
 
+#include <cstdint>
 #include <memory>
 
 class assembly_c;
@@ -122,6 +123,13 @@ public:
 
   /** add count not placed pieces starting at position start */
   void addNonPlacedPieces(unsigned int start, unsigned int count);
+
+  /** A count, over every solution of the process, of the changes to a
+   *  stored solution that can move it in a sorted list: its disassembly set,
+   *  replaced or removed, its pieces exchanged, removed or added. The solve
+   *  thread keeps a list sorted between its own steps and checks this to
+   *  know nobody else changed one meanwhile (solveThread_c). */
+  static uint64_t changeCount(void);
 };
 
 #endif

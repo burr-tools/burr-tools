@@ -105,6 +105,9 @@ private:
    */
   mutable std::recursive_mutex solutionMutex;
 
+  /* solutionsRevision(): one more for every change to the list itself */
+  uint64_t solutionsRev = 0;
+
   /**
    * Assemblies salvaged by disassemblerPool_c::requestStop(): found, never
    * disassembled, awaiting re-submission on the next run. Guarded by
@@ -571,6 +574,11 @@ public:
     return std::unique_lock<std::recursive_mutex>(solutionMutex);
   }
 
+  /** Grows with every change to the list of saved solutions: one added,
+   *  removed, the list sorted, cleared, loaded or swapped. Changes inside a
+   *  solution are solution_c::changeCount(). Read it under lockSolutions(). */
+  uint64_t solutionsRevision(void) const { return solutionsRev; }
+
   const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
   solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
   //@}
@@ -583,6 +591,19 @@ public:
 
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);
+
+  /** Whether the solutions stand in sortSolutions(by)'s order already. For 1
+   *  and 2 (level, moves) only when every solution has disassembly
+   *  information or none has: the order compares two that both have it, and
+   *  is no order over a list that mixes them. */
+  bool solutionsSortedBy(int by) const;
+
+  /** Move solution sol to where sortSolutions(by) would put it, the others
+   *  standing in that order already (solutionsSortedBy without sol): the
+   *  list the stable sort makes, from two binary searches and one move.
+   *  False, and nothing moved, when sol would mix solutions with and without
+   *  disassembly information under 1 or 2; then sortSolutions(by) it is. */
+  bool placeSorted(int by, unsigned int sol);
   //@}
 
   /** \name stashed assemblies (stop/continue support) */
