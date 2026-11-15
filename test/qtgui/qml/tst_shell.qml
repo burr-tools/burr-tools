@@ -191,6 +191,44 @@ TestCase {
         verify(item("puzzle.left").visible)
     }
 
+    // the Solver's cards the same way: made when Solver first shows ...
+    function test_theSolverCardsAreMadeWhenSolverFirstShows() {
+        App.builds.startAfter(60000)                    // held
+        wait(50)
+        compare(findChild(win.contentItem, "solver.left"), null)
+        compare(findChild(win.contentItem, "solver.right"), null)
+        App.layout.workspace = LayoutController.Solver
+        const left = findChild(win.contentItem, "solver.left")
+        verify(left !== null, "made in the switch, not a frame later")
+        verify(left.visible)
+        verify(item("solver.right").visible)
+        App.layout.workspace = LayoutController.Entities
+        waitForRendering(win.contentItem)
+        compare(item("solver.left"), left, "kept, not made again")
+        verify(!left.visible)
+    }
+    // ... or in the background, after Puzzle's: no Solver card begins before
+    // both of Puzzle's are done
+    function test_theSolverCardsAreMadeAfterPuzzles() {
+        App.builds.startAfter(60000)
+        wait(50)
+        compare(findChild(win.contentItem, "solver.left"), null)
+        const names = ["puzzle.left", "puzzle.right", "solver.left", "solver.right"]
+        const loaders = names.map(n => item(n + ".loader"))
+        const order = []
+        const watchers = loaders.map((l, i) => () => order.push(names[i] + " " + l.status))
+        loaders.forEach((l, i) => l.statusChanged.connect(watchers[i]))
+        App.builds.startAfter(0)
+        tryVerify(() => loaders.every(l => l.status === Loader.Ready), 8000)
+        loaders.forEach((l, i) => l.statusChanged.disconnect(watchers[i]))
+        const firstSolver = order.findIndex(s => s.startsWith("solver."))
+        const puzzleDone = order.filter((s, i) => s.startsWith("puzzle.") && s.endsWith(" 1") && i < firstSolver)
+        compare(puzzleDone.length, 2, order.join(", "))
+        compare(App.layout.workspace, LayoutController.Entities)
+        verify(!item("solver.left").visible)
+        tryVerify(() => App.builds.idle, 5000)
+    }
+
     function test_railSwitchesWorkspaces() {
         // T-C15-1/2
         verify(item("rail-entities").selected)

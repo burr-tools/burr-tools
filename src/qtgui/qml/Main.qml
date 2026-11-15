@@ -350,10 +350,14 @@ ApplicationWindow {
                          * every piece and shape). The queue makes them a second after the
                          * start (after the lists, App's first job), one card at a time, each over several frames (an
                          * asynchronous Loader: a few ms a frame); or at once, when Puzzle
-                         * shows first. Then they are kept. */
+                         * shows first. Then they are kept. The Solver's two follow, the
+                         * same way. */
                         readonly property bool puzzleShown: ws === LayoutController.Puzzle
+                        readonly property bool solverShown: ws === LayoutController.Solver
                         BuildJob { id: puzzleLeftJob; queue: App.builds; waits: true; needed: body.puzzleShown }
                         BuildJob { id: puzzleRightJob; queue: App.builds; waits: true; needed: body.puzzleShown }
+                        BuildJob { id: solverLeftJob; queue: App.builds; waits: true; needed: body.solverShown }
+                        BuildJob { id: solverRightJob; queue: App.builds; waits: true; needed: body.solverShown }
                         // the swap's bindings settle first, then the keyboard follows
                         readonly property bool leftRail: App.layout.leftShownAsRail
                         readonly property bool rightRail: App.layout.rightShownAsRail
@@ -384,10 +388,15 @@ ApplicationWindow {
                                     PuzzleLeftCard { onSetRangeRequested: win.showDialog(setRangeDialog) }
                                 }
                             }
-                            SolverLeftCard {
+                            Loader {
+                                objectName: "solver.left.loader"
                                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                                 width: leftSlot.cardWidth
+                                active: solverLeftJob.granted
+                                asynchronous: !solverLeftJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) solverLeftJob.finish()
                                 visible: body.ws === LayoutController.Solver && !App.layout.leftShownAsRail
+                                sourceComponent: Component { SolverLeftCard {} }
                             }
                             CollapsedRail {
                                 objectName: "workspace.left.rail"
@@ -438,14 +447,22 @@ ApplicationWindow {
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.rightShownAsRail
                                 sourceComponent: Component { PuzzleRightCard {} }
                             }
-                            SolverRightCard {
+                            Loader {
+                                objectName: "solver.right.loader"
                                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
                                 width: rightSlot.cardWidth
+                                active: solverRightJob.granted
+                                asynchronous: !solverRightJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) solverRightJob.finish()
                                 visible: body.ws === LayoutController.Solver && !App.layout.rightShownAsRail
-                                onRemoveRequested: (kind) => win.askRemoveSolutions(kind)
-                                onExportRequested: {
-                                    App.stl.solutionShapes = App.solver.selectedShapes()
-                                    win.showDialog(stlDialog)
+                                sourceComponent: Component {
+                                    SolverRightCard {
+                                        onRemoveRequested: (kind) => win.askRemoveSolutions(kind)
+                                        onExportRequested: {
+                                            App.stl.solutionShapes = App.solver.selectedShapes()
+                                            win.showDialog(stlDialog)
+                                        }
+                                    }
                                 }
                             }
                             CollapsedRail {
