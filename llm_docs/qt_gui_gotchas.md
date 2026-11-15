@@ -80,8 +80,8 @@
   `queue`): settle a turn later rather than act on the first one set.
   `componentComplete` runs in reverse order of creation.
 - Puzzle's lists follow the puzzle only while Puzzle shows: anything that
-  builds Puzzle's views earlier calls `App.puzzle.prepare()` first, or it
-  builds empty lists.
+  builds Puzzle's views earlier runs after `PuzzleController::prepare()`
+  (App queues it first in `App.builds`), or it builds empty lists.
 - A test that changes App state shared by the next tests (`allPiecesOpen`)
   resets it in `cleanup()`: one that fails half-way otherwise fails the
   tests after it.

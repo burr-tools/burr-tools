@@ -347,15 +347,10 @@ ApplicationWindow {
                         /* Puzzle's cards are left for later (App.builds): the app opens in
                          * Entities, and they cost its start 35-50 ms (a tile and a chip for
                          * every piece and shape). The queue makes them a second after the
-                         * start, one card at a time, each over several frames (an
+                         * start (after the lists, App's first job), one card at a time, each over several frames (an
                          * asynchronous Loader: a few ms a frame); or at once, when Puzzle
                          * shows first. Then they are kept. */
                         readonly property bool puzzleShown: ws === LayoutController.Puzzle
-                        // first the lists, which follow the puzzle only while Puzzle shows
-                        BuildJob {
-                            queue: App.builds
-                            onGrantedChanged: if (granted) App.puzzle.prepare()
-                        }
                         BuildJob { id: puzzleLeftJob; queue: App.builds; waits: true; needed: body.puzzleShown }
                         BuildJob { id: puzzleRightJob; queue: App.builds; waits: true; needed: body.puzzleShown }
                         // the swap's bindings settle first, then the keyboard follows

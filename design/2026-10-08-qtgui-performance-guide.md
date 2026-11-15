@@ -465,7 +465,7 @@ once later: `BuildQueue` (`src/qtgui/buildqueue.h`) runs it a step at a
 time on the GUI thread, 30 ms apart, starting a second after the first
 frame with the workspace (`Main.qml`, `startAfter(1000)`).
 
-- **The Puzzle cards** are `BuildJob`s: first `App.puzzle.prepare()` (the
+- **The Puzzle cards** are `BuildJob`s: first `PuzzleController::prepare()`, App's own first job (the
   lists follow the puzzle only while Puzzle shows, so the cards would
   otherwise be made empty), then the left card, then the right, each an
   asynchronous `Loader` that Qt Quick's incubator makes a few ms per frame;

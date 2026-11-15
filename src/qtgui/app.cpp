@@ -104,6 +104,10 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
   m_cues = new KeyboardCues(this);
   m_builds = new BuildQueue(this);
+  /* the first of the work left for later: Puzzle's lists, which follow the
+   * puzzle only while Puzzle shows, so that its cards made in the background
+   * (Main.qml) hold the puzzle's rows */
+  m_builds->post(m_puzzle, [p = m_puzzle] { p->prepare(); return BuildQueue::Step::Done; }, false);
   // the menus' access keys, for Alt (none on macOS, whose labels carry none)
   {
     QString keys;
