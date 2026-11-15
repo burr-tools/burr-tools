@@ -119,6 +119,20 @@ class latticeGridInfo_c {
      */
     void faceCorners(int x, int y, int z, unsigned int n, double bevel, double offset, std::vector<float> & out) const;
 
+    /// movement directions (NG's movement vectors; the opposite ones are implied)
+    unsigned int directions(void) const { return (unsigned int)dirs.size(); }
+    const std::array<int, 3> & direction(unsigned int d) const { return dirs[d]; }
+    /// the cells, relative to a voxel of kind `base`, that must be empty for it to move one step in direction d
+    const std::vector<std::array<int, 3>> & moveChecks(int base, unsigned int d) const { return checks[base][d]; }
+    /// how far a check reaches from its voxel, at most, in any coordinate
+    int checkReach(void) const { return reach; }
+    /**
+     * whether the disassembler can work on this grid: it has movement
+     * directions, and each is a lattice vector, so moved pieces stay a
+     * lattice vector apart
+     */
+    bool canDisassemble(void) const { return disassemble; }
+
     /// symmetry groups: NG's group numbers (0..135), as our bitsets of transformations; 0 for one not on this grid
     uint64_t groupSet(unsigned int g) const { return groups[g]; }
     unsigned int numGroups(void) const { return (unsigned int)groups.size(); }
@@ -148,6 +162,11 @@ class latticeGridInfo_c {
     float reachLo[3] = {0, 0, 0}, reachHi[3] = {0, 0, 0};
 
     std::vector<std::vector<std::array<int, 3>>> edgeNb, cornerNb;
+
+    std::vector<std::array<int, 3>> dirs;
+    std::vector<std::vector<std::vector<std::array<int, 3>>>> checks;
+    int reach = 0;
+    bool disassemble = false;
 
     // NG's grid, kept as an opaque pointer so this header needs none of NG's
     struct ng_s;

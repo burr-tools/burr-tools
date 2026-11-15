@@ -13,6 +13,9 @@
 #include "lib/assembler.h"
 #include "lib/assembly.h"
 #include "lib/converter.h"
+#include "lib/disassembler_0.h"
+#include "lib/disassembly.h"
+#include "lib/movementcache.h"
 #include "lib/gridtype.h"
 #include "lib/latticegridinfo.h"
 #include "lib/problem.h"
@@ -261,6 +264,67 @@ TEST_CASE("described grids: a puzzle saves and loads with its grid", "[lattice][
   REQUIRE(back.getNumberOfShapes() == c->getNumberOfShapes());
   for (unsigned int s = 0; s < c->getNumberOfShapes(); s++)
     CHECK(back.getShape(s)->identicalInBB(c->getShape(s)));
+}
+
+namespace {
+
+/* assemblies and the ones that come apart, as burrTxt -d counts them */
+std::pair<unsigned long, unsigned long> solve(problem_c & problem) {
+  std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem, bttest::settings());
+  REQUIRE(assm);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
+  std::vector<std::unique_ptr<assembly_c>> found;
+  assm->assemble([&found](std::unique_ptr<assembly_c> a) { found.push_back(std::move(a)); return true; });
+  disassembler_0_c d(problem, bttest::settings());
+  unsigned long solutions = 0;
+  for (const auto & a : found)
+    if (d.disassemble(a.get())) solutions++;
+  return { found.size(), solutions };
+}
+
+} // namespace
+
+TEST_CASE("described grids: the grids with movement directions disassemble", "[lattice][disasm]") {
+  for (gridType_c::gridType type : DESCRIBED) {
+    INFO(name(type));
+    gridType_c gt(type);
+    const bool moves = type != gridType_c::GT_HEXAGONAL_PRISM && type != gridType_c::GT_CAIRO_PRISM;
+    CHECK(((gt.getCapabilities() & gridType_c::CAP_DISASSEMBLE) != 0) == moves);
+    CHECK(latticeGridInfo_c::get(type).canDisassemble() == moves);
+  }
+}
+
+TEST_CASE("described grids: converted puzzles have the native solutions, and NG's on the tetrahedron grids",
+          "[lattice][disasm][solver]") {
+  struct P { const char * file; long assemblies, solutions; };
+  /* bricks and prisms: compared with the native grid in the test; rhombic
+   * and tetra-octa have no disassembler natively, the counts there are
+   * BurrTools NG's (bench/ng-crosscheck, fdae7951) */
+  const P puzzles[] = {
+    {"examples/CubeInCage.xmpuzzle", -1, -1},
+    {"examples/PelikanBurr.xmpuzzle", -1, -1},
+    {"examples/DemoMirrorParadox.xmpuzzle", -1, -1},
+    {"examples/Prisgon.xmpuzzle", -1, -1},
+    {"examples/FourPieceTetrahedron.xmpuzzle", 1, 1},
+    {"examples/HexSticks.xmpuzzle", 33, 2},
+    {"examples/AugmentedSecondStellation.xmpuzzle", 2, 1},
+  };
+
+  for (const auto & pz : puzzles) {
+    INFO(pz.file);
+    auto p = puzzle_c::load(pz.file);
+    REQUIRE(p);
+    std::unique_ptr<puzzle_c> c(convertToDescribed(p.get()));
+    REQUIRE(c);
+    const auto got = solve(*c->getProblem(0));
+    if (pz.assemblies < 0) {
+      const auto native = solve(*p->getProblem(0));
+      CHECK(got == native);
+    } else {
+      CHECK((long)got.first == pz.assemblies);
+      CHECK((long)got.second == pz.solutions);
+    }
+  }
 }
 
 /* An independent check of the assembly counts on the grids nothing else

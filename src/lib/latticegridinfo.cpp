@@ -200,6 +200,23 @@ latticeGridInfo_c::latticeGridInfo_c(gridType_c::gridType type) : ngGrid(ngIdOf(
     groups.push_back(std::popcount(bits) == inGroup ? bits : 0);
   }
 
+  // movement: directions, the cells each step must find empty
+  for (const auto & v : inf.movementVectors)
+    dirs.push_back({v.x(), v.y(), v.z()});
+  checks.resize(inf.basePositions.size());
+  for (size_t b = 0; b < inf.basePositions.size(); b++) {
+    checks[b].resize(dirs.size());
+    for (size_t d = 0; d < dirs.size() && b < inf.movementChecks.size(); d++)
+      for (const auto & c : inf.movementChecks[b][d]) {
+        checks[b][d].push_back({c.x(), c.y(), c.z()});
+        reach = std::max({reach, std::abs((int)c.x()), std::abs((int)c.y()), std::abs((int)c.z())});
+      }
+  }
+  disassemble = !dirs.empty();
+  for (const auto & d : dirs)
+    if (!g.isValidTranslation(Vector<int>(d[0], d[1], d[2])))
+      disassemble = false;
+
   // how far each kind of voxel reaches past its point in drawing space
   for (size_t b = 0; b < inf.basePositions.size(); b++) {
     const Vector<int> p = inf.basePositions[b];

@@ -31,6 +31,7 @@
 #include "voxel_lattice.h"
 #include "latticegridinfo.h"
 #include "symmetries_lattice.h"
+#include "movementcache_lattice.h"
 #include "symmetries_0.h"
 #include "symmetries_1.h"
 #include "symmetries_2.h"
@@ -127,7 +128,10 @@ std::unique_ptr<movementCache_c> gridType_c::getMovementCache(const problem_c & 
   switch (type) {
     case GT_BRICKS:           return std::make_unique<movementCache_0_c>(puz);
     case GT_TRIANGULAR_PRISM: return std::make_unique<movementCache_1_c>(puz);
-    default: return nullptr;
+    default:
+      if (isDescribed(type) && latticeGridInfo_c::get(type).canDisassemble())
+        return std::make_unique<movementCache_lattice_c>(puz, latticeGridInfo_c::get(type));
+      return nullptr;
   }
 }
 
@@ -237,9 +241,11 @@ unsigned int gridType_c::getCapabilities(void) const
     case GT_TETRA_OCTA:       return CAP_ASSEMBLE
                                    | CAP_STLEXPORT
                                    ;
-    /* described grids: assembly now; disassembly where the grid has
-     * movement directions comes with step G4, STL export with G6 */
-    default: return isDescribed(type) ? CAP_ASSEMBLE : 0;
+    /* described grids: assembly; disassembly where the grid has movement
+     * directions that are lattice vectors; STL export comes with step G6 */
+    default:
+      if (!isDescribed(type)) return 0;
+      return CAP_ASSEMBLE | (latticeGridInfo_c::get(type).canDisassemble() ? CAP_DISASSEMBLE : 0);
   }
 }
 

@@ -91,6 +91,7 @@ libburr_src = [
   'src/lib/simd_huang_cover.cpp',
   'src/lib/cells_cover.cpp',
   'src/lib/latticegridinfo.cpp',
+  'src/lib/movementcache_lattice.cpp',
   'src/lib/symmetries_lattice.cpp',
   'src/lib/voxel_lattice.cpp',
   'src/lib/latticegrid/grid.cpp',
