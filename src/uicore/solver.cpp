@@ -191,41 +191,43 @@ namespace btui {
 
   // --- the solutions -----------------------------------------------------------
 
+  SolutionFacts solutionFactsOf(const solution_c & s, int index, const std::vector<unsigned int> & cannot) {
+    SolutionFacts f;
+    f.index = index;
+    f.assembly = s.getAssemblyNumber();
+    if (const assembly_c * a = s.getAssembly())
+      for (unsigned k = 0; k < a->placementCount(); k++)
+        f.pieces += a->isPlaced(k) ? 1 : 0;
+    if (const disassembly_c * d = s.getDisassemblyInfo()) {
+      f.da = s.getDisassembly() ? DaState::Stored : DaState::LevelOnly;
+      // the sequences' lengths are protected; movesText() says them, "3.1.1"
+      f.levelText = d->movesText();
+      unsigned n = 0;
+      bool digits = false;
+      for (char ch : f.levelText) {
+        if (ch >= '0' && ch <= '9') {
+          n = n * 10 + unsigned(ch - '0');
+          digits = true;
+        } else if (digits) {
+          f.level.push_back(n);
+          n = 0;
+          digits = false;
+        }
+      }
+      if (digits)
+        f.level.push_back(n);
+      f.moves = int(d->sumMoves());
+    } else if (std::find(cannot.begin(), cannot.end(), f.assembly) != cannot.end())
+      f.da = DaState::Cannot;
+    return f;
+  }
+
   std::vector<SolutionFacts> solutionFacts(const problem_c & prob, const std::vector<unsigned int> & cannot) {
     std::vector<SolutionFacts> out;
     const unsigned n = prob.getNumberOfSavedSolutions();
     out.reserve(n);
-    for (unsigned i = 0; i < n; i++) {
-      const solution_c * s = prob.getSavedSolution(i);
-      SolutionFacts f;
-      f.index = int(i);
-      f.assembly = s->getAssemblyNumber();
-      if (const assembly_c * a = s->getAssembly())
-        for (unsigned k = 0; k < a->placementCount(); k++)
-          f.pieces += a->isPlaced(k) ? 1 : 0;
-      if (const disassembly_c * d = s->getDisassemblyInfo()) {
-        f.da = s->getDisassembly() ? DaState::Stored : DaState::LevelOnly;
-        // the sequences' lengths are protected; movesText() says them, "3.1.1"
-        f.levelText = d->movesText();
-        unsigned n = 0;
-        bool digits = false;
-        for (char ch : f.levelText) {
-          if (ch >= '0' && ch <= '9') {
-            n = n * 10 + unsigned(ch - '0');
-            digits = true;
-          } else if (digits) {
-            f.level.push_back(n);
-            n = 0;
-            digits = false;
-          }
-        }
-        if (digits)
-          f.level.push_back(n);
-        f.moves = int(d->sumMoves());
-      } else if (std::find(cannot.begin(), cannot.end(), f.assembly) != cannot.end())
-        f.da = DaState::Cannot;
-      out.push_back(std::move(f));
-    }
+    for (unsigned i = 0; i < n; i++)
+      out.push_back(solutionFactsOf(*prob.getSavedSolution(i), int(i), cannot));
     return out;
   }
 
@@ -277,6 +279,25 @@ namespace btui {
     bool canBeTakenApart(const SolutionFacts & f) {
       return f.da == DaState::Stored || f.da == DaState::LevelOnly;
     }
+
+    /* the sort in effect: Level and Moves fall back to Number while no
+     * solution has them, ascending */
+    ListSort sortInEffect(const std::vector<SolutionFacts> & all, ListSort sort) {
+      const ListKey key = listKeyAvailable(all, sort.key) ? sort.key : ListKey::Number;
+      return { key, key == sort.key ? sort.descending : false };
+    }
+
+    /* whether a row comes before b in the sort in effect: the key in the
+     * sort's direction, the number of a tie always ascending (by Number, the
+     * number itself is the key) */
+    bool rowBefore(const SolutionFacts & a, const SolutionFacts & b, ListSort effective) {
+      const int c = compareBy(a, b, effective.key);
+      if (c != 0)
+        return effective.descending ? c > 0 : c < 0;
+      if (effective.key == ListKey::Number && effective.descending)
+        return a.assembly > b.assembly;
+      return a.assembly < b.assembly;
+    }
   }
 
   std::vector<int> shownSolutions(const std::vector<SolutionFacts> & all, bool onlyDisassemblable, ListSort sort) {
@@ -285,21 +306,162 @@ namespace btui {
     for (size_t i = 0; i < all.size(); i++)
       if (!onlyDisassemblable || canBeTakenApart(all[i]))
         rows.push_back(int(i));
-    const ListKey key = listKeyAvailable(all, sort.key) ? sort.key : ListKey::Number;
-    const bool desc = key == sort.key ? sort.descending : false;
+    const ListSort eff = sortInEffect(all, sort);
     std::stable_sort(rows.begin(), rows.end(), [&](int x, int y) {
-      const SolutionFacts & a = all[size_t(x)];
-      const SolutionFacts & b = all[size_t(y)];
-      // the key in the sort's direction, the number of a tie always ascending
-      // (by Number, the number itself is the key)
-      int c = compareBy(a, b, key);
-      if (c != 0)
-        return desc ? c > 0 : c < 0;
-      if (key == ListKey::Number && desc)
-        return a.assembly > b.assembly;
-      return a.assembly < b.assembly;
+      return rowBefore(all[size_t(x)], all[size_t(y)], eff);
     });
     return rows;
+  }
+
+  // --- the list kept between reads ------------------------------------------------
+
+  SolutionList::Change SolutionList::read(const problem_c & prob, const std::vector<unsigned int> & cannot,
+                                          bool onlyDisassemblable, ListSort sort) {
+    Source src;
+    src.count = prob.getNumberOfSavedSolutions();
+    src.assembly = [&](unsigned i) { return prob.getSavedSolution(i)->getAssemblyNumber(); };
+    src.facts = [&](unsigned i) { return solutionFactsOf(*prob.getSavedSolution(i), int(i), cannot); };
+    Basis basis;
+    basis.owner = &prob;
+    basis.changes = solution_c::changeCount();
+    basis.cannot = cannot;
+    return read(src, basis, onlyDisassemblable, sort);
+  }
+
+  SolutionList::Change SolutionList::clear(void) {
+    Change ch;
+    ch.reset = m_valid;
+    m_valid = false;
+    m_all.clear();
+    m_shown.clear();
+    m_ids.clear();
+    m_seen.clear();
+    return ch;
+  }
+
+  SolutionList::Change SolutionList::readAll(const Source & src, const Basis & basis, bool onlyDisassemblable, ListSort sort) {
+    m_all.clear();
+    m_all.reserve(src.count);
+    m_ids.clear();
+    m_keyed = true;
+    for (unsigned i = 0; i < src.count; i++) {
+      m_all.push_back(src.facts(i));
+      m_all.back().index = int(i);
+      m_keyed = m_ids.emplace(m_all.back().assembly, int(i)).second && m_keyed;
+    }
+    m_seen.assign(m_all.size(), m_walk);
+    m_shown = shownSolutions(m_all, onlyDisassemblable, sort);
+    const ListSort eff = sortInEffect(m_all, sort);
+    m_key = eff.key;
+    m_descending = eff.descending;
+    m_only = onlyDisassemblable;
+    m_basis = basis;
+    m_valid = true;
+    Change ch;
+    ch.reset = true;
+    return ch;
+  }
+
+  void SolutionList::dropUnseen(Change & ch) {
+    // the rows of the ones gone, and the rows closed up
+    size_t w = 0;
+    for (size_t r = 0; r < m_shown.size(); r++)
+      if (m_seen[size_t(m_shown[r])] == m_walk)
+        m_shown[w++] = m_shown[r];
+      else
+        ch.removed.push_back(int(r));
+    m_shown.resize(w);
+    // all() closed up, the rows and the numbers following
+    std::vector<int> moved(m_all.size(), -1);
+    size_t k = 0;
+    for (size_t i = 0; i < m_all.size(); i++)
+      if (m_seen[i] == m_walk) {
+        moved[i] = int(k);
+        if (k != i) {
+          m_all[k] = std::move(m_all[i]);
+          m_seen[k] = m_seen[i];
+        }
+        k++;
+      }
+    m_all.resize(k);
+    m_seen.resize(k);
+    for (int & r : m_shown)
+      r = moved[size_t(r)];
+    m_ids.clear();
+    for (size_t i = 0; i < m_all.size(); i++)
+      m_ids.emplace(m_all[i].assembly, int(i));
+  }
+
+  SolutionList::Change SolutionList::read(const Source & src, const Basis & basis, bool onlyDisassemblable, ListSort sort) {
+    if (!m_valid || !m_keyed || !(basis == m_basis))
+      return readAll(src, basis, onlyDisassemblable, sort);
+
+    // the walk: every solution's place in the list, the facts of the new ones
+    m_walk++;
+    const size_t known = m_all.size();
+    for (unsigned i = 0; i < src.count; i++) {
+      const unsigned a = src.assembly(i);
+      const auto it = m_ids.find(a);
+      if (it == m_ids.end()) {
+        m_ids.emplace(a, int(m_all.size()));
+        m_all.push_back(src.facts(i));
+        m_all.back().index = int(i);
+        m_all.back().assembly = a;
+        m_seen.push_back(m_walk);
+      } else if (m_seen[size_t(it->second)] == m_walk)
+        return readAll(src, basis, onlyDisassemblable, sort);   // two of one number
+      else {
+        m_seen[size_t(it->second)] = m_walk;
+        m_all[size_t(it->second)].index = int(i);
+      }
+    }
+
+    Change ch;
+    std::vector<int> fresh;
+    for (size_t i = known; i < m_all.size(); i++)
+      fresh.push_back(int(i));
+    if (std::any_of(m_seen.begin(), m_seen.begin() + std::ptrdiff_t(known), [&](unsigned s) { return s != m_walk; })) {
+      const size_t before = m_all.size();
+      dropUnseen(ch);
+      // the new ones, all seen, closed up after the ones kept
+      const size_t gone = before - m_all.size();
+      for (int & f : fresh)
+        f -= int(gone);
+    }
+
+    // the filter or the sort in effect changed (Moves offered once one has
+    // them): the rows anew
+    const ListSort eff = sortInEffect(m_all, sort);
+    if (onlyDisassemblable != m_only || eff.key != m_key || eff.descending != m_descending) {
+      m_only = onlyDisassemblable;
+      m_key = eff.key;
+      m_descending = eff.descending;
+      m_shown = shownSolutions(m_all, onlyDisassemblable, sort);
+      Change reset;
+      reset.reset = true;
+      return reset;
+    }
+
+    // the new ones sorted among themselves, then merged from the end: the
+    // rows grow by their number, and from the last down each place takes the
+    // later of the last old row and the last new one not placed yet
+    std::erase_if(fresh, [&](int f) { return onlyDisassemblable && !canBeTakenApart(m_all[size_t(f)]); });
+    if (fresh.empty())
+      return ch;
+    std::sort(fresh.begin(), fresh.end(), [&](int x, int y) { return rowBefore(m_all[size_t(x)], m_all[size_t(y)], eff); });
+    size_t i = m_shown.size(), j = fresh.size(), w = m_shown.size() + fresh.size();
+    m_shown.resize(w);
+    ch.inserted.resize(fresh.size());
+    while (j > 0) {
+      w--;
+      if (i > 0 && rowBefore(m_all[size_t(fresh[j - 1])], m_all[size_t(m_shown[i - 1])], eff))
+        m_shown[w] = m_shown[--i];
+      else {
+        m_shown[w] = fresh[--j];
+        ch.inserted[j] = int(w);
+      }
+    }
+    return ch;
   }
 
   std::vector<int> toRemove(const std::vector<SolutionFacts> & all, const std::vector<int> & shown,

@@ -69,6 +69,18 @@ public:
 
   void setRows(std::vector<Row> rows);
 
+  /* Rows gone and rows new, for a list the owner knows the changes of (the
+   * Solver's, a solve adding thousands): `rows` ascending, numbered as the
+   * rows were (remove) or as they are after (insert). A few runs are a
+   * removal or an insertion each, the other rows keeping their delegates;
+   * more are one pass over the rows -- the new ones merged in from the end,
+   * the old ones moving back -- told as rows added or removed at the end and
+   * the others changed, as setRows does. */
+  void removeRowsAt(const std::vector<int> & rows);
+  void insertRowsAt(const std::vector<int> & rows, std::vector<Row> values);
+  /* above this many runs, one pass */
+  static constexpr int kRuns = 16;
+
   void setKeyed(bool keyed) { m_keyed = keyed; }
 
 signals:

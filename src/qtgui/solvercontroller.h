@@ -238,8 +238,8 @@ public:
   QString assemblerCaption(void) const { return m_assemblerCaption; }
 
   RowsModel * solutions(void) const { return m_rows; }
-  int shownCount(void) const { return int(m_shown.size()); }
-  int savedCount(void) const { return int(m_all.size()); }
+  int shownCount(void) const { return int(m_list.shown().size()); }
+  int savedCount(void) const { return int(m_list.all().size()); }
   int emptyState(void) const { return int(m_empty); }
   QString emptyTitle(void) const;
   QString emptyText(void) const;
@@ -247,7 +247,7 @@ public:
   void setView(const QString & v);
   int sortKey(void) const { return int(m_sort.key); }
   bool sortDescending(void) const { return m_sort.descending; }
-  bool levelSortable(void) const { return btui::listKeyAvailable(m_all, btui::ListKey::Level); }
+  bool levelSortable(void) const { return btui::listKeyAvailable(m_list.all(), btui::ListKey::Level); }
   int selectedRow(void) const { return m_row; }
   int selectedNumber(void) const;
   QString selectedLevel(void) const;
@@ -369,7 +369,7 @@ private:
   /* the thread has ended; `results` when it may have changed the problem
    * (stopped or finished), so the file reads unsaved */
   void retireThread(bool results);
-  /* the rows from m_all / m_shown as they are (the preview's column too) */
+  /* the rows from the list as it is (the preview's column too) */
   void rebuildRows(void);
   /* the piece chips from m_chips and m_states */
   void refreshChips(void);
@@ -419,6 +419,7 @@ private:
   /* what refreshSolutions last read, to skip a poll that would find the same */
   struct Signature {
     unsigned saved = 0;
+    unsigned long long revision = 0, changes = 0;   ///< the list's and its solutions' changes
     unsigned long assemblies = 0, solutions = 0;
     int state = -1;
     size_t cannot = 0;
@@ -438,8 +439,16 @@ private:
   QString m_activityText, m_assembliesText, m_solutionsText, m_timeUsedText, m_timeLeftText;
   int m_lastState = -1;
 
-  std::vector<btui::SolutionFacts> m_all;
-  std::vector<int> m_shown;
+  /* the solutions read, kept from one read to the next: a refresh during a
+   * solve reads only the new ones and inserts their rows */
+  btui::SolutionList m_list;
+  /* the list is read at most every kListMs while a solve runs, every
+   * kListSlowMs past kManySolutions; not while another workspace shows */
+  QElapsedTimer m_listClock;
+  bool m_listStale = false;
+  bool listDue(void);
+  int m_maxMoves = 0;                               ///< the rows' longest disassembly, for movesFraction
+  RowsModel::Row rowOf(const btui::SolutionFacts & f, bool doomed) const;
   btui::ListSort m_sort;
   EmptyState m_empty = NoProblem;
   RowsModel * m_rows;

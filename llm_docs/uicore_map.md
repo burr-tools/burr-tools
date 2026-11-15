@@ -17,7 +17,7 @@
 | `puzzletools` | the status table's checks, convert, import assemblies |
 | `problemlist` | the Puzzle workspace's operations: the problems list, what a problem asks for (its kind, goal slots, the right card's sections), the result, counts and ranges, groups, colour rules, the totals and the derived holes, whether a change costs solutions |
 | `puzzlescene` | the Puzzle 3D scene: its objects and where they lie, one mesh with each object around its own centre, its place carried in `cell` |
-| `solver` | the Solver workspace's rules: the search options as solver parameters, the run state and its buttons, the shown solutions (filter, sort, reverse), what each Manage item removes, piece ids and their display states, the player's arithmetic, the one key map, the time words |
+| `solver` | the Solver workspace's rules: the search options as solver parameters, the run state and its buttons, the shown solutions (filter, sort, reverse; `SolutionList` keeps them between reads and merges in only the new ones), what each Manage item removes, piece ids and their display states, the player's arithmetic, the one key map, the time words |
 | `solutionscene` | the Solver's 3D scene: an assembly's pieces built once, moved to a disassembly step, solid, wireframe (hull edges) or hidden |
 | `shapelist` | the Shapes list's operations: new, duplicate, delete (and whether it loses solutions), rename, weight, reorder; positional ids |
 | `voxeledit` | the voxel editor's rules: tools 1–4 and the modifiers' quick tools, Mirror and Span, the 2D planes and layers, what a tool does to a voxel, the 2D cell size, grid size (steps, apply to all, the blocked shrink), Area mode's cells, where a 3D click acts (`target3d`) |

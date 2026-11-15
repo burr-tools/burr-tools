@@ -13,7 +13,9 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iterator>
 #include <memory>
+#include <random>
 #include <thread>
 
 using namespace btui;
@@ -245,6 +247,185 @@ TEST_CASE("after a removal the selection keeps its solution or takes the next", 
   CHECK(rowAfterRemoval(3, 0, 5) == 3);    // At: the next one took its place
   CHECK(rowAfterRemoval(4, 0, 4) == 3);    // At the last: the new last
   CHECK(rowAfterRemoval(2, 0, 0) == -1);
+}
+
+// --- the list kept between reads ------------------------------------------------
+
+namespace {
+
+  /* a saved list as a solve leaves it, for SolutionList::read */
+  struct FakeList {
+    std::vector<SolutionFacts> saved;
+    int factsRead = 0;
+    SolutionList::Basis basis;
+
+    SolutionList::Source source(void) {
+      SolutionList::Source s;
+      s.count = unsigned(saved.size());
+      s.assembly = [this](unsigned i) { return saved[i].assembly; };
+      s.facts = [this](unsigned i) { factsRead++; return saved[i]; };
+      return s;
+    }
+    SolutionList::Change read(SolutionList & l, bool only, ListSort sort) {
+      return l.read(source(), basis, only, sort);
+    }
+  };
+
+  /* the rows as assembly numbers */
+  std::vector<unsigned> rowsOf(const std::vector<SolutionFacts> & all, const std::vector<int> & shown) {
+    std::vector<unsigned> out;
+    for (int r : shown)
+      out.push_back(all[size_t(r)].assembly);
+    return out;
+  }
+
+  /* what a view does with a Change: the rows it had, made the rows now */
+  void apply(std::vector<unsigned> & rows, const SolutionList::Change & ch, const std::vector<unsigned> & now) {
+    if (ch.reset) {
+      rows = now;
+      return;
+    }
+    for (auto it = ch.removed.rbegin(); it != ch.removed.rend(); ++it)
+      rows.erase(rows.begin() + *it);
+    for (int r : ch.inserted)
+      rows.insert(rows.begin() + r, now[size_t(r)]);
+  }
+}
+
+TEST_CASE("the kept list's rows are shownSolutions' through adds, removals and sorts", "[ui][solver]") {
+  // a solve adding solutions at any place of the saved list, some removed at
+  // the limit, the sort and the filter changed now and then: the rows always
+  // shownSolutions' over the list, and the changes reported make them
+  std::mt19937 rng(20261115);
+  FakeList src;
+  SolutionList list;
+  std::vector<unsigned> view;
+  unsigned next = 0;
+  ListSort sort;
+  bool only = false;
+  const ListSort sorts[] = { {}, { ListKey::Number, true }, { ListKey::Moves, true }, { ListKey::Moves, false },
+                             { ListKey::Level, true }, { ListKey::Pieces, true }, { ListKey::Pieces, false } };
+  for (int step = 0; step < 400; step++) {
+    const int adds = int(rng() % 12);
+    for (int k = 0; k < adds; k++) {
+      // assembly numbers mostly rising, as a solve finds them; moves known once past the first steps
+      next += 1 + rng() % 3;
+      const bool known = step > 20 || rng() % 2;
+      SolutionFacts f = fact(0, next, int(3 + rng() % 3), known ? int(rng() % 9) : -1,
+                             known ? std::vector<unsigned>{ unsigned(rng() % 4), unsigned(rng() % 3) } : std::vector<unsigned>{});
+      if (known && rng() % 5 == 0)
+        f.da = DaState::LevelOnly;
+      const size_t at = src.saved.empty() ? 0 : rng() % (src.saved.size() + 1);
+      src.saved.insert(src.saved.begin() + std::ptrdiff_t(at), f);
+    }
+    if (!src.saved.empty() && rng() % 3 == 0) {
+      const int drops = 1 + int(rng() % 3);
+      for (int k = 0; k < drops && !src.saved.empty(); k++)
+        src.saved.erase(src.saved.begin() + std::ptrdiff_t(rng() % src.saved.size()));
+    }
+    if (rng() % 40 == 0)
+      sort = sorts[rng() % std::size(sorts)];
+    if (rng() % 60 == 0)
+      only = !only;
+
+    const auto ch = src.read(list, only, sort);
+    const std::vector<unsigned> want = rowsOf(src.saved, shownSolutions(src.saved, only, sort));
+    const std::vector<unsigned> now = rowsOf(list.all(), list.shown());
+    REQUIRE(now == want);
+    apply(view, ch, now);
+    REQUIRE(view == want);
+    // every solution's place in the saved list as it is now
+    for (const SolutionFacts & f : list.all())
+      REQUIRE(src.saved[size_t(f.index)].assembly == f.assembly);
+    REQUIRE(list.all().size() == src.saved.size());
+  }
+}
+
+TEST_CASE("the kept list reads the facts of new solutions only", "[ui][solver]") {
+  FakeList src;
+  for (unsigned a = 0; a < 100; a++)
+    src.saved.push_back(fact(0, a, 3, int(a % 7), { a % 7 }));
+  SolutionList list;
+  const ListSort byMoves{ ListKey::Moves, true };
+  CHECK(src.read(list, true, byMoves).reset);
+  CHECK(src.factsRead == 100);
+
+  // three new ones in the middle of the saved list, one gone
+  src.saved.insert(src.saved.begin() + 10, fact(0, 200, 3, 6, { 6 }));
+  src.saved.insert(src.saved.begin() + 50, fact(0, 201, 3, 0, { 0 }));
+  src.saved.push_back(fact(0, 202, 3, 3, { 3 }));
+  src.saved.erase(src.saved.begin() + 70);
+  const auto ch = src.read(list, true, byMoves);
+  CHECK_FALSE(ch.reset);
+  CHECK(src.factsRead == 103);
+  CHECK(ch.removed.size() == 1);
+  CHECK(ch.inserted.size() == 3);
+
+  // nothing new: nothing read, nothing changed
+  CHECK(src.read(list, true, byMoves).none());
+  CHECK(src.factsRead == 103);
+
+  // a solution's own facts may have changed (an analysis): everything again
+  src.basis.changes++;
+  CHECK(src.read(list, true, byMoves).reset);
+  CHECK(src.factsRead == 103 + 102);
+
+  // another sort: the rows anew, the facts kept
+  CHECK(src.read(list, true, { ListKey::Number, false }).reset);
+  CHECK(src.factsRead == 205);
+
+  // cleared: the next read reads everything
+  CHECK(list.clear().reset);
+  CHECK(list.all().empty());
+  CHECK(src.read(list, true, byMoves).reset);
+  CHECK(src.factsRead == 307);
+}
+
+TEST_CASE("the kept list reads everything while two solutions share a number", "[ui][solver]") {
+  FakeList src;
+  src.saved = { fact(0, 5, 3, 2, { 2 }), fact(0, 5, 3, 1, { 1 }), fact(0, 7, 3, 4, { 4 }) };
+  SolutionList list;
+  CHECK(src.read(list, false, {}).reset);
+  src.saved.push_back(fact(0, 9, 3, 1, { 1 }));
+  CHECK(src.read(list, false, {}).reset);
+  CHECK(rowsOf(list.all(), list.shown()) == rowsOf(src.saved, shownSolutions(src.saved, false, {})));
+  // a new one with a number already there: read anew, the rows still right
+  FakeList b;
+  b.saved = { fact(0, 1, 3), fact(0, 2, 3) };
+  SolutionList l2;
+  b.read(l2, false, {});
+  b.saved.push_back(fact(0, 2, 4));
+  CHECK(b.read(l2, false, {}).reset);
+  CHECK(l2.all().size() == 3);
+}
+
+TEST_CASE("the kept list follows a problem's saved solutions", "[ui][solver]") {
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p);
+  problem_c & prob = *p->getProblem(0);
+  prob.removeAllSolutions();
+  solve(prob, SolverOptions{});
+  auto g = prob.lockSolutions();
+  SolutionList list;
+  CHECK(list.read(prob, {}, false, {}).reset);
+  REQUIRE(list.shown().size() == 12);
+  const unsigned third = prob.getSavedSolution(3)->getAssemblyNumber();
+  prob.removeSolution(3);
+  auto ch = list.read(prob, {}, false, {});
+  CHECK_FALSE(ch.reset);
+  CHECK(ch.removed == std::vector<int>{ 3 });
+  CHECK(list.shown().size() == 11);
+  // an analysis's verdict changes a fact: read anew
+  ch = list.read(prob, { prob.getSavedSolution(0)->getAssemblyNumber() }, false, {});
+  CHECK(ch.reset);
+  CHECK(list.all()[size_t(list.shown()[0])].da == DaState::Cannot);
+  // a disassembly deleted counts as a change inside a solution
+  ch = list.read(prob, { prob.getSavedSolution(0)->getAssemblyNumber() }, false, {});
+  CHECK(ch.none());
+  prob.getSavedSolution(1)->removeDisassembly();
+  CHECK(list.read(prob, { prob.getSavedSolution(0)->getAssemblyNumber() }, false, {}).reset);
+  for (const SolutionFacts & f : list.all())
+    CHECK(f.assembly != third);
 }
 
 TEST_CASE("a solved problem's solutions read with their disassembly state", "[ui][solver]") {

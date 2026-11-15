@@ -117,6 +117,89 @@ bool RowsModel::setRowsByKey(std::vector<Row> & rows, bool & changed) {
   return true;
 }
 
+namespace {
+  int runsIn(const std::vector<int> & rows) {
+    int runs = rows.empty() ? 0 : 1;
+    for (size_t i = 1; i < rows.size(); i++)
+      runs += rows[i] != rows[i - 1] + 1 ? 1 : 0;
+    return runs;
+  }
+}
+
+void RowsModel::removeRowsAt(const std::vector<int> & rows) {
+  if (rows.empty())
+    return;
+  const int old = count();
+  const int n = old - int(rows.size());
+  if (runsIn(rows) <= kRuns) {
+    // a run at a time from the last: the ones before keep their numbers
+    for (size_t e = rows.size(); e > 0;) {
+      size_t b = e - 1;
+      while (b > 0 && rows[b - 1] == rows[b] - 1)
+        b--;
+      beginRemoveRows(QModelIndex(), rows[b], rows[e - 1]);
+      m_rows.erase(m_rows.begin() + rows[b], m_rows.begin() + rows[e - 1] + 1);
+      endRemoveRows();
+      e = b;
+    }
+  } else {
+    // one pass: the rows kept close up from the first one gone
+    beginRemoveRows(QModelIndex(), n, old - 1);
+    size_t w = size_t(rows[0]), j = 0;
+    for (size_t r = size_t(rows[0]); r < size_t(old); r++) {
+      if (j < rows.size() && size_t(rows[j]) == r) {
+        j++;
+        continue;
+      }
+      m_rows[w++] = std::move(m_rows[r]);
+    }
+    m_rows.resize(size_t(n));
+    endRemoveRows();
+    if (rows[0] < n)
+      emit dataChanged(index(rows[0]), index(n - 1));
+  }
+  emit countChanged();
+  m_revision++;
+  emit revisionChanged();
+}
+
+void RowsModel::insertRowsAt(const std::vector<int> & rows, std::vector<Row> values) {
+  if (rows.empty())
+    return;
+  const int old = count();
+  const int k = int(rows.size());
+  const int n = old + k;
+  if (runsIn(rows) <= kRuns) {
+    // a run at a time from the last: before it stand old rows only, so it
+    // goes in at its place less the new rows before it
+    for (int e = k; e > 0;) {
+      int b = e - 1;
+      while (b > 0 && rows[size_t(b - 1)] == rows[size_t(b)] - 1)
+        b--;
+      const int at = rows[size_t(b)] - b;
+      beginInsertRows(QModelIndex(), at, at + (e - b) - 1);
+      m_rows.insert(m_rows.begin() + at, std::make_move_iterator(values.begin() + b),
+                    std::make_move_iterator(values.begin() + e));
+      endInsertRows();
+      e = b;
+    }
+  } else {
+    // one pass from the end: each place takes the next new row if it goes
+    // there, else the last old row not moved yet
+    beginInsertRows(QModelIndex(), old, n - 1);
+    m_rows.resize(size_t(n));
+    int i = old, j = k;
+    for (int w = n - 1; j > 0; w--)
+      m_rows[size_t(w)] = w == rows[size_t(j - 1)] ? std::move(values[size_t(--j)]) : std::move(m_rows[size_t(--i)]);
+    endInsertRows();
+    if (rows[0] < old)
+      emit dataChanged(index(rows[0]), index(old - 1));
+  }
+  emit countChanged();
+  m_revision++;
+  emit revisionChanged();
+}
+
 void RowsModel::setRows(std::vector<Row> rows) {
   const int old = count();
   if (m_keyed) {

@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<puzzle version="2">
+  <gridType type="0"/>
+  <colors/>
+  <shapes>
+    <voxel x="5" y="8" z="1" name="Box" type="0">########################################</voxel>
+    <voxel x="2" y="1" z="1" name="Domino" type="0">##</voxel>
+  </shapes>
+  <problems>
+    <problem name="Tiling" state="0" assemblies="0" solutions="0" time="0">
+      <shapes>
+        <shape id="1" count="20"/>
+      </shapes>
+      <result id="0"/>
+      <bitmap/>
+    </problem>
+  </problems>
+  <comment/>
+</puzzle>

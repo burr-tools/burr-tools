@@ -21,12 +21,15 @@
 #ifndef BTUI_SOLVER_H
 #define BTUI_SOLVER_H
 
+#include <functional>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 class assembly_c;
 class problem_c;
+class solution_c;
 
 /* The Solver workspace's rules (C19, C20, C21), without its cards or its
  * thread: what the search options ask of the solver, which run buttons a
@@ -190,6 +193,80 @@ namespace btui {
    * only), else all; in the sort's order, ties by assembly number. A sort by
    * Level or Moves that is not available sorts by Number. */
   std::vector<int> shownSolutions(const std::vector<SolutionFacts> & all, bool onlyDisassemblable, ListSort sort);
+
+  /* One saved solution's facts, `index` its place in the saved list; what
+   * solutionFacts reads for each */
+  SolutionFacts solutionFactsOf(const solution_c & s, int index, const std::vector<unsigned int> & cannot = {});
+
+  /* The list's solutions kept from one read to the next (C20), for a solve
+   * that adds thousands while the list shows them. A read takes the facts of
+   * only the solutions it has not seen, known by their assembly numbers,
+   * drops the ones gone, sorts the new ones among themselves and merges them
+   * into the rows in one pass from the end: the old rows move back while the
+   * new ones fill in. The rows are shownSolutions' every time. Everything is
+   * read anew when the facts of a solution already read may have changed (a
+   * disassembly analysed or deleted: solution_c::changeCount, or `cannot`),
+   * for another problem, and while two solutions share an assembly number;
+   * the rows are sorted anew when the filter or the sort in effect changes.
+   */
+  class SolutionList {
+  public:
+
+    /* what a read changed in the rows */
+    struct Change {
+      bool reset = false;            ///< read or sorted anew: compare the rows by position
+      std::vector<int> removed;      ///< rows gone, ascending, numbered as the rows were
+      std::vector<int> inserted;     ///< rows new, ascending, numbered as the rows are now
+      bool none(void) const { return !reset && removed.empty() && inserted.empty(); }
+    };
+
+    /* what the facts of the solutions read depend on besides the list: the
+     * problem, the changes inside its solutions, the analysis's verdicts */
+    struct Basis {
+      const void * owner = nullptr;
+      unsigned long long changes = 0;
+      std::vector<unsigned int> cannot;
+      bool operator==(const Basis &) const = default;
+    };
+
+    /* a list of `count` solutions: the i-th's assembly number, and its facts
+     * (asked only for the ones not seen) */
+    struct Source {
+      unsigned int count = 0;
+      std::function<unsigned int(unsigned int)> assembly;
+      std::function<SolutionFacts(unsigned int)> facts;
+    };
+
+    /* the problem's saved solutions; under its lockSolutions() */
+    Change read(const problem_c & prob, const std::vector<unsigned int> & cannot, bool onlyDisassemblable, ListSort sort);
+    Change read(const Source & src, const Basis & basis, bool onlyDisassemblable, ListSort sort);
+    /* nothing kept: the next read reads everything */
+    Change clear(void);
+
+    /* every solution read, in no particular order; `index` is its place in
+     * the saved list at the last read */
+    const std::vector<SolutionFacts> & all(void) const { return m_all; }
+    /* the rows: positions into all() */
+    const std::vector<int> & shown(void) const { return m_shown; }
+
+  private:
+
+    Change readAll(const Source & src, const Basis & basis, bool onlyDisassemblable, ListSort sort);
+    /* the solutions not seen by the last walk gone, from all() and the rows */
+    void dropUnseen(Change & ch);
+
+    bool m_valid = false;
+    bool m_keyed = false;            ///< the assembly numbers are unique
+    Basis m_basis;
+    bool m_only = false;
+    ListKey m_key = ListKey::Number;   ///< the sort in effect
+    bool m_descending = false;
+    std::vector<SolutionFacts> m_all;
+    std::vector<int> m_shown;
+    std::unordered_map<unsigned int, int> m_ids;   ///< assembly number -> position in m_all
+    std::vector<unsigned int> m_seen;              ///< per m_all: the walk that saw it
+    unsigned int m_walk = 0;
+  };
 
   /* Manage ▸ Remove assemblies (OQ-25): the saved indices each removes,
    * ascending. Before and After are the rows above and below the selected

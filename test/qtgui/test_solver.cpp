@@ -19,6 +19,7 @@
 #include "../../src/uicore/problemlist.h"
 #include "../../src/uicore/solver.h"
 
+#include <QAbstractItemModelTester>
 #include <QDir>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -259,6 +260,59 @@ void TestSolver::analysingStoresDisassembliesInTheBackground() {
   for (int r = 0; r < rows->count(); r++)
     levelOnly += rows->value(r, QStringLiteral("da")).toInt() == int(btui::DaState::LevelOnly) ? 1 : 0;
   QCOMPARE(levelOnly, 1);
+}
+
+void TestSolver::aSolveAddsRowsInPlaceAndSparesAHiddenList() {
+  // a 5x8 domino tiling's 3,818 solutions with their disassemblies
+  QTemporaryDir dir;
+  App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+  app.settings()->setWorkerThreads(1);
+  QVERIFY(app.document()->loadPath(QStringLiteral("test/data/dominoes-5x8.xmpuzzle")));
+  app.layout()->setWorkspace(LayoutController::Solver);
+  SolverController * s = app.solver();
+  s->selectProblem(0);
+  s->setDisassemble(true);
+  s->setLimit(s->maxCount());
+  RowsModel * rows = s->solutions();
+  QAbstractItemModelTester tester(rows, QAbstractItemModelTester::FailureReportingMode::QtTest);
+
+  // while another workspace shows, the polls leave the list unread; the end
+  // of the run reads it once
+  app.layout()->setWorkspace(LayoutController::Puzzle);
+  s->start();
+  QVERIFY(s->solving());
+  while (s->solving()) {
+    QCOMPARE(rows->count(), 0);
+    QTest::qWait(20);
+  }
+  QCOMPARE(rows->count(), 3818);
+  app.layout()->setWorkspace(LayoutController::Solver);
+  QCOMPARE(rows->count(), 3818);
+
+  // shown and sorted by moves, best first: each read puts its new rows in
+  // where they belong, Qt's model tester following every insertion
+  s->clickSort(int(btui::ListKey::Moves));
+  QCOMPARE(s->sortKey(), int(btui::ListKey::Moves));
+  auto inOrder = [&] {
+    for (int r = 1; r < rows->count(); r++) {
+      const int m0 = rows->value(r - 1, QStringLiteral("moves")).toInt(), m1 = rows->value(r, QStringLiteral("moves")).toInt();
+      const int n0 = rows->value(r - 1, QStringLiteral("number")).toInt(), n1 = rows->value(r, QStringLiteral("number")).toInt();
+      if (m0 < m1 || (m0 == m1 && n0 > n1))
+        return false;
+    }
+    return true;
+  };
+  QVERIFY(inOrder());
+  QSignalSpy reset(rows, &QAbstractItemModel::modelReset);
+  s->start();
+  while (s->solving()) {
+    QTest::qWait(20);
+    QCOMPARE(rows->count(), s->shownCount());
+    QVERIFY(inOrder());
+  }
+  QCOMPARE(rows->count(), 3818);
+  QVERIFY(inOrder());
+  QCOMPARE(reset.count(), 0);
 }
 
 void TestSolver::thePlayerStepsPlaysAndSeeks() {

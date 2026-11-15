@@ -42,6 +42,7 @@ private slots:
   void anInactiveViewHasNoRows();
   void keyedRowsInsertAndRemoveWhereTheyStand();
   void keyedRowsOutOfOrderFallBackToPositions();
+  void rowsGoAndComeAtTheirPlaces();
 };
 
 #endif

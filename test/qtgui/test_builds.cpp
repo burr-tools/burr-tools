@@ -389,3 +389,59 @@ void TestBuilds::keyedRowsOutOfOrderFallBackToPositions() {
   m.setRows(rowsOf({ 2, 2 }));                         // not unique
   QCOMPARE(namesIn(m), QStringList({ "S2", "S2" }));
 }
+
+void TestBuilds::rowsGoAndComeAtTheirPlaces() {
+  // the Solver's list: rows removed and inserted where its merge says, a few
+  // runs one signal each, many in one pass; the rows come out the same
+  for (const int spread : { 1, 3, 40 }) {
+    RowsModel m({ "shape", "name" });
+    QAbstractItemModelTester tester(&m, QAbstractItemModelTester::FailureReportingMode::QtTest);
+    std::vector<int> want = range(0, 200);
+    m.setRows(rowsOf(want));
+    QSignalSpy inserted(&m, &QAbstractItemModel::rowsInserted);
+    QSignalSpy removed(&m, &QAbstractItemModel::rowsRemoved);
+    QSignalSpy count(&m, &RowsModel::countChanged);
+
+    // every 5th row gone, as many runs as `spread` allows
+    std::vector<int> gone;
+    for (int r = 0; r < 200 && int(gone.size()) < spread * 2; r += 5) {
+      gone.push_back(r);
+      if (spread == 1)
+        for (int k = 1; k < 4; k++)
+          gone.push_back(r + k);
+    }
+    for (auto it = gone.rbegin(); it != gone.rend(); ++it)
+      want.erase(want.begin() + *it);
+    m.removeRowsAt(gone);
+    QCOMPARE(m.count(), int(want.size()));
+    QCOMPARE(count.count(), 1);
+    auto runs = [](const std::vector<int> & rows) {
+      int n = 1;
+      for (size_t i = 1; i < rows.size(); i++)
+        n += rows[i] != rows[i - 1] + 1 ? 1 : 0;
+      return n <= RowsModel::kRuns ? n : 1;
+    };
+    QCOMPARE(removed.count(), runs(gone));
+
+    // new rows at places of the list they make: 1000 + their place
+    std::vector<int> at;
+    const int before = int(want.size());
+    for (int r = 0; r <= before + int(at.size()) && int(at.size()) < spread * 3; r += 7) {
+      at.push_back(r);
+      if (spread == 1)
+        at.push_back(r + 1);
+    }
+    std::vector<RowsModel::Row> values;
+    for (int r : at) {
+      want.insert(want.begin() + r, 1000 + r);
+      values.push_back({ 1000 + r, QStringLiteral("S%1").arg(1000 + r) });
+    }
+    m.insertRowsAt(at, std::move(values));
+    QStringList names;
+    for (int k : want)
+      names << QStringLiteral("S%1").arg(k);
+    QCOMPARE(namesIn(m), names);
+    QCOMPARE(count.count(), 2);
+    QCOMPARE(inserted.count(), runs(at));
+  }
+}

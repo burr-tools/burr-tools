@@ -19,6 +19,7 @@ private slots:
   void removingIsNotAnUndoStepAndKeepsTheSelection();
   void theRemovePreviewMarksExactlyItsRows();
   void analysingStoresDisassembliesInTheBackground();
+  void aSolveAddsRowsInPlaceAndSparesAHiddenList();
   void thePlayerStepsPlaysAndSeeks();
   void theKeyMapMovesThroughSolutionsAndMoves();
   void aChipCyclesSolidWireframeHidden();

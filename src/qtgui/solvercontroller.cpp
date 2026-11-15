@@ -49,7 +49,10 @@
 
 namespace {
 
-  constexpr int kPollMs = 100;       // legacy's update(): ten times a second
+  constexpr int kPollMs = 100;       // the counters and the bar, ten times a second (legacy: once a second)
+  constexpr qint64 kListMs = 200;    // the list during a solve: five times a second,
+  constexpr qint64 kListSlowMs = 500;   // twice past this many solutions
+  constexpr size_t kManySolutions = 2000;
   constexpr int kFrameMs = 16;       // the player: at most once a frame
 
   QColor toQColor(btui::Rgb c) {
@@ -168,6 +171,8 @@ SolverController::SolverController(SettingsController * settings, DocumentContro
       return;
     if (std::exchange(m_stale, false))
       documentChanged();
+    else if (m_listStale)
+      refreshSolutions(false);     // what a solve added meanwhile
     adoptPuzzleProblem();
   });
   // the voxel style and the shape colours make the scene anew; other settings do not
@@ -219,6 +224,8 @@ void SolverController::stopAndWait(void) {
 }
 
 void SolverController::forgetProblemState(Forget how) {
+  // the problems may be others at the same addresses now
+  m_list.clear();
   m_prepared.clear();
   m_cannot.clear();
   m_floor.clear();
@@ -248,10 +255,10 @@ void SolverController::forgetProblemState(Forget how) {
 }
 
 const btui::SolutionFacts * SolverController::selectedFacts(void) const {
-  if (m_row < 0 || size_t(m_row) >= m_shown.size())
+  if (m_row < 0 || size_t(m_row) >= m_list.shown().size())
     return nullptr;
-  const size_t i = size_t(m_shown[size_t(m_row)]);
-  return i < m_all.size() ? &m_all[i] : nullptr;
+  const size_t i = size_t(m_list.shown()[size_t(m_row)]);
+  return i < m_list.all().size() ? &m_list.all()[i] : nullptr;
 }
 
 bool SolverController::shown(void) const {
@@ -590,7 +597,8 @@ void SolverController::poll(void) {
     if (m_analysis)
       finishAnalysis();
     refreshRun();
-    refreshSolutions(false);
+    if (listDue())
+      refreshSolutions(false);
     if (!m_thread && !m_analysis)
       m_poll.stop();
   });
@@ -712,14 +720,18 @@ void SolverController::refreshRun(void) {
 void SolverController::refreshSolutions(bool force) {
   problem_c * pr = currentProblem();
   const bool here = m_thread && m_threadProblem == m_problem;
-  // a poll that would read the same: the counts say so without reading every
-  // solution (a solve keeping thousands polls ten times a second)
+  m_listClock.start();
+  m_listStale = false;
+  // a poll that would read the same: the counts and the list's revisions say
+  // so without walking the list
   Signature sig;
   if (pr) {
     {
       auto lock = pr->lockSolutions();
       sig.saved = pr->getNumberOfSavedSolutions();
+      sig.revision = pr->solutionsRevision();
     }
+    sig.changes = solution_c::changeCount();
     sig.state = int(pr->getSolveState());
     sig.assemblies = pr->numAssembliesKnown() ? pr->getNumAssemblies() : 0;
     sig.solutions = pr->numSolutionsKnown() ? pr->getNumSolutions() : 0;
@@ -731,31 +743,46 @@ void SolverController::refreshSolutions(bool force) {
     return;
   m_signature = sig;
 
-  std::vector<btui::SolutionFacts> all;
+  // the new solutions' facts only, and where their rows go
+  btui::SolutionList::Change change;
   if (pr) {
     auto lock = pr->lockSolutions();
     auto it = m_cannot.find(m_problem);
-    all = btui::solutionFacts(*pr, it == m_cannot.end() ? std::vector<unsigned>{} : it->second);
-  }
-  if (all == m_all && !force)
+    change = m_list.read(*pr, it == m_cannot.end() ? std::vector<unsigned>{} : it->second,
+                         btui::checksDisassembly(m_options), m_sort);
+  } else
+    change = m_list.clear();
+  if (change.none() && !force)
     return;
-  m_all = std::move(all);
-  m_shown = btui::shownSolutions(m_all, btui::checksDisassembly(m_options), m_sort);
   // until refreshSelection() finds it again, the row stays inside the list
-  if (m_row >= int(m_shown.size()))
-    m_row = int(m_shown.size()) - 1;
-  rebuildRows();
+  if (m_row >= int(m_list.shown().size()))
+    m_row = int(m_list.shown().size()) - 1;
+  int maxMoves = 0;
+  for (int r : m_list.shown())
+    maxMoves = std::max(maxMoves, m_list.all()[size_t(r)].moves);
+  // the rows stand as the list did before this read, unless it was cleared
+  const bool inStep = m_rows->count() == int(m_list.shown().size() + change.removed.size() - change.inserted.size());
+  if (change.reset || !inStep || maxMoves != m_maxMoves || m_preview >= 0)
+    rebuildRows();      // every row's bar follows the longest, and a preview tints rows
+  else {
+    m_rows->removeRowsAt(change.removed);
+    std::vector<RowsModel::Row> fresh;
+    fresh.reserve(change.inserted.size());
+    for (int r : change.inserted)
+      fresh.push_back(rowOf(m_list.all()[size_t(m_list.shown()[size_t(r)])], false));
+    m_rows->insertRowsAt(change.inserted, std::move(fresh));
+  }
 
   // what the area says without rows
   EmptyState e = NotEmpty;
   if (!pr)
     e = NoProblem;
-  else if (m_shown.empty()) {
+  else if (m_list.shown().empty()) {
     const solveState_e st = pr->getSolveState();
     const unsigned long assemblies = sig.assemblies;
     if (here)
       e = Searching;
-    else if (!m_all.empty())
+    else if (!m_list.all().empty())
       e = NoneDisassemblable;
     else if (st == SS_UNSOLVED || st == SS_UNKNOWN)
       e = NeverRun;
@@ -782,21 +809,33 @@ void SolverController::refreshSolutions(bool force) {
     emit sceneChanged();
 }
 
+bool SolverController::listDue(void) {
+  if (!shown()) {
+    m_listStale = true;            // read when the Solver shows
+    return false;
+  }
+  const qint64 every = m_list.all().size() > kManySolutions ? kListSlowMs : kListMs;
+  return !m_listClock.isValid() || m_listClock.elapsed() >= every;
+}
+
+RowsModel::Row SolverController::rowOf(const btui::SolutionFacts & f, bool doomed) const {
+  return { int(f.assembly) + 1, QString::fromStdString(f.levelText), f.moves,
+           m_maxMoves > 0 && f.moves > 0 ? double(f.moves) / m_maxMoves : 0.0, f.pieces, int(f.da), doomed };
+}
+
 void SolverController::rebuildRows(void) {
   // the preview of a Remove item: the rows it would take
   std::vector<int> doomed;
   if (m_preview >= 0)
-    doomed = btui::toRemove(m_all, m_shown, m_row, btui::RemoveKind(m_preview));
-  int maxMoves = 0;
-  for (int r : m_shown)
-    maxMoves = std::max(maxMoves, m_all[size_t(r)].moves);
+    doomed = btui::toRemove(m_list.all(), m_list.shown(), m_row, btui::RemoveKind(m_preview));
+  m_maxMoves = 0;
+  for (int r : m_list.shown())
+    m_maxMoves = std::max(m_maxMoves, m_list.all()[size_t(r)].moves);
   std::vector<RowsModel::Row> rows;
-  rows.reserve(m_shown.size());
-  for (int r : m_shown) {
-    const btui::SolutionFacts & f = m_all[size_t(r)];
-    rows.push_back({ int(f.assembly) + 1, QString::fromStdString(f.levelText), f.moves,
-                     maxMoves > 0 && f.moves > 0 ? double(f.moves) / maxMoves : 0.0, f.pieces, int(f.da),
-                     std::binary_search(doomed.begin(), doomed.end(), f.index) });
+  rows.reserve(m_list.shown().size());
+  for (int r : m_list.shown()) {
+    const btui::SolutionFacts & f = m_list.all()[size_t(r)];
+    rows.push_back(rowOf(f, std::binary_search(doomed.begin(), doomed.end(), f.index)));
   }
   m_rows->setRows(std::move(rows));
 }
@@ -823,8 +862,8 @@ QString SolverController::emptyText(void) const {
     case Searching:    return tr("Solutions appear here as they are found.");
     case NoAssemblies: return tr("The pieces cannot fill the result with the current ranges and colour rules. Review the Puzzle tab.");
     case NoneDisassemblable: {
-      const int n = m_all.empty() && pr && pr->numAssembliesKnown() ? int(pr->getNumAssemblies()) : int(m_all.size());
-      const bool unchecked = std::any_of(m_all.begin(), m_all.end(),
+      const int n = m_list.all().empty() && pr && pr->numAssembliesKnown() ? int(pr->getNumAssemblies()) : int(m_list.all().size());
+      const bool unchecked = std::any_of(m_list.all().begin(), m_list.all().end(),
                                          [](const btui::SolutionFacts & f) { return f.da == btui::DaState::NotChecked; });
       const QString found = n == 1 ? tr("1 assembly was found") : tr("%1 assemblies were found").arg(n);
       if (!btui::checksDisassembly(m_options))
@@ -847,15 +886,15 @@ QString SolverController::emptyText(void) const {
 
 void SolverController::refreshSelection(void) {
   int row = -1;
-  if (!m_shown.empty()) {
+  if (!m_list.shown().empty()) {
     if (m_hasSelection)
-      for (size_t r = 0; r < m_shown.size(); r++)
-        if (m_all[size_t(m_shown[r])].assembly == m_selectedAssembly) {
+      for (size_t r = 0; r < m_list.shown().size(); r++)
+        if (m_list.all()[size_t(m_list.shown()[r])].assembly == m_selectedAssembly) {
           row = int(r);
           break;
         }
     if (row < 0)
-      row = m_hasSelection ? std::clamp(m_row, 0, int(m_shown.size()) - 1) : 0;
+      row = m_hasSelection ? std::clamp(m_row, 0, int(m_list.shown().size()) - 1) : 0;
   }
   const bool rowChanged = row != m_row;
   m_row = row;
@@ -870,7 +909,7 @@ void SolverController::refreshSelection(void) {
     keepExplorer();
     return;
   }
-  const btui::SolutionFacts & f = m_all[size_t(m_shown[size_t(row)])];
+  const btui::SolutionFacts & f = m_list.all()[size_t(m_list.shown()[size_t(row)])];
   const bool solutionChanged = !m_hasSelection || f.assembly != m_selectedAssembly;
   m_selectedAssembly = f.assembly;
   m_hasSelection = true;
@@ -900,10 +939,10 @@ void SolverController::scrubTo(int row) {
 }
 
 void SolverController::selectRowNow(int row, bool deferScene) {
-  if (m_shown.empty())
+  if (m_list.shown().empty())
     return;
-  row = std::clamp(row, 0, int(m_shown.size()) - 1);
-  const btui::SolutionFacts & f = m_all[size_t(m_shown[size_t(row)])];
+  row = std::clamp(row, 0, int(m_list.shown().size()) - 1);
+  const btui::SolutionFacts & f = m_list.all()[size_t(m_list.shown()[size_t(row)])];
   if (m_hasSelection && f.assembly == m_selectedAssembly && !m_assemblerState)
     return;
   m_selectedAssembly = f.assembly;
@@ -931,7 +970,7 @@ void SolverController::selectRowNow(int row, bool deferScene) {
 void SolverController::clickSort(int key) {
   if (key < 0 || key > int(btui::ListKey::Pieces))
     return;
-  if (!btui::listKeyAvailable(m_all, btui::ListKey(key)))
+  if (!btui::listKeyAvailable(m_list.all(), btui::ListKey(key)))
     return;
   m_sort = btui::clickSort(m_sort, btui::ListKey(key));
   refreshSolutions(true);
@@ -987,7 +1026,7 @@ QString SolverController::tagText(void) const {
     return m_assemblerCaption;
   if (!selectedFacts())
     return QString();
-  return tr("Solution %1 of %2").arg(m_row + 1).arg(m_shown.size());
+  return tr("Solution %1 of %2").arg(m_row + 1).arg(m_list.shown().size());
 }
 
 void SolverController::toggleExplorer(const QString & kind) {
@@ -1162,7 +1201,7 @@ bool SolverController::key(const QString & context, int key, bool shift) {
     case btui::SolverAction::Last:
     case btui::SolverAction::PageBack:
     case btui::SolverAction::PageForward:
-      selectRow(btui::rowAfter(a, m_row, int(m_shown.size())));
+      selectRow(btui::rowAfter(a, m_row, int(m_list.shown().size())));
       // the list keeps the focus: a screen reader hears the new row through this
       if (m_row != before && m_row >= 0)
         emit announceRequested(rowName(m_row));
@@ -1172,11 +1211,11 @@ bool SolverController::key(const QString & context, int key, bool shift) {
 }
 
 QString SolverController::rowName(int row) const {
-  if (row < 0 || row >= int(m_shown.size()))
+  if (row < 0 || row >= int(m_list.shown().size()))
     return QString();
-  const btui::SolutionFacts & f = m_all[size_t(m_shown[size_t(row)])];
+  const btui::SolutionFacts & f = m_list.all()[size_t(m_list.shown()[size_t(row)])];
   const QString level = f.levelText.empty() ? tr("level unknown") : tr("level %1").arg(QString::fromStdString(f.levelText));
-  return tr("Solution %1 of %2, assembly %3, %4").arg(row + 1).arg(m_shown.size()).arg(f.assembly + 1).arg(level);
+  return tr("Solution %1 of %2, assembly %3, %4").arg(row + 1).arg(m_list.shown().size()).arg(f.assembly + 1).arg(level);
 }
 
 // --- the pieces and the scene ----------------------------------------------------------------
@@ -1335,7 +1374,7 @@ QString SolverController::statusText(void) const {
 // --- Manage ----------------------------------------------------------------------------------
 
 bool SolverController::canManage(void) const {
-  return currentProblem() && !m_thread && !m_analysis && !m_all.empty();
+  return currentProblem() && !m_thread && !m_analysis && !m_list.all().empty();
 }
 
 bool SolverController::canAnalyse(void) const {
@@ -1362,19 +1401,19 @@ void SolverController::setPreviewRemove(int kind) {
 int SolverController::removeCount(int kind) const {
   if (kind < 0 || kind > int(btui::RemoveKind::All))
     return 0;
-  return int(btui::toRemove(m_all, m_shown, m_row, btui::RemoveKind(kind)).size());
+  return int(btui::toRemove(m_list.all(), m_list.shown(), m_row, btui::RemoveKind(kind)).size());
 }
 
 void SolverController::removeSolutions(int kind) {
   guarded([&] {
     if (!canManage() || kind < 0 || kind > int(btui::RemoveKind::All))
       return;
-    const std::vector<int> gone = btui::toRemove(m_all, m_shown, m_row, btui::RemoveKind(kind));
+    const std::vector<int> gone = btui::toRemove(m_list.all(), m_list.shown(), m_row, btui::RemoveKind(kind));
     if (gone.empty())
       return;
     int above = 0;
-    for (int r = 0; r < m_row && r < int(m_shown.size()); r++)
-      above += std::binary_search(gone.begin(), gone.end(), m_all[size_t(m_shown[size_t(r)])].index) ? 1 : 0;
+    for (int r = 0; r < m_row && r < int(m_list.shown().size()); r++)
+      above += std::binary_search(gone.begin(), gone.end(), m_list.all()[size_t(m_list.shown()[size_t(r)])].index) ? 1 : 0;
     const btui::SolutionFacts * sel = selectedFacts();
     const bool selectedGone = sel && std::binary_search(gone.begin(), gone.end(), sel->index);
     const int row = m_row;
@@ -1391,8 +1430,8 @@ void SolverController::removeSolutions(int kind) {
       m_hasSelection = false;
     m_row = row - above;
     refreshSolutions(true);
-    if (selectedGone && !m_shown.empty())
-      selectRow(btui::rowAfterRemoval(row, above, int(m_shown.size())));
+    if (selectedGone && !m_list.shown().empty())
+      selectRow(btui::rowAfterRemoval(row, above, int(m_list.shown().size())));
     emit flashRequested(gone.size() == 1 ? tr("1 solution removed") : tr("%1 solutions removed").arg(gone.size()));
   });
 }
