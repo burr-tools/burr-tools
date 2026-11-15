@@ -90,6 +90,8 @@ libburr_src = [
   'src/lib/assembler_1.cpp',
   'src/lib/simd_huang_cover.cpp',
   'src/lib/cells_cover.cpp',
+  'src/lib/latticegrid/symmetry.cpp',
+  'src/lib/latticegrid/transformation.cpp',
   'src/lib/assembly.cpp',
   'src/lib/bt_assert.cpp',
   'src/lib/burrgrower.cpp',
@@ -491,7 +493,7 @@ else
 endif
 
 test_burrtools = executable('test_burrtools',
-  ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_rotation_geometry.cpp', 'test/test_rotation_setup.cpp', 'test/test_solver_config.cpp', 'test/test_rotation_disassembly.cpp', 'test/test_rotation_planner.cpp','test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_huang_cover.cpp', 'test/test_cells_cover.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'test/test_thread_protocol.cpp', 'src/gui/solveprogresscache.cpp',
+  ['test/test_solver.cpp', 'test/test_cubemesh.cpp', 'test/test_manifold_smoke.cpp', 'test/test_minkmesh.cpp', 'test/test_bitfield.cpp', 'test/test_voxel.cpp', 'test/test_voxel_connect.cpp', 'test/test_symmetries.cpp', 'test/test_rotation_geometry.cpp', 'test/test_rotation_setup.cpp', 'test/test_solver_config.cpp', 'test/test_rotation_disassembly.cpp', 'test/test_rotation_planner.cpp','test/test_grouping.cpp', 'test/test_xml.cpp', 'test/test_roundtrip.cpp', 'test/test_disassembly.cpp', 'test/test_puzzle_model.cpp', 'test/test_voxeltable.cpp', 'test/test_problem_config.cpp', 'test/test_disassembly_save.cpp', 'test/test_grid_invariants.cpp', 'test/test_vector3.cpp', 'test/test_halfedge.cpp', 'test/test_modifiers.cpp', 'test/test_stl.cpp', 'test/test_spheremesh.cpp', 'test/test_assembler_config.cpp', 'test/test_simd_huang_cover.cpp', 'test/test_cells_cover.cpp', 'test/test_latticegrid.cpp', 'test/test_disassembler_pool.cpp', 'test/test_progressmodel.cpp', 'test/test_solveprogresscache.cpp', 'test/test_thread_protocol.cpp', 'src/gui/solveprogresscache.cpp',
     'test/test_puzzle_history.cpp',
     'test/test_updatecheck.cpp', 'src/tools/updatecheck.cpp',
     'test/test_curl_abi.cpp', 'test/test_envvars.cpp'] + uicore_test_src,

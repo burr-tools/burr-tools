@@ -21,3 +21,9 @@ Carlos Moreno Serrano
 Girish Sharma
 Bryan Turner
 Raoul (raoulb on GitHub)
+
+The files in src/lib/latticegrid/ and test/test_latticegrid.cpp are ported
+from BurrTools NG by Andreas Röver (https://gitlab.com/roever/burrtools),
+with his agreement, and are licensed under the GNU General Public License
+version 3. The rest is licensed under version 2 or later, so the program as
+a whole is distributed under version 3.
