@@ -340,3 +340,232 @@ TEST_CASE("MPR in 3d: boxes", "[latticegrid]")
     c.size2 = {0.5f, 0.5f, 0.5f};
     CHECK(MPR::intersects3d(c));
 }
+
+// ---- step G2: grid descriptions and registration ----
+
+#include "lib/latticegrid/griddescriptions.h"
+
+#include <map>
+#include <set>
+#include <tuple>
+
+namespace {
+
+Grid ngGrid(size_t id)
+{
+    registerNgGrids();
+    return Grid(Grid::StorageId{{id}});
+}
+
+bool isVoxel(const Grid & g, const Vector<int> & p) { return g.getBaseForVoxelPosition(p).first >= 0; }
+
+using Cells = std::set<std::tuple<int, int, int>>;
+
+} // namespace
+
+TEST_CASE("NG's six grids register, with the symmetries of our native grids", "[latticegrid][grid]")
+{
+    struct Expect
+    {
+            size_t id;
+            int bases, rotations, directions;
+    };
+    // rotations: valid transformations without mirroring (each also comes mirrored)
+    const Expect grids[] = {
+        {NG_GRID_CUBES, 1, 24, 3},
+        {NG_GRID_TRIANGULAR_PRISMS, 2, 12, 4},
+        {NG_GRID_HEXAGONAL_PRISMS, 1, 12, 0},
+        {NG_GRID_CAIRO_PRISMS, 4, 8, 0},
+        {NG_GRID_RHOMBIC_TETRAHEDRA, 24, 24, 13},
+        {NG_GRID_OCTAHEDRAL_TETRAHEDRA, 10, 24, 9},
+    };
+
+    for (const auto & e : grids)
+    {
+        INFO("grid " << e.id);
+        const Grid g      = ngGrid(e.id);
+        const auto inf    = g.getExpensiveInformation();
+        REQUIRE(inf);
+        CHECK(static_cast<int>(inf->basePositions.size()) == e.bases);
+
+        int rot = 0, mir = 0;
+        for (unsigned int r = 0; r < TRotation::NUM_ROTATION_MATRICES; r++)
+            if (!inf->validTransformations[r].empty())
+            {
+                // step G0's check A: one lattice class of shifts per transformation
+                CHECK(inf->validTransformations[r].size() == 1);
+                (r < TRotation::ROT_MIRROR ? rot : mir)++;
+            }
+        CHECK(rot == e.rotations);
+        CHECK(mir == e.rotations);
+
+        CHECK(static_cast<int>(inf->movementVectors.size()) == e.directions);
+        if (e.directions)
+            for (auto & perBase : inf->movementChecks) CHECK(static_cast<int>(perBase.size()) == e.directions);
+    }
+}
+
+TEST_CASE("NG's face neighbour relation is symmetric on all six grids", "[latticegrid][grid]")
+{
+    for (size_t id : {0, 1, 2, 3, 4, 5})
+    {
+        INFO("grid " << id);
+        const Grid g   = ngGrid(id);
+        const auto inf = g.getInformation();
+
+        for (size_t b = 0; b < inf->basePositions.size(); b++)
+        {
+            const Vector<int> p = inf->basePositions[b];
+            REQUIRE(g.getBaseForVoxelPosition(p).first == static_cast<int>(b));
+            for (size_t f = 0; f < inf->faceNeighbours[b].size(); f++)
+            {
+                INFO("base " << b << " face " << f);
+                const auto & n      = inf->faceNeighbours[b][f];
+                const Vector<int> d(n.diff.x(), n.diff.y(), n.diff.z());
+                const Vector<int> q = p + d;
+                const int b2        = g.getBaseForVoxelPosition(q).first;
+                REQUIRE(b2 >= 0);
+                REQUIRE(n.face < inf->faceNeighbours[b2].size());
+                const auto & back = inf->faceNeighbours[b2][n.face];
+                CHECK(Vector<int>(back.diff.x(), back.diff.y(), back.diff.z()) == -d);
+                CHECK(back.face == f);
+            }
+        }
+    }
+}
+
+TEST_CASE("NG's movement checks for cubes are the single neighbour cell", "[latticegrid][grid]")
+{
+    const Grid g   = ngGrid(NG_GRID_CUBES);
+    const auto inf = g.getExpensiveInformation();
+    REQUIRE(inf->movementChecks.size() == 1);
+    for (size_t dir = 0; dir < 3; dir++)
+    {
+        INFO("direction " << dir);
+        REQUIRE(inf->movementChecks[0][dir].size() == 1);
+        const auto & c = inf->movementChecks[0][dir][0];
+        CHECK(Vector<int>(c.x(), c.y(), c.z()) == inf->movementVectors[dir]);
+    }
+}
+
+TEST_CASE("NG's movement checks for triangular prisms are those of movementcache_1", "[latticegrid][grid]")
+{
+    const Grid g   = ngGrid(NG_GRID_TRIANGULAR_PRISMS);
+    const auto inf = g.getExpensiveInformation();
+
+    // our grid to NG's, as NG's importer converts files (import.cpp, grid type 1)
+    auto toNG = [](int x, int y, int z) {
+        int xn = x + 1;
+        int yn = (3 * y + 1) / 2 - (x + y % 2) / 2;
+        int zn = -xn - yn;
+        return Vector<int>(xn + z, yn + z, zn + z);
+    };
+
+    // movementcache_1.cpp: directions and, per voxel type (x+y)%2, the cells
+    // that must be empty for one step
+    const int dirs[4][3] = {{0, 0, 1}, {2, 0, 0}, {1, 1, 0}, {-1, 1, 0}};
+    const std::vector<std::array<int, 3>> checks[4][2] = {
+        {{{0, 0, 1}}, {{0, 0, 1}}},
+        {{{1, 0, 0}, {2, 0, 0}}, {{1, 0, 0}, {2, 0, 0}}},
+        {{{1, 0, 0}, {1, 1, 0}}, {{0, 1, 0}, {1, 1, 0}}},
+        {{{-1, 0, 0}, {-1, 1, 0}}, {{0, 1, 0}, {-1, 1, 0}}},
+    };
+
+    int compared = 0;
+    for (int type = 0; type < 2; type++)
+        for (int dir = 0; dir < 4; dir++)
+        {
+            INFO("voxel type " << type << " direction " << dir);
+            const int x = 10 + type, y = 10, z = 10; // (x + y) % 2 == type, far from negative numbers
+            const Vector<int> q = toNG(x, y, z);
+            const int base      = g.getBaseForVoxelPosition(q).first;
+            REQUIRE(base >= 0);
+
+            const Vector<int> step = toNG(x + dirs[dir][0], y + dirs[dir][1], z + dirs[dir][2]) - q;
+            int ngDir              = -1;
+            for (size_t k = 0; k < inf->movementVectors.size(); k++)
+                if (inf->movementVectors[k] == step) ngDir = static_cast<int>(k);
+            // all four of our directions are NG movement vectors as given, none negated
+            REQUIRE(ngDir >= 0);
+
+            Cells ours, ng;
+            for (auto & c : checks[dir][type])
+            {
+                const Vector<int> v = toNG(x + c[0], y + c[1], z + c[2]) - q;
+                ours.insert({v.x(), v.y(), v.z()});
+            }
+            for (auto & c : inf->movementChecks[base][ngDir]) ng.insert({c.x(), c.y(), c.z()});
+            CHECK(ours == ng);
+            compared++;
+        }
+    CHECK(compared == 8);
+}
+
+TEST_CASE("our tetra-octa and rhombic cells are NG's tetrahedra (step G0, check B)", "[latticegrid][grid]")
+{
+    const Grid octa = ngGrid(NG_GRID_OCTAHEDRAL_TETRAHEDRA);
+    const Grid rhombic = ngGrid(NG_GRID_RHOMBIC_TETRAHEDRA);
+
+    // voxel_4_c::validCoordinate
+    auto ourOcta = [](int x, int y, int z) {
+        auto div = [](int a) { return a >= 0 ? a / 3 : -((-a + 2) / 3); };
+        const int xc = div(x), yc = div(y), zc = div(z);
+        const int xs = x - 3 * xc, ys = y - 3 * yc, zs = z - 3 * zc;
+        if (xs == 1 && ys == 1 && zs == 1) return true;
+        if ((xc + yc + zc) & 1)
+            return (xs == 0 && ys == 0 && zs == 0) || (xs == 2 && ys == 2 && zs == 0) || (xs == 0 && ys == 2 && zs == 2) ||
+                   (xs == 2 && ys == 0 && zs == 2);
+        return (xs == 2 && ys == 0 && zs == 0) || (xs == 0 && ys == 2 && zs == 0) || (xs == 2 && ys == 2 && zs == 2) ||
+               (xs == 0 && ys == 0 && zs == 2);
+    };
+    int differ = 0;
+    for (int x = -6; x < 12; x++)
+        for (int y = -6; y < 12; y++)
+            for (int z = -6; z < 12; z++)
+                if (ourOcta(x, y, z) != isVoxel(octa, Vector<int>(x, y, z))) differ++;
+    CHECK(differ == 0);
+
+    // voxel_3_c::validCoordinate, and NG's importer (import.cpp, grid type 3)
+    auto ourRhombic = [](int x, int y, int z) {
+        x %= 5; y %= 5; z %= 5;
+        if (x > 2) x = 4 - x;
+        if (y > 2) y = 4 - y;
+        if (z > 2) z = 4 - z;
+        return (x == 0 || y == 0 || z == 0) && (x == 1 || y == 1 || z == 1) && (x == 2 || y == 2 || z == 2);
+    };
+    std::map<std::tuple<int, int, int>, int> hit;
+    for (int x = 0; x < 15; x++)
+        for (int y = 0; y < 15; y++)
+            for (int z = 0; z < 15; z++)
+            {
+                if (!ourRhombic(x, y, z)) continue;
+                int xr = x % 5, yr = y % 5, zr = z % 5;
+                if (xr > 2) xr++;
+                if (yr > 2) yr++;
+                if (zr > 2) zr++;
+                const Vector<int> b(6 * (x / 5) + xr, 6 * (y / 5) + yr, 6 * (z / 5) + zr);
+                std::vector<Vector<int>> img;
+                if (xr == 2) img = {b, b + Vector<int>(1, 0, 0)};
+                if (yr == 2) img = {b, b + Vector<int>(0, 1, 0)};
+                if (zr == 2) img = {b, b + Vector<int>(0, 0, 1)};
+                REQUIRE(img.size() == 2);
+                for (auto & v : img)
+                {
+                    CHECK(isVoxel(rhombic, v));
+                    hit[{v.x(), v.y(), v.z()}]++;
+                }
+            }
+    int ngVoxels = 0, once = 0;
+    for (int x = 0; x < 18; x++)
+        for (int y = 0; y < 18; y++)
+            for (int z = 0; z < 18; z++)
+                if (isVoxel(rhombic, Vector<int>(x, y, z)))
+                {
+                    ngVoxels++;
+                    auto it = hit.find({x, y, z});
+                    if (it != hit.end() && it->second == 1) once++;
+                }
+    CHECK(ngVoxels == 1296);
+    CHECK(once == ngVoxels);
+    CHECK(static_cast<int>(hit.size()) == ngVoxels);
+}

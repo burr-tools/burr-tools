@@ -90,6 +90,8 @@ libburr_src = [
   'src/lib/assembler_1.cpp',
   'src/lib/simd_huang_cover.cpp',
   'src/lib/cells_cover.cpp',
+  'src/lib/latticegrid/grid.cpp',
+  'src/lib/latticegrid/griddescriptions.cpp',
   'src/lib/latticegrid/symmetry.cpp',
   'src/lib/latticegrid/transformation.cpp',
   'src/lib/assembly.cpp',

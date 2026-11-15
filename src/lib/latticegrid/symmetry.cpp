@@ -5,10 +5,12 @@
  * (design/2026-11-19-ng-merge-plan.md, step G1). NG is licensed under the
  * GNU General Public License version 3, and so is this file.
  *
- * Changes from NG's file: std::print replaced by fprintf, exit by abort; calculateRotationalSubset, which needs the grid, left for step G2.
+ * Changes from NG's file: std::print replaced by fprintf, exit by abort.
  * Keep the rest identical to NG's file, so changes can be exchanged both ways.
  */
 #include "symmetry.h"
+
+#include "grid.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -389,7 +391,77 @@ void RotationalSymmetryGroup::init_tables()
         }
 }
 
-// RotationalSymmetryGroup::calculateRotationalSubset needs the grid; it moves
-// over with the grid in step G2 of design/2026-11-19-ng-merge-plan.md.
+// this function will calculate the "maximal" symmetry that a shape of a given grid and with a symmetry centre
+// at a given position can potentially have.
+//
+// This can be done because for a grid the rotation centres and mirror planes must be at certain positions relative
+// to the grid. Other places are simply not possible.
+//
+// Simple 2d example. Take the grid of squares. If you have a rotation symmetry, its centre can only be in the centre
+// of the squares, in the middle of the edges or at the corner. All other rotation centres will never rotate the square
+// grid onto itself.
+//
+// This function now will take all potential symmetry axes and planes and checks whether the symmetry centre
+// is on that plane. If not a shape with that symmetry centre will never have the corresponding symmetry
+std::tuple<RotationalSymmetryGroup, uint8_t> RotationalSymmetryGroup::calculateRotationalSubset(const Grid & grid, const RVector<int> & center)
+{
+    const auto g = grid.getExpensiveInformation();
+
+    // As all the mirror planes and axes are limited to the base-epiped
+    // we first "normalize" the voxel position accordingly
+
+    auto [epiped, d] = grid.getEpipedAndRemainderForVoxelPosition(center);
+
+    RotationalSymmetryGroup subset;
+
+    // now iterate over all possible rotation axis and assemble
+    // the possible rotational symmetries, if we are on an axis
+    for (auto & s : g->rotationalSymmetries)
+    {
+        // we only need to check an axis, if that axis actually has
+        // a symmetry not yet in our group
+        if (!subset.symmetries().contains(s.transformation))
+        {
+            // if the cross product between the direction of the axis and the direction
+            // of our point and one axis point is zero then the point are all collinear
+            if (cross(s.direction, d - s.p0).isZero())
+            {
+                // ok, we are on the line, so add the corresponding symmetry to our symmetry group
+                subset.addSymmetry(s.transformation);
+
+                // once we reached a complete rotational group, e.g. all rotations of cubes or hexagons
+                // there is no need to continue, because we will never get more
+                if ((subset.value() == UnifySymmetryTransformation[TRotation::ROT_090_X * TRotation::NUM_ROTATION_MATRICES + TRotation::ROT_090_Y])
+                    || (subset.value() == UnifySymmetryTransformation[TRotation::ROT_060_XYZ * TRotation::NUM_ROTATION_MATRICES + TRotation::ROT_180_XYzz]))
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    // now do the same for the mirror planes
+    for (auto & s : g->mirrorSymmetries)
+    {
+        // the check, if we are on the plane works by calculating the
+        // distance from the plane. As we only want to know if the distance
+        // is zero we can live with a not-normalized normal vector of the plane
+        // our point d is a rational number, so we multiply the distance
+        // by the denominator to avoid division and get both summands having
+        // the same scale
+        if ((d * s.plane.normal).numerator() == s.plane.distance * d.denominator())
+        {
+            // ok, we are on the plane...
+            subset.addSymmetry(s.transformation);
+
+            // together with the rotation symmetry axes, we only need to find one mirror symmetry, any
+            // other new mirror symmetry will not add anything else to the symmetry group
+            // so we can as well leave
+            break;
+        }
+    }
+
+    return std::make_tuple(subset, g->maxSymmetryGroup);
+}
 
 } // namespace BurrTools::PuzzleLibrary
