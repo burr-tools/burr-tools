@@ -216,6 +216,10 @@ public:
 
   /* The lists, now: the workspace does it when it shows them. */
   void refresh(void);
+  /* The lists, if they are behind the puzzle: the first of the work left for
+   * later (Main.qml), so that the cards made in the background hold the
+   * puzzle's rows, and Puzzle's first showing changes only what changed. */
+  Q_INVOKABLE void prepare(void) { if (m_stale) refresh(); }
 
 signals:
 

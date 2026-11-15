@@ -5,9 +5,10 @@ import QtQuick.Controls.Basic
 import BurrTools.Ui
 
 // PR-23 Library chip: a shape in "All pieces". Theme.libraryChip high, radius
-// 8; grip, a 10 dp colour square, id, label (at most 60 dp), and fixed − count +
-// (the count as the piece's tile reads it), so nothing jumps when a piece is
-// added. A click selects, double-click and + add, a drag into "In this
+// 8; grip, a 10 dp colour square, id, label (at most 60 dp), and − count +
+// (the count as the piece's tile reads it). The count has room for "×9", so
+// nothing jumps when a piece is added; a longer one ("×10", "2–12") widens
+// the chip rather than being cut short. A click selects, double-click and + add, a drag into "In this
 // puzzle" adds; − takes one away.
 // Hover: accent border on accentSoft, no change of size; selected: an accent
 // ring; pieces in use are quieter, on the panel.
@@ -163,10 +164,9 @@ Rectangle {
         }
         Text {
             objectName: root.objectName + ".count"
-            width: 19
+            width: Math.max(19, implicitWidth)
             anchors.verticalCenter: parent.verticalCenter
             horizontalAlignment: Text.AlignHCenter
-            elide: Text.ElideRight
             text: root.countText
             Accessible.ignored: true
             color: Theme.text

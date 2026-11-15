@@ -43,7 +43,14 @@ Card {
     collapseIcon: "panelL"
     collapseObjectName: "puzzle.left.collapse"
     onCollapseClicked: App.layout.leftCollapsed = true
-    onVisibleChanged: if (!visible) { list.focus = false; tiles.focus = false }
+    onVisibleChanged: {
+        if (!visible) {
+            list.focus = false
+            tiles.focus = false
+        } else {
+            seen = true
+        }
+    }
 
     // popups are no child items: for tests
     readonly property AppMenu pieceContextMenu: pieceMenu
@@ -142,6 +149,11 @@ Card {
 
     // the pieces as tiles, else as the table: one comparison, read by both views
     readonly property bool chipsShown: App.puzzle.piecesView !== "table"
+    /* Puzzle has shown (a card made in the background has not): from then the view
+     * of the pieces not chosen is made too, when App.builds gets to it, so that the
+     * first switch between tiles and table finds it ready. */
+    property bool seen: false
+    Component.onCompleted: if (visible) seen = true
 
     readonly property string renameKeys: App.commands.shortcutText("problems.rename")
     readonly property string duplicateKeys: App.commands.shortcutText("problems.duplicate")
@@ -786,10 +798,20 @@ Card {
                             id: flow
                             width: parent.width
                             spacing: 3
+                            /* a batch at a time through App.builds (a first screen at once while
+                             * shown); then each piece added or taken away is one tile made or
+                             * dropped, every other edit updates what exists. Declared, not
+                             * written into `model` (a var): there its bindings are not compiled. */
+                            BatchedRows {
+                                id: tileRows
+                                queue: App.builds
+                                source: App.puzzle.pieces
+                                active: root.chipsShown || root.seen
+                                shown: flow.visible
+                            }
                             Repeater {
                                 id: tileList
-                                // only the view shown is made: every edit updates what exists
-                                model: root.chipsShown ? App.puzzle.pieces : null
+                                model: tileRows
                                 delegate: PieceTile {
                                     id: tile
                                     required property int shape
@@ -838,8 +860,15 @@ Card {
                     clip: true
                     cacheBuffer: 0
                     spacing: 2
-                    // only the view shown is made (four controls a row, a group list each)
-                    model: root.chipsShown ? null : App.puzzle.pieces
+                    // as the tiles' (four controls a row, a group list each); the view makes the rows in sight
+                    BatchedRows {
+                        id: tableRows
+                        queue: App.builds
+                        source: App.puzzle.pieces
+                        active: !root.chipsShown || root.seen
+                        shown: table.visible
+                    }
+                    model: tableRows
                     boundsBehavior: Flickable.StopAtBounds
                     ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                     Accessible.role: Accessible.Table
@@ -1149,10 +1178,16 @@ Card {
                             id: libraryFlow
                             width: parent.width
                             spacing: 3
+                            // a chip for every shape: shut, the section's are made in the background
+                            BatchedRows {
+                                id: libraryRows
+                                queue: App.builds
+                                source: App.puzzle.library
+                                shown: libraryFlow.visible
+                            }
                             Repeater {
                                 id: libraryList
-                                // a chip for every shape: made only while the section is open
-                                model: App.puzzle.allPiecesOpen ? App.puzzle.library : null
+                                model: libraryRows
                                 delegate: LibraryChip {
                                     id: chip
                                     required property int shape

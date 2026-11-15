@@ -64,6 +64,9 @@ PuzzleController::PuzzleController(DocumentController * doc, ShapesModel * shape
   m_pieces = new RowsModel({ "shape", "idText", "label", "chipColor", "chipTextColor", "minCount", "maxCount",
                              "countText", "rangeOn", "groupText" }, this);
   m_library = new RowsModel({ "shape", "idText", "label", "chipColor", "used", "countText" }, this);
+  // a piece added or taken away is one row made or dropped in the views, not a shift of the rest
+  m_pieces->setKeyed(true);
+  m_library->setKeyed(true);
   m_groups = new RowsModel({ "group", "name", "members" }, this);
   m_pieceGroups = new RowsModel({ "group", "name", "count" }, this);
   m_sections = new RowsModel({ "key", "title", "summary", "railText", "badge", "open" }, this);

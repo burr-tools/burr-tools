@@ -103,6 +103,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
   m_cues = new KeyboardCues(this);
+  m_builds = new BuildQueue(this);
   // the menus' access keys, for Alt (none on macOS, whose labels carry none)
   {
     QString keys;

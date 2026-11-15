@@ -64,6 +64,27 @@
 - A locked Windows session does not compose: Qt gets no update requests and
   the window waits seconds for its next frame. Time start-up on an unlocked
   display, or offscreen for the QML and C++ part.
+- A `QObject *`, `QAbstractItemModel *` or `qint64` in a signal or property
+  of a module type makes qmltyperegistrar declare it an opaque *value* type
+  in the module's qmltypes: `App` and every other QObject type then stop
+  compiling ahead of time (1859 → 4277 left to the engine). Keep them out
+  of what QML sees (`BuildQueue::stepped()` has no arguments,
+  `BatchedRows.source` is a `RowsModel *`); grep the qmltypes for
+  `isTypeOpaque` after adding a type.
+- A module type that implements `QQmlParserStatus` is unresolved for
+  qmlcachegen ("add qt_extract_metatypes"): `BuildJob` queues its own
+  completion instead.
+- An object written into a `var` property (`model: BatchedRows { … }`) has
+  its bindings left to the engine; declare it with an id and point at it.
+- QML sets a C++ object's properties in no promised order (`source` before
+  `queue`): settle a turn later rather than act on the first one set.
+  `componentComplete` runs in reverse order of creation.
+- Puzzle's lists follow the puzzle only while Puzzle shows: anything that
+  builds Puzzle's views earlier calls `App.puzzle.prepare()` first, or it
+  builds empty lists.
+- A test that changes App state shared by the next tests (`allPiecesOpen`)
+  resets it in `cleanup()`: one that fails half-way otherwise fails the
+  tests after it.
 - Windows draws the title bar dark or light from
   `QStyleHints::setColorScheme`; ask for the theme's scheme before the
   first window (`Theme`'s constructor), not only when it changes.

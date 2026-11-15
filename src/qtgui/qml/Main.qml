@@ -344,11 +344,20 @@ ApplicationWindow {
                         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: statusBar.top; margins: Theme.bodyPadding }
 
                         readonly property int ws: App.layout.workspace
-                        /* Puzzle's cards are made the first time Puzzle shows, then kept:
-                         * the app opens in Entities, and they cost its start 35-50 ms
-                         * (a tile and a chip for every piece and shape) */
-                        property bool puzzleSeen: ws === LayoutController.Puzzle
-                        onWsChanged: if (ws === LayoutController.Puzzle) puzzleSeen = true
+                        /* Puzzle's cards are left for later (App.builds): the app opens in
+                         * Entities, and they cost its start 35-50 ms (a tile and a chip for
+                         * every piece and shape). The queue makes them a second after the
+                         * start, one card at a time, each over several frames (an
+                         * asynchronous Loader: a few ms a frame); or at once, when Puzzle
+                         * shows first. Then they are kept. */
+                        readonly property bool puzzleShown: ws === LayoutController.Puzzle
+                        // first the lists, which follow the puzzle only while Puzzle shows
+                        BuildJob {
+                            queue: App.builds
+                            onGrantedChanged: if (granted) App.puzzle.prepare()
+                        }
+                        BuildJob { id: puzzleLeftJob; queue: App.builds; waits: true; needed: body.puzzleShown }
+                        BuildJob { id: puzzleRightJob; queue: App.builds; waits: true; needed: body.puzzleShown }
                         // the swap's bindings settle first, then the keyboard follows
                         readonly property bool leftRail: App.layout.leftShownAsRail
                         readonly property bool rightRail: App.layout.rightShownAsRail
@@ -367,9 +376,13 @@ ApplicationWindow {
                                 visible: body.ws === LayoutController.Entities && !App.layout.leftShownAsRail
                             }
                             Loader {
+                                objectName: "puzzle.left.loader"
                                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
                                 width: leftSlot.cardWidth
-                                active: body.puzzleSeen
+                                active: puzzleLeftJob.granted
+                                // shown while loading: made at once (a Loader turned synchronous finishes)
+                                asynchronous: !puzzleLeftJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) puzzleLeftJob.finish()
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.leftShownAsRail
                                 sourceComponent: Component {
                                     PuzzleLeftCard { onSetRangeRequested: win.showDialog(setRangeDialog) }
@@ -425,9 +438,12 @@ ApplicationWindow {
                                 visible: body.ws === LayoutController.Entities && !App.layout.rightShownAsRail
                             }
                             Loader {
+                                objectName: "puzzle.right.loader"
                                 anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
                                 width: rightSlot.cardWidth
-                                active: body.puzzleSeen
+                                active: puzzleRightJob.granted
+                                asynchronous: !puzzleRightJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) puzzleRightJob.finish()
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.rightShownAsRail
                                 sourceComponent: Component { PuzzleRightCard {} }
                             }
@@ -677,8 +693,13 @@ ApplicationWindow {
         target: win.Overlay.overlay
         function onWidthChanged() { win.showNextMessage() }
     }
-    // and, after the first frame, not before the workspace is in it
-    onContentReadyChanged: showNextMessage()
+    // and, after the first frame, not before the workspace is in it; what was left
+    // for later (App.builds) begins a second after that
+    onContentReadyChanged: {
+        showNextMessage()
+        if (contentReady)
+            App.builds.startAfter(1000)
+    }
 
     Loader {
         id: messageDialog

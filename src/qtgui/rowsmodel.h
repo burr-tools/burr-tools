@@ -34,6 +34,13 @@
  * and a change in number inserts or removes at the end -- so a view keeps
  * its delegates, and with them focus and hover, through an edit. Delegates
  * read the roles as `required property`s, typed.
+ *
+ * Keyed (setKeyed), the first role is a unique int naming the row's thing
+ * (a shape): a row whose key is new is inserted where it stands, one whose
+ * key is gone is removed, and the others keep their delegates, updated only
+ * if they differ -- a piece added in the middle makes one delegate, not a
+ * changed row for each one after it and one more at the end. Keys out of
+ * order, or not unique, fall back to the rows by position.
  */
 class RowsModel : public QAbstractListModel {
   Q_OBJECT
@@ -62,6 +69,8 @@ public:
 
   void setRows(std::vector<Row> rows);
 
+  void setKeyed(bool keyed) { m_keyed = keyed; }
+
 signals:
 
   void countChanged(void);
@@ -69,7 +78,11 @@ signals:
 
 private:
 
+  // the rows matched by key; false (nothing changed) when the keys do not allow it
+  bool setRowsByKey(std::vector<Row> & rows, bool & changed);
+
   QByteArrayList m_roles;
+  bool m_keyed = false;
   std::vector<Row> m_rows;
   int m_revision = 0;
 };

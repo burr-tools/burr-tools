@@ -48,6 +48,13 @@ For `src/qtgui/qml/`. Accessibility rules are in `llm_docs/qt_gui_accessibility.
   not need (`startContent()`, dialogs on demand). Measure with
   `BURRTOOLS_STARTUP_TRACE`; the performance guide
   (`design/2026-10-08-qtgui-performance-guide.md`) has the method.
+- **What can wait goes through `App.builds`** (`buildqueue.h`), never made
+  back to back at start-up: a workspace not showing is a `BuildJob` with an
+  asynchronous `Loader` (`Main.qml`'s Puzzle cards), `needed` while it shows;
+  a long list's model is a `BatchedRows` over the controller's `RowsModel`
+  (a first screen at once while shown, the rest a step at a time), declared
+  with an id, not written into `model:`. The Solver's cards and solution
+  lists follow the same way.
 - **Side cards** sit in a `CardSlot`: `width: slot.cardWidth`, anchored to its
   fixed edge, never `anchors.fill`, or their content reflows every frame of the
   column's animation.

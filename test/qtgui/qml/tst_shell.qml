@@ -146,19 +146,49 @@ TestCase {
         compare(card.width, width)
     }
 
-    // the app opens in Entities: Puzzle's cards are made on its first showing, then kept
+    // the app opens in Entities: Puzzle's cards are left for later (App.builds) --
+    // made at once when Puzzle shows first, then kept
     function test_thePuzzleCardsAreMadeWhenPuzzleFirstShows() {
+        App.builds.startAfter(60000)                    // held
+        wait(50)
         compare(findChild(win.contentItem, "puzzle.left"), null)
         compare(findChild(win.contentItem, "puzzle.right"), null)
         App.layout.workspace = LayoutController.Puzzle
-        waitForRendering(win.contentItem)
-        const left = item("puzzle.left")
+        const left = findChild(win.contentItem, "puzzle.left")
+        verify(left !== null, "made in the switch, not a frame later")
         verify(left.visible)
         verify(item("puzzle.right").visible)
         App.layout.workspace = LayoutController.Entities
         waitForRendering(win.contentItem)
         compare(item("puzzle.left"), left, "kept, not made again")
         verify(!left.visible)
+    }
+    // or, unseen, in the background once the queue starts: a card at a time, each
+    // over several frames (an asynchronous Loader), Entities answering meanwhile
+    function test_thePuzzleCardsAreMadeInTheBackground() {
+        App.builds.startAfter(60000)
+        wait(50)
+        compare(findChild(win.contentItem, "puzzle.left"), null)
+        const leftLoader = item("puzzle.left.loader")
+        const rightLoader = item("puzzle.right.loader")
+        const order = []
+        const onLeft = () => order.push("left " + leftLoader.status)
+        const onRight = () => order.push("right " + rightLoader.status)
+        leftLoader.statusChanged.connect(onLeft)
+        rightLoader.statusChanged.connect(onRight)
+        App.builds.startAfter(0)
+        tryVerify(() => leftLoader.status === Loader.Ready && rightLoader.status === Loader.Ready, 5000)
+        leftLoader.statusChanged.disconnect(onLeft)
+        rightLoader.statusChanged.disconnect(onRight)
+        // Loading (2), then Ready (1): one card begins after the other is done
+        const seen = order.join(", ")
+        verify(seen === "left 2, left 1, right 2, right 1" || seen === "right 2, right 1, left 2, left 1", seen)
+        compare(App.layout.workspace, LayoutController.Entities)
+        verify(!item("puzzle.left").visible)
+        tryVerify(() => App.builds.idle, 5000)
+        App.layout.workspace = LayoutController.Puzzle
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.left").visible)
     }
 
     function test_railSwitchesWorkspaces() {

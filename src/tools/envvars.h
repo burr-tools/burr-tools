@@ -77,7 +77,7 @@ namespace btenv {
     { "BURRTOOLS_RHI", Scope::QtGui, "d3d11|d3d12|vulkan|opengl|metal", "the 3D graphics API (default: the platform's -- Direct3D 11, Metal, OpenGL)" },
     { "BURRTOOLS_OFFSCREEN_RHI", Scope::QtGui, "d3d11|vulkan|opengl|metal", "the graphics API of the image export (and the render tests)" },
     { "BURRTOOLS_EARLY_DEVICE", Scope::QtGui, "0", "Windows: leave the window's Direct3D 11 device to Qt instead of making it at start-up on a thread of its own" },
-    { "BURRTOOLS_STARTUP_TRACE", Scope::QtGui, "1|quit", "print on stderr how long start-up took to each step, up to app ready; quit also quits there" },
+    { "BURRTOOLS_STARTUP_TRACE", Scope::QtGui, "1|quit", "print on stderr how long start-up took to each step, up to app ready, then the work left for later (its steps, the longest, the longest input waited); quit also quits once that is done" },
     { "BURRTOOLS_QML_OUTLINES", Scope::QtGui, "", "outline every named item; the one under the mouse is highlighted and labelled with its objectName and QML file:line, its parents printed on stderr (for reading the QML)" },
 
     // tests and scripts

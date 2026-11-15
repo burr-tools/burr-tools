@@ -382,8 +382,14 @@ TestCase {
     SignalSpy { id: dashedPaints; signalName: "painted" }
     function test_aHiddenDashedFrameDoesNotRepaint() {
         const f = createTemporaryObject(dashedComponent, win.contentItem, { visible: false })
-        dashedPaints.target = findChild(f, "probe.outline")
-        wait(50)                        // the Canvas's own first paint, once it is available
+        const canvas = findChild(f, "probe.outline")
+        dashedPaints.target = canvas
+        /* the Canvas's own first paint, once it is available, hidden or not: waited for, not
+         * timed (macOS CI's came after 50 ms), then a quiet while */
+        tryVerify(() => canvas.available, 2000)
+        for (let i = 0; i < 20 && dashedPaints.count === 0; i++)
+            wait(50)
+        wait(100)
         dashedPaints.clear()
         for (let i = 0; i < 6; i++) {
             f.width = 61 + i

@@ -423,12 +423,14 @@ ready instead. Fixed; now within 1-5 ms of the second cut:
 
 **What was done.**
 
-- Puzzle's cards are made on its first showing, then kept (`Main.qml`,
-  `body.puzzleSeen`).
+- Puzzle's cards are made on its first showing, then kept. (Since
+  superseded: they are made in the background, below.)
 - Only the view of the pieces that shows is made (tiles or table): the
   hidden table had built its rows -- two fields, a switch and a group
   picker with its popup each -- and every edit updated both views. "All
-  pieces" makes its chips only while open.
+  pieces" makes its chips only while open. (Since superseded: both views
+  and the shut library are made in the background, and kept up a row at a
+  time.)
 - The Result list makes its rows (a picture each) when it first opens.
 - `IconButton` and `LibraryChip` make their tooltip popup on the first
   hover or keyboard focus. Per 200 icon buttons: 18 → 7 ms; per 100 piece
@@ -455,6 +457,68 @@ large puzzles show it.
 
 **Open.** On-screen first paint, app ready and GPU frame times of the
 third cut, by hand on an unlocked display, against the table above.
+
+### Work left for later (`App.builds`), 2026-11-15
+
+What the user has not asked to see is not made at start-up, nor all at
+once later: `BuildQueue` (`src/qtgui/buildqueue.h`) runs it a step at a
+time on the GUI thread, 30 ms apart, starting a second after the first
+frame with the workspace (`Main.qml`, `startAfter(1000)`).
+
+- **The Puzzle cards** are `BuildJob`s: first `App.puzzle.prepare()` (the
+  lists follow the puzzle only while Puzzle shows, so the cards would
+  otherwise be made empty), then the left card, then the right, each an
+  asynchronous `Loader` that Qt Quick's incubator makes a few ms per frame;
+  the queue waits for one to finish before the next. Shown first, a card
+  is made at once (`needed`: the Loader turns synchronous and finishes).
+- **Long lists** go through `BatchedRows`, a proxy that hands its view the
+  rows a batch at a time, each step sized to about 6 ms. A list on screen
+  gets its first 32 rows at once and the rest as urgent steps (not held by
+  the start delay); a hidden one -- the shut library, the view of the
+  pieces not chosen (from Puzzle's first showing on) -- waits its turn.
+  Once whole, it keeps up with its source: a piece added or taken away
+  reaches the view as that row's insert or remove, as `RowsModel` now
+  matches the pieces' and the library's rows by shape (`setKeyed`), so a
+  piece added in the middle makes one tile and one table row instead of
+  changing every row after it. Many rows at once (a new puzzle) come in
+  batches again. The problem list is a `ListView` capped at 140 dp: it
+  makes only the rows in sight, so it needs none of this.
+
+Measured as above (release, offscreen, medians of 10, against the second
+cut interleaved). The trace (`BURRTOOLS_STARTUP_TRACE`) now also reports
+the work left for later, and the longest the event loop was kept from
+input meanwhile (a 4 ms precise timer's lateness):
+
+| Median, ms | PelikanBurr | Stress |
+| :--- | ---: | ---: |
+| first paint, 2nd cut / now | 310 / 324 | 291 / 300 |
+| app ready, 2nd cut / now | 373 / 388 | 367 / 370 |
+| work left for later done (from process start) | 1431 | 1751 |
+| its steps | 5 | 15 |
+| the longest step (max of 10 runs) | 3.6 (4.0) | 7.3 (7.9) |
+| the longest input waited meanwhile (max) | 5.2 (7.2) | 7.5 (9.0) |
+
+(Start-up moved by run-to-run noise only: the runs before these had head
+ahead of the second cut by 5-15 ms.) The first showings, call + frame
+work (one run each; Stress twice, the same within 2 ms):
+
+| | nothing made before | made in the background |
+| :--- | ---: | ---: |
+| PelikanBurr, first switch to Puzzle | 24 + 15 | 4 + 11 |
+| Stress, first switch to Puzzle | 38 + 17 | 10 + 21 |
+| Stress, first tiles → table | 0 + 12 | 0 + 2 |
+| Stress, switched while the queue is at work | 33 + 16 | |
+
+Made in the background, Stress's first frame of Puzzle draws all 104
+library chips (21 ms of frame work, against 17 for the 32 the cold switch
+shows first); no frame of the background work itself is visible.
+
+**Ahead-of-time compilation.** The new QML adds 35 bindings left to the
+engine on the local Qt 6.12 (1859 → 1894), all of them writes of a `bool`
+to a module type's property (`active`, `shown`, `needed`): 6.12's
+qmltyperegistrar lists `bool`, `int` and the rest as opaque types in this
+module's qmltypes already at HEAD, so no such write compiles there. CI's
+6.11 count decides; see `test/qtgui/qml_aot_baseline.json`.
 
 ## History: start-up, measured 2026-10-08
 

@@ -22,6 +22,7 @@
 #define BTQT_APP_H
 
 // the controllers are Q_PROPERTY types, which moc needs complete
+#include "buildqueue.h"
 #include "coloursmodel.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
@@ -83,6 +84,8 @@ class App : public QObject {
   Q_PROPERTY(UpdateController * updates READ updates CONSTANT FINAL)
   Q_PROPERTY(PopupWindowStyle * popupStyle READ popupStyle CONSTANT FINAL)
   Q_PROPERTY(NativeDialogs * nativeDialogs READ nativeDialogs CONSTANT FINAL)
+  // work that can wait: after start-up, a step at a time (buildqueue.h)
+  Q_PROPERTY(BuildQueue * builds READ builds CONSTANT FINAL)
   Q_PROPERTY(QString version READ version CONSTANT FINAL)
 
 public:
@@ -117,6 +120,7 @@ public:
   UpdateController * updates(void) const { return m_updates; }
   PopupWindowStyle * popupStyle(void) const { return m_popupStyle; }
   NativeDialogs * nativeDialogs(void) const { return m_nativeDialogs; }
+  BuildQueue * builds(void) const { return m_builds; }
 
   /* the primary screen's area for windows (without taskbar or dock) */
   Q_INVOKABLE QRect availableGeometry(void) const;
@@ -173,6 +177,7 @@ private:
   UpdateController * m_updates;
   PopupWindowStyle * m_popupStyle;
   NativeDialogs * m_nativeDialogs = nullptr;
+  BuildQueue * m_builds;
 };
 
 #endif

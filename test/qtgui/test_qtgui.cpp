@@ -30,6 +30,7 @@
 #include "test_inspector.h"
 #include "test_voxeltypes.h"
 #include "test_puzzle.h"
+#include "test_builds.h"
 #include "test_saving.h"
 #include "test_viewport.h"
 
@@ -3746,6 +3747,7 @@ int main(int argc, char ** argv) {
   run(TestVoxelTypes());
   run(TestSaving());
   run(TestPuzzle());
+  run(TestBuilds());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

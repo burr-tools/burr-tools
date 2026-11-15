@@ -44,6 +44,7 @@ TestCase {
         Snapshots.leaveNoRoomForSolutions(false)
         App.settings.density = "standard"
         App.puzzle.piecesView = "chips"
+        App.puzzle.allPiecesOpen = true          // a test that failed shut does not shut the next
         // collapsing is per workspace, and the layout is the App's
         App.layout.workspace = LayoutController.Puzzle
         App.layout.leftCollapsed = false
@@ -1914,31 +1915,116 @@ TestCase {
 
     // --- what is made, and when (review 2026-11-15) ---
 
-    // the view not shown is not made: every edit updated both
-    function test_onlyTheShownViewOfThePiecesIsMade() {
-        App.puzzle.stepPiece(1, 1)
-        App.puzzle.stepPiece(2, 1)
-        App.puzzle.piecesView = "chips"
-        waitForRendering(win.contentItem)
-        verify(item("puzzle.used.tile.1"))
-        compare(findChild(win.contentItem, "puzzle.used.row.1"), null)
-        App.puzzle.piecesView = "table"
-        waitForRendering(win.contentItem)
-        verify(item("puzzle.used.row.1"))
-        compare(findChild(win.contentItem, "puzzle.used.tile.1"), null)
-        App.puzzle.piecesView = "chips"
-        waitForRendering(win.contentItem)
-        verify(item("puzzle.used.tile.2"))
+    SignalSpy { id: buildSteps; signalName: "stepped" }
+    // n more shapes, each a piece once if asked, reaching the lists as one change: they
+    // follow the puzzle only while Puzzle shows (TestPuzzle::listsOnlyFollowWhileTheWorkspaceShows)
+    function manyShapesAtOnce(n, asPieces) {
+        App.layout.workspace = LayoutController.Entities
+        const first = App.shapes.count
+        for (let i = 0; i < n; i++)
+            App.shapes.addShape()
+        if (asPieces)
+            for (let s = first; s < first + n; s++)
+                App.puzzle.stepPiece(s, 1)
+        App.layout.workspace = LayoutController.Puzzle
     }
 
-    // a shut All pieces makes no chips; opening it does
-    function test_aShutLibraryMakesNoChips() {
-        App.puzzle.allPiecesOpen = false
+    // both views of the pieces are kept, and an edit changes only what it touches:
+    // a piece added before others makes one tile and one row, the others stay
+    // (RowsModel's rows by key, review 2026-11-15)
+    function test_aPieceAddedMakesOneTileAndOneRow() {
+        App.puzzle.stepPiece(2, 1)
+        App.puzzle.stepPiece(3, 1)
         waitForRendering(win.contentItem)
-        compare(findChild(win.contentItem, "puzzle.library.chip.1"), null)
+        const tile = item("puzzle.used.tile.3")
+        const row = item("puzzle.used.row.3")       // the table, hidden, is made too
+        verify(!row.visible)
+        App.puzzle.stepPiece(1, 1)
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.used.tile.1"))
+        verify(item("puzzle.used.row.1"))
+        compare(item("puzzle.used.tile.3"), tile, "the tile after it is the same")
+        compare(item("puzzle.used.row.3"), row, "and the row")
+        App.puzzle.stepPiece(1, -1)
+        tryVerify(() => findChild(win.contentItem, "puzzle.used.tile.1") === null, 2000)
+        compare(item("puzzle.used.tile.3"), tile)
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.used.row.3"), row, "switching makes nothing")
+        verify(row.visible)
+    }
+
+    // many pieces at once: the view shown gets its first screen at once and the rest a
+    // batch at a time, even while the queue holds back the rest; the view not shown
+    // waits for the queue, then comes in batches too
+    function test_manyPiecesComeInBatches() {
+        App.builds.startAfter(60000)                    // held
+        manyShapesAtOnce(70, true)
+        const table = item("puzzle.used.table")
+        const tiles = item("puzzle.used.tiles")
+        const pieces = App.puzzle.pieces.count
+        verify(pieces >= 70)
+        const firstScreen = findChild(win.contentItem, "puzzle.used.tile." + App.puzzle.pieces.value(31, "shape"))
+        verify(firstScreen !== null, "the first screen at once")
+        const lastTile = "puzzle.used.tile." + App.puzzle.pieces.value(pieces - 1, "shape")
+        compare(findChild(win.contentItem, lastTile), null, "not all at once")
+        tryVerify(() => findChild(win.contentItem, lastTile) !== null, 5000, "the rest, shown, while held")
+        wait(100)
+        verify(table.count < pieces, "the table waits for the queue: " + table.count)
+        buildSteps.target = App.builds
+        buildSteps.clear()
+        App.builds.startAfter(0)
+        tryVerify(() => table.count === pieces, 5000, "made when the queue gets to it")
+        verify(buildSteps.count > 1, "a batch at a time")
+        App.puzzle.piecesView = "table"
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.used.row." + App.puzzle.pieces.value(0, "shape")).visible)
+    }
+
+    // a shut All pieces gets its chips when the queue gets to them; opened, at once
+    function test_aShutLibraryIsMadeInTheBackground() {
+        App.puzzle.allPiecesOpen = false
+        App.builds.startAfter(60000)
+        manyShapesAtOnce(60, false)
+        waitForRendering(win.contentItem)
+        const library = App.puzzle.library
+        const last = "puzzle.library.chip." + library.value(library.count - 1, "shape")
+        wait(100)
+        compare(findChild(win.contentItem, last), null, "held while shut")
+        buildSteps.target = App.builds
+        buildSteps.clear()
+        App.builds.startAfter(0)
+        tryVerify(() => findChild(win.contentItem, last) !== null, 5000, "made when the queue gets to it")
+        verify(buildSteps.count > 1, "a batch at a time")
         App.puzzle.allPiecesOpen = true
         waitForRendering(win.contentItem)
-        verify(item("puzzle.library.chip.1").visible)
+        verify(item(last).visible)
+    }
+    function test_anOpenedLibraryIsMadeWhileTheQueueHolds() {
+        App.puzzle.allPiecesOpen = false
+        App.builds.startAfter(60000)
+        manyShapesAtOnce(60, false)
+        waitForRendering(win.contentItem)
+        const library = App.puzzle.library
+        const last = "puzzle.library.chip." + library.value(library.count - 1, "shape")
+        App.puzzle.allPiecesOpen = true
+        verify(findChild(win.contentItem, "puzzle.library.chip." + library.value(31, "shape")) !== null,
+               "the first screen at once")
+        tryVerify(() => findChild(win.contentItem, last) !== null, 5000, "the rest, shown, while held")
+    }
+
+    // a count of two figures widens its chip: nothing is cut short
+    function test_aLongCountWidensTheChip() {
+        const chip = item("puzzle.library.chip.1")
+        const narrow = chip.width
+        for (let i = 0; i < 10; i++)
+            App.puzzle.stepPiece(1, 1)
+        waitForRendering(win.contentItem)
+        const count = item("puzzle.library.chip.1.count")
+        compare(count.text, "×10")
+        verify(!count.truncated)
+        verify(count.width >= count.implicitWidth, count.width + " < " + count.implicitWidth)
+        verify(chip.width > narrow, "the chip widened")
     }
 
     // the Result's list makes its rows (a picture each) when it first opens, then follows the shapes
