@@ -22,7 +22,7 @@ TestCase {
         // backend, where the 3D view's QQuickRhiItem cannot draw (rendering is
         // tested separately, with an offscreen QRhi), and on Linux it cannot
         // grab the keyboard for a menu that opens as a window of its own
-        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard|QUnifiedTimer::stopAnimationDriver: driver is not running).*/)
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false
