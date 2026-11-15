@@ -92,12 +92,10 @@ class disassembly_c
  */
 class state_c {
 
-  /** contains the x positions of all the pieces that are handled */
-  std::vector<int> dx;
-  /** contains the y positions of all the pieces that are handled */
-  std::vector<int> dy;
-  /** contains the z positions of all the pieces that are handled */
-  std::vector<int> dz;
+  /** the x, y and z position of each piece handled, a piece after the
+   * other: one block, not one for each axis -- a disassembly of a large
+   * puzzle holds millions of states */
+  std::vector<int> pos;
 
 public:
 
@@ -120,7 +118,7 @@ public:
 
   /** about how many bytes this state takes in memory */
   size_t memoryBytes(void) const {
-    return sizeof(*this) + (dx.capacity() + dy.capacity() + dz.capacity()) * sizeof(int);
+    return sizeof(*this) + pos.capacity() * sizeof(int);
   }
 
   /** set the position of a piece */
@@ -128,25 +126,25 @@ public:
 
   /** get the x position of a piece */
   int getX(unsigned int i) const {
-    bt_assert(i < dx.size());
-    return dx[i];
+    bt_assert(3 * size_t(i) < pos.size());
+    return pos[3 * size_t(i)];
   }
   /** get the y position of a piece */
   int getY(unsigned int i) const {
-    bt_assert(i < dy.size());
-    return dy[i];
+    bt_assert(3 * size_t(i) < pos.size());
+    return pos[3 * size_t(i) + 1];
   }
   /** get the z position of a piece */
   int getZ(unsigned int i) const {
-    bt_assert(i < dz.size());
-    return dz[i];
+    bt_assert(3 * size_t(i) < pos.size());
+    return pos[3 * size_t(i) + 2];
   }
 
   /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
 
   /** return the piece count */
-  unsigned int getPiecenumber(void) const { return dx.size(); }
+  unsigned int getPiecenumber(void) const { return unsigned(pos.size() / 3); }
 
   // no copying and assigning
   state_c(const state_c&) = delete;
