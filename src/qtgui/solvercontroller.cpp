@@ -45,6 +45,8 @@
 #include <atomic>
 #include <cmath>
 #include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace {
@@ -115,6 +117,9 @@ struct SolverController::Analysis {
   };
   std::vector<Result> results;              ///< under mutex
   std::atomic<bool> failed{ false };
+  /* each assembly's place in the saved list, found once: the list does not
+   * change while the analysis runs (the document is busy) */
+  std::unordered_map<unsigned int, unsigned int> where;
   std::jthread worker;
 };
 
@@ -170,7 +175,9 @@ SolverController::SolverController(SettingsController * settings, DocumentContro
       return;
     }
     refreshRun();
-    refreshSolutions(true);
+    // an analysis's results: the list follows at the poll's rate
+    if (!m_quietResults)
+      refreshSolutions(true);
   });
   connect(m_layout, &LayoutController::changed, this, [this] {
     if (!shown())
@@ -754,8 +761,14 @@ void SolverController::refreshSolutions(bool force) {
   if (pr) {
     auto lock = pr->lockSolutions();
     auto it = m_cannot.find(m_problem);
-    change = m_list.read(*pr, it == m_cannot.end() ? std::vector<unsigned>{} : it->second,
-                         btui::checksDisassembly(m_options), m_sort);
+    const std::vector<unsigned> none;
+    const std::vector<unsigned> & cannot = it == m_cannot.end() ? none : it->second;
+    // after an analysis only its solutions changed: their rows alone are read again
+    if (!m_analysed.empty() && m_analysedProblem == m_problem)
+      change = m_list.readChanged(*pr, cannot, m_analysed, btui::checksDisassembly(m_options), m_sort);
+    else
+      change = m_list.read(*pr, cannot, btui::checksDisassembly(m_options), m_sort);
+    m_analysed.clear();
   } else
     change = m_list.clear();
   if (change.none() && !force)
@@ -1478,7 +1491,7 @@ void SolverController::analyse(const QString & which) {
     // the slowest, and it would say the same
     const auto c = m_cannot.find(m_problem);
     auto knownCannot = [&](unsigned assembly) {
-      return c != m_cannot.end() && std::find(c->second.begin(), c->second.end(), assembly) != c->second.end();
+      return c != m_cannot.end() && std::binary_search(c->second.begin(), c->second.end(), assembly);
     };
     std::vector<std::pair<unsigned, std::unique_ptr<assembly_c>>> work;
     {
@@ -1548,27 +1561,54 @@ void SolverController::finishAnalysis(void) {
     results.swap(a.results);
     over = a.done.load() >= a.total || a.failed || a.worker.get_stop_token().stop_requested();
   }
-  if (!results.empty())
+  if (!results.empty()) {
+    // the list follows at the poll's rate, the analysed rows only (refreshSolutions)
+    m_quietResults = true;
     m_doc->editResults([&](puzzle_c & p) {
       if (unsigned(a.problem) >= p.getNumberOfProblems())
         return;
       problem_c * pr = p.getProblem(unsigned(a.problem));
       auto lock = pr->lockSolutions();
+      // a result's solution by its assembly number: the first, as a walk would find
+      bool fresh = false;
+      auto place = [&](unsigned assembly) -> int {
+        auto it = a.where.find(assembly);
+        const bool stale = it == a.where.end() || it->second >= pr->getNumberOfSavedSolutions()
+                        || pr->getSavedSolution(it->second)->getAssemblyNumber() != assembly;
+        if (stale && !fresh) {
+          a.where.clear();
+          for (unsigned i = pr->getNumberOfSavedSolutions(); i-- > 0;)
+            a.where[pr->getSavedSolution(i)->getAssemblyNumber()] = i;
+          fresh = true;
+          it = a.where.find(assembly);
+        } else if (stale)
+          return -1;
+        return it == a.where.end() ? -1 : int(it->second);
+      };
+      // the verdicts anew for the assemblies analysed, the list kept ascending
       std::vector<unsigned> & cannot = m_cannot[a.problem];
+      std::unordered_set<unsigned> analysed;
+      for (const auto & r : results)
+        analysed.insert(r.assembly);
+      std::erase_if(cannot, [&](unsigned x) { return analysed.count(x) != 0; });
       for (auto & r : results) {
-        for (unsigned i = 0; i < pr->getNumberOfSavedSolutions(); i++)
-          if (pr->getSavedSolution(i)->getAssemblyNumber() == r.assembly) {
-            cannot.erase(std::remove(cannot.begin(), cannot.end(), r.assembly), cannot.end());
-            if (r.tree)
-              pr->getSavedSolution(i)->setDisassembly(std::move(r.tree));
-            else {
-              pr->getSavedSolution(i)->removeDisassembly();
-              cannot.push_back(r.assembly);
-            }
-            break;
-          }
+        const int i = place(r.assembly);
+        if (i < 0)
+          continue;
+        if (r.tree)
+          pr->getSavedSolution(unsigned(i))->setDisassembly(std::move(r.tree));
+        else {
+          pr->getSavedSolution(unsigned(i))->removeDisassembly();
+          cannot.push_back(r.assembly);
+        }
+        m_analysed.push_back(r.assembly);
       }
+      std::sort(cannot.begin(), cannot.end());
+      cannot.erase(std::unique(cannot.begin(), cannot.end()), cannot.end());
+      m_analysedProblem = a.problem;
     });
+    m_quietResults = false;
+  }
   if (over && m_analysis) {
     const bool failed = a.failed;
     const bool stopped = a.worker.get_stop_token().stop_requested();
@@ -1577,6 +1617,12 @@ void SolverController::finishAnalysis(void) {
       a.worker.join();
     m_analysis.reset();
     updateBusy();
+    // the rows the polls have not shown yet; the poll stops with the analysis
+    refreshRun();
+    if (shown())
+      refreshSolutions(true);
+    else
+      m_listStale = true;
     if (failed)
       emit messageRequested(tr("Solver"), tr("The disassembly could not be analysed."));
     else if (stopped)

@@ -217,7 +217,7 @@ namespace btui {
       if (digits)
         f.level.push_back(n);
       f.moves = int(d->sumMoves());
-    } else if (std::find(cannot.begin(), cannot.end(), f.assembly) != cannot.end())
+    } else if (std::binary_search(cannot.begin(), cannot.end(), f.assembly))
       f.da = DaState::Cannot;
     return f;
   }
@@ -326,6 +326,94 @@ namespace btui {
     basis.changes = solution_c::changeCount();
     basis.cannot = cannot;
     return read(src, basis, onlyDisassemblable, sort);
+  }
+
+  SolutionList::Change SolutionList::readChanged(const problem_c & prob, const std::vector<unsigned int> & cannot,
+                                                 const std::vector<unsigned int> & assemblies,
+                                                 bool onlyDisassemblable, ListSort sort) {
+    Source src;
+    src.count = prob.getNumberOfSavedSolutions();
+    src.assembly = [&](unsigned i) { return prob.getSavedSolution(i)->getAssemblyNumber(); };
+    src.facts = [&](unsigned i) { return solutionFactsOf(*prob.getSavedSolution(i), int(i), cannot); };
+    Basis basis;
+    basis.owner = &prob;
+    basis.changes = solution_c::changeCount();
+    basis.cannot = cannot;
+    return readChanged(src, basis, assemblies, onlyDisassemblable, sort);
+  }
+
+  SolutionList::Change SolutionList::readChanged(const Source & src, const Basis & basis,
+                                                 const std::vector<unsigned int> & assemblies,
+                                                 bool onlyDisassemblable, ListSort sort) {
+    if (!m_valid || !m_keyed || basis.owner != m_basis.owner || src.count != m_all.size())
+      return readAll(src, basis, onlyDisassemblable, sort);
+
+    // the changed ones' facts again, each found by its number where it stood
+    std::vector<int> changed;
+    changed.reserve(assemblies.size());
+    for (unsigned a : assemblies) {
+      const auto it = m_ids.find(a);
+      if (it == m_ids.end())
+        return readAll(src, basis, onlyDisassemblable, sort);
+      SolutionFacts & f = m_all[size_t(it->second)];
+      const int index = f.index;
+      if (index < 0 || unsigned(index) >= src.count || src.assembly(unsigned(index)) != a)
+        return readAll(src, basis, onlyDisassemblable, sort);
+      f = src.facts(unsigned(index));
+      f.index = index;
+      f.assembly = a;
+      changed.push_back(it->second);
+    }
+    m_basis = basis;
+    std::sort(changed.begin(), changed.end());
+    changed.erase(std::unique(changed.begin(), changed.end()), changed.end());
+
+    // the filter or the sort in effect changed (Moves offered once one has
+    // them): the rows anew
+    const ListSort eff = sortInEffect(m_all, sort);
+    if (onlyDisassemblable != m_only || eff.key != m_key || eff.descending != m_descending) {
+      m_only = onlyDisassemblable;
+      m_key = eff.key;
+      m_descending = eff.descending;
+      m_shown = shownSolutions(m_all, onlyDisassemblable, sort);
+      Change reset;
+      reset.reset = true;
+      return reset;
+    }
+
+    Change ch;
+    // their rows out: the others close up, in their order
+    std::vector<char> isChanged(m_all.size(), 0);
+    for (int c : changed)
+      isChanged[size_t(c)] = 1;
+    size_t w = 0;
+    for (size_t r = 0; r < m_shown.size(); r++) {
+      if (isChanged[size_t(m_shown[r])])
+        ch.removed.push_back(int(r));
+      else
+        m_shown[w++] = m_shown[r];
+    }
+    m_shown.resize(w);
+
+    // and in again where they belong, merged from the end as read() does
+    std::erase_if(changed, [&](int c) { return onlyDisassemblable && !canBeTakenApart(m_all[size_t(c)]); });
+    if (changed.empty())
+      return ch;
+    std::sort(changed.begin(), changed.end(), [&](int x, int y) { return rowBefore(m_all[size_t(x)], m_all[size_t(y)], eff); });
+    size_t i = m_shown.size(), j = changed.size();
+    w = m_shown.size() + changed.size();
+    m_shown.resize(w);
+    ch.inserted.resize(changed.size());
+    while (j > 0) {
+      w--;
+      if (i > 0 && rowBefore(m_all[size_t(changed[j - 1])], m_all[size_t(m_shown[i - 1])], eff))
+        m_shown[w] = m_shown[--i];
+      else {
+        m_shown[w] = changed[--j];
+        ch.inserted[j] = int(w);
+      }
+    }
+    return ch;
   }
 
   SolutionList::Change SolutionList::clear(void) {

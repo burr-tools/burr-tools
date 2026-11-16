@@ -414,7 +414,7 @@ private:
   std::unique_ptr<solveThread_c> m_thread;
   int m_threadProblem = -1;
   std::map<int, bool> m_prepared;                   ///< the last run of a problem was Prepare
-  std::map<int, std::vector<unsigned>> m_cannot;    ///< per problem: assemblies found not to come apart
+  std::map<int, std::vector<unsigned>> m_cannot;    ///< per problem: assemblies found not to come apart, ascending
   QTimer m_poll;
   QTimer m_sceneTimer;                              ///< scrubTo's one build a frame
   /* what refreshSolutions last read, to skip a poll that would find the same */
@@ -447,6 +447,11 @@ private:
    * kListSlowMs past kManySolutions; not while another workspace shows */
   QElapsedTimer m_listClock;
   bool m_listStale = false;
+  /* an analysis's results: the assemblies whose rows changed since the list
+   * was read, and that their storing does not refresh it at once */
+  std::vector<unsigned> m_analysed;
+  int m_analysedProblem = -1;
+  bool m_quietResults = false;
   bool listDue(void);
   int m_maxMoves = 0;                               ///< the rows' longest disassembly, for movesFraction
   RowsModel::Row rowOf(const btui::SolutionFacts & f, bool doomed) const;

@@ -341,6 +341,78 @@ TEST_CASE("the kept list's rows are shownSolutions' through adds, removals and s
   }
 }
 
+TEST_CASE("an analysis's solutions read again move only their rows", "[ui][solver]") {
+  // a list read once, then batches of its solutions given (or robbed of) a
+  // disassembly, as Manage > Analyse stores them: the rows always
+  // shownSolutions' over the list, the changes reported make them, and only
+  // the changed solutions' facts are read again
+  std::mt19937 rng(20261116);
+  FakeList src;
+  for (unsigned a = 0; a < 300; a++)
+    src.saved.push_back(fact(0, a * 2 + 1, int(3 + rng() % 3)));       // none checked yet
+  for (size_t i = 0; i < src.saved.size(); i++)
+    src.saved[i].index = int(i);
+  const ListSort sorts[] = { {}, { ListKey::Number, true }, { ListKey::Moves, true }, { ListKey::Moves, false },
+                             { ListKey::Level, true }, { ListKey::Pieces, false } };
+  for (bool only : { false, true })
+    for (const ListSort & sort : sorts) {
+      SolutionList list;
+      src.read(list, only, sort);
+      std::vector<unsigned> view = rowsOf(list.all(), list.shown());
+      for (int step = 0; step < 40; step++) {
+        std::vector<unsigned> analysed;
+        const int n = 1 + int(rng() % 25);
+        for (int k = 0; k < n; k++) {
+          SolutionFacts & f = src.saved[rng() % src.saved.size()];
+          if (rng() % 4 == 0) {
+            f.da = DaState::Cannot;
+            f.moves = -1;
+            f.level.clear();
+          } else {
+            f.da = DaState::Stored;
+            f.moves = int(rng() % 9);
+            f.level = { unsigned(f.moves), unsigned(rng() % 3) };
+          }
+          analysed.push_back(f.assembly);
+        }
+        src.factsRead = 0;
+        src.basis.changes++;
+        const auto ch = list.readChanged(src.source(), src.basis, analysed, only, sort);
+        const std::vector<unsigned> want = rowsOf(src.saved, shownSolutions(src.saved, only, sort));
+        const std::vector<unsigned> now = rowsOf(list.all(), list.shown());
+        REQUIRE(now == want);
+        apply(view, ch, now);
+        REQUIRE(view == want);
+        if (!ch.reset)
+          REQUIRE(src.factsRead <= n);
+      }
+    }
+}
+
+TEST_CASE("readChanged reads everything when it cannot be sure", "[ui][solver]") {
+  FakeList src;
+  for (unsigned a = 0; a < 10; a++)
+    src.saved.push_back(fact(0, a, 3));
+  for (size_t i = 0; i < src.saved.size(); i++)
+    src.saved[i].index = int(i);
+  SolutionList list;
+  // not read before
+  auto ch = list.readChanged(src.source(), src.basis, { 3 }, false, {});
+  CHECK(ch.reset);
+  CHECK(list.shown().size() == 10);
+  // a number it does not know
+  src.factsRead = 0;
+  ch = list.readChanged(src.source(), src.basis, { 99 }, false, {});
+  CHECK(ch.reset);
+  CHECK(src.factsRead == 10);
+  // the list grew meanwhile
+  src.saved.push_back(fact(0, 10, 3));
+  src.saved.back().index = 10;
+  ch = list.readChanged(src.source(), src.basis, { 3 }, false, {});
+  CHECK(ch.reset);
+  CHECK(list.shown().size() == 11);
+}
+
 TEST_CASE("the kept list reads the facts of new solutions only", "[ui][solver]") {
   FakeList src;
   for (unsigned a = 0; a < 100; a++)

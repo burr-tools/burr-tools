@@ -169,8 +169,8 @@ namespace btui {
   };
 
   /* Every saved solution of the problem; call it under its lockSolutions().
-   * `cannot` are assembly numbers an analysis found cannot be taken apart:
-   * the library keeps no mark for that. */
+   * `cannot` are assembly numbers an analysis found cannot be taken apart,
+   * ascending: the library keeps no mark for that. */
   std::vector<SolutionFacts> solutionFacts(const problem_c & prob, const std::vector<unsigned int> & cannot = {});
 
   /* the list's sort (C20): the column headers and the Sort-by segment */
@@ -240,6 +240,16 @@ namespace btui {
     /* the problem's saved solutions; under its lockSolutions() */
     Change read(const problem_c & prob, const std::vector<unsigned int> & cannot, bool onlyDisassemblable, ListSort sort);
     Change read(const Source & src, const Basis & basis, bool onlyDisassemblable, ListSort sort);
+    /* After the solutions with these assembly numbers changed inside -- an
+     * analysis stored or dropped their disassembly, or found they cannot
+     * come apart -- and nothing else did: their facts read again, their rows
+     * taken out and put back where they belong now, the other rows left
+     * alone. A list not read before, of another problem or another length,
+     * or a number it does not know, is read whole instead. */
+    Change readChanged(const problem_c & prob, const std::vector<unsigned int> & cannot,
+                       const std::vector<unsigned int> & assemblies, bool onlyDisassemblable, ListSort sort);
+    Change readChanged(const Source & src, const Basis & basis, const std::vector<unsigned int> & assemblies,
+                       bool onlyDisassemblable, ListSort sort);
     /* nothing kept: the next read reads everything */
     Change clear(void);
 
