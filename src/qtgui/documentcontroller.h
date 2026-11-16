@@ -119,6 +119,8 @@ public:
   /* for tests: these through QML, and which files open on a thread */
   Q_INVOKABLE void setStageAboveForTesting(double bytes) { setStageAbove(size_t(bytes)); }
   Q_INVOKABLE void setLoadPollIntervalForTesting(int ms) { setLoadPollInterval(ms); }
+  /* both as they are outside tests */
+  Q_INVOKABLE void resetLoadingForTesting(void) { setStageAbove(kStageAbove); setLoadPollInterval(100); }
   void setOpenAsyncAbove(std::uintmax_t bytes) { m_session.setOpenAsyncAbove(bytes); }
   /* for tests: a smaller one; and how often the reading is looked at (100 ms),
    * whose end the views hear of no sooner */

@@ -355,14 +355,15 @@ namespace btui {
       const auto it = m_ids.find(a);
       if (it == m_ids.end())
         return readAll(src, basis, onlyDisassemblable, sort);
-      SolutionFacts & f = m_all[size_t(it->second)];
+      const int id = it->second;      // readAll() below may change m_ids
+      SolutionFacts & f = m_all[size_t(id)];
       const int index = f.index;
       if (index < 0 || unsigned(index) >= src.count || src.assembly(unsigned(index)) != a)
         return readAll(src, basis, onlyDisassemblable, sort);
       f = src.facts(unsigned(index));
       f.index = index;
       f.assembly = a;
-      changed.push_back(it->second);
+      changed.push_back(id);
     }
     m_basis = basis;
     std::sort(changed.begin(), changed.end());

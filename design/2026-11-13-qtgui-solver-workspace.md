@@ -1,8 +1,8 @@
 # The Solver workspace in burrtools-qt (P11) — plan, resolutions, status
 
 **Status (2026-11-16): done.** Every step below is done, and so is the work
-of §5 that came after; the branch is draft PR #216, waiting on CI for the
-macOS gallery references and the Qt 6.11 AOT baseline.
+of §5 that came after; the branch is draft PR #216, whose CI gave the
+macOS gallery references and the Qt 6.11 AOT baseline (1052).
 `src/qtgui/README.md` ▸ *Spec review of the Solver workspace* lists the
 criteria still without a test.
 

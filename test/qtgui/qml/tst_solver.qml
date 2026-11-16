@@ -48,6 +48,10 @@ TestCase {
     }
 
     function cleanup() {
+        // a staged open left behind by a failed test would keep every later
+        // test's document busy: the settings back, and the reading ended
+        App.document.resetLoadingForTesting()
+        tryVerify(() => !App.document.loadingSolutions && !App.document.opening, 10000)
         App.settings.density = "standard"
         App.solver.view = "list"
         App.layout.workspace = LayoutController.Solver
@@ -255,15 +259,14 @@ TestCase {
         waitForRendering(win.contentItem)
         const pct = item("solver.loading.pct")
         // the words and the percentage at their widths, the bar all the rest
-        compare(words.width, words.implicitWidth)
+        fuzzyCompare(words.width, words.implicitWidth, 1)       // laid out to whole pixels
         fuzzyCompare(bar.width, row.width - words.width - pct.width - 2 * row.spacing, 1)
         verify(bar.width >= 60, "the bar " + bar.width + " of " + row.width)
         verify(item("solver.loading.fill").width <= bar.width)
-        // the reading's end: the row goes
+        // the reading's end: the row goes (cleanup() puts the settings back)
         App.document.setLoadPollIntervalForTesting(100)
         tryVerify(() => !App.document.loadingSolutions, 10000)
         tryVerify(() => !row.visible, 2000)
-        App.document.setStageAboveForTesting(5 * 1024 * 1024)
     }
 
     function test_theViewIsReadOnly() {

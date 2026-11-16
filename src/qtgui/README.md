@@ -37,7 +37,7 @@ it can replace it.
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
 | — Puzzle review (2026-11-14) | The Puzzle tab against the spec: every AC of C16–C18 and those of C11, C15 and the density that name it, the element ids, the test plan's T-C16 … T-C18 | Done; findings in *Spec review of the Puzzle workspace* below |
 | P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle, DashedFrame primitives | Done (third cut); decisions in *P10 decisions* |
-| P11 Solver (C19, C20, C21) | Solver card: the problem, What to check, Search options (n changed), Prepare / Start / Continue / Stop with the progress bar, activity, counters and times, Placements / Movements / Step; Solutions card: List (sortable headers, DA marks, moves bars) and Slider views, the empty states, the disassembly player (0.5×–8×, fixed height), Manage (remove with hover preview and confirmation, delete and analyse disassemblies in the background), Export Solution to STL, the piece chips; the 3D scene of the selected solution at the player's move, wireframe pieces (hull edges, Show through solid pieces), the assembler's state, the docked explorer drawer; edits refused while a solve or an analysis runs; the PieceChipButton and DaMark primitives. Beyond the spec (2026-11-15/16): lists of tens of thousands of solutions (incremental reads, 5 / 2 Hz), a large file opening on a thread and its solutions read after with a bar, broken solutions left out, Analyse by assembly number | Done (fourth cut, draft #216): every AC of C19–C21 built; decisions in *P11 decisions*, plan and resolved open questions in [`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md); *Spec review of the Solver workspace* below lists the criteria still without a test |
+| P11 Solver (C19, C20, C21) | Solver card: the problem, What to check, Search options (n changed), Prepare / Start / Continue / Stop with the progress bar, activity, counters and times, Placements / Movements / Step; Solutions card: List (sortable headers, DA marks, moves bars) and Slider views, the empty states, the disassembly player (0.5×–8×, fixed height), Manage (remove with hover preview and confirmation, delete and analyse disassemblies in the background), Export Solution to STL, the piece chips; the 3D scene of the selected solution at the player's move, wireframe pieces (hull edges, Show through solid pieces), the assembler's state, the docked explorer drawer; edits refused while a solve or an analysis runs; the PieceChipButton and DaMark primitives. Beyond the spec (2026-11-15/16): lists of tens of thousands of solutions (incremental reads, 5 / 2 Hz), a large file opening on a thread and its solutions read after with a bar, broken solutions left out, Analyse by assembly number | Done (fourth cut, draft #216): every AC of C19–C21 built; decisions in *P11 decisions*, plan and resolved open questions in `design/2026-11-13-qtgui-solver-workspace.md`; *Spec review of the Solver workspace* below lists the criteria still without a test |
 
 ### Deferred to the next phase
 
@@ -65,10 +65,9 @@ below, lists them per phase).
 | A press that may change nothing still warns | C08 | Only when the solutions are too big for the undo history to keep (a voxel edit asks nothing otherwise, since 2026-11-14): a stroke's first press asks before anyone knows the stroke will change a voxel, and a resize that is then blocked has asked too. A 3D click and every Puzzle change are tried on a copy first | P8 |
 | Deletes keep their solutions for undo | PR 181 review | Voxel edits and changes to what a problem asks for keep theirs in the undo step (2026-11-14). A problem's delete, a shape's delete and a colour's remove still clear them for good behind the once-a-session warning: the history's kept records go by problem index, which a delete moves | P8 |
 | Solution counts read without the lock | P11 | `ToolsController` (the Status dialog) and `ImageExportController` read a problem's saved solutions without `lockSolutions()`; while a solve runs the thread may change them. Every edit is refused then (`DocumentController::busy`), but these dialogs only read: they want the lock or to wait for the solve | P8 |
-| The solver QML's AOT count | `qtgui_qml_aot` | The Solver's QML was measured with Qt 6.12 only (SolverRightCard 192, SolverLeftCard 92, ExplorerDrawer 48 bindings left to the engine there; most are the known QColor, font and shadowable-method causes above). CI's 6.11 sets the baseline for the new files | With the P11 pull request |
+| The solver QML's AOT count | `qtgui_qml_aot` | The Solver's QML took CI's Qt 6.11 count from 917 to 1052 (baseline raised 2026-11-16 from #216's report): SolverRightCard 56, ExplorerDrawer 29, SolverLeftCard 19, PieceChipButton 19, Main 70 -> 80, StlExportDialog 22 -> 25, RadioCard 1 (LibraryChip 4 -> 2). Most are the known causes above (QColor, fonts, shadowable methods); the new files have not had the typing pass yet | P8 |
 | Legacy's movement tree | C21, OQ-28 | The Movements drawer lists the selected solution's disassembly piece by piece and drives the player; legacy's tree of disassembler nodes (analyse a node, the next levels, add a movement, prune) is not ported | After P8 |
 | Fade-out of removed pieces as a setting | legacy `fadeout` | Pieces that leave the assembly fade (legacy's default); legacy's setting to turn that off has no Settings row yet | P8 |
-| Gallery references for macOS (P11) | test plan | `pieceChip` and `daMark` have Windows references only, and `radioCard` (its outer focus ring) is new on Windows only: `just update-snapshots pieceChip,daMark,radioCard` on a Mac | Before the P11 pull request |
 | Small piece buttons | WCAG 2.5.8 (2.2) | The library chip's − and + are 16 x 20, the tile's 22 wide (18 in Minimal): fine for 2.1 AA, short of 2.2's 24 x 24. Wider ones change the fixed sizes of C16 | P8 |
 | The matrix at the top colour counts | performance guide | A shut section builds nothing, but an open matrix at 63 colours is 3969 items, about 3 s to first draw (20 colours 155 ms). A view that reuses its cells would need a table model | After P8 |
 | One draw per shape | performance guide | A selection rebuilds the Puzzle scene's one mesh; `maxSceneVertices` keeps that under about a third of a second by leaving copies out. Instancing each shape would remove both the cost and the limit | After P8 |
@@ -593,9 +592,8 @@ moves to a later phase says why in that table.
   the solver's progress announced; the `solverListRow`, `player` and
   `pieceDisplay` density tokens read; after it, lists of tens of thousands
   of solutions, large files opened on a thread and read in stages, Analyse
-  by assembly number (*P11 decisions*). Still before its pull request leaves
-  draft: the macOS gallery references and the Qt 6.11 AOT baseline, from
-  CI on #216.
+  by assembly number (*P11 decisions*). The macOS gallery references and
+  the Qt 6.11 AOT baseline came from CI on #216 (2026-11-16).
 - **P12a Density** — done: Minimal's auto-hiding 3D toolbar (density.md
   section 3): hidden faded and 10 dp up with a 40 x 4 handle; shown for the
   pointer within 72 dp of the view's top (a strip over the canvas, whose
@@ -1181,7 +1179,7 @@ Product decisions of 2026-11-06, unless a line says otherwise.
 
 The plan, the spec's open questions OQ-25 to OQ-33 answered from legacy's
 source, and the order of the work are in
-[`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md).
+`design/2026-11-13-qtgui-solver-workspace.md`.
 Decisions of 2026-11-13, to be confirmed by the product owner:
 
 - **Keep every, not Drop below level** (OQ-26). Legacy's *Drop* is the
@@ -1483,6 +1481,5 @@ breaking.
 | AC-C21-06 heavier shapes stay (T-C21-4) | yes, by the disassembler (`movementAnalysator_c::newNode` moves the lighter side) | **untested** in the Solver: no test plays a solution with unequal weights |
 
 Journeys J14–J16 and J19 run through these; they are not scripted as a
-whole. Still open for the phase: the macOS gallery references and the
-Qt 6.11 AOT baseline (*Deferred to the next phase*), which CI on #216
-produces.
+whole. The macOS gallery references and the Qt 6.11 AOT baseline came
+from CI on #216 (2026-11-16).
