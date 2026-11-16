@@ -377,19 +377,38 @@ namespace puzzleLoader {
       return std::move(d);
     };
 
-    if (!scan.staged || scan.insideBytes < threshold)
+    // the puzzle from everything but the solutions; false when that does not read
+    auto skeletonReads = [&] {
+      try {
+        memoryBuf mb(sk.text.data(), sk.text.size());
+        std::istream is(&mb);
+        xmlParser_c pars(is);
+        d.puzzle = std::make_unique<puzzle_c>(pars);
+      } catch (...) {
+        d.puzzle.reset();
+        return false;
+      }
+      return d.puzzle->getNumberOfProblems() == scan.problems;
+    };
+
+    if (!scan.staged)
       return whole();
 
-    try {
-      memoryBuf mb(sk.text.data(), sk.text.size());
-      std::istream is(&mb);
-      xmlParser_c pars(is);
-      d.puzzle = std::make_unique<puzzle_c>(pars);
-    } catch (...) {
-      // what is wrong with it, as loading it whole says, with its position
-      return whole();
+    if (scan.insideBytes < threshold) {
+      try {
+        return whole();
+      } catch (xmlParserException_c &) {
+        /* a solution that does not read, when the rest does: the reader
+         * reads the others and leaves it out (solutionReader_c::skipped) */
+        if (!skeletonReads())
+          throw;
+        d.staged = true;
+        return d;
+      }
     }
-    if (d.puzzle->getNumberOfProblems() != scan.problems)
+
+    // what is wrong with it otherwise, as loading it whole says, with its position
+    if (!skeletonReads())
       return whole();
     d.staged = true;
     return d;
@@ -438,7 +457,8 @@ void solutionReader_c::run(std::stop_token stop) {
     unsigned pieces;
     std::string doc;
     std::vector<std::unique_ptr<solution_c>> solutions;
-    bool failed = false;
+    unsigned skipped = 0;          // solutions that did not read, left out
+    std::string why;               // what was wrong with the first
     bool done = false;
   };
 
@@ -451,6 +471,8 @@ void solutionReader_c::run(std::stop_token stop) {
     unsigned threads;
     std::string doc = kOpen;
     bool failed = false;
+    unsigned skipped = 0;
+    std::string why;
 
     std::mutex m;
     std::condition_variable cv;                    // a batch read, or one to read
@@ -481,9 +503,43 @@ void solutionReader_c::run(std::stop_token stop) {
       try {
         readSolutions(b.doc, b.pieces, gt, b.solutions);
       } catch (...) {
-        b.failed = true;
+        // one that does not read: the batch again, a solution at a time
+        b.solutions.clear();
+        readEach(b);
       }
       std::string().swap(b.doc);                   // its XML no longer needed
+    }
+
+    /* the batch's solutions one by one, from one solution's end to the
+     * next: those that do not read are left out, and counted */
+    void readEach(batch_t & b) {
+      static const std::string kEnd = "</solution>";
+      const size_t to = b.doc.size() - kClose.size();
+      for (size_t at = kOpen.size(); at < to;) {
+        size_t e = b.doc.find(kEnd, at);
+        e = e == std::string::npos || e + kEnd.size() > to ? to : e + kEnd.size();
+        std::string one = kOpen;
+        one.append(b.doc, at, e - at);
+        one += kClose;
+        std::vector<std::unique_ptr<solution_c>> got;
+        std::string wrong;
+        try {
+          readSolutions(one, b.pieces, gt, got);
+        } catch (xmlParserException_c & x) {
+          wrong = x.what();
+        } catch (std::exception & x) {
+          wrong = x.what();
+        }
+        if (wrong.empty())
+          for (auto & sol : got)
+            b.solutions.push_back(std::move(sol));
+        else {
+          b.skipped++;
+          if (b.why.empty())
+            b.why = wrong;
+        }
+        at = e;
+      }
     }
 
     void parse(void) {
@@ -516,10 +572,9 @@ void solutionReader_c::run(std::stop_token stop) {
           b = std::move(inOrder.front());
           inOrder.pop_front();
         }
-        if (b->failed) {
-          failed = true;
-          return false;
-        }
+        if (b->skipped && skipped == 0)
+          why = b->why;
+        skipped += b->skipped;
         b->problem->appendLoadedSolutions(b->solutions);
       }
     }
@@ -564,6 +619,8 @@ void solutionReader_c::run(std::stop_token stop) {
   };
 
   bool ok = false;
+  unsigned skipped = 0;
+  std::string skippedWhy;
   try {
     std::unique_ptr<std::istream> in = reopen();
     if (in) {
@@ -574,20 +631,45 @@ void solutionReader_c::run(std::stop_token stop) {
         finished.store(true, std::memory_order_release);
         return;
       }
-      // the same file as readDefinitions() read, every solution in it read
+      // the same file as readDefinitions() read, every solution in it read or left out
       ok = walked && !r.failed && scan.staged && scan.problems == puzzle.getNumberOfProblems() && scan.bytes == bytes;
+      skipped = r.skipped;
+      skippedWhy = r.why;
     }
   } catch (...) {
     ok = false;
   }
 
-  if (!ok && !stop.stop_requested())
-    readWhole();
+  if (!stop.stop_requested() && (!ok || skipped > 0)) {
+    /* Read whole, the file says what is wrong with it, and where. When that
+     * reads, the batches were cut in the wrong place (an end tag in a
+     * comment): its solutions are the file's. When it does not, the ones
+     * left out stay out (skipped) -- or, when the batches did not even get
+     * through the file, the reading failed (error) */
+    std::string why;
+    if (!readWhole(why)) {
+      std::lock_guard<std::mutex> g(errorMutex);
+      if (ok) {
+        skippedCount = skipped;
+        skipText = why.empty() ? skippedWhy : why;
+      } else
+        errorText = why;
+    }
+  }
   finished.store(true, std::memory_order_release);
 }
 
-bool solutionReader_c::readWhole(void) {
-  std::string why;
+unsigned solutionReader_c::skipped(void) const {
+  std::lock_guard<std::mutex> g(errorMutex);
+  return skippedCount;
+}
+
+std::string solutionReader_c::skipError(void) const {
+  std::lock_guard<std::mutex> g(errorMutex);
+  return skipText;
+}
+
+bool solutionReader_c::readWhole(std::string & why) {
   try {
     std::unique_ptr<std::istream> in = reopen();
     if (!in)
@@ -608,7 +690,5 @@ bool solutionReader_c::readWhole(void) {
   } catch (std::exception & e) {
     why = e.what();
   }
-  std::lock_guard<std::mutex> g(errorMutex);
-  errorText = why;
   return false;
 }

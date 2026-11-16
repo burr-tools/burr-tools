@@ -49,9 +49,11 @@ class puzzle_c;
  * The result is the puzzle loading it whole gives (puzzle_c(xmlParser_c&)),
  * and so is an error: what the staged read is not sure of (a problem's
  * solutions before its shapes, a document type declaration, markup out of
- * place) it leaves to the whole load, and a solution that does not read --
- * also one cut in the wrong place by an end tag in a comment -- sends the
- * reader to read the file whole, for the solutions or the error that gives.
+ * place) it leaves to the whole load. A solution that does not read is
+ * left out, the others read on, and the reader reads the file whole at the
+ * end: when that reads, the batches were cut in the wrong place (an end tag
+ * in a comment) and its solutions are the file's; when it does not, the
+ * solutions left out are counted, with what the whole read says of them.
  */
 namespace puzzleLoader {
 
@@ -100,9 +102,13 @@ public:
   bool done(void) const { return finished.load(std::memory_order_acquire); }
   /* how far into the file the reading is, 0 to 1 */
   double progress(void) const;
-  /* after done(): empty when every solution was read, else what reading the
-   * file whole says is wrong with it (the lists then hold what was read) */
+  /* after done(): empty when the file was read through, else what reading
+   * the file whole says is wrong with it (the lists then hold what was read) */
   std::string error(void) const;
+  /* after done(): the solutions that did not read and were left out, the
+   * file read through otherwise, and what reading it whole says of them */
+  unsigned skipped(void) const;
+  std::string skipError(void) const;
 
   solutionReader_c(const solutionReader_c &) = delete;
   solutionReader_c & operator=(const solutionReader_c &) = delete;
@@ -111,8 +117,8 @@ private:
 
   void run(std::stop_token stop);
   /* the solutions as loading the file whole reads them, for a reading that
-   * went wrong; false, with the error, when that goes wrong too */
-  bool readWhole(void);
+   * went wrong; false, with why, when that goes wrong too */
+  bool readWhole(std::string & why);
 
   puzzle_c & puzzle;
   puzzleLoader::opener reopen;
@@ -124,6 +130,8 @@ private:
   std::atomic<bool> finished{false};
   mutable std::mutex errorMutex;
   std::string errorText;
+  unsigned skippedCount = 0;
+  std::string skipText;
 
   std::jthread worker;
 };

@@ -8,6 +8,7 @@
 #include "tools/xml.h"
 
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <iterator>
 #include <memory>
@@ -79,7 +80,7 @@ namespace {
 
 }
 
-TEST_CASE("puzzle loader: a staged read ends with the puzzle the whole read gives", "[puzzleloader]") {
+TEST_CASE("puzzle loader: a staged read ends with the puzzle the whole read gives", "[puzzleloader][parallel]") {
   int staged = 0;
   for (const auto & e : std::filesystem::directory_iterator("examples")) {
     if (e.path().extension() != ".xmpuzzle")
@@ -106,7 +107,7 @@ TEST_CASE("puzzle loader: a staged read ends with the puzzle the whole read give
   CHECK(staged > 0);
 }
 
-TEST_CASE("puzzle loader: the definitions come without the solutions", "[puzzleloader]") {
+TEST_CASE("puzzle loader: the definitions come without the solutions", "[puzzleloader][parallel]") {
   const std::string text = sixPieceBurrs();
   std::istringstream in(text);
   auto d = puzzleLoader::readDefinitions(in, fromText(text), 0);
@@ -123,7 +124,7 @@ TEST_CASE("puzzle loader: the definitions come without the solutions", "[puzzlel
   }
 }
 
-TEST_CASE("puzzle loader: solutions below the threshold are read with the rest", "[puzzleloader]") {
+TEST_CASE("puzzle loader: solutions below the threshold are read with the rest", "[puzzleloader][parallel]") {
   const std::string text = sixPieceBurrs();
   std::istringstream in(text);
   auto d = puzzleLoader::readDefinitions(in, fromText(text), text.size());
@@ -131,7 +132,7 @@ TEST_CASE("puzzle loader: solutions below the threshold are read with the rest",
   CHECK(saved(*d.puzzle) == saved(*whole(text)));
 }
 
-TEST_CASE("puzzle loader: what a staged read cannot be sure of is read whole", "[puzzleloader]") {
+TEST_CASE("puzzle loader: what a staged read cannot be sure of is read whole", "[puzzleloader][parallel]") {
   const std::string text = sixPieceBurrs();
   const size_t at = text.find("<solution ");
   REQUIRE(at != std::string::npos);
@@ -175,7 +176,7 @@ TEST_CASE("puzzle loader: what a staged read cannot be sure of is read whole", "
   }
 }
 
-TEST_CASE("puzzle loader: a problem's solutions before its shapes are read whole", "[puzzleloader]") {
+TEST_CASE("puzzle loader: a problem's solutions before its shapes are read whole", "[puzzleloader][parallel]") {
   const std::string t =
     "<?xml version=\"1.0\"?>\n<puzzle version=\"2\"><gridType type=\"0\"/><colors/>"
     "<shapes><voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel></shapes>"
@@ -188,14 +189,26 @@ TEST_CASE("puzzle loader: a problem's solutions before its shapes are read whole
   REQUIRE(d.puzzle->getNumberOfProblems() == 1);
 }
 
-TEST_CASE("puzzle loader: a broken file is reported as the whole read reports it", "[puzzleloader]") {
+TEST_CASE("puzzle loader: a broken file is reported as the whole read reports it", "[puzzleloader][parallel]") {
   const std::string text = sixPieceBurrs();
 
-  SECTION("a broken solution: the reader says what the whole read says") {
-    std::string t = gunzip("examples/Burr-Glar.xmpuzzle");
-    const size_t dx = t.rfind("<dx>");
-    REQUIRE(dx != std::string::npos);
-    t.insert(dx + 4, "x");
+  SECTION("broken solutions are left out, the others read, and the whole read says what is wrong") {
+    const std::string good = text;
+    // break the first and the last solution's assembly: a letter is no number
+    std::string t = good, without = good;
+    auto breakAt = [&](size_t at) {
+      REQUIRE(at != std::string::npos);
+      t.insert(at + 10, "q");
+    };
+    auto drop = [&](size_t at) {
+      const size_t b = without.rfind("<solution", at);
+      const size_t e = without.find("</solution>", at) + 11;
+      without.erase(b, e - b);
+    };
+    drop(without.rfind("<assembly>"));
+    drop(without.find("<assembly>"));
+    breakAt(t.rfind("<assembly>"));
+    breakAt(t.find("<assembly>"));
     std::string want;
     try {
       whole(t);
@@ -203,14 +216,20 @@ TEST_CASE("puzzle loader: a broken file is reported as the whole read reports it
       want = e.what();
     }
     REQUIRE_FALSE(want.empty());
+    const std::string expected = saved(*whole(without));
 
-    for (unsigned threads : { 1u, 4u }) {
+    for (auto [threads, threshold] : { std::pair<unsigned, size_t>(1, 0), std::pair<unsigned, size_t>(4, 0),
+                                       std::pair<unsigned, size_t>(1, SIZE_MAX) }) {
+      // also below the threshold: a whole read that fails there for a solution stages
       std::istringstream in(t);
-      auto d = puzzleLoader::readDefinitions(in, fromText(t), 0);
+      auto d = puzzleLoader::readDefinitions(in, fromText(t), threshold);
       REQUIRE(d.staged);
       solutionReader_c r(*d.puzzle, fromText(t), d.bytes, threads, 1);
       waitFor(r);
-      CHECK(r.error() == want);
+      CHECK(r.error().empty());
+      CHECK(r.skipped() == 2);
+      CHECK(r.skipError() == want);
+      CHECK(saved(*d.puzzle) == expected);
     }
   }
   SECTION("broken definitions: readDefinitions throws what the whole read throws") {
@@ -234,7 +253,20 @@ TEST_CASE("puzzle loader: a broken file is reported as the whole read reports it
   }
 }
 
-TEST_CASE("puzzle loader: stopping keeps the solutions read, in their order", "[puzzleloader]") {
+TEST_CASE("puzzle loader: a file that changed between the two reads is an error", "[puzzleloader][parallel]") {
+  // cut short after the definitions were read: the reader cannot get through it
+  const std::string text = sixPieceBurrs();
+  const std::string shorter = text.substr(0, text.size() / 2);
+  std::istringstream in(text);
+  auto d = puzzleLoader::readDefinitions(in, fromText(text), 0);
+  REQUIRE(d.staged);
+  solutionReader_c r(*d.puzzle, fromText(shorter), d.bytes, 2, 1);
+  waitFor(r);
+  CHECK_FALSE(r.error().empty());
+  CHECK(r.skipped() == 0);
+}
+
+TEST_CASE("puzzle loader: stopping keeps the solutions read, in their order", "[puzzleloader][parallel]") {
   const std::string text = sixPieceBurrs();
   auto w = whole(text);
   std::istringstream in(text);
@@ -254,7 +286,7 @@ TEST_CASE("puzzle loader: stopping keeps the solutions read, in their order", "[
   }
 }
 
-TEST_CASE("puzzle loader: the solutions arrive in batches while the reader runs", "[puzzleloader]") {
+TEST_CASE("puzzle loader: the solutions arrive in batches while the reader runs", "[puzzleloader][parallel]") {
   /* a stream that hands out its bytes slowly: the list is seen growing */
   struct slowBuf : std::streambuf {
     std::string text;
