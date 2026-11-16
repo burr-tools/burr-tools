@@ -11,6 +11,7 @@
 #include "../src/lib/voxel.h"
 #include "../src/tools/gzstream.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -879,7 +880,7 @@ namespace {
 
 }
 
-TEST_CASE("a load stages only above the threshold, and by default never", "[ui][document][staged]") {
+TEST_CASE("a load stages only above the threshold, and by default never", "[ui][document][staged][parallel]") {
   btui::DocumentSession whole;
   REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
   const unsigned all = savedOf(whole.puzzle());
@@ -899,7 +900,7 @@ TEST_CASE("a load stages only above the threshold, and by default never", "[ui][
 }
 
 TEST_CASE("a staged load reads the solutions after, and the document cannot be saved meanwhile",
-          "[ui][document][staged]") {
+          "[ui][document][staged][parallel]") {
   btui::DocumentSession whole;
   REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
 
@@ -925,7 +926,7 @@ TEST_CASE("a staged load reads the solutions after, and the document cannot be s
   CHECK(d.saveAs(dir.path / "copy.xmpuzzle"));
 }
 
-TEST_CASE("replacing the document stops the reading of its solutions", "[ui][document][staged]") {
+TEST_CASE("replacing the document stops the reading of its solutions", "[ui][document][staged][parallel]") {
   btui::DocumentSession d;
   d.setStageAbove(0);
   REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").solutionsPending);
@@ -943,8 +944,8 @@ TEST_CASE("replacing the document stops the reading of its solutions", "[ui][doc
   CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
 }
 
-TEST_CASE("a staged load whose solutions do not read ends with a new document and the error",
-          "[ui][document][staged]") {
+TEST_CASE("a staged load leaves out the solutions that do not read and keeps the others",
+          "[ui][document][staged][parallel]") {
   // Burr-Glar with a broken disassembly state
   std::string text;
   {
@@ -967,7 +968,64 @@ TEST_CASE("a staged load whose solutions do not read ends with a new document an
   REQUIRE(r.ok);
   REQUIRE(r.solutionsPending);
   const auto e = finished(d);
-  CHECK(e.error.rfind("load error: ", 0) == 0);
+  CHECK(e.error.empty());
+  CHECK(e.skipped == 1);
+  CHECK(e.skipError.rfind("load error: ", 0) == 0);
+  CHECK(d.fileName() == broken);
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/Burr-Glar.xmpuzzle").ok);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()) - 1);
+  CHECK_FALSE(d.isModified());
+}
+
+TEST_CASE("beginLoad reads a large file on a thread and adopts it at finishOpening",
+          "[ui][document][staged][parallel]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+
+  btui::DocumentSession d;
+  d.setOpenAsyncAbove(0);                       // every file
+  d.setStageAbove(0);
+  std::atomic<bool> called{false};
+  auto r = d.beginLoad("examples/SolidSixPieceBurrs.xmpuzzle", [&] { called = true; });
+  REQUIRE(r.ok);
+  REQUIRE(r.opening);
+  // the document as it was until then
+  CHECK(d.opening());
   CHECK(d.fileName().empty());
   CHECK(d.puzzle().getNumberOfProblems() == 0);
+  const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  while (!d.openingDone() && std::chrono::steady_clock::now() < until)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  CHECK(called);
+  r = d.finishOpening();
+  CHECK(r.ok);
+  CHECK_FALSE(r.opening);
+  CHECK_FALSE(d.opening());
+  CHECK(d.fileName() == std::filesystem::path("examples/SolidSixPieceBurrs.xmpuzzle"));
+  if (r.solutionsPending)
+    finished(d);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+}
+
+TEST_CASE("beginLoad loads a small file at once, and a new document drops one being opened",
+          "[ui][document][staged][parallel]") {
+  btui::DocumentSession d;
+  d.setOpenAsyncAbove(1000 * 1000 * 1000);
+  auto r = d.beginLoad("examples/PelikanBurr.xmpuzzle");
+  CHECK(r.ok);
+  CHECK_FALSE(r.opening);
+  CHECK(d.fileName() == std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
+  // a missing file says so at once
+  r = d.beginLoad("examples/no such file.xmpuzzle");
+  CHECK_FALSE(r.ok);
+  CHECK_FALSE(r.error.empty());
+
+  d.setOpenAsyncAbove(0);
+  REQUIRE(d.beginLoad("examples/SolidSixPieceBurrs.xmpuzzle").opening);
+  d.newDocument(gridType_c::GT_BRICKS);
+  CHECK_FALSE(d.opening());
+  CHECK(d.fileName().empty());
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
+  CHECK_FALSE(d.finishOpening().ok);            // nothing being opened
 }

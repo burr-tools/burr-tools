@@ -1278,29 +1278,54 @@ Changed after the review of 2026-11-13 (the review's items, all fixed):
   gets the same.
 - **A large file opens before its solutions are read** (decided 2026-11-16).
   The solutions are nearly all of such a file: a 42,873-solution domino
-  tiling is 578 MB of XML, 448 bytes of it the shapes and the problem. A
-  file with more than 16 MiB of solutions (`DocumentController::kStageAbove`)
-  opens staged (`src/lib/puzzleloader.h`): a quick pass builds the puzzle
-  from everything but the content of its `<solutions>`, and the puzzle shows
-  at once; a reader on a thread of its own then cuts the solutions into
-  batches, which Settings' worker threads parse, and puts them behind each
-  problem's list in the file's order, under the solutions lock, as a solve
-  does; the Solver's list follows it as it follows a solve. That file in
-  the release build: shown in 1.0 to 1.5 s and every solution in by 3.4 to
-  3.9 s, against 13 to 15 s for the whole read before (7 to 9 s with the
-  faster parser), input waiting at most about 60 ms meanwhile. Meanwhile
-  the document is busy, *view only*: edits, Save and the Solver's actions
-  are refused ("Wait until the solutions are read"); New, Open and Quit
-  stop the reading, the file still holding the solutions. The Solutions
-  card shows a bar while it reads; the status bar says when all are read.
-  What the quick pass cannot be sure of (a problem's solutions before its
-  shapes, a document type declaration) and a solution that does not read
-  are left to the whole read, so the result, and the error of a broken
-  file, are the whole read's; a broken solution found late leaves a new,
-  empty document and the message, as a file that does not load at all.
-  The XML parser was made faster first (about twice, the same events and
-  errors), which the legacy GUI and burrTxt get too; they read a file whole,
-  as before.
+  tiling is 578 MB of XML, 448 bytes of it the shapes and the problem.
+  - *On a thread:* a file of 1 MiB or more on disk
+    (`DocumentController::kOpenAsyncAbove`) is opened on a thread of its
+    own (`DocumentSession::beginLoad`): the window draws on, the status bar
+    says "Opening ...", and the document it has is busy until the new one
+    is in. At start-up the workspace is made before the file is in.
+  - *Staged:* a file with more than 5 MiB of solutions
+    (`DocumentController::kStageAbove`) opens staged
+    (`src/lib/puzzleloader.h`): a quick pass builds the puzzle from
+    everything but the content of its `<solutions>`, which is adopted; a
+    reader on a thread of its own then cuts the solutions into batches,
+    which Settings' worker threads parse, and puts them behind each
+    problem's list in the file's order, under the solutions lock, as a solve
+    does; the Solver's list follows it as it follows a solve.
+  - *Meanwhile* the document is busy, *view only*: edits, Save and the
+    Solver's actions are refused ("Wait until the file is open", "Wait
+    until the solutions are read"); New, Open and Quit stop the opening or
+    the reading, the file still holding everything. The Solutions card
+    shows a bar while the solutions are read; the status bar says when all
+    are in.
+  - *That file* (release build, offscreen, start-up with it): the window's
+    workspace on screen at 0.34 s and the puzzle at 0.8 s, against 1.0 s
+    for both when the quick pass ran on the GUI thread, input waiting at
+    most 10 ms; every solution in by about 3.5 s, against 13 to 15 s for
+    the whole read before (7 to 9 s with the faster parser).
+  - *A broken solution is left out*, the others read: a batch that does not
+    read is read again a solution at a time, those that do not read
+    counted; at the end the file is read whole once more -- when that
+    reads, the batches were only cut in the wrong place and its solutions
+    are taken -- and otherwise a message says how many were left out and
+    what the whole read says is wrong, and that a save writes the puzzle
+    without them. A small file whose solution does not read opens the same
+    way. What the quick pass cannot be sure of (a problem's solutions before
+    its shapes, a document type declaration) is read whole, so a broken
+    definition is an error as before, and a file that changed between the
+    two reads leaves a new, empty document and the error.
+  - The XML parser was made faster first (about twice, the same events and
+    errors), which the legacy GUI and burrTxt get too; they read a file
+    whole, as before.
+- **Manage > Analyse stores its results by assembly number** (2026-11-16).
+  Each result used to be looked for along the saved list (a quadratic
+  walk), and each poll's results made the list read every solution again;
+  now the places are found once, the "cannot be taken apart" verdicts are
+  kept sorted (looked up by halving), and the list reads again only the
+  analysed solutions, moving their rows (`btui::SolutionList::readChanged`),
+  at the Solver's 5 / 2 Hz. Analyse all on the 42,873 solutions: 19.9 s
+  before, input waiting up to 402 ms; 8.2 s now, up to 32 ms -- the rest is
+  the disassembler's own work, on its thread.
 
 ## Spec review of the Entities workspace (2026-10-29)
 

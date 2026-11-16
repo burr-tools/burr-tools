@@ -235,6 +235,37 @@ TestCase {
         verify(item("solver.sort").visible)
     }
 
+    function test_theReadingBarTakesTheRowWhileSolutionsAreRead() {
+        // a staged open (any file stages here), its end not looked at: the
+        // bar stays up, as wide as the words leave it, not a pixel
+        App.document.setStageAboveForTesting(0)
+        App.document.setLoadPollIntervalForTesting(3600 * 1000)
+        App.document.openFile(Qt.resolvedUrl("../../../examples/SolidSixPieceBurrs.xmpuzzle"))
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m !== null && m.visible)
+                m.close()
+        }
+        verify(App.document.loadingSolutions)
+        const row = item("solver.loading")
+        const bar = item("solver.loading.bar")
+        const words = item("solver.loading.text")
+        tryVerify(() => row.visible, 2000)
+        waitForRendering(win.contentItem)
+        const pct = item("solver.loading.pct")
+        // the words and the percentage at their widths, the bar all the rest
+        compare(words.width, words.implicitWidth)
+        fuzzyCompare(bar.width, row.width - words.width - pct.width - 2 * row.spacing, 1)
+        verify(bar.width >= 60, "the bar " + bar.width + " of " + row.width)
+        verify(item("solver.loading.fill").width <= bar.width)
+        // the reading's end: the row goes
+        App.document.setLoadPollIntervalForTesting(100)
+        tryVerify(() => !App.document.loadingSolutions, 10000)
+        tryVerify(() => !row.visible, 2000)
+        App.document.setStageAboveForTesting(5 * 1024 * 1024)
+    }
+
     function test_theViewIsReadOnly() {
         // AC-C21-04: no Edit button, the tag, the Display menu's wireframe item
         verify(!item("entities.viewport.toolbar.edit").visible)

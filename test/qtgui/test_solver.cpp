@@ -16,6 +16,7 @@
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/solution.h"
 #include "../../src/lib/voxel.h"
+#include "../../src/tools/gzstream.h"
 #include "../../src/uicore/problemlist.h"
 #include "../../src/uicore/solver.h"
 
@@ -26,6 +27,8 @@
 #include <QTemporaryDir>
 #include <QTest>
 
+#include <fstream>
+#include <iterator>
 #include <memory>
 
 namespace {
@@ -344,9 +347,22 @@ void TestSolver::aLargeFileShowsAtOnceAndItsSolutionsFollow() {
   QAbstractItemModelTester tester(rows, QAbstractItemModelTester::FailureReportingMode::QtTest);
   QSignalSpy refused(doc, &DocumentController::busyRefused);
   QSignalSpy flashed(doc, &DocumentController::flashRequested);
+  // the reading's end not looked at, till the list is checked below
+  doc->setLoadPollInterval(3600 * 1000);
 
-  // the puzzle at once, the document busy while its solutions come in
+  // 1.4 MB on disk: opened on a thread, the window drawing the document it has
   QVERIFY(doc->loadPath(file));
+  QVERIFY(doc->opening());
+  QVERIFY(doc->busy());
+  QCOMPARE(doc->session().puzzle().getNumberOfProblems(), 0u);
+  doc->save();
+  QCOMPARE(refused.count(), 1);
+  QCOMPARE(refused.last().at(0).toString(), QStringLiteral("Wait until the file is open"));
+  QCOMPARE(flashed.count(), 1);
+  QCOMPARE(flashed.last().at(0).toString(), QStringLiteral("Opening tiling.xmpuzzle…"));
+  QTRY_VERIFY_WITH_TIMEOUT(!doc->opening(), 60000);
+
+  // the puzzle then, the document busy while its solutions come in
   QVERIFY(doc->loadingSolutions());
   QVERIFY(doc->busy());
   QCOMPARE(doc->session().puzzle().getNumberOfProblems(), 1u);
@@ -357,13 +373,12 @@ void TestSolver::aLargeFileShowsAtOnceAndItsSolutionsFollow() {
     QCOMPARE(s->emptyState(), int(SolverController::Reading));
   // looked at, not changed or saved
   doc->save();
-  QCOMPARE(refused.count(), 1);
+  QCOMPARE(refused.count(), 2);
   QCOMPARE(refused.last().at(0).toString(), QStringLiteral("Wait until the solutions are read"));
   QVERIFY(!doc->modified());
 
   // the list follows the reading as it follows a solve (at 5 Hz): with the
   // reading's end not looked at, every row comes while it still reads
-  doc->setLoadPollInterval(3600 * 1000);
   double progress = doc->loadProgress();
   QTRY_VERIFY_WITH_TIMEOUT(rows->count() == 3818 || !doc->loadingSolutions(), 300000);
   QVERIFY(doc->loadingSolutions());
@@ -376,18 +391,63 @@ void TestSolver::aLargeFileShowsAtOnceAndItsSolutionsFollow() {
   QCOMPARE(rows->count(), 3818);
   QVERIFY(s->canStart() || s->canContinue() || s->canPrepare());
   QVERIFY(s->canManage());
-  QCOMPARE(flashed.count(), 1);
+  QCOMPARE(flashed.count(), 2);
   QCOMPARE(flashed.last().at(0).toString(), QStringLiteral("3818 solutions read"));
   QVERIFY(!doc->modified());
 
-  // a new document while they are read: the reading stops with the old one
+  // a new document while it opens, and while its solutions are read: the
+  // opening and the reading stop with it
   QVERIFY(doc->loadPath(file));
+  QVERIFY(doc->opening());
+  doc->newDocument(0);
+  QVERIFY(!doc->opening());
+  QVERIFY(!doc->busy());
+  QCOMPARE(doc->session().puzzle().getNumberOfProblems(), 0u);
+  QTest::qWait(200);                          // an end already queued changes nothing
+  QCOMPARE(doc->session().puzzle().getNumberOfProblems(), 0u);
+  doc->setLoadPollInterval(3600 * 1000);
+  QVERIFY(doc->loadPath(file));
+  QTRY_VERIFY_WITH_TIMEOUT(!doc->opening(), 60000);
   QVERIFY(doc->loadingSolutions());
   doc->newDocument(0);
   QVERIFY(!doc->loadingSolutions());
   QVERIFY(!doc->busy());
   QCOMPARE(s->savedCount(), 0);
-  QCOMPARE(refused.count(), 1);
+  QCOMPARE(refused.count(), 2);
+}
+
+void TestSolver::aSolutionThatDoesNotReadIsLeftOut() {
+  // SolidSixPieceBurrs with its first solution's assembly broken: small, but
+  // a whole read fails there, so it opens staged and reads the others
+  QTemporaryDir dir;
+  const QString file = dir.filePath(QStringLiteral("broken.xmpuzzle"));
+  std::string text;
+  {
+    auto in = openGzFile("examples/SolidSixPieceBurrs.xmpuzzle");
+    QVERIFY(in != nullptr);
+    text.assign(std::istreambuf_iterator<char>(*in), {});
+    text.insert(text.find("<assembly>") + 10, "q");
+    std::ofstream out(file.toStdString(), std::ios::binary);
+    out << text;
+  }
+  App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+  DocumentController * doc = app.document();
+  QSignalSpy messages(doc, &DocumentController::messageRequested);
+  QVERIFY(doc->loadPath(file));
+  QTRY_VERIFY_WITH_TIMEOUT(!doc->loadingSolutions(), 60000);
+  QCOMPARE(doc->fileName(), QStringLiteral("broken.xmpuzzle"));
+  QVERIFY(!doc->modified());
+  // the file's comment pops up too; the open says what it left out
+  QStringList open;
+  for (const QList<QVariant> & m : messages)
+    if (m.at(0).toString() == QStringLiteral("Open"))
+      open << m.at(1).toString();
+  QCOMPARE(open.size(), 1);
+  QVERIFY(open.first().startsWith(QStringLiteral("1 solution in the file could not be read and was left out.")));
+  btui::DocumentSession whole;
+  QVERIFY(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+  QCOMPARE(doc->session().puzzle().getProblem(0)->getNumberOfSavedSolutions() + 1,
+           whole.puzzle().getProblem(0)->getNumberOfSavedSolutions());
 }
 
 void TestSolver::thePlayerStepsPlaysAndSeeks() {

@@ -192,9 +192,10 @@ Card {
             Layout.topMargin: root.vpad
             Layout.bottomMargin: root.vpad
             spacing: 10
+            // the words at their width, the bar the rest (with the words filling
+            // too, the bar had no width of its own to keep and was a pixel wide)
             Text {
                 objectName: "solver.loading.text"
-                Layout.fillWidth: true
                 text: qsTr("Reading the solutions…")
                 color: Theme.muted
                 font.pixelSize: Theme.fontSecondary
@@ -206,6 +207,7 @@ Card {
                 id: loadBar
                 objectName: "solver.loading.bar"
                 Layout.fillWidth: true
+                Layout.minimumWidth: 60
                 Layout.preferredHeight: 8
                 from: 0
                 to: 1
@@ -221,10 +223,14 @@ Card {
                 }
                 contentItem: Item {
                     Rectangle {
+                        objectName: "solver.loading.fill"
                         width: loadBar.visualPosition * parent.width
                         height: parent.height
                         radius: 4
                         color: Theme.accent
+                        // the reading is looked at ten times a second: the fill
+                        // glides between, at once with reduced motion
+                        Behavior on width { NumberAnimation { duration: Theme.durSwitch } }
                     }
                 }
             }

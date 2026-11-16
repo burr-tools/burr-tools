@@ -56,6 +56,7 @@ DocumentController::DocumentController(QObject * parent) : QObject(parent) {
   // an edit waiting for the solutions warning was an edit of the document that went
   connect(this, &DocumentController::documentReplaced, this, [this] { m_heldEdit = nullptr; });
   m_session.setStageAbove(kStageAbove);
+  m_session.setOpenAsyncAbove(kOpenAsyncAbove);
   m_loadPoll = new QTimer(this);
   m_loadPoll->setInterval(100);
   connect(m_loadPoll, &QTimer::timeout, this, [this] { guarded([&] { pollLoading(); }); });
@@ -93,16 +94,22 @@ void DocumentController::pollLoading(void) {
     n += p.getProblem(k)->getNumberOfSavedSolutions();
   }
   emit flashRequested(n == 1 ? tr("1 solution read") : tr("%1 solutions read").arg(n));
+  if (e.skipped > 0) {
+    /* the others are in; a save writes the puzzle without these, as one
+     * that removes them would */
+    const QString left = e.skipped == 1 ? tr("1 solution in the file could not be read and was left out.")
+                                        : tr("%1 solutions in the file could not be read and were left out.").arg(e.skipped);
+    emit messageRequested(tr("Open"), tr("%1 Saving the puzzle writes it without them.\n\n%2")
+                                        .arg(left, QString::fromStdString(e.skipError)));
+  }
 }
 
 void DocumentController::endLoading(void) {
   m_loadPoll->stop();
   if (!m_loading)
     return;
-  m_loading = false;
+  changingBusy([&] { m_loading = false; });
   emit loadChanged();
-  if (!m_busy)
-    emit busyChanged();
 }
 
 QString DocumentController::fileName(void) const {
@@ -275,6 +282,7 @@ void DocumentController::newDocument(int type) {
     }
     if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
       type = gridType_c::GT_BRICKS;
+    endOpening();
     m_session.newDocument(gridType_c::gridType(type));
     endLoading();
     if (m_pending == Pending::New)
@@ -307,34 +315,97 @@ void DocumentController::setStartupFiles(const QStringList & files) {
 }
 
 void DocumentController::loadStartupFiles(void) {
+  m_startupQueue = std::exchange(m_startupFiles, {});
+  nextStartupFile();
+}
+
+void DocumentController::nextStartupFile(void) {
   guarded([&] {
-    const QStringList files = std::exchange(m_startupFiles, {});
-    for (const QString & f : files)
-      if ((m_startupLoaded = loadPath(f)))
-        break;
+    while (!m_startupQueue.isEmpty()) {
+      const QString f = m_startupQueue.takeFirst();
+      if (loadPath(f)) {
+        if (m_opening) {
+          m_startupWaiting = true;   // finishOpen() goes on from here
+          return;
+        }
+        m_startupLoaded = true;
+        m_startupQueue.clear();
+      }
+    }
   });
+  if (m_opening)
+    return;
+  m_startupWaiting = false;
   emit startupFilesLoaded();
 }
 
 bool DocumentController::loadPath(const QString & path) {
   btui::DocumentSession::LoadResult r;
+  endOpening();                  // a file being opened before goes
+  const int generation = m_openGeneration;
   try {
-    r = m_session.load(toPath(path));
+    // a large file is read on a thread: its end comes back here, queued
+    r = m_session.beginLoad(toPath(path), [this, generation] {
+      QMetaObject::invokeMethod(this, [this, generation] {
+        if (generation == m_openGeneration && m_opening)
+          guarded([&] { finishOpen(); });
+      }, Qt::QueuedConnection);
+    });
   } catch (const std::exception & e) {
     r.ok = false;
     r.error = e.what();
   }
+  if (r.opening) {
+    // the window goes on drawing the document it has until then
+    m_openingPath = path;
+    changingBusy([&] { m_opening = true; });
+    emit openingChanged();
+    emit flashRequested(tr("Opening %1…").arg(QFileInfo(path).fileName()));
+    return true;
+  }
+  adoptLoad(r, path);
+  return r.ok;
+}
+
+void DocumentController::finishOpen(void) {
+  btui::DocumentSession::LoadResult r;
+  try {
+    r = m_session.finishOpening();
+  } catch (const std::exception & e) {
+    r.ok = false;
+    r.error = e.what();
+  }
+  const QString path = m_openingPath;
+  changingBusy([&] { m_opening = false; });
+  emit openingChanged();
+  adoptLoad(r, path);
+  if (m_startupWaiting) {
+    if (r.ok) {
+      m_startupLoaded = true;
+      m_startupQueue.clear();
+    }
+    nextStartupFile();
+  }
+}
+
+void DocumentController::endOpening(void) {
+  m_openGeneration++;            // an end already on its way is not this one's
+  if (!m_opening)
+    return;
+  m_session.cancelOpening();
+  changingBusy([&] { m_opening = false; });
+  emit openingChanged();
+}
+
+void DocumentController::adoptLoad(const btui::DocumentSession::LoadResult & r, const QString & path) {
   // the views hear of the new document knowing whether its solutions are in
   if (m_session.loadingSolutions() && !m_loading) {
-    m_loading = true;
+    changingBusy([&] { m_loading = true; });
     m_loadPoll->start();
-    if (!m_busy)
-      emit busyChanged();
     emit loadChanged();
   } else if (!m_session.loadingSolutions())
     endLoading();
   finishLoad(r, path);
-  return r.ok;
 }
 
 void DocumentController::openFile(const QUrl & file) {
@@ -364,6 +435,7 @@ void DocumentController::importFile(const QUrl & file) {
       return;
     }
     btui::DocumentSession::LoadResult r;
+    endOpening();
     try {
       r = m_session.importPuzzleSolver3D(toPath(path));
     } catch (const std::exception & e) {
@@ -507,14 +579,16 @@ void DocumentController::setSolutionsWarned(bool warned) {
 void DocumentController::setBusy(bool busy) {
   if (busy == m_busy)
     return;
-  m_busy = busy;
-  if (!m_loading)
-    emit busyChanged();
+  changingBusy([&] { m_busy = busy; });
 }
 
 bool DocumentController::refuseWhileBusy(bool replacing) {
   if (m_busy) {
     emit busyRefused(tr("Stop the solver first"));
+    return true;
+  }
+  if (m_opening && !replacing) {
+    emit busyRefused(tr("Wait until the file is open"));
     return true;
   }
   if (m_loading && !replacing) {

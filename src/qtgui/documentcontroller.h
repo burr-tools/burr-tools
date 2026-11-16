@@ -30,6 +30,7 @@
 #include <QtQml/qqmlregistration.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -67,6 +68,8 @@ class DocumentController : public QObject {
   Q_PROPERTY(bool busy READ busy NOTIFY busyChanged FINAL)
   // a large file's solutions being read after the rest (loadPath), how far
   Q_PROPERTY(bool loadingSolutions READ loadingSolutions NOTIFY loadChanged FINAL)
+  // a large file being read on a thread, the document as it was meanwhile
+  Q_PROPERTY(bool opening READ opening NOTIFY openingChanged FINAL)
   Q_PROPERTY(double loadProgress READ loadProgress NOTIFY loadChanged FINAL)
   Q_PROPERTY(QString loadProgressText READ loadProgressText NOTIFY loadChanged FINAL)
 
@@ -96,7 +99,7 @@ public:
    * undo and redo, New, Open, Import, Convert, Save -- as legacy's
    * threadStopped() does, with one message (busyRefused). Solver results
    * change it through session().editWithoutUndo(), which is not gated. */
-  bool busy(void) const { return m_busy || m_loading; }
+  bool busy(void) const { return m_busy || m_loading || m_opening; }
   void setBusy(bool busy);
   /* true, and the message, while busy: the caller does nothing. A flow that
    * replaces the document (replacing) goes ahead while solutions are being
@@ -107,7 +110,16 @@ public:
    * (DocumentSession::load): the puzzle shows at once, its solutions come
    * after, read on a thread of their own, and meanwhile the document is
    * busy -- it can be looked at, not changed or saved. */
-  static constexpr size_t kStageAbove = 16 * 1024 * 1024;
+  static constexpr size_t kStageAbove = 5 * 1024 * 1024;
+  /* A file this large on disk opens on a thread of its own (beginLoad):
+   * the window draws on, the document it has busy until the new one is in
+   * (opening). Smaller ones open at once: loadPath() says whether it did. */
+  static constexpr std::uintmax_t kOpenAsyncAbove = 1024 * 1024;
+  bool opening(void) const { return m_opening; }
+  /* for tests: these through QML, and which files open on a thread */
+  Q_INVOKABLE void setStageAboveForTesting(double bytes) { setStageAbove(size_t(bytes)); }
+  Q_INVOKABLE void setLoadPollIntervalForTesting(int ms) { setLoadPollInterval(ms); }
+  void setOpenAsyncAbove(std::uintmax_t bytes) { m_session.setOpenAsyncAbove(bytes); }
   /* for tests: a smaller one; and how often the reading is looked at (100 ms),
    * whose end the views hear of no sooner */
   void setStageAbove(size_t bytes) { m_session.setStageAbove(bytes); }
@@ -191,7 +203,7 @@ public:
    * the others are not tried. */
   void setStartupFiles(const QStringList & files);
   Q_INVOKABLE void loadStartupFiles(void);
-  bool startupFilesPending(void) const { return !m_startupFiles.isEmpty(); }
+  bool startupFilesPending(void) const { return !m_startupFiles.isEmpty() || m_startupWaiting; }
   bool startupFileLoaded(void) const { return m_startupLoaded; }
 
   /* A dialog changes the puzzle's shapes or problems in place: f(puzzle_c &)
@@ -348,6 +360,7 @@ signals:
   void busyChanged(void);
   /* loadingSolutions, loadProgress */
   void loadChanged(void);
+  void openingChanged(void);
   /* for the status bar: the solutions are all read */
   void flashRequested(const QString & text);
   /* editResults(): a problem's solutions or solve state changed */
@@ -378,6 +391,21 @@ private:
   /* edit() changed the puzzle: the views repaint */
   void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
+  /* loadPath()'s second half: the views told, the reading of solutions followed */
+  void adoptLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
+  /* a file opened on a thread is read: adopt it */
+  void finishOpen(void);
+  /* not opening any more (another file, a new document); the reading dropped */
+  void endOpening(void);
+  /* loadStartupFiles()' next file, until one loads */
+  void nextStartupFile(void);
+  /* f changes what busy() reads: busyChanged if it says otherwise after */
+  template <class F> void changingBusy(F && f) {
+    const bool was = busy();
+    f();
+    if (busy() != was)
+      emit busyChanged();
+  }
   /* the poll while solutions are read: the progress, and the end */
   void pollLoading(void);
   /* no longer reading (the reading over, or stopped with its document) */
@@ -390,6 +418,11 @@ private:
   Pending m_pending = Pending::None;
   bool m_busy = false;
   bool m_loading = false;
+  bool m_opening = false;
+  int m_openGeneration = 0;              ///< which beginLoad() an end belongs to
+  QString m_openingPath;
+  QStringList m_startupQueue;            ///< loadStartupFiles()' files not tried yet
+  bool m_startupWaiting = false;         ///< ... waiting for one opened on a thread
   QTimer * m_loadPoll = nullptr;
   std::function<void()> m_stopBusy;
   bool m_solutionsWarned = false;

@@ -32,11 +32,21 @@
 #include "../tools/xml.h"
 
 #include <algorithm>
+#include <atomic>
+#include <thread>
 #include <fstream>
 #include <random>
 #include <string>
 
 namespace btui {
+
+  /* the reading of beginLoad(): its thread, and what it read */
+  struct DocumentSession::Opening {
+    std::filesystem::path file;
+    FileRead read;
+    std::atomic<bool> finished{false};
+    std::jthread worker;        // last: it goes first, and the rest outlives it
+  };
 
   DocumentSession::DocumentSession(void) :
     puz(std::make_unique<puzzle_c>(std::make_unique<gridType_c>())),
@@ -46,10 +56,12 @@ namespace btui {
   }
 
   DocumentSession::~DocumentSession(void) {
+    stopOpening();
     stopLoading();
   }
 
   void DocumentSession::adopt(std::unique_ptr<puzzle_c> p) {
+    stopOpening();                    // a file being opened would replace this one
     stopLoading();                    // it reads into the puzzle that goes
     stroking = strokeDirty = false;   // the history starts afresh: the stroke goes with the old puzzle
     strokeLost.clear();
@@ -62,13 +74,14 @@ namespace btui {
     fname.clear();
   }
 
-  DocumentSession::LoadResult DocumentSession::load(const std::filesystem::path & file) {
+  DocumentSession::FileRead DocumentSession::readFile(const std::filesystem::path & file, size_t stageAbove) {
 
-    LoadResult r;
+    FileRead f;
+    LoadResult & r = f.result;
 
     if (file.empty() || !fileExists(file)) {
       r.error = "The file does not exist.";
-      return r;
+      return f;
     }
 
     // openGzFile() can still fail after fileExists() passed: the file may
@@ -76,41 +89,98 @@ namespace btui {
     auto str = openGzFile(file);
     if (!str) {
       r.error = "The file could not be opened.";
-      return r;
+      return f;
     }
 
-    std::unique_ptr<puzzle_c> np;
-    puzzleLoader::definitions_t d;
     const puzzleLoader::opener reopen = [file] { return openGzFile(file); };
 
     try {
       if (stageAbove == SIZE_MAX) {
         xmlParser_c pars(*str);
-        np = std::make_unique<puzzle_c>(pars);
+        f.puzzle = std::make_unique<puzzle_c>(pars);
       } else {
-        d = puzzleLoader::readDefinitions(*str, reopen, stageAbove);
-        np = std::move(d.puzzle);
+        puzzleLoader::definitions_t d = puzzleLoader::readDefinitions(*str, reopen, stageAbove);
+        f.puzzle = std::move(d.puzzle);
+        f.staged = d.staged;
+        f.bytes = d.bytes;
       }
     }
     catch (xmlParserException_c & e) {
       r.error = std::string("load error: ") + e.what();
-      return r;
+      return f;
     }
 
-    for (unsigned int p = 0; p < np->getNumberOfProblems(); p++)
-      if (np->getProblem(p)->getSolveState() == SS_SOLVING)
+    for (unsigned int p = 0; p < f.puzzle->getNumberOfProblems(); p++)
+      if (f.puzzle->getProblem(p)->getSolveState() == SS_SOLVING)
         r.containsStartedSearch = true;
 
-    r.showComment = np->getCommentPopup();
+    r.showComment = f.puzzle->getCommentPopup();
+    r.ok = true;
+    return f;
+  }
 
-    adopt(std::move(np));
+  DocumentSession::LoadResult DocumentSession::adoptRead(FileRead && f, const std::filesystem::path & file) {
+    LoadResult r = f.result;
+    if (!r.ok)
+      return r;
+    adopt(std::move(f.puzzle));
     fname = file;
-    if (d.staged) {
-      reader = std::make_unique<solutionReader_c>(*puz, reopen, d.bytes, loadThreads);
+    if (f.staged) {
+      reader = std::make_unique<solutionReader_c>(*puz, [file] { return openGzFile(file); }, f.bytes, loadThreads);
       r.solutionsPending = true;
     }
-    r.ok = true;
     return r;
+  }
+
+  DocumentSession::LoadResult DocumentSession::load(const std::filesystem::path & file) {
+    stopOpening();
+    return adoptRead(readFile(file, stageAbove), file);
+  }
+
+  DocumentSession::LoadResult DocumentSession::beginLoad(const std::filesystem::path & file, std::function<void()> done) {
+    stopOpening();
+    std::error_code ec;
+    const std::uintmax_t size = std::filesystem::file_size(file, ec);
+    if (ec || size < openAsyncAbove)
+      return load(file);        // a missing file says so at once, too
+    opener = std::make_unique<Opening>();
+    opener->file = file;
+    Opening * o = opener.get();
+    const size_t stage = stageAbove;
+    o->worker = std::jthread([o, stage, done = std::move(done)] {
+      try {
+        o->read = readFile(o->file, stage);
+      } catch (std::exception & e) {
+        o->read = FileRead();
+        o->read.result.error = e.what();
+      }
+      o->finished.store(true, std::memory_order_release);
+      if (done)
+        done();
+    });
+    LoadResult r;
+    r.ok = true;
+    r.opening = true;
+    return r;
+  }
+
+  bool DocumentSession::openingDone(void) const {
+    return opener && opener->finished.load(std::memory_order_acquire);
+  }
+
+  DocumentSession::LoadResult DocumentSession::finishOpening(void) {
+    if (!opener) {
+      LoadResult r;
+      r.error = "Nothing is being opened.";
+      return r;
+    }
+    opener->worker.join();
+    std::unique_ptr<Opening> o = std::move(opener);
+    return adoptRead(std::move(o->read), o->file);
+  }
+
+  void DocumentSession::stopOpening(void) {
+    opener.reset();             // waits for the reading, which it drops
   }
 
   double DocumentSession::loadProgress(void) const {
@@ -123,6 +193,9 @@ namespace btui {
       return e;
     e.done = true;
     const std::string why = reader->error();
+    e.skipped = reader->skipped();
+    if (e.skipped)
+      e.skipError = "load error: " + reader->skipError();
     reader.reset();
     if (!why.empty()) {
       e.error = "load error: " + why;

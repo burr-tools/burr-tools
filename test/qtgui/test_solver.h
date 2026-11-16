@@ -21,6 +21,7 @@ private slots:
   void analysingStoresDisassembliesInTheBackground();
   void aSolveAddsRowsInPlaceAndSparesAHiddenList();
   void aLargeFileShowsAtOnceAndItsSolutionsFollow();
+  void aSolutionThatDoesNotReadIsLeftOut();
   void thePlayerStepsPlaysAndSeeks();
   void theKeyMapMovesThroughSolutionsAndMoves();
   void aChipCyclesSolidWireframeHidden();

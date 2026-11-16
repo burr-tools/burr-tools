@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -77,6 +78,7 @@ namespace btui {
         bool containsStartedSearch = false;  ///< a problem has an unfinished solve (legacy warns)
         bool showComment = false;       ///< the file asks for its comment to pop up on open
         bool solutionsPending = false;  ///< the solutions are still being read: loadingSolutions()
+        bool opening = false;           ///< beginLoad(): read on a thread, finishOpening() says how it went
       };
 
       /* Load a BurrTools file. On failure the current document is untouched.
@@ -87,6 +89,21 @@ namespace btui {
        * read under their lock (problem_c::lockSolutions), as while a solver
        * runs. */
       LoadResult load(const std::filesystem::path & file);
+
+      /* load() on a thread of its own for a file of at least
+       * setOpenAsyncAbove() bytes on disk (by default none): beginLoad()
+       * returns at once, LoadResult::opening set and the document as it
+       * was; `done` is called on that thread when the reading is over, and
+       * finishOpening() then -- on the caller's thread -- adopts what it
+       * read as load() does and says how it went. A smaller file loads at
+       * once, as load(). Replacing the document meanwhile drops it. */
+      LoadResult beginLoad(const std::filesystem::path & file, std::function<void()> done = {});
+      bool opening(void) const { return opener != nullptr; }
+      /* drop the file being opened (waits for its thread) */
+      void cancelOpening(void) { stopOpening(); }
+      bool openingDone(void) const;
+      LoadResult finishOpening(void);
+      void setOpenAsyncAbove(std::uintmax_t bytes) { openAsyncAbove = bytes; }
 
       /* Bytes of solutions above which load() stages; by default it never
        * does. */
@@ -103,10 +120,13 @@ namespace btui {
       struct LoadEnd {
         bool done = false;              ///< the reading is over: the rest says how
         std::string error;              ///< why the file could not be read, for the user
+        unsigned skipped = 0;           ///< solutions that did not read, left out; the rest are in
+        std::string skipError;          ///< what is wrong with them, for the user
       };
       /* Once the reading is over: ends it. With an error the document is a
-       * new, empty one, as for a file that does not load at all. Before
-       * that: done is false and nothing changes. */
+       * new, empty one, as for a file that does not load at all; solutions
+       * that do not read are left out and counted (skipped), the document
+       * keeping the others. Before that: done is false and nothing changes. */
       LoadEnd finishLoading(void);
 
       /* Import a PuzzleSolver3D file; it becomes the document, unsaved and
@@ -329,6 +349,20 @@ namespace btui {
       /* the reading of a staged load's solutions stopped and dropped; the
        * document is about to go */
       void stopLoading(void);
+      void stopOpening(void);
+
+      /* a file read, not adopted yet: load() in two halves, the first of
+       * which runs on any thread */
+      struct FileRead {
+        LoadResult result;
+        std::unique_ptr<puzzle_c> puzzle;
+        bool staged = false;
+        size_t bytes = 0;
+      };
+      static FileRead readFile(const std::filesystem::path & file, size_t stageAbove);
+      LoadResult adoptRead(FileRead && f, const std::filesystem::path & file);
+      struct Opening;
+
       void adopt(std::unique_ptr<puzzle_c> p);
 
       std::unique_ptr<puzzle_c> puz;
@@ -336,7 +370,9 @@ namespace btui {
       std::filesystem::path fname;
       // reads into *puz: declared after it, so it goes first
       std::unique_ptr<solutionReader_c> reader;
+      std::unique_ptr<Opening> opener;      // touches nothing of the session
       size_t stageAbove = SIZE_MAX;
+      std::uintmax_t openAsyncAbove = UINTMAX_MAX;
       unsigned loadThreads = 1;
       bool stroking = false;
       bool strokeDirty = false;      // the open stroke changed something (hist has it too)
