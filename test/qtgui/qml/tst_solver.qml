@@ -353,7 +353,18 @@ TestCase {
         const view = item("solver.sel")
         const sort = item("solver.sort")
         verify(sort.visible)
-        compare(sort.parent, view)
+        compare(sort.parent.parent, view)
+        // named on screen, before the options, and the row inside the card
+        const label = item("solver.sort.label")
+        verify(label.visible)
+        compare(label.text, "Sort by")
+        verify(label.mapToItem(view, 0, 0).x < sort.mapToItem(view, 0, 0).x)
+        verify(sort.mapToItem(view, sort.width, 0).x <= view.width + 0.5, "the options fit beside the label")
+        App.settings.density = "minimal"                    // the narrower card
+        waitForRendering(win.contentItem)
+        verify(sort.mapToItem(view, sort.width, 0).x <= view.width + 0.5, "they fit in Minimal too")
+        App.settings.density = "standard"
+        waitForRendering(win.contentItem)
         const slider = item("solver.slider")
         verify(sort.mapToItem(view, 0, 0).y > slider.mapToItem(view, 0, 0).y, "below the slider")
         verify(sort.mapToItem(view, 0, 0).y < item("solver.meta").mapToItem(view, 0, 0).y, "above the tiles")

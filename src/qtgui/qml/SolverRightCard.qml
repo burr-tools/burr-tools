@@ -21,7 +21,7 @@ import BurrTools.Ui
 //   │ ⑤5 solutions · ↑↓ solution · ←→ move ...  │
 //   │ ⑥ Solution 3  of 5                        │   (Slider view instead of ③–⑤,
 //   │   [‹]  ──────●────────  [›]               │    only as tall as it needs)
-//   │   [Number|Level|Moves ▼|Pieces]           │   sort by, by the slider
+//   │   Sort by [Number|Level|Moves ▼|Pieces]   │   by the slider
 //   │   [#3][Level][Moves][Pieces][DA][3/5]     │
 //   │ ⑦ No results yet  Press Start ...         │   (no rows: what to do)
 //   ├──────────────────────────────────────────┤
@@ -606,17 +606,31 @@ Card {
                     }
                 }
                 // sort by, by the slider it orders (the same state as the list's headers)
-                Segmented {
-                    objectName: "solver.sort"
-                    Accessible.name: qsTr("Sort by")
-                    Accessible.description: qsTr("Space or Enter on the option on reverses it")
-                    value: App.solver.sortKey
-                    options: [0, 1, 2, 3].map((k) => ({
-                        value: k,
-                        label: App.solver.sortKey === k ? qsTr("%1 %2").arg(root.keyWords[k]).arg(App.solver.sortDescending ? "▼" : "▲")
-                                                        : root.keyWords[k]
-                    }))
-                    onActivated: (v) => App.solver.clickSort(v)
+                RowLayout {
+                    objectName: "solver.sort.row"
+                    width: parent.width
+                    spacing: 8
+                    Text {
+                        objectName: "solver.sort.label"
+                        text: qsTr("Sort by")
+                        color: Theme.muted
+                        font.pixelSize: Theme.fontSecondary
+                        textFormat: Text.PlainText
+                        Accessible.ignored: true       // the segment carries the name
+                    }
+                    Segmented {
+                        objectName: "solver.sort"
+                        Accessible.name: qsTr("Sort by")
+                        Accessible.description: qsTr("Space or Enter on the option on reverses it")
+                        value: App.solver.sortKey
+                        options: [0, 1, 2, 3].map((k) => ({
+                            value: k,
+                            label: App.solver.sortKey === k ? qsTr("%1 %2").arg(root.keyWords[k]).arg(App.solver.sortDescending ? "▼" : "▲")
+                                                            : root.keyWords[k]
+                        }))
+                        onActivated: (v) => App.solver.clickSort(v)
+                    }
+                    Item { Layout.fillWidth: true }
                 }
                 // six tiles made once: scrubbing changes their words, not the items
                 Grid {
