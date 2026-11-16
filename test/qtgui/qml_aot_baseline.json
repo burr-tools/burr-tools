@@ -62,8 +62,8 @@
     "SettingsDialog.qml": 87,
     "ShapesCard.qml": 33,
     "ShortcutKeys.qml": 14,
-    "SolverLeftCard.qml": 19,
-    "SolverRightCard.qml": 56,
+    "SolverLeftCard.qml": 17,
+    "SolverRightCard.qml": 61,
     "StatusBar.qml": 1,
     "StatusDialog.qml": 37,
     "Stepper.qml": 2,
@@ -77,5 +77,5 @@
     "WorkspaceRail.qml": 10
   },
   "qt": "6.11",
-  "total": 1023
+  "total": 1026
 }
