@@ -353,9 +353,9 @@ namespace btui {
     changed.reserve(assemblies.size());
     for (unsigned a : assemblies) {
       const auto it = m_ids.find(a);
-      if (it == m_ids.end())
+      const int id = it == m_ids.end() ? -1 : it->second;
+      if (id < 0)
         return readAll(src, basis, onlyDisassemblable, sort);
-      const int id = it->second;      // readAll() below may change m_ids
       SolutionFacts & f = m_all[size_t(id)];
       const int index = f.index;
       if (index < 0 || unsigned(index) >= src.count || src.assembly(unsigned(index)) != a)

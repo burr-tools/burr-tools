@@ -31,7 +31,6 @@ import BurrTools.Ui
 //   ⑨ Puzzle's view tag: [P1] Small · Result [S5]
 //   ⑪ Solver's view tag: [P1] Small · Solution 3 of 5
 //   ⑫ Solver: "Assembler state — 3 of 6 pieces placed" (accent, top centre)
-//   ⑬ Solver: the explorer drawer docked over the bottom (C21, PR-31)
 Rectangle {
     id: root
     objectName: "entities.viewport"
@@ -265,13 +264,6 @@ Rectangle {
         color: Theme.accent
         font.pixelSize: Theme.fontSecondary
         font.weight: Font.DemiBold
-    }
-    ExplorerDrawer { // ⑬
-        objectName: "solver.drawer"
-        visible: root.solver && App.solver.explorer.length > 0
-        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: 12 }   // PR-31's inset
-        height: 250
-        z: 5
     }
 
     // --- view tag (top left) ---
@@ -540,8 +532,7 @@ Rectangle {
     // --- hint (bottom left) ---
     Column { // ⑥
         objectName: "entities.viewport.hint"
-        // the explorer drawer covers it: hidden with the drawer open
-        visible: !root.focus2d && !Theme.minimal && !(root.solver && App.solver.explorer.length > 0)
+        visible: !root.focus2d && !Theme.minimal
         anchors { left: parent.left; bottom: parent.bottom; margins: 14 }
         spacing: 4
 

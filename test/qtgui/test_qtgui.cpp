@@ -293,7 +293,7 @@ private slots:
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
                           "CollapsedProblems.qml", "CollapsedSections.qml", "PuzzleLeftCard.qml", "PuzzleRightCard.qml",
-                          "SolverLeftCard.qml", "SolverRightCard.qml", "ExplorerDrawer.qml",
+                          "SolverLeftCard.qml", "SolverRightCard.qml",
                           "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))

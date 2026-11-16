@@ -35,7 +35,6 @@ qtgui_qml_files = files(
   'DisplayMenu.qml',
   'DashedFrame.qml',
   'Dropdown.qml',
-  'ExplorerDrawer.qml',
   'Gallery.qml',
   'Glyph.qml',
   'GlyphButton.qml',

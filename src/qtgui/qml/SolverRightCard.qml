@@ -19,19 +19,19 @@ import BurrTools.Ui
 //   │ ④ 3  8.2.1       [███ 11]     6    ✓     │   rows; the selected one ringed
 //   │   1  5.1.1       [██  7 ]     6    ✓     │
 //   │ ⑤5 solutions · ↑↓ solution · ←→ move ...  │
-//   │ ⑥ Solution 3  of 5                        │   (Slider view instead of ③–⑤)
-//   │   [‹]  ──────●────────  [›]               │
+//   │ ⑥ Solution 3  of 5                        │   (Slider view instead of ③–⑤,
+//   │   [‹]  ──────●────────  [›]               │    only as tall as it needs)
+//   │   [Number|Level|Moves ▼|Pieces]           │   sort by, by the slider
 //   │   [#3][Level][Moves][Pieces][DA][3/5]     │
 //   │ ⑦ No results yet  Press Start ...         │   (no rows: what to do)
 //   ├──────────────────────────────────────────┤
 //   │ ⑧DISASSEMBLY PLAYER         Move 4.2 / 11 │   fixed height
-//   │  [⏮][◀][▶][▶|][⏭]               [1× ⌄]  │   or a message + Analyse
-//   │  ───────●──────────────────────────────  │
-//   │ ⑨[Number|Level|Moves ▼|Pieces]           │   Slider view only
-//   │ ⑩[Manage solutions ⌄]  [Export to STL]   │
+//   │  [⏮][◀][▶][▶|][⏭]               [1× ⌄]  │   or a message + Analyse;
+//   │  ───────●──────────────────────────────  │   the transport one Tab stop
+//   │ ⑨[Manage solutions ⌄]  [Export to STL]   │
 //   ├──────────────────────────────────────────┤
-//   │ ⑪Piece display                [Show all] │
-//   │  [■ S1] [▫ S2] [□ S3.1] [■ S3.2] ...     │   fixed height, scrolls
+//   │ ⑩Piece display                [Show all] │
+//   │  [■ S1] [▫ S2] [□ S3.1] [■ S3.2] ...     │   the height left, scrolls
 //   └──────────────────────────────────────────┘
 Card {
     id: root
@@ -92,6 +92,21 @@ Card {
     function focusList(): void {
         if (list.visible)
             list.forceActiveFocus(App.keyboardCues.navigating ? Qt.TabFocusReason : Qt.OtherFocusReason)
+    }
+
+    /* a button of the player's transport: the group's one Tab stop when it
+     * is the one used last (RovingFocus); a click takes no focus */
+    component TransportButton: IconButton {
+        id: tb
+        required property RovingFocus group
+        focusPolicy: tb.group.stop === tb || tb.activeFocus ? Qt.TabFocus : Qt.NoFocus
+        Component.onCompleted: tb.group.join(tb)
+        Component.onDestruction: tb.group.leave(tb)
+        onActiveFocusChanged: if (tb.activeFocus) tb.group.current = tb
+        Keys.onPressed: (event) => {
+            if ((event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier && tb.group.navigate(tb, event.key))
+                event.accepted = true
+        }
     }
 
     component SliderHandle: Rectangle {
@@ -251,8 +266,12 @@ Card {
         Item {
             id: area
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            Layout.minimumHeight: 150
+            // the list ten rows, the same while a solve adds rows; the Slider
+            // view only what it needs. The piece display takes the rest
+            Layout.preferredHeight: !root.listView && App.solver.shownCount > 0
+                                    ? sliderView.implicitHeight + 2 * root.vpad
+                                    : listHeader.height + 10 * Theme.solverListRow
+                                      + (Theme.minimal ? root.vpad : keysHint.implicitHeight + 4 + root.vpad)
 
             // the list's sticky header (PR-28): one Tab stop, ← → between the columns
             FocusScope { // ③
@@ -586,6 +605,19 @@ Card {
                         onClicked: App.solver.selectRow(App.solver.selectedRow + 1)
                     }
                 }
+                // sort by, by the slider it orders (the same state as the list's headers)
+                Segmented {
+                    objectName: "solver.sort"
+                    Accessible.name: qsTr("Sort by")
+                    Accessible.description: qsTr("Space or Enter on the option on reverses it")
+                    value: App.solver.sortKey
+                    options: [0, 1, 2, 3].map((k) => ({
+                        value: k,
+                        label: App.solver.sortKey === k ? qsTr("%1 %2").arg(root.keyWords[k]).arg(App.solver.sortDescending ? "▼" : "▲")
+                                                        : root.keyWords[k]
+                    }))
+                    onActivated: (v) => App.solver.clickSort(v)
+                }
                 // six tiles made once: scrubbing changes their words, not the items
                 Grid {
                     objectName: "solver.meta"
@@ -684,15 +716,23 @@ Card {
                 RowLayout {
                     width: parent.width
                     spacing: 4
-                    // Tab stops, but a click leaves the keyboard on the list (sticky focus, C20)
-                    IconButton { objectName: "solver.player.start"; iconName: "transport-skip-start"; tip: qsTr("Assembled (Shift+←)"); focusPolicy: Qt.TabFocus; onClicked: App.solver.transport("start") }
-                    IconButton { objectName: "solver.player.back"; iconName: "transport-step-back"; tip: qsTr("One move back (←)"); focusPolicy: Qt.TabFocus; onClicked: App.solver.transport("back") }
+                    /* one Tab stop, the arrows between the five (RovingFocus); a
+                     * click leaves the keyboard on the list (sticky focus, C20) */
+                    RovingFocus { id: transport }
+                    TransportButton { objectName: "solver.player.start"; group: transport; iconName: "transport-skip-start"; tip: qsTr("Assembled (Shift+←)"); onClicked: App.solver.transport("start") }
+                    TransportButton { objectName: "solver.player.back"; group: transport; iconName: "transport-step-back"; tip: qsTr("One move back (←)"); onClicked: App.solver.transport("back") }
                     BtButton {
                         id: playButton
                         objectName: "solver.player.play"
                         primary: true
                         small: true
-                        focusPolicy: Qt.TabFocus
+                        focusPolicy: transport.stop === playButton || activeFocus ? Qt.TabFocus : Qt.NoFocus
+                        Component.onCompleted: transport.join(playButton)
+                        onActiveFocusChanged: if (activeFocus) transport.current = playButton
+                        Keys.onPressed: (event) => {
+                            if ((event.modifiers & ~Qt.KeypadModifier) === Qt.NoModifier && transport.navigate(playButton, event.key))
+                                event.accepted = true
+                        }
                         Layout.preferredWidth: Theme.button + 12
                         text: ""
                         readonly property string tip: App.solver.playing ? qsTr("Pause (Space)") : qsTr("Play (Space)")
@@ -707,8 +747,8 @@ Card {
                             color: Theme.onAccent
                         }
                     }
-                    IconButton { objectName: "solver.player.fwd"; iconName: "transport-step-forward"; tip: qsTr("One move forward (→)"); focusPolicy: Qt.TabFocus; onClicked: App.solver.transport("fwd") }
-                    IconButton { objectName: "solver.player.end"; iconName: "transport-skip-end"; tip: qsTr("Fully disassembled (Shift+→)"); focusPolicy: Qt.TabFocus; onClicked: App.solver.transport("end") }
+                    TransportButton { objectName: "solver.player.fwd"; group: transport; iconName: "transport-step-forward"; tip: qsTr("One move forward (→)"); onClicked: App.solver.transport("fwd") }
+                    TransportButton { objectName: "solver.player.end"; group: transport; iconName: "transport-skip-end"; tip: qsTr("Fully disassembled (Shift+→)"); onClicked: App.solver.transport("end") }
                     Item { Layout.fillWidth: true }
                     Dropdown {
                         objectName: "solver.player.speed"
@@ -797,25 +837,8 @@ Card {
             }
         }
 
-        // --- the Sort-by segment (Slider view; the same state as the headers) -----------
-        Segmented { // ⑨
-            objectName: "solver.sort"
-            visible: !root.listView && App.solver.shownCount > 0
-            Layout.leftMargin: root.pad
-            Layout.bottomMargin: 6
-            Accessible.name: qsTr("Sort by")
-            Accessible.description: qsTr("Space or Enter on the option on reverses it")
-            value: App.solver.sortKey
-            options: [0, 1, 2, 3].map((k) => ({
-                value: k,
-                label: App.solver.sortKey === k ? qsTr("%1 %2").arg(root.keyWords[k]).arg(App.solver.sortDescending ? "▼" : "▲")
-                                                : root.keyWords[k]
-            }))
-            onActivated: (v) => App.solver.clickSort(v)
-        }
-
         // --- Manage and Export ---------------------------------------------------------------
-        RowLayout { // ⑩
+        RowLayout { // ⑨
             objectName: "solver.act"
             Layout.fillWidth: true
             Layout.leftMargin: root.pad
@@ -972,12 +995,11 @@ Card {
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.line }
 
         // --- the piece display (PR-30): its height fixed, it scrolls ----------------------------
-        Item { // ⑪
+        Item { // ⑩
             objectName: "solver.pieces"
             Layout.fillWidth: true
-            Layout.preferredHeight: Theme.cardHeader + Theme.pieceDisplay
+            Layout.fillHeight: true
             Layout.minimumHeight: Theme.cardHeader + Theme.pieceDisplay
-            Layout.maximumHeight: Theme.cardHeader + Theme.pieceDisplay
 
             Item {
                 id: piecesHeader
@@ -993,8 +1015,8 @@ Card {
             }
             Flickable {
                 id: chipsFlick
-                anchors { left: parent.left; right: parent.right; top: piecesHeader.bottom; leftMargin: root.pad; rightMargin: root.pad }
-                height: Theme.pieceDisplay
+                anchors { left: parent.left; right: parent.right; top: piecesHeader.bottom; bottom: parent.bottom
+                          leftMargin: root.pad; rightMargin: root.pad }
                 contentHeight: chips.implicitHeight + 6
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds

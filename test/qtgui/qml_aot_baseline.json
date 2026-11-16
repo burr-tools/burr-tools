@@ -30,7 +30,6 @@
     "DecimalField.qml": 3,
     "DisplayMenu.qml": 9,
     "Dropdown.qml": 3,
-    "ExplorerDrawer.qml": 29,
     "Gallery.qml": 22,
     "Glyph.qml": 0,
     "GlyphButton.qml": 5,
@@ -78,5 +77,5 @@
     "WorkspaceRail.qml": 10
   },
   "qt": "6.11",
-  "total": 1052
+  "total": 1023
 }

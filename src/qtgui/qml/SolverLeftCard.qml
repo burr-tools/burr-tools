@@ -627,14 +627,10 @@ Card {
                         Layout.fillWidth: true
                         small: true
                         text: qsTr("Placements")
-                        enabled: App.solver.canPlacements
-                        readonly property string help: qsTr("Browse the assembly search: each piece and its places")
+                        // not in this version: the explorer drawer comes later (README, deferred)
+                        enabled: false
                         Accessible.role: Accessible.Button
-                        Accessible.checkable: true
-                        Accessible.checked: App.solver.explorer === "placements"
-                        Accessible.description: help
-                        BtToolTip { shown: placementsButton.hovered || placementsButton.visualFocus; text: placementsButton.help }
-                        onClicked: App.solver.toggleExplorer("placements")
+                        Accessible.description: qsTr("Not in this version")
                     }
                     BtButton {
                         id: movementsButton
@@ -642,13 +638,8 @@ Card {
                         Layout.fillWidth: true
                         small: true
                         text: qsTr("Movements")
-                        enabled: App.solver.canMovements
-                        readonly property string help: qsTr("Browse the selected solution's disassembly, piece by piece")
-                        Accessible.checkable: true
-                        Accessible.checked: App.solver.explorer === "movements"
-                        Accessible.description: help
-                        BtToolTip { shown: movementsButton.hovered || movementsButton.visualFocus; text: movementsButton.help }
-                        onClicked: App.solver.toggleExplorer("movements")
+                        enabled: false
+                        Accessible.description: qsTr("Not in this version")
                     }
                     BtButton {
                         id: stepButton
@@ -661,24 +652,10 @@ Card {
                         BtToolTip { shown: stepButton.hovered || stepButton.visualFocus; text: qsTr("Advance the assembler one step") }
                         onClicked: App.solver.step()
                     }
-                    // the drawer closed with the keyboard in it: back to the button that opened it
-                    Connections {
-                        target: App.solver
-                        property string open: ""
-                        function onExplorerChanged() {
-                            const was = open
-                            open = App.solver.explorer
-                            if (open.length === 0 && was.length > 0 && root.Window.activeFocusItem === null) {
-                                const b = was === "placements" ? placementsButton : movementsButton
-                                if (b.enabled)
-                                    b.forceActiveFocus(Qt.TabFocusReason)
-                            }
-                        }
-                    }
                 }
                 Help {
                     width: parent.width - 2 * root.pad
-                    text: qsTr("Placements browses the assembly search; Movements browses the disassembly search; Step advances the assembler one step.")
+                    text: qsTr("Step advances the assembler one step. Browsing the placements and the movements comes in a later version.")
                 }
             }
         }
