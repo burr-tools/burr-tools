@@ -14,7 +14,7 @@ TestCase {
 
     function init() {
         // see tst_shell.qml for why these two warnings are allowed
-        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard|QUnifiedTimer::stopAnimationDriver: driver is not running).*/)
         App.settings.restoreAllDefaults()
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null, "Main.qml failed to load")
@@ -120,6 +120,18 @@ TestCase {
         compare(App.settings.voxelStyle, "legacy")
         mouseClick(inside(d, "settings.voxelStyle.flat"))
         compare(App.settings.voxelStyle, "flat")
+    }
+
+    function test_shapeColoursAreASegmentedChoice() {
+        // softer by default; the colours BurrTools has always used behind Classic
+        const d = openSettings()
+        mouseClick(inside(d, "settings.nav.general"))
+        waitForRendering(d.contentItem)
+        compare(App.settings.shapeColours, "muted")
+        mouseClick(inside(d, "settings.shapeColours.classic"))
+        compare(App.settings.shapeColours, "classic")
+        mouseClick(inside(d, "settings.shapeColours.muted"))
+        compare(App.settings.shapeColours, "muted")
     }
 
     function test_antialiasingIsASegmentedChoice() {

@@ -21,8 +21,11 @@
 #include "xml.h"
 
 #include <string.h>
+#include <cstdint>
+#include <type_traits>
 
 #include <sstream>
+#include <stdexcept>
 
 static const int RESIZE_BUFFER = 16;
 
@@ -327,8 +330,10 @@ xmlParser_c::xmlParser_c(void) :
 
 void xmlParser_c::initBuf(void)
 {
-  srcBuf.resize(8192);
-  srcBuflength = 8192;
+  // large reads: the input comes through a stream, a decompressing one for
+  // a saved puzzle, which is quicker read in big pieces
+  srcBuf.resize(65536);
+  srcBuflength = 65536;
   txtBuf.resize(256);
   txtBufSize = 256;
   nspCounts.assign(8, 0);
@@ -354,7 +359,8 @@ void xmlParser_c::commonInit(void)
   XML_DECL = 998;
   srcPos = 0;
   srcCount = 0;
-  peekCount = 0;
+  srcEnd = false;
+  wasCR = false;
   depth = 0;
   relaxed = false;
   skipNextTag=false;
@@ -663,9 +669,12 @@ int xmlParser_c::peekType(void)
 
 std::string xmlParser_c::get(int pos)
 {
-  std::string
-    tmp (txtBuf.data());
-  return tmp.substr (pos, txtPos - pos);
+  // the text ends at a NUL, as it always has (a "&#0;" makes one), and from
+  // past it there is none
+  const size_t len = textLength();
+  if (size_t(pos) > len)
+    throw std::out_of_range("xmlParser_c::get");
+  return std::string (txtBuf.data() + pos, len - size_t(pos));
 }
 
 
@@ -678,6 +687,19 @@ void xmlParser_c::push(int c)
     txtBuf.resize(txtBufSize);
   }
   txtBuf[txtPos++] = (char) c;
+  txtBuf[txtPos] = 0;
+}
+
+
+void xmlParser_c::pushRun(const char * s, int n)
+{
+  if (txtPos + n >= txtBufSize - 1)
+  {
+    txtBufSize = (txtPos + n) * 4 / 3 + 4;
+    txtBuf.resize(txtBufSize);
+  }
+  memcpy(txtBuf.data() + txtPos, s, size_t(n));
+  txtPos += n;
   txtBuf[txtPos] = 0;
 }
 
@@ -768,8 +790,8 @@ void xmlParser_c::parseStartTag(bool xmldecl)
   {
     for (int j = 0; j < i; j++)
     {
-      if (getAttributeName (i) == getAttributeName (j))
-        exception ("Duplicate Attribute: " + getAttributeName (i));
+      if (attributes[(i << 2) + 2] == attributes[(j << 2) + 2])
+        exception ("Duplicate Attribute: " + attributes[(i << 2) + 2]);
     }
   }
   elementStack[sp] = Ns;
@@ -833,6 +855,7 @@ void xmlParser_c::pushEntity(void)
 */
 void xmlParser_c::pushText(int delimiter, bool resolveEntities)
 {
+  pushPlain (delimiter);
   int next = peekbuf (0);
   while (next != -1 && next != delimiter)       // covers eof, '<', '"'
   {
@@ -859,7 +882,134 @@ void xmlParser_c::pushText(int delimiter, bool resolveEntities)
     }
     else
       push (read ());
+    pushPlain (delimiter);
     next = peekbuf (0);
+  }
+}
+
+
+/* the characters the loop in pushText pushes as they are, a run at a time:
+ * all but the end of the input, the delimiter, '<' and '&', a line end in a
+ * tag, and for the ' ' delimiter what ends an unquoted value */
+namespace {
+
+  /* each byte's part in element content, the bulk of a saved puzzle: 1 ends
+   * a run of text ('<', '&', and -1 where char is signed, which reads as the
+   * end of the input), 2 is a line end, 4 is no whitespace */
+  struct ContentClasses {
+    unsigned char of[256];
+    ContentClasses() {
+      for (int i = 0; i < 256; i++) {
+        const int c = char(i);          // as the buffer hands it out
+        of[i] = (c == -1 || c == '<' || c == '&' ? 1 : 0) | (c == '\n' ? 2 : 0) | (c > ' ' ? 4 : 0);
+      }
+    }
+  };
+  const ContentClasses contentClasses;
+
+  // the same, eight bytes at a time: a byte equal to c in v
+  constexpr uint64_t kOnes = 0x0101010101010101ull;
+  constexpr uint64_t kHighs = 0x8080808080808080ull;
+  inline uint64_t wordHasByte(uint64_t v, unsigned char c) {
+    const uint64_t x = v ^ (kOnes * c);
+    return (x - kOnes) & ~x & kHighs;
+  }
+  // a byte that ends a run of text, or a line end
+  inline bool wordHasStop(uint64_t v) {
+    return (wordHasByte(v, '<') | wordHasByte(v, '&') | wordHasByte(v, '\n')
+         | (std::is_signed_v<char> ? wordHasByte(v, 0xff) : 0)) != 0;
+  }
+  // a byte above ' ', as a char compares: from 0x80 on below it where char is signed
+  inline bool wordHasNonWhite(uint64_t v) {
+    const uint64_t above = ((v & ~kHighs) + kOnes * (0x7f - ' ')) & kHighs;   // low seven bits above ' '
+    return (std::is_signed_v<char> ? above & ~v : above | (v & kHighs)) != 0;
+  }
+
+}
+
+void xmlParser_c::pushPlain(int delimiter)
+{
+  // element content: a table look-up a byte, the lines counted on the way
+  if (delimiter == '<' && type != START_TAG)
+  {
+    while (true)
+    {
+      if (srcPos >= srcCount && fill (1) < 1)
+        return;
+      const char * b = srcBuf.data() + srcPos;
+      const char * e = srcBuf.data() + srcCount;
+      const char * p = b;
+      const char * nl = nullptr;
+      int lines = 0;
+      unsigned seen = 0;
+      // eight bytes at a time while none ends the run or is a line end
+      while (e - p >= 8)
+      {
+        uint64_t v;
+        memcpy(&v, p, 8);
+        if (wordHasStop(v))
+          break;
+        if (wordHasNonWhite(v))
+          seen |= 4;
+        p += 8;
+      }
+      for (; p < e; p++)
+      {
+        const unsigned k = contentClasses.of[(unsigned char)*p];
+        if (k & 1)
+          break;
+        if (k & 2)
+        {
+          lines++;
+          nl = p;
+        }
+        seen |= k;
+      }
+      const int n = int(p - b);
+      if (n > 0)
+      {
+        pushRun (b, n);
+        if (seen & 4)
+          isWspace = false;
+        line += lines;
+        column = nl ? int(p - nl) : column + n;
+        srcPos += n;
+      }
+      if (p < e)
+        return;
+    }
+  }
+
+  while (true)
+  {
+    if (srcPos >= srcCount && fill (1) < 1)
+      return;
+    const char * b = srcBuf.data() + srcPos;
+    const char * e = srcBuf.data() + srcCount;
+    const char * p = b;
+    bool white = isWspace;
+    const bool inTag = type == START_TAG;
+    while (p < e)
+    {
+      const int c = *p;
+      if (c == -1 || c == delimiter || c == '<' || c == '&')
+        break;
+      if (delimiter == ' ' && (c <= ' ' || c == '>'))
+        break;
+      if (c == '\n' && inTag)
+        break;
+      white &= c <= ' ';
+      p++;
+    }
+    const int n = int(p - b);
+    if (n > 0)
+    {
+      pushRun (b, n);
+      isWspace = white;
+      consume (n);
+    }
+    if (p < e)
+      return;
   }
 }
 
@@ -867,93 +1017,109 @@ void xmlParser_c::pushText(int delimiter, bool resolveEntities)
 void xmlParser_c::read(char c)
 {
   int a = read();
-  std::string sa (1, (char) a), sc (1, c);
   if (a != c)
+  {
+    std::string sa (1, (char) a), sc (1, c);
     exception ("expected: '" + sc + "' actual: '" + sa + "'");
+  }
 }
 
 
-int xmlParser_c::read(void)
+int xmlParser_c::fill(int n)
 {
-  int result;
-  if (peekCount == 0)
-    result = peekbuf (0);
-  else
+  if (srcCount - srcPos >= n || srcEnd)
+    return srcCount - srcPos;
+  // what is left to the front, then read on behind it
+  const int rest = srcCount - srcPos;
+  memmove(srcBuf.data(), srcBuf.data() + srcPos, size_t(rest));
+  srcPos = 0;
+  srcCount = rest;
+  while (srcCount < n && !srcEnd)
   {
-    result = peek[0];
-    peek[0] = peek[1];
-  }
-  peekCount--;
-  column++;
-  if (result == '\n')
-  {
-    line++;
-    column = 1;
-  }
-  return result;
-}
-
-
-/** Does never read more than needed */
-int xmlParser_c::peekbuf(int pos)
-{
-  while (pos >= peekCount)
-  {
-    int nw;
-    if (srcBuflength <= 1)
-      nw = reader.get ();
-    else if (srcPos < srcCount)
-      nw = srcBuf[srcPos++];
-    else
+    const int got = int(reader.read(srcBuf.data() + srcCount, srcBuflength - srcCount).gcount());
+    if (got <= 0)
     {
-      srcCount = reader.read (srcBuf.data(), srcBuflength).gcount ();
-      if (srcCount <= 0)
-        nw = -1;
-
-      else
-        nw = srcBuf[0];
-      srcPos = 1;
+      srcEnd = true;
+      break;
     }
-    if (nw == '\r')
+    // the line ends made '\n': a '\r' becomes one, a '\n' right after it goes
+    char * r = srcBuf.data() + srcCount;
+    char * const e = r + got;
+    if (!wasCR && !memchr(r, '\r', size_t(got)))
     {
-      wasCR = true;
-      peek[peekCount++] = '\n';
+      srcCount += got;
+      continue;
     }
-    else
+    char * w = r;
+    for (; r < e; r++)
     {
-      if (nw == '\n')
+      const char c = *r;
+      if (c == '\r')
       {
-        if (!wasCR)
-          peek[peekCount++] = '\n';
+        wasCR = true;
+        *w++ = '\n';
       }
       else
-        peek[peekCount++] = nw;
-      wasCR = false;
+      {
+        if (c != '\n' || !wasCR)
+          *w++ = c;
+        wasCR = false;
+      }
     }
+    srcCount = int(w - srcBuf.data());
   }
-  return peek[pos];
+  return srcCount - srcPos;
+}
+
+
+void xmlParser_c::consume(int n)
+{
+  const char * b = srcBuf.data() + srcPos;
+  const char * nl = nullptr;
+  for (const char * p = b; p < b + n; p++)
+    if (*p == '\n')
+    {
+      line++;
+      nl = p;
+    }
+  column = nl ? int(b + n - nl) : column + n;
+  srcPos += n;
 }
 
 
 std::string xmlParser_c::readName(void)
 {
-  int  pos = txtPos;
   int  c = peekbuf (0);
   if ((c < 'a' || c > 'z')
       && (c < 'A' || c > 'Z') && c != '_' && c != ':' && c < 0x0c0)
     exception ("name expected");
 
+  auto nameChar = [](int ch) {
+    return (ch >= 'a' && ch <= 'z')
+        || (ch >= 'A' && ch <= 'Z')
+        || (ch >= '0' && ch <= '9')
+        || ch == '_' || ch == '-' || ch == ':' || ch == '.' || ch >= 0x0b7;
+  };
+
+  // a run at a time, as far as the buffer goes; the first character is one
+  // of them too. A name holds no line end: the column moves on by its length
+  std::string result;
   do
   {
-    push (read ());
-    c = peekbuf (0);
-  } while ((c >= 'a' && c <= 'z')
-      || (c >= 'A' && c <= 'Z')
-      || (c >= '0' && c <= '9')
-      || c == '_' || c == '-' || c == ':' || c == '.' || c >= 0x0b7);
+    const char * b = srcBuf.data() + srcPos;
+    const char * e = srcBuf.data() + srcCount;
+    const char * p = b;
+    while (p < e && nameChar (*p))
+      p++;
+    result.append (b, size_t(p - b));
+    srcPos += int(p - b);
+    column += int(p - b);
+    if (p < e)
+      break;
+  } while (fill (1) > 0);
 
-  std::string result = get(pos);
-  txtPos = pos;
+  // as pushing it did
+  isWspace = false;
   return result;
 }
 
@@ -962,10 +1128,16 @@ void xmlParser_c::skip(void)
 {
   while (true)
   {
-    int c = peekbuf (0);
-    if (c > ' ' || c == -1)
-      break;
-    read ();
+    if (srcPos >= srcCount && fill (1) < 1)
+      return;
+    const char * b = srcBuf.data() + srcPos;
+    const char * e = srcBuf.data() + srcCount;
+    const char * p = b;
+    while (p < e && *p <= ' ' && *p != -1)
+      p++;
+    consume (int(p - b));
+    if (p < e)
+      return;
   }
 }
 

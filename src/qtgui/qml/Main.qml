@@ -48,7 +48,7 @@ ApplicationWindow {
         button: Theme.panel
         buttonText: Theme.text
         highlight: Theme.accent
-        highlightedText: "white"
+        highlightedText: Theme.onAccent
         toolTipBase: Theme.panel
         toolTipText: Theme.text
         mid: Theme.line2
@@ -120,7 +120,8 @@ ApplicationWindow {
                                       || shown(statusDialog) || shown(stlDialog)
                                       || shown(vectorDialog) || shown(imageDialog)
                                       || shown(shortcutsDialog) || shown(updateDialog)
-                                      || shown(deleteShapeDialog) || shown(removeColourDialog)
+                                      || shown(solutionsDialog) || shown(setRangeDialog)
+                                      || shown(removeSolutionsDialog)
                                       || chooserShown()
                                       || messageShown(discardDialog) || messageShown(messageDialog)
                                       || messageShown(internalErrorDialog)
@@ -178,7 +179,8 @@ ApplicationWindow {
             if (!c.visible)
                 continue
             const rail = c as CollapsedRail
-            const card = c as Card
+            const loader = c as Loader          // Puzzle's cards, made on its first showing
+            const card = (loader !== null ? loader.item : c) as Card
             const target = rail !== null ? rail.expandButton : card !== null ? card.collapseButton : null
             if (target !== null && target.visible) {
                 target.forceActiveFocus(visual ? Qt.TabFocusReason : Qt.MouseFocusReason)
@@ -343,40 +345,58 @@ ApplicationWindow {
                         anchors { left: parent.left; right: parent.right; top: parent.top; bottom: statusBar.top; margins: Theme.bodyPadding }
 
                         readonly property int ws: App.layout.workspace
+                        /* Puzzle's cards are left for later (App.builds): the app opens in
+                         * Entities, and they cost its start 35-50 ms (a tile and a chip for
+                         * every piece and shape). The queue makes them a second after the
+                         * start (after the lists, App's first job), one card at a time, each over several frames (an
+                         * asynchronous Loader: a few ms a frame); or at once, when Puzzle
+                         * shows first. Then they are kept. The Solver's two follow, the
+                         * same way. */
+                        readonly property bool puzzleShown: ws === LayoutController.Puzzle
+                        readonly property bool solverShown: ws === LayoutController.Solver
+                        BuildJob { id: puzzleLeftJob; queue: App.builds; waits: true; needed: body.puzzleShown }
+                        BuildJob { id: puzzleRightJob; queue: App.builds; waits: true; needed: body.puzzleShown }
+                        BuildJob { id: solverLeftJob; queue: App.builds; waits: true; needed: body.solverShown }
+                        BuildJob { id: solverRightJob; queue: App.builds; waits: true; needed: body.solverShown }
                         // the swap's bindings settle first, then the keyboard follows
                         readonly property bool leftRail: App.layout.leftShownAsRail
                         readonly property bool rightRail: App.layout.rightShownAsRail
                         onLeftRailChanged: Qt.callLater(win.keepToggleFocus, leftSlot)
                         onRightRailChanged: Qt.callLater(win.keepToggleFocus, rightSlot)
 
-                        Item { // ③
+                        CardSlot { // ③
                             id: leftSlot
                             objectName: "workspace.left"
                             anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-                            width: App.layout.leftWidth
-                            Behavior on width { NumberAnimation { duration: Theme.durCollapse; easing.type: Easing.InOutQuad } }
+                            target: App.layout.leftWidth
 
                             ShapesCard {
-                                anchors.fill: parent
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                width: leftSlot.cardWidth
                                 visible: body.ws === LayoutController.Entities && !App.layout.leftShownAsRail
                             }
-                            PlaceholderCard {
-                                objectName: "puzzle.left"
-                                anchors.fill: parent
+                            Loader {
+                                objectName: "puzzle.left.loader"
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                width: leftSlot.cardWidth
+                                active: puzzleLeftJob.granted
+                                // shown while loading: made at once (a Loader turned synchronous finishes)
+                                asynchronous: !puzzleLeftJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) puzzleLeftJob.finish()
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.leftShownAsRail
-                                title: qsTr("Problems")
-                                collapseIcon: "panelL"
-                                onCollapseClicked: App.layout.leftCollapsed = true
-                                note: qsTr("Problems, result and pieces arrive with the Puzzle phase.")
+                                sourceComponent: Component {
+                                    PuzzleLeftCard { onSetRangeRequested: win.showDialog(setRangeDialog) }
+                                }
                             }
-                            PlaceholderCard {
-                                objectName: "solver.left"
-                                anchors.fill: parent
+                            Loader {
+                                objectName: "solver.left.loader"
+                                anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
+                                width: leftSlot.cardWidth
+                                active: solverLeftJob.granted
+                                asynchronous: !solverLeftJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) solverLeftJob.finish()
                                 visible: body.ws === LayoutController.Solver && !App.layout.leftShownAsRail
-                                title: qsTr("Solver")
-                                collapseIcon: "panelL"
-                                onCollapseClicked: App.layout.leftCollapsed = true
-                                note: qsTr("Search set-up and the run controls arrive with the Solver phase.")
+                                sourceComponent: Component { SolverLeftCard {} }
                             }
                             CollapsedRail {
                                 objectName: "workspace.left.rail"
@@ -391,6 +411,10 @@ ApplicationWindow {
                                     CollapsedShapes {
                                         anchors.fill: parent
                                         visible: body.ws === LayoutController.Entities
+                                    },
+                                    CollapsedProblems {
+                                        anchors.fill: parent
+                                        visible: body.ws === LayoutController.Puzzle
                                     }
                                 ]
                             }
@@ -402,34 +426,44 @@ ApplicationWindow {
                                       top: parent.top; bottom: parent.bottom }
                         }
 
-                        Item { // ⑤
+                        CardSlot { // ⑤
                             id: rightSlot
                             objectName: "workspace.right"
                             anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
-                            width: App.layout.rightWidth
-                            Behavior on width { NumberAnimation { duration: Theme.durCollapse; easing.type: Easing.InOutQuad } }
+                            target: App.layout.rightWidth
 
                             VoxelEditorCard {
-                                anchors.fill: parent
+                                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                                width: rightSlot.cardWidth
                                 visible: body.ws === LayoutController.Entities && !App.layout.rightShownAsRail
                             }
-                            PlaceholderCard {
-                                objectName: "puzzle.right"
-                                anchors.fill: parent
+                            Loader {
+                                objectName: "puzzle.right.loader"
+                                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                                width: rightSlot.cardWidth
+                                active: puzzleRightJob.granted
+                                asynchronous: !puzzleRightJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) puzzleRightJob.finish()
                                 visible: body.ws === LayoutController.Puzzle && !App.layout.rightShownAsRail
-                                title: qsTr("Selected piece")
-                                collapseIcon: "panelR"
-                                onCollapseClicked: App.layout.rightCollapsed = true
-                                note: qsTr("Counts, ranges, groups and colour rules arrive with the Puzzle phase.")
+                                sourceComponent: Component { PuzzleRightCard {} }
                             }
-                            PlaceholderCard {
-                                objectName: "solver.right"
-                                anchors.fill: parent
+                            Loader {
+                                objectName: "solver.right.loader"
+                                anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+                                width: rightSlot.cardWidth
+                                active: solverRightJob.granted
+                                asynchronous: !solverRightJob.needed
+                                onStatusChanged: if (status !== Loader.Loading) solverRightJob.finish()
                                 visible: body.ws === LayoutController.Solver && !App.layout.rightShownAsRail
-                                title: qsTr("Solutions")
-                                collapseIcon: "panelR"
-                                onCollapseClicked: App.layout.rightCollapsed = true
-                                note: qsTr("The solution list and the disassembly player arrive with the Solver phase.")
+                                sourceComponent: Component {
+                                    SolverRightCard {
+                                        onRemoveRequested: (kind) => win.askRemoveSolutions(kind)
+                                        onExportRequested: {
+                                            App.stl.solutionShapes = App.solver.selectedShapes()
+                                            win.showDialog(stlDialog)
+                                        }
+                                    }
+                                }
                             }
                             CollapsedRail {
                                 objectName: "workspace.right.rail"
@@ -437,8 +471,9 @@ ApplicationWindow {
                                 visible: App.layout.rightShownAsRail
                                 expandIcon: "panelR"
                                 expandObjectName: "workspace.right.rail.expand"
+                                // Puzzle's rail names its sections, not the card (CollapsedSections)
                                 title: body.ws === LayoutController.Entities ? qsTr("Voxel editor")
-                                     : body.ws === LayoutController.Puzzle ? qsTr("Selected piece") : qsTr("Solutions")
+                                     : body.ws === LayoutController.Puzzle ? "" : qsTr("Solutions")
                                 onExpandClicked: App.layout.rightCollapsed = false
                                 // the drawing colour (C09), Default as the shape's
                                 Rectangle {
@@ -455,6 +490,12 @@ ApplicationWindow {
                                     HoverHandler { id: railColourHover }
                                     BtToolTip { shown: railColourHover.hovered; text: qsTr("Drawing colour: %1").arg(App.colours.drawName) }
                                 }
+                                list: [
+                                    CollapsedSections {
+                                        anchors.fill: parent
+                                        visible: body.ws === LayoutController.Puzzle
+                                    }
+                                ]
                             }
                         }
                     }
@@ -486,30 +527,63 @@ ApplicationWindow {
     Loader { id: imageDialog; active: false; source: "ImageExportDialog.qml" }
     Loader { id: shortcutsDialog; active: false; source: "KeyboardShortcutsDialog.qml" }
     Loader { id: updateDialog; active: false; source: "UpdateDialog.qml" }
-    // questions before a change undo cannot fully take back
+    Loader { id: setRangeDialog; active: false; source: "SetRangeDialog.qml" }
+    // an edit would cost solutions: said once a session (DocumentController::mayCostSolutions),
+    // or each time a voxel edit's are too big for the undo history (mayDropSolutions)
     Loader {
-        id: deleteShapeDialog
+        id: solutionsDialog
         active: false
         sourceComponent: Component {
             ConfirmDialog {
-                objectName: "entities.shapes.deleteDialog"
-                onConfirmed: App.shapes.deleteShape(subject)
-            }
-        }
-    }
-    Loader {
-        id: removeColourDialog
-        active: false
-        sourceComponent: Component {
-            ConfirmDialog {
-                objectName: "entities.editor.colour.removeDialog"
-                onConfirmed: App.colours.removeColour(subject)
+                objectName: "shell.solutionsDialog"
+                property bool answered: false
+                onAboutToShow: answered = false
+                onConfirmed: { answered = true; App.document.resolveSolutionsWarning(true) }
+                onClosed: if (!answered) App.document.resolveSolutionsWarning(false)
             }
         }
     }
 
+    // Manage ▸ Remove assemblies (C20, PR-32): solution deletion is not undoable
+    Loader {
+        id: removeSolutionsDialog
+        active: false
+        sourceComponent: Component {
+            ConfirmDialog {
+                objectName: "solver.removeDialog"
+                onConfirmed: App.solver.removeSolutions(win.removeKind)
+                onClosed: {
+                    App.solver.previewRemove = -1
+                    // the keyboard back where it was (the list), once the dialog has let go
+                    Qt.callLater(win.restoreRemoveFocus)
+                }
+            }
+        }
+    }
+    property int removeKind: -1
+    property Item removeReturnFocus: null
+    function restoreRemoveFocus(): void {
+        const it = win.removeReturnFocus
+        win.removeReturnFocus = null
+        if (it !== null && it.visible && it.enabled)
+            it.forceActiveFocus(App.keyboardCues.navigating ? Qt.TabFocusReason : Qt.OtherFocusReason)
+    }
+    function askRemoveSolutions(kind: int): void {
+        const n = App.solver.removeCount(kind)
+        if (n <= 0)
+            return
+        removeSolutionsDialog.active = true
+        const d = removeSolutionsDialog.item as ConfirmDialog
+        win.removeKind = kind
+        win.removeReturnFocus = win.activeFocusItem
+        App.solver.previewRemove = kind
+        d.ask(n === 1 ? qsTr("Delete 1 solution?") : qsTr("Delete %1 solutions?").arg(n),
+              qsTr("The selected solutions are removed from the problem. Deleted solutions cannot be restored; solving the problem again finds them."),
+              qsTr("Delete"))
+    }
+
     function closeConfirmations() {
-        for (const l of [deleteShapeDialog, removeColourDialog])
+        for (const l of [solutionsDialog, removeSolutionsDialog])
             if (shown(l))
                 (l.item as Dialog).close()
     }
@@ -539,6 +613,7 @@ ApplicationWindow {
                 property string body
                 contentItem: Text {
                     text: notice.body
+                    textFormat: Text.PlainText      // a puzzle's comment, a file's error
                     wrapMode: Text.WordWrap
                     color: Theme.text
                     font.pixelSize: Theme.fontBody
@@ -664,8 +739,13 @@ ApplicationWindow {
         target: win.Overlay.overlay
         function onWidthChanged() { win.showNextMessage() }
     }
-    // and, after the first frame, not before the workspace is in it
-    onContentReadyChanged: showNextMessage()
+    // and, after the first frame, not before the workspace is in it; what was left
+    // for later (App.builds) begins a second after that
+    onContentReadyChanged: {
+        showNextMessage()
+        if (contentReady)
+            App.builds.startAfter(1000)
+    }
 
     Loader {
         id: messageDialog
@@ -713,6 +793,10 @@ ApplicationWindow {
         function onQuitApproved() { win.saveGeometry(); win.quitApproved = true; Qt.quit() }
         function onMessageRequested(title: string, text: string) { win.showMessage(title, text) }
     }
+    Connections {
+        target: App.solver
+        function onMessageRequested(title: string, text: string) { win.showMessage(title, text) }
+    }
 
     Connections {
         target: App.commands
@@ -736,16 +820,19 @@ ApplicationWindow {
         }
     }
 
-    // a delete that would lose solutions asks first (ShapesModel::requestDelete)
     Connections {
-        target: App.shapes
-        function onDeleteConfirmRequested(row: int, idText: string) {
-            deleteShapeDialog.active = true
-            const d = deleteShapeDialog.item as ConfirmDialog
-            d.subject = row
-            d.ask(qsTr("Delete %1?").arg(idText),
-                  qsTr("A problem that uses %1 has solutions or a search in progress. Deleting %1 removes it from those problems and deletes their solutions that use it. Undo brings the shape back, but not the solutions.").arg(idText),
-                  qsTr("Delete"))
+        target: App.document
+        function onSolutionsWarningRequested(tooBigToKeep: bool) {
+            solutionsDialog.active = true
+            const d = solutionsDialog.item as ConfirmDialog
+            if (tooBigToKeep)
+                d.ask(qsTr("Solutions too large to keep for Undo"),
+                      qsTr("This edit removes the stored solutions of the problems it touches. Undo usually brings them back, but these are too large to keep in memory, so they are lost, and saving then removes them from the file. Solving the problem again finds them."),
+                      qsTr("Continue"))
+            else
+                d.ask(qsTr("Changes remove stored solutions"),
+                      qsTr("This change removes the stored solutions of the problems it touches, and saving then removes them from the file. Solving the problem again finds them; Undo and Redo do not bring them back.\n\nThis warning appears once a session. Later edits, undos and redos like it remove solutions without asking."),
+                      qsTr("Continue"))
         }
     }
     Connections {
@@ -761,14 +848,6 @@ ApplicationWindow {
             d.title = title
             d.selectedColor = initial
             d.open()
-        }
-        function onRemoveConfirmRequested(id: int, name: string) {
-            removeColourDialog.active = true
-            const d = removeColourDialog.item as ConfirmDialog
-            d.subject = id
-            d.ask(qsTr("Remove colour %1?").arg(name),
-                  qsTr("A problem whose shapes use %1 has solutions or a search in progress. Removing %1 deletes all of those problems' solutions, and its voxels take the shape's colour. Undo brings the colour back, but not the solutions.").arg(name),
-                  qsTr("Remove"))
         }
     }
 

@@ -23,6 +23,8 @@
 
 #include <vector>
 #include <string>
+#include <string_view>
+#include <cstring>
 #include <iostream>
 
 #include <map>
@@ -166,6 +168,12 @@ class xmlParser_c
      */
     std::string getText(void);
 
+    /** the same text, without copying it: valid until the parser moves on */
+    std::string_view getTextView(void) const
+    {
+      return type < TEXT || (type == ENTITY_REF && unresolved) ? std::string_view() : std::string_view(txtBuf.data(), textLength());
+    }
+
     const char *getTextCharacters(int *poslen);
 
     /** get the name of the current tag */
@@ -272,6 +280,8 @@ class xmlParser_c
     void parseEndTag ();
     int peekType ();
     std::string get (int pos);
+    /** the text pushed, up to a NUL in it */
+    size_t textLength (void) const { return strnlen (txtBuf.data(), size_t(txtPos)); }
     void push (int c);
 
     /** Sets name and attributes */
@@ -290,10 +300,36 @@ class xmlParser_c
       */
     void pushText (int delimiter, bool resolveEntities);
     void read (char c);
-    int read ();
+    int read ()
+    {
+      const int result = peekbuf (0);
+      if (srcPos < srcCount)
+        srcPos++;
+      column++;
+      if (result == '\n')
+      {
+        line++;
+        column = 1;
+      }
+      return result;
+    }
 
-    /** Does never read more than needed */
-    int peekbuf (int pos);
+    /** the character pos places ahead, -1 past the end */
+    int peekbuf (int pos)
+    {
+      if (srcPos + pos >= srcCount && fill (pos + 1) <= pos)
+        return -1;
+      return srcBuf[srcPos + pos];
+    }
+    /** at least n characters in the buffer from srcPos, unless the input
+     * ends first; returns how many there are */
+    int fill (int n);
+    /** the n characters from srcPos read, as read() would one at a time */
+    void consume (int n);
+    /** push and read the characters from srcPos that pushText would
+     * one at a time, as far as the buffer goes */
+    void pushPlain (int delimiter);
+    void pushRun (const char * s, int n);
     std::string readName ();
     void skip ();
     std::string unexpected_eof;
@@ -317,10 +353,13 @@ class xmlParser_c
 
 
     std::string encoding;
+    /* the input read so far and not yet consumed, [srcPos, srcCount), with
+     * its line ends made '\n' as it comes in: "\r\n" and a lone '\r' too */
     std::vector<char> srcBuf;
     int srcPos = 0;
     int srcCount = 0;
     int srcBuflength = 0;
+    bool srcEnd = false;
 
     //    private bool eof;
     int line = 1;
@@ -344,11 +383,7 @@ class xmlParser_c
     // source
     std::istream & reader;
 
-    /**
-     * A separate peek buffer seems simpler than managing
-     * wrap around in the first level read buffer */
-    int peek[2] = {0, 0};
-    int peekCount = 0;
+    // the last character read in was a '\r': a '\n' right after it goes
     bool wasCR = false;
     bool unresolved = false;
     bool token = false;

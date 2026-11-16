@@ -61,8 +61,8 @@ Item {
                 anchors { fill: parent; leftMargin: 3; rightMargin: 3 }
                 radius: Theme.radiusControl
                 color: row.selected ? Theme.accentSoft : (hover.hovered ? Theme.panel2 : "transparent")
-                border.width: row.selected ? (list.activeFocus ? 2 : 1) : 0
-                border.color: list.activeFocus ? Theme.accent : Theme.accentEdge
+                border.width: row.selected ? (list.activeFocus && App.keyboardCues.navigating ? 2 : 1) : 0
+                border.color: list.activeFocus && App.keyboardCues.navigating ? Theme.accent : Theme.accentEdge
             }
             Chip {
                 objectName: "entities.shapes.rail.chip." + row.index
@@ -78,7 +78,7 @@ Item {
             TapHandler { onTapped: { App.shapes.select(row.index); list.forceActiveFocus() } }
             BtToolTip {
                 // the label: on hover, and for the keyboard on the selected chip
-                shown: hover.hovered || (row.selected && list.activeFocus)
+                shown: hover.hovered || (row.selected && list.activeFocus && App.keyboardCues.navigating)
                 text: row.label.length > 0 ? row.idText + "  " + row.label : row.idText
             }
             Accessible.role: Accessible.ListItem

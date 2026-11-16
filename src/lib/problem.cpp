@@ -30,6 +30,7 @@
 #include "../tools/xml.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <stdio.h>
 
@@ -222,8 +223,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   maxHoles = 0xFFFFFFFF;
 
   std::string str = pars.getAttributeValue("maxHoles");
-  if (str.length())
-    maxHoles = atoi(str.c_str());
+  if (str.length()) {
+    const int holes = atoi(str.c_str());
+    if (holes < 0)
+      pars.exception("the maximal number of holes can not be negative");
+    maxHoles = holes;
+  }
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -256,6 +261,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   }
 
   unsigned int pieces = 0;
+  bool partsRead = false;
 
   do
   {
@@ -266,6 +272,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
     if (pars.getName() == "shapes")  // parts are saved in this tag for historical reasons
     {
+      /* The stored solutions are read against the pieces listed so far, and
+       * every later use of them trusts that count. */
+      if (partsRead || solutions.size() > 0 || stashedAssemblies.size() > 0)
+        pars.exception("a problem can have only one shapes node, in front of its solutions");
+      partsRead = true;
+
       do
       {
         int state = pars.nextTag();
@@ -303,6 +315,11 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
           if (id >= puzzle.getNumberOfShapes())
             pars.exception("the shape ids must be for valid shapes");
+
+          // every part operation finds a shape's one part by its id
+          for (const auto & part : parts)
+            if (part->shapeId == id)
+              pars.exception("a shape can be listed only once in a problem");
 
           if (grp)
           {
@@ -372,9 +389,10 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
         if (state == xmlParser_c::END_TAG) break;
         pars.require(xmlParser_c::START_TAG, "");
 
-        if (pars.getName() == "solution")
+        if (pars.getName() == "solution") {
           solutions.push_back(std::make_unique<solution_c>(pars, pieces, puzzle.getGridType()));
-        else
+          solutionsRev++;
+        } else
           pars.skipSubTree();
 
         pars.require(xmlParser_c::END_TAG, "solution");
@@ -656,6 +674,7 @@ void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)
           if (!solutions[s]->getAssembly()->isPlaced(pieceIdx+count-1))
           {
             solutions.erase(solutions.begin()+s);
+            solutionsRev++;
           }
           else
           {
@@ -702,6 +721,7 @@ void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
           if (solutions[s]->getAssembly()->isPlaced(pieceIdx))
           {
             solutions.erase(solutions.begin()+s);
+            solutionsRev++;
           }
           else
           {
@@ -738,6 +758,7 @@ void problem_c::setShapeMaximum(unsigned int shape, unsigned int count)
           {
             // too many pieces placed -> delete solution
             solutions.erase(solutions.begin()+s);
+            solutionsRev++;
           }
           else
           {
@@ -847,12 +868,35 @@ unsigned int problem_c::getPartMaximum(unsigned int partID) const {
   return parts[partID]->max;
 }
 
+void problem_c::appendLoadedSolutions(std::vector<std::unique_ptr<solution_c>> & add) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutions.reserve(solutions.size() + add.size());
+  for (auto & s : add) {
+    solutions.push_back(std::move(s));
+    solutionsRev++;          // as loading them one by one counts
+  }
+  add.clear();
+}
+
+void problem_c::replaceLoadedSolutions(std::vector<std::unique_ptr<solution_c>> && all) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutions = std::move(all);
+  solutionsRev++;
+}
+
+std::vector<std::unique_ptr<solution_c>> problem_c::takeSolutions(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutionsRev++;
+  return std::exchange(solutions, {});
+}
+
 void problem_c::addSolution(assembly_c * assm) {
   bt_assert(assm);
   bt_assert(solveState == SS_SOLVING);
 
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.push_back(std::make_unique<solution_c>(assm, numAssemblies));
+  solutionsRev++;
 }
 
 void problem_c::addSolution(assembly_c * assm, separation_c * disasm, unsigned int pos) {
@@ -866,6 +910,7 @@ void problem_c::addSolution(assembly_c * assm, separation_c * disasm, unsigned i
     solutions.insert(solutions.begin()+pos, std::make_unique<solution_c>(assm, numAssemblies, disasm, numSolutions));
   else
     solutions.push_back(std::make_unique<solution_c>(assm, numAssemblies, disasm, numSolutions));
+  solutionsRev++;
 }
 
 void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsigned int pos) {
@@ -879,11 +924,13 @@ void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsign
     solutions.insert(solutions.begin()+pos, std::make_unique<solution_c>(assm, numAssemblies, disasm, numSolutions));
   else
     solutions.push_back(std::make_unique<solution_c>(assm, numAssemblies, disasm, numSolutions));
+  solutionsRev++;
 }
 
 void problem_c::removeAllSolutions(void) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.clear();
+  solutionsRev++;
   // the stash belongs to the resume state reset below (see stashedAssemblies)
   stashedAssemblies.clear();
   assm.reset();
@@ -904,9 +951,35 @@ bool problem_c::solveRecord_t::empty(void) const {
          solveState == SS_UNSOLVED && numAssemblies == 0 && numSolutions == 0 && usedTime == 0;
 }
 
+namespace {
+  size_t solveBytes(const std::vector<std::unique_ptr<solution_c>> & solutions,
+                    const std::vector<std::unique_ptr<assembly_c>> & stash,
+                    const assembler_c * assm, const std::string & state, const std::string & version) {
+    size_t bytes = state.capacity() + version.capacity() +
+                   (solutions.capacity() + stash.capacity()) * sizeof(void *);
+    for (const auto & s : solutions)
+      bytes += s->memoryBytes();
+    for (const auto & a : stash)
+      bytes += a->memoryBytes();
+    if (assm)
+      bytes += assm->memoryBytes();
+    return bytes;
+  }
+}
+
+size_t problem_c::solveRecord_t::memoryBytes(void) const {
+  return sizeof(*this) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
+}
+
+size_t problem_c::solveRecordBytes(void) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  return sizeof(solveRecord_t) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
+}
+
 void problem_c::swapSolveRecord(solveRecord_t & r) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.swap(r.solutions);
+  solutionsRev++;
   stashedAssemblies.swap(r.stashedAssemblies);
   assm.swap(r.assm);
   assemblerState.swap(r.assemblerState);
@@ -921,6 +994,7 @@ void problem_c::removeSolution(unsigned int sol) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   bt_assert(sol < solutions.size());
   solutions.erase(solutions.begin()+sol);
+  solutionsRev++;
 }
 
 void problem_c::stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v) {
@@ -1107,8 +1181,64 @@ static bool comp_3_pieces(const std::unique_ptr<solution_c> & s1, const std::uni
 }
 
 
+namespace {
+  typedef bool (*solutionOrder_t)(const std::unique_ptr<solution_c> &, const std::unique_ptr<solution_c> &);
+
+  solutionOrder_t solutionOrder(int by) {
+    switch (by) {
+      case 0: return comp_0_assembly;
+      case 1: return comp_1_level;
+      case 2: return comp_2_moves;
+      case 3: return comp_3_pieces;
+    }
+    return nullptr;
+  }
+
+  // 1 and 2 compare two solutions that both have disassembly information
+  bool comparesInformation(int by) { return by == 1 || by == 2; }
+}
+
+bool problem_c::solutionsSortedBy(int by) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  const solutionOrder_t before = solutionOrder(by);
+  if (!before)
+    return false;
+  if (comparesInformation(by) && !solutions.empty()) {
+    const bool has = solutions.front()->getDisassemblyInfo() != nullptr;
+    for (const auto & s : solutions)
+      if ((s->getDisassemblyInfo() != nullptr) != has)
+        return false;
+  }
+  return std::is_sorted(solutions.begin(), solutions.end(), before);
+}
+
+bool problem_c::placeSorted(int by, unsigned int sol) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  const solutionOrder_t before = solutionOrder(by);
+  bt_assert(sol < solutions.size());
+  if (!before)
+    return false;
+  if (comparesInformation(by) && solutions.size() > 1) {
+    const unsigned int other = sol == 0 ? 1 : 0;
+    if ((solutions[sol]->getDisassemblyInfo() != nullptr) != (solutions[other]->getDisassemblyInfo() != nullptr))
+      return false;
+  }
+  std::unique_ptr<solution_c> moved = std::move(solutions[sol]);
+  solutions.erase(solutions.begin() + sol);
+  /* The stable sort puts it after those that go before it, before those it
+   * goes before, and among the ones it ties with where it stood: so between
+   * the bounds, at its own place if that lies between them. */
+  const auto lo = std::lower_bound(solutions.begin(), solutions.end(), moved, before);
+  const auto hi = std::upper_bound(lo, solutions.end(), moved, before);
+  const size_t at = std::clamp(size_t(sol), size_t(lo - solutions.begin()), size_t(hi - solutions.begin()));
+  solutions.insert(solutions.begin() + at, std::move(moved));
+  solutionsRev++;
+  return true;
+}
+
 void problem_c::sortSolutions(int by) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutionsRev++;
   switch (by) {
     case 0: stable_sort(solutions.begin(), solutions.end(), comp_0_assembly); break;
     case 1: stable_sort(solutions.begin(), solutions.end(), comp_1_level   ); break;

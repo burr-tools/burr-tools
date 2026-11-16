@@ -1033,3 +1033,96 @@ TEST_CASE("xml parser: the five predefined entities resolve with no setup from t
    getPositionDescription above: deciding whether the guard should go or the
    seeding should move is a maintainer's call, not a coverage change's. The
    case above pins the behaviour that makes it dead. */
+
+/* The parser reads its input 64 KiB at a time and scans runs of text,
+   names and whitespace a buffer at a time; these cases put what it scans
+   across the end of a buffer, where a run continues in the next one. */
+
+namespace {
+
+/* the next() events of a document, one line each: type, name, text */
+std::string events(const std::string & doc) {
+  std::istringstream src(doc);
+  xmlParser_c pars(src);
+  std::string out;
+  for (int t = pars.next(); t != xmlParser_c::END_DOCUMENT; t = pars.next())
+    out += std::to_string(t) + " " + pars.getName() + " " + pars.getText() + "\n";
+  return out;
+}
+
+} // namespace
+
+TEST_CASE("xml parser: a name, a text and an attribute value read whole across the input buffer",
+          "[xml][parser][buffer]") {
+  // pad so that the name, then the text, then the value straddle 65536
+  for (size_t pad : { size_t(65536 - 4), size_t(65536 - 13), size_t(65536 - 22) }) {
+    const std::string head = "<r>" + std::string(pad - 3, ' ');
+    const std::string doc = head + "<separation type=\"left\">0 1 2 20004 3</separation></r>";
+    std::istringstream src(doc);
+    xmlParser_c pars(src);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+    CHECK(pars.getName() == "separation");
+    CHECK(pars.getAttributeValue("type") == "left");
+    CHECK(pars.nextText() == "0 1 2 20004 3");
+  }
+}
+
+TEST_CASE("xml parser: a CR LF split by the end of the input buffer is one line end",
+          "[xml][parser][buffer]") {
+  /* the '\r' the last character of the first buffer, its '\n' the first of
+     the next: one line end, the line count says, as two in one buffer. The
+     next buffer holds no other '\r', so nothing else there sees to it */
+  const std::string head = "<a>" + std::string(65536 - 4, 'x');
+  const std::string doc = head + "\r\n<b/>\n</a";               // '>' missing: an error on line 3
+  REQUIRE(doc[65535] == '\r');
+  std::istringstream src(doc);
+  xmlParser_c pars(src);
+  std::string what;
+  try {
+    while (pars.next() != xmlParser_c::END_DOCUMENT) { }
+  } catch (xmlParserException_c & e) {
+    what = e.what();
+  }
+  CHECK_THAT(what, Catch::Matchers::ContainsSubstring("at position: 3;"));
+}
+
+TEST_CASE("xml parser: line ends of every kind read the same in a document of several buffers",
+          "[xml][parser][buffer]") {
+  std::string lf;
+  for (int i = 0; lf.size() < 3 * 65536; i++)
+    lf += "<s n=\"" + std::to_string(i) + "\">\n  " + std::to_string(i % 97) + " 1 2\n</s>\n";
+  const std::string doc = "<r>\n" + lf + "</r>\n";
+  std::string crlf, cr;
+  for (char c : doc) {
+    crlf += c == '\n' ? std::string("\r\n") : std::string(1, c);
+    cr += c == '\n' ? '\r' : c;
+  }
+  const std::string want = events(doc);
+  CHECK(events(crlf) == want);
+  CHECK(events(cr) == want);
+}
+
+TEST_CASE("xml parser: getTextView is the text getText copies", "[xml][parser]") {
+  std::istringstream src("<a>0 -1 20004</a>");
+  xmlParser_c pars(src);
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  CHECK(pars.getTextView().empty());               // not on a text
+  REQUIRE(pars.next() == xmlParser_c::TEXT);
+  CHECK(pars.getTextView() == "0 -1 20004");
+  CHECK(std::string(pars.getTextView()) == pars.getText());
+}
+
+TEST_CASE("xml parser: a text ends at a NUL a character reference makes", "[xml][parser][entity]") {
+  /* "&#0;" pushes a NUL, and the text has always ended there: getText()
+     made its string from the buffer as a C string */
+  std::istringstream src("<a>ab&#0;cd</a>");
+  xmlParser_c pars(src);
+  REQUIRE(pars.nextTag() == xmlParser_c::START_TAG);
+  REQUIRE(pars.next() == xmlParser_c::TEXT);
+  CHECK(pars.getText() == "ab");
+  CHECK(pars.getTextView() == "ab");
+  int poslen[2];
+  pars.getTextCharacters(poslen);
+  CHECK(poslen[1] == 5);                            // the buffer itself holds all of it
+}

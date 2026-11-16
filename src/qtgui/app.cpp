@@ -80,6 +80,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   }
   m_settings = new SettingsController(settingsFile, legacySettingsFile, this);
   m_document = new DocumentController(this);
+  m_document->setLoadThreads(m_settings->workerThreads());
   m_layout = new LayoutController(m_settings, this);
   m_status = new StatusController(this);
   m_shapes = new ShapesModel(m_document, this);
@@ -88,18 +89,39 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   // Area mode is remembered, as legacy's "rubberband" is
   m_editor->setAreaMode(m_settings->areaMode());
   connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
-  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, this);
+  m_puzzle = new PuzzleController(m_document, m_shapes, m_layout, this);
+  m_solver = new SolverController(m_settings, m_document, m_layout, m_puzzle, this);
+  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, m_puzzle, m_solver, this);
+  m_document->setBusyStopper([this] { m_solver->stopAndWait(); });
   m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
-  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, this);
+  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, m_puzzle, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
   connect(m_colours, &ColoursModel::flashRequested, m_status, &StatusController::flash);
   connect(m_editor, &EditorController::flashRequested, m_status, &StatusController::flash);
   connect(m_inspector, &InspectorController::flashRequested, m_status, &StatusController::flash);
+  connect(m_puzzle, &PuzzleController::flashRequested, m_status, &StatusController::flash);
+  connect(m_puzzle, &PuzzleController::announceRequested, m_status, &StatusController::announce);
+  connect(m_solver, &SolverController::flashRequested, m_status, &StatusController::flash);
+  connect(m_solver, &SolverController::announceRequested, m_status, &StatusController::announce);
+  connect(m_document, &DocumentController::busyRefused, m_status, &StatusController::flash);
+  connect(m_document, &DocumentController::flashRequested, m_status, &StatusController::flash);
+  // the solutions a problem holds: the Puzzle lists count them
+  connect(m_document, &DocumentController::resultsChanged, m_puzzle, &PuzzleController::refresh);
+  // a piece the solver could place nowhere: shown in Entities, as legacy does
+  connect(m_solver, &SolverController::shapeRequested, this, [this](int shape) {
+    m_layout->setWorkspace(LayoutController::Entities);
+    m_shapes->select(shape);
+  });
   connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
   m_cues = new KeyboardCues(this);
+  m_builds = new BuildQueue(this);
+  /* the first of the work left for later: Puzzle's lists, which follow the
+   * puzzle only while Puzzle shows, so that its cards made in the background
+   * (Main.qml) hold the puzzle's rows */
+  m_builds->post(m_puzzle, [p = m_puzzle] { p->prepare(); return BuildQueue::Step::Done; }, false);
   // the menus' access keys, for Alt (none on macOS, whose labels carry none)
   {
     QString keys;
@@ -124,6 +146,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
   connect(m_settings, &SettingsController::changed, this, [this] {
     m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
+    m_document->setLoadThreads(m_settings->workerThreads());
   });
 
   connect(m_shapes, &ShapesModel::selectedChanged, this, &App::updateStatusText);
@@ -135,10 +158,17 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
       updateStatusText();
   });
   connect(m_layout, &LayoutController::changed, this, &App::updateStatusText);
+  connect(m_puzzle, &PuzzleController::problemChanged, this, &App::updateStatusText);
+  connect(m_puzzle, &PuzzleController::stateChanged, this, &App::updateStatusText);
+  connect(m_solver, &SolverController::runChanged, this, &App::updateStatusText);
+  connect(m_solver, &SolverController::problemChanged, this, &App::updateStatusText);
   updateStatusText();
 }
 
 App::~App() {
+  // the solver and an analysis read the document, which goes with the
+  // children below in the order they were made, before them: stop them first
+  m_solver->stopAndWait();
   if (s_app == this)
     s_app = nullptr;
 }
@@ -193,8 +223,8 @@ QString App::version(void) const {
 }
 
 /* The live status sentence. Entities shows the selected shape's counts
- * (legacy StatPieceInfo); the Puzzle and Solver sentences arrive with those
- * workspaces.
+ * (legacy StatPieceInfo), Puzzle the problem's totals (legacy
+ * StatProblemInfo), the Solver the run's (C21).
  */
 void App::updateStatusText(void) {
   const puzzle_c & p = m_document->session().puzzle();
@@ -203,6 +233,10 @@ void App::updateStatusText(void) {
     const voxel_c * v = p.getShape(unsigned(s));
     m_status->setLiveText(StatusController::shapeText(unsigned(s), v->countState(voxel_c::VX_FILLED),
                                                       v->countState(voxel_c::VX_VARIABLE)));
+  } else if (m_layout->workspace() == LayoutController::Puzzle) {
+    m_status->setLiveText(m_puzzle->statusText());
+  } else if (m_layout->workspace() == LayoutController::Solver) {
+    m_status->setLiveText(m_solver->statusText());
   } else {
     m_status->setLiveText(QString());
   }
@@ -218,6 +252,17 @@ void App::updateStatusText(void) {
  * this runs in.
  */
 QString App::rescueSave(void) {
+  // nothing else may write the puzzle while it is saved; stopping reports
+  // its own errors here again, so once only
+  static bool rescuing = false;
+  if (!rescuing) {
+    rescuing = true;
+    try {
+      m_solver->stopAndWait();
+    } catch (...) {
+    }
+    rescuing = false;
+  }
   QStringList folders;
   const std::filesystem::path & open = m_document->session().fileName();
   if (!open.empty())

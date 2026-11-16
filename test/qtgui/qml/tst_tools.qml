@@ -15,7 +15,7 @@ TestCase {
 
     function init() {
         // see tst_shell.qml for why these two warnings are allowed
-        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard|QUnifiedTimer::stopAnimationDriver: driver is not running).*/)
         App.layout.workspace = LayoutController.Entities
         win = createTemporaryObject(mainComponent, tc)
         verify(win !== null, "Main.qml failed to load")

@@ -14,6 +14,7 @@
 #include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -76,6 +77,62 @@ TEST_CASE("gzstream: a gzipped file is transparently decompressed", "[gzstream]"
   std::ostringstream got;
   got << in->rdbuf();
   REQUIRE(got.str() == "<puzzle/>");
+}
+
+TEST_CASE("gzstream: large reads, single characters and put-back read the same bytes", "[gzstream]") {
+  TempDir dir;
+  const std::string name = dir.file("large.gz");
+
+  std::string data;
+  for (int i = 0; data.size() < 1'000'000; i++)
+    data += "<state>" + std::to_string(i * 7919 % 100003) + "</state>\n";
+  {
+    ogzstream out(name.c_str());
+    REQUIRE(out.good());
+    out << data;
+  }
+
+  /* a read larger than the stream's buffer goes straight to zlib
+     (gzstreambuf::xsgetn); mixed with get(), peek() and unget(), which use
+     the buffer, every byte comes once and in order */
+  std::unique_ptr<std::istream> in(openGzFile(name.c_str()));
+  REQUIRE(in != nullptr);
+  std::string got;
+  std::vector<char> piece(70000);
+  size_t step = 0;
+  while (got.size() < data.size()) {
+    switch (step++ % 4) {
+      case 0: {
+        in->read(piece.data(), std::streamsize(piece.size()));
+        got.append(piece.data(), size_t(in->gcount()));
+        break;
+      }
+      case 1: {
+        const int c = in->get();
+        if (c != EOF) {
+          in->unget();                         // the put-back area holds it
+          REQUIRE(in->get() == c);
+          got += char(c);
+        }
+        break;
+      }
+      case 2: {
+        in->read(piece.data(), 100);           // small: through the buffer
+        got.append(piece.data(), size_t(in->gcount()));
+        break;
+      }
+      default: {
+        const int c = in->peek();
+        if (c != EOF)
+          got += char(in->get());
+        break;
+      }
+    }
+    if (!*in)
+      break;
+  }
+  CHECK(got.size() == data.size());
+  CHECK(got == data);
 }
 
 TEST_CASE("gzstream: compressing then reading back preserves a longer payload", "[gzstream]") {

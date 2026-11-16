@@ -18,7 +18,7 @@ Beyond the standard Linux/Windows/macOS build jobs, two CI jobs exist specifical
 
 ### Rules for the ThreadSanitizer job
 
-- The job runs the `[parallel]` tag. **At least one test in that tag must use a puzzle whose result shape has a symmetry breaker** (currently `examples/Bermuda.xmpuzzle`).
+- The job runs the `[parallel]` tag. A test that starts threads of its own (the staged file reader, `test_puzzleloader.cpp`; the session's background open, `test_ui_documentsession.cpp`) is tagged `[parallel]` too, so the job sees it. **At least one test in that tag must use a puzzle whose result shape has a symmetry breaker** (currently `examples/Bermuda.xmpuzzle`).
 - This is not incidental. `avoidTransformedAssemblies` is only enabled by `checkForTransformedAssemblies()`, called from `createMatrix()` and only when a symmetry breaker is found. Puzzles without one never call `assembly_c::smallerRotationExists()` from a worker thread, so a TSan run over only those puzzles reports **zero races while real ones remain** — a false negative that has already let races ship.
 - Compare assembly *multisets* between serial and parallel runs, never just counts. A run that loses one assembly and duplicates another passes a count check.
 

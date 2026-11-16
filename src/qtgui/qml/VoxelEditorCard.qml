@@ -432,7 +432,7 @@ Card {
                             anchors.centerIn: parent
                             anchors.horizontalCenterOffset: dot.visible ? -3 : 0
                             text: chip.layerNo + 1
-                            color: chip.current ? "white" : Theme.text
+                            color: chip.current ? Theme.onAccent : Theme.text
                             font.pixelSize: Theme.fontSecondary
                             font.weight: Font.DemiBold
                         }
@@ -444,7 +444,7 @@ Card {
                             width: 5
                             height: 5
                             radius: 2.5
-                            color: chip.current ? "white" : Theme.muted
+                            color: chip.current ? Theme.onAccent : Theme.muted
                         }
                         MouseArea {
                             id: chipMouse
@@ -452,7 +452,7 @@ Card {
                             hoverEnabled: true
                             onClicked: root.editor.layer = chip.layerNo
                         }
-                        BtToolTip { shown: chipMouse.containsMouse || (chip.current && layers.activeFocus); text: chip.Accessible.name }
+                        BtToolTip { shown: chipMouse.containsMouse || (chip.current && layers.activeFocus && App.keyboardCues.navigating); text: chip.Accessible.name }
                     }
                     // keep the current layer's chip in view
                     function follow(): void {
@@ -467,7 +467,7 @@ Card {
                 Rectangle {
                     objectName: "entities.editor.layers.focusRing"
                     anchors.fill: parent
-                    visible: layers.activeFocus
+                    visible: layers.activeFocus && App.keyboardCues.navigating
                     color: "transparent"
                     border.width: 2
                     border.color: Theme.accent
@@ -498,7 +498,7 @@ Card {
                 Rectangle {
                     objectName: "entities.editor.grid.focusRing"
                     anchors.fill: parent
-                    visible: grid.activeFocus
+                    visible: grid.activeFocus && App.keyboardCues.navigating
                     color: "transparent"
                     border.width: 2
                     border.color: Theme.accent

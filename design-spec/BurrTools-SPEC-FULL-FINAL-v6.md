@@ -3302,36 +3302,36 @@ Build the **framework-neutral controller layer** against `overview/06-ui-contrac
 | OQ-7 Out-of-grid transforms | Blocked with "Blocked: the piece would leave the grid", nothing changes (legacy drops the voxels); an empty shape is a no-op | `uicore/shapeops.cpp:checkTask` | C04 note | 2026-10 / implementation |
 | OQ-8 Colour add/edit/remove | Legacy names: Default, C1, C2 …; Add = next preset at once, Edit = platform chooser; Remove reassigns to Default and asks when solutions would be lost; at most 63 colours | legacy `gui/BlockList.cpp:ColorSelector::getText`; `uicore/drawcolours.cpp` | C09 note | 2026-10 / implementation |
 | OQ-9 Legacy shortcuts / modifier-click / status glyph mapping | Legacy accelerators kept; quick tools Shift = Fixed, Alt (⌘ on macOS) = Variable, Ctrl (Option on macOS: Control-click is the secondary click) = Erase; status glyph pairs → Display menu | `uicore/commands.cpp`, `uicore/voxeledit.cpp:quickTool` | 04 note | 2026-10 / implementation |
-| OQ-10 Menu commands |  |  |  |  |
-| OQ-11 Config keys & ranges |  |  |  |  |
+| OQ-10 Menu commands | Legacy's entries kept in their menus but Toggle 3D, dropped with its F4 (the layout modes replace it); Status is View ▸ Status… (legacy's StatusWindow: each shape's checks, remove the selected), Config is File ▸ Settings… (`Ctrl+,`) and holds nothing else; About is under Help | `uicore/commands.cpp` (the command table, `dropped`) | C00 note | 2026-10 / implementation |
+| OQ-11 Config keys & ranges | Its own file, `.burrtools-qt.rc` in the settings folder, keys by area (`ui.*`, `view.*`, `editor.*`, `update.*`, `solver.threads`); legacy's `.burrtools.rc` is read once for the rows it shares (rotator, numthreads, undodepth, …). Worker threads 1 … the cores (at most 256), default 60 % of them as legacy; undo depth 25 / 50 / 100 / 200 / 500 | `qtgui/settingscontroller.cpp` (keys at the top, `defaultThreads`), `uicore/settingsstore.cpp` | C12 note | 2026-10 / implementation |
 | OQ-12 Picking | Front-most face of the flat mesh; a voxel under the pointer decides, else the active layer's slab, else (empty shape, slab hidden) the origin | `uicore/scenemesh.cpp:pick`, `uicore/voxeledit.cpp:target3d` | C06 note | 2026-10 / implementation |
-| OQ-13 RmlUi version & capabilities, integration with GL renderer/legacy GUI |  |  |  |  |
+| OQ-13 RmlUi version & capabilities, integration with GL renderer/legacy GUI | Does not apply: Qt Quick was chosen (OQ-35); the Qt GUI is its own program beside the legacy one | `src/qtgui/README.md` (Architecture) | — | 2026-10 / product owner |
 | OQ-14 New-shape defaults / delete confirm | New: empty, as big as the selected shape. Delete asks only when a problem using it has solutions or a running search (legacy never asks) | `uicore/shapelist.cpp`, `qtgui/shapesmodel.cpp` | C01 note | 2026-10 / implementation |
-| OQ-15 Weight limits |  |  |  |  |
-| OQ-16 Positional ids / cross-tab references / palette |  |  |  |  |
+| OQ-15 Weight limits | W− stops at 0 (legacy had no floor), W+ has no maximum; a weight below 0 from a legacy file goes up and no further down | `uicore/shapelist.h` (`changeWeight`) | C01 note | 2026-10 / implementation |
+| OQ-16 Positional ids / cross-tab references / palette | Shape and problem ids are positions (S1, P1); the library keeps the problems' references when shapes are exchanged or removed, so a reorder is adjacent exchanges and every reference follows its shape, as legacy's ←/→ did; colours by position too | `lib/puzzle.cpp` (`exchangeShapes`, `removeShape`), `uicore/shapelist.cpp` | C01 note (README P2 decisions) | 2026-10 / implementation |
 | OQ-17 OS default pointer bitmap for cursor composition | The system's arrow and pointer size (2026-10-29): Windows' scheme arrow at `CursorBaseSize`, drawn on black and white for colour and alpha; macOS `NSCursor.arrowCursor` (the system scales every cursor by its Pointer size); Linux the Xcursor theme's arrow at its size. The bundled arrow stays the fallback | `qtgui/systempointer.cpp`, `systempointer_mac.mm`, `uicore/xcursor.cpp`, `qtgui/editcursor.cpp` | — | 2026-10 / implementation |
-| OQ-18 File ▸ New flow, voxel type names, view-cube legacy details |  |  |  |  |
+| OQ-18 File ▸ New flow, voxel type names, view-cube legacy details | File ▸ New asks only for the voxel type: the five in legacy's order, legacy's names with "Tetrahedra-Octahedra" spelt right, a line on each; the view cube as C13 (snaps animated, Home frames the shape, a drag on it orbits) | `qml/NewFileDialog.qml`, `qtgui/documentcontroller.cpp` (`gridTypeName`), `qtgui/viewcubeitem.cpp` | C14, C13 notes | 2026-10 / implementation |
 | OQ-19 Per-voxel-type transforms/scale/mirror/planes/layers | Planes and layers: every type, XZ/YZ but for prisms; Mirror/Span on the grid's cells for every type (transforms: P6) | `uicore/gridcells.cpp`, `uicore/voxeledit.cpp:expand` | C08 note | 2026-10 / implementation |
-| OQ-20 Groups meaning/storage |  |  |  |  |
-| OQ-21 Legacy ←/→ in Puzzle tab |  |  |  |  |
-| OQ-22 Colour rules semantics |  |  |  |  |
-| OQ-23 Range storage / optional vs absent |  |  |  |  |
-| OQ-24 Result voxel range text |  |  |  |  |
-| OQ-25 Manage-solutions semantics (Delete/Analyse buttons) |  |  |  |  |
-| OQ-26 Legacy Drop field |  |  |  |  |
-| OQ-27 Solver sort options / Limit |  |  |  |  |
-| OQ-28 Placement & Movement browsers |  |  |  |  |
-| OQ-29 Prepare/Start/Continue/Stop/Step semantics |  |  |  |  |
-| OQ-30 Move label / slider semantics |  |  |  |  |
-| OQ-31 Groups in Solver UI |  |  |  |  |
-| OQ-32 Just count UI |  |  |  |  |
-| OQ-33 STL export |  |  |  |  |
+| OQ-20 Groups meaning/storage | The library's: a group is a number, a piece has a count in each group it is in (how many of its copies may be members); the disassembler does not take apart what is left of one group. A piece can be in several groups (C17's "at most one" dropped) | `lib/problem.cpp` (`part_c::addGroup`), `uicore/problemlist.cpp` | C17 note (README P10 decisions) | 2026-11-06 / product owner |
+| OQ-21 Legacy ←/→ in Puzzle tab | Legacy's arrows reorder; the pieces follow the shape order (L106 dropped), problems reorder by the grip and `Alt+↑/↓` as adjacent exchanges | legacy `gui/mainwindow.cpp`; `uicore/problemlist.cpp` | L106 row | 2026-11 / implementation |
+| OQ-22 Colour rules semantics | A rule lets a piece colour go on a result colour; colour 0 (Default) goes anywhere in either role whatever a rule says, so the matrix has no Default row or column; a rule no voxel falls under costs no solutions | `lib/problem.cpp` (`allowPlacement`), `uicore/problemlist.cpp` | C17 note | 2026-11-06 / implementation |
+| OQ-23 Range storage / optional vs absent | Per piece min and max in the problem (`part_c`); a range is min ≠ max; 0…0 removes the piece; min above max raises max. The file's hole limit (legacy Problem Details) is shown, not set | `uicore/problemlist.h` (`setPieceCount`, `ProblemStats::holeLimit`) | C17 note | 2026-11 / implementation |
+| OQ-24 Result voxel range text | "N voxels · can hold A–B": A the result's fixed voxels, B fixed plus variable; holes are known only when every count is fixed and the result has no variable voxels | `uicore/problemlist.cpp` (`problemStats`) | C16 note | 2026-11 / implementation |
+| OQ-25 Manage-solutions semantics (Delete/Analyse buttons) | As legacy: All / Before / At / After (over the list's shown order) / without a disassembly remove saved solutions; Delete the disassembly keeps the level (`removeDisassembly` leaves a `separationInfo_c`); Analyse runs `disassembler_0_c` in the background. All only mark the file modified | `gui/mainwindow.cpp` `cb_DeleteSolutions`, `cb_DeleteDisasm`, `cb_AddDisasm`; `uicore/solver.cpp` (`toRemove`) | C20 note | 2026-11-13 / implementation |
+| OQ-26 Legacy Drop field | It is `solutionDrop`: keep only every n-th solution (1…10⁸, default 1), not a level. The row is "Keep every" | `lib/solvethread.h` `setSolutionLimits` | C19 deviation | 2026-11-13 / implementation |
+| OQ-27 Solver sort options / Limit | Search order and Number of pieces → `SRT_UNSORT` (pieces by the live sort), Level → `SRT_LEVEL`, Moves → `SRT_COMPLETE_MOVES` (default); at the limit the sorted ones keep the most complex. Level and Moves need disassembly. The limit is 1…10⁸ | `lib/solvethread.cpp`, `uicore/solver.cpp` | C19 note | 2026-11-13 / implementation |
+| OQ-28 Placement & Movement browsers | Placements: piece list and a placement stepper over the assembler's state; Movements: the selected disassembly's levels, driving the player. Legacy's tree of disassembler nodes is not ported (README deferred) | legacy `gui/placementbrowser.cpp`, `movementbrowser.cpp`; `qml/ExplorerDrawer.qml` | C21 note | 2026-11-13 / implementation |
+| OQ-29 Prepare/Start/Continue/Stop/Step semantics | As legacy: Start clears the results and solves, Prepare stops after the preparation, Continue runs the problem as it is, Stop pauses, Step is one assembler step on the GUI thread. Continue is enabled after Prepare (the spec's table disables it) | `gui/mainwindow.cpp` `cb_BtnStart` …; `uicore/solver.cpp` (`runButtons`) | C19 deviation | 2026-11-13 / implementation |
+| OQ-30 Move label / slider semantics | The seekbar runs 0…`sumMoves()`; the label is "Move 14.2 / 19", as the spec says | legacy `SolutionAnim`; `uicore/solver.cpp` (player arithmetic) | — | 2026-11-13 / implementation |
+| OQ-31 Groups in Solver UI | The disassembler moves a group's pieces together; nothing extra in the player | `lib/disassembler_*` | — | 2026-11-13 / implementation |
+| OQ-32 Just count UI | Nothing is saved, the counters count; the list's empty state says the run only counted | `lib/solvethread.cpp` `PAR_JUST_COUNT`; `qtgui/solvercontroller.cpp` | — | 2026-11-13 / implementation |
+| OQ-33 STL export | Legacy's Export Solution to STL ported as the STL dialog's solution mode: the selected solution's assembly | legacy `gui/stlexportsolution.cpp`; `qtgui/stlexportcontroller.cpp` | — | 2026-11-13 / implementation |
 | OQ-34 Legacy menu-only features | existing dialogs kept; Config = Settings; bulk range → Puzzle ⋯ menu | product owner | Rev 5.2 | resolved |
 | *OQ-25 note:* Before/After = current sorted list order (confirmed by product owner) |  |  |  |  |
-| OQ-35 Front-end framework decision (spike results, scores, raw numbers) |  |  |  |  |
+| OQ-35 Front-end framework decision (spike results, scores, raw numbers) | Qt 6 Quick (QML views, C++ controllers, the 3D view on QRhi); the RmlUi guide is not used. OQ-13 does not apply | `src/qtgui/README.md` (Architecture) | — | 2026-10 / product owner |
 | OQ-36 Legacy accelerators vs new keys | Legacy wins: `F2` stays Save; Focus 3D is `Ctrl+Shift+F` (`Ctrl+Space` is the OS input-source key) | `uicore/commands.cpp` | 04 note | 2026-10 / implementation |
 
-## Implementation deviations (Qt Quick front end, P1–P5, 2026-10)
+## Implementation deviations (Qt Quick front end, P1–P11, 2026-10 to 2026-11)
 
 What the implementation does differently from the spec, on purpose; the
 running log, with the reasons in full, is `src/qtgui/README.md` (*Deviations
@@ -3348,6 +3348,10 @@ are the owner's; the rest the implementation's, measured or argued there.
 | C02 | ±1 voxel | ±1 step of the voxel type (5 rhombic, 3 tetra-octa) | legacy's fields |
 | C06 targets | voxel faces only | + the slab as 2D grid off voxels; + origin in an empty shape | product decisions 2026-10-27/28 |
 | C06 Edit button | override = dashed outline | override drawn as `on` | product decision 2026-10-27 |
+| C16 new problem | result = first shape | no result until chosen; the row names the shape by code and label | product decision 2026-11-14 |
+| C16 P-chip | accent-blue chip | neutral chip (panel2, line2 border, text colour) | the accent reads as selected; problems have no colour (product decision 2026-11-14) |
+| C16 Change… list | chip, label, voxel count | shape picture, code, label, voxels; the current result's row selected; the largest shape's count in the accent | easier to tell shapes apart; hints at the likely result without looking selected (product decisions 2026-11-14, -15) |
+| C18 optional copies | translucent, dashed outlines | drawn as the fixed copies; the caption says "(optional)" | dashes read as a broken grid at screen size (product decision 2026-11-14) |
 | C06 slab | one layer step thick | the layer's cells as drawn | spheres overlap (product decision 2026-10-27) |
 | C06 ghosts | — behind voxels; Paint on all voxels | 35 % behind voxels; only cells that change | find inner cells; one rule with the 2D preview |
 | C06 voxels | variable 50 % | 60 %; Classic and STL styles | earlier phases |
@@ -3359,3 +3363,26 @@ are the owner's; the rest the implementation's, measured or argued there.
 | C09 | no title; Add = chooser; names Default=C1 | “Colours” + info tooltip; Add = preset; Default, C1 … | product decisions; legacy names (OQ-8) |
 | Qt guide §5.2 | grid as scene-graph geometry | `QQuickPaintedItem` (QPainter, cached hatch and cell images) | 32×32 in ~1.4 ms, well inside AC-C08-08's 8 ms |
 | Contract §4 | `edit_mode` owned by ViewportController | `EditorController.editMode` | one owner for tool, quick tool and Edit mode |
+| C19 Drop | "Drop below level" | "Keep every" n-th solution | the solver has no level limit (OQ-26) |
+| C19 Run | Continue disabled in *ready* | enabled after Prepare | legacy's Continue runs the prepared search (OQ-29) |
+| C19 options | kept with the file | per problem for the session | the file format has no place for them; legacy keeps them per window |
+| C20 Manage | Delete the disassembly → not checked | → level only | `removeDisassembly` keeps the level (OQ-25) |
+| C19/C21 explorer | Placements, Movements and the docked drawer (AC-C21-05) | the buttons disabled, no drawer; Step kept | not meaningful yet; deferred past P8 (product decision 2026-11-16) |
+| C20 heights | the piece display a fixed height (AC-C20-08); the list the height left | the list ten rows, the Slider view as tall as it needs, the piece display the rest (its height a minimum) | product decision 2026-11-16 |
+| C20 Slider view | Sort by under the player | under the slider | it orders the slider (product decision 2026-11-16) |
+| C20 player | — | the five transport buttons one Tab stop, arrows among them | one stop per control group (product decision 2026-11-16) |
+| C20 list refresh | — | 5 Hz, 2 Hz above 2,000 solutions, not while hidden; only new solutions read | lists of 40,000+ solutions during a solve (2026-11-15) |
+
+### Added beyond the spec (Qt Quick front end, P11, 2026-11)
+
+Nothing in the spec asks for these; each came from use with large puzzles
+and is logged in `src/qtgui/README.md` ▸ *P11 decisions*.
+
+| Area | Added | Why |
+|---|---|---|
+| Undo (03 §4) | Undo and redo ask before they drop solutions, under the session's one warning | the history keeps no solutions (product decision 2026-11-14) |
+| Opening a file (C00) | A file of 1 MiB or more opens on a thread; the window draws on, "Opening …" in the status bar, the document busy until it is in | a 24 MB file took 1 s on the GUI thread before the workspace was drawn |
+| Opening a file (C00, C20) | A file with more than 5 MiB of solutions shows its puzzle first; the solutions are read after on the worker threads, a bar on the Solutions card, the document view only meanwhile | a 42,873-solution file took 13–15 s to open; now under a second to the puzzle |
+| Opening a file | A solution that does not read is left out, the rest of the file read; a message says how many and why | product decision 2026-11-16 |
+| Solver (C19) | A sorted solve places each new solution by halving (library) | 573 s → 8.7 s for 42,873 sorted solutions |
+| Manage ▸ Analyse (C20) | Results stored by assembly number; only the analysed rows re-read, at the list's rate | 19.9 s → 8.2 s, input waits 402 → 32 ms on 42,873 solutions |

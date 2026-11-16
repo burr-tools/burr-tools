@@ -220,3 +220,83 @@ TEST_CASE("every legacy format is written", "[ui][vectorexport]") {
   }
   CHECK(vectorExtension(VectorFormat::EPS) == "eps");
 }
+
+TEST_CASE("objects anchored in the view land at their places on the page", "[ui][vectorexport]") {
+  Scene s(false);
+  VectorInput in = s.input();
+  in.lines = nullptr;
+  const VectorPage plain = projectScene(in);
+
+  // two copies, side by side, as the Puzzle scene places them
+  ShapeMesh two;
+  for (const float x : { -10.0f, 10.0f })
+    for (MeshVertex v : s.mesh.opaque) {
+      v.cell[0] = x;
+      v.cell[1] = v.cell[2] = 0;
+      two.opaque.push_back(v);
+    }
+  in.mesh = &two;
+  in.anchored = true;
+  const VectorPage page = projectScene(in);
+
+  REQUIRE(page.prims.size() == 2 * plain.prims.size());
+  float low = page.width, high = 0, plainLow = page.width, plainHigh = 0;
+  for (const VectorPrimitive & p : page.prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      low = std::min(low, p.xy[i]);
+      high = std::max(high, p.xy[i]);
+    }
+  for (const VectorPrimitive & p : plain.prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      plainLow = std::min(plainLow, p.xy[i]);
+      plainHigh = std::max(plainHigh, p.xy[i]);
+    }
+  CHECK(high - low > 1.5f * (plainHigh - plainLow));
+
+  // and the same mesh not anchored stacks them
+  in.anchored = false;
+  float stackedLow = page.width, stackedHigh = 0;
+  for (const VectorPrimitive & p : projectScene(in).prims)
+    for (size_t i = 0; i < p.xy.size(); i += 2) {
+      stackedLow = std::min(stackedLow, p.xy[i]);
+      stackedHigh = std::max(stackedHigh, p.xy[i]);
+    }
+  CHECK_THAT(stackedHigh - stackedLow, Catch::Matchers::WithinAbs(plainHigh - plainLow, 0.01));
+}
+
+// --- a shape's picture for the lists ----------------------------------------------
+
+TEST_CASE("a shape's picture fills its square, centred, in the shape's colour", "[ui][vectorexport]") {
+  gridType_c gt{ gridType_c::GT_BRICKS };
+  auto v = bttest::makeVoxel(gt, 4, 1, 1);           // a bar: wider than high, seen from Home
+  v->setAll(voxel_c::VX_FILLED);
+  v->setState(3, 0, 0, voxel_c::VX_VARIABLE);         // variable voxels drawn opaque
+  const VectorPage page = shapePicture(*v, Rgb{ 0, 0, 1 }, 28, 2);
+  REQUIRE_FALSE(page.prims.empty());
+  CHECK(page.width == 28);
+  float x0 = 99, y0 = 99, x1 = -99, y1 = -99;
+  for (const VectorPrimitive & p : page.prims) {
+    CHECK(p.kind == VectorPrimitive::Kind::Polygon);
+    CHECK(p.a == 1.0f);
+    CHECK(p.b > p.r);                                  // blue, shaded
+    for (size_t i = 0; i + 1 < p.xy.size(); i += 2) {
+      x0 = std::min(x0, p.xy[i]);
+      x1 = std::max(x1, p.xy[i]);
+      y0 = std::min(y0, p.xy[i + 1]);
+      y1 = std::max(y1, p.xy[i + 1]);
+    }
+  }
+  using Catch::Matchers::WithinAbs;
+  // the longer side reaches the margins, the other is centred
+  CHECK_THAT(std::max(x1 - x0, y1 - y0), WithinAbs(24, 0.01));
+  CHECK_THAT(x0 + x1, WithinAbs(28, 0.01));
+  CHECK_THAT(y0 + y1, WithinAbs(28, 0.01));
+  for (size_t i = 1; i < page.prims.size(); i++)
+    CHECK(page.prims[i - 1].depth >= page.prims[i].depth);   // back to front
+}
+
+TEST_CASE("an empty shape's picture is empty", "[ui][vectorexport]") {
+  gridType_c gt{ gridType_c::GT_BRICKS };
+  auto v = bttest::makeVoxel(gt, 2, 2, 2);
+  CHECK(shapePicture(*v, Rgb{ 1, 0, 0 }, 28).prims.empty());
+}

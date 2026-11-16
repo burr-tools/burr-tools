@@ -15,6 +15,9 @@ import BurrTools.Ui
 //   │     Active layer slab       │   these two need the
 //   │     Dim other layers        │   Voxel editor shown
 //   ├─────────────────────────────┤
+//   │ ④ WIREFRAME PIECES          │   Solver only (C21)
+//   │   ✓ Show through solid pieces│
+//   ├─────────────────────────────┤
 //   │ ② PROJECTION                │
 //   │   ✓ Perspective             │
 //   │     Orthographic            │
@@ -31,6 +34,8 @@ Popup {
 
     // only Entities has the Show items (C18, C21)
     property bool showItems: App.layout.workspace === LayoutController.Entities
+    // the Solver's wireframe pieces (C21)
+    property bool wireItems: App.layout.workspace === LayoutController.Solver
 
     onAboutToShow: if (parent && parent.ApplicationWindow.window) parent.ApplicationWindow.window.openPopups++
     onAboutToHide: if (parent && parent.ApplicationWindow.window) parent.ApplicationWindow.window.openPopups--
@@ -127,6 +132,17 @@ Popup {
             onClicked: App.viewport.displayDimOtherLayers = !App.viewport.displayDimOtherLayers
         }
         Divider { visible: root.showItems }
+
+        Section { visible: root.wireItems; text: qsTr("WIREFRAME PIECES") } // ④
+        CheckRow {
+            objectName: "solver.viewport.display.xray"
+            visible: root.wireItems
+            width: parent.width
+            text: qsTr("Show through solid pieces")
+            selected: App.solver.xray
+            onClicked: App.solver.xray = !App.solver.xray
+        }
+        Divider { visible: root.wireItems }
 
         Section { text: qsTr("PROJECTION") } // ②
         CheckRow {

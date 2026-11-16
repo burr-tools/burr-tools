@@ -8,6 +8,7 @@ fs = import('fs')
 # module built in qml/meson.build.
 qtgui_moc_headers = files(
   'app.h',
+  'buildqueue.h',
   'coloursmodel.h',
   'commandcontroller.h',
   'documentcontroller.h',
@@ -20,6 +21,10 @@ qtgui_moc_headers = files(
   'popupwindowstyle.h',
   'scenecontroller.h',
   'settingscontroller.h',
+  'puzzlecontroller.h',
+  'rowsmodel.h',
+  'shapepicture.h',
+  'solvercontroller.h',
   'shapesmodel.h',
   'statuscontroller.h',
   'stlexportcontroller.h',
@@ -143,6 +148,7 @@ endif
 # plain static link would drop them.
 libburr_qtgui = static_library('burr_qtgui', [
     'app.cpp',
+    'buildqueue.cpp',
     'coloursmodel.cpp',
     'commandcontroller.cpp',
     'documentcontroller.cpp',
@@ -163,6 +169,10 @@ libburr_qtgui = static_library('burr_qtgui', [
     'scenerenderer.cpp',
     'selfcheck.cpp',
     'settingscontroller.cpp',
+    'puzzlecontroller.cpp',
+    'rowsmodel.cpp',
+    'shapepicture.cpp',
+    'solvercontroller.cpp',
     'shapesmodel.cpp',
     'statuscontroller.cpp',
     'stlexportcontroller.cpp',

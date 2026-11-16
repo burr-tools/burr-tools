@@ -33,11 +33,17 @@ import BurrTools.Ui
 //   │ ⑨                                     [Close] [Export STL…]    │
 //   └────────────────────────────────────────────────────────────────┘
 //   ⑩ the OS save dialog
+//   ⑪ the OS folder dialog (Export Solution to STL), ⑫ its overwrite question
+//
+// From the Solver (C20, legacy stlExportSolution_c) it exports a solution:
+// the list holds the shapes the solution places, and Export writes each to
+// its own file in a folder, after asking once when some are there already.
 BtDialog {
     id: root
     objectName: "export.stl.dialog"
     defaultButton: okButton
-    title: qsTr("Export STL")
+    readonly property bool solution: stl.solutionShapes.length > 0
+    title: solution ? qsTr("Export Solution to STL") : qsTr("Export STL")
     width: Math.min(1040, (parent ? parent.width : 1200) - 32)
     height: Math.min(700, (parent ? parent.height : 800) - 32)
     closePolicy: Popup.CloseOnEscape
@@ -91,8 +97,11 @@ BtDialog {
                         required property color chipColor
                         required property color chipTextColor
                         objectName: "export.stl.shape." + index
+                        // a solution's export lists the shapes it places
+                        readonly property bool listed: !root.solution || root.stl.solutionShapes.indexOf(index) >= 0
+                        visible: listed
                         width: ListView.view.width
-                        height: 28
+                        height: listed ? 28 : 0
                         hoverEnabled: true
                         Accessible.role: Accessible.RadioButton
                         Accessible.name: idText + (label.length ? " " + label : "")
@@ -126,6 +135,7 @@ BtDialog {
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: shapeRow.label
+                                textFormat: Text.PlainText
                                 color: Theme.text
                                 font.pixelSize: Theme.fontSecondary
                                 elide: Text.ElideRight
@@ -281,11 +291,16 @@ BtDialog {
             BtButton { objectName: "export.stl.close"; text: qsTr("Close"); onClicked: root.close() }
             BtButton {
                 objectName: "export.stl.export"
-                text: qsTr("Export STL…")
+                text: root.solution ? qsTr("Export to folder…") : qsTr("Export STL…")
                 id: okButton
                 primary: true
                 enabled: root.stl.hasMesh
                 onClicked: {
+                    if (root.solution) {
+                        folderDialog.currentFolder = root.stl.folder
+                        folderDialog.open()
+                        return
+                    }
                     saveDialog.currentFolder = root.stl.folder
                     saveDialog.selectedFile = root.stl.folder + "/" + root.stl.suggestedName
                     saveDialog.open()
@@ -301,6 +316,27 @@ BtDialog {
         nameFilters: [qsTr("STL files (*.stl)")]
         defaultSuffix: "stl"
         onAccepted: root.stl.exportTo(selectedFile)
+    }
+
+    FolderDialog { // ⑪
+        id: folderDialog
+        title: qsTr("Choose the folder for the solution's STL files")
+        onAccepted: {
+            const n = root.stl.existingSolutionFiles(selectedFolder)
+            if (n > 0) {
+                overwrite.text = n === 1 ? qsTr("1 output file already exists. Overwrite it?")
+                                         : qsTr("%1 output files already exist. Overwrite them?").arg(n)
+                overwrite.open()
+            } else {
+                root.stl.exportSolution(selectedFolder)
+            }
+        }
+    }
+    MessageDialog { // ⑫
+        id: overwrite
+        title: qsTr("Export Solution to STL")
+        buttons: MessageDialog.Cancel | MessageDialog.Ok
+        onAccepted: root.stl.exportSolution(folderDialog.selectedFolder)
     }
 
     Connections {

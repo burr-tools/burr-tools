@@ -10,6 +10,7 @@ layout(location = 1) in vec3 p1;
 layout(location = 2) in vec2 corner;
 layout(location = 3) in vec4 color;
 layout(location = 4) in vec4 style;     // x: width px, y: dash px, z: gap px
+layout(location = 5) in vec3 offset;    // added after the view's rotation (SceneFrame::anchored)
 
 layout(location = 0) out vec4 vColor;
 layout(location = 1) out float vDist;
@@ -21,12 +22,14 @@ layout(std140, binding = 0) uniform Buf {
     mat4 mvp;
     vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light,
                      // w: the least coverage drawn (line.frag)
+    mat4 proj;
 } ubuf;
 
 void main()
 {
-    vec4 a = ubuf.mvp * vec4(p0, 1.0);
-    vec4 b = ubuf.mvp * vec4(p1, 1.0);
+    vec4 shift = ubuf.proj * vec4(offset, 0.0);
+    vec4 a = ubuf.mvp * vec4(p0, 1.0) + shift;
+    vec4 b = ubuf.mvp * vec4(p1, 1.0) + shift;
     vec2 half_ = 0.5 * ubuf.viewport.xy;
     vec2 sa = a.xy / a.w * half_;
     vec2 sb = b.xy / b.w * half_;

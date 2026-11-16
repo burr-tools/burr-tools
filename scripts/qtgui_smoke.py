@@ -74,6 +74,15 @@ run('-h before a file', ['-h', puzzle], expect_stdout='burrtools-qt [options]')
 run('--self-check with a file', ['--self-check', puzzle], expect_stdout='self-check OK')
 run('an unknown option', ['--bogus', '--screenshot={png}'], expect_png=True,
     expect_stderr='unknown option --bogus ignored')
+run('the start-up trace, quitting once ready', [], env={'BURRTOOLS_STARTUP_TRACE': 'quit'},
+    expect_stderr='app ready: the GUI thread is idle')
+run('the start-up trace with a puzzle', [puzzle, '--screenshot={png}'], env={'BURRTOOLS_STARTUP_TRACE': '1'},
+    expect_png=True, expect_stderr='first frame on screen')
+run('the QML outlines, drawn into the grab', [puzzle, '--screenshot={png}'], env={'BURRTOOLS_QML_OUTLINES': '1'},
+    expect_png=True)
+if sys.platform == 'win32':     # headless Linux CI has no OpenGL under offscreen
+    run('a graphics API by name', ['--screenshot={png}'], env={'BURRTOOLS_RHI': 'd3d11'}, expect_png=True)
+run('the Finder\'s process serial number', ['-psn_0_12345', puzzle, '--screenshot={png}'], expect_png=True)
 
 for f in failures:
     print(f, file=sys.stderr)

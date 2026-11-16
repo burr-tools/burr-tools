@@ -28,6 +28,7 @@
 #include "progressmodel.h"
 #include "solution.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 
@@ -298,10 +299,18 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
     return !disasm_pool->isAborted() && !disasm_pool->isStopRequested() && !stopPressed;
   }
 
-  // Assembly-only mode
+  // Assembly-only mode; the whole step under the lock, so that what this
+  // thread knows of the list's order stays true (listUnchanged)
+  std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
+  if (!listUnchanged())
+    liveSortedBy = -1;
+
+  int added = -1;
   if (!(parameters & PAR_JUST_COUNT)) {
-    if (puzzle.getNumAssemblies() % (solutionDrop * dropMultiplicator) == 0)
+    if (puzzle.getNumAssemblies() % (solutionDrop * dropMultiplicator) == 0) {
       puzzle.addSolution(a.release());
+      added = int(puzzle.getNumberOfSavedSolutions()) - 1;
+    }
   }
 
   puzzle.incNumAssemblies();
@@ -316,13 +325,138 @@ bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
       dropMultiplicator *= 2;
 
     puzzle.removeSolution(idx + 1);
+    if (added == int(idx + 1))
+      added = -1;
+    else if (added > int(idx + 1))
+      added--;
   }
 
-  int ls = liveSort.load(std::memory_order_relaxed);
-  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
-    puzzle.sortSolutions(ls);
+  keepLiveSort(added);
+  rememberList();
 
   return true;
+}
+
+bool solveThread_c::listUnchanged(void) const {
+  return listKnown && puzzle.solutionsRevision() == knownRevision && solution_c::changeCount() == knownChanges;
+}
+
+void solveThread_c::rememberList(void) {
+  listKnown = true;
+  knownRevision = puzzle.solutionsRevision();
+  knownChanges = solution_c::changeCount();
+}
+
+namespace {
+
+  // the key sortMethod reads from a saved solution, as its scan did
+  const disassembly_c * insertKeyOf(const solution_c * sol, int method) {
+    if (method == solveThread_c::SRT_COMPLETE_MOVES)
+      return sol->getDisassembly();
+    return sol->getDisassemblyInfo();
+  }
+
+  // the scan's test: whether a saved solution with this key goes after the new one
+  bool goesAfter(const disassembly_c * key, const separation_c * s, unsigned int moves, int method) {
+    if (method == solveThread_c::SRT_COMPLETE_MOVES)
+      return key->sumMoves() > moves;
+    return key->compare(s) > 0;
+  }
+
+  // whether two keyed solutions stand in the order: a before b
+  bool inOrder(const disassembly_c * a, const disassembly_c * b, int method) {
+    if (method == solveThread_c::SRT_COMPLETE_MOVES)
+      return a->sumMoves() <= b->sumMoves();
+    return a->compare(b) <= 0;
+  }
+}
+
+bool solveThread_c::insertOrderHolds(void) const {
+  const disassembly_c * previous = nullptr;
+  bool unkeyedSeen = false;
+  for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
+    const disassembly_c * key = insertKeyOf(puzzle.getSavedSolution(i), sortMethod);
+    if (!key) {
+      unkeyedSeen = true;
+      continue;
+    }
+    if (unkeyedSeen || (previous && !inOrder(previous, key, sortMethod)))
+      return false;
+    previous = key;
+  }
+  return true;
+}
+
+unsigned int solveThread_c::keyedPrefix(void) const {
+  // insertOrdered: the keyed solutions first, so their end is found by halving
+  unsigned int lo = 0, hi = puzzle.getNumberOfSavedSolutions();
+  while (lo < hi) {
+    const unsigned int mid = lo + (hi - lo) / 2;
+    if (insertKeyOf(puzzle.getSavedSolution(mid), sortMethod))
+      lo = mid + 1;
+    else
+      hi = mid;
+  }
+  return lo;
+}
+
+unsigned int solveThread_c::insertPosition(const separation_c * s, unsigned int keyed) {
+  const unsigned int n = puzzle.getNumberOfSavedSolutions();
+  const unsigned int moves = sortMethod == SRT_COMPLETE_MOVES ? s->sumMoves() : 0;
+  if (insertOrdered) {
+    /* the keyed solutions first and in order: the first that goes after the
+     * new one, which the scan below finds too, by halving */
+    unsigned int lo = 0, hi = keyed;
+    while (lo < hi) {
+      const unsigned int mid = lo + (hi - lo) / 2;
+      if (goesAfter(insertKeyOf(puzzle.getSavedSolution(mid), sortMethod), s, moves, sortMethod))
+        hi = mid;
+      else
+        lo = mid + 1;
+    }
+    return lo < keyed ? lo : n;
+  }
+  // the scan: the first saved solution with a key that goes after the new one
+  for (unsigned int i = 0; i < n; i++) {
+    const disassembly_c * key = insertKeyOf(puzzle.getSavedSolution(i), sortMethod);
+    if (key && goesAfter(key, s, moves, sortMethod))
+      return i;
+  }
+  return n;
+}
+
+void solveThread_c::keepInsertOrder(unsigned int pos, unsigned int keyedBefore, bool keyed) {
+  if (insertOrdered) {
+    // a keyed one inside the keyed prefix, or after it with nothing unkeyed
+    // there; an unkeyed one after the keyed prefix
+    const unsigned int before = puzzle.getNumberOfSavedSolutions() - 1;   // the list without it
+    insertOrdered = keyed ? (pos < keyedBefore || keyedBefore == before) : pos >= keyedBefore;
+  } else
+    insertOrdered = insertOrderHolds();
+}
+
+void solveThread_c::keepLiveSort(int added) {
+  const int ls = liveSort.load(std::memory_order_relaxed);
+  if (ls < 0 || puzzle.getNumberOfSavedSolutions() < 2) {
+    if (ls != liveSortedBy)
+      liveSortedBy = -1;
+    return;
+  }
+  /* sorted by another key than sortMethod's, the list no longer stands in
+   * the order sortMethod places by: its next solution goes by the scan */
+  const bool sameKey = (sortMethod == SRT_COMPLETE_MOVES && ls == 2) || (sortMethod == SRT_LEVEL && ls == 1);
+  if (!sameKey)
+    insertOrdered = false;
+  if (ls == liveSortedBy) {
+    // in that order before this step: the new one moved into its place, or
+    // nothing to do when none was added (removing one keeps the order)
+    if (added < 0 || puzzle.placeSorted(ls, unsigned(added)))
+      return;
+  }
+  puzzle.sortSolutions(ls);
+  liveSortedBy = puzzle.solutionsSortedBy(ls) ? ls : -1;
+  if (sameKey && insertOrdered)
+    insertOrdered = insertOrderHolds();   // a whole sort by the same key keeps it, or makes it
 }
 
 void solveThread_c::onDisassemblyResult(uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
@@ -345,84 +479,52 @@ void solveThread_c::onDisassemblyResult(uint64_t /*seqNo*/, std::unique_ptr<asse
     return;
   }
 
+  // the whole step under the lock, so that what this thread knows of the
+  // list's order stays true (listUnchanged)
+  std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
+  if (!listUnchanged()) {
+    insertOrdered = false;
+    liveSortedBy = -1;
+  }
+  int added = -1;
+
   // if the user wants to save the solution, do it
   if (!(parameters & PAR_JUST_COUNT)) {
     // find the place to insert and insert the new solution so that
     // they are sorted by the complexity of the disassembly
 
-    bool ins = false;
+    switch(sortMethod) {
+      case SRT_COMPLETE_MOVES:
+      case SRT_LEVEL:
+        {
+          const unsigned int keyedBefore = insertOrdered ? keyedPrefix() : 0;
+          const unsigned int pos = insertPosition(s.get(), keyedBefore);
+          // dropped disassemblies leave only the information: no key for
+          // SRT_COMPLETE_MOVES, which reads the disassembly itself
+          const bool keyed = sortMethod == SRT_LEVEL || !(parameters & PAR_DROP_DISASSEMBLIES);
+          if (parameters & PAR_DROP_DISASSEMBLIES) {
+            puzzle.addSolution(a.release(), new separationInfo_c(s.get()), pos);
+          } else
+            puzzle.addSolution(a.release(), s.release(), pos);
+          added = int(std::min(pos, puzzle.getNumberOfSavedSolutions() - 1));
+          keepInsertOrder(unsigned(added), keyedBefore, keyed);
 
-    {
-      std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
-
-      switch(sortMethod) {
-        case SRT_COMPLETE_MOVES:
-          {
-            unsigned int lev = s->sumMoves();
-
-            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
-
-              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassembly();
-
-              if (s2 && s2->sumMoves() > lev) {
-                if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
-                } else
-                  puzzle.addSolution(a.release(), s.release(), i);
-                ins = true;
-                break;
-              }
-            }
-
-            if (!ins) {
-              if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-              } else
-                puzzle.addSolution(a.release(), s.release());
-            }
-
-            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-              puzzle.removeSolution(0);
+          if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
+            puzzle.removeSolution(0);     // keeps the order
+            added--;
           }
-          break;
+        }
+        break;
 
-        case SRT_LEVEL:
-          {
-            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
-
-              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassemblyInfo();
-
-              if (s2 && (s2->compare(s.get()) > 0)) {
-                if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
-                } else
-                  puzzle.addSolution(a.release(), s.release(), i);
-                ins = true;
-                break;
-              }
-            }
-
-            if (!ins) {
-              if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-              } else
-                puzzle.addSolution(a.release(), s.release());
-            }
-
-            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-              puzzle.removeSolution(0);
-          }
-          break;
-
-        case SRT_UNSORT:
-          if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
-            if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-            } else
-              puzzle.addSolution(a.release(), s.release());
-          }
-          break;
-      }
+      case SRT_UNSORT:
+        if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
+          if (parameters & PAR_DROP_DISASSEMBLIES) {
+            puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
+          } else
+            puzzle.addSolution(a.release(), s.release());
+          added = int(puzzle.getNumberOfSavedSolutions()) - 1;
+        }
+        break;
     }
 
     // yes, the puzzle is disassemblable, count solutions
@@ -442,11 +544,14 @@ void solveThread_c::onDisassemblyResult(uint64_t /*seqNo*/, std::unique_ptr<asse
       dropMultiplicator *= 2;
 
     puzzle.removeSolution(idx + 1);
+    if (added == int(idx + 1))
+      added = -1;
+    else if (added > int(idx + 1))
+      added--;
   }
 
-  int ls = liveSort.load(std::memory_order_relaxed);
-  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
-    puzzle.sortSolutions(ls);
+  keepLiveSort(added);
+  rememberList();
 }
 
 void solveThread_c::stopInternal(void) {

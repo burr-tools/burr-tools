@@ -28,6 +28,7 @@
 
 #include "gzstream.h"
 #include <string.h>  // for memcpy
+#include <algorithm>
 
 // ----------------------------------------------------------------------------
 // Internal classes to implement gzstream. See header file for user classes.
@@ -57,6 +58,9 @@ gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
     file = gzopen( name, fmode);
     if (file == 0)
         return (gzstreambuf*)0;
+    // zlib's own buffer, 8 KiB by default: a saved puzzle runs to hundreds
+    // of megabytes uncompressed, quicker read and written in bigger pieces
+    gzbuffer( file, 128 * 1024);
     opened = 1;
     return this;
 }
@@ -95,6 +99,33 @@ int gzstreambuf::underflow() { // used for input buffer only
 
     // return next character
     return * reinterpret_cast<unsigned char *>( gptr());
+}
+
+std::streamsize gzstreambuf::xsgetn( char* s, std::streamsize n) {
+    // what the buffer holds first, then the rest straight into s
+    std::streamsize done = 0;
+    if ( gptr() && gptr() < egptr()) {
+        done = std::min<std::streamsize>( n, egptr() - gptr());
+        memcpy( s, gptr(), size_t(done));
+        gbump( int(done));
+    }
+    if ( done == n || ! (mode & std::ios::in) || ! opened)
+        return done;
+    // a small rest through the buffer, as underflow() reads
+    if ( n - done < bufferSize)
+        return done + std::streambuf::xsgetn( s + done, n - done);
+    while ( done < n) {
+        const unsigned chunk = unsigned( std::min<std::streamsize>( n - done, 1 << 30));
+        const int num = gzread( file, s + done, chunk);
+        if ( num <= 0)
+            break;
+        done += num;
+    }
+    // the put-back area keeps the last characters read, as underflow() does
+    const std::streamsize back = std::min<std::streamsize>( done, 4);
+    memcpy( buffer + (4 - back), s + done - back, size_t(back));
+    setg( buffer + (4 - back), buffer + 4, buffer + 4);
+    return done;
 }
 
 int gzstreambuf::flush_buffer() {

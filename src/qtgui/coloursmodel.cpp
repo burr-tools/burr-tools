@@ -22,6 +22,7 @@
 #include "documentcontroller.h"
 #include "guarded.h"
 #include "shapesmodel.h"
+#include "theme.h"
 
 #include "../uicore/drawcolours.h"
 
@@ -40,6 +41,8 @@ ColoursModel::ColoursModel(DocumentController * doc, ShapesModel * shapes, QObje
   QAbstractListModel(parent), m_doc(doc), m_shapes(shapes)
 {
   connect(doc, &DocumentController::documentReplaced, this, [this] { refresh(true); });
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, &ColoursModel::publishDraw);
   connect(doc, &DocumentController::historyApplied, this, [this] { refresh(); });
   connect(doc, &DocumentController::puzzleEdited, this, [this](int, DocumentController::Change c) {
     if (c == DocumentController::Change::Palette || c == DocumentController::Change::Structure)
@@ -155,9 +158,8 @@ void ColoursModel::requestRemove(int id) {
   if (id < 1 || !isColour(id))
     return;
   guarded([&] {
-    if (btui::removeColourLosesSolutions(m_doc->session().puzzle(), id))
-      emit removeConfirmRequested(id, nameOf(id));
-    else
+    if (m_doc->mayCostSolutions(btui::removeColourLosesSolutions(m_doc->session().puzzle(), id),
+                                [this, id] { removeColour(id); }))
       removeColour(id);
   });
 }

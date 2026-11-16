@@ -36,7 +36,7 @@ AbstractButton {
     contentItem: Text {
         id: label
         text: root.text
-        color: (root.primary || root.danger) ? "white" : Theme.text
+        color: root.primary ? Theme.onAccent : root.danger ? "white" : Theme.text
         font.pixelSize: Theme.fontBody
         font.weight: Font.DemiBold
         horizontalAlignment: Text.AlignHCenter

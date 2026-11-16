@@ -7,6 +7,7 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <sstream>
 
 using btui::SettingsStore;
 
@@ -136,4 +137,32 @@ TEST_CASE("a missing file loads as empty and a wrong type reads as absent", "[ui
 
   s.remove("n");
   CHECK_FALSE(s.contains("n"));
+}
+
+TEST_CASE("a bare word is no value, and each type reads only as itself", "[ui][settings]") {
+  TempFile f;
+  {
+    std::ofstream out(f.path);
+    out << "word = hello\nquoted = \"x\"\nn = 4\nb = true\n";
+  }
+  const auto v = SettingsStore::parseFile(f.path);
+  CHECK(v.count("word") == 0);
+  CHECK(v.count("quoted") == 1);
+  SettingsStore s(f.path);
+  s.set("text", std::string("x"));
+  s.set("flag", true);
+  CHECK_FALSE(s.getInt("text").has_value());
+  CHECK_FALSE(s.getString("flag").has_value());
+  CHECK_FALSE(s.getInt("missing").has_value());
+}
+
+TEST_CASE("a save over something that is no file fails and leaves no temporary", "[ui][settings]") {
+  TempFile f;
+  std::filesystem::create_directory(f.path);      // the rename onto it fails
+  SettingsStore s(f.path);
+  s.set("n", 1LL);
+  CHECK_FALSE(s.save());
+  CHECK(std::filesystem::is_directory(f.path));
+  for (const auto & e : std::filesystem::directory_iterator(f.path.parent_path()))
+    CHECK(e.path().filename().string().find(f.path.filename().string() + ".") != 0);
 }

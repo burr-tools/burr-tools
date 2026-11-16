@@ -19,6 +19,11 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "viewportcontroller.h"
+#include "puzzlecontroller.h"
+#include "solvercontroller.h"
+#include "rowsmodel.h"
+
+#include "../uicore/shapelist.h"
 
 #include "documentcontroller.h"
 #include "editorcontroller.h"
@@ -63,9 +68,13 @@ namespace {
 }
 
 ViewportController::ViewportController(SettingsController * settings, DocumentController * doc, ShapesModel * shapes,
-                                       LayoutController * layout, EditorController * editor, QObject * parent) :
-  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor)
+                                       LayoutController * layout, EditorController * editor, PuzzleController * puzzle,
+                                       SolverController * solver, QObject * parent) :
+  SceneController(settings, parent), m_doc(doc), m_shapes(shapes), m_layout(layout), m_editor(editor), m_puzzle(puzzle),
+  m_solver(solver)
 {
+  m_objects = new RowsModel({ "role", "shape", "caption", "frameX", "frameY", "frameSize", "selected", "hovered" }, this);
+  m_workspace = m_layout->workspace();
   /* the camera, lighting and voxel style follow the settings in
    * SceneController, connected first; Settings ▸ Voxel style changes the
    * geometry itself */
@@ -76,10 +85,41 @@ ViewportController::ViewportController(SettingsController * settings, DocumentCo
       scheduleMesh();
     emit optionsChanged();
   });
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, [this] {
+      scheduleMesh();
+      emit sceneChanged();
+    });
   connect(m_layout, &LayoutController::changed, this, [this] {
+    // the camera frames what each workspace shows
+    if (m_layout->workspace() != m_workspace) {
+      m_workspace = m_layout->workspace();
+      scheduleMesh();
+    }
     emit optionsChanged();
     emit frameChanged();
   });
+  // the Puzzle scene follows the selected problem and piece
+  const auto puzzleChanged = [this] {
+    if (inPuzzle())
+      scheduleMesh();
+  };
+  connect(m_puzzle, &PuzzleController::problemChanged, this, puzzleChanged);
+  connect(m_puzzle, &PuzzleController::selectedPieceChanged, this, puzzleChanged);
+  // the Solver scene: each move position a new mesh; a new solution framed anew
+  connect(m_solver, &SolverController::sceneChanged, this, [this] {
+    if (!inSolver())
+      return;
+    if (m_solver->framingRevision() != m_solverFraming) {
+      m_solverFraming = m_solver->framingRevision();
+      m_camera.setScene(m_solver->sceneCentre(), m_solver->sceneRadius());
+      // pieces leave the assembly this far: the clip planes reach them (C21)
+      m_camera.setDepthReach(m_solver->sceneReach());
+    }
+    emit frameChanged();
+  });
+  // pan, zoom and the card's size move the frames; a turn does not, but costs little
+  connect(this, &SceneController::frameChanged, this, &ViewportController::updateObjects);
 
   /* One change to the puzzle reaches here several times over (an edit: the
    * document's signal, the shapes list's count and maybe its selection). The
@@ -193,7 +233,7 @@ QColor ViewportController::shapeColor(void) const {
 }
 
 QColor ViewportController::shapeTextColor(void) const {
-  return m_shapeIndex >= 0 && !btui::prefersWhiteText(m_shapeIndex) ? QColor(Qt::black) : QColor(Qt::white);
+  return m_shapeIndex >= 0 ? ShapesModel::chipTextColor(m_shapeIndex) : QColor(Qt::white);
 }
 
 /* The selected shape, looked up again after any change to the puzzle or the
@@ -217,6 +257,10 @@ void ViewportController::edited(DocumentController::Change change) {
       break;
     case DocumentController::Change::Label:
       emit sceneChanged();       // the view tag's label
+      break;
+    case DocumentController::Change::Problem:
+      if (inPuzzle())
+        scheduleMesh();
       break;
     case DocumentController::Change::Palette:
       if (colourViewValue() == btui::ColorMode::Voxel && m_voxelStyle != btui::VoxelStyle::Stl)
@@ -244,12 +288,27 @@ void ViewportController::buildMesh(void) {
   if (!m_meshDirty)
     return;
   m_meshDirty = false;
+  if (inPuzzle()) {
+    m_camera.setDepthReach(0);
+    buildPuzzleMesh();
+    return;
+  }
+  if (inSolver()) {
+    m_solverFraming = m_solver->framingRevision();
+    m_camera.setScene(m_solver->sceneCentre(), m_solver->sceneRadius());
+    m_camera.setDepthReach(m_solver->sceneReach());
+    m_meshStyle = m_voxelStyle;
+    emit sceneChanged();
+    emit frameChanged();
+    return;
+  }
   const puzzle_c & p = m_doc->session().puzzle();
+  m_camera.setDepthReach(0);
 
   if (m_shape) {
     btui::MeshOptions opt;
     opt.style = m_voxelStyle;
-    opt.piece = btui::pieceColor(m_shapeIndex);
+    opt.piece = Theme::shapeColours().of(m_shapeIndex);
     opt.colors = colourViewValue();
     for (unsigned i = 0; i < p.colorNumber(); i++) {
       unsigned char r, g, b;
@@ -278,6 +337,128 @@ void ViewportController::buildMesh(void) {
 
   emit sceneChanged();      // emptyShape follows the mesh
   emit frameChanged();
+}
+
+bool ViewportController::inSolver(void) const {
+  return m_layout->workspace() == LayoutController::Solver;
+}
+
+/* A wireframe piece's hull edges (AC-C21-02): the back ones fainter. With
+ * Show through solid pieces they are drawn as the ghosts' lines are, over
+ * everything and faint where solids hide them; without, solids hide them. */
+void ViewportController::addWire(SceneFrame & f) const {
+  const std::vector<btui::HullEdge> & wire = m_solver->wire();
+  const std::vector<btui::Rgba8> & colours = m_solver->wireColours();
+  std::vector<btui::LineSeg> & out = m_solver->xray() ? f.ghostLines : f.lines;
+  out.reserve(out.size() + wire.size());
+  // a normal's depth component in view space: below 0 it faces away
+  auto towardsViewer = [&](btui::Vec3 n) {
+    return f.view(2, 0) * n.x + f.view(2, 1) * n.y + f.view(2, 2) * n.z > 0;
+  };
+  for (size_t i = 0; i < wire.size() && i < colours.size(); i++) {
+    const btui::HullEdge & e = wire[i];
+    btui::Rgba8 c = colours[i];
+    if (!towardsViewer(e.n1) && !towardsViewer(e.n2))
+      c.a = std::uint8_t(c.a * 45 / 100);
+    btui::LineSeg s;
+    s.a = e.a;
+    s.b = e.b;
+    s.color = c;
+    s.widthDp = 1.5f;
+    out.push_back(s);
+  }
+}
+
+bool ViewportController::inPuzzle(void) const {
+  return m_layout->workspace() == LayoutController::Puzzle;
+}
+
+void ViewportController::buildPuzzleMesh(void) {
+  const puzzle_c & p = m_doc->session().puzzle();
+  m_puzzle->refresh();
+  btui::MeshOptions opt;
+  opt.style = m_voxelStyle;
+  opt.shapeColours = Theme::shapeColours();
+  opt.colors = colourViewValue();
+  for (unsigned i = 0; i < p.colorNumber(); i++) {
+    unsigned char r, g, b;
+    p.getColor(i, &r, &g, &b);
+    opt.palette.push_back({ r / 255.0f, g / 255.0f, b / 255.0f });
+  }
+  guarded([&] {
+    m_scene = btui::buildPuzzleScene(p, m_puzzle->problem(), m_puzzle->selectedPiece(), opt);
+    m_puzzleMesh = std::make_shared<btui::ShapeMesh>(std::move(m_scene.mesh));
+    m_camera.setScene({ 0, 0, 0 }, m_scene.radius);
+    return true;
+  });
+  m_meshStyle = m_voxelStyle;
+  m_meshRevision++;
+  m_hoverObject = -1;
+  emit sceneChanged();
+  emit frameChanged();
+}
+
+/* Each object's frame on screen: a square about its anchor, as wide as the
+ * object can reach, so that it stays still while the object turns inside it
+ * (AC-C18-02). */
+void ViewportController::updateObjects(void) {
+  if (!inPuzzle()) {
+    if (m_objects->count() > 0)
+      m_objects->setRows({});
+    return;
+  }
+  const btui::Mat4 view = m_camera.viewMatrix();
+  const btui::Mat4 projection = m_camera.projectionMatrix();
+  const btui::Vec3 target = btui::transformPoint(view, { 0, 0, 0 });
+  const float w = m_camera.viewportWidth(), h = m_camera.viewportHeight();
+  const auto toScreen = [&](btui::Vec3 v) {
+    const btui::Vec3 ndc = btui::transformPoint(projection, v);
+    return QPointF((ndc.x + 1) / 2 * w, (1 - ndc.y) / 2 * h);
+  };
+
+  std::vector<RowsModel::Row> rows;
+  m_frames.clear();
+  const int selected = m_puzzle->selectedPiece();
+  for (size_t i = 0; i < m_scene.objects.size(); i++) {
+    const btui::SceneObject & o = m_scene.objects[i];
+    const btui::Vec3 at = target + o.anchor;
+    const QPointF centre = toScreen(at);
+    const float half = float(toScreen(at + btui::Vec3{ o.radius, 0, 0 }).x() - centre.x());
+    m_frames.push_back({ float(centre.x()) - half, float(centre.y()) - half, 2 * half });
+
+    const QString id = QString::fromStdString(btui::shapeId(o.shape));
+    QString role, caption;
+    switch (o.role) {
+      case btui::SceneRole::Goal:
+        role = QStringLiteral("goal");
+        switch (o.goal) {
+          case btui::GoalRole::Result: caption = tr("RESULT · %1").arg(id); break;
+        }
+        break;
+      case btui::SceneRole::Selected:
+        role = QStringLiteral("selected");
+        caption = tr("SELECTED · %1").arg(id);
+        break;
+      case btui::SceneRole::Piece:
+        role = QStringLiteral("piece");
+        caption = o.copies == 1 ? id : tr("%1 · %2/%3").arg(id).arg(o.copy + 1).arg(o.copies);
+        if (o.optional)
+          caption = tr("%1 (optional)").arg(caption);
+        break;
+    }
+    rows.push_back({ role, o.shape, caption, m_frames.back().x, m_frames.back().y, m_frames.back().size,
+                     o.role != btui::SceneRole::Goal && o.shape == selected, int(i) == m_hoverObject });
+  }
+  m_objects->setRows(std::move(rows));
+}
+
+int ViewportController::objectAt(float x, float y) const {
+  for (size_t i = 0; i < m_frames.size(); i++) {
+    const ObjectFrame & f = m_frames[i];
+    if (x >= f.x && y >= f.y && x <= f.x + f.size && y <= f.y + f.size)
+      return int(i);
+  }
+  return -1;
 }
 
 /* From the editor's shape, which it reads from the puzzle as it is: on the
@@ -330,6 +511,17 @@ btui::Target3d ViewportController::targetAt(float x, float y, Qt::KeyboardModifi
 }
 
 void ViewportController::pointerHover(float x, float y, Qt::KeyboardModifiers mods) {
+  if (inPuzzle()) {
+    // AC-C18-03: the result is no piece to pick
+    int hit = objectAt(x, y);
+    if (hit >= 0 && m_scene.objects[size_t(hit)].role == btui::SceneRole::Goal)
+      hit = -1;
+    if (hit != m_hoverObject) {
+      m_hoverObject = hit;
+      updateObjects();
+    }
+    return;
+  }
   m_hoverX = x;
   m_hoverY = y;
   if (navigating() || x < 0)
@@ -365,6 +557,10 @@ void ViewportController::pointerHover(float x, float y, Qt::KeyboardModifiers mo
 }
 
 void ViewportController::pointerLeave(void) {
+  if (m_hoverObject >= 0) {
+    m_hoverObject = -1;
+    updateObjects();
+  }
   m_hoverX = m_hoverY = -1;
   if (m_editor->over3d()) {
     m_editor->leave3d();
@@ -379,6 +575,13 @@ void ViewportController::navigationStarted(void) {
 }
 
 void ViewportController::click(float x, float y, Qt::KeyboardModifiers mods) {
+  if (inPuzzle()) {
+    // a piece selects, the result and the empty canvas do nothing (AC-C18-03)
+    const int hit = objectAt(x, y);
+    if (hit >= 0 && m_scene.objects[size_t(hit)].role != btui::SceneRole::Goal)
+      m_puzzle->selectPiece(m_scene.objects[size_t(hit)].shape);
+    return;
+  }
   const btui::Target3d t = targetAt(x, y, mods);
   m_editor->click3d(t, mods);
   // the voxels changed under the pointer: what it now points at
@@ -403,7 +606,24 @@ SceneFrame ViewportController::frame(float devicePixelRatio) const {
   const Theme * t = Theme::instance();
   applyStyle(f, m_meshStyle);
 
-  // the Entities scene; Puzzle and Solver bring their own in later phases
+  if (inPuzzle()) {
+    f.mesh = m_puzzleMesh;
+    f.meshRevision = m_meshRevision;
+    f.anchored = true;
+    return f;
+  }
+
+  if (inSolver()) {
+    // nothing to draw is no mesh, as in the other workspaces
+    if (const btui::ShapeMesh * m = m_solver->sceneMesh(); m && !m->empty())
+      f.mesh = m_solver->sceneMeshShared();
+    // its own count, apart from the Entities and Puzzle meshes'
+    f.meshRevision = (quint64(1) << 62) + m_solver->sceneRevision();
+    addWire(f);
+    return f;
+  }
+
+  // the Entities scene
   if (m_layout->workspace() != LayoutController::Entities || !m_shape || !t)
     return f;
 
@@ -452,8 +672,7 @@ void ViewportController::addTransformPreview(SceneFrame & f) const {
   if (!m_transform || !m_shape || !t)
     return;
   const TransformPreview & p = *m_transform;
-  const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
-  const QColor piece = QColor::fromRgbF(pc.r, pc.g, pc.b);
+  const QColor piece = ShapesModel::chipColor(m_shapeIndex);
   guarded([&] {
     btui::addResultGhost(f.ghostFaces, f.ghostLines, *m_shape, p.result.get(),
                          { rgba(piece, 0.5f), rgba(t->accent()), 1.5f });
@@ -490,10 +709,8 @@ void ViewportController::addGhosts(SceneFrame & f) const {
   // the drawing colour: the edit cursor's (so the two never disagree about
   // a colour id), or Default's -- the shape's own
   QColor draw = m_editor->cursorColour();
-  if (!draw.isValid()) {
-    const btui::Rgb pc = btui::pieceColor(m_shapeIndex);
-    draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
-  }
+  if (!draw.isValid())
+    draw = ShapesModel::chipColor(m_shapeIndex);
   const bool variable = m_editor->toolInEffect() == EditorController::Variable;
 
   for (const btui::GhostKind kind : { btui::GhostKind::Place, btui::GhostKind::Replace, btui::GhostKind::Erase,
@@ -552,6 +769,7 @@ bool ViewportController::exportVector(const QUrl & file, int format) const {
   in.dimLayer = f.dimLayer;
   in.dimAlpha = f.dimAlpha;
   in.cullBackFaces = f.cullBackFaces;
+  in.anchored = f.anchored;
 
   const std::string out = guarded([&] {
     return btui::writeVector(btui::projectScene(in), btui::VectorFormat(format),

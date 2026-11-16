@@ -496,6 +496,7 @@ public:
 
   void debug_step(unsigned long num = 1) override;
   std::unique_ptr<assembly_c> getAssembly(void) override;
+  size_t memoryBytes(void) const override;
 
   static bool canHandle(const problem_c & p);
 

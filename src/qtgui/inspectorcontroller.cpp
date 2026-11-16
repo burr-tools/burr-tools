@@ -27,6 +27,7 @@
 #include "shapesmodel.h"
 #include "viewportcontroller.h"
 
+#include "../uicore/problemlist.h"
 #include "../uicore/shapeops.h"
 
 #include "../lib/puzzle.h"
@@ -225,6 +226,12 @@ void InspectorController::run(int task) {
       emit flashRequested(QString::fromStdString(c.reason));
       return;
     }
+    const puzzle_c & before = m_doc->session().puzzle();
+    const bool costs = std::any_of(shapes.begin(), shapes.end(), [&](unsigned int shape) {
+      return btui::shapeEditCostsSolutions(before, int(shape));
+    });
+    if (!m_doc->mayDropSolutions(costs, shapes, [this, task] { run(task); }))
+      return;
     btui::OpResult r;
     m_doc->editVoxels(puzzleHistory_c::AK_ENTITIES_STRUCTURAL, shapes.size() > 1 ? -1 : s, s, shapes,
                       [&](puzzle_c & p) {

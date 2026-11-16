@@ -9,12 +9,18 @@
 #include "../src/lib/problem.h"
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
+#include "../src/tools/gzstream.h"
 
+#include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <iterator>
 
 using btui::DocumentSession;
 
@@ -633,4 +639,393 @@ TEST_CASE("an undo that changes a shape drops the solutions no step kept for it"
   CHECK(solved(d, 0) == f.before);
   d.undo();
   CHECK(unsolved(d, 0));
+}
+
+TEST_CASE("an undo back to the save reads as unsaved when solutions went on the way", "[ui][document]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  REQUIRE(d.puzzle().getProblem(0)->getNumberOfSavedSolutions() > 0);
+  REQUIRE_FALSE(d.isModified());
+
+  d.edit(puzzleHistory_c::AK_PROBLEM_STRUCTURAL, puzzleHistory_c::NO_SHAPE, [](puzzle_c & p) {
+    problem_c * pr = p.getProblem(0);
+    pr->setShapeMaximum(pr->getShapeIdOfPart(0), pr->getShapeMaximum(pr->getShapeIdOfPart(0)) + 1);
+    pr->removeAllSolutions();
+    return true;
+  });
+  d.undo();
+
+  // the file has them and the puzzle does not
+  CHECK(d.puzzle().getProblem(0)->getNumberOfSavedSolutions() == 0);
+  CHECK(d.isModified());
+}
+
+TEST_CASE("an undo back to the save reads clean when no solutions went", "[ui][document]") {
+  DocumentSession d;
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  d.edit(puzzleHistory_c::AK_PROBLEM_STRUCTURAL, puzzleHistory_c::NO_SHAPE, [](puzzle_c & p) {
+    p.getProblem(0)->setName("renamed");
+    return true;
+  });
+  CHECK(d.isModified());
+  d.undo();
+  CHECK_FALSE(d.isModified());
+}
+
+TEST_CASE("an undo back to the save reads clean when the solutions a voxel edit dropped come back", "[ui][document]") {
+  /* the step keeps them, so they are not lost on the way: neither the edit,
+   * nor a stroke, nor a redo after the undo makes the save point unreachable */
+  Pelikan f;
+  DocumentSession & d = f.d;
+  REQUIRE_FALSE(d.isModified());
+
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  REQUIRE(unsolved(d, 0));
+  CHECK(d.isModified());
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());
+  d.redo();
+  CHECK(d.isModified());
+  d.undo();
+  CHECK_FALSE(d.isModified());
+
+  d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, f.used);
+  d.strokeEdit(flip(f.used));
+  d.strokeEdit(flip(f.used));
+  CHECK(d.endStroke());
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());
+}
+
+// --- the memory the kept solutions take ---------------------------------------
+// (the steps of every history keep records to one budget: over it, an edit
+// loses its solutions for good, and the GUI warns first, keepsSolutionsOf)
+
+namespace {
+  /* the budget for one test, back to what it was after */
+  struct Budget {
+    size_t was = puzzleHistory_c::solutionBudget();
+    explicit Budget(size_t bytes) { puzzleHistory_c::setSolutionBudget(bytes); }
+    ~Budget(void) { puzzleHistory_c::setSolutionBudget(was); }
+  };
+}
+
+TEST_CASE("the solutions the history keeps are counted, and the count goes with the steps", "[ui][document]") {
+  const size_t base = puzzleHistory_c::solutionBytesKept();
+  {
+    Pelikan f;
+    DocumentSession & d = f.d;
+    const size_t record = d.puzzle().getProblem(0)->solveRecordBytes();
+    CHECK(record > sizeof(problem_c::solveRecord_t));   // the solution with its disassembly
+    d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+    const size_t kept = puzzleHistory_c::solutionBytesKept() - base;
+    CHECK(kept >= record);
+    // an undo swaps the records with the problem's, now holding nothing much
+    d.undo();
+    CHECK(puzzleHistory_c::solutionBytesKept() - base < kept);
+    d.redo();
+    CHECK(puzzleHistory_c::solutionBytesKept() - base == kept);
+
+    // a second document's history counts against the same total
+    {
+      Pelikan g;
+      g.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, g.used, { g.used }, flip(g.used));
+      CHECK(puzzleHistory_c::solutionBytesKept() - base == 2 * kept);
+    }
+    CHECK(puzzleHistory_c::solutionBytesKept() - base == kept);
+
+    // the undo, then a new edit: the redo step and what it kept go
+    d.undo();
+    const unsigned int other = f.unusedShape();
+    d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, other, { other }, flip(other));
+    CHECK(puzzleHistory_c::solutionBytesKept() == base);
+  }
+  CHECK(puzzleHistory_c::solutionBytesKept() == base);
+}
+
+TEST_CASE("solutions too big for the history's budget are lost for good, and the document reads unsaved", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  const Budget b(puzzleHistory_c::solutionBytesKept());   // no room left
+  CHECK_FALSE(d.keepsSolutionsOf({ f.used }));
+  const unsigned int other = f.unusedShape();
+  CHECK(d.keepsSolutionsOf({ other }));                    // nothing to keep
+
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  CHECK(unsolved(d, 0));
+  d.undo();
+  d.undo();                                                // to the file as loaded
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+}
+
+TEST_CASE("a stroke over the budget loses its solutions; with room again the next edit keeps them", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  {
+    const Budget b(puzzleHistory_c::solutionBytesKept());
+    d.beginStroke(puzzleHistory_c::AK_ENTITIES_GRID_PAINT, f.used);
+    d.strokeEdit(flip(f.used));
+    CHECK_FALSE(d.keepsSolutionsOf({ f.used }));           // what the open stroke holds counts
+    CHECK(d.endStroke());
+    d.undo();
+    CHECK(unsolved(d, 0));
+    CHECK(d.isModified());
+  }
+  // the budget back: a reload's solutions are kept again
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  CHECK(d.keepsSolutionsOf({ f.used }));
+  d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  d.undo();
+  CHECK(solved(d, 0) == f.before);
+}
+
+TEST_CASE("a budget that fits one edit's solutions but not two keeps the first, loses the second", "[ui][document]") {
+  Pelikan f, g;
+  const size_t record = f.d.puzzle().getProblem(0)->solveRecordBytes();
+  const Budget b(puzzleHistory_c::solutionBytesKept() + record + record / 2);
+  CHECK(f.d.keepsSolutionsOf({ f.used }));
+  f.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, f.used, { f.used }, flip(f.used));
+  CHECK_FALSE(g.d.keepsSolutionsOf({ g.used }));            // the other document's history is full too
+  g.d.editVoxels(puzzleHistory_c::AK_ENTITIES_CLICK_3D, g.used, { g.used }, flip(g.used));
+  g.d.undo();
+  CHECK(unsolved(g.d, 0));
+  f.d.undo();
+  CHECK(solved(f.d, 0) == f.before);
+}
+
+// --- a change to what a problem asks for, and its solutions (2026-11-14) -------
+
+namespace {
+  /* one more copy of a piece of problem 0, through the library */
+  auto oneMoreCopy(unsigned int shape) {
+    return [shape](puzzle_c & p) {
+      problem_c * pr = p.getProblem(0);
+      pr->setShapeMaximum(shape, pr->getShapeMaximum(shape) + 1);
+      return true;
+    };
+  }
+}
+
+TEST_CASE("a change to a problem's pieces drops its solutions, and undo brings them back", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  CHECK(d.keepsSolutionsOfProblems({ 0 }));
+  CHECK(d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 }, oneMoreCopy(f.used)));
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+  d.undo();                                   // the structure rebuilt, the record swapped back
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.isModified());                // the file as loaded, solutions and all
+  d.redo();
+  CHECK(unsolved(d, 0));
+  d.undo();                                   // and again: the record goes back and forth whole
+  CHECK(solved(d, 0) == f.before);
+  CHECK(d.puzzle().getProblem(0)->getSavedSolution(0) != nullptr);
+}
+
+TEST_CASE("a problem change that changes nothing keeps the solutions where they are", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  CHECK_FALSE(d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 },
+                             [](puzzle_c &) { return false; }));
+  CHECK(solved(d, 0) == f.before);
+  CHECK_FALSE(d.canUndo());
+}
+
+TEST_CASE("an undo of a problem change no step kept anything for drops that problem's solutions", "[ui][document]") {
+  // the legacy GUI's path: a plain edit, nothing kept
+  Pelikan f;
+  DocumentSession & d = f.d;
+  d.edit(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, oneMoreCopy(f.used));
+  d.undo();
+  CHECK(unsolved(d, 0));
+}
+
+TEST_CASE("a problem change over the budget loses its solutions for good", "[ui][document]") {
+  Pelikan f;
+  DocumentSession & d = f.d;
+  const Budget b(puzzleHistory_c::solutionBytesKept());   // no room left
+  CHECK_FALSE(d.keepsSolutionsOfProblems({ 0 }));
+  d.editProblems(puzzleHistory_c::AK_PROBLEM_COUNT, puzzleHistory_c::NO_SHAPE, { 0 }, oneMoreCopy(f.used));
+  CHECK(unsolved(d, 0));
+  d.undo();
+  CHECK(unsolved(d, 0));
+  CHECK(d.isModified());
+}
+
+/* A staged load (setStageAbove; puzzleloader.h): the definitions at once,
+ * the solutions on a thread of their own until finishLoading(). */
+
+namespace {
+
+  /* finishLoading() until the reading is over */
+  btui::DocumentSession::LoadEnd finished(btui::DocumentSession & d) {
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    btui::DocumentSession::LoadEnd e;
+    while (!(e = d.finishLoading()).done && std::chrono::steady_clock::now() < until)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(e.done);
+    return e;
+  }
+
+  unsigned savedOf(const puzzle_c & p) {
+    unsigned n = 0;
+    for (unsigned k = 0; k < p.getNumberOfProblems(); k++)
+      n += p.getProblem(k)->getNumberOfSavedSolutions();
+    return n;
+  }
+
+}
+
+TEST_CASE("a load stages only above the threshold, and by default never", "[ui][document][staged][parallel]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+  const unsigned all = savedOf(whole.puzzle());
+  REQUIRE(all > 0);
+
+  btui::DocumentSession d;
+  CHECK(d.stageAboveBytes() == SIZE_MAX);
+  auto r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  CHECK_FALSE(r.solutionsPending);
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK(savedOf(d.puzzle()) == all);
+
+  d.setStageAbove(100 * 1000 * 1000);          // more than the file has
+  r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  CHECK_FALSE(r.solutionsPending);
+  CHECK(savedOf(d.puzzle()) == all);
+}
+
+TEST_CASE("a staged load reads the solutions after, and the document cannot be saved meanwhile",
+          "[ui][document][staged][parallel]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+
+  TempDir dir;
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  auto r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  REQUIRE(r.ok);
+  REQUIRE(r.solutionsPending);
+  CHECK(d.fileName() == std::filesystem::path("examples/SolidSixPieceBurrs.xmpuzzle"));
+  CHECK_FALSE(d.isModified());
+  if (d.loadingSolutions()) {
+    // a save now would write a file without the solutions not read yet
+    CHECK_FALSE(d.saveAs(dir.path / "copy.xmpuzzle"));
+    CHECK_FALSE(std::filesystem::exists(dir.path / "copy.xmpuzzle"));
+  }
+  const auto e = finished(d);
+  CHECK(e.error.empty());
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK(d.loadProgress() == 1.0);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+  CHECK_FALSE(d.isModified());                  // reading solutions is no change
+  CHECK(d.saveAs(dir.path / "copy.xmpuzzle"));
+}
+
+TEST_CASE("replacing the document stops the reading of its solutions", "[ui][document][staged][parallel]") {
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").solutionsPending);
+  d.newDocument(gridType_c::GT_BRICKS);
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK_FALSE(d.finishLoading().done);
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
+
+  // and loading another file
+  REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").solutionsPending);
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  finished(d);
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/PelikanBurr.xmpuzzle").ok);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+}
+
+TEST_CASE("a staged load leaves out the solutions that do not read and keeps the others",
+          "[ui][document][staged][parallel]") {
+  // Burr-Glar with a broken disassembly state
+  std::string text;
+  {
+    btui::DocumentSession whole;
+    REQUIRE(whole.load("examples/Burr-Glar.xmpuzzle").ok);
+  }
+  TempDir dir;
+  const auto broken = dir.path / "broken.xmpuzzle";
+  {
+    auto in = openGzFile("examples/Burr-Glar.xmpuzzle");
+    REQUIRE(in);
+    text.assign(std::istreambuf_iterator<char>(*in), {});
+    text.insert(text.rfind("<dx>") + 4, "x");
+    std::ofstream out(broken, std::ios::binary);
+    out << text;
+  }
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  auto r = d.load(broken);
+  REQUIRE(r.ok);
+  REQUIRE(r.solutionsPending);
+  const auto e = finished(d);
+  CHECK(e.error.empty());
+  CHECK(e.skipped == 1);
+  CHECK(e.skipError.rfind("load error: ", 0) == 0);
+  CHECK(d.fileName() == broken);
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/Burr-Glar.xmpuzzle").ok);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()) - 1);
+  CHECK_FALSE(d.isModified());
+}
+
+TEST_CASE("beginLoad reads a large file on a thread and adopts it at finishOpening",
+          "[ui][document][staged][parallel]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+
+  btui::DocumentSession d;
+  d.setOpenAsyncAbove(0);                       // every file
+  d.setStageAbove(0);
+  std::atomic<bool> called{false};
+  auto r = d.beginLoad("examples/SolidSixPieceBurrs.xmpuzzle", [&] { called = true; });
+  REQUIRE(r.ok);
+  REQUIRE(r.opening);
+  // the document as it was until then
+  CHECK(d.opening());
+  CHECK(d.fileName().empty());
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
+  const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+  while (!d.openingDone() && std::chrono::steady_clock::now() < until)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  CHECK(called);
+  r = d.finishOpening();
+  CHECK(r.ok);
+  CHECK_FALSE(r.opening);
+  CHECK_FALSE(d.opening());
+  CHECK(d.fileName() == std::filesystem::path("examples/SolidSixPieceBurrs.xmpuzzle"));
+  if (r.solutionsPending)
+    finished(d);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+}
+
+TEST_CASE("beginLoad loads a small file at once, and a new document drops one being opened",
+          "[ui][document][staged][parallel]") {
+  btui::DocumentSession d;
+  d.setOpenAsyncAbove(1000 * 1000 * 1000);
+  auto r = d.beginLoad("examples/PelikanBurr.xmpuzzle");
+  CHECK(r.ok);
+  CHECK_FALSE(r.opening);
+  CHECK(d.fileName() == std::filesystem::path("examples/PelikanBurr.xmpuzzle"));
+  // a missing file says so at once
+  r = d.beginLoad("examples/no such file.xmpuzzle");
+  CHECK_FALSE(r.ok);
+  CHECK_FALSE(r.error.empty());
+
+  d.setOpenAsyncAbove(0);
+  REQUIRE(d.beginLoad("examples/SolidSixPieceBurrs.xmpuzzle").opening);
+  d.newDocument(gridType_c::GT_BRICKS);
+  CHECK_FALSE(d.opening());
+  CHECK(d.fileName().empty());
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
+  CHECK_FALSE(d.finishOpening().ok);            // nothing being opened
 }

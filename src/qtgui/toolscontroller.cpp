@@ -79,7 +79,7 @@ int ShapeStatusModel::selectedCount(void) const {
 QColor ShapeStatusModel::chipColor(int shape) { return ShapesModel::chipColor(shape); }
 
 QColor ShapeStatusModel::chipTextColor(int shape) {
-  return btui::prefersWhiteText(shape) ? QColor(Qt::white) : QColor(Qt::black);
+  return ShapesModel::chipTextColor(shape);
 }
 
 QVariant ShapeStatusModel::data(const QModelIndex & index, int role) const {

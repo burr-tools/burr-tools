@@ -28,10 +28,6 @@ import sys
 
 # tokens whose components are not built yet, and the phase that builds them
 PENDING = {
-    'puzzleTile': 'P10 Puzzle (C16)',
-    'solverListRow': 'P11 Solver (C20)',
-    'player': 'P11 Solver (disassembly player)',
-    'pieceDisplay': 'P11 Solver (piece display)',
 }
 
 # tokens one density has and the other has not, and why

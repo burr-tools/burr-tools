@@ -241,6 +241,9 @@ public:
   /** how many pieces are in this assembly */
   unsigned int placementCount(void) const { return placements.size(); }
 
+  /** about how many bytes this assembly takes in memory */
+  size_t memoryBytes(void) const { return sizeof(*this) + placements.capacity() * sizeof(placement_c); }
+
   /** check if a piece is placed in this assembly */
   bool isPlaced(unsigned int num) const {
     return placements[num].getTransformation() != UNPLACED_TRANS;

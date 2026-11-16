@@ -19,6 +19,14 @@ For `src/qtgui/`. QML rules are in `llm_docs/qt_gui_qml.md`.
   read-only (`llm_docs/uicore_rules.md`). A change to shapes' voxels goes
   through `editVoxels(kind, shape, selected, shapes, f)`, so the problems
   using them lose their stale solutions (undo brings them back).
+- **An edit that costs solutions asks first.** Any edit removes the solutions
+  it makes wrong: `DocumentController::mayCostSolutions(costs, retry)` before
+  it, for the session's one warning; a problem's by `PuzzleController::change`.
+  A voxel edit's go through `editVoxels` (or a stroke) into its undo step, so
+  it asks `mayDropSolutions(drops, shapes, retry)` instead, which warns only
+  when they are too big for the history's memory budget, and then every time.
+  `costs` / `drops` say the edit would do something: a change that changes
+  nothing must not spend the warning.
 - **State in controllers, not QML.** QML binds to controller properties and
   calls `Q_INVOKABLE`s; it does not keep the truth. New concern, new
   controller owned by `App` (constructor in `app.cpp`, a `CONSTANT`
@@ -63,5 +71,9 @@ For `src/qtgui/`. QML rules are in `llm_docs/qt_gui_qml.md`.
   published and never changed after. Work on a worker thread touches only
   its own shared state, which the GUI thread polls or receives queued
   (`UpdateController` is the pattern); no QObject is used from two threads.
+  Two workers add to the puzzle itself: the solve thread and the reader of a
+  staged file's solutions (`solutionReader_c`) put solutions behind a
+  problem's list under `lockSolutions()`, while the document is busy so
+  nothing else changes it; the GUI reads those lists only under that lock.
 - No network in a scripted run or a test: see how `main.cpp` gates the
   launch update check.

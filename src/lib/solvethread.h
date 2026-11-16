@@ -29,6 +29,7 @@
 
 #include <time.h>
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <thread>
 
@@ -194,6 +195,40 @@ class solveThread_c : public assembler_cb {
   private:
 
     std::atomic<int> liveSort;
+
+    /* What this thread knows of the order of the solution list, as it left
+     * the list at its last step (all under the problem's solutions lock).
+     * It holds while nobody else changed the list or a solution in it since:
+     * the problem's solutionsRevision() and solution_c::changeCount() read
+     * what they read then (listUnchanged). The keeping of the list sorted
+     * then places a new solution by a binary search -- where the scan of
+     * every saved solution (sortMethod) and the whole sort after each one
+     * (liveSort) found the very same place, at a cost growing with the list.
+     *   insertOrdered: the solutions sortMethod reads a key from (a
+     *     disassembly for SRT_COMPLETE_MOVES, disassembly information for
+     *     SRT_LEVEL) come first, in its order; those without one after them.
+     *   liveSortedBy: the list stands in problem_c::sortSolutions(by)'s
+     *     order (problem_c::solutionsSortedBy), -1 when not known to. */
+    bool listKnown = false;
+    uint64_t knownRevision = 0;
+    uint64_t knownChanges = 0;
+    bool insertOrdered = false;
+    int liveSortedBy = -1;
+
+    bool listUnchanged(void) const;
+    void rememberList(void);
+    /* insertOrdered: how many keyed solutions lead the list */
+    unsigned int keyedPrefix(void) const;
+    /* where sortMethod puts a solution of this disassembly: an index, or the
+     * list's size for its end; keyed: keyedPrefix() when insertOrdered */
+    unsigned int insertPosition(const separation_c * s, unsigned int keyed);
+    /* insertOrdered after a solution was put at pos (insertPosition) */
+    void keepInsertOrder(unsigned int pos, unsigned int keyedBefore, bool keyed);
+    /* whether insertOrdered holds, read from the whole list */
+    bool insertOrderHolds(void) const;
+    /* the live sort after a step that added the solution at index added, or
+     * none (-1) */
+    void keepLiveSort(int added);
 
     /* don't save more than this number of solutions 0 means no limit */
     unsigned int solutionLimit;

@@ -33,7 +33,7 @@
  * defined by the 2 iterators
  */
 template<typename iter>
-void getNumbers(const std::string & str, iter start, iter end, bool neg_allowed) {
+void getNumbers(std::string_view str, iter start, iter end, bool neg_allowed) {
 
   int val = 0;
   bool gotNum = false;
@@ -99,6 +99,21 @@ void getNumbers(const std::string & str, iter start, iter end, bool neg_allowed)
     throw xmlParserException_c("too few number in disassembly");
 }
 
+namespace {
+
+  /* one axis of a state's positions, which stand x, y, z a piece after the
+   * other: every third int */
+  struct axisIter {
+    int * p;
+    int & operator*() const { return *p; }
+    axisIter & operator++() { p += 3; return *this; }
+    axisIter operator++(int) { axisIter r = *this; p += 3; return r; }
+    bool operator==(const axisIter & o) const { return p == o.p; }
+    bool operator!=(const axisIter & o) const { return p != o.p; }
+  };
+
+}
+
 /************************************************************************
  * State
  ************************************************************************/
@@ -112,7 +127,7 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     std::ostream & str = xml.addContent();
     for (unsigned int ii = 0; ii < piecenumber; ii++)
     {
-      str << dx[ii];
+      str << pos[3 * size_t(ii)];
       if (ii < piecenumber-1)
         str << " ";
     }
@@ -124,7 +139,7 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     std::ostream & str = xml.addContent();
     for (unsigned int ii = 0; ii < piecenumber; ii++)
     {
-      str << dy[ii];
+      str << pos[3 * size_t(ii) + 1];
       if (ii < piecenumber-1)
         str << " ";
     }
@@ -136,7 +151,7 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
     std::ostream & str = xml.addContent();
     for (unsigned int ii = 0; ii < piecenumber; ii++)
     {
-      str << dz[ii];
+      str << pos[3 * size_t(ii) + 2];
       if (ii < piecenumber-1)
         str << " ";
     }
@@ -162,27 +177,27 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 
     if (pars.getName() == "dx")
     {
-      dx.resize(pn);
+      pos.resize(3 * size_t(pn));
       pars.next();
-      getNumbers(pars.getText(), dx.begin(), dx.end(), true);
+      getNumbers(pars.getTextView(), axisIter{ pos.data() }, axisIter{ pos.data() + 3 * size_t(pn) }, true);
       pars.next();
       pars.require(xmlParser_c::END_TAG, "dx");
       has_dx = true;
     }
     else if (pars.getName() == "dy")
     {
-      dy.resize(pn);
+      pos.resize(3 * size_t(pn));
       pars.next();
-      getNumbers(pars.getText(), dy.begin(), dy.end(), true);
+      getNumbers(pars.getTextView(), axisIter{ pos.data() + 1 }, axisIter{ pos.data() + 1 + 3 * size_t(pn) }, true);
       pars.next();
       pars.require(xmlParser_c::END_TAG, "dy");
       has_dy = true;
     }
     else if (pars.getName() == "dz")
     {
-      dz.resize(pn);
+      pos.resize(3 * size_t(pn));
       pars.next();
-      getNumbers(pars.getText(), dz.begin(), dz.end(), true);
+      getNumbers(pars.getTextView(), axisIter{ pos.data() + 2 }, axisIter{ pos.data() + 2 + 3 * size_t(pn) }, true);
       pars.next();
       pars.require(xmlParser_c::END_TAG, "dz");
       has_dz = true;
@@ -196,29 +211,31 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 }
 
 state_c::state_c(const state_c * cpy, unsigned int pn)
-  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz)
+  : pos(cpy->pos)
 {
   (void)pn;
-  bt_assert(dx.size() == pn && dy.size() == pn && dz.size() == pn);
+  bt_assert(pos.size() == 3 * size_t(pn));
 }
 
 state_c::state_c(unsigned int pn)
-  : dx(pn, 0), dy(pn, 0), dz(pn, 0)
+  : pos(3 * size_t(pn), 0)
 {
 }
 
 state_c::~state_c() = default;
 
 void state_c::set(unsigned int piece, int x, int y, int z) {
-  bt_assert(piece < dx.size());
-  dx[piece] = x;
-  dy[piece] = y;
-  dz[piece] = z;
+  bt_assert(3 * size_t(piece) < pos.size());
+  int * p = pos.data() + 3 * size_t(piece);
+  p[0] = x;
+  p[1] = y;
+  p[2] = z;
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {
-  bt_assert(i < dx.size());
-  return (abs(dx[i]) > 10000) || (abs(dy[i]) > 10000) || (abs(dz[i]) > 10000);
+  bt_assert(3 * size_t(i) < pos.size());
+  const int * p = pos.data() + 3 * size_t(i);
+  return (abs(p[0]) > 10000) || (abs(p[1]) > 10000) || (abs(p[2]) > 10000);
 }
 
 /************************************************************************
@@ -309,7 +326,7 @@ separation_c::separation_c(xmlParser_c & pars, unsigned int pieceCnt)
 
       pars.next();
       pars.require(xmlParser_c::TEXT, "");
-      getNumbers(pars.getText(), pieces.begin(), pieces.begin()+piecenumber, false);
+      getNumbers(pars.getTextView(), pieces.begin(), pieces.begin()+piecenumber, false);
       pars.next();
       pars.require(xmlParser_c::END_TAG, "pieces");
     }
@@ -712,3 +729,12 @@ unsigned int separationInfo_c::getNumSequences(void) const
   return values.size();
 }
 
+
+size_t separation_c::memoryBytes(void) const {
+  size_t bytes = sizeof(*this) + pieces.capacity() * sizeof(unsigned int);
+  for (const auto & s : states)
+    bytes += sizeof(s) + s->memoryBytes();
+  if (removed) bytes += removed->memoryBytes();
+  if (left) bytes += left->memoryBytes();
+  return bytes;
+}

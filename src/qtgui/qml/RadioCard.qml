@@ -23,6 +23,15 @@ AbstractButton {
         color: root.selected ? Theme.accentSoft : (root.hovered ? Theme.panel2 : Theme.panel)
         border.width: root.selected || root.visualFocus ? 2 : 1
         border.color: root.selected || root.visualFocus ? Theme.accent : Theme.line
+        // the keyboard's ring outside the card: a selected card has the accent edge already
+        Rectangle {
+            anchors { fill: parent; margins: -4 }
+            visible: root.visualFocus
+            radius: parent.radius + 4
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.accent
+        }
     }
 
     contentItem: Item {

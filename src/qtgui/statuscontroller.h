@@ -59,6 +59,8 @@ public:
   void setCursorText(const QString & t);
 
   Q_INVOKABLE void flash(const QString & text);
+  /* for assistive tech alone: the screen shows it already */
+  Q_INVOKABLE void announce(const QString & text);
   /* back to the live text now: a flash about a document that was just
    * replaced says nothing about the new one */
   void endFlash(void);

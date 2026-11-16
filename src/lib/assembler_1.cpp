@@ -4273,3 +4273,25 @@ bool assembler_1_c::canHandle(const problem_c &) {
   return true;
 }
 
+
+namespace {
+  template <class T> size_t vectorBytes(const std::vector<T> & v) { return v.capacity() * sizeof(T); }
+}
+
+/* The matrix and the search's stacks. A SIMD solver lives only while
+ * assemble() runs, or from setPosition() to the run that takes it over: a
+ * search that waits to be resumed holds none, and it is not counted. */
+size_t assembler_1_c::memoryBytes(void) const {
+  size_t bytes = sizeof(*this);
+  for (const auto * v : { &left, &right, &up, &down, &colCount, &weight, &min, &max, &holeColumns,
+                          &base_left, &base_right, &base_up, &base_down, &base_colCount, &base_weight,
+                          &rows, &finished_a, &finished_b, &hidden_rows, &task_stack, &next_row_stack, &column_stack })
+    bytes += vectorBytes(*v);
+  bytes += vectorBytes(piecePositions);
+  for (const SubtreeTask_1 & t : parallelTasks)
+    bytes += sizeof(t) + vectorBytes(t.task_stack) + vectorBytes(t.next_row_stack) + vectorBytes(t.column_stack) +
+             vectorBytes(t.rows) + vectorBytes(t.hidden_rows) + vectorBytes(t.cuts);
+  for (const HuangSeed & s : pendingHuangPrefixes)
+    bytes += sizeof(s) + vectorBytes(s.prefix) + vectorBytes(s.pivotShape);
+  return bytes;
+}

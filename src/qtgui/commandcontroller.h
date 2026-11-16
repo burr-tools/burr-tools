@@ -32,6 +32,7 @@ class DocumentController;
 class EditorController;
 class LayoutController;
 class SettingsController;
+class PuzzleController;
 class ShapesModel;
 class ViewportController;
 
@@ -67,7 +68,7 @@ class CommandController : public QObject {
 public:
 
   CommandController(SettingsController * settings, DocumentController * doc, LayoutController * layout,
-                    ViewportController * viewport, EditorController * editor, ShapesModel * shapes,
+                    ViewportController * viewport, EditorController * editor, ShapesModel * shapes, PuzzleController * puzzle,
                     QObject * parent = nullptr);
 
   int revision(void) const { return m_revision; }
@@ -166,6 +167,7 @@ private:
   ViewportController * m_viewport;
   EditorController * m_editor;
   ShapesModel * m_shapes;
+  PuzzleController * m_puzzle;
   int m_revision = 0;
   bool m_blocked = false;
 };

@@ -50,6 +50,10 @@ class KeyboardCues : public QObject {
 
   Q_PROPERTY(bool showAccessKeys READ showAccessKeys NOTIFY changed FINAL)
   Q_PROPERTY(bool menuArmed READ menuArmed NOTIFY menuArmedChanged FINAL)
+  /* the keyboard is moving the focus: from Tab or an arrow key until the next
+   * press of the mouse. Custom items ring their focus only then, as a
+   * Control's visualFocus does: a click focuses, but shows no ring. */
+  Q_PROPERTY(bool navigating READ navigating NOTIFY navigatingChanged FINAL)
 
 public:
 
@@ -59,6 +63,7 @@ public:
 
   /* an Alt tap armed the menu bar: it shows, and a letter opens a menu */
   bool menuArmed(void) const { return m_armed; }
+  bool navigating(void) const { return m_navigating; }
 
   /* the top-level menus' access keys in their order ("FEVXH"); empty, as on
    * macOS, and Alt reaches no menus */
@@ -85,6 +90,7 @@ signals:
    * or with Alt held (only when no visible menu bar took it) */
   void menuKeyPressed(int index);
   void menuArmedChanged(void);
+  void navigatingChanged(void);
   /* the keyboard put the armed menus away (Esc, a second Alt tap) -- not a
    * click, which may be on a menu */
   void menusDismissed(void);
@@ -99,12 +105,14 @@ protected:
 private:
 
   void setKeyboardMode(bool on);
+  void setNavigating(bool on);
   void setArmed(bool on);
 
   bool m_always = false;
   bool m_keyboardMode = false;
   bool m_altAlone = false;     // Alt is down, nothing else since
   bool m_armed = false;
+  bool m_navigating = false;
   QString m_menuKeys;
   std::function<bool()> m_blocked;
   bool blocked(void) const { return m_blocked && m_blocked(); }

@@ -150,3 +150,12 @@ TEST_CASE("restored collapse flags apply to the right workspace", "[ui][layout]"
   CHECK_FALSE(m.leftCollapsed());
   CHECK(m.leftCollapsed(Workspace::Puzzle));
 }
+
+TEST_CASE("Minimal's metrics are density.md's narrower ones", "[ui][layout]") {
+  const DensityMetrics & s = densityMetrics(Density::Standard);
+  const DensityMetrics & m = densityMetrics(Density::Minimal);
+  CHECK(&s != &m);
+  CHECK(m.leftCard < s.leftCard);
+  CHECK(m.rightCard <= s.rightCard);
+  CHECK(m.workspaceRail < s.workspaceRail);
+}

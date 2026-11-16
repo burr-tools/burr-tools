@@ -68,6 +68,10 @@ class StlExportController : public SceneController {
   /* where the save dialog starts and what it suggests */
   Q_PROPERTY(QUrl folder READ folder NOTIFY shapeChanged FINAL)
   Q_PROPERTY(QString suggestedName READ suggestedName NOTIFY shapeChanged FINAL)
+  /* Export Solution to STL (C20, legacy stlExportSolution_c): the shapes a
+   * solution places, each written to its own file in one folder; empty for
+   * the plain Export ▸ STL. Set before the dialog opens; end() clears it. */
+  Q_PROPERTY(QList<int> solutionShapes READ solutionShapes WRITE setSolutionShapes NOTIFY solutionChanged FINAL)
 
 public:
 
@@ -96,6 +100,12 @@ public:
   bool hasMesh(void) const { return m_mesh != nullptr; }
   QUrl folder(void) const;
   QString suggestedName(void) const;
+  QList<int> solutionShapes(void) const { return m_solution; }
+  void setSolutionShapes(const QList<int> & shapes);
+  /* the files of the solution's shapes already in the folder */
+  Q_INVOKABLE int existingSolutionFiles(const QUrl & folder) const;
+  /* write them all, each on failure said (failed); the number written */
+  Q_INVOKABLE int exportSolution(const QUrl & folder);
 
   /* The dialog opens: a fresh exporter for the puzzle's grid with its
    * default parameters, the main view's shape, and its preview. */
@@ -119,6 +129,7 @@ signals:
   void shapeChanged(void);
   void optionsChanged(void);
   void meshChanged(void);
+  void solutionChanged(void);
   void failed(const QString & message);
   void exported(const QString & fileName);
 
@@ -134,6 +145,9 @@ private:
   int m_gridType = -1;             // the grid m_stl was made for
   bool m_open = false;             // between begin() and end()
   int m_shape = 0;
+  QList<int> m_solution;
+  /* where a solution's shape is written in the folder */
+  QString solutionPath(const QString & folder, int shape) const;
   int m_revision = 0;
   bool m_binary = true;
   bool m_insides = false;

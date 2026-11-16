@@ -313,8 +313,8 @@ Card {
             radius: Theme.radiusControl
             color: selected ? Theme.accentSoft : (hover.hovered ? Theme.panel2 : "transparent")
             // with the keyboard in the list, the selected row is ringed in the accent
-            border.width: selected ? (list.activeFocus ? 2 : 1) : 0
-            border.color: list.activeFocus ? Theme.accent : Theme.accentEdge
+            border.width: selected ? (list.activeFocus && App.keyboardCues.navigating ? 2 : 1) : 0
+            border.color: list.activeFocus && App.keyboardCues.navigating ? Theme.accent : Theme.accentEdge
             Accessible.role: Accessible.ListItem
             Accessible.name: weight !== 1 ? qsTr("%1 %2, weight %3").arg(idText).arg(label).arg(weight) : idText + " " + label
             Accessible.selectable: true
@@ -368,6 +368,7 @@ Card {
                     // the label shrinks first, but keeps about six characters
                     Layout.minimumWidth: Math.min(implicitWidth, Theme.fontBody * 3.5)
                     text: row.label
+                    textFormat: Text.PlainText
                     // the selected row's fill is accentSoft: muted is too faint on it
                     color: row.selected ? Theme.text : Theme.muted
                     font.pixelSize: Theme.fontBody
@@ -390,7 +391,7 @@ Card {
                         color: Theme.text
                         placeholderTextColor: Theme.muted
                         selectionColor: Theme.accent
-                        selectedTextColor: "white"
+                        selectedTextColor: Theme.onAccent
                         font.pixelSize: Theme.fontBody
                         leftPadding: 6
                         rightPadding: 6

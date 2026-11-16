@@ -24,17 +24,29 @@
 #include "../lib/problem.h"
 #include "../lib/ps3dloader.h"
 #include "../lib/puzzle.h"
+#include "../lib/puzzleloader.h"
 #include "../lib/voxel.h"
 
 #include "../tools/fileexists.h"
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
+#include <algorithm>
+#include <atomic>
+#include <thread>
 #include <fstream>
 #include <random>
 #include <string>
 
 namespace btui {
+
+  /* the reading of beginLoad(): its thread, and what it read */
+  struct DocumentSession::Opening {
+    std::filesystem::path file;
+    FileRead read;
+    std::atomic<bool> finished{false};
+    std::jthread worker;        // last: it goes first, and the rest outlives it
+  };
 
   DocumentSession::DocumentSession(void) :
     puz(std::make_unique<puzzle_c>(std::make_unique<gridType_c>())),
@@ -43,9 +55,14 @@ namespace btui {
     hist->reset(puz.get());
   }
 
-  DocumentSession::~DocumentSession(void) = default;
+  DocumentSession::~DocumentSession(void) {
+    stopOpening();
+    stopLoading();
+  }
 
   void DocumentSession::adopt(std::unique_ptr<puzzle_c> p) {
+    stopOpening();                    // a file being opened would replace this one
+    stopLoading();                    // it reads into the puzzle that goes
     stroking = strokeDirty = false;   // the history starts afresh: the stroke goes with the old puzzle
     strokeLost.clear();
     puz = std::move(p);
@@ -57,13 +74,14 @@ namespace btui {
     fname.clear();
   }
 
-  DocumentSession::LoadResult DocumentSession::load(const std::filesystem::path & file) {
+  DocumentSession::FileRead DocumentSession::readFile(const std::filesystem::path & file, size_t stageAbove) {
 
-    LoadResult r;
+    FileRead f;
+    LoadResult & r = f.result;
 
     if (file.empty() || !fileExists(file)) {
       r.error = "The file does not exist.";
-      return r;
+      return f;
     }
 
     // openGzFile() can still fail after fileExists() passed: the file may
@@ -71,30 +89,123 @@ namespace btui {
     auto str = openGzFile(file);
     if (!str) {
       r.error = "The file could not be opened.";
-      return r;
+      return f;
     }
 
-    std::unique_ptr<puzzle_c> np;
+    const puzzleLoader::opener reopen = [file] { return openGzFile(file); };
 
     try {
-      xmlParser_c pars(*str);
-      np = std::make_unique<puzzle_c>(pars);
+      if (stageAbove == SIZE_MAX) {
+        xmlParser_c pars(*str);
+        f.puzzle = std::make_unique<puzzle_c>(pars);
+      } else {
+        puzzleLoader::definitions_t d = puzzleLoader::readDefinitions(*str, reopen, stageAbove);
+        f.puzzle = std::move(d.puzzle);
+        f.staged = d.staged;
+        f.bytes = d.bytes;
+      }
     }
     catch (xmlParserException_c & e) {
       r.error = std::string("load error: ") + e.what();
-      return r;
+      return f;
     }
 
-    for (unsigned int p = 0; p < np->getNumberOfProblems(); p++)
-      if (np->getProblem(p)->getSolveState() == SS_SOLVING)
+    for (unsigned int p = 0; p < f.puzzle->getNumberOfProblems(); p++)
+      if (f.puzzle->getProblem(p)->getSolveState() == SS_SOLVING)
         r.containsStartedSearch = true;
 
-    r.showComment = np->getCommentPopup();
-
-    adopt(std::move(np));
-    fname = file;
+    r.showComment = f.puzzle->getCommentPopup();
     r.ok = true;
+    return f;
+  }
+
+  DocumentSession::LoadResult DocumentSession::adoptRead(FileRead && f, const std::filesystem::path & file) {
+    LoadResult r = f.result;
+    if (!r.ok)
+      return r;
+    adopt(std::move(f.puzzle));
+    fname = file;
+    if (f.staged) {
+      reader = std::make_unique<solutionReader_c>(*puz, [file] { return openGzFile(file); }, f.bytes, loadThreads);
+      r.solutionsPending = true;
+    }
     return r;
+  }
+
+  DocumentSession::LoadResult DocumentSession::load(const std::filesystem::path & file) {
+    stopOpening();
+    return adoptRead(readFile(file, stageAbove), file);
+  }
+
+  DocumentSession::LoadResult DocumentSession::beginLoad(const std::filesystem::path & file, std::function<void()> done) {
+    stopOpening();
+    std::error_code ec;
+    const std::uintmax_t size = std::filesystem::file_size(file, ec);
+    if (ec || size < openAsyncAbove)
+      return load(file);        // a missing file says so at once, too
+    opener = std::make_unique<Opening>();
+    opener->file = file;
+    Opening * o = opener.get();
+    const size_t stage = stageAbove;
+    o->worker = std::jthread([o, stage, done = std::move(done)] {
+      try {
+        o->read = readFile(o->file, stage);
+      } catch (std::exception & e) {
+        o->read = FileRead();
+        o->read.result.error = e.what();
+      }
+      o->finished.store(true, std::memory_order_release);
+      if (done)
+        done();
+    });
+    LoadResult r;
+    r.ok = true;
+    r.opening = true;
+    return r;
+  }
+
+  bool DocumentSession::openingDone(void) const {
+    return opener && opener->finished.load(std::memory_order_acquire);
+  }
+
+  DocumentSession::LoadResult DocumentSession::finishOpening(void) {
+    if (!opener) {
+      LoadResult r;
+      r.error = "Nothing is being opened.";
+      return r;
+    }
+    opener->worker.join();
+    std::unique_ptr<Opening> o = std::move(opener);
+    return adoptRead(std::move(o->read), o->file);
+  }
+
+  void DocumentSession::stopOpening(void) {
+    opener.reset();             // waits for the reading, which it drops
+  }
+
+  double DocumentSession::loadProgress(void) const {
+    return reader ? reader->progress() : 1.0;
+  }
+
+  DocumentSession::LoadEnd DocumentSession::finishLoading(void) {
+    LoadEnd e;
+    if (!reader || !reader->done())
+      return e;
+    e.done = true;
+    const std::string why = reader->error();
+    e.skipped = reader->skipped();
+    if (e.skipped)
+      e.skipError = "load error: " + reader->skipError();
+    reader.reset();
+    if (!why.empty()) {
+      e.error = "load error: " + why;
+      newDocument(puz->getGridType()->getType());
+    }
+    return e;
+  }
+
+  void DocumentSession::stopLoading(void) {
+    reader.reset();          // stops it and waits
   }
 
   DocumentSession::LoadResult DocumentSession::importPuzzleSolver3D(const std::filesystem::path & file) {
@@ -123,6 +234,8 @@ namespace btui {
   }
 
   bool DocumentSession::convert(gridType_c::gridType to) {
+    if (loadingSolutions())
+      return false;
     puzzle_c * p = doConvert(puz.get(), to);
     if (!p)
       return false;
@@ -220,7 +333,8 @@ namespace btui {
   }
 
   bool DocumentSession::save(void) {
-    if (fname.empty())
+    // the file would lose the solutions not read yet
+    if (fname.empty() || loadingSolutions())
       return false;
     splitStroke();
     if (!writePuzzle(*puz, fname))
@@ -230,6 +344,8 @@ namespace btui {
   }
 
   bool DocumentSession::saveAs(const std::filesystem::path & file) {
+    if (loadingSolutions())
+      return false;
     std::filesystem::path target = withPuzzleExtension(file);
     splitStroke();
     if (!writePuzzle(*puz, target))
@@ -260,12 +376,40 @@ namespace btui {
 
   puzzleHistory_c::undoResult_t DocumentSession::undo(void) {
     endStroke();
-    return hist->undo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->undo(puz.get());
+    noteSolutionsLost(held);
+    return r;
   }
 
   puzzleHistory_c::undoResult_t DocumentSession::redo(void) {
     endStroke();
-    return hist->redo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->redo(puz.get());
+    noteSolutionsLost(held);
+    return r;
+  }
+
+  void DocumentSession::beginStep(const puzzleHistory_c::selection_t & selection, unsigned int coalesceKey) {
+    hist->beginStep(selection, coalesceKey);
+  }
+
+  void DocumentSession::endStep(const puzzleHistory_c::selection_t & selection) {
+    hist->endStep(selection);
+  }
+
+  long DocumentSession::solutionsHeld(void) const {
+    long held = 0;
+    for (unsigned int i = 0; i < puz->getNumberOfProblems(); i++) {
+      const problem_c * pr = puz->getProblem(i);
+      held += long(pr->getNumberOfSavedSolutions()) + (pr->getSolveState() == SS_UNSOLVED ? 0 : 1);
+    }
+    return held + hist->solutionsKept() + puzzleHistory_c::solutionsIn(strokeLost);
+  }
+
+  void DocumentSession::noteSolutionsLost(long heldBefore) {
+    if (solutionsHeld() < heldBefore)
+      hist->markModified();
   }
 
   void DocumentSession::beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {
@@ -336,15 +480,56 @@ namespace btui {
     return lost;
   }
 
+  puzzleHistory_c::discarded_t DocumentSession::takeSolutions(const std::vector<unsigned int> & problems) {
+    puzzleHistory_c::discarded_t taken;
+    for (unsigned int k : problems) {
+      if (k >= puz->getNumberOfProblems())
+        continue;
+      problem_c::solveRecord_t r;
+      puz->getProblem(k)->swapSolveRecord(r);
+      if (!r.empty())
+        taken.emplace_back(k, std::move(r));
+    }
+    return taken;
+  }
+
   void DocumentSession::keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded) {
     if (lost.empty())
       return;
-    if (recorded && hist->keepDiscarded(std::move(lost)))
-      return;
+    if (recorded)
+      switch (hist->keepDiscarded(std::move(lost))) {
+        case puzzleHistory_c::KEPT:
+          return;
+        case puzzleHistory_c::NO_ROOM:
+          // too big for the history: gone, and the file still has them
+          lost.clear();
+          hist->markModified();
+          return;
+        case puzzleHistory_c::NO_STEP:
+          break;
+      }
     // no step to keep them in: the edit changed nothing after all
     for (auto & [k, r] : lost)
       if (k < puz->getNumberOfProblems())
         puz->getProblem(k)->swapSolveRecord(r);
+  }
+
+  bool DocumentSession::keepsSolutionsOf(const std::vector<unsigned int> & shapes) const {
+    size_t bytes = puzzleHistory_c::bytesIn(strokeLost);
+    for (unsigned int k = 0; k < puz->getNumberOfProblems(); k++) {
+      const problem_c * pr = puz->getProblem(k);
+      if (std::any_of(shapes.begin(), shapes.end(), [pr](unsigned int s) { return pr->usesShape(s); }))
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + pr->solveRecordBytes();
+    }
+    return puzzleHistory_c::roomForSolutions(bytes);
+  }
+
+  bool DocumentSession::keepsSolutionsOfProblems(const std::vector<unsigned int> & problems) const {
+    size_t bytes = 0;
+    for (unsigned int k : problems)
+      if (k < puz->getNumberOfProblems())
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + puz->getProblem(k)->solveRecordBytes();
+    return puzzleHistory_c::roomForSolutions(bytes);
   }
 
   void DocumentSession::splitStroke(void) {

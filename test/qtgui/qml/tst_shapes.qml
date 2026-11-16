@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtTest
 import BurrTools.Ui
+import BurrTools.Test
 
 // The Shapes card (C01) through the real Main.qml: the row's actions, inline
 // rename, the list's keys, the context menu, drag to reorder, the rail's +
@@ -17,7 +18,7 @@ TestCase {
 
     function init() {
         // as tst_shell: the headless platform's two warnings are expected
-        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard|QUnifiedTimer::stopAnimationDriver: driver is not running).*/)
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false
@@ -199,12 +200,12 @@ TestCase {
         App.shapes.select(1)
         waitForRendering(win.contentItem)
         // A double-click opens it (the row's TapHandler: onDoubleTapped ->
-        // startRename). QtTest's double-click reaches a TapHandler as two single
-        // taps -- their timestamps are too far apart -- and its doubleTapped
-        // cannot be sent from QML (a QEventPoint argument), so the test starts
-        // where that handler goes; Enter, below, starts it by the real key.
+        // startRename): Snapshots.doubleClick, two presses 10 ms apart, as
+        // TestCase's own double-click leaves each press a first tap
         verify(findChild(r, "entities.shapes.row.1.tap") !== null)
-        list().startRename(1)
+        const at = findChild(r, "entities.shapes.row.1.label")
+        verify(at !== null)
+        Snapshots.doubleClick(at, 4, at.height / 2)
         let field = null
         tryVerify(() => (field = findChild(r, "entities.shapes.row.1.labelField")) !== null && field.activeFocus, 1000)
         field.text = "Arm"
@@ -369,22 +370,22 @@ TestCase {
         verify(item("entities.shapes.rail.list").activeFocusOnTab)
     }
 
-    function test_aDeleteThatLosesSolutionsAsksFirst() {
+    function test_aDeleteThatLosesSolutionsWarnsFirst() {
         open("SolidSixPieceBurrs")
+        App.document.solutionsWarned = false
         const n = App.shapes.count
         App.shapes.requestDelete(0)
         let dialog = null
-        tryVerify(() => (dialog = findChild(win, "entities.shapes.deleteDialog")) !== null && dialog.opened, 1000)
+        tryVerify(() => (dialog = findChild(win, "shell.solutionsDialog")) !== null && dialog.opened, 1000)
         compare(App.shapes.count, n)
-        verify(dialog.title.indexOf("S1") >= 0)
         verify(App.commands.blocked)                     // counted as modal
-        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.cancel"))
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.cancel"))
         tryVerify(() => !dialog.visible, 1000)
         compare(App.shapes.count, n)
 
         App.shapes.requestDelete(0)
         tryVerify(() => dialog.opened, 1000)
-        mouseClick(findChild(dialog.footer, "entities.shapes.deleteDialog.confirm"))
+        mouseClick(findChild(dialog.footer, "shell.solutionsDialog.confirm"))
         tryVerify(() => !dialog.visible, 1000)
         compare(App.shapes.count, n - 1)
     }

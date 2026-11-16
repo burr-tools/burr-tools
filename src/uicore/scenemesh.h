@@ -22,6 +22,7 @@
 #define BTUI_SCENEMESH_H
 
 #include "palette.h"
+#include "shapecolours.h"
 #include "vecmath.h"
 
 #include <array>
@@ -93,6 +94,7 @@ namespace btui {
     VoxelStyle style = VoxelStyle::Flat;
     ColorMode colors = ColorMode::Piece;
     Rgb piece{ 0.5f, 0.5f, 0.5f };   ///< the shape's colour
+    ShapeColours shapeColours;       ///< for a scene of many shapes: which colours they take
     std::vector<Rgb> palette;        ///< the puzzle's colours; voxel colour i uses palette[i-1]
     /* the flat style's variable voxels: translucent, so the variable voxels
      * inside show through the outer ones, layer over layer (C06 and the mock
@@ -107,6 +109,7 @@ namespace btui {
     Rgba8 color;
     float widthDp = 1;
     float dashDp = 0, gapDp = 0;
+    Vec3 offset{};                ///< added after the view's rotation (SceneFrame::anchored); else none
   };
 
   struct ShapeMesh {

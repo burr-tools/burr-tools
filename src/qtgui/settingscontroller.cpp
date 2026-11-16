@@ -37,6 +37,7 @@ namespace {
   // seedFromLegacy()
   const char * const kTheme       = "ui.theme";
   const char * const kDensity     = "ui.density";
+  const char * const kShapeColours = "ui.shapeColours";
   const char * const kTooltips    = "ui.tooltips";
   const char * const kSingleKeys  = "ui.singleKeyShortcuts";
   const char * const kAreaMode    = "editor.areaMode";
@@ -199,6 +200,7 @@ void SettingsController::applyToTheme(void) {
   if (Theme * t = Theme::instance()) {
     t->setMode(theme());
     t->setDensity(density());
+    t->setShapePalette(shapeColoursValue());
   }
 }
 
@@ -290,6 +292,22 @@ void SettingsController::setRotationMethod(const QString & v) {
   if (setWordSetting(kRotation, btui::kRotationMethods, btui::Camera::RotationMethod::Drag,
                      btui::kRotationMethods.parse(v.toStdString())))
     emit changed();
+}
+
+/* Muted by default; Classic is legacy's colours */
+btui::ShapePalette SettingsController::shapeColoursValue(void) const {
+  return wordSetting(kShapeColours, btui::kShapePalettes, btui::ShapePalette::Muted);
+}
+
+QString SettingsController::shapeColours(void) const {
+  return text(btui::kShapePalettes.word(shapeColoursValue()));
+}
+
+void SettingsController::setShapeColours(const QString & v) {
+  if (!setWordSetting(kShapeColours, btui::kShapePalettes, btui::ShapePalette::Muted, btui::kShapePalettes.parse(v.toStdString())))
+    return;
+  applyToTheme();
+  emit changed();
 }
 
 btui::VoxelStyle SettingsController::voxelStyleValue(void) const {
@@ -393,7 +411,7 @@ void SettingsController::setStringValue(const QString & key, const QString & v) 
 
 void SettingsController::resetSection(const QString & page) {
   if (page == QLatin1String("general")) {
-    for (const char * k : { kTheme, kDensity, kTooltips, kSingleKeys, kUndoDepth, kUpdateCheck })
+    for (const char * k : { kTheme, kDensity, kShapeColours, kTooltips, kSingleKeys, kUndoDepth, kUpdateCheck })
       m_store.remove(k);
   } else if (page == QLatin1String("view3d")) {
     for (const char * k : { kViewCube, kReverse, kRotation, kVoxelStyle, kAntialiasing, kLighting, kFade })

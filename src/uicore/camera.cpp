@@ -71,7 +71,7 @@ namespace btui {
 
   void Camera::clipPlanes(float * zNear, float * zFar) const {
     const float d = distance();
-    const float r = radius * 1.2f + std::sqrt(px * px + py * py);
+    const float r = radius * 1.2f + depthReach + std::sqrt(px * px + py * py);
     *zNear = std::max(d - r, d * 0.01f);
     *zFar = d + r + 1.0f;
   }

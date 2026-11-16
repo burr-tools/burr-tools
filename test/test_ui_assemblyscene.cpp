@@ -12,6 +12,7 @@
 #include "../src/lib/problem.h"
 #include "../src/lib/puzzle.h"
 #include "../src/lib/solution.h"
+#include "../src/lib/voxel.h"
 #include "../src/tools/gzstream.h"
 #include "../src/tools/xml.h"
 
@@ -168,4 +169,46 @@ TEST_CASE("one picture at a time lands where placing them all puts it", "[ui][im
     page = p.page;
   }
   CHECK(page > 0);
+}
+
+TEST_CASE("an assembly in voxel colours takes the puzzle's colours", "[ui][assemblyscene]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p);
+  unsigned prob = 0, sol = 0;
+  REQUIRE(findDisassembly(*p, prob, sol));
+  // a colour for every voxel of the first piece's shape
+  const unsigned c = p->addColor(255, 0, 0);
+  voxel_c * piece = p->getProblem(prob)->getPartShape(0);
+  for (unsigned i = 0; i < piece->getXYZ(); i++)
+    if (piece->getState(i) != voxel_c::VX_EMPTY)
+      piece->setColor(i, c + 1);
+  const SceneContent s = buildAssemblyScene(*p->getProblem(prob), sol, ColorMode::Voxel);
+  bool red = false;
+  for (const auto & v : s.mesh.opaque)
+    red = red || (v.color.r == 255 && v.color.g == 0 && v.color.b == 0);
+  CHECK(red);
+}
+
+TEST_CASE("a piece leaving the assembly fades as it goes", "[ui][assemblyscene]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p);
+  unsigned prob = 0, sol = 0;
+  REQUIRE(findDisassembly(*p, prob, sol));
+  const problem_c & pr = *p->getProblem(prob);
+  const separation_c * t = pr.getSavedSolution(sol)->getDisassembly();
+  // somewhere in the moves a piece is half way out: translucent then
+  bool fading = false;
+  for (float step = 0.5f; step < float(t->sumMoves()) && !fading; step += 1.0f) {
+    disasmToMoves_c dtm(t, 20, pr.getNumberOfPieces());
+    dtm.setStep(step, true, true);
+    const SceneContent s = buildAssemblyScene(pr, sol, ColorMode::Piece, &dtm);
+    fading = !s.mesh.translucent.empty();
+  }
+  CHECK(fading);
+}
+
+TEST_CASE("a shape scene of no shape is empty", "[ui][assemblyscene]") {
+  auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p);
+  CHECK(buildShapeScene(*p, 9999, ColorMode::Piece).mesh.empty());
 }

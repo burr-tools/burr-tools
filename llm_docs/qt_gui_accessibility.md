@@ -18,7 +18,9 @@ it as part of the UI. WCAG 2.1 AA is the yardstick.
   same text as `Accessible.description` on the control it explains.
 - **Focus:** buttons take focus on click too (`focusPolicy: Qt.StrongFocus`),
   so Tab goes on from what was last used; the ring shows only for keyboard
-  focus (`visualFocus`). Read-only things are not Tab stops. When a control
+  focus: `visualFocus` on a Control, `activeFocus && App.keyboardCues.navigating`
+  on an item of our own (a list, a grid), never `activeFocus` alone. Fields
+  that hold a caret are the exception. Read-only things are not Tab stops. When a control
   disappears under the user's hands (collapse, a popup closing), give the
   focus to its counterpart (`Main.qml` `keepToggleFocus`, `DisplayMenu`'s
   `onClosed`). Popups that the keyboard should drive take `focus: true`.
@@ -26,6 +28,13 @@ it as part of the UI. WCAG 2.1 AA is the yardstick.
   themselves in `openPopups`); Enter presses a dialog's default button;
   arrows move within lists and menus. New single-letter shortcuts need care
   (WCAG 2.1.4): prefer them scoped to the view they act on.
+- **A grid with a keyboard cell and a hover shows one at a time**, as the
+  voxel editor's 2D grid (`VoxelGridItem`) and the colour matrix
+  (`PuzzleRightCard.qml`): the arrows take the highlight, starting from the
+  hovered cell; a hover at the pointer where it rested (Qt Quick repeats one
+  each frame, a scroll moves the cells under it) does not take it back, a
+  move does; Tab in holds it, a click focuses the grid and the keys go on
+  from the clicked cell, focus out or the pointer leaving gives it back.
 - **Contrast and colour:** text ≥ 4.5:1, borders, focus rings and state
   indicators ≥ 3:1 against what they sit on, in both themes; never colour or
   hue alone for a state (add text, a mark, a weight or a bar).

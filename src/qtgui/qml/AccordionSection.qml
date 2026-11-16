@@ -77,6 +77,7 @@ FocusScope {
                 anchors { left: titleText.right; leftMargin: 8; right: parent.right; verticalCenter: parent.verticalCenter }
                 visible: !Theme.minimal
                 text: root.summary
+                textFormat: Text.PlainText
                 horizontalAlignment: Text.AlignRight
                 color: Theme.muted
                 font.pixelSize: Theme.fontSecondary

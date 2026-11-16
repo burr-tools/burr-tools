@@ -9,6 +9,8 @@
 #include "coloursmodel.h"
 #include "editorcontroller.h"
 #include "inspectorcontroller.h"
+#include "layoutcontroller.h"
+#include "puzzlecontroller.h"
 #include "shapesmodel.h"
 #include "viewportcontroller.h"
 #include "voxelgriditem.h"
@@ -52,12 +54,20 @@ namespace {
     }
     for (unsigned int i = 0; i < p.getNumberOfProblems(); i++) {
       const problem_c & q = *p.getProblem(i);
-      out << QStringLiteral("P%1 result %2").arg(i + 1).arg(q.resultValid() ? int(q.getResultId()) : -1);
+      out << QStringLiteral("P%1 result %2 '%3' holes %4").arg(i + 1).arg(q.resultValid() ? int(q.getResultId()) : -1)
+                 .arg(QString::fromStdString(q.getName())).arg(q.maxHolesDefined() ? int(q.getMaxHoles()) : -1);
       out << QStringLiteral("P%1 search state %2, %3 solutions kept").arg(i + 1).arg(int(q.getSolveState()))
                  .arg(q.getNumberOfSavedSolutions());
-      for (unsigned int part = 0; part < q.getNumberOfParts(); part++)
+      for (unsigned int part = 0; part < q.getNumberOfParts(); part++) {
         out << QStringLiteral("  P%1 part S%2 %3..%4").arg(i + 1).arg(q.getShapeIdOfPart(part) + 1)
                    .arg(q.getPartMinimum(part)).arg(q.getPartMaximum(part));
+        for (unsigned int g = 0; g < q.getNumberOfPartGroups(part); g++)
+          out << QStringLiteral("    group %1 count %2").arg(q.getPartGroupId(part, g)).arg(q.getPartGroupCount(part, g));
+      }
+      for (unsigned int a = 1; a <= p.colorNumber(); a++)
+        for (unsigned int b = 1; b <= p.colorNumber(); b++)
+          if (q.placementAllowed(a, b))
+            out << QStringLiteral("  P%1 colour %2 on %3").arg(i + 1).arg(a).arg(b);
     }
     return out;
   }
@@ -450,6 +460,7 @@ void TestSaving::voxelEditsDropTheSolutionsOfTheProblemsUsingTheShape() {
   const QString copy = f.dir.filePath(QStringLiteral("pelikan.xmpuzzle"));   // never the example itself
   QVERIFY(QFile::copy(QStringLiteral("examples/PelikanBurr.xmpuzzle"), copy));
   QVERIFY(f.app->document()->loadPath(copy));
+  f.app->document()->setSolutionsWarned(true);      // the warning is TestPuzzle's
   auto solved = [&] {
     const problem_c & q = *f.puzzle().getProblem(0);
     return q.getSolveState() == SS_SOLVED && q.getNumberOfSavedSolutions() > 0;
@@ -555,4 +566,75 @@ void TestSaving::undoneEditsAreNotSavedAndASaveIsClean() {
   const QStringList before = f.saveAndReopen();
   QCOMPARE(describe(f.puzzle()), before);
   QCOMPARE(filledCells(f.puzzle()), 2);
+}
+
+void TestSaving::everyPuzzleEditIsSaved_data() {
+  addTypes();
+}
+
+/* Each way the Puzzle workspace changes a problem, per voxel type where a
+ * shape is drawn differently: the file holds what was on screen (AC-C16, C17). */
+void TestSaving::everyPuzzleEditIsSaved() {
+  QFETCH(int, type);
+  SaveFixture f{ gridType_c::gridType(type) };
+  ShapesModel * s = f.app->shapes();
+  s->addShape();
+  s->addShape();
+  s->addShape();
+  f.app->colours()->addColour();
+  f.app->colours()->addColour();
+  f.app->layout()->setWorkspace(LayoutController::Puzzle);
+
+  PuzzleController * z = f.app->puzzle();
+  z->newProblem();
+  z->renameProblem(0, QStringLiteral("first"));
+  z->setResult(3);
+  z->stepPiece(0, 2);                      // fixed
+  z->setRange(1, 1, 3);                    // a range
+  z->setRange(2, 0, 2);                    // optional
+  z->newGroup(0);                          // the whole piece in G1
+  z->setGroupCount(1, 2, 2);               // part of it in G2 ...
+  z->setGroupCount(1, 1, 1);               // ... and in G1: several groups
+  z->toggleRule(1, 2);
+  z->setRulePreset(1);
+  z->toggleRule(2, 1);
+  z->duplicateProblem(0);
+  z->renameProblem(1, QStringLiteral("second"));
+  z->newProblem();
+  z->moveProblem(2, 0);
+  f.app->document()->edit(puzzleHistory_c::AK_PROBLEM_STRUCTURAL, 0, [](puzzle_c & p) {
+    p.getProblem(1)->setMaxHoles(2);
+    return true;
+  });
+
+  QCOMPARE(f.saveAndReopen(), describe(f.puzzle()));
+}
+
+/* Any edit removes the solutions it makes wrong, and the file loses them at
+ * the next save: nothing stale is written. */
+void TestSaving::aSavedFileHoldsNoSolutionsOfAnEditedShape() {
+  SaveFixture f{ gridType_c::GT_BRICKS };
+  const QString copy = f.dir.filePath(QStringLiteral("pelikan.xmpuzzle"));   // never the example itself
+  QVERIFY(QFile::copy(QStringLiteral("examples/PelikanBurr.xmpuzzle"), copy));
+  QVERIFY(f.app->document()->loadPath(copy));
+  QVERIFY(f.puzzle().getProblem(0)->getNumberOfSavedSolutions() > 0);
+  f.app->document()->setSolutionsWarned(true);
+  f.app->shapes()->select(int(f.puzzle().getProblem(0)->getShapeIdOfPart(0)));
+  EditorController * e = f.editor();
+  const voxel_c & v = *f.puzzle().getShape(unsigned(f.app->shapes()->selected()));
+  QPoint cell;
+  for (unsigned z = 0, found = 0; z < v.getZ() && !found; z++)
+    for (unsigned y = 0; y < v.getY() && !found; y++)
+      for (unsigned x = 0; x < v.getX() && !found; x++)
+        if (v.getState(x, y, z) != voxel_c::VX_EMPTY) {
+          e->setLayer(int(z));
+          cell = QPoint(int(x), int(y));
+          found = 1;
+        }
+  e->setTool(EditorController::Erase);
+  e->press(cell.x(), cell.y(), false, Qt::NoModifier);
+  e->release();
+  QVERIFY(f.app->document()->modified());
+  f.saveAndReopen();
+  QCOMPARE(int(f.puzzle().getProblem(0)->getNumberOfSavedSolutions()), 0);
 }

@@ -20,6 +20,8 @@
  */
 #include "shapelist.h"
 
+#include "problemlist.h"
+
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
@@ -78,10 +80,7 @@ namespace btui {
       return false;
     for (unsigned int k = 0; k < p.getNumberOfProblems(); k++) {
       const problem_c * pr = p.getProblem(k);
-      if (!pr->usesShape(unsigned(i)))
-        continue;
-      const solveState_e st = pr->getSolveState();
-      if (pr->getNumberOfSavedSolutions() > 0 || st == SS_SOLVING || st == SS_SOLVED)
+      if (pr->usesShape(unsigned(i)) && problemHasSolutions(p, int(k)))
         return true;
     }
     return false;
@@ -108,13 +107,7 @@ namespace btui {
   bool renameShape(puzzle_c & p, int i, const std::string & label) {
     if (!isShape(p, i))
       return false;
-    // control characters (a pasted newline or tab) do not belong in a label,
-    // and the file's XML 1.0 cannot hold most of them
-    std::string clean;
-    clean.reserve(label.size());
-    for (char ch : label)
-      if (static_cast<unsigned char>(ch) >= 0x20 && ch != 0x7f)
-        clean += ch;
+    const std::string clean = cleanLabel(label);
     if (p.getShape(unsigned(i))->getName() == clean)
       return false;
     p.getShape(unsigned(i))->setName(clean);

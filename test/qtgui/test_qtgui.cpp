@@ -29,7 +29,10 @@
 #include "test_editor.h"
 #include "test_inspector.h"
 #include "test_voxeltypes.h"
+#include "test_puzzle.h"
+#include "test_builds.h"
 #include "test_saving.h"
+#include "test_solver.h"
 #include "test_viewport.h"
 
 #include "../../src/tools/httpget.h"
@@ -289,6 +292,8 @@ private slots:
   void everyPanelAndDialogHasAWireframeNumberedToItsCode() {
     const QDir dir(QStringLiteral("src/qtgui/qml"));
     QStringList files = { "Main.qml", "WorkspaceRail.qml", "CollapsedRail.qml", "CollapsedShapes.qml", "ShapesCard.qml",
+                          "CollapsedProblems.qml", "CollapsedSections.qml", "PuzzleLeftCard.qml", "PuzzleRightCard.qml",
+                          "SolverLeftCard.qml", "SolverRightCard.qml",
                           "ViewportCard.qml", "VoxelEditorCard.qml", "ColourFooter.qml", "Inspector.qml", "StatusBar.qml",
                           "AppMenuBar.qml", "DisplayMenu.qml" };
     for (const QString & f : dir.entryList({ QStringLiteral("*Dialog.qml") }))
@@ -445,6 +450,31 @@ class TestSettings : public QObject {
   Q_OBJECT
 
 private slots:
+
+  /* the word settings read back as their values; the same value again
+   * changes nothing and says nothing */
+  void wordSettingsReadBackAndRepeatsAreQuiet() {
+    QTemporaryDir dir;
+    SettingsController s(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("legacy.rc")));
+    s.setRotationMethod(QStringLiteral("drag"));
+    QCOMPARE(s.rotationMethod(), QStringLiteral("drag"));
+    QCOMPARE(s.rotationMethodValue(), btui::Camera::RotationMethod::Drag);
+    s.setTheme(QStringLiteral("dark"));
+    QCOMPARE(s.themeValue(), btui::ThemeChoice::Dark);
+    s.setAntialiasing(QStringLiteral("off"));
+    const btui::Antialiasing aa = s.antialiasingValue();
+    s.setAntialiasing(s.antialiasing());
+    QCOMPARE(s.antialiasingValue(), aa);
+
+    s.setUndoDepth(s.undoDepth());
+    s.setWorkerThreads(s.workerThreads());
+    QSignalSpy changed(&s, &SettingsController::changed);
+    s.setUndoDepth(s.undoDepth());
+    s.setWorkerThreads(s.workerThreads());
+    s.setRotationMethod(s.rotationMethod());
+    s.setTheme(s.theme());
+    QCOMPARE(changed.count(), 0);
+  }
 
   /* A settings file that is there but cannot be read (here a folder in its
    * place) is left as it is, for the user to look at: the session runs on
@@ -695,6 +725,45 @@ class TestDocument : public QObject {
   }
 
 private slots:
+
+  /* the flows that would replace the puzzle wait for the solver; a flow
+   * that is cancelled forgets where it was going */
+  void theDocumentsFlowsWaitForTheSolver() {
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    // an unsaved puzzle's folder is the working directory's
+    QCOMPARE(d->folder(), QUrl::fromLocalFile(QDir::currentPath()));
+    QSignalSpy open(d, &DocumentController::openFileRequested);
+    d->requestOpen();
+    QCOMPARE(open.count(), 1);
+    QVERIFY(d->flowPending());
+    d->cancelFlow();
+    QVERIFY(!d->flowPending());
+
+    QSignalSpy refused(d, &DocumentController::busyRefused);
+    QSignalSpy replaced(d, &DocumentController::documentReplaced);
+    d->setBusy(true);
+    d->newDocument(int(gridType_c::GT_SPHERES));
+    QCOMPARE(replaced.count(), 0);
+    QVERIFY(!d->flowPending());
+    d->openFile(QUrl::fromLocalFile(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->importFile(QUrl::fromLocalFile(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    d->saveAsFile(QUrl::fromLocalFile(f.file("x.xmpuzzle")));
+    d->save();
+    d->requestOpenPath(QStringLiteral("examples/PelikanBurr.xmpuzzle"));
+    QVERIFY(!d->convertTo(int(gridType_c::GT_SPHERES)));
+    QCOMPARE(replaced.count(), 0);
+    QVERIFY(!QFile::exists(f.file("x.xmpuzzle")));
+    QVERIFY(refused.count() >= 7);
+    d->setBusy(false);
+    // quitting stops the solver instead of waiting for it
+    QSignalSpy quit(d, &DocumentController::quitApproved);
+    d->setBusy(true);
+    d->requestQuit();
+    QCOMPARE(quit.count(), 1);
+    d->setBusy(false);
+  }
 
   /* guarded(): an internal error under an entry point QML calls -- a failed
    * check, or any other std::exception -- is reported (rescue-save, then
@@ -1674,7 +1743,7 @@ private slots:
     auto restore = qScopeGuard([] { QDesktopServices::unsetUrlHandler(QStringLiteral("https")); });
 
     std::vector<std::unique_ptr<AnySignal>> spies;
-    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes() })
+    for (QObject * o : std::initializer_list<QObject *>{ c, d, layout, a->viewport(), a->editor(), a->settings(), a->shapes(), a->puzzle() })
       spies.push_back(std::make_unique<AnySignal>(o));
     auto happened = [&] {
       int n = int(links.urls.size());
@@ -1700,6 +1769,18 @@ private slots:
       // a shape with one before it
       if (key.startsWith(QLatin1String("shapes.")))
         a->shapes()->select(1);
+      // a problem with one before it, and a piece of it
+      if (key.startsWith(QLatin1String("problems.")) || key.startsWith(QLatin1String("pieces."))) {
+        layout->setWorkspace(LayoutController::Puzzle);
+        PuzzleController * z = a->puzzle();
+        while (z->problems()->count() < 2)
+          z->newProblem();
+        z->selectProblem(key == QLatin1String("problems.moveLater") ? 0 : 1);
+        d->resolveSolutionsWarning(false);
+        z->selectPiece(1);
+        if (z->pieceMax() == 0)
+          z->stepPiece(1, 1);
+      }
       for (auto & s : spies)
         s->clear();
       links.urls.clear();
@@ -1786,6 +1867,35 @@ class TestKeyboardCues : public QObject {
   }
 
 private slots:
+
+  void theKeyboardMovingTheFocusIsToldFromTheMouse() {
+    // a click focuses without a ring; Tab or an arrow starts them, a click ends them
+    KeyboardCues cues;
+    QSignalSpy changed(&cues, &KeyboardCues::navigatingChanged);
+    QVERIFY(!cues.navigating());
+    QWindow w;
+    const auto key = [&](int k) {
+      QKeyEvent e(QEvent::KeyPress, k, Qt::NoModifier);
+      QCoreApplication::sendEvent(&w, &e);
+    };
+    const auto press = [&] {
+      QMouseEvent e(QEvent::MouseButtonPress, QPointF(1, 1), QPointF(1, 1), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+      QCoreApplication::sendEvent(&w, &e);
+    };
+    key(Qt::Key_A);
+    QVERIFY(!cues.navigating());
+    key(Qt::Key_Tab);
+    QVERIFY(cues.navigating());
+    press();
+    QVERIFY(!cues.navigating());
+    key(Qt::Key_Backtab);
+    QVERIFY(cues.navigating());
+    press();
+    key(Qt::Key_Down);
+    QVERIFY(cues.navigating());
+    QCOMPARE(changed.count(), 5);
+  }
+
 
   void altShowsTheAccessKeysUntilTheKeyboardIsDone() {
     // Windows convention: underlines appear from an Alt press until a click,
@@ -2259,6 +2369,7 @@ private slots:
     QCOMPARE(m->count(), n);
     QCOMPARE(m->selected(), 0);
     QCOMPARE(m->data(m->index(1), ShapesModel::IdTextRole).toString(), QStringLiteral("S2"));
+    f.app->settings()->setShapeColours(QStringLiteral("classic"));
     QCOMPARE(m->data(m->index(0), ShapesModel::ColorRole).value<QColor>(), QColor(0, 0, 255));
 
     m->select(n + 10);
@@ -2510,13 +2621,11 @@ private slots:
     QVERIFY(used >= 0);
     const int n = m->count();
 
-    QSignalSpy ask(m, &ShapesModel::deleteConfirmRequested);
+    QSignalSpy ask(d, &DocumentController::solutionsWarningRequested);
     m->requestDelete(used);
     QCOMPARE(ask.count(), 1);
-    QCOMPARE(ask.first().at(0).toInt(), used);
-    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("S%1").arg(used + 1));
-    QCOMPARE(m->count(), n);                            // nothing yet: QML asks
-    m->deleteShape(used);                               // the answer
+    QCOMPARE(m->count(), n);                            // nothing yet: QML warns
+    d->resolveSolutionsWarning(true);                   // the answer
     QCOMPARE(m->count(), n - 1);
 
     // a shape no problem uses goes at once
@@ -2743,7 +2852,7 @@ private slots:
       return true;
     });
 
-    QSignalSpy ask(c, &ColoursModel::removeConfirmRequested);
+    QSignalSpy ask(f.app->document(), &DocumentController::solutionsWarningRequested);
     c->select(unused);
     c->requestRemove(unused);                         // goes at once
     QCOMPARE(ask.count(), 0);
@@ -2752,10 +2861,8 @@ private slots:
 
     c->requestRemove(used);
     QCOMPARE(ask.count(), 1);
-    QCOMPARE(ask.first().at(0).toInt(), used);
-    QCOMPARE(ask.first().at(1).toString(), QStringLiteral("C%1").arg(used));
-    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML asks
-    c->removeColour(used);                            // the answer
+    QCOMPARE(c->count(), before + 1);                 // nothing yet: QML warns
+    f.app->document()->resolveSolutionsWarning(true); // the answer
     QCOMPARE(c->count(), before);
 
     c->requestRemove(0);                              // Default cannot go
@@ -2773,9 +2880,11 @@ private slots:
     QCOMPARE(f.app->status()->text(),
              QStringLiteral("Shape <b>S2</b> has <b>%1</b> voxels (%2 fixed, %3 variable)").arg(fx + vr).arg(fx).arg(vr));
 
-    // Puzzle and Solver have their own sentences (later phases)
-    f.app->layout()->setWorkspace(LayoutController::Puzzle);
-    QCOMPARE(f.app->status()->text(), QString());
+    // the Solver's own (C21): the file's results, found with the disassembly;
+    // Puzzle's is TestPuzzle's
+    f.app->layout()->setWorkspace(LayoutController::Solver);
+    QCOMPARE(f.app->status()->text(),
+             QStringLiteral("Problem <b>P1</b> — 12 assemblies found, 1 can be disassembled · Activity: finished"));
   }
 
   void theCursorReadoutShowsWhatItIsGiven() {
@@ -3104,6 +3213,31 @@ private slots:
     QVERIFY(!s->hasMesh());
     QCOMPARE(s->parameterCount(), 0);
     QVERIFY(!s->frame(1).mesh);
+  }
+
+  void aSwitchTakesOnlyOnOrOffAndTheFolderIsThePuzzlesOwn() {
+    Fixture f;
+    f.make();
+    QVERIFY(f.app->document()->loadPath(QStringLiteral("examples/PelikanBurr.xmpuzzle")));
+    StlExportController * s = f.app->stl();
+    s->begin();
+    QCOMPARE(s->folder(), f.app->document()->folder());
+    int switches = 0, doubles = 0;
+    for (int i = 0; i < s->parameterCount(); i++) {
+      const QVariantMap p = s->parameter(i);
+      const QString type = p.value(QStringLiteral("type")).toString();
+      if (type == QLatin1String("switch")) {
+        switches++;
+        s->setParameter(i, 7);
+        QCOMPARE(s->parameter(i).value(QStringLiteral("value")).toDouble(), 1.0);
+        s->setParameter(i, 0);
+        QCOMPARE(s->parameter(i).value(QStringLiteral("value")).toDouble(), 0.0);
+      }
+      doubles += type == QLatin1String("double") ? 1 : 0;
+    }
+    QVERIFY(switches > 0);
+    QVERIFY(doubles + switches <= s->parameterCount());
+    s->end();
   }
 
   void parametersAreTypedAndRebuildThePreview() {
@@ -3705,6 +3839,9 @@ int main(int argc, char ** argv) {
   run(TestInspector());
   run(TestVoxelTypes());
   run(TestSaving());
+  run(TestPuzzle());
+  run(TestBuilds());
+  run(TestSolver());
   run(TestViewCubePaint());
   run(TestViewInput());
   run(TestRender());

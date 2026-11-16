@@ -291,6 +291,10 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
         if (pars.getName() == "color")
         {
+          // a voxel holds its colour in 6 bits, 0 being the neutral colour
+          if (colors.size() >= 63)
+            pars.exception("a puzzle can have at most 63 colours");
+
           colors.push_back(
               (((uint32_t)atoi(pars.getAttributeValue("red").c_str()) & 0xFF) <<  0) |
               (((uint32_t)atoi(pars.getAttributeValue("green").c_str()) & 0xFF) <<  8) |

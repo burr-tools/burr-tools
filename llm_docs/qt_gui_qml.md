@@ -18,7 +18,16 @@ For `src/qtgui/qml/`. Accessibility rules are in `llm_docs/qt_gui_accessibility.
   concatenation of sentence parts.
 - **Colours, sizes, radii, durations from `Theme`**, never literals. Text on
   a shape's colour uses the model's `chipTextColor` / `App.viewport.shapeTextColor`
-  (`btui::prefersWhiteText`, a WCAG rule), never a local formula.
+  (`btui::prefersWhiteText`, a WCAG rule), never a local formula. A shape's colour on
+  screen comes from `ShapesModel::chipColor` / `Theme::shapeColours()`, never
+  `btui::pieceColor`, which is the table before Settings › Shape colours.
+- **Names are text, not markup:** every `Text` showing a label, a tooltip or a
+  file's words sets `textFormat: Text.PlainText`. The default renders markup and
+  loads the images a name asks for. `tst_puzzle`'s `test_namesAreNeverRichText`
+  walks the window for it.
+- **A number typed in a field** goes through `NumberEntry` (Enter, leaving, Esc,
+  the pause, what a step does to the text); an owner that moves on answers
+  `PuzzleController::typingEnding`.
 - **Only characters the app font has** in string literals: `›` not `▸`, no
   emoji or symbol glyphs (draw them, or use `Icon`). Windows otherwise reads
   every installed font for a fallback (hundreds of ms), and
@@ -39,6 +48,16 @@ For `src/qtgui/qml/`. Accessibility rules are in `llm_docs/qt_gui_accessibility.
   not need (`startContent()`, dialogs on demand). Measure with
   `BURRTOOLS_STARTUP_TRACE`; the performance guide
   (`design/2026-10-08-qtgui-performance-guide.md`) has the method.
+- **What can wait goes through `App.builds`** (`buildqueue.h`), never made
+  back to back at start-up: a workspace not showing is a `BuildJob` with an
+  asynchronous `Loader` (`Main.qml`'s Puzzle cards), `needed` while it shows;
+  a long list's model is a `BatchedRows` over the controller's `RowsModel`
+  (a first screen at once while shown, the rest a step at a time), declared
+  with an id, not written into `model:`. The Solver's cards and solution
+  lists follow the same way.
+- **Side cards** sit in a `CardSlot`: `width: slot.cardWidth`, anchored to its
+  fixed edge, never `anchors.fill`, or their content reflows every frame of the
+  column's animation.
 - **Primitives:** reuse `BtButton`, `IconButton`, `Segmented`, `Dropdown`,
   `BtSwitch`, `BtCheckBox`, `CheckRow`, `BtToolTip`, `BtDialog`, `Card`, …
   before writing a control. A new primitive gets a row in `Gallery.qml` and

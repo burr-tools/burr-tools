@@ -56,6 +56,8 @@ namespace btui {
     ToolFixed, ToolVariable, ToolErase, ToolPaint,
     // the focused Shapes list (C01 Keyboard), also its rows' context menu
     ShapeRename, ShapeDuplicate, ShapeDelete, ShapeMoveEarlier, ShapeMoveLater,
+    ProblemRename, ProblemDuplicate, ProblemDelete, ProblemMoveEarlier, ProblemMoveLater,
+    PieceMore, PieceFewer, PieceRemove,
     // the focused 3D view (WCAG 2.1.1): orbit, pan, zoom, the view cube's turns and faces
     ViewOrbitLeft, ViewOrbitRight, ViewOrbitUp, ViewOrbitDown,
     ViewPanLeft, ViewPanRight, ViewPanUp, ViewPanDown, ViewZoomIn, ViewZoomOut,
@@ -70,7 +72,7 @@ namespace btui {
    * one part of it has the keyboard (spec C01 Keyboard: the Shapes list's
    * keys work with the list focused). A key may mean one thing in the
    * window and another in a scope; the scope wins while it has focus. */
-  enum class Scope { Window, ShapesList, Viewport };
+  enum class Scope { Window, ShapesList, Viewport, ProblemsList, PuzzlePieces };
 
   /* The menus differ a little per platform, each following its own
    * conventions (labels, places, shortcuts). */

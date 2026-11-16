@@ -480,3 +480,44 @@ TEST_CASE("every voxel type's buttons run, and preview what they will do", "[ui]
     }
   }
 }
+
+TEST_CASE("each surface action reaches its set of voxels through the preview path too", "[ui][shapeops]") {
+  // applyTask, as the hover preview runs it: a solid 3x3x3, one inner voxel
+  auto p = puzzleWith(gridType_c::GT_BRICKS, 3, 3, 3);
+  voxel_c & base = *p->getShape(0);
+  base.setAll(voxel_c::VX_FILLED);
+  auto fresh = [&] { return std::unique_ptr<voxel_c>(base.getGridType()->getVoxel(base)); };
+
+  auto v = fresh();
+  REQUIRE(applyTask(*v, task::VariableInner));
+  CHECK(v->countState(voxel_c::VX_VARIABLE) == 1);
+  v = fresh();
+  REQUIRE(applyTask(*v, task::VariableOuter));
+  CHECK(v->countState(voxel_c::VX_VARIABLE) == 26);
+  REQUIRE(applyTask(*v, task::FixedOuter));
+  CHECK(v->countState(voxel_c::VX_VARIABLE) == 0);
+  REQUIRE(applyTask(*v, task::VariableInner));
+  REQUIRE(applyTask(*v, task::FixedInner));
+  CHECK(v->countState(voxel_c::VX_VARIABLE) == 0);
+  for (unsigned i = 0; i < v->getXYZ(); i++)
+    v->setColor(i, 2);
+  REQUIRE(applyTask(*v, task::ClearInner));
+  CHECK(v->getColor(1, 1, 1) == 0);
+  CHECK(v->getColor(0, 0, 0) == 2);
+  REQUIRE(applyTask(*v, task::ClearOuter));
+  CHECK(v->getColor(0, 0, 0) == 0);
+}
+
+TEST_CASE("To origin keeps a prism's triangles the right way up from either side", "[ui][shapeops]") {
+  // an odd move in X + Y would turn the triangles over: it rounds to even
+  for (int dx : { 1, 2, 3 }) {
+    auto p = puzzleWith(gridType_c::GT_TRIANGULAR_PRISM, 8, 8, 1);
+    voxel_c & v = *p->getShape(0);
+    v.setState(dx, 2, 0, voxel_c::VX_FILLED);
+    v.setState(dx + 1, 2, 0, voxel_c::VX_FILLED);
+    const unsigned before = v.countState(voxel_c::VX_FILLED);
+    runTask(*p, { 0 }, task::Origin);
+    CHECK(v.countState(voxel_c::VX_FILLED) == before);
+    CHECK(((int(v.boundX1()) + int(v.boundY1())) % 2) == ((dx + 2) % 2));
+  }
+}

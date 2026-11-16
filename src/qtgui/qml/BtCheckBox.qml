@@ -34,7 +34,7 @@ AbstractButton {
                 anchors.centerIn: parent
                 name: "check"
                 size: 12
-                color: "white"
+                color: Theme.onAccent
             }
             Rectangle {
                 visible: root.selected && root.radio

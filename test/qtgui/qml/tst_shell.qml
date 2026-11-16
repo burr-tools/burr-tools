@@ -22,7 +22,7 @@ TestCase {
         // backend, where the 3D view's QQuickRhiItem cannot draw (rendering is
         // tested separately, with an offscreen QRhi), and on Linux it cannot
         // grab the keyboard for a menu that opens as a window of its own
-        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard).*/)
+        failOnWarning(/^(?!No QRhi found for window|This plugin does not support grabbing the keyboard|QUnifiedTimer::stopAnimationDriver: driver is not running).*/)
         App.layout.workspace = LayoutController.Entities
         App.layout.leftCollapsed = false
         App.layout.rightCollapsed = false
@@ -96,6 +96,137 @@ TestCase {
         verify(!bar.menuAt(0).itemAt(0).enabled)
         App.commands.blocked = false
         verify(bar.menuAt(0).itemAt(0).enabled)
+    }
+
+    // the column animates, not what is in it: the card is laid out once
+    function test_aCardKeepsItsWidthWhileItsColumnMoves_data() {
+        return [
+            { tag: "entities left", ws: LayoutController.Entities, card: "entities.shapes", slot: "workspace.left", left: true },
+            { tag: "entities right", ws: LayoutController.Entities, card: "entities.editor", slot: "workspace.right", left: false },
+            { tag: "puzzle left", ws: LayoutController.Puzzle, card: "puzzle.left", slot: "workspace.left", left: true },
+            { tag: "puzzle right", ws: LayoutController.Puzzle, card: "puzzle.right", slot: "workspace.right", left: false },
+        ]
+    }
+    function test_aCardKeepsItsWidthWhileItsColumnMoves(data) {
+        App.layout.workspace = data.ws
+        const setCollapsed = (c) => { if (data.left) App.layout.leftCollapsed = c; else App.layout.rightCollapsed = c }
+        const slot = item(data.slot)
+        setCollapsed(true)
+        tryVerify(() => !slot.animating, 2000)
+        const rail = slot.width
+
+        setCollapsed(false)
+        const card = item(data.card)
+        const full = data.left ? App.layout.leftWidth : App.layout.rightWidth
+        compare(card.width, full, "at its width from the start")
+        let between = 0
+        while (slot.animating) {
+            if (slot.width > rail + 1 && slot.width < full - 1)
+                between++
+            compare(card.width, full, "and all the way")
+            // against the column's fixed edge: it does not slide
+            const x = card.mapToItem(slot, 0, 0).x
+            compare(x, data.left ? 0 : slot.width - card.width)
+            wait(10)
+        }
+        verify(between > 0, "the column did animate")
+        compare(slot.width, full)
+        verify(!slot.clip, "only clipped while moving")
+        App.layout.workspace = data.ws
+    }
+
+    function test_aColumnSentBackAtOnceLeavesItsCardRight() {
+        const slot = item("workspace.right")
+        const card = item("entities.editor")
+        const width = App.layout.rightWidth
+        App.layout.toggleFocus2d()
+        App.layout.toggleFocus2d()                       // before the column moved
+        tryVerify(() => !slot.animating, 2000)
+        compare(slot.width, width)
+        compare(card.width, width)
+    }
+
+    // the app opens in Entities: Puzzle's cards are left for later (App.builds) --
+    // made at once when Puzzle shows first, then kept
+    function test_thePuzzleCardsAreMadeWhenPuzzleFirstShows() {
+        App.builds.startAfter(60000)                    // held
+        wait(50)
+        compare(findChild(win.contentItem, "puzzle.left"), null)
+        compare(findChild(win.contentItem, "puzzle.right"), null)
+        App.layout.workspace = LayoutController.Puzzle
+        const left = findChild(win.contentItem, "puzzle.left")
+        verify(left !== null, "made in the switch, not a frame later")
+        verify(left.visible)
+        verify(item("puzzle.right").visible)
+        App.layout.workspace = LayoutController.Entities
+        waitForRendering(win.contentItem)
+        compare(item("puzzle.left"), left, "kept, not made again")
+        verify(!left.visible)
+    }
+    // or, unseen, in the background once the queue starts: a card at a time, each
+    // over several frames (an asynchronous Loader), Entities answering meanwhile
+    function test_thePuzzleCardsAreMadeInTheBackground() {
+        App.builds.startAfter(60000)
+        wait(50)
+        compare(findChild(win.contentItem, "puzzle.left"), null)
+        const leftLoader = item("puzzle.left.loader")
+        const rightLoader = item("puzzle.right.loader")
+        const order = []
+        const onLeft = () => order.push("left " + leftLoader.status)
+        const onRight = () => order.push("right " + rightLoader.status)
+        leftLoader.statusChanged.connect(onLeft)
+        rightLoader.statusChanged.connect(onRight)
+        App.builds.startAfter(0)
+        tryVerify(() => leftLoader.status === Loader.Ready && rightLoader.status === Loader.Ready, 5000)
+        leftLoader.statusChanged.disconnect(onLeft)
+        rightLoader.statusChanged.disconnect(onRight)
+        // Loading (2), then Ready (1): one card begins after the other is done
+        const seen = order.join(", ")
+        verify(seen === "left 2, left 1, right 2, right 1" || seen === "right 2, right 1, left 2, left 1", seen)
+        compare(App.layout.workspace, LayoutController.Entities)
+        verify(!item("puzzle.left").visible)
+        tryVerify(() => App.builds.idle, 5000)
+        App.layout.workspace = LayoutController.Puzzle
+        waitForRendering(win.contentItem)
+        verify(item("puzzle.left").visible)
+    }
+
+    // the Solver's cards the same way: made when Solver first shows ...
+    function test_theSolverCardsAreMadeWhenSolverFirstShows() {
+        App.builds.startAfter(60000)                    // held
+        wait(50)
+        compare(findChild(win.contentItem, "solver.left"), null)
+        compare(findChild(win.contentItem, "solver.right"), null)
+        App.layout.workspace = LayoutController.Solver
+        const left = findChild(win.contentItem, "solver.left")
+        verify(left !== null, "made in the switch, not a frame later")
+        verify(left.visible)
+        verify(item("solver.right").visible)
+        App.layout.workspace = LayoutController.Entities
+        waitForRendering(win.contentItem)
+        compare(item("solver.left"), left, "kept, not made again")
+        verify(!left.visible)
+    }
+    // ... or in the background, after Puzzle's: no Solver card begins before
+    // both of Puzzle's are done
+    function test_theSolverCardsAreMadeAfterPuzzles() {
+        App.builds.startAfter(60000)
+        wait(50)
+        compare(findChild(win.contentItem, "solver.left"), null)
+        const names = ["puzzle.left", "puzzle.right", "solver.left", "solver.right"]
+        const loaders = names.map(n => item(n + ".loader"))
+        const order = []
+        const watchers = loaders.map((l, i) => () => order.push(names[i] + " " + l.status))
+        loaders.forEach((l, i) => l.statusChanged.connect(watchers[i]))
+        App.builds.startAfter(0)
+        tryVerify(() => loaders.every(l => l.status === Loader.Ready), 8000)
+        loaders.forEach((l, i) => l.statusChanged.disconnect(watchers[i]))
+        const firstSolver = order.findIndex(s => s.startsWith("solver."))
+        const puzzleDone = order.filter((s, i) => s.startsWith("puzzle.") && s.endsWith(" 1") && i < firstSolver)
+        compare(puzzleDone.length, 2, order.join(", "))
+        compare(App.layout.workspace, LayoutController.Entities)
+        verify(!item("solver.left").visible)
+        tryVerify(() => App.builds.idle, 5000)
     }
 
     function test_railSwitchesWorkspaces() {
@@ -691,13 +822,21 @@ TestCase {
     }
 
     function test_narrowWindowWithBothCardsCollapsedStaysUsable_data() {
-        return [ { tag: "standard", density: "standard" }, { tag: "minimal", density: "minimal" } ]
+        // AC-C11-04 names the Puzzle tab's cards (spec review 2026-11-14)
+        return [
+            { tag: "standard", density: "standard", puzzle: false },
+            { tag: "minimal", density: "minimal", puzzle: false },
+            { tag: "puzzle standard", density: "standard", puzzle: true },
+            { tag: "puzzle minimal", density: "minimal", puzzle: true },
+        ]
     }
     function test_narrowWindowWithBothCardsCollapsedStaysUsable(data) {
         // T-C11-6 / AC-C11-04: 960 dp wide, both cards collapsed -- toolbar,
         // view cube, hint and status bar remain usable
         App.settings.density = data.density
         App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
+        if (data.puzzle)
+            App.layout.workspace = LayoutController.Puzzle
         win.width = 960
         win.height = 640
         compare(win.width, 960)                      // the window's minimum allows it
@@ -719,7 +858,8 @@ TestCase {
         }
         const bar = rectOf(item("entities.viewport.toolbar"))
         verify(within(bar, view), "toolbar inside the viewport")
-        const buttons = ["orbit", "pan", "edit", "display", "focus"].map(n => item("entities.viewport.toolbar." + n))
+        const names = data.puzzle ? ["orbit", "pan", "display", "focus"] : ["orbit", "pan", "edit", "display", "focus"]
+        const buttons = names.map(n => item("entities.viewport.toolbar." + n))
         for (let i = 0; i < buttons.length; i++) {
             verify(buttons[i].visible && buttons[i].width >= 30, buttons[i].objectName)
             verify(within(rectOf(buttons[i]), bar), buttons[i].objectName + " inside the toolbar")
@@ -735,7 +875,13 @@ TestCase {
         verify(!overlaps(c, bar), "cube clear of the toolbar")
 
         // the hint (Standard; Minimal moves it into tooltips): whole, clear of both
-        const hint = item("entities.viewport.hint")
+        const hint = item(data.puzzle ? "puzzle.viewport.hint" : "entities.viewport.hint")
+        if (data.puzzle) {
+            // the problem's tag: inside the view, clear of the toolbar and cube
+            const tag = rectOf(item("puzzle.viewport.tag"))
+            verify(within(tag, view), "tag inside the viewport")
+            verify(!overlaps(tag, bar) && !overlaps(tag, c), "tag clear of toolbar and cube")
+        }
         if (data.density === "standard") {
             verify(hint.visible)
             const h = rectOf(hint)
@@ -758,11 +904,14 @@ TestCase {
         // and it all still works
         mouseClick(buttons[1])
         compare(App.viewport.navMode, "pan")
-        mouseClick(buttons[4])
+        mouseClick(buttons[buttons.length - 1])       // Focus
         compare(App.layout.focus, LayoutController.Focus3d)
         App.layout.escape()
         mouseClick(item("workspace.right.rail.expand"))
         verify(!App.layout.rightCollapsed)
+        // collapsing is per workspace: init() opens Entities' cards only
+        App.layout.leftCollapsed = false
+        App.layout.workspace = LayoutController.Entities
     }
 
     function test_collapseTakesTwoHundredMillisecondsAndLeavesNothingStale() {

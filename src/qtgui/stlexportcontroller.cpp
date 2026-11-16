@@ -24,6 +24,8 @@
 #include "localpath.h"
 #include "shapesmodel.h"
 
+#include "../uicore/solver.h"
+
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/volume.h"
 #include "../lib/puzzle.h"
@@ -101,6 +103,9 @@ void StlExportController::begin(void) {
   m_insides = false;
   const int n = int(m_doc->session().puzzle().getNumberOfShapes());
   m_shape = std::clamp(m_shapes->selected(), 0, std::max(0, n - 1));
+  // a solution's export previews its own shapes, the first to begin with
+  if (!m_solution.isEmpty() && !m_solution.contains(m_shape))
+    m_shape = m_solution.first();
   m_camera.home();
   m_revision++;
   emit parametersChanged();
@@ -138,6 +143,7 @@ void StlExportController::documentChanged(void) {
 
 void StlExportController::end(void) {
   m_open = false;
+  setSolutionShapes({});
   m_stl.reset();
   m_mesh.reset();
   m_meshRevision++;
@@ -270,4 +276,61 @@ bool StlExportController::exportTo(const QUrl & file) {
   }
   emit exported(QFileInfo(path).fileName());
   return true;
+}
+
+// --- Export Solution to STL -------------------------------------------------
+
+void StlExportController::setSolutionShapes(const QList<int> & shapes) {
+  if (shapes == m_solution)
+    return;
+  m_solution = shapes;
+  // the preview starts on the solution's first shape
+  if (!m_solution.isEmpty() && !m_solution.contains(m_shape))
+    setShape(m_solution.first());
+  emit solutionChanged();
+}
+
+QString StlExportController::solutionPath(const QString & folder, int shape) const {
+  const puzzle_c & p = m_doc->session().puzzle();
+  const std::string name = unsigned(shape) < p.getNumberOfShapes() ? p.getShape(unsigned(shape))->getName() : std::string();
+  return QDir(folder).filePath(QString::fromStdString(btui::solutionStlName(name, shape)));
+}
+
+int StlExportController::existingSolutionFiles(const QUrl & folder) const {
+  const QString dir = localPath(folder);
+  if (dir.isEmpty())
+    return 0;
+  int n = 0;
+  for (int shape : m_solution)
+    n += QFileInfo::exists(solutionPath(dir, shape)) ? 1 : 0;
+  return n;
+}
+
+int StlExportController::exportSolution(const QUrl & folder) {
+  const puzzle_c & p = m_doc->session().puzzle();
+  const QString dir = localPath(folder);
+  if (!m_stl || dir.isEmpty() || m_solution.isEmpty())
+    return 0;
+  m_stl->setBinaryMode(m_binary);
+  int written = 0;
+  QStringList errors;
+  for (int shape : m_solution) {
+    if (unsigned(shape) >= p.getNumberOfShapes())
+      continue;
+    const QString path = solutionPath(dir, shape);
+    try {
+      // fopen() inside: a local 8-bit name, as exportTo()
+      m_stl->write(QFile::encodeName(QDir::toNativeSeparators(path)).constData(), *p.getShape(unsigned(shape)));
+      written++;
+    } catch (const stlException_c & e) {
+      errors << tr("%1: %2").arg(QFileInfo(path).fileName(), QString::fromUtf8(e.comment));
+    } catch (...) {
+      errors << tr("%1: %2").arg(QFileInfo(path).fileName(), QString::fromLatin1(faultyMesh));
+    }
+  }
+  if (!errors.isEmpty())
+    emit failed(errors.join(QLatin1Char('\n')));
+  if (written > 0)
+    emit exported(written == 1 ? tr("1 piece shape") : tr("%1 piece shapes").arg(written));
+  return written;
 }

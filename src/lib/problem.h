@@ -105,6 +105,9 @@ private:
    */
   mutable std::recursive_mutex solutionMutex;
 
+  /* solutionsRevision(): one more for every change to the list itself */
+  uint64_t solutionsRev = 0;
+
   /**
    * Assemblies salvaged by disassemblerPool_c::requestStop(): found, never
    * disassembled, awaiting re-submission on the next run. Guarded by
@@ -449,6 +452,10 @@ public:
 
     /** nothing to put back: no solution, no search state, no counts */
     bool empty(void) const;
+
+    /** about how many bytes the record holds: the solutions with their
+     *  disassemblies, the stash, the search state */
+    size_t memoryBytes(void) const;
   };
 
   /**
@@ -458,6 +465,10 @@ public:
    * As removeAllSolutions(), not while a solver works on the problem.
    */
   void swapSolveRecord(solveRecord_t & r);
+
+  /** What the record swapSolveRecord() would take out holds, in bytes
+   *  (solveRecord_t::memoryBytes), measured where it is. */
+  size_t solveRecordBytes(void) const;
 
   /** \name  functions used while solving the puzzle.
    * the assembler engine can be put into the problem to save it together
@@ -563,6 +574,11 @@ public:
     return std::unique_lock<std::recursive_mutex>(solutionMutex);
   }
 
+  /** Grows with every change to the list of saved solutions: one added,
+   *  removed, the list sorted, cleared, loaded or swapped. Changes inside a
+   *  solution are solution_c::changeCount(). Read it under lockSolutions(). */
+  uint64_t solutionsRevision(void) const { return solutionsRev; }
+
   const solution_c * getSavedSolution(unsigned int sol) const { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
   solution_c * getSavedSolution(unsigned int sol) { bt_assert(sol < solutions.size()); return solutions[sol].get(); }
   //@}
@@ -570,11 +586,35 @@ public:
 
   /** \name organize solutions */
   //@{
+  /** Solutions read from a file, put behind the ones there, in their order:
+   *  what loading the problem does, a batch at a time for a puzzle whose
+   *  solutions are read after the rest (puzzleloader.h). Takes the lock;
+   *  add is left empty. The counts and the solve state stay as they are. */
+  void appendLoadedSolutions(std::vector<std::unique_ptr<solution_c>> & add);
+  /** The same, the list replaced instead: a reading that went wrong, made
+   *  good by reading the file whole */
+  void replaceLoadedSolutions(std::vector<std::unique_ptr<solution_c>> && all);
+  /** the list handed out, empty after; for replaceLoadedSolutions() */
+  std::vector<std::unique_ptr<solution_c>> takeSolutions(void);
+
   /** remove the i-th solution from the solution list */
   void removeSolution(unsigned int sol);
 
   /** sort solutions by 0=assembly, 1=level, 2=sumMoves, 3=pieces */
   void sortSolutions(int by);
+
+  /** Whether the solutions stand in sortSolutions(by)'s order already. For 1
+   *  and 2 (level, moves) only when every solution has disassembly
+   *  information or none has: the order compares two that both have it, and
+   *  is no order over a list that mixes them. */
+  bool solutionsSortedBy(int by) const;
+
+  /** Move solution sol to where sortSolutions(by) would put it, the others
+   *  standing in that order already (solutionsSortedBy without sol): the
+   *  list the stable sort makes, from two binary searches and one move.
+   *  False, and nothing moved, when sol would mix solutions with and without
+   *  disassembly information under 1 or 2; then sortSolutions(by) it is. */
+  bool placeSorted(int by, unsigned int sol);
   //@}
 
   /** \name stashed assemblies (stop/continue support) */
