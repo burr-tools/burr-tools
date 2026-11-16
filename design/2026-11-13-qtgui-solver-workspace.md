@@ -124,7 +124,7 @@ Other facts read there:
 | 6 | QML: SolverLeftCard (C19) | done |
 | 7 | QML: SolverRightCard (C20): list, slider, player, manage, chips | done (`tst_solver.qml`) |
 | 8 | Viewport: tag, hint, toolbar, Display menu's Wireframe section, empty messages, assembler-state caption | done |
-| 9 | Explorer drawer (C21, PR-31) | done; legacy's movement tree deferred |
+| 9 | Explorer drawer (C21, PR-31) | done, then taken out for #216 (2026-11-16): Placements and Movements disabled, the drawer removed; deferred past P8 |
 | 10 | Export Solution to STL dialog | done (the STL dialog's solution mode) |
 | 11 | README: status, decisions, deferred; density tokens off the pending list; gallery rows for the new primitives | done; macOS references wait for a Mac |
 | 12 | review of 2026-11-13 (design, performance, accessibility, keyboard, undo, grids, 1000+ results, mixed results): every item fixed, with tests | done; README's P11 decisions list the changes |
