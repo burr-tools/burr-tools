@@ -586,6 +586,17 @@ public:
 
   /** \name organize solutions */
   //@{
+  /** Solutions read from a file, put behind the ones there, in their order:
+   *  what loading the problem does, a batch at a time for a puzzle whose
+   *  solutions are read after the rest (puzzleloader.h). Takes the lock;
+   *  add is left empty. The counts and the solve state stay as they are. */
+  void appendLoadedSolutions(std::vector<std::unique_ptr<solution_c>> & add);
+  /** The same, the list replaced instead: a reading that went wrong, made
+   *  good by reading the file whole */
+  void replaceLoadedSolutions(std::vector<std::unique_ptr<solution_c>> && all);
+  /** the list handed out, empty after; for replaceLoadedSolutions() */
+  std::vector<std::unique_ptr<solution_c>> takeSolutions(void);
+
   /** remove the i-th solution from the solution list */
   void removeSolution(unsigned int sol);
 

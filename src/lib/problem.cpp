@@ -30,6 +30,7 @@
 #include "../tools/xml.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <stdio.h>
 
@@ -865,6 +866,28 @@ unsigned int problem_c::getPartMaximum(unsigned int partID) const {
   bt_assert(partID < parts.size());
 
   return parts[partID]->max;
+}
+
+void problem_c::appendLoadedSolutions(std::vector<std::unique_ptr<solution_c>> & add) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutions.reserve(solutions.size() + add.size());
+  for (auto & s : add) {
+    solutions.push_back(std::move(s));
+    solutionsRev++;          // as loading them one by one counts
+  }
+  add.clear();
+}
+
+void problem_c::replaceLoadedSolutions(std::vector<std::unique_ptr<solution_c>> && all) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutions = std::move(all);
+  solutionsRev++;
+}
+
+std::vector<std::unique_ptr<solution_c>> problem_c::takeSolutions(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutionsRev++;
+  return std::exchange(solutions, {});
 }
 
 void problem_c::addSolution(assembly_c * assm) {
