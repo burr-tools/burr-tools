@@ -606,12 +606,18 @@ Card {
                     }
                 }
                 // sort by, by the slider it orders (the same state as the list's headers)
-                RowLayout {
+                /* "Sort by" before the options where both fit the card, above
+                 * them where they do not (the fonts' widths differ by system) */
+                GridLayout {
                     objectName: "solver.sort.row"
                     width: parent.width
-                    spacing: 8
+                    columnSpacing: 8
+                    rowSpacing: 4
+                    columns: sortLabel.implicitWidth + columnSpacing + sortSegment.implicitWidth <= width ? 2 : 1
                     Text {
+                        id: sortLabel
                         objectName: "solver.sort.label"
+                        Layout.alignment: Qt.AlignVCenter
                         text: qsTr("Sort by")
                         color: Theme.muted
                         font.pixelSize: Theme.fontSecondary
@@ -619,6 +625,7 @@ Card {
                         Accessible.ignored: true       // the segment carries the name
                     }
                     Segmented {
+                        id: sortSegment
                         objectName: "solver.sort"
                         Accessible.name: qsTr("Sort by")
                         Accessible.description: qsTr("Space or Enter on the option on reverses it")
@@ -630,7 +637,6 @@ Card {
                         }))
                         onActivated: (v) => App.solver.clickSort(v)
                     }
-                    Item { Layout.fillWidth: true }
                 }
                 // six tiles made once: scrubbing changes their words, not the items
                 Grid {

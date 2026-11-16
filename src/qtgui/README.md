@@ -1280,7 +1280,8 @@ Changed after the review of 2026-11-13 (the review's items, all fixed):
     Tab goes past them, the arrows move among them, a click still leaves
     the keyboard on the list.
   - In the Slider view Sort by sits under the slider it orders, not under
-    the player, named "Sort by" before its options.
+    the player, named "Sort by" before its options, or above them where a
+    system's fonts leave the card too narrow for both.
   - The selection area is no longer all the height left: the list ten
     rows' height (the same while a solve adds rows), the Slider view only
     what it needs. The piece display takes the rest, at least its own
