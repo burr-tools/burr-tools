@@ -22,12 +22,14 @@
 #include "guarded.h"
 #include "localpath.h"
 
+#include "../lib/problem.h"
 #include "../lib/puzzle.h"
 #include "../uicore/problemlist.h"
 
 #include <QDir>
 #include <QFileInfo>
 
+#include <cmath>
 #include <utility>
 
 namespace {
@@ -53,6 +55,54 @@ namespace {
 DocumentController::DocumentController(QObject * parent) : QObject(parent) {
   // an edit waiting for the solutions warning was an edit of the document that went
   connect(this, &DocumentController::documentReplaced, this, [this] { m_heldEdit = nullptr; });
+  m_session.setStageAbove(kStageAbove);
+  m_loadPoll = new QTimer(this);
+  m_loadPoll->setInterval(100);
+  connect(m_loadPoll, &QTimer::timeout, this, [this] { guarded([&] { pollLoading(); }); });
+}
+
+QString DocumentController::loadProgressText(void) const {
+  // whole percents, and never "100 %" before the end
+  return tr("%1 %").arg(int(std::floor(loadProgress() * 100.0)));
+}
+
+void DocumentController::pollLoading(void) {
+  if (!m_session.loadingSolutions()) {
+    endLoading();              // stopped with its document
+    return;
+  }
+  const btui::DocumentSession::LoadEnd e = m_session.finishLoading();
+  if (!e.done) {
+    emit loadChanged();        // how far
+    return;
+  }
+  endLoading();
+  if (!e.error.empty()) {
+    // a file that does not load: the document is a new one, as when nothing loads
+    emit documentReplaced();
+    emit fileChanged();
+    emit stateChanged();
+    emit messageRequested(tr("Open"), QString::fromStdString(e.error));
+    return;
+  }
+  emit resultsChanged();
+  unsigned n = 0;
+  const puzzle_c & p = m_session.puzzle();
+  for (unsigned k = 0; k < p.getNumberOfProblems(); k++) {
+    auto lock = p.getProblem(k)->lockSolutions();
+    n += p.getProblem(k)->getNumberOfSavedSolutions();
+  }
+  emit flashRequested(n == 1 ? tr("1 solution read") : tr("%1 solutions read").arg(n));
+}
+
+void DocumentController::endLoading(void) {
+  m_loadPoll->stop();
+  if (!m_loading)
+    return;
+  m_loading = false;
+  emit loadChanged();
+  if (!m_busy)
+    emit busyChanged();
 }
 
 QString DocumentController::fileName(void) const {
@@ -132,7 +182,7 @@ void DocumentController::start(Pending p, const char * action) {
     // quitting stops the solver first; the other flows replace the puzzle it reads
     if (p == Pending::Quit && m_busy && m_stopBusy)
       m_stopBusy();
-    if (refuseWhileBusy())
+    if (refuseWhileBusy(true))
       return;
     setPending(p);
     if (m_session.isModified())
@@ -175,7 +225,7 @@ void DocumentController::requestImport(void) { start(Pending::Import, "import an
 void DocumentController::requestQuit(void) { start(Pending::Quit, "quit"); }
 
 void DocumentController::requestOpenPath(const QString & path) {
-  if (m_pending != Pending::None || refuseWhileBusy())
+  if (m_pending != Pending::None || refuseWhileBusy(true))
     return;
   m_pendingPath = path;
   start(Pending::OpenPath, "open that puzzle");
@@ -219,13 +269,14 @@ void DocumentController::resolveDiscard(int choice) {
 
 void DocumentController::newDocument(int type) {
   guarded([&] {
-    if (refuseWhileBusy()) {
+    if (refuseWhileBusy(true)) {
       setPending(Pending::None);
       return;
     }
     if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
       type = gridType_c::GT_BRICKS;
     m_session.newDocument(gridType_c::gridType(type));
+    endLoading();
     if (m_pending == Pending::New)
       setPending(Pending::None);
     emit documentReplaced();
@@ -273,6 +324,15 @@ bool DocumentController::loadPath(const QString & path) {
     r.ok = false;
     r.error = e.what();
   }
+  // the views hear of the new document knowing whether its solutions are in
+  if (m_session.loadingSolutions() && !m_loading) {
+    m_loading = true;
+    m_loadPoll->start();
+    if (!m_busy)
+      emit busyChanged();
+    emit loadChanged();
+  } else if (!m_session.loadingSolutions())
+    endLoading();
   finishLoad(r, path);
   return r.ok;
 }
@@ -281,7 +341,7 @@ void DocumentController::openFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Open)
       setPending(Pending::None);
-    if (refuseWhileBusy())
+    if (refuseWhileBusy(true))
       return;
     const QString path = localPath(file);
     if (path.isEmpty()) {
@@ -296,7 +356,7 @@ void DocumentController::importFile(const QUrl & file) {
   guarded([&] {
     if (m_pending == Pending::Import)
       setPending(Pending::None);
-    if (refuseWhileBusy())
+    if (refuseWhileBusy(true))
       return;
     const QString path = localPath(file);
     if (path.isEmpty()) {
@@ -310,6 +370,8 @@ void DocumentController::importFile(const QUrl & file) {
       r.ok = false;
       r.error = e.what();
     }
+    if (!m_session.loadingSolutions())
+      endLoading();              // the import replaced the document being read
     if (!r.ok) {
       emit messageRequested(tr("Import"), QString::fromStdString(r.error));
       return;
@@ -446,14 +508,20 @@ void DocumentController::setBusy(bool busy) {
   if (busy == m_busy)
     return;
   m_busy = busy;
-  emit busyChanged();
+  if (!m_loading)
+    emit busyChanged();
 }
 
-bool DocumentController::refuseWhileBusy(void) {
-  if (!m_busy)
-    return false;
-  emit busyRefused(tr("Stop the solver first"));
-  return true;
+bool DocumentController::refuseWhileBusy(bool replacing) {
+  if (m_busy) {
+    emit busyRefused(tr("Stop the solver first"));
+    return true;
+  }
+  if (m_loading && !replacing) {
+    emit busyRefused(tr("Wait until the solutions are read"));
+    return true;
+  }
+  return false;
 }
 
 bool DocumentController::mayCostSolutions(bool costs, std::function<void()> retry) {

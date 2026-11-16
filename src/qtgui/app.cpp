@@ -80,6 +80,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   }
   m_settings = new SettingsController(settingsFile, legacySettingsFile, this);
   m_document = new DocumentController(this);
+  m_document->setLoadThreads(m_settings->workerThreads());
   m_layout = new LayoutController(m_settings, this);
   m_status = new StatusController(this);
   m_shapes = new ShapesModel(m_document, this);
@@ -103,6 +104,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_solver, &SolverController::flashRequested, m_status, &StatusController::flash);
   connect(m_solver, &SolverController::announceRequested, m_status, &StatusController::announce);
   connect(m_document, &DocumentController::busyRefused, m_status, &StatusController::flash);
+  connect(m_document, &DocumentController::flashRequested, m_status, &StatusController::flash);
   // the solutions a problem holds: the Puzzle lists count them
   connect(m_document, &DocumentController::resultsChanged, m_puzzle, &PuzzleController::refresh);
   // a piece the solver could place nowhere: shown in Entities, as legacy does
@@ -144,6 +146,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
   connect(m_settings, &SettingsController::changed, this, [this] {
     m_document->session().setUndoDepth(unsigned(m_settings->undoDepth()));
+    m_document->setLoadThreads(m_settings->workerThreads());
   });
 
   connect(m_shapes, &ShapesModel::selectedChanged, this, &App::updateStatusText);

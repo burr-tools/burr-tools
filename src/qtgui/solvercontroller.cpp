@@ -158,6 +158,12 @@ SolverController::SolverController(SettingsController * settings, DocumentContro
   });
   // results changed elsewhere (or here: refreshing twice costs little); they
   // can change without the count changing (Analyse), so read them all
+  // a large file's solutions coming in: the list follows as during a solve
+  connect(m_doc, &DocumentController::loadChanged, this, [this] {
+    if (m_doc->loadingSolutions() && !m_poll.isActive())
+      m_poll.start();
+    refreshRun();
+  });
   connect(m_doc, &DocumentController::resultsChanged, this, [this] {
     if (!shown()) {
       m_stale = true;
@@ -599,7 +605,7 @@ void SolverController::poll(void) {
     refreshRun();
     if (listDue())
       refreshSolutions(false);
-    if (!m_thread && !m_analysis)
+    if (!m_thread && !m_analysis && !m_doc->loadingSolutions())
       m_poll.stop();
   });
 }
@@ -632,7 +638,7 @@ void SolverController::refreshRun(void) {
   f.problem = pr != nullptr;
   f.threadHere = m_thread && m_threadProblem == m_problem;
   f.threadElsewhere = m_thread && m_threadProblem != m_problem;
-  f.busy = m_analysis != nullptr;
+  f.busy = m_analysis != nullptr || m_doc->loadingSolutions();
   // the state once: the thread may change it between two reads
   const solveState_e st = pr ? pr->getSolveState() : SS_UNSOLVED;
   if (pr) {
@@ -782,6 +788,8 @@ void SolverController::refreshSolutions(bool force) {
     const unsigned long assemblies = sig.assemblies;
     if (here)
       e = Searching;
+    else if (m_doc->loadingSolutions())
+      e = Reading;               // what shows so far says nothing yet
     else if (!m_list.all().empty())
       e = NoneDisassemblable;
     else if (st == SS_UNSOLVED || st == SS_UNKNOWN)
@@ -851,6 +859,7 @@ QString SolverController::emptyTitle(void) const {
     case NoProblem:          return tr("No problem to solve");
     case NotFinished:        return tr("Search not finished");
     case NoneKept:           return tr("No solutions kept");
+    case Reading:            return tr("Reading the solutions…");
   }
   return QString();
 }
@@ -860,6 +869,7 @@ QString SolverController::emptyText(void) const {
   switch (m_empty) {
     case NotEmpty:     return QString();
     case Searching:    return tr("Solutions appear here as they are found.");
+    case Reading:      return tr("The puzzle is open; its solutions appear here as they are read from the file.");
     case NoAssemblies: return tr("The pieces cannot fill the result with the current ranges and colour rules. Review the Puzzle tab.");
     case NoneDisassemblable: {
       const int n = m_list.all().empty() && pr && pr->numAssembliesKnown() ? int(pr->getNumAssemblies()) : int(m_list.all().size());
@@ -1348,6 +1358,7 @@ QString SolverController::sceneMessage(void) const {
     case NotFinished:        return tr("The search is not finished — Continue it to find assemblies");
     case JustCounted:        return tr("The solutions were counted, not kept");
     case NoProblem:          return tr("No problem to solve");
+    case Reading:            return tr("Reading the solutions…");
     case NotEmpty:
     case Searching:
     case NeverRun:           break;
@@ -1374,7 +1385,7 @@ QString SolverController::statusText(void) const {
 // --- Manage ----------------------------------------------------------------------------------
 
 bool SolverController::canManage(void) const {
-  return currentProblem() && !m_thread && !m_analysis && !m_list.all().empty();
+  return currentProblem() && !m_thread && !m_analysis && !m_doc->loadingSolutions() && !m_list.all().empty();
 }
 
 bool SolverController::canAnalyse(void) const {

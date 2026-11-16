@@ -21,6 +21,7 @@
 
 #include <QAbstractItemModelTester>
 #include <QDir>
+#include <QFileInfo>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -313,6 +314,80 @@ void TestSolver::aSolveAddsRowsInPlaceAndSparesAHiddenList() {
   QCOMPARE(rows->count(), 3818);
   QVERIFY(inOrder());
   QCOMPARE(reset.count(), 0);
+}
+
+void TestSolver::aLargeFileShowsAtOnceAndItsSolutionsFollow() {
+  // the 5x8 tiling's 3,818 solutions, solved and saved
+  QTemporaryDir dir;
+  const QString file = dir.filePath(QStringLiteral("tiling.xmpuzzle"));
+  {
+    App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+    app.settings()->setWorkerThreads(1);
+    QVERIFY(app.document()->loadPath(QStringLiteral("test/data/dominoes-5x8.xmpuzzle")));
+    SolverController * s = app.solver();
+    s->selectProblem(0);
+    s->setDisassemble(true);
+    s->setLimit(s->maxCount());
+    s->start();
+    QTRY_VERIFY_WITH_TIMEOUT(!s->solving(), 600000);
+    QCOMPARE(s->savedCount(), 3818);
+    app.document()->saveAsFile(QUrl::fromLocalFile(file));
+    QVERIFY(QFileInfo::exists(file));
+  }
+
+  App app(dir.filePath(QStringLiteral("s.rc")), dir.filePath(QStringLiteral("l.rc")));
+  DocumentController * doc = app.document();
+  doc->setStageAbove(0);                      // any file stages
+  app.layout()->setWorkspace(LayoutController::Solver);
+  SolverController * s = app.solver();
+  RowsModel * rows = s->solutions();
+  QAbstractItemModelTester tester(rows, QAbstractItemModelTester::FailureReportingMode::QtTest);
+  QSignalSpy refused(doc, &DocumentController::busyRefused);
+  QSignalSpy flashed(doc, &DocumentController::flashRequested);
+
+  // the puzzle at once, the document busy while its solutions come in
+  QVERIFY(doc->loadPath(file));
+  QVERIFY(doc->loadingSolutions());
+  QVERIFY(doc->busy());
+  QCOMPARE(doc->session().puzzle().getNumberOfProblems(), 1u);
+  QVERIFY(s->savedCount() < 3818);
+  QVERIFY(!s->canStart());
+  QVERIFY(!s->canManage());
+  if (s->shownCount() == 0)
+    QCOMPARE(s->emptyState(), int(SolverController::Reading));
+  // looked at, not changed or saved
+  doc->save();
+  QCOMPARE(refused.count(), 1);
+  QCOMPARE(refused.last().at(0).toString(), QStringLiteral("Wait until the solutions are read"));
+  QVERIFY(!doc->modified());
+
+  // the list follows the reading as it follows a solve (at 5 Hz): with the
+  // reading's end not looked at, every row comes while it still reads
+  doc->setLoadPollInterval(3600 * 1000);
+  double progress = doc->loadProgress();
+  QTRY_VERIFY_WITH_TIMEOUT(rows->count() == 3818 || !doc->loadingSolutions(), 300000);
+  QVERIFY(doc->loadingSolutions());
+  QVERIFY(doc->loadProgress() >= progress);
+  doc->setLoadPollInterval(100);
+  QTRY_VERIFY_WITH_TIMEOUT(!doc->loadingSolutions(), 60000);
+  QVERIFY(!doc->busy());
+  QCOMPARE(doc->loadProgress(), 1.0);
+  QCOMPARE(s->savedCount(), 3818);
+  QCOMPARE(rows->count(), 3818);
+  QVERIFY(s->canStart() || s->canContinue() || s->canPrepare());
+  QVERIFY(s->canManage());
+  QCOMPARE(flashed.count(), 1);
+  QCOMPARE(flashed.last().at(0).toString(), QStringLiteral("3818 solutions read"));
+  QVERIFY(!doc->modified());
+
+  // a new document while they are read: the reading stops with the old one
+  QVERIFY(doc->loadPath(file));
+  QVERIFY(doc->loadingSolutions());
+  doc->newDocument(0);
+  QVERIFY(!doc->loadingSolutions());
+  QVERIFY(!doc->busy());
+  QCOMPARE(s->savedCount(), 0);
+  QCOMPARE(refused.count(), 1);
 }
 
 void TestSolver::thePlayerStepsPlaysAndSeeks() {

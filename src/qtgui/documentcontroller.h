@@ -25,9 +25,11 @@
 
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
 
+#include <algorithm>
 #include <functional>
 #include <utility>
 #include <vector>
@@ -60,8 +62,13 @@ class DocumentController : public QObject {
   Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged FINAL)
   // the warning that edits remove solutions has been answered, this session
   Q_PROPERTY(bool solutionsWarned READ solutionsWarned WRITE setSolutionsWarned NOTIFY solutionsWarnedChanged FINAL)
-  // a solve or an analysis reads the puzzle: nothing may change or replace it
+  // a solve or an analysis reads the puzzle, or its solutions are still being
+  // read: nothing may change it
   Q_PROPERTY(bool busy READ busy NOTIFY busyChanged FINAL)
+  // a large file's solutions being read after the rest (loadPath), how far
+  Q_PROPERTY(bool loadingSolutions READ loadingSolutions NOTIFY loadChanged FINAL)
+  Q_PROPERTY(double loadProgress READ loadProgress NOTIFY loadChanged FINAL)
+  Q_PROPERTY(QString loadProgressText READ loadProgressText NOTIFY loadChanged FINAL)
 
 public:
 
@@ -89,10 +96,27 @@ public:
    * undo and redo, New, Open, Import, Convert, Save -- as legacy's
    * threadStopped() does, with one message (busyRefused). Solver results
    * change it through session().editWithoutUndo(), which is not gated. */
-  bool busy(void) const { return m_busy; }
+  bool busy(void) const { return m_busy || m_loading; }
   void setBusy(bool busy);
-  /* true, and the message, while busy: the caller does nothing */
-  bool refuseWhileBusy(void);
+  /* true, and the message, while busy: the caller does nothing. A flow that
+   * replaces the document (replacing) goes ahead while solutions are being
+   * read: the file still holds them, and the reading stops with it. */
+  bool refuseWhileBusy(bool replacing = false);
+
+  /* A file with more than this many bytes of solutions opens staged
+   * (DocumentSession::load): the puzzle shows at once, its solutions come
+   * after, read on a thread of their own, and meanwhile the document is
+   * busy -- it can be looked at, not changed or saved. */
+  static constexpr size_t kStageAbove = 16 * 1024 * 1024;
+  /* for tests: a smaller one; and how often the reading is looked at (100 ms),
+   * whose end the views hear of no sooner */
+  void setStageAbove(size_t bytes) { m_session.setStageAbove(bytes); }
+  void setLoadPollInterval(int ms) { m_loadPoll->setInterval(ms); }
+  /* the threads that read them: Settings' worker threads (App) */
+  void setLoadThreads(int threads) { m_session.setLoadThreads(unsigned(std::max(1, threads))); }
+  bool loadingSolutions(void) const { return m_loading; }
+  double loadProgress(void) const { return m_loading ? m_session.loadProgress() : 1.0; }
+  QString loadProgressText(void) const;
   /* what stops the work that makes the document busy, and waits for it
    * (SolverController::stopAndWait): Quit runs it before it asks about
    * unsaved changes, so a Save there writes a puzzle nothing else writes */
@@ -322,6 +346,10 @@ signals:
 
   void solutionsWarnedChanged(void);
   void busyChanged(void);
+  /* loadingSolutions, loadProgress */
+  void loadChanged(void);
+  /* for the status bar: the solutions are all read */
+  void flashRequested(const QString & text);
   /* editResults(): a problem's solutions or solve state changed */
   void resultsChanged(void);
   /* a change was refused while busy: the status bar says why */
@@ -350,6 +378,10 @@ private:
   /* edit() changed the puzzle: the views repaint */
   void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
+  /* the poll while solutions are read: the progress, and the end */
+  void pollLoading(void);
+  /* no longer reading (the reading over, or stopped with its document) */
+  void endLoading(void);
   void setPending(Pending p);
   /* the edit waits for the warning (mayCostSolutions, mayDropSolutions, mayDropProblemSolutions) */
   bool holdForWarning(std::function<void()> retry, bool tooBigToKeep);
@@ -357,6 +389,8 @@ private:
   btui::DocumentSession m_session;
   Pending m_pending = Pending::None;
   bool m_busy = false;
+  bool m_loading = false;
+  QTimer * m_loadPoll = nullptr;
   std::function<void()> m_stopBusy;
   bool m_solutionsWarned = false;
   std::function<void()> m_heldEdit;      ///< the edit the solutions warning holds

@@ -77,7 +77,8 @@ public:
   /* what the list's area shows instead of rows (C20 empty states) */
   enum EmptyState { NotEmpty, Searching, NoAssemblies, NoneDisassemblable, NeverRun, JustCounted, NoProblem,
                     NotFinished,   ///< prepared or stopped before the first assembly
-                    NoneKept };    ///< assemblies found, none kept (removed, or Keep every)
+                    NoneKept,      ///< assemblies found, none kept (removed, or Keep every)
+                    Reading };     ///< a large file's solutions still being read (DocumentController)
   Q_ENUM(EmptyState)
   /* what the player shows (C20 alternate states) */
   enum PlayerState { Playable, NothingToPlay, NotChecked, LevelOnly, NoneStored, CannotDisassemble,

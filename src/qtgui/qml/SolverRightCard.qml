@@ -13,23 +13,24 @@ import BurrTools.Ui
 //
 //   ┌──────────────────────────────────────────┐
 //   │ Solutions (5)            ①[List|Slider][◨]│
+//   │ ②Reading the solutions…  [█████░░░] 37 %  │   while a large file's are read
 //   ├──────────────────────────────────────────┤
-//   │ ②#   LEVEL       MOVES ▼     PCS   DA    │   the headers sort, again reverses
-//   │ ③ 3  8.2.1       [███ 11]     6    ✓     │   rows; the selected one ringed
+//   │ ③#   LEVEL       MOVES ▼     PCS   DA    │   the headers sort, again reverses
+//   │ ④ 3  8.2.1       [███ 11]     6    ✓     │   rows; the selected one ringed
 //   │   1  5.1.1       [██  7 ]     6    ✓     │
-//   │ ④5 solutions · ↑↓ solution · ←→ move ...  │
-//   │ ⑤ Solution 3  of 5                        │   (Slider view instead of ②–④)
+//   │ ⑤5 solutions · ↑↓ solution · ←→ move ...  │
+//   │ ⑥ Solution 3  of 5                        │   (Slider view instead of ③–⑤)
 //   │   [‹]  ──────●────────  [›]               │
 //   │   [#3][Level][Moves][Pieces][DA][3/5]     │
-//   │ ⑥ No results yet  Press Start ...         │   (no rows: what to do)
+//   │ ⑦ No results yet  Press Start ...         │   (no rows: what to do)
 //   ├──────────────────────────────────────────┤
-//   │ ⑦DISASSEMBLY PLAYER         Move 4.2 / 11 │   fixed height
+//   │ ⑧DISASSEMBLY PLAYER         Move 4.2 / 11 │   fixed height
 //   │  [⏮][◀][▶][▶|][⏭]               [1× ⌄]  │   or a message + Analyse
 //   │  ───────●──────────────────────────────  │
-//   │ ⑧[Number|Level|Moves ▼|Pieces]           │   Slider view only
-//   │ ⑨[Manage solutions ⌄]  [Export to STL]   │
+//   │ ⑨[Number|Level|Moves ▼|Pieces]           │   Slider view only
+//   │ ⑩[Manage solutions ⌄]  [Export to STL]   │
 //   ├──────────────────────────────────────────┤
-//   │ ⑩Piece display                [Show all] │
+//   │ ⑪Piece display                [Show all] │
 //   │  [■ S1] [▫ S2] [□ S3.1] [■ S3.2] ...     │   fixed height, scrolls
 //   └──────────────────────────────────────────┘
 Card {
@@ -181,6 +182,65 @@ Card {
         anchors.fill: parent
         spacing: 0
 
+        // --- a large file's solutions, read after the rest: how far ----------------------
+        RowLayout { // ②
+            objectName: "solver.loading"
+            visible: App.document.loadingSolutions
+            Layout.fillWidth: true
+            Layout.leftMargin: root.pad
+            Layout.rightMargin: root.pad
+            Layout.topMargin: root.vpad
+            Layout.bottomMargin: root.vpad
+            spacing: 10
+            Text {
+                objectName: "solver.loading.text"
+                Layout.fillWidth: true
+                text: qsTr("Reading the solutions…")
+                color: Theme.muted
+                font.pixelSize: Theme.fontSecondary
+                elide: Text.ElideRight
+                textFormat: Text.PlainText
+                Accessible.ignored: true
+            }
+            ProgressBar {
+                id: loadBar
+                objectName: "solver.loading.bar"
+                Layout.fillWidth: true
+                Layout.preferredHeight: 8
+                from: 0
+                to: 1
+                value: App.document.loadProgress
+                Accessible.name: qsTr("Reading the solutions")
+                Accessible.description: App.document.loadProgressText
+                // as the search's bar (SolverLeftCard)
+                background: Rectangle {
+                    radius: 4
+                    color: Theme.panel2
+                    border.width: 1
+                    border.color: Theme.controlLine
+                }
+                contentItem: Item {
+                    Rectangle {
+                        width: loadBar.visualPosition * parent.width
+                        height: parent.height
+                        radius: 4
+                        color: Theme.accent
+                    }
+                }
+            }
+            Text {
+                objectName: "solver.loading.pct"
+                Layout.preferredWidth: 40
+                horizontalAlignment: Text.AlignRight
+                text: App.document.loadProgressText
+                color: Theme.text
+                font.pixelSize: Theme.fontSecondary
+                font.weight: Font.DemiBold
+                textFormat: Text.PlainText
+                Accessible.ignored: true
+            }
+        }
+
         // --- the selection area -------------------------------------------------------
         Item {
             id: area
@@ -189,7 +249,7 @@ Card {
             Layout.minimumHeight: 150
 
             // the list's sticky header (PR-28): one Tab stop, ← → between the columns
-            FocusScope { // ②
+            FocusScope { // ③
                 id: listHeader
                 objectName: "solver.list.header"
                 visible: root.listView && App.solver.shownCount > 0
@@ -276,7 +336,7 @@ Card {
                 }
             }
 
-            ListView { // ③
+            ListView { // ④
                 id: list
                 objectName: "solver.list"
                 visible: root.listView && App.solver.shownCount > 0
@@ -431,7 +491,7 @@ Card {
                 }
             }
 
-            Text { // ④
+            Text { // ⑤
                 id: keysHint
                 objectName: "solver.list.footer"
                 visible: root.listView && App.solver.shownCount > 0 && !Theme.minimal
@@ -447,7 +507,7 @@ Card {
                 Accessible.ignored: true
             }
 
-            Column { // ⑤
+            Column { // ⑥
                 id: sliderView
                 objectName: "solver.sel"
                 visible: !root.listView && App.solver.shownCount > 0
@@ -541,7 +601,7 @@ Card {
                 }
             }
 
-            Column { // ⑥
+            Column { // ⑦
                 objectName: "solver.empty"
                 visible: App.solver.shownCount === 0
                 anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; margins: root.pad }
@@ -581,7 +641,7 @@ Card {
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.line }
 
         // --- the disassembly player (PR-29): one height in every state ------------------
-        Item { // ⑦
+        Item { // ⑧
             objectName: "solver.player"
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.player
@@ -732,7 +792,7 @@ Card {
         }
 
         // --- the Sort-by segment (Slider view; the same state as the headers) -----------
-        Segmented { // ⑧
+        Segmented { // ⑨
             objectName: "solver.sort"
             visible: !root.listView && App.solver.shownCount > 0
             Layout.leftMargin: root.pad
@@ -749,7 +809,7 @@ Card {
         }
 
         // --- Manage and Export ---------------------------------------------------------------
-        RowLayout { // ⑨
+        RowLayout { // ⑩
             objectName: "solver.act"
             Layout.fillWidth: true
             Layout.leftMargin: root.pad
@@ -906,7 +966,7 @@ Card {
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.line }
 
         // --- the piece display (PR-30): its height fixed, it scrolls ----------------------------
-        Item { // ⑩
+        Item { // ⑪
             objectName: "solver.pieces"
             Layout.fillWidth: true
             Layout.preferredHeight: Theme.cardHeader + Theme.pieceDisplay

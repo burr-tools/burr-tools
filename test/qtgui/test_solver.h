@@ -20,6 +20,7 @@ private slots:
   void theRemovePreviewMarksExactlyItsRows();
   void analysingStoresDisassembliesInTheBackground();
   void aSolveAddsRowsInPlaceAndSparesAHiddenList();
+  void aLargeFileShowsAtOnceAndItsSolutionsFollow();
   void thePlayerStepsPlaysAndSeeks();
   void theKeyMapMovesThroughSolutionsAndMoves();
   void aChipCyclesSolidWireframeHidden();

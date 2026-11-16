@@ -120,7 +120,7 @@ editor); it is not a stable interface yet.
 | Controller | Job |
 | :--- | :--- |
 | `SettingsController` | the new GUI's own settings file `.burrtools-qt.rc`, seeded once from legacy's `.burrtools.rc` and never writing it |
-| `DocumentController` | open, save, new, the window title, the undo / redo session |
+| `DocumentController` | open, save, new, the window title, the undo / redo session; a large file opens staged, its solutions read after on a thread of their own while the document is busy (`loadingSolutions`, the Solutions card's bar) |
 | `CommandController` | the command table (`uicore/commands`) as menus and shortcuts, per platform |
 | `LayoutController` | workspaces, card collapse, Focus 2D / 3D, the column widths |
 | `ColoursModel` | the drawing colour and the puzzle's colours: add and edit through the colour chooser, remove (asks first when solutions would go), each one `AK_COLOR_PALETTE` undo step through `btui::drawcolours` |
@@ -1276,6 +1276,31 @@ Changed after the review of 2026-11-13 (the review's items, all fixed):
   problem the new colour's own rule, used to empty every solved problem;
   it now keeps them, and asks nothing. The legacy GUI shares the history and
   gets the same.
+- **A large file opens before its solutions are read** (decided 2026-11-16).
+  The solutions are nearly all of such a file: a 42,873-solution domino
+  tiling is 578 MB of XML, 448 bytes of it the shapes and the problem. A
+  file with more than 16 MiB of solutions (`DocumentController::kStageAbove`)
+  opens staged (`src/lib/puzzleloader.h`): a quick pass builds the puzzle
+  from everything but the content of its `<solutions>`, and the puzzle shows
+  at once; a reader on a thread of its own then cuts the solutions into
+  batches, which Settings' worker threads parse, and puts them behind each
+  problem's list in the file's order, under the solutions lock, as a solve
+  does; the Solver's list follows it as it follows a solve. That file in
+  the release build: shown in 1.0 to 1.5 s and every solution in by 3.4 to
+  3.9 s, against 13 to 15 s for the whole read before (7 to 9 s with the
+  faster parser), input waiting at most about 60 ms meanwhile. Meanwhile
+  the document is busy, *view only*: edits, Save and the Solver's actions
+  are refused ("Wait until the solutions are read"); New, Open and Quit
+  stop the reading, the file still holding the solutions. The Solutions
+  card shows a bar while it reads; the status bar says when all are read.
+  What the quick pass cannot be sure of (a problem's solutions before its
+  shapes, a document type declaration) and a solution that does not read
+  are left to the whole read, so the result, and the error of a broken
+  file, are the whole read's; a broken solution found late leaves a new,
+  empty document and the message, as a file that does not load at all.
+  The XML parser was made faster first (about twice, the same events and
+  errors), which the legacy GUI and burrTxt get too; they read a file whole,
+  as before.
 
 ## Spec review of the Entities workspace (2026-10-29)
 
