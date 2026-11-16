@@ -9,8 +9,8 @@ Namespace `btui`, built as `libburr_uicore` (root `meson.build`).
 
 `src/qtgui` uses it together with the library's classes, not instead of
 them (see the architecture in [`../qtgui/README.md`](../qtgui/README.md)).
-The API here is in-tree only and changes with the later phases (the Puzzle
-and Solver workspaces, the voxel editor); do not treat it as stable.
+The API here is in-tree only and changes as the GUI does (P8's polish and
+cut-over are still to come); do not treat it as stable.
 
 Read with it: [`../qtgui/AGENTS.md`](../qtgui/AGENTS.md) (the layer above),
 [`../qtgui/README.md`](../qtgui/README.md) (architecture and status), and the

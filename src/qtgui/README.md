@@ -37,7 +37,7 @@ it can replace it.
 | — Entities review (2026-10-29) | The Shapes tab against the spec: every AC of C00–C14 and C22, the element ids both ways, the docs; saving after every kind of edit tested (`TestSaving`) | Done; findings in *Spec review of the Entities workspace* below |
 | — Puzzle review (2026-11-14) | The Puzzle tab against the spec: every AC of C16–C18 and those of C11, C15 and the density that name it, the element ids, the test plan's T-C16 … T-C18 | Done; findings in *Spec review of the Puzzle workspace* below |
 | P10 Puzzle (C16, C17, C18) | The problems (new, duplicate, delete, rename inline, reorder by the grip, the list's keys), the Result card, In this puzzle as tiles or a table, All pieces with add by +, double-click or drag, the summary strip and status sentence; the Piece & rules card: the selected piece's count, range and groups, Groups, the labelled colour matrix; both collapsed rails; the 3D scene: one object per copy, each turning in place; the PieceTile, LibraryChip, SummaryStrip, MatrixToggle, DashedFrame primitives | Done (third cut); decisions in *P10 decisions* |
-| P11 Solver (C19, C20, C21) | Solver card: the problem, What to check, Search options (n changed), Prepare / Start / Continue / Stop with the progress bar, activity, counters and times, Placements / Movements / Step; Solutions card: List (sortable headers, DA marks, moves bars) and Slider views, the empty states, the disassembly player (0.5×–8×, fixed height), Manage (remove with hover preview and confirmation, delete and analyse disassemblies in the background), Export Solution to STL, the piece chips; the 3D scene of the selected solution at the player's move, wireframe pieces (hull edges, Show through solid pieces), the assembler's state, the docked explorer drawer; edits refused while a solve or an analysis runs; the PieceChipButton and DaMark primitives | First cut, 2026-11-13; decisions in *P11 decisions*, plan and resolved open questions in [`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md) |
+| P11 Solver (C19, C20, C21) | Solver card: the problem, What to check, Search options (n changed), Prepare / Start / Continue / Stop with the progress bar, activity, counters and times, Placements / Movements / Step; Solutions card: List (sortable headers, DA marks, moves bars) and Slider views, the empty states, the disassembly player (0.5×–8×, fixed height), Manage (remove with hover preview and confirmation, delete and analyse disassemblies in the background), Export Solution to STL, the piece chips; the 3D scene of the selected solution at the player's move, wireframe pieces (hull edges, Show through solid pieces), the assembler's state, the docked explorer drawer; edits refused while a solve or an analysis runs; the PieceChipButton and DaMark primitives. Beyond the spec (2026-11-15/16): lists of tens of thousands of solutions (incremental reads, 5 / 2 Hz), a large file opening on a thread and its solutions read after with a bar, broken solutions left out, Analyse by assembly number | Done (fourth cut, draft #216): every AC of C19–C21 built; decisions in *P11 decisions*, plan and resolved open questions in [`design/2026-11-13-qtgui-solver-workspace.md`](../../design/2026-11-13-qtgui-solver-workspace.md); *Spec review of the Solver workspace* below lists the criteria still without a test |
 
 ### Deferred to the next phase
 
@@ -556,7 +556,7 @@ column is what the review of #140 asks of the phase.
 | **P5** 3D editing (rest of C06) — done | Edit mode and `E`, quick tools, ghosts under the 3D pointer (the hover preview's second source), picking in use, the keyboard 3D view | The same edit and stroke paths as P4 |
 | **P6** Inspector (C03–C05) — done | Transform per grid type, fit and scale, repair and surface | A blocked operation's reason is decided in uicore (`btui::shapeops`), so that legacy can share it |
 | **P10** Puzzle (C16–C18) — done | The left and right cards, their rails, the scene | The rules in `uicore/problemlist` and `puzzlescene`; legacy's `cb_NewProblem` and the rest stay as they are, with a row in the drift table |
-| **P11** Solver | C19–C21 | Solver results go through `editWithoutUndo` |
+| **P11** Solver (C19–C21) — done | The left and right cards, the scene and the explorer drawer; large files and long lists | Solver results go through `editWithoutUndo` (`DocumentController::editResults`) |
 | **P12a** — done, **P8** | Minimal's auto-hiding toolbar; then polish and cut-over, with the deferred work below | Legacy is removed only at cut-over. Until then the rules in `gui-migration.md` apply |
 
 ### Deferred work by phase
@@ -587,14 +587,15 @@ moves to a later phase says why in that table.
   against this workspace (2026-11-14: the problem row's hidden buttons, the
   colour matrix's keys and hover, a held stepper across an undo). Still before
   its pull request: the macOS gallery references.
-- **P11 Solver:** shape, colour and problem edits refused while a solve runs
-  (legacy `threadStopped()`), strokes, undo, redo and replacing the document
-  included; the solver's progress announced.
 - **P11 Solver** — done (first cut): shape, colour and problem edits refused
   while a solve or an analysis runs (legacy `threadStopped()`), strokes, undo,
   redo, replacing the document and saving included (`DocumentController::busy`);
   the solver's progress announced; the `solverListRow`, `player` and
-  `pieceDisplay` density tokens read.
+  `pieceDisplay` density tokens read; after it, lists of tens of thousands
+  of solutions, large files opened on a thread and read in stages, Analyse
+  by assembly number (*P11 decisions*). Still before its pull request leaves
+  draft: the macOS gallery references and the Qt 6.11 AOT baseline, from
+  CI on #216.
 - **P12a Density** — done: Minimal's auto-hiding 3D toolbar (density.md
   section 3): hidden faded and 10 dp up with a 40 x 4 handle; shown for the
   pointer within 72 dp of the view's top (a strip over the canvas, whose
@@ -1451,3 +1452,37 @@ against the second cut (method and numbers: the performance guide,
 Reached by keys though not Tab stops, as designed: the rows' rename,
 duplicate and delete (Enter, Ctrl+D, Del; Alt+↑/↓ move a problem), a tile's and a chip's − and +
 (−, +), a stepper's buttons (↑, ↓), the matrix's cells (arrows, Space).
+
+## Spec review of the Solver workspace (2026-11-16)
+
+C19–C21's acceptance criteria and the test plan's T-C19 … T-C21 cases,
+read against what is built and the tests that check it. Everything is
+built; the rows marked *untested* have no test that would catch them
+breaking.
+
+| Criterion | Built | Tested by |
+| :--- | :--- | :--- |
+| AC-C19-01 sections, widths, problem switch | yes | `tst_solver` `test_theCardsReplaceThePlaceholders`, the density tests |
+| AC-C19-02 radio cards, "Don't keep" | yes | `test_ui_solver` |
+| AC-C19-03 options collapsed, "n changed", Level / Moves need disassembly | yes | `tst_solver`, `test_solver`, `test_ui_solver` |
+| AC-C19-04 run states, progress, incremental results | yes | `test_solver`, `test_ui_solver` |
+| AC-C19-05 explorer enabling, Movements closes | yes | `test_solver` |
+| AC-C20-01 list, sort and reverse, keys, scrolling | yes | `test_solver` (sorting), `tst_solver` (keys); **untested:** double-click plays (a `TapHandler.onDoubleTapped`) |
+| AC-C20-02 slider without a new slider | yes | `tst_solver` `test_theSliderViewScrubsWithoutANewSlider` |
+| AC-C20-03 filter and empty state | yes | `test_solver`, `test_ui_solver` |
+| AC-C20-04 player fixed height, speeds | yes | `test_solver`, the density tests |
+| AC-C20-05 Manage, preview, confirmation, Analyse | yes | `tst_solver`, `test_solver` |
+| AC-C20-06 piece chips | yes | `tst_solver`, `test_solver` |
+| AC-C20-07 one key map, focus kept over the view | yes | `tst_solver`, `test_solver`, `test_ui_solver`; **partly untested:** T-C20-8's slider-view and seekbar keys (`↓` changes solution, `Home` then `→ → →` = Move 3.0 on the seekbar), the chip's `Enter` and `→` |
+| AC-C20-08 heights per density | yes | `tst_solver` `test_theFixedHeightsFollowTheDensity` |
+| AC-C21-01 scene at the move, piece states | yes | `test_solver` |
+| AC-C21-02 wireframe edges, X-ray | yes | `test_solver` |
+| AC-C21-03 assembler-state mode | yes | `test_solver` |
+| AC-C21-04 read-only view, toolbar, Display menu | yes | `tst_solver` `test_theViewIsReadOnly` |
+| AC-C21-05 docked drawer (250 dp), cards unchanged | yes | `test_solver` (opening, closing, closing with its disassembly); **untested:** the 250 dp and that the cards keep their layout |
+| AC-C21-06 heavier shapes stay (T-C21-4) | yes, by the disassembler (`movementAnalysator_c::newNode` moves the lighter side) | **untested** in the Solver: no test plays a solution with unequal weights |
+
+Journeys J14–J16 and J19 run through these; they are not scripted as a
+whole. Still open for the phase: the macOS gallery references and the
+Qt 6.11 AOT baseline (*Deferred to the next phase*), which CI on #216
+produces.

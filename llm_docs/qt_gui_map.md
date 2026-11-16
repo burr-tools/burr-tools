@@ -5,6 +5,7 @@
 | `main.cpp` | the program: options (`--help`), start-up order and trace, the early Direct3D device, the launch update check |
 | `app.{h,cpp}` | `App`, the QML singleton: owns every controller, the status sentence, internal-error rescue |
 | `*controller.{h,cpp}`, `shapesmodel`, `keyboardcues`, `popupwindowstyle` | one QObject per concern (table in README); QML reaches them as `App.document`, `App.layout`, … |
+| `documentcontroller` | the open document (`App.document`): open (a file of 1 MiB or more on a thread, `opening`; more than 5 MiB of solutions staged, `loadingSolutions` and its progress), save, undo and redo, the busy gate every edit asks, the solutions warning |
 | `scenecontroller`, `viewportcontroller`, `stl/imageexportcontroller` | camera, gestures and the `SceneFrame` each view draws; `SceneController::applyStyle` is the one rule for how a voxel style is drawn |
 | `shapepicture` | a shape as a small picture from the Home angle (QPainter over `btui::shapePicture`): the Result's Change… menu |
 | `editorcontroller`, `voxelgriditem`, `editcursor` | the voxel editor: tool, Mirror and Span, plane and layer, strokes, Area mode and grid size (`App.editor`); the 2D grid (QPainter); the composed edit cursors and the Edit button's glyph |

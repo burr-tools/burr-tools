@@ -1,5 +1,11 @@
 # The Solver workspace in burrtools-qt (P11) — plan, resolutions, status
 
+**Status (2026-11-16): done.** Every step below is done, and so is the work
+of §5 that came after; the branch is draft PR #216, waiting on CI for the
+macOS gallery references and the Qt 6.11 AOT baseline.
+`src/qtgui/README.md` ▸ *Spec review of the Solver workspace* lists the
+criteria still without a test.
+
 Phase P11 of the redesign (`design-spec/BurrTools-SPEC-FULL-FINAL-v6.md`,
 `migration/00-phase-plan.md`): the Solver workspace, components C19 (left
 card), C20 (right card) and C21 (3D scene and explorer drawer), primitives
@@ -126,3 +132,20 @@ Other facts read there:
 Found on the way: **D DA keeps the level** (`solution_c::removeDisassembly`
 keeps a `separationInfo_c`), so legacy's "delete the disassembly" makes a
 solution *level only*.
+
+## 5. After the first cut: many solutions (2026-11-15, -16)
+
+Measured on a 6×8 domino tiling with 42,873 solutions (24 MB, 578 MB of
+XML), release build; each item has its tests and its entry in README's
+*P11 decisions*.
+
+| Item | What | Status |
+| :--- | :--- | :--- |
+| A | the solve thread places a sorted solution by halving (`src/lib`): 573 s → 8.7 s legacy, 662 s → 9.4 s Qt | done |
+| B, C | the list reads only new solutions (`btui::SolutionList`), 5 Hz, 2 Hz above 2,000, not while hidden | done |
+| D, F | sort clicks off the GUI thread; piece chips made lazily | dropped (measured: not needed) |
+| E | Analyse stores by assembly number, re-reads only the analysed rows: 19.9 s → 8.2 s, input waits 402 → 32 ms | done |
+| G | the XML parser about twice as fast; a large file opens on a thread, its puzzle first and its solutions after on the worker threads (puzzle at 0.8 s, all in by about 3.5 s, against 13–15 s); a broken solution left out | done |
+| I | a solution limit of 0 hangs `solveThread_c::start` | issue #214 |
+| J | the QML tests allow Qt's animation-driver warning | done |
+| K | CI for the branch | draft PR #216 |

@@ -71,5 +71,9 @@ For `src/qtgui/`. QML rules are in `llm_docs/qt_gui_qml.md`.
   published and never changed after. Work on a worker thread touches only
   its own shared state, which the GUI thread polls or receives queued
   (`UpdateController` is the pattern); no QObject is used from two threads.
+  Two workers add to the puzzle itself: the solve thread and the reader of a
+  staged file's solutions (`solutionReader_c`) put solutions behind a
+  problem's list under `lockSolutions()`, while the document is busy so
+  nothing else changes it; the GUI reads those lists only under that lock.
 - No network in a scripted run or a test: see how `main.cpp` gates the
   launch update check.

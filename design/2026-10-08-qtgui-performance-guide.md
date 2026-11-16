@@ -520,6 +520,40 @@ qmltyperegistrar lists `bool`, `int` and the rest as opaque types in this
 module's qmltypes already at HEAD, so no such write compiles there. CI's
 6.11 count decides; see `test/qtgui/qml_aot_baseline.json`.
 
+## The Solver workspace and large files (fourth cut), 2026-11-16
+
+**Method.** A 6×8 domino tiling solved with every solution kept: 42,873
+solutions with their disassemblies, 24 MB on disk, 578 MB of XML. Release
+build (`build-reldyn`), Qt Quick Test probes on the offscreen platform
+(on screen nothing is measured here: see the third cut's note on a locked
+session), a 4 ms timer's worst lateness as "input waited"; the library
+alone with small benchmarks. The machine's timings drift by up to a second
+between runs, so each figure is a range or a median of three.
+
+| What | Before | After | How |
+| :--- | :--- | :--- | :--- |
+| Sorted solve, the list sorted by moves | 573 s legacy, 662 s Qt | 8.7 s, 9.4 s | a new solution's place found by halving (`solvethread`) |
+| The Solver list during that solve | 104 full reads, 2.2 s, input up to 110 ms | about 34 reads of the new ones, 0.2 s, about 50 ms | `btui::SolutionList`; 5 Hz, 2 Hz above 2,000; none while hidden |
+| Loading the file (library) | 10.5–11.3 s, 1,361 MB | 4.8–5.5 s, 1,208 MB | the XML parser a buffer at a time; `state_c` one block |
+| Opening it in the Qt GUI | 13.4–14.6 s, all on the GUI thread | the puzzle at 0.8 s, every solution by about 3.5 s, input up to about 60 ms | opened on a thread (≥ 1 MiB), staged (> 5 MiB of solutions), parsed on the worker threads |
+| Start-up with it | workspace and puzzle at 1.0 s | workspace at 0.34 s, puzzle at 0.8 s, input up to 10 ms | the definitions read off the GUI thread |
+| Manage ▸ Analyse all | 19.9 s, input up to 402 ms | 8.2 s, up to 32 ms | results by assembly number; only the analysed rows re-read |
+
+**What bounds them now.** Opening: decompressing the file once to find
+every problem's definition (about 0.7 s of the 0.8 s; zlib, one thread),
+then the parse of the solutions, which stops gaining past two threads
+because one thread decompresses and cuts them. Analysing: the
+disassembler, on its one thread.
+
+**Tried and dropped.** Moving sort clicks and the first fill of the list
+off the GUI thread (D): 25–45 ms after the list became incremental, not
+worth a worker. Making the piece chips lazily (F): 24 chips cost nothing.
+
+**Open.** Showing the shapes before the problems are read (the shapes are
+the file's first bytes; the problems come after each other's solutions)
+would put the Entities workspace on screen with its pieces at once, at the
+cost of replacing the document twice in the first second.
+
 ## History: start-up, measured 2026-10-08
 
 Before any start-up work, the dev build, `burrtools-qt PelikanBurr.xmpuzzle
