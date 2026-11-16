@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtTest
 import BurrTools.Ui
+import BurrTools.Test
 
 // The Solver workspace through the real Main.qml: the cards replace the
 // placeholders, their fixed heights per density, the list's keys and its
@@ -115,7 +116,8 @@ TestCase {
         App.settings.density = data.density
         waitForRendering(win.contentItem)
         compare(item("solver.player").height, data.player)
-        compare(item("solver.pieces").height, Theme.cardHeader + data.pieces)
+        // the piece display at least its own height: it takes what the list leaves
+        verify(item("solver.pieces").height >= Theme.cardHeader + data.pieces)
         compare(item("solver.list.row.0").height, data.row)
         // the player keeps its height without a disassembly to play
         App.solver.deleteDisassembly(false)
@@ -222,6 +224,154 @@ TestCase {
         compare((chip.contentItem.children[1] as Text).color, Theme.muted)
         mouseClick(item("solver.showAll"))
         tryCompare(chip, "pieceState", 0)
+    }
+
+    function test_aDoubleClickOnARowPlaysIt() {
+        // AC-C20-01: a double-click plays the solution
+        const row = item("solver.list.row.0")
+        compare(App.solver.playerState, SolverController.Playable)
+        verify(!App.solver.playing)
+        // Snapshots.doubleClick: TestCase's own double-click leaves each
+        // press a first tap of the row's TapHandler
+        Snapshots.doubleClick(row, 20, row.height / 2)
+        tryVerify(() => App.solver.playing)
+        compare(App.solver.selectedRow, 0)
+        App.solver.togglePlay()
+    }
+
+    function test_theSliderAndTheSeekbarTakeTheSameKeys() {
+        // AC-C20-07, T-C20-8: in the Slider view → steps a move without
+        // changing the solution, Space plays, Esc pauses; the seekbar's Home
+        // then → → → is Move 3, and Space plays with the focus kept there
+        App.solver.view = "slider"
+        waitForRendering(win.contentItem)
+        compare(App.solver.playerState, SolverController.Playable)
+        const slider = item("solver.slider")
+        slider.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => slider.activeFocus)
+        keyClick(Qt.Key_Right)
+        compare(App.solver.position, 1)
+        compare(App.solver.selectedRow, 0)
+        keyClick(Qt.Key_Space)
+        verify(App.solver.playing)
+        keyClick(Qt.Key_Escape)
+        verify(!App.solver.playing)
+        verify(slider.activeFocus)
+
+        const seek = item("solver.player.seek")
+        seek.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => seek.activeFocus)
+        keyClick(Qt.Key_Home)
+        compare(App.solver.position, 0)
+        keyClick(Qt.Key_Right)
+        keyClick(Qt.Key_Right)
+        keyClick(Qt.Key_Right)
+        compare(App.solver.position, 3)
+        verify(App.solver.moveText.indexOf("3.0") >= 0, App.solver.moveText)
+        keyClick(Qt.Key_Space)
+        verify(App.solver.playing)
+        verify(seek.activeFocus, "the seekbar keeps the keys while it plays")
+        keyClick(Qt.Key_Space)
+        verify(!App.solver.playing)
+    }
+
+    function test_theSliderChangesSolutionByTheKeysAndKeepsThem() {
+        // T-C20-8: ↓ is the next solution, the move back at the start; the
+        // slider keeps the keys while its title and tiles change (AC-C20-07)
+        solveAssemblies()
+        App.solver.view = "slider"
+        waitForRendering(win.contentItem)
+        const slider = item("solver.slider")
+        slider.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => slider.activeFocus)
+        keyClick(Qt.Key_Down)
+        compare(App.solver.selectedRow, 1)
+        compare(App.solver.position, 0)
+        waitForRendering(win.contentItem)
+        verify(slider.activeFocus)
+        keyClick(Qt.Key_Down)
+        compare(App.solver.selectedRow, 2)
+    }
+
+    function test_theListKeepsTheKeysWhileASolveRefillsIt() {
+        // AC-C20-07: focus survives the rows the solver adds and replaces
+        solveAssemblies()
+        mouseClick(item("solver.list.row.2"))
+        const list = item("solver.list")
+        tryVerify(() => list.activeFocus)
+        App.solver.start()
+        tryVerify(() => !App.solver.solving, 30000)
+        waitForRendering(win.contentItem)
+        verify(list.activeFocus, "the list keeps the keys through the refill")
+        const was = App.solver.selectedRow
+        keyClick(Qt.Key_Down)
+        compare(App.solver.selectedRow, was + 1)
+    }
+
+    function test_aChipTakesEnterAndTheArrows() {
+        // T-C20-8: Enter cycles the focused chip, → moves the focus on
+        const first = item("solver.pieces.chip." + App.solver.pieces.value(0, "pid"))
+        const second = item("solver.pieces.chip." + App.solver.pieces.value(1, "pid"))
+        first.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => first.activeFocus)
+        keyClick(Qt.Key_Return)
+        tryCompare(first, "pieceState", 1)
+        keyClick(Qt.Key_Right)
+        verify(second.activeFocus)
+        keyClick(Qt.Key_Left)
+        verify(first.activeFocus)
+        App.solver.showAllPieces()
+    }
+
+    function test_theTransportIsOneTabStop() {
+        // the five transport buttons are one Tab stop: Tab leaves the group,
+        // the arrows move inside it, a click takes no focus (sticky focus)
+        const start = item("solver.player.start")
+        const back = item("solver.player.back")
+        const play = item("solver.player.play")
+        const end = item("solver.player.end")
+        start.forceActiveFocus(Qt.TabFocusReason)
+        tryVerify(() => start.activeFocus)
+        keyClick(Qt.Key_Right)
+        verify(back.activeFocus)
+        keyClick(Qt.Key_Right)
+        verify(play.activeFocus)
+        keyClick(Qt.Key_End)
+        verify(end.activeFocus)
+        keyClick(Qt.Key_Tab)
+        for (const b of [start, back, play, item("solver.player.fwd"), end])
+            verify(!b.activeFocus, "Tab went past the transport")
+        keyClick(Qt.Key_Backtab)
+        verify(end.activeFocus, "Shift+Tab comes back to the one used last")
+    }
+
+    function test_theSliderViewHasItsSortByItsSliderAndOnlyItsHeight() {
+        // Slider view: Sort by sits with the slider; the selection area is as
+        // tall as it needs, and the piece display takes the rest
+        App.solver.view = "slider"
+        waitForRendering(win.contentItem)
+        const view = item("solver.sel")
+        const sort = item("solver.sort")
+        verify(sort.visible)
+        compare(sort.parent, view)
+        const slider = item("solver.slider")
+        verify(sort.mapToItem(view, 0, 0).y > slider.mapToItem(view, 0, 0).y, "below the slider")
+        verify(sort.mapToItem(view, 0, 0).y < item("solver.meta").mapToItem(view, 0, 0).y, "above the tiles")
+        verify(item("solver.pieces").height > Theme.cardHeader + Theme.pieceDisplay)
+        // in the List view the list keeps ten rows' height, the pieces the rest
+        App.solver.view = "list"
+        waitForRendering(win.contentItem)
+        verify(!sort.visible)
+        verify(item("solver.list").height <= 11 * Theme.solverListRow)
+        verify(item("solver.pieces").height > Theme.cardHeader + Theme.pieceDisplay)
+    }
+
+    function test_theExplorerIsNotInThisVersion() {
+        // Placements and Movements are off, with no drawer; Step works
+        verify(!item("solver.explorer.placements").enabled)
+        verify(!item("solver.explorer.movements").enabled)
+        verify(item("solver.explorer.step").visible)
+        compare(findChild(win.contentItem, "solver.drawer"), null)
     }
 
     function test_theSliderViewScrubsWithoutANewSlider() {

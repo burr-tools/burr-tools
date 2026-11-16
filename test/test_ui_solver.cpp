@@ -6,10 +6,14 @@
 #include "../src/uicore/solver.h"
 
 #include "../src/lib/assembly.h"
+#include "../src/lib/disassembler_0.h"
+#include "../src/lib/disassembly.h"
+#include "../src/lib/disasmtomoves.h"
 #include "../src/lib/problem.h"
 #include "../src/lib/puzzle.h"
 #include "../src/lib/solution.h"
 #include "../src/lib/solvethread.h"
+#include "../src/lib/voxel.h"
 
 #include <algorithm>
 #include <chrono>
@@ -725,4 +729,52 @@ TEST_CASE("Keep every and Limit are held to the solver's bounds", "[ui][solver]"
   CHECK(timeText(5000 * 365.2422 * 86400).unit == U::Millennia);
   CHECK_FALSE(timeLeft(-1, 0.5).has_value());
   CHECK_FALSE(timeLeft(10, 1.5).has_value());
+}
+
+TEST_CASE("a heavier shape stays put while the lighter pieces move (AC-C21-06, T-C21-4)", "[ui][solver]") {
+  /* The player shows the stored disassembly as it is: the disassembler
+   * keeps the heavier side of each separation still (movementAnalysator_c).
+   * A piece that moves with all weights equal stays where it is once its
+   * shape weighs more than the others, at every step the player shows. */
+  auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
+  REQUIRE(p);
+  problem_c * pr = p->getProblem(0);
+  REQUIRE(pr->getNumberOfSavedSolutions() > 0);
+  const assembly_c * assembled = pr->getSavedSolution(0)->getAssembly();
+  REQUIRE(assembled);
+
+  // pieces are numbered part by part, each part's copies together
+  auto shapeOf = [&](unsigned piece) {
+    for (unsigned part = 0; part < pr->getNumberOfParts(); part++) {
+      if (piece < pr->getPartMaximum(part))
+        return pr->getShapeIdOfPart(part);
+      piece -= pr->getPartMaximum(part);
+    }
+    return 0u;
+  };
+  // whether the piece leaves its assembled place at some step of the disassembly
+  auto moves = [&](unsigned piece) {
+    disassembler_0_c dis(*pr);
+    std::unique_ptr<separation_c> tree = dis.disassemble(assembled);
+    REQUIRE(tree);
+    disasmToMoves_c player(tree.get(), 20, pr->getNumberOfPieces());
+    player.setStep(0, false);
+    const float x = player.getX(piece), y = player.getY(piece), z = player.getZ(piece);
+    for (unsigned step = 1; step <= tree->sumMoves(); step++) {
+      player.setStep(float(step), false);
+      if (player.getX(piece) != x || player.getY(piece) != y || player.getZ(piece) != z)
+        return true;
+    }
+    return false;
+  };
+
+  unsigned mover = pr->getNumberOfPieces();
+  for (unsigned i = 0; i < pr->getNumberOfPieces() && mover == pr->getNumberOfPieces(); i++)
+    if (moves(i))
+      mover = i;
+  REQUIRE(mover < pr->getNumberOfPieces());
+  for (unsigned s = 0; s < p->getNumberOfShapes(); s++)
+    p->getShape(s)->setWeight(1);
+  p->getShape(shapeOf(mover))->setWeight(3);
+  CHECK_FALSE(moves(mover));
 }
