@@ -117,7 +117,7 @@ namespace btui {
     bool canContinue = false;      ///< problem_c::canStartSolving() while SS_SOLVING
     bool hasAssembler = false;     ///< a prepared or stopped search is in memory
     bool prepared = false;         ///< the last run of it was Prepare
-    bool busy = false;             ///< an analysis runs
+    bool busy = false;             ///< an analysis runs, or the file's solutions are being read
   };
 
   RunState runState(const RunFacts & f);

@@ -25,6 +25,8 @@
 
 #include "../lib/gridtype.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -33,6 +35,7 @@
 
 class puzzle_c;
 class voxel_c;
+class solutionReader_c;
 
 /* The open puzzle file: the puzzle itself, its file name, and its undo
  * history.
@@ -73,10 +76,38 @@ namespace btui {
         std::string error;              ///< why it failed, for the user; empty on success
         bool containsStartedSearch = false;  ///< a problem has an unfinished solve (legacy warns)
         bool showComment = false;       ///< the file asks for its comment to pop up on open
+        bool solutionsPending = false;  ///< the solutions are still being read: loadingSolutions()
       };
 
-      /* Load a BurrTools file. On failure the current document is untouched. */
+      /* Load a BurrTools file. On failure the current document is untouched.
+       * A file with more than stageAbove() bytes of solutions loads staged
+       * (puzzleloader.h): the document is the puzzle without them at once,
+       * and they are read on a thread of their own while loadingSolutions()
+       * -- the puzzle is not to be changed meanwhile, its solution lists
+       * read under their lock (problem_c::lockSolutions), as while a solver
+       * runs. */
       LoadResult load(const std::filesystem::path & file);
+
+      /* Bytes of solutions above which load() stages; by default it never
+       * does. */
+      void setStageAbove(size_t bytes) { stageAbove = bytes; }
+      size_t stageAboveBytes(void) const { return stageAbove; }
+      /* the threads that read the solutions (solutionReader_c), from the next load */
+      void setLoadThreads(unsigned threads) { loadThreads = threads; }
+
+      /* A staged load's solutions being read, until finishLoading() takes
+       * the result; save() and saveAs() refuse meanwhile. */
+      bool loadingSolutions(void) const { return reader != nullptr; }
+      /* how far the reading is, 0 to 1 */
+      double loadProgress(void) const;
+      struct LoadEnd {
+        bool done = false;              ///< the reading is over: the rest says how
+        std::string error;              ///< why the file could not be read, for the user
+      };
+      /* Once the reading is over: ends it. With an error the document is a
+       * new, empty one, as for a file that does not load at all. Before
+       * that: done is false and nothing changes. */
+      LoadEnd finishLoading(void);
 
       /* Import a PuzzleSolver3D file; it becomes the document, unsaved and
        * without a file name, so the first Save asks where. (Legacy kept the
@@ -86,17 +117,18 @@ namespace btui {
 
       /* Convert the puzzle to another grid type (legacy cb_Convert): the
        * converted puzzle replaces this one, the undo history starts afresh and
-       * the document counts as unsaved. False when the conversion fails. */
+       * the document counts as unsaved. False when the conversion fails, and
+       * while loadingSolutions(). */
       bool convert(gridType_c::gridType to);
 
-      /* Write to fileName(). False when there is no name yet or the write
-       * failed; the document stays modified in both cases.
+      /* Write to fileName(). False when there is no name yet, the write
+       * failed or loadingSolutions(); the document stays modified then.
        */
       bool save(void);
 
       /* Write to file (with ".xmpuzzle" appended when missing) and adopt it as
-       * the document's name. On failure neither the name nor the modified
-       * state change.
+       * the document's name. On failure, and while loadingSolutions(),
+       * neither the name nor the modified state change.
        */
       bool saveAs(const std::filesystem::path & file);
 
@@ -294,11 +326,18 @@ namespace btui {
       long solutionsHeld(void) const;
       void noteSolutionsLost(long heldBefore);
 
+      /* the reading of a staged load's solutions stopped and dropped; the
+       * document is about to go */
+      void stopLoading(void);
       void adopt(std::unique_ptr<puzzle_c> p);
 
       std::unique_ptr<puzzle_c> puz;
       std::unique_ptr<puzzleHistory_c> hist;
       std::filesystem::path fname;
+      // reads into *puz: declared after it, so it goes first
+      std::unique_ptr<solutionReader_c> reader;
+      size_t stageAbove = SIZE_MAX;
+      unsigned loadThreads = 1;
       bool stroking = false;
       bool strokeDirty = false;      // the open stroke changed something (hist has it too)
       puzzleHistory_c::discarded_t strokeLost;   // what the open stroke discarded, for its step

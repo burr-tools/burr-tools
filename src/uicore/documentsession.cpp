@@ -24,6 +24,7 @@
 #include "../lib/problem.h"
 #include "../lib/ps3dloader.h"
 #include "../lib/puzzle.h"
+#include "../lib/puzzleloader.h"
 #include "../lib/voxel.h"
 
 #include "../tools/fileexists.h"
@@ -44,9 +45,12 @@ namespace btui {
     hist->reset(puz.get());
   }
 
-  DocumentSession::~DocumentSession(void) = default;
+  DocumentSession::~DocumentSession(void) {
+    stopLoading();
+  }
 
   void DocumentSession::adopt(std::unique_ptr<puzzle_c> p) {
+    stopLoading();                    // it reads into the puzzle that goes
     stroking = strokeDirty = false;   // the history starts afresh: the stroke goes with the old puzzle
     strokeLost.clear();
     puz = std::move(p);
@@ -76,10 +80,17 @@ namespace btui {
     }
 
     std::unique_ptr<puzzle_c> np;
+    puzzleLoader::definitions_t d;
+    const puzzleLoader::opener reopen = [file] { return openGzFile(file); };
 
     try {
-      xmlParser_c pars(*str);
-      np = std::make_unique<puzzle_c>(pars);
+      if (stageAbove == SIZE_MAX) {
+        xmlParser_c pars(*str);
+        np = std::make_unique<puzzle_c>(pars);
+      } else {
+        d = puzzleLoader::readDefinitions(*str, reopen, stageAbove);
+        np = std::move(d.puzzle);
+      }
     }
     catch (xmlParserException_c & e) {
       r.error = std::string("load error: ") + e.what();
@@ -94,8 +105,34 @@ namespace btui {
 
     adopt(std::move(np));
     fname = file;
+    if (d.staged) {
+      reader = std::make_unique<solutionReader_c>(*puz, reopen, d.bytes, loadThreads);
+      r.solutionsPending = true;
+    }
     r.ok = true;
     return r;
+  }
+
+  double DocumentSession::loadProgress(void) const {
+    return reader ? reader->progress() : 1.0;
+  }
+
+  DocumentSession::LoadEnd DocumentSession::finishLoading(void) {
+    LoadEnd e;
+    if (!reader || !reader->done())
+      return e;
+    e.done = true;
+    const std::string why = reader->error();
+    reader.reset();
+    if (!why.empty()) {
+      e.error = "load error: " + why;
+      newDocument(puz->getGridType()->getType());
+    }
+    return e;
+  }
+
+  void DocumentSession::stopLoading(void) {
+    reader.reset();          // stops it and waits
   }
 
   DocumentSession::LoadResult DocumentSession::importPuzzleSolver3D(const std::filesystem::path & file) {
@@ -124,6 +161,8 @@ namespace btui {
   }
 
   bool DocumentSession::convert(gridType_c::gridType to) {
+    if (loadingSolutions())
+      return false;
     puzzle_c * p = doConvert(puz.get(), to);
     if (!p)
       return false;
@@ -221,7 +260,8 @@ namespace btui {
   }
 
   bool DocumentSession::save(void) {
-    if (fname.empty())
+    // the file would lose the solutions not read yet
+    if (fname.empty() || loadingSolutions())
       return false;
     splitStroke();
     if (!writePuzzle(*puz, fname))
@@ -231,6 +271,8 @@ namespace btui {
   }
 
   bool DocumentSession::saveAs(const std::filesystem::path & file) {
+    if (loadingSolutions())
+      return false;
     std::filesystem::path target = withPuzzleExtension(file);
     splitStroke();
     if (!writePuzzle(*puz, target))

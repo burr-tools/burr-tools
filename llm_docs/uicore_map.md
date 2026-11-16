@@ -4,7 +4,7 @@
 | :--- | :--- |
 | `commands` | **the command table**: every menu item and shortcut once — key, label (`&` access key), menu, divider, shortcuts per platform, the legacy callback it replaces, the macOS/Windows label and menu differences |
 | `layoutmodel` | workspaces, card collapse per workspace, Focus 2D / 3D (the editor's share, `kFocus2dEditorShare`), the column widths for a window width and density |
-| `documentsession` | open, save (beside the file, then renamed over it), import, new, the modified state, undo / redo; a voxel edit drops the solutions of the problems using the shape into its undo step (`editVoxels`, strokes), a change to what a problem asks for its own (`editProblems`) |
+| `documentsession` | open (staged above `setStageAbove`: the puzzle at once, its solutions read after by a `solutionReader_c` until `finishLoading`), save (beside the file, then renamed over it), import, new, the modified state, undo / redo; a voxel edit drops the solutions of the problems using the shape into its undo step (`editVoxels`, strokes), a change to what a problem asks for its own (`editProblems`) |
 | `drawcolours` | the puzzle's colours as the Drawing colour footer edits them: names, add (up to the library's 63), edit, remove (and whether it loses solutions) |
 | `shapecolours` | what a shape is shown in: Classic (the `palette` table) or Muted, per theme; not compiled into legacy |
 | `puzzlehistory` | the undo history (snapshots, stroke batching, depth limit, the Puzzle selection around a step; the solve records a step dropped, swapped back by its undo, to one memory budget for the process; problems a step did not change are left alone, solutions and all; whether an undo or redo would drop solutions) — **shared with the legacy GUI** |

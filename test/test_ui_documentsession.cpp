@@ -9,12 +9,17 @@
 #include "../src/lib/problem.h"
 #include "../src/lib/puzzle.h"
 #include "../src/lib/voxel.h"
+#include "../src/tools/gzstream.h"
 
+#include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <iterator>
 
 using btui::DocumentSession;
 
@@ -848,4 +853,121 @@ TEST_CASE("a problem change over the budget loses its solutions for good", "[ui]
   d.undo();
   CHECK(unsolved(d, 0));
   CHECK(d.isModified());
+}
+
+/* A staged load (setStageAbove; puzzleloader.h): the definitions at once,
+ * the solutions on a thread of their own until finishLoading(). */
+
+namespace {
+
+  /* finishLoading() until the reading is over */
+  btui::DocumentSession::LoadEnd finished(btui::DocumentSession & d) {
+    const auto until = std::chrono::steady_clock::now() + std::chrono::seconds(60);
+    btui::DocumentSession::LoadEnd e;
+    while (!(e = d.finishLoading()).done && std::chrono::steady_clock::now() < until)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    REQUIRE(e.done);
+    return e;
+  }
+
+  unsigned savedOf(const puzzle_c & p) {
+    unsigned n = 0;
+    for (unsigned k = 0; k < p.getNumberOfProblems(); k++)
+      n += p.getProblem(k)->getNumberOfSavedSolutions();
+    return n;
+  }
+
+}
+
+TEST_CASE("a load stages only above the threshold, and by default never", "[ui][document][staged]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+  const unsigned all = savedOf(whole.puzzle());
+  REQUIRE(all > 0);
+
+  btui::DocumentSession d;
+  CHECK(d.stageAboveBytes() == SIZE_MAX);
+  auto r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  CHECK_FALSE(r.solutionsPending);
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK(savedOf(d.puzzle()) == all);
+
+  d.setStageAbove(100 * 1000 * 1000);          // more than the file has
+  r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  CHECK_FALSE(r.solutionsPending);
+  CHECK(savedOf(d.puzzle()) == all);
+}
+
+TEST_CASE("a staged load reads the solutions after, and the document cannot be saved meanwhile",
+          "[ui][document][staged]") {
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/SolidSixPieceBurrs.xmpuzzle").ok);
+
+  TempDir dir;
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  auto r = d.load("examples/SolidSixPieceBurrs.xmpuzzle");
+  REQUIRE(r.ok);
+  REQUIRE(r.solutionsPending);
+  CHECK(d.fileName() == std::filesystem::path("examples/SolidSixPieceBurrs.xmpuzzle"));
+  CHECK_FALSE(d.isModified());
+  if (d.loadingSolutions()) {
+    // a save now would write a file without the solutions not read yet
+    CHECK_FALSE(d.saveAs(dir.path / "copy.xmpuzzle"));
+    CHECK_FALSE(std::filesystem::exists(dir.path / "copy.xmpuzzle"));
+  }
+  const auto e = finished(d);
+  CHECK(e.error.empty());
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK(d.loadProgress() == 1.0);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+  CHECK_FALSE(d.isModified());                  // reading solutions is no change
+  CHECK(d.saveAs(dir.path / "copy.xmpuzzle"));
+}
+
+TEST_CASE("replacing the document stops the reading of its solutions", "[ui][document][staged]") {
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").solutionsPending);
+  d.newDocument(gridType_c::GT_BRICKS);
+  CHECK_FALSE(d.loadingSolutions());
+  CHECK_FALSE(d.finishLoading().done);
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
+
+  // and loading another file
+  REQUIRE(d.load("examples/SolidSixPieceBurrs.xmpuzzle").solutionsPending);
+  REQUIRE(d.load("examples/PelikanBurr.xmpuzzle").ok);
+  finished(d);
+  btui::DocumentSession whole;
+  REQUIRE(whole.load("examples/PelikanBurr.xmpuzzle").ok);
+  CHECK(savedOf(d.puzzle()) == savedOf(whole.puzzle()));
+}
+
+TEST_CASE("a staged load whose solutions do not read ends with a new document and the error",
+          "[ui][document][staged]") {
+  // Burr-Glar with a broken disassembly state
+  std::string text;
+  {
+    btui::DocumentSession whole;
+    REQUIRE(whole.load("examples/Burr-Glar.xmpuzzle").ok);
+  }
+  TempDir dir;
+  const auto broken = dir.path / "broken.xmpuzzle";
+  {
+    auto in = openGzFile("examples/Burr-Glar.xmpuzzle");
+    REQUIRE(in);
+    text.assign(std::istreambuf_iterator<char>(*in), {});
+    text.insert(text.rfind("<dx>") + 4, "x");
+    std::ofstream out(broken, std::ios::binary);
+    out << text;
+  }
+  btui::DocumentSession d;
+  d.setStageAbove(0);
+  auto r = d.load(broken);
+  REQUIRE(r.ok);
+  REQUIRE(r.solutionsPending);
+  const auto e = finished(d);
+  CHECK(e.error.rfind("load error: ", 0) == 0);
+  CHECK(d.fileName().empty());
+  CHECK(d.puzzle().getNumberOfProblems() == 0);
 }
