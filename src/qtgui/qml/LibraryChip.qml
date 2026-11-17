@@ -20,6 +20,9 @@ Rectangle {
     property color swatch: Theme.muted
     property bool used: false
     property bool selected: false
+    // the same piece is under the pointer elsewhere (the 3D view): lit as when hovered
+    property bool linked: false
+    readonly property bool pointerOver: hover.hovered
     property bool focusRing: false       // the keyboard is in the chips and this is the selected one
 
     readonly property alias addButton: action
@@ -37,9 +40,9 @@ Rectangle {
     implicitHeight: Theme.libraryChip
     implicitWidth: content.implicitWidth + 6
     radius: Theme.radiusControl
-    color: hover.hovered ? Theme.accentSoft : used ? Theme.panel : Theme.panel2
+    color: hover.hovered || linked ? Theme.accentSoft : used ? Theme.panel : Theme.panel2
     border.width: selected ? 2 : 1
-    border.color: selected || hover.hovered ? Theme.accent : Theme.line
+    border.color: selected || hover.hovered || linked ? Theme.accent : Theme.line
 
     Accessible.role: Accessible.ListItem
     Accessible.name: used ? qsTr("%1 %2, %3 in the puzzle").arg(idText).arg(label).arg(countText)

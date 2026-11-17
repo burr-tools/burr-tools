@@ -97,6 +97,17 @@ namespace {
     QVariant object(int row, const char * role) const {
       return viewport()->sceneObjects()->value(row, QString::fromLatin1(role));
     }
+    QVariant label(int row, const char * role) const {
+      return viewport()->sceneLabels()->value(row, QString::fromLatin1(role));
+    }
+    /* the labels of a kind, as "text|detail" */
+    QStringList labels(const char * kind) const {
+      QStringList out;
+      for (int i = 0; i < viewport()->sceneLabels()->count(); i++)
+        if (label(i, "kind").toString() == QLatin1String(kind))
+          out << label(i, "text").toString() + QLatin1Char('|') + label(i, "detail").toString();
+      return out;
+    }
     QPointF frameCentre(int row) const {
       const double half = object(row, "frameSize").toDouble() / 2;
       return { object(row, "frameX").toDouble() + half, object(row, "frameY").toDouble() + half };
@@ -676,19 +687,21 @@ void TestPuzzle::theSceneHasAnObjectPerCopy() {
   z->selectPiece(1);
   f.flush();
 
+  // the selected piece has no slot of its own (product decision 2026-11-17)
   RowsModel * o = f.viewport()->sceneObjects();
-  QCOMPARE(o->count(), 7);
-  QCOMPARE(f.object(0, "caption").toString(), QStringLiteral("RESULT · S1"));
-  QCOMPARE(f.object(1, "caption").toString(), QStringLiteral("SELECTED · S2"));
-  QCOMPARE(f.object(2, "caption").toString(), QStringLiteral("S2 · 1/3"));
-  QCOMPARE(f.object(4, "caption").toString(), QStringLiteral("S2 · 3/3"));
-  QCOMPARE(f.object(5, "caption").toString(), QStringLiteral("S3 · 1/2 (optional)"));
+  QCOMPARE(o->count(), 6);
+  QCOMPARE(f.object(0, "role").toString(), QStringLiteral("goal"));
+  QCOMPARE(f.object(0, "caption").toString(), QStringLiteral("S1"));
+  for (int i = 1; i < 6; i++) {
+    QCOMPARE(f.object(i, "role").toString(), QStringLiteral("piece"));
+    QVERIFY(f.object(i, "caption").toString().isEmpty());     // named once, under the run
+  }
 
   // all copies of the selected piece are framed; the others and the result are not
   QVERIFY(f.object(1, "selected").toBool());
   QVERIFY(f.object(3, "selected").toBool());
   QVERIFY(!f.object(0, "selected").toBool());
-  QVERIFY(!f.object(5, "selected").toBool());
+  QVERIFY(!f.object(4, "selected").toBool());
 
   SceneFrame fr = f.viewport()->frame(1);
   QVERIFY(fr.mesh);
@@ -697,33 +710,170 @@ void TestPuzzle::theSceneHasAnObjectPerCopy() {
   QCOMPARE(fr.dimAxis, -1);
 }
 
-void TestPuzzle::aClickSelectsAPieceNotTheResult() {
-  // AC-C18-03, T-C18-3
+void TestPuzzle::theSceneNamesItsZonesRunsAndGroups() {
+  // C18 (the mock of 2026-11-17): what the pieces must fill, and the pieces
+  PuzzleFixture f;
+  PuzzleController * z = f.puzzle();
+  z->stepPiece(1, 3);
+  z->setRange(2, 0, 2);
+  f.flush();
+  QCOMPARE(f.labels("zone"), (QStringList{ QStringLiteral("RESULT|what the pieces must fill"),
+                                           QStringLiteral("IN THIS PUZZLE|2 shapes · 5 copies (2 optional)") }));
+  QCOMPARE(f.labels("run"), (QStringList{ QStringLiteral("S2  ×3|"), QStringLiteral("S3  ×0–2|") }));
+  QVERIFY(f.labels("group").isEmpty());
+
+  // the zones hold their objects: the result above, the pieces below it
+  RowsModel * l = f.viewport()->sceneLabels();
+  const auto within = [&](int label, int object) {
+    const double x = f.label(label, "labelX").toDouble(), y = f.label(label, "labelY").toDouble();
+    const QPointF c = f.frameCentre(object);
+    return c.x() > x && c.y() > y && c.x() < x + f.label(label, "labelWidth").toDouble()
+           && c.y() < y + f.label(label, "labelHeight").toDouble();
+  };
+  QCOMPARE(f.label(0, "kind").toString(), QStringLiteral("zone"));
+  QVERIFY(within(0, 0));
+  QVERIFY(!within(0, 1));
+  QVERIFY(within(1, 1));
+  QVERIFY(within(1, 5));
+  QVERIFY(f.label(0, "labelY").toDouble() + f.label(0, "labelHeight").toDouble() <= f.label(1, "labelY").toDouble());
+
+  // a group: an outline around its members, which stand first
+  z->selectPiece(2);
+  z->newGroup(2);
+  f.flush();
+  QCOMPARE(f.labels("group"), QStringList{ QStringLiteral("Group 1|") });
+  QCOMPARE(f.labels("run").first(), QStringLiteral("S3  ×0–2|"));
+  QVERIFY(l->count() > 0);
+}
+
+void TestPuzzle::aSelectedPieceStepsTheOthersBack() {
+  // the selected piece's copies lifted, the others translucent (btui::othersAlpha)
+  PuzzleFixture f;
+  PuzzleController * z = f.puzzle();
+  z->stepPiece(1, 1);
+  z->stepPiece(2, 1);
+  f.flush();
+  SceneFrame plain = f.viewport()->frame(1);
+  QVERIFY(plain.mesh);
+  QVERIFY(plain.mesh->translucent.empty());
+
+  z->selectPiece(2);
+  f.flush();
+  SceneFrame lit = f.viewport()->frame(1);
+  QVERIFY(!lit.mesh->translucent.empty());
+  QVERIFY(lit.mesh->opaque.size() < plain.mesh->opaque.size());
+
+  z->selectPiece(0);                // the result: nothing steps back
+  f.flush();
+  QVERIFY(f.viewport()->frame(1).mesh->translucent.empty());
+}
+
+void TestPuzzle::aClickSelectsAPieceAnythingElseNone() {
+  // AC-C18-03, T-C18-3; a click off the pieces deselects (product decision 2026-11-17)
   PuzzleFixture f;
   PuzzleController * z = f.puzzle();
   z->stepPiece(2, 1);
   f.flush();
   ViewportController * v = f.viewport();
+  const auto click = [&](QPointF at) {
+    v->pointerPress(Qt::LeftButton, float(at.x()), float(at.y()), {});
+    v->pointerRelease(Qt::LeftButton, float(at.x()), float(at.y()));
+    f.flush();
+  };
 
   const QPointF result = f.frameCentre(0);
-  v->pointerPress(Qt::LeftButton, float(result.x()), float(result.y()), {});
-  v->pointerRelease(Qt::LeftButton, float(result.x()), float(result.y()));
+  const QPointF piece = f.frameCentre(1);
+  click(piece);
+  QCOMPARE(z->selectedPiece(), 2);
+  click(result);
   QCOMPARE(z->selectedPiece(), -1);
 
-  const QPointF piece = f.frameCentre(1);
-  v->pointerHover(float(piece.x()), float(piece.y()), {});
-  QVERIFY(f.object(1, "hovered").toBool());
+  click(piece);
+  QCOMPARE(z->selectedPiece(), 2);
+  click(QPointF(2, 2));             // empty space
+  QCOMPARE(z->selectedPiece(), -1);
+}
+
+void TestPuzzle::hoverLightsEveryCopyFromEitherSide() {
+  // C18's hover link: the 3D view and the lists light the same piece
+  PuzzleFixture f;
+  PuzzleController * z = f.puzzle();
+  z->stepPiece(1, 2);
+  z->stepPiece(2, 1);
+  f.flush();
+  ViewportController * v = f.viewport();
+  RowsModel * o = v->sceneObjects();
+  const auto hovered = [&] {
+    QList<int> out;
+    for (int i = 0; i < o->count(); i++)
+      if (f.object(i, "hovered").toBool())
+        out << i;
+    return out;
+  };
+
+  // over one copy: the piece is hovered, and both its copies light up
+  const QPointF copy = f.frameCentre(2);
+  v->pointerHover(float(copy.x()), float(copy.y()), {});
+  QCOMPARE(z->hoveredPiece(), 1);
+  QCOMPARE(hovered(), (QList<int>{ 1, 2 }));
+  // over the result, then away: nothing
+  const QPointF result = f.frameCentre(0);
   v->pointerHover(float(result.x()), float(result.y()), {});
-  QVERIFY(!f.object(0, "hovered").toBool());
+  QCOMPARE(z->hoveredPiece(), -1);
+  QVERIFY(hovered().isEmpty());
+  v->pointerHover(float(copy.x()), float(copy.y()), {});
+  v->pointerLeave();
+  QCOMPARE(z->hoveredPiece(), -1);
 
-  v->pointerPress(Qt::LeftButton, float(piece.x()), float(piece.y()), {});
-  v->pointerRelease(Qt::LeftButton, float(piece.x()), float(piece.y()));
-  QCOMPARE(z->selectedPiece(), 2);
+  // from a list: the copies and the run's bracket light up
+  z->setHoveredPiece(2);
+  QCOMPARE(hovered(), QList<int>{ 3 });
+  bool runLit = false;
+  for (int i = 0; i < v->sceneLabels()->count(); i++)
+    if (f.label(i, "kind").toString() == QLatin1String("run") && f.label(i, "hovered").toBool())
+      runLit = f.label(i, "text").toString().startsWith(QLatin1String("S3"));
+  QVERIFY(runLit);
+  // the pointer moving over empty 3D space leaves a list's hover alone
+  v->pointerHover(2, 2, {});
+  QCOMPARE(z->hoveredPiece(), 2);
+}
 
-  // empty space leaves the selection
-  v->pointerPress(Qt::LeftButton, 2, 2, {});
-  v->pointerRelease(Qt::LeftButton, 2, 2);
-  QCOMPARE(z->selectedPiece(), 2);
+void TestPuzzle::thePieceViewShowsTheSelectionTurnedAsTheView() {
+  // the Selected piece card's view (product decision 2026-11-17)
+  PuzzleFixture f;
+  PuzzleController * z = f.puzzle();
+  PieceViewController * pv = f.app->pieceView();
+  ViewportController * v = f.viewport();
+  pv->setViewportSize(300, 150);
+  f.flush();
+  pv->flush();
+  QVERIFY(!pv->hasPiece());
+
+  z->selectPiece(2);
+  f.flush();
+  pv->flush();
+  QVERIFY(pv->hasPiece());
+  const SceneFrame fr = pv->frame(1);
+  QVERIFY(fr.mesh);
+  QVERIFY(!fr.anchored);
+  QCOMPARE(fr.mesh->opaque.size() > 0, true);
+
+  // one orientation: the 3D view turns it, and it turns the 3D view
+  const auto same = [](btui::Quat a, btui::Quat b) {
+    return std::abs(a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z) > 1.0f - 1e-5f;
+  };
+  v->orbitStep(30, 10);
+  QVERIFY(same(pv->camera().orientation(), v->camera().orientation()));
+  pv->pointerPress(Qt::LeftButton, 100, 70, {});
+  pv->pointerMove(180, 90);
+  pv->pointerRelease(Qt::LeftButton, 180, 90);
+  QVERIFY(same(pv->camera().orientation(), v->camera().orientation()));
+  QVERIFY(z->selectedPiece() == 2);       // a drag is no click
+
+  z->selectPiece(-1);
+  f.flush();
+  pv->flush();
+  QVERIFY(!pv->hasPiece());
 }
 
 void TestPuzzle::framesStayPutWhileTheObjectsTurn() {
@@ -812,7 +962,7 @@ void TestPuzzle::everyVoxelTypeDrawsItsScene() {
   f.puzzle()->stepPiece(1, 2);
   f.puzzle()->selectPiece(1);
   f.flush();
-  QCOMPARE(f.viewport()->sceneObjects()->count(), 4);      // the result, Selected, two copies
+  QCOMPARE(f.viewport()->sceneObjects()->count(), 3);      // the result, two copies
   OffscreenRenderer renderer{ OffscreenRenderer::Backend::Software };
   GPU_OR_SKIP(renderer.isValid());
   const SceneFrame frame = f.viewport()->frame(1);

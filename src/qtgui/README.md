@@ -1057,6 +1057,26 @@ Product decisions of 2026-11-06, unless a line says otherwise.
   dashes read as a broken grid and the copies as faded. They are drawn as the
   fixed copies, and the caption's "(optional)" tells them apart (AC-C18-01 and
   T-C18-1 changed on purpose).
+- **Two zones; the selected piece in its card** (2026-11-17, the mock's
+  update of that day). C18 put a SELECTED slot in the scene's top row beside
+  the result, where it read as part of the puzzle. Now the scene has two
+  labelled zones, RESULT ("what the pieces must fill") and IN THIS PUZZLE
+  ("2 shapes · 5 copies (2 optional)"); a shape's copies stand side by side,
+  each slot as wide as its shape needs, under one bracket named "S2 Label ×3"
+  (or "×0–3", "S2 (continued)" where a run breaks a row, which it does only
+  when no row holds it); a group's members stand first, in a dashed outline
+  ("Group 1", by a piece's lowest group). The selected piece's copies are
+  drawn 7 % larger and the other pieces at 55 % (their faces go to the
+  translucent ones; `btui::selectedLift`, `othersAlpha`), and the piece itself
+  is a small 3D view at the top of the Selected piece section
+  (`PieceViewController`, `puzzle.piece.view`), which shares the 3D view's
+  orientation both ways. A click off the pieces, the result too, deselects
+  (AC-C18-03 changed on purpose). Hover is per shape and linked both ways
+  (`PuzzleController::hoveredPiece`): a tile, a table row or a library chip
+  lights its copies and their bracket, a copy lights its tile and chip.
+  Captions are in the text colour, the accent on frames and brackets only
+  (WCAG 1.4.3). Not done from the mock: its eased moves when copies come and
+  go (the scene is rebuilt, not tweened), and its empty pieces zone.
 - **Dashed frames on a Canvas** (2026-11-14). C16's drop zones and C18's hover
   frame are dashed, as specified: `DashedFrame`, a Canvas, since Qt Quick Shapes
   is not in the build. It repaints only when its size or colour changes. The

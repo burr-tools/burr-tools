@@ -5,7 +5,7 @@
 | `main.cpp` | the program: options (`--help`), start-up order and trace, the early Direct3D device, the launch update check |
 | `app.{h,cpp}` | `App`, the QML singleton: owns every controller, the status sentence, internal-error rescue |
 | `*controller.{h,cpp}`, `shapesmodel`, `keyboardcues`, `popupwindowstyle` | one QObject per concern (table in README); QML reaches them as `App.document`, `App.layout`, … |
-| `scenecontroller`, `viewportcontroller`, `stl/imageexportcontroller` | camera, gestures and the `SceneFrame` each view draws; `SceneController::applyStyle` is the one rule for how a voxel style is drawn |
+| `scenecontroller`, `viewportcontroller`, `pieceviewcontroller`, `stl/imageexportcontroller` | camera, gestures and the `SceneFrame` each view draws; `SceneController::applyStyle` is the one rule for how a voxel style is drawn; `pieceviewcontroller` is the Selected piece card's view, sharing the main view's orientation |
 | `shapepicture` | a shape as a small picture from the Home angle (QPainter over `btui::shapePicture`): the Result's Change… menu |
 | `editorcontroller`, `voxelgriditem`, `editcursor` | the voxel editor: tool, Mirror and Span, plane and layer, strokes, Area mode and grid size (`App.editor`); the 2D grid (QPainter); the composed edit cursors and the Edit button's glyph |
 | `systempointer`, `systempointer_mac.mm` | the system's own arrow and pointer size for the edit cursors: Windows (registry scheme, `DrawIconEx`), macOS (`NSCursor`), Linux (Xcursor themes through `uicore/xcursor`) |

@@ -1,4 +1,5 @@
 /* Tests for btui's Puzzle scene (C18): which objects it holds, and where. */
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "test_helpers.h"
@@ -39,35 +40,125 @@ namespace {
   }
 }
 
-TEST_CASE("the scene holds the result, the selected piece and every copy", "[ui][puzzlescene]") {
+TEST_CASE("the scene holds the result and every copy, a shape's copies in one run", "[ui][puzzlescene]") {
   auto p = puzzle(3);
   setPieceCount(*p, 0, 1, 3, 3);
   setPieceCount(*p, 0, 2, 1, 1);
 
-  // AC-C18-01
+  // AC-C18-01; the selected piece has no slot of its own (2026-11-17)
   const PuzzleScene s = buildPuzzleScene(*p, 0, 2, MeshOptions{});
   CHECK(count(s, SceneRole::Goal) == 1);
-  CHECK(count(s, SceneRole::Selected) == 1);
   CHECK(count(s, SceneRole::Piece) == 4);
-  REQUIRE(s.objects.size() == 6);
+  REQUIRE(s.objects.size() == 5);
   CHECK(s.objects[0].shape == 0);
-  CHECK(s.objects[1].shape == 2);
-  CHECK(s.objects[2].shape == 1);
-  CHECK(s.objects[2].copy == 0);
-  CHECK(s.objects[4].copy == 2);
-  CHECK(s.objects[4].copies == 3);
-  CHECK(s.objects[5].shape == 2);
+  CHECK(s.objects[0].run == -1);
+  CHECK(s.objects[1].shape == 1);
+  CHECK(s.objects[1].copy == 0);
+  CHECK(s.objects[3].copy == 2);
+  CHECK(s.objects[3].copies == 3);
+  CHECK(s.objects[4].shape == 2);
+  CHECK(s.shapes == 2);
+  CHECK(s.copies == 4);
+  CHECK(s.optional == 0);
+
+  REQUIRE(s.runs.size() == 2);
+  CHECK(s.runs[0].shape == 1);
+  CHECK(s.runs[0].first == 1);
+  CHECK(s.runs[0].count == 3);
+  CHECK_FALSE(s.runs[0].continued);
+  CHECK(s.runs[1].shape == 2);
+  CHECK(s.runs[1].first == 4);
+  CHECK(s.runs[1].count == 1);
+  for (int i = 1; i < 4; i++)
+    CHECK(s.objects[size_t(i)].run == 0);
 }
 
-TEST_CASE("the Selected slot is left out for none and for the result", "[ui][puzzlescene]") {
-  auto p = puzzle(2);
-  CHECK(count(buildPuzzleScene(*p, 0, -1, MeshOptions{}), SceneRole::Selected) == 0);
-  CHECK(count(buildPuzzleScene(*p, 0, 0, MeshOptions{}), SceneRole::Selected) == 0);
-  CHECK(count(buildPuzzleScene(*p, 0, 9, MeshOptions{}), SceneRole::Selected) == 0);
+TEST_CASE("a selected piece's copies are lifted and the other pieces step back", "[ui][puzzlescene]") {
+  auto p = puzzle(3);
+  setPieceCount(*p, 0, 1, 2, 2);
+  setPieceCount(*p, 0, 2, 1, 1);
+  const PuzzleScene plain = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  CHECK_FALSE(plain.emphasis);
+  CHECK(plain.mesh.translucent.empty());
+
+  const PuzzleScene s = buildPuzzleScene(*p, 0, 2, MeshOptions{});
+  CHECK(s.emphasis);
+  REQUIRE(s.objects.size() == 4);
+  CHECK(s.objects[3].radius == Catch::Approx(plain.objects[3].radius * selectedLift));
+  CHECK(s.objects[1].radius == plain.objects[1].radius);
+  // the result and the selected piece stay opaque; S2's two copies fade
+  CHECK_FALSE(s.mesh.translucent.empty());
+  const auto at = [](const MeshVertex & v, const SceneObject & o) { return v.cell[0] == o.anchor.x && v.cell[1] == o.anchor.y; };
+  for (const MeshVertex & v : s.mesh.translucent) {
+    CHECK((at(v, s.objects[1]) || at(v, s.objects[2])));
+    CHECK(int(v.color.a) == int(255 * othersAlpha + 0.5f));
+  }
+  CHECK(s.mesh.opaque.size() + s.mesh.translucent.size() == plain.mesh.opaque.size());
+
+  // the result, a piece not in the problem, none: nothing steps back
+  CHECK_FALSE(buildPuzzleScene(*p, 0, 0, MeshOptions{}).emphasis);
+  CHECK_FALSE(buildPuzzleScene(*p, 0, 9, MeshOptions{}).emphasis);
+  setPieceCount(*p, 0, 2, 0, 0);
+  CHECK(buildPuzzleScene(*p, 0, 2, MeshOptions{}).mesh.translucent.empty());
+}
+
+TEST_CASE("a group's members stand together, before the ungrouped pieces", "[ui][puzzlescene]") {
+  auto p = puzzle(4);
+  for (int s = 1; s <= 3; s++)
+    setPieceCount(*p, 0, s, 1, 1);
+  REQUIRE(setPieceGroupCount(*p, 0, 3, 1, 1));
+  const PuzzleScene s = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  REQUIRE(s.runs.size() == 3);
+  CHECK(s.runs[0].shape == 3);
+  CHECK(s.runs[0].group == 1);
+  CHECK(s.runs[1].shape == 1);
+  CHECK(s.runs[1].group == 0);
+  CHECK(s.runs[2].shape == 2);
+}
+
+TEST_CASE("a run goes to the next row whole, and splits only when no row holds it", "[ui][puzzlescene]") {
+  auto p = puzzle(3);
+  setPieceCount(*p, 0, 1, 3, 3);
+  setPieceCount(*p, 0, 2, 3, 3);
+  const PuzzleScene s = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  REQUIRE(s.runs.size() == 2);
+  CHECK(s.runs[0].row == 0);
+  CHECK(s.runs[1].row == 1);
+  CHECK_FALSE(s.runs[1].continued);
+
+  setPieceCount(*p, 0, 2, 0, 0);
+  setPieceCount(*p, 0, 1, 7, 7);
+  const PuzzleScene long_ = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  REQUIRE(long_.runs.size() == 2);
+  CHECK(long_.runs[0].count == 5);
+  CHECK(long_.runs[1].count == 2);
+  CHECK(long_.runs[1].continued);
+  CHECK(long_.runs[1].row == 1);
+}
+
+TEST_CASE("small pieces stand closer together than large ones", "[ui][puzzlescene]") {
+  auto p = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  for (const unsigned n : { 4u, 1u, 4u }) {
+    const unsigned i = p->addShape(n, n, n);
+    for (unsigned z = 0; z < n; z++)
+      for (unsigned y = 0; y < n; y++)
+        for (unsigned x = 0; x < n; x++)
+          p->getShape(i)->setState(x, y, z, voxel_c::VX_FILLED);
+  }
+  newProblem(*p);
+  setResult(*p, 0, 0);
+  setPieceCount(*p, 0, 1, 3, 3);
+  setPieceCount(*p, 0, 2, 2, 2);
+  const PuzzleScene s = buildPuzzleScene(*p, 0, -1, MeshOptions{});
+  REQUIRE(s.objects.size() == 6);
+  const float small = s.objects[2].anchor.x - s.objects[1].anchor.x;
+  const float large = s.objects[5].anchor.x - s.objects[4].anchor.x;
+  CHECK(small > 0);
+  CHECK(small < large / 2);
 }
 
 TEST_CASE("a range's copies beyond its minimum are optional and drawn as the others", "[ui][puzzlescene]") {
-  // product decision 2026-11-14: not C18's translucent dashed copies; the caption says "(optional)"
+  // product decision 2026-11-14: not C18's translucent dashed copies; its run's name says so
   auto p = puzzle(2);
   setPieceCount(*p, 0, 1, 1, 3);
 
@@ -87,7 +178,7 @@ TEST_CASE("a range's copies beyond its minimum are optional and drawn as the oth
   CHECK(fixed.mesh.opaque.size() == s.mesh.opaque.size());
 }
 
-TEST_CASE("pieces lie five to a row under the top row, none on another", "[ui][puzzlescene]") {
+TEST_CASE("pieces lie five to a row under the goal, none on another", "[ui][puzzlescene]") {
   auto p = puzzle(2);
   setPieceCount(*p, 0, 1, 7, 7);
 

@@ -18,6 +18,10 @@ import BurrTools.Ui
 //   │ ①⌄ Selected piece                     S6 │   a section each, open or shut
 //   │  ②[S6] A                                 │   (a hint when none is selected)
 //   │     4 voxels · 4 fixed · 0 variable      │
+//   │  ⑬┌──────────────────────────────────┐  │   the piece, turned as the 3D
+//   │   │            (3D view)             │  │   view; a drag turns both
+//   │   │ Drag to orbit · follows the 3D … │  │
+//   │   └──────────────────────────────────┘  │
 //   │  ③Copies, fixed count      [−   1   +]   │   or Min and Max, side by side
 //   │  ④( ) Allow a range (min–max)            │
 //   │  ⑤Groups  [G1] [G2]  [+ New]             │   in or out; with several copies
@@ -200,6 +204,39 @@ Card {
                         color: Theme.muted
                         font.pixelSize: Theme.fontSecondary
                     }
+                }
+            }
+
+            // the piece itself, turned as the 3D view is; a drag here turns both
+            // (product decision 2026-11-17: it left the 3D view's layout for here)
+            Rectangle { // ⑬
+                id: pieceView
+                objectName: "puzzle.piece.view"
+                width: parent.width
+                // the mock's 150 / 120: a thumbnail, not a second workspace
+                height: Theme.minimal ? 120 : 150
+                visible: App.puzzle.pieceShown
+                radius: Theme.cardRadius
+                color: Theme.canvas
+                border.color: Theme.line
+                clip: true
+
+                VoxelViewport {
+                    objectName: "puzzle.piece.view.surface"
+                    anchors { fill: parent; margins: 1 }
+                    controller: pieceView.visible ? App.pieceView : null
+                    Accessible.role: Accessible.Graphic
+                    Accessible.name: qsTr("View of %1").arg(App.puzzle.pieceIdText)
+                    Accessible.description: qsTr("Drag to orbit; the 3D view turns with it.")
+                }
+                Text {
+                    objectName: "puzzle.piece.view.caption"
+                    visible: !Theme.minimal
+                    anchors { left: parent.left; bottom: parent.bottom; leftMargin: 8; bottomMargin: 6 }
+                    text: qsTr("Drag to orbit · follows the 3D view")
+                    Accessible.ignored: true
+                    color: Theme.muted
+                    font.pixelSize: Theme.fontMicro
                 }
             }
 

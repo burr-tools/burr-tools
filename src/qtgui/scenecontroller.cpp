@@ -112,6 +112,16 @@ void SceneController::home(void) {
   emit frameChanged();
 }
 
+void SceneController::followOrientation(btui::Quat q) {
+  const btui::Quat o = m_camera.orientation();
+  // q and -q are one turn; the camera normalizes, so a copy may differ in the last bit
+  if (std::abs(o.w * q.w + o.x * q.x + o.y * q.y + o.z * q.z) > 1.0f - 1e-6f)
+    return;
+  m_camera.cancelAnimation();
+  m_camera.setOrientation(q);
+  emit frameChanged();
+}
+
 void SceneController::fit(void) {
   m_camera.fit();
   startTicking();

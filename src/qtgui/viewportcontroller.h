@@ -85,6 +85,10 @@ class ViewportController : public SceneController {
   Q_PROPERTY(QColor shapeTextColor READ shapeTextColor NOTIFY sceneChanged FINAL)
   // the Puzzle scene's objects, for their frames and captions (C18)
   Q_PROPERTY(RowsModel * sceneObjects READ sceneObjects CONSTANT FINAL)
+  /* what the Puzzle scene names on screen, each a rectangle in dp: its two
+   * zones with their headings, a bracket under each run of a shape's copies
+   * with its name, an outline around each group's members */
+  Q_PROPERTY(RowsModel * sceneLabels READ sceneLabels CONSTANT FINAL)
   // copies too many to draw (btui::maxSceneObjects)
   Q_PROPERTY(int sceneHidden READ sceneHidden NOTIFY sceneChanged FINAL)
 
@@ -110,6 +114,9 @@ public:
   QString colourView(void) const;
   void setColourView(const QString & v);
   btui::ColorMode colourViewValue(void) const;
+  /* how the 3D views draw a shape of `p`: the style, the colour view, the
+   * shapes' colours (Theme) and the puzzle's palette; `piece` is the caller's */
+  static btui::MeshOptions meshOptions(const puzzle_c & p, btui::VoxelStyle style, btui::ColorMode colours);
   bool editorVisible(void) const;
   bool showViewCube(void) const;
   bool hasShape(void) const { return m_shape != nullptr; }
@@ -121,6 +128,7 @@ public:
   QColor shapeColor(void) const;
   QColor shapeTextColor(void) const;
   RowsModel * sceneObjects(void) const { return m_objects; }
+  RowsModel * sceneLabels(void) const { return m_labels; }
   int sceneHidden(void) const { return m_scene.hidden; }
 
   /* Export ▸ Vector Image: write the view as it is now to file in the
@@ -200,9 +208,10 @@ private:
   btui::PuzzleScene m_scene;       ///< without its mesh, which is m_puzzleMesh
   std::shared_ptr<const btui::ShapeMesh> m_puzzleMesh;
   RowsModel * m_objects;
+  RowsModel * m_labels;
   struct ObjectFrame { float x, y, size; };
   std::vector<ObjectFrame> m_frames;   ///< on screen, an object's each
-  int m_hoverObject = -1;
+  bool m_hovering = false;         ///< the pointer over the scene set PuzzleController::hoveredPiece
   int m_workspace = -1;            ///< the workspace the mesh is for
 
   const voxel_c * m_shape = nullptr;

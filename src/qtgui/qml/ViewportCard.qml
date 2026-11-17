@@ -21,7 +21,8 @@ import BurrTools.Ui
 //   │                    └──────────────┘                   │
 //   │        ① the 3D canvas, the whole card                │
 //   │        ⑦ No shape — open a puzzle ... (when empty)    │
-//   │        ⑩ Puzzle: each object's frame and caption      │
+//   │        ⑩ Puzzle: RESULT and IN THIS PUZZLE zones,     │
+//   │          frames, a bracket and name per run of copies │
 //   │                                                       │
 //   │ ⑥ [Shift] click 1 fixed · [Alt] click 2 variable · …  │
 //   │   Drag orbit · [Shift] / middle-drag pan · Wheel zoom │
@@ -125,6 +126,111 @@ Rectangle {
         anchors.fill: parent
         z: -0.5
         visible: root.puzzle
+        // the zones, the groups' outlines and the runs' brackets, under the frames
+        Repeater {
+            model: App.viewport.sceneLabels
+            delegate: Item {
+                id: label
+                required property int index
+                required property string kind
+                required property string text
+                required property string detail
+                required property real labelX
+                required property real labelY
+                required property real labelWidth
+                required property real labelHeight
+                required property bool selected
+                required property bool hovered
+                readonly property bool lit: selected || hovered
+                objectName: "puzzle.scene.label." + index
+                x: labelX
+                y: labelY
+                width: labelWidth
+                height: labelHeight
+
+                // a zone: an outline with its heading inside its top, widened (centred) for the heading
+                Rectangle {
+                    id: zone
+                    objectName: "puzzle.scene.label." + label.index + ".zone"
+                    width: Math.max(label.width, heading.implicitWidth + 24)
+                    height: label.height
+                    x: (label.width - width) / 2
+                    visible: label.kind === "zone"
+                    color: "transparent"
+                    radius: Theme.cardRadius
+                    border.width: 1
+                    border.color: Theme.line2
+                }
+                Row {
+                    id: heading
+                    visible: label.kind === "zone"
+                    x: zone.x + 12
+                    y: 8
+                    spacing: 8
+                    Text {
+                        objectName: "puzzle.scene.label." + label.index + ".heading"
+                        text: label.text
+                        textFormat: Text.PlainText
+                        Accessible.ignored: true
+                        color: Theme.muted
+                        font.pixelSize: Theme.fontMicro
+                        font.weight: Font.Bold
+                        font.letterSpacing: 0.5
+                    }
+                    Text {
+                        objectName: "puzzle.scene.label." + label.index + ".detail"
+                        text: label.detail
+                        textFormat: Text.PlainText
+                        Accessible.ignored: true
+                        color: Theme.muted
+                        font.pixelSize: Theme.fontMicro
+                    }
+                }
+
+                // a group: a dashed outline around its members, named in its corner
+                DashedFrame {
+                    objectName: "puzzle.scene.label." + label.index + ".group"
+                    anchors.fill: parent
+                    visible: label.kind === "group"
+                    color: Theme.muted
+                }
+                Text {
+                    visible: label.kind === "group"
+                    x: 8
+                    y: 5
+                    text: label.text
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
+                    color: Theme.muted
+                    font.pixelSize: Theme.fontMicro
+                    font.weight: Font.Bold
+                }
+
+                // a run: a bracket under a shape's copies, its name under that
+                Item {
+                    id: bracket
+                    objectName: "puzzle.scene.label." + label.index + ".bracket"
+                    anchors.fill: parent
+                    visible: label.kind === "run"
+                    readonly property color ink: label.lit ? Theme.accent : Theme.muted
+                    Rectangle { x: 0; width: 1.5; height: bracket.height; color: bracket.ink }
+                    Rectangle { x: bracket.width - 1.5; width: 1.5; height: bracket.height; color: bracket.ink }
+                    Rectangle { y: bracket.height - 1.5; width: bracket.width; height: 1.5; color: bracket.ink }
+                }
+                Text {
+                    objectName: "puzzle.scene.label." + label.index + ".name"
+                    visible: label.kind === "run"
+                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 3 }
+                    text: label.text
+                    textFormat: Text.PlainText
+                    Accessible.ignored: true
+                    // WCAG 1.4.3: names in the text colour; the bracket carries the accent
+                    color: Theme.text
+                    font.pixelSize: Theme.fontMicro
+                    font.weight: label.lit ? Font.Bold : Font.DemiBold
+                }
+            }
+        }
         Repeater {
             model: App.viewport.sceneObjects
             delegate: Item {
@@ -137,14 +243,13 @@ Rectangle {
                 required property real frameSize
                 required property bool selected
                 required property bool hovered
-                readonly property bool above: role !== "piece"
                 objectName: "puzzle.scene.object." + index
                 x: frameX
                 y: frameY
                 width: frameSize
                 height: frameSize
 
-                // C18: selected, a solid frame; hovered and not selected, a dashed one
+                // C18: every copy of the selected piece in a solid frame; of the hovered one, dashed
                 Rectangle {
                     objectName: "puzzle.scene.object." + object.index + ".frame"
                     anchors.fill: parent
@@ -159,12 +264,13 @@ Rectangle {
                     anchors.fill: parent
                     visible: object.hovered && !object.selected
                 }
+                // a goal's name; a piece's copies are named once, under their run
                 Text {
                     objectName: "puzzle.scene.object." + object.index + ".caption"
-                    anchors { horizontalCenter: parent.horizontalCenter
-                              top: object.above ? undefined : parent.bottom; topMargin: 4
-                              bottom: object.above ? parent.top : undefined; bottomMargin: 4 }
+                    visible: object.caption.length > 0
+                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.bottom; topMargin: 4 }
                     text: object.caption
+                    textFormat: Text.PlainText
                     Accessible.ignored: true
                     color: Theme.text
                     font.pixelSize: Theme.fontMicro
@@ -523,6 +629,9 @@ Rectangle {
             spacing: 4
             HintText { text: qsTr("Click a piece") }
             HintText { effect: true; text: qsTr("select it") }
+            Dot {}
+            HintText { text: qsTr("Click empty space") }
+            HintText { effect: true; text: qsTr("deselect") }
             Dot {}
             HintText { text: qsTr("Drag") }
             HintText { effect: true; text: qsTr("rotate every piece in place") }

@@ -90,6 +90,7 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
   m_puzzle = new PuzzleController(m_document, m_shapes, m_layout, this);
   m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, m_puzzle, this);
+  m_pieceView = new PieceViewController(m_settings, m_document, m_layout, m_puzzle, m_viewport, this);
   m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
   m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, m_puzzle, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);

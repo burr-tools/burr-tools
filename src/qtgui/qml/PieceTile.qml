@@ -14,6 +14,9 @@ Rectangle {
     property string groupText
     property color stripe: Theme.muted
     property bool selected: false
+    // the same piece is under the pointer elsewhere (the 3D view): an accent border
+    property bool linked: false
+    readonly property bool pointerOver: hover.hovered
     property bool focusRing: false      // the keyboard is in the tiles and this is the selected one
     property bool dragEnabled: true
 
@@ -37,7 +40,7 @@ Rectangle {
     radius: Theme.radiusControl
     color: selected ? Theme.accentSoft : Theme.panel2
     border.width: selected ? 2 : 1
-    border.color: selected ? Theme.accent : Theme.line
+    border.color: selected || linked ? Theme.accent : Theme.line
     clip: true
 
     Accessible.role: Accessible.ListItem

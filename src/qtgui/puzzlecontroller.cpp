@@ -80,6 +80,7 @@ PuzzleController::PuzzleController(DocumentController * doc, ShapesModel * shape
     m_rangeHeld = -1;
     m_heldCounts.reset();
     emit selectedPieceChanged();
+    setHoveredPiece(-1);
     stale();
   });
   connect(doc, &DocumentController::aboutToApplyHistory, this, &PuzzleController::flushTyping);
@@ -405,6 +406,13 @@ void PuzzleController::selectPiece(int shape) {
   m_rangeHeld = -1;
   emit selectedPieceChanged();
   refresh();
+}
+
+void PuzzleController::setHoveredPiece(int shape) {
+  if (shape == m_hovered)
+    return;
+  m_hovered = shape;
+  emit hoveredPieceChanged();
 }
 
 void PuzzleController::setPiecesView(const QString & v) {

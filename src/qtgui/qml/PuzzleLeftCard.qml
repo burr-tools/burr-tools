@@ -67,6 +67,14 @@ Card {
     readonly property bool overUsed: dragFrom === "library" && contains(usedZone, dragAt)
     readonly property bool overLibrary: dragFrom === "used" && contains(libraryZone, dragAt)
 
+    // C18's hover link: a piece under the pointer here lights its copies in the 3D view
+    function hoverPiece(shape: int, over: bool): void {
+        if (over)
+            App.puzzle.hoveredPiece = shape
+        else if (App.puzzle.hoveredPiece === shape)
+            App.puzzle.hoveredPiece = -1
+    }
+
     function contains(zone: Item, p: point): bool {
         const q = ghost.parent.mapToItem(zone, p.x, p.y)
         return q.x >= 0 && q.y >= 0 && q.x <= zone.width && q.y <= zone.height
@@ -823,6 +831,8 @@ Card {
                                     objectName: "puzzle.used.tile." + shape
                                     stripe: chipColor
                                     selected: shape === App.puzzle.selectedPiece
+                                    linked: shape === App.puzzle.hoveredPiece
+                                    onPointerOverChanged: root.hoverPiece(shape, pointerOver)
                                     focusRing: selected && tiles.activeFocus && App.keyboardCues.navigating
                                     onFocusRingChanged: if (focusRing) tileFollower.show(tile)
                                     opacity: root.dragShape === shape && root.dragFrom === "used" ? 0.5 : 1
@@ -931,12 +941,14 @@ Card {
                         required property bool rangeOn
                         required property string groupText
                         readonly property bool selected: shape === App.puzzle.selectedPiece
+                        readonly property bool linked: shape === App.puzzle.hoveredPiece
 
                         objectName: "puzzle.used.row." + shape
                         width: ListView.view.width
                         height: table.rowHeight
                         radius: Theme.radiusChip
-                        color: selected ? Theme.accentSoft : "transparent"
+                        color: selected ? Theme.accentSoft : linked ? Theme.panel2 : "transparent"
+                        HoverHandler { onHoveredChanged: root.hoverPiece(tableRow.shape, hovered) }
                         Accessible.role: Accessible.Row
                         Accessible.name: label.length > 0 ? qsTr("%1 %2").arg(idText).arg(label) : idText
                         Accessible.selectable: true
@@ -1199,6 +1211,8 @@ Card {
                                     objectName: "puzzle.library.chip." + shape
                                     swatch: chipColor
                                     selected: shape === App.puzzle.selectedPiece
+                                    linked: shape === App.puzzle.hoveredPiece
+                                    onPointerOverChanged: root.hoverPiece(shape, pointerOver)
                                     focusRing: selected && libraryKeys.activeFocus && App.keyboardCues.navigating
                                     onFocusRingChanged: if (focusRing) libraryFollower.show(chip)
                                     onTapped: { App.puzzle.selectPiece(shape); libraryKeys.forceActiveFocus() }

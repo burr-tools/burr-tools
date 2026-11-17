@@ -36,7 +36,11 @@ private slots:
   void theHoleLimitShowsAndClears();
   void listsOnlyFollowWhileTheWorkspaceShows();
   void theSceneHasAnObjectPerCopy();
-  void aClickSelectsAPieceNotTheResult();
+  void theSceneNamesItsZonesRunsAndGroups();
+  void aSelectedPieceStepsTheOthersBack();
+  void aClickSelectsAPieceAnythingElseNone();
+  void hoverLightsEveryCopyFromEitherSide();
+  void thePieceViewShowsTheSelectionTurnedAsTheView();
   void framesStayPutWhileTheObjectsTurn();
   void panAndZoomMoveTheWholeLayout();
   void theSceneDrawsEachObjectInItsFrame();

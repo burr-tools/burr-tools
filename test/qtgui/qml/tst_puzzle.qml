@@ -1321,6 +1321,9 @@ TestCase {
             App.settings.theme = theme
             for (let i = 0; i < App.viewport.sceneObjects.count; i++)
                 compare(item("puzzle.scene.object." + i + ".caption").color, Theme.text)
+            for (let i = 0; i < App.viewport.sceneLabels.count; i++)
+                if (App.viewport.sceneLabels.value(i, "kind") === "run")
+                    compare(item("puzzle.scene.label." + i + ".name").color, Theme.text)
         }
         App.settings.theme = "light"
     }
@@ -1669,7 +1672,13 @@ TestCase {
         verify(App.puzzle.summaryDetail !== summary, App.puzzle.summaryDetail)
 
         mouseClick(item("puzzle.used.row.1.range"))     // a range 0–3: optional copies
-        tryVerify(() => objects.value(objects.count - 1, "caption").indexOf("(optional)") >= 0, 1000)
+        const labels = App.viewport.sceneLabels
+        tryVerify(() => {
+            for (let i = 0; i < labels.count; i++)
+                if (labels.value(i, "kind") === "run" && labels.value(i, "text").indexOf("×0–3") >= 0)
+                    return true
+            return false
+        }, 1000, "the run's name gives the range")
         verify(App.puzzle.summaryDetail.indexOf("Holes depend on the counts") >= 0, App.puzzle.summaryDetail)
 
         // back to the chips: the same data
@@ -1693,19 +1702,16 @@ TestCase {
             compare(item("puzzle.used.tile." + (3 - shape)).selected, false)
             compare(item("puzzle.library.chip." + shape).selected, true)
             compare(item("puzzle.piece.chip").text, "S" + (shape + 1))
-            // the 3D view: the Selected slot, and a frame on each copy of it alone
+            // the card's view of the piece, and in the 3D view a frame on each copy of it alone
+            verify(item("puzzle.piece.view").visible)
             tryVerify(() => {
-                let slot = false, framed = 0, wrong = 0
+                let framed = 0, wrong = 0
                 for (let i = 0; i < objects.count; i++) {
                     const mine = objects.value(i, "shape") === shape
-                    if (objects.value(i, "role") === "selected")
-                        slot = mine
-                    else if (objects.value(i, "role") === "piece") {
-                        if (objects.value(i, "selected"))
-                            mine ? framed++ : wrong++
-                    }
+                    if (objects.value(i, "role") === "piece" && objects.value(i, "selected"))
+                        mine ? framed++ : wrong++
                 }
-                return slot && framed === App.puzzle.copiesOf(shape) && wrong === 0
+                return framed === App.puzzle.copiesOf(shape) && wrong === 0
             }, 1000, "the scene follows S" + (shape + 1))
         }
         mouseClick(item("puzzle.used.tile.2"), 40, 8)      // a tile
@@ -1730,13 +1736,64 @@ TestCase {
         const size = objects.value(copy, "frameSize")
         mouseClick(view, objects.value(copy, "frameX") + size / 2, objects.value(copy, "frameY") + size / 2)
         agree(1)
+        // empty space: none, and the card says how to pick one
+        mouseClick(view, 4, view.height - 4)
+        tryCompare(App.puzzle, "selectedPiece", -1)
+        verify(!item("puzzle.piece.view").visible)
+        verify(item("puzzle.piece.hint").visible)
+    }
+
+    // a zone's outline holds its heading, however small what it holds is
+    function test_aZoneIsWideEnoughForItsHeading() {
+        waitForRendering(win.contentItem)
+        const labels = App.viewport.sceneLabels
+        tryVerify(() => labels.count > 0 && labels.value(0, "kind") === "zone", 1000)
+        const zone = item("puzzle.scene.label.0.zone")
+        const heading = item("puzzle.scene.label.0.heading")
+        verify(zone.visible)
+        verify(zone.width >= heading.implicitWidth + heading.x - zone.x, zone.width + " < " + heading.implicitWidth)
+        verify(zone.width >= labels.value(0, "labelWidth"))
+    }
+
+    // C18's hover link: a tile under the pointer lights its copies in 3D, a copy its tile
+    function test_hoverLinksTheListsAndThe3dView() {
+        App.puzzle.stepPiece(1, 2)
+        App.puzzle.stepPiece(2, 1)
+        waitForRendering(win.contentItem)
+        const objects = App.viewport.sceneObjects
+        const lit = (shape) => {
+            let n = 0
+            for (let i = 0; i < objects.count; i++)
+                if (objects.value(i, "hovered"))
+                    n += objects.value(i, "shape") === shape ? 1 : 100
+            return n
+        }
+        mouseMove(item("puzzle.used.tile.1"), 40, 8)
+        tryCompare(App.puzzle, "hoveredPiece", 1)
+        tryVerify(() => lit(1) === 2, 1000, "both copies of S2 lit")
+        verify(item("puzzle.library.chip.1").linked)
+        mouseMove(item("puzzle.used.tile.2"), 40, 8)
+        tryCompare(App.puzzle, "hoveredPiece", 2)
+
+        let copy = -1
+        for (let i = 0; i < objects.count && copy < 0; i++)
+            if (objects.value(i, "role") === "piece" && objects.value(i, "shape") === 1)
+                copy = i
+        const view = item("entities.viewport.surface")
+        const size = objects.value(copy, "frameSize")
+        mouseMove(view, objects.value(copy, "frameX") + size / 2, objects.value(copy, "frameY") + size / 2)
+        tryCompare(App.puzzle, "hoveredPiece", 1)
+        verify(item("puzzle.used.tile.1").linked)
+        verify(!item("puzzle.used.tile.2").linked)
+        mouseMove(view, 4, view.height - 4)
+        tryCompare(App.puzzle, "hoveredPiece", -1)
     }
 
     // C18: a hovered copy gets a dashed frame, a selected one a solid frame
     function test_aHoveredCopyIsFramedDashedASelectedOneSolid() {
         App.puzzle.stepPiece(1, 1)
         App.puzzle.stepPiece(2, 1)
-        App.puzzle.selectPiece(1)               // the Selected slot is there before and after
+        App.puzzle.selectPiece(1)               // the scene's emphasis is there before and after
         waitForRendering(win.contentItem)
         const objects = App.viewport.sceneObjects
         let copy = -1

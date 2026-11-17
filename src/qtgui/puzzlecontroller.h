@@ -65,6 +65,9 @@ class PuzzleController : public QObject {
   Q_PROPERTY(QString sceneName READ sceneName NOTIFY stateChanged FINAL)
   // the shape selected in the lists, -1 for none: it need not be in the problem
   Q_PROPERTY(int selectedPiece READ selectedPiece WRITE selectPiece NOTIFY selectedPieceChanged FINAL)
+  /* the piece under the pointer in the lists or the 3D view, -1 for none:
+   * each of them lights it up (C18, the hover link) */
+  Q_PROPERTY(int hoveredPiece READ hoveredPiece WRITE setHoveredPiece NOTIFY hoveredPieceChanged FINAL)
 
   Q_PROPERTY(RowsModel * problems READ problems CONSTANT FINAL)
   Q_PROPERTY(RowsModel * goal READ goal CONSTANT FINAL)
@@ -111,6 +114,8 @@ public:
   bool canDeleteProblem(void) const { return m_view.canDeleteProblem; }
   QString sceneName(void) const { return m_view.sceneName; }
   int selectedPiece(void) const { return m_piece; }
+  int hoveredPiece(void) const { return m_hovered; }
+  void setHoveredPiece(int shape);
 
   RowsModel * problems(void) const { return m_problems; }
   RowsModel * goal(void) const { return m_goal; }
@@ -225,6 +230,7 @@ signals:
 
   void problemChanged(void);
   void selectedPieceChanged(void);
+  void hoveredPieceChanged(void);
   void stateChanged(void);
   void viewChanged(void);
 
@@ -306,6 +312,7 @@ private:
   int m_problem = -1;
   int m_problemShown = -1;         ///< the problem QML last heard of (problemChanged)
   int m_piece = -1;
+  int m_hovered = -1;
   /* the shape whose Min and Max stay on show though they are equal: the
    * switch was turned on, and stepping must not take them away */
   int m_rangeHeld = -1;

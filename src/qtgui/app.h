@@ -38,6 +38,7 @@
 #include "settingscontroller.h"
 #include "shapesmodel.h"
 #include "statuscontroller.h"
+#include "pieceviewcontroller.h"
 #include "stlexportcontroller.h"
 #include "toolscontroller.h"
 #include "viewportcontroller.h"
@@ -75,6 +76,8 @@ class App : public QObject {
   Q_PROPERTY(CommandController * commands READ commands CONSTANT FINAL)
   Q_PROPERTY(EditorController * editor READ editor CONSTANT FINAL)
   Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
+  // the Selected piece card's view of the piece (C17)
+  Q_PROPERTY(PieceViewController * pieceView READ pieceView CONSTANT FINAL)
   Q_PROPERTY(InspectorController * inspector READ inspector CONSTANT FINAL)
   Q_PROPERTY(PuzzleController * puzzle READ puzzle CONSTANT FINAL)
   Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
@@ -111,6 +114,7 @@ public:
   CommandController * commands(void) const { return m_commands; }
   EditorController * editor(void) const { return m_editor; }
   ViewportController * viewport(void) const { return m_viewport; }
+  PieceViewController * pieceView(void) const { return m_pieceView; }
   InspectorController * inspector(void) const { return m_inspector; }
   PuzzleController * puzzle(void) const { return m_puzzle; }
   ToolsController * tools(void) const { return m_tools; }
@@ -168,6 +172,7 @@ private:
   CommandController * m_commands;
   EditorController * m_editor;
   ViewportController * m_viewport;
+  PieceViewController * m_pieceView;
   InspectorController * m_inspector;
   PuzzleController * m_puzzle;
   ToolsController * m_tools;
