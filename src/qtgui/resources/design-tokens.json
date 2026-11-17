@@ -21,12 +21,16 @@
       "muted": "#667085",
       "accent": "#2f6df6",
       "accentSoft": "rgba(47,109,246,0.12)",
+      "onAccent": "#ffffff",
+      "controlLine": "#868e9d",
       "canvas": "#e4e8ef",
       "axisX": "#e5484d",
       "axisY": "#2fa85a",
       "axisZ": "#2f6df6",
       "danger": "#d92d20",
       "dangerText": "#b42318",
+      "ok": "#1a7f37",
+      "warn": "#b54708",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "dark": {
@@ -40,12 +44,16 @@
       "muted": "#8d96a6",
       "accent": "#5b9bff",
       "accentSoft": "rgba(91,155,255,0.16)",
+      "onAccent": "#0b1220",
+      "controlLine": "#707a8c",
       "canvas": "#0f1115",
       "axisX": "#ff6b70",
       "axisY": "#4bd17f",
       "axisZ": "#5b9bff",
       "danger": "#ff7066",
       "dangerText": "#ff7066",
+      "ok": "#4cc38a",
+      "warn": "#f5b454",
       "scrim": "rgba(10,12,16,0.5)"
     },
     "glyph": {
@@ -208,8 +216,9 @@
       "drawSwatch": 32,
       "puzzleTile": [
         96,
-        50
+        44
       ],
+      "libraryChip": 26,
       "solverListRow": 28,
       "player": 112,
       "pieceDisplay": 104
@@ -251,8 +260,9 @@
       "drawSwatch": 26,
       "puzzleTile": [
         78,
-        46
+        40
       ],
+      "libraryChip": 24,
       "solverListRow": 26,
       "player": 84,
       "pieceDisplay": 76,

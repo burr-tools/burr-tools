@@ -91,8 +91,10 @@ TestCase {
         reveal(findChild(win.contentItem, "gallery." + rowName))
         const hover = findChild(win.contentItem, "gallery." + rowName + ".hover")
         const focus = findChild(win.contentItem, "gallery." + rowName + ".focus")
-        if (focus)
+        if (focus) {
+            keyClick(Qt.Key_Up)                          // a ring shows while the keyboard navigates
             focus.control.forceActiveFocus(Qt.TabFocusReason)
+        }
         if (hover)
             mouseMove(hover.control, hover.control.width / 2, hover.control.height / 2)
     }
@@ -140,7 +142,7 @@ TestCase {
         // a loaded runner can leave the 150 ms animation unfinished after a fixed
         // wait; the off switch's track is the slowest thing to follow the theme
         const track = control("switch.off").background
-        tryVerify(() => near(track.color, Theme.line2, 1), 5000)
+        tryVerify(() => near(track.color, Theme.controlLine, 1), 5000)
     }
 
     function themes() {
@@ -151,7 +153,7 @@ TestCase {
 
     function test_everyBuiltPrimitiveHasARow() {
         for (const row of ["iconButton", "glyphButton", "actionButton", "accordion", "button", "stepper", "buttonPrimary", "toolbarButton", "railButton",
-                           "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                           "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                            "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                            "keyBadge", "chip", "card"])
             verify(findChild(win.contentItem, "gallery." + row) !== null, row)
@@ -271,7 +273,7 @@ TestCase {
         ])
         // PR-07 switch: off line2 track, on accent track, white knob that moves
         expectColors("switch", [
-            ["switch.off", 25, 9, line2, "switch off track"],
+            ["switch.off", 25, 9, Theme.controlLine, "switch off track"],
             ["switch.off", 9, 9, white, "switch off knob"],
             ["switch.on", 7, 9, accent, "switch on track"],
             ["switch.on", 23, 9, white, "switch on knob"],
@@ -349,11 +351,65 @@ TestCase {
         expectColors("dropdown", [ ["dropdown.normal", d.width - 0.25, 15, line2, "dropdown right border"] ])
     }
 
+    function test_aDashedFrameHasGapsOnEveryEdge_data() { return themes() }
+    function test_aDashedFrameHasGapsOnEveryEdge(data) {
+        // C16's drop zone and C18's hover frame: dashes along each edge, not a line
+        useTheme(data.theme)
+        arrange("dashedFrame")
+        const off = c => Math.max(Math.abs(c.r - Theme.accent.r), Math.abs(c.g - Theme.accent.g),
+                                  Math.abs(c.b - Theme.accent.b))
+        for (const name of ["dashedFrame.dropZone", "dashedFrame.sceneHover"]) {
+            const f = control(name)
+            const edges = {
+                top: i => [f, 12 + i, 0.5], bottom: i => [f, 12 + i, f.height - 0.5],
+                left: i => [f, 0.5, 12 + i], right: i => [f, f.width - 0.5, 12 + i]
+            }
+            for (const edge in edges) {
+                const points = []
+                for (let i = 0; i < 16; i++)
+                    points.push(edges[edge](i))
+                const d = Snapshots.colors(points).map(off)
+                verify(Math.min(...d) < 0.15, name + " " + edge + ": a dash, " + Math.min(...d))
+                verify(Math.max(...d) > 0.2, name + " " + edge + ": a gap, " + Math.max(...d))
+            }
+        }
+    }
+
+    // A hidden frame does not repaint as it is resized (the Puzzle scene hides one on
+    // every object and resizes them all at each frame of a zoom); shown, it paints once,
+    // at its size then (review 2026-11-15)
+    Component { id: dashedComponent; DashedFrame { objectName: "probe"; width: 60; height: 40 } }
+    SignalSpy { id: dashedPaints; signalName: "painted" }
+    function test_aHiddenDashedFrameDoesNotRepaint() {
+        const f = createTemporaryObject(dashedComponent, win.contentItem, { visible: false })
+        const canvas = findChild(f, "probe.outline")
+        dashedPaints.target = canvas
+        /* the Canvas's own first paint, once it is available, hidden or not: waited for, not
+         * timed (macOS CI's came after 50 ms), then a quiet while */
+        tryVerify(() => canvas.available, 2000)
+        for (let i = 0; i < 20 && dashedPaints.count === 0; i++)
+            wait(50)
+        wait(100)
+        dashedPaints.clear()
+        for (let i = 0; i < 6; i++) {
+            f.width = 61 + i
+            f.color = i % 2 ? Theme.accent : Theme.danger
+            wait(20)
+        }
+        compare(dashedPaints.count, 0, "no paint while hidden")
+        f.visible = true
+        tryVerify(() => dashedPaints.count === 1, 2000)
+        wait(50)
+        compare(dashedPaints.count, 1, "one paint when shown")
+        f.width = 80
+        tryVerify(() => dashedPaints.count === 2, 2000, "and again as it changes while shown")
+    }
+
     // --- reference images -------------------------------------------------------------
 
     function test_snapshots_data() {
         const rows = ["iconButton", "glyphButton", "actionButton", "accordion", "button", "buttonPrimary", "toolbarButton",
-                      "railButton", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
+                      "railButton", "pieceTile", "libraryChip", "summaryStrip", "matrixToggle", "dashedFrame", "segmented", "stepper", "switch", "checkBox", "radio", "radioCard", "checkRow", "dropdown",
                       "searchField", "numberField", "slider", "menuItem", "menuPanel", "tooltip",
                       "keyBadge", "chip", "card", "glyphs", "icons"]
         const out = []

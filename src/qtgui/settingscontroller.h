@@ -62,6 +62,7 @@ class SettingsController : public QObject {
    * a light / dark checker) or "stl" (the STL export's chamfered look, no
    * variable voxels); a new setting, no legacy counterpart */
   Q_PROPERTY(QString voxelStyle READ voxelStyle WRITE setVoxelStyle NOTIFY changed FINAL)
+  Q_PROPERTY(QString shapeColours READ shapeColours WRITE setShapeColours NOTIFY changed FINAL)
   // the 3D view's multisampling: "off", "2x", "4x" (default) or "8x"
   Q_PROPERTY(QString antialiasing READ antialiasing WRITE setAntialiasing NOTIFY changed FINAL)
   Q_PROPERTY(bool fadePieces READ fadePieces WRITE setFadePieces NOTIFY changed FINAL)
@@ -101,6 +102,7 @@ public:
   btui::Density densityValue(void) const;
   btui::Camera::RotationMethod rotationMethodValue(void) const;
   btui::VoxelStyle voxelStyleValue(void) const;
+  btui::ShapePalette shapeColoursValue(void) const;
   btui::Antialiasing antialiasingValue(void) const;
 
   QString theme(void) const;
@@ -127,6 +129,8 @@ public:
   void setRotationMethod(const QString & v);
   QString voxelStyle(void) const;
   void setVoxelStyle(const QString & v);
+  QString shapeColours(void) const;
+  void setShapeColours(const QString & v);
   QString antialiasing(void) const;
   void setAntialiasing(const QString & v);
   /* the samples per pixel antialiasing asks for: 1, 2, 4 or 8 */

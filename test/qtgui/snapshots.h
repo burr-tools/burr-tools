@@ -59,6 +59,19 @@ public:
   /* the grab's size in device pixels, and the window's device-pixel ratio */
   Q_INVOKABLE QSize grabSize(QQuickItem * item) const;
   Q_INVOKABLE qreal ratio(QQuickItem * item) const;
+
+  /* A double-click at x, y (dp, in the item's own coordinates), as a person
+   * makes one: two presses 10 ms apart. A TapHandler's doubleTapped needs
+   * that; TestCase's mouseDoubleClickSequence leaves each press a first tap. */
+  Q_INVOKABLE void doubleClick(QQuickItem * item, qreal x, qreal y) const;
+
+  /* The undo history's memory budget left with no room (true), so that an
+   * edit dropping solutions warns they are too big to keep; false puts the
+   * budget back. */
+  Q_INVOKABLE void leaveNoRoomForSolutions(bool full);
+
+private:
+  size_t m_budget = 0;      // the budget before leaveNoRoomForSolutions(true); 0: none taken
 };
 
 #endif

@@ -41,7 +41,7 @@ Against:
 The decision held: `burrtools-qt` (Qt 6 Quick, the 3D view on QRhi) is a
 working preview next to the FLTK program, in CI on Linux, Windows and macOS.
 Phase-by-phase status, and what is deferred to the next phase and why, are
-in [`src/qtgui/README.md`](../src/qtgui/README.md#status-the-first-cut).
+in [`src/qtgui/README.md`](../src/qtgui/README.md#status).
 
 Some of the estimates below can now be checked against measurements
 (Windows, release build, PelikanBurr open; details in
@@ -89,6 +89,7 @@ Where the two GUIs implement the same behaviour:
 | Open, save, import `.puz` | `uicore/documentsession`: writes beside the file and renames over it; an imported `.puz` is unsaved and has no name | `mainWindow_c` (`cb_Save`, `tryToLoad`, `cb_Load_Ps3d`): writes the file in place; keeps the `.puz` name | **to do:** legacy saves through the atomic write |
 | Convert, Import assemblies, Status | `uicore/puzzletools`: an import that adds nothing records no undo step | `convertwindow`, `assmimportwindow`, `statuswindow` | **to do:** legacy calls `btui::puzzletools` |
 | Colour list: add, edit, remove | `uicore/drawcolours` (P3): add stops at the library's 63; remove asks before it loses solutions | `mainWindow_c` `cb_AddColor`, `cb_ChangeColor`, `cb_RemoveColor`, `changeColor` | separate; legacy calls `btui::drawcolours` when it is next touched (rule 3) -- its Add can reach the library's assert at 63 colours |
+| Problems: new, copy, delete, label, reorder; result, counts, ranges, groups, colour rules | `uicore/problemlist` (P10): a new problem's result is the first shape; delete keeps one problem; an edit that costs solutions warns once a session | `mainWindow_c` `cb_NewProblem`, `cb_CopyProblem`, `cb_DeleteProblem`, `cb_RenameProblem`, `cb_ProblemExchange`, `cb_ShapeToResult`, `cb_AddShapeToProblem`, `cb_RemoveShapeFromProblem`, `cb_SetAllRange`, `cb_AllowColor`, `cb_DisallowColor`, `groupsEditor_c` | separate; legacy calls `btui::problemlist` when it is next touched (rule 3) |
 | Shape list: new, copy, delete, label, weight, reorder | `uicore/shapelist` (P2): weight stops at 0; delete keeps one shape and asks before it loses solutions | `mainWindow_c` `cb_NewShape`, `cb_CopyShape`, `cb_DeleteShape`, `cb_NameShape`, `cb_WeightChange`, `cb_ShapeExchange` | separate; legacy calls `btui::shapelist` when it is next touched (rule 3) |
 | Image and vector export, the 3D view | `uicore/imagepages`, `vectorexport`, `assemblyscene`, drawn on QRhi | `imageExport_c`, gl2ps, `voxelFrame_c` | separate by design: different renderers |
 | Settings | `uicore/settingsstore`, seeded once from legacy's file | `configuration_c` | separate by design; legacy's file is never written |

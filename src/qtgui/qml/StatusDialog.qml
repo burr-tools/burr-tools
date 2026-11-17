@@ -228,6 +228,7 @@ BtDialog {
                                 anchors { fill: parent; leftMargin: 7; rightMargin: 7 }
                                 verticalAlignment: Text.AlignVCenter
                                 text: row.idText
+                                textFormat: Text.PlainText
                                 elide: Text.ElideRight
                                 color: root.model.chipTextColor(row.index)
                                 font.pixelSize: Theme.fontSecondary

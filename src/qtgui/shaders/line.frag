@@ -12,6 +12,7 @@ layout(std140, binding = 0) uniform Buf {
     mat4 mvp;
     vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light,
                      // w: the least coverage drawn (0.5: the solid core's depth alone)
+    mat4 proj;
 } ubuf;
 
 vec3 toLinear(vec3 c)

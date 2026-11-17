@@ -20,6 +20,8 @@
  */
 #include "drawcolours.h"
 
+#include "problemlist.h"
+
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
@@ -111,9 +113,7 @@ namespace btui {
       return false;
     bool loses = false;
     forProblemsUsingColour(p, unsigned(id), [&](unsigned int k) {
-      const problem_c * pr = p.getProblem(k);
-      const solveState_e st = pr->getSolveState();
-      if (pr->getNumberOfSavedSolutions() > 0 || st == SS_SOLVING || st == SS_SOLVED)
+      if (problemHasSolutions(p, int(k)))
         loses = true;
     });
     return loses;

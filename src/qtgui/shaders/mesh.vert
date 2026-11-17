@@ -19,7 +19,8 @@ layout(std140, binding = 0) uniform Buf {
     vec4 light;      // xyz: light direction in view space; w: 1 lit, 0 flat
     vec4 dim;        // x: layer axis (0, 1, 2; < 0 = no dimming), y: layer, z: alpha outside it, w: alpha of everything
     vec4 outline;    // x: width in pixels, y: strength, z: dash length in pixels, w: depth bias
-    vec4 misc;       // x: 1 when drawing in linear light
+    vec4 misc;       // x: 1 when drawing in linear light, y: 1 when `cell` is the object's place in view space
+    mat4 proj;
 } ubuf;
 
 void main()
@@ -37,6 +38,8 @@ void main()
     vAlpha = a;
 
     gl_Position = ubuf.mvp * vec4(position, 1.0);
+    if (ubuf.misc.y > 0.5)
+        gl_Position += ubuf.proj * vec4(cell, 0.0);
     // the layer slab's faces lie exactly on voxel faces in the flat style;
     // a hair toward the viewer, so it tints them rather than fighting them
     gl_Position.z -= ubuf.outline.w * gl_Position.w;

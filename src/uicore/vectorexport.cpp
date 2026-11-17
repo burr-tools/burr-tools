@@ -20,6 +20,8 @@
  */
 #include "vectorexport.h"
 
+#include "camera.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -56,14 +58,17 @@ namespace btui {
       const VectorInput & in;
       Mat4 mvp;
 
-      Projected project(const float * p) const {
+      /* `offset`, in view space, goes after the rotation: the shaders' proj * (offset, 0) */
+      Projected project(const float * p, Vec3 offset = {}) const {
         const Vec3 v{ p[0], p[1], p[2] };
         const Mat4 & m = mvp;
-        const float cx = m(0, 0) * v.x + m(0, 1) * v.y + m(0, 2) * v.z + m(0, 3);
-        const float cy = m(1, 0) * v.x + m(1, 1) * v.y + m(1, 2) * v.z + m(1, 3);
-        const float cw = m(3, 0) * v.x + m(3, 1) * v.y + m(3, 2) * v.z + m(3, 3);
+        const Mat4 & q = in.projection;
+        const Vec3 o = offset;
+        const float cx = m(0, 0) * v.x + m(0, 1) * v.y + m(0, 2) * v.z + m(0, 3) + q(0, 0) * o.x + q(0, 1) * o.y + q(0, 2) * o.z;
+        const float cy = m(1, 0) * v.x + m(1, 1) * v.y + m(1, 2) * v.z + m(1, 3) + q(1, 0) * o.x + q(1, 1) * o.y + q(1, 2) * o.z;
+        const float cw = m(3, 0) * v.x + m(3, 1) * v.y + m(3, 2) * v.z + m(3, 3) + q(3, 0) * o.x + q(3, 1) * o.y + q(3, 2) * o.z;
         const Mat4 & w = in.view;
-        const float vz = w(2, 0) * v.x + w(2, 1) * v.y + w(2, 2) * v.z + w(2, 3);
+        const float vz = w(2, 0) * v.x + w(2, 1) * v.y + w(2, 2) * v.z + w(2, 3) + o.z;
         Projected r{ 0, 0, -vz, cw > 1e-6f };
         if (r.ok) {
           r.x = (cx / cw + 1.0f) * 0.5f * in.width;
@@ -101,7 +106,10 @@ namespace btui {
 
       void triangles(const std::vector<MeshVertex> & tris, bool cull, bool lit, bool dim, VectorPage & page) const {
         for (size_t i = 0; i + 2 < tris.size(); i += 3) {
-          const Projected a = project(tris[i].pos), b = project(tris[i + 1].pos), c = project(tris[i + 2].pos);
+          const auto at = [&](const MeshVertex & v) {
+            return project(v.pos, in.anchored ? Vec3{ v.cell[0], v.cell[1], v.cell[2] } : Vec3{});
+          };
+          const Projected a = at(tris[i]), b = at(tris[i + 1]), c = at(tris[i + 2]);
           if (!a.ok || !b.ok || !c.ok)
             continue;
           // counter-clockwise is the front, as in the renderer; y runs down
@@ -359,7 +367,7 @@ namespace btui {
     if (in.lines) {
       for (const auto & l : *in.lines) {
         const float a3[3] = { l.a.x, l.a.y, l.a.z }, b3[3] = { l.b.x, l.b.y, l.b.z };
-        const Projected a = pr.project(a3), b = pr.project(b3);
+        const Projected a = pr.project(a3, l.offset), b = pr.project(b3, l.offset);
         if (!a.ok || !b.ok)
           continue;
         VectorPrimitive p;
@@ -382,6 +390,56 @@ namespace btui {
     std::stable_sort(page.prims.begin(), page.prims.end(),
                      [](const VectorPrimitive & x, const VectorPrimitive & y) { return x.depth > y.depth; });
     return page;
+  }
+
+  VectorPage shapePicture(const voxel_c & shape, Rgb colour, float size, float margin) {
+    VectorPage out;
+    out.width = out.height = size;
+    MeshOptions o;
+    o.piece = colour;
+    o.variableAlpha = 1;
+    const ShapeMesh mesh = buildShapeMesh(shape, o);
+    if (mesh.empty() || size <= 2 * margin)
+      return out;
+
+    Camera camera;
+    camera.setViewport(size, size);
+    camera.setScene((mesh.boundsMin + mesh.boundsMax) * 0.5f,
+                    std::max(0.5f, length(mesh.boundsMax - mesh.boundsMin) * 0.5f));
+    camera.setOrientation(Camera::homeOrientation());
+    camera.setProjection(Camera::Projection::Orthographic);
+    VectorInput in;
+    in.mesh = &mesh;
+    in.view = camera.viewMatrix();
+    in.projection = camera.projectionMatrix();
+    in.width = in.height = size;
+    VectorPage page = projectScene(in);
+
+    // the framing sphere leaves room around the shape: scale it to the square
+    float x0 = size, y0 = size, x1 = 0, y1 = 0;
+    for (const VectorPrimitive & p : page.prims)
+      if (p.kind == VectorPrimitive::Kind::Polygon)
+        for (size_t i = 0; i + 1 < p.xy.size(); i += 2) {
+          x0 = std::min(x0, p.xy[i]);
+          x1 = std::max(x1, p.xy[i]);
+          y0 = std::min(y0, p.xy[i + 1]);
+          y1 = std::max(y1, p.xy[i + 1]);
+        }
+    if (x1 <= x0 || y1 <= y0)
+      return out;
+    const float room = size - 2 * margin;
+    const float k = std::min(room / (x1 - x0), room / (y1 - y0));
+    const float dx = (size - (x1 - x0) * k) / 2 - x0 * k, dy = (size - (y1 - y0) * k) / 2 - y0 * k;
+    for (VectorPrimitive & p : page.prims) {
+      if (p.kind != VectorPrimitive::Kind::Polygon)
+        continue;
+      for (size_t i = 0; i + 1 < p.xy.size(); i += 2) {
+        p.xy[i] = p.xy[i] * k + dx;
+        p.xy[i + 1] = p.xy[i + 1] * k + dy;
+      }
+      out.prims.push_back(std::move(p));
+    }
+    return out;
   }
 
   std::string writeVector(const VectorPage & page, VectorFormat f, const std::string & baseName) {

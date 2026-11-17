@@ -449,6 +449,10 @@ public:
 
     /** nothing to put back: no solution, no search state, no counts */
     bool empty(void) const;
+
+    /** about how many bytes the record holds: the solutions with their
+     *  disassemblies, the stash, the search state */
+    size_t memoryBytes(void) const;
   };
 
   /**
@@ -458,6 +462,10 @@ public:
    * As removeAllSolutions(), not while a solver works on the problem.
    */
   void swapSolveRecord(solveRecord_t & r);
+
+  /** What the record swapSolveRecord() would take out holds, in bytes
+   *  (solveRecord_t::memoryBytes), measured where it is. */
+  size_t solveRecordBytes(void) const;
 
   /** \name  functions used while solving the puzzle.
    * the assembler engine can be put into the problem to save it together

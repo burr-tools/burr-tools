@@ -2,24 +2,23 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// A question before a change undo cannot fully take back: deleting a shape
-// or removing a colour that solutions depend on (C01, C09; product decision
-// 2026-10-27). Cancel is the default; the change is the danger button. Its
-// buttons are named after the dialog: <objectName>.cancel, .confirm.
+// A question before a change undo cannot fully take back: the session's
+// warning that edits remove solutions (DocumentController::mayCostSolutions).
+// Cancel is the default; the change is the danger button. Its buttons are
+// named after the dialog: <objectName>.cancel, .confirm.
 //
 // Wireframe (each number marks its code below):
 //
-//   ┌ Delete S3? ───────────────────────────────┐
-//   │ ① A problem that uses S3 has solutions    │
-//   │   or a search in progress. ...            │
+//   ┌ Edits remove stored solutions ────────────┐
+//   │ ① This edit removes the stored solutions  │
+//   │   of the problems it touches ...          │
 //   ├───────────────────────────────────────────┤
-//   │ ②                     [Cancel] [Delete]   │
+//   │ ②                   [Cancel] [Continue]   │
 //   └───────────────────────────────────────────┘
 BtDialog {
     id: root
     property string text
     property string confirmText: qsTr("Delete")
-    property int subject: -1           // what it asks about: a shape's row, a colour's id
     signal confirmed()
 
     defaultButton: cancelButton
@@ -39,6 +38,7 @@ BtDialog {
         font.pixelSize: Theme.fontBody
         lineHeight: 1.35
         text: root.text
+        textFormat: Text.PlainText
     }
 
     footer: Item { // ②
@@ -56,9 +56,11 @@ BtDialog {
                 objectName: root.objectName + ".confirm"
                 text: root.confirmText
                 danger: true
+                // the answer first: closing is what Cancel and Esc do, and a
+                // handler of closed must find it answered
                 onClicked: {
-                    root.close()
                     root.confirmed()
+                    root.close()
                 }
             }
         }

@@ -21,6 +21,8 @@
 #ifndef BTQT_THEME_H
 #define BTQT_THEME_H
 
+#include "../uicore/shapecolours.h"
+
 #include <QColor>
 #include <QHash>
 #include <QObject>
@@ -64,6 +66,10 @@ class Theme : public QObject {
   Q_PROPERTY(QColor muted READ muted NOTIFY changed FINAL)
   Q_PROPERTY(QColor accent READ accent NOTIFY changed FINAL)
   Q_PROPERTY(QColor accentSoft READ accentSoft NOTIFY changed FINAL)
+  // text and marks on the accent, 4.5:1 in both themes
+  Q_PROPERTY(QColor onAccent READ onAccent NOTIFY changed FINAL)
+  // the edge of a control that has no other shape: 3:1 on the panels (WCAG 1.4.11)
+  Q_PROPERTY(QColor controlLine READ controlLine NOTIFY changed FINAL)
   Q_PROPERTY(QColor accentEdge READ accentEdge NOTIFY changed FINAL)
   Q_PROPERTY(QColor canvas READ canvas NOTIFY changed FINAL)
   Q_PROPERTY(QColor axisX READ axisX NOTIFY changed FINAL)
@@ -72,6 +78,9 @@ class Theme : public QObject {
   Q_PROPERTY(QColor danger READ danger NOTIFY changed FINAL)
   /* danger as text on panel and panel2 (a menu's Delete): >= 4.5:1 on both */
   Q_PROPERTY(QColor dangerText READ dangerText NOTIFY changed FINAL)
+  /* a good and a doubtful state, as text and icon on panel: >= 4.5:1 */
+  Q_PROPERTY(QColor ok READ ok NOTIFY changed FINAL)
+  Q_PROPERTY(QColor warn READ warn NOTIFY changed FINAL)
   Q_PROPERTY(QColor scrim READ scrim NOTIFY changed FINAL)
 
   // type scale (design-tokens.md section 2), in dp
@@ -112,6 +121,9 @@ class Theme : public QObject {
   Q_PROPERTY(double planeWidth READ planeWidth NOTIFY changed FINAL)
   Q_PROPERTY(double planeHeight READ planeHeight NOTIFY changed FINAL)
   Q_PROPERTY(double layerStrip READ layerStrip NOTIFY changed FINAL)
+  Q_PROPERTY(double puzzleTileWidth READ puzzleTileWidth NOTIFY changed FINAL)
+  Q_PROPERTY(double puzzleTileHeight READ puzzleTileHeight NOTIFY changed FINAL)
+  Q_PROPERTY(double libraryChip READ libraryChip NOTIFY changed FINAL)
   Q_PROPERTY(double layerChipWidth READ layerChipWidth NOTIFY changed FINAL)
   Q_PROPERTY(double layerChipHeight READ layerChipHeight NOTIFY changed FINAL)
   Q_PROPERTY(double drawSwatch READ drawSwatch NOTIFY changed FINAL)
@@ -155,6 +167,10 @@ public:
   QString density(void) const { return m_minimal ? QStringLiteral("minimal") : QStringLiteral("standard"); }
   void setDensity(const QString & d);
   bool dark(void) const { return m_dark; }
+  /* Settings ▸ Shape colours */
+  void setShapePalette(btui::ShapePalette p);
+  /* what a shape is shown in: the table's colours without a Theme (a test) */
+  static btui::ShapeColours shapeColours(void);
 
   /* What the theme asks the platform for, so its own drawing (title bar,
    * native dialogs) matches: Light or Dark when forced, Unknown -- the
@@ -179,6 +195,8 @@ public:
   QColor muted(void) const { return col("muted"); }
   QColor accent(void) const { return col("accent"); }
   QColor accentSoft(void) const { return col("accentSoft"); }
+  QColor onAccent(void) const { return col("onAccent"); }
+  QColor controlLine(void) const { return col("controlLine"); }
   /* the accent at 35 %: the faint edge round a selected row */
   QColor accentEdge(void) const { QColor c = accent(); c.setAlphaF(0.35f); return c; }
   QColor canvas(void) const { return col("canvas"); }
@@ -187,6 +205,8 @@ public:
   QColor axisZ(void) const { return col("axisZ"); }
   QColor danger(void) const { return col("danger"); }
   QColor dangerText(void) const { return col("dangerText"); }
+  QColor ok(void) const { return col("ok"); }
+  QColor warn(void) const { return col("warn"); }
   QColor scrim(void) const { return col("scrim"); }
 
   qreal fontDialogTitle(void) const { return num("font.dialogTitle"); }
@@ -228,6 +248,9 @@ public:
   qreal planeWidth(void) const { return dens("plane.0"); }
   qreal planeHeight(void) const { return dens("plane.1"); }
   qreal layerStrip(void) const { return dens("layerStrip"); }
+  qreal puzzleTileWidth(void) const { return dens("puzzleTile.0"); }
+  qreal puzzleTileHeight(void) const { return dens("puzzleTile.1"); }
+  qreal libraryChip(void) const { return dens("libraryChip"); }
   qreal layerChipWidth(void) const { return dens("layerChip.0"); }
   qreal layerChipHeight(void) const { return dens("layerChip.1"); }
   /* the Drawing colour footer's big swatch */
@@ -267,6 +290,8 @@ public:
   static QColor parseColor(const QString & s);
 
 signals:
+  /* the shape colours on show changed: their palette, or the theme */
+  void shapeColoursChanged(void);
 
   void changed(void);
 
@@ -284,6 +309,7 @@ private:
 
   QString m_mode = QStringLiteral("light");      // the settings' default
   bool m_dark = false;
+  btui::ShapePalette m_shapePalette = btui::ShapePalette::Muted;
   Qt::ColorScheme m_systemScheme = Qt::ColorScheme::Unknown;
   int m_motionOverride = -1;                       ///< setReducedMotionForTesting
   bool m_minimal = false;

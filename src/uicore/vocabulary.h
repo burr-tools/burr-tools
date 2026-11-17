@@ -84,6 +84,10 @@ namespace btui {
     Term<Camera::RotationMethod>{ Camera::RotationMethod::Drag, "drag" },
     Term<Camera::RotationMethod>{ Camera::RotationMethod::Arcball, "arcball" });
 
+  inline constexpr auto kShapePalettes = vocabulary(ShapePalette::Muted,
+    Term<ShapePalette>{ ShapePalette::Muted, "muted" },
+    Term<ShapePalette>{ ShapePalette::Classic, "classic" });
+
   inline constexpr auto kVoxelStyles = vocabulary(VoxelStyle::Flat,
     Term<VoxelStyle>{ VoxelStyle::Flat, "flat" },
     Term<VoxelStyle>{ VoxelStyle::Legacy, "legacy" },

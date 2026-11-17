@@ -28,7 +28,9 @@
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
 
+#include <functional>
 #include <utility>
+#include <vector>
 
 /* The document as the GUI sees it: file name, modified state, undo/redo,
  * and the New / Open / Import / Save / Save as / Quit flows.
@@ -56,6 +58,8 @@ class DocumentController : public QObject {
   Q_PROPERTY(QString gridTypeName READ gridTypeName NOTIFY documentReplaced FINAL)
   Q_PROPERTY(QString comment READ comment NOTIFY stateChanged FINAL)
   Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged FINAL)
+  // the warning that edits remove solutions has been answered, this session
+  Q_PROPERTY(bool solutionsWarned READ solutionsWarned WRITE setSolutionsWarned NOTIFY solutionsWarnedChanged FINAL)
 
 public:
 
@@ -75,6 +79,25 @@ public:
   QString gridTypeName(void) const;
   QString comment(void) const;
   bool flowPending(void) const { return m_pending != Pending::None; }
+  bool solutionsWarned(void) const { return m_solutionsWarned; }
+  void setSolutionsWarned(bool warned);
+
+  /* Any edit removes the solutions it makes wrong, and they leave the file
+   * with the next save. They can be found again, so one warning a session
+   * says so, and from then on edits just go ahead. An edit asks here first,
+   * saying whether it costs solutions: true means go on now; false means the
+   * warning is up and `retry` runs if the user goes on. */
+  bool mayCostSolutions(bool costs, std::function<void()> retry);
+  /* A voxel edit of these shapes asks here instead (editVoxels), saying
+   * whether it drops solutions. Its undo step keeps them, so it goes on
+   * without a word -- unless they are too big for the history's memory
+   * budget (DocumentSession::keepsSolutionsOf): then they would be lost for
+   * good, and the warning says so every time. */
+  bool mayDropSolutions(bool drops, const std::vector<unsigned int> & shapes, std::function<void()> retry);
+  /* The same for a change to what these problems ask for (editProblems). */
+  bool mayDropProblemSolutions(bool drops, const std::vector<unsigned int> & problems, std::function<void()> retry);
+  /* the answer to solutionsWarningRequested() */
+  Q_INVOKABLE void resolveSolutionsWarning(bool goOn);
 
   /* The official voxel type names in the File ▸ New order (spec C14). The
    * legacy dialog's "Tetrahedra-Octahera" is corrected.
@@ -149,6 +172,7 @@ public:
     Voxels,       ///< the voxels or the size of a shape (shape -1: of several)
     Label,        ///< a shape's name or weight
     Palette,      ///< the colour list
+    Problem,      ///< what a problem holds, no shape's voxels (the 3D view of Entities stays)
   };
   Q_ENUM(Change)
 
@@ -179,6 +203,16 @@ public:
     });
   }
 
+  /* A change to what problems ask for (DocumentSession::editProblems):
+   * as edit(), and those problems lose their solutions -- to the undo
+   * step, which brings them back. */
+  template <class F> bool editProblems(puzzleHistory_c::actionKind_e kind, int selectedShape,
+                                       const std::vector<unsigned int> & problems, F && f) {
+    return tellEdit(Change::Problem, -1, selectedShape, [&] {
+      return m_session.editProblems(kind, sessionShape(selectedShape), problems, std::forward<F>(f));
+    });
+  }
+
 private:
 
   static unsigned int sessionShape(int shape) { return shape < 0 ? puzzleHistory_c::NO_SHAPE : unsigned(shape); }
@@ -205,6 +239,13 @@ private:
   }
 
 public:
+
+  /* The Puzzle workspace's selection around the next undo step
+   * (puzzleHistory_c::beginStep, endStep), and where the undo or redo just
+   * applied puts it (historyApplied). */
+  void beginStep(int problem, int piece, unsigned int coalesceKey);
+  void endStep(int problem, int piece);
+  puzzleHistory_c::selection_t restoredSelection(void) const { return m_restored; }
 
   /* A stroke of the voxel editor (DocumentSession::beginStroke): each
    * strokeEdit() is shown at once (puzzleEdited, Voxels), the undo step is
@@ -242,10 +283,18 @@ signals:
    * a redo or another edit while the button is still down. What it painted
    * is a step of its own; the drag that made it must paint no more. */
   void strokeInterrupted(void);
+  /* an undo or redo is about to apply: what is being typed goes in first */
+  void aboutToApplyHistory();
   /* Shapes or problems changed in place (not undo/redo): what changed, and
    * to which shape (-1: several, or none). selectedShape is the selection
    * the change asks for; -1 = no preference. */
   void puzzleEdited(int selectedShape, DocumentController::Change change, int shape);
+
+  void solutionsWarnedChanged(void);
+  /* an edit would cost solutions, the first this session; or tooBigToKeep,
+   * a voxel edit whose solutions the undo history has no room for: QML
+   * warns, then resolveSolutionsWarning() */
+  void solutionsWarningRequested(bool tooBigToKeep);
 
   void confirmDiscardRequested(const QString & action);
   void newFileTypeRequested(void);
@@ -267,9 +316,16 @@ private:
   void edited(int selectedShape, Change change, int shape);
   void finishLoad(const btui::DocumentSession::LoadResult & r, const QString & path);
   void setPending(Pending p);
+  /* the edit waits for the warning (mayCostSolutions, mayDropSolutions, mayDropProblemSolutions) */
+  bool holdForWarning(std::function<void()> retry, bool tooBigToKeep);
 
   btui::DocumentSession m_session;
   Pending m_pending = Pending::None;
+  bool m_solutionsWarned = false;
+  std::function<void()> m_heldEdit;      ///< the edit the solutions warning holds
+  bool m_heldTooBig = false;             ///< ... warned of as too big to keep (mayDropSolutions)
+  bool m_dropAnswered = false;           ///< that warning's held edit is running: it goes ahead
+  puzzleHistory_c::selection_t m_restored; ///< what the last undo or redo selected
   QString m_pendingPath;
   bool m_continueAfterSaveAs = false;
   QStringList m_startupFiles;

@@ -14,6 +14,7 @@ layout(std140, binding = 0) uniform Buf {
     vec4 dim;
     vec4 outline;    // x: width in pixels, y: strength, z: dash length in pixels, w: depth bias
     vec4 misc;       // x: 1 when drawing in linear light
+    mat4 proj;
 } ubuf;
 
 vec3 toLinear(vec3 c)

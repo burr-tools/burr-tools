@@ -3584,3 +3584,16 @@ bool assembler_0_c::canHandle(const problem_c & p) {
   return true;
 }
 
+
+namespace {
+  template <class T> size_t vectorBytes(const std::vector<T> & v) { return v.capacity() * sizeof(T); }
+}
+
+/* the matrix and the search's stacks, as assembler_1_c::memoryBytes() */
+size_t assembler_0_c::memoryBytes(void) const {
+  size_t bytes = sizeof(*this) + vectorBytes(left) + vectorBytes(right) + vectorBytes(upDown) +
+                 vectorBytes(colCount) + vectorBytes(rows) + vectorBytes(columns) + vectorBytes(piecePositions);
+  for (const SubtreeTask & t : parallelTasks)
+    bytes += sizeof(t) + vectorBytes(t.prefix);
+  return bytes;
+}

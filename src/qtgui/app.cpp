@@ -88,18 +88,27 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
   // Area mode is remembered, as legacy's "rubberband" is
   m_editor->setAreaMode(m_settings->areaMode());
   connect(m_editor, &EditorController::areaModeChanged, this, [this] { m_settings->setAreaMode(m_editor->areaMode()); });
-  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, this);
+  m_puzzle = new PuzzleController(m_document, m_shapes, m_layout, this);
+  m_viewport = new ViewportController(m_settings, m_document, m_shapes, m_layout, m_editor, m_puzzle, this);
+  m_pieceView = new PieceViewController(m_settings, m_document, m_layout, m_puzzle, m_viewport, this);
   m_inspector = new InspectorController(m_settings, m_document, m_shapes, m_editor, m_viewport, this);
-  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, this);
+  m_commands = new CommandController(m_settings, m_document, m_layout, m_viewport, m_editor, m_shapes, m_puzzle, this);
   connect(m_shapes, &ShapesModel::flashRequested, m_status, &StatusController::flash);
   connect(m_colours, &ColoursModel::flashRequested, m_status, &StatusController::flash);
   connect(m_editor, &EditorController::flashRequested, m_status, &StatusController::flash);
   connect(m_inspector, &InspectorController::flashRequested, m_status, &StatusController::flash);
+  connect(m_puzzle, &PuzzleController::flashRequested, m_status, &StatusController::flash);
+  connect(m_puzzle, &PuzzleController::announceRequested, m_status, &StatusController::announce);
   connect(m_document, &DocumentController::documentReplaced, m_status, &StatusController::endFlash);
   m_tools = new ToolsController(m_document, this);
   m_stl = new StlExportController(m_settings, m_document, m_shapes, this);
   m_images = new ImageExportController(m_settings, m_document, m_shapes, this);
   m_cues = new KeyboardCues(this);
+  m_builds = new BuildQueue(this);
+  /* the first of the work left for later: Puzzle's lists, which follow the
+   * puzzle only while Puzzle shows, so that its cards made in the background
+   * (Main.qml) hold the puzzle's rows */
+  m_builds->post(m_puzzle, [p = m_puzzle] { p->prepare(); return BuildQueue::Step::Done; }, false);
   // the menus' access keys, for Alt (none on macOS, whose labels carry none)
   {
     QString keys;
@@ -135,6 +144,8 @@ App::App(const QString & settingsFile, const QString & legacySettingsFile, QObje
       updateStatusText();
   });
   connect(m_layout, &LayoutController::changed, this, &App::updateStatusText);
+  connect(m_puzzle, &PuzzleController::problemChanged, this, &App::updateStatusText);
+  connect(m_puzzle, &PuzzleController::stateChanged, this, &App::updateStatusText);
   updateStatusText();
 }
 
@@ -193,8 +204,8 @@ QString App::version(void) const {
 }
 
 /* The live status sentence. Entities shows the selected shape's counts
- * (legacy StatPieceInfo); the Puzzle and Solver sentences arrive with those
- * workspaces.
+ * (legacy StatPieceInfo), Puzzle the problem's totals (legacy
+ * StatProblemInfo); the Solver's arrives with that workspace.
  */
 void App::updateStatusText(void) {
   const puzzle_c & p = m_document->session().puzzle();
@@ -203,6 +214,8 @@ void App::updateStatusText(void) {
     const voxel_c * v = p.getShape(unsigned(s));
     m_status->setLiveText(StatusController::shapeText(unsigned(s), v->countState(voxel_c::VX_FILLED),
                                                       v->countState(voxel_c::VX_VARIABLE)));
+  } else if (m_layout->workspace() == LayoutController::Puzzle) {
+    m_status->setLiveText(m_puzzle->statusText());
   } else {
     m_status->setLiveText(QString());
   }

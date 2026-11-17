@@ -21,6 +21,7 @@
 #include "shapesmodel.h"
 #include "documentcontroller.h"
 #include "guarded.h"
+#include "theme.h"
 
 #include "../uicore/palette.h"
 #include "../uicore/shapelist.h"
@@ -47,6 +48,11 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
   // the change names the shape to select: one selectedChanged, for the end state
   connect(doc, &DocumentController::historyApplied, this, [this](int, int shape) { refresh(false, shape); });
   connect(doc, &DocumentController::puzzleEdited, this, &ShapesModel::edited);
+  if (const Theme * t = Theme::instance())
+    connect(t, &Theme::shapeColoursChanged, this, [this] {
+      if (m_rows > 0)
+        emit dataChanged(index(0), index(m_rows - 1), { ColorRole, TextColorRole });
+    });
   refresh(true);
   select(0);
 }
@@ -66,8 +72,13 @@ const ShapesModel::Counts & ShapesModel::countsOf(int row) const {
 }
 
 QColor ShapesModel::chipColor(int i) {
-  btui::Rgb c = btui::pieceColor(i);
-  return QColor::fromRgbF(c.r, c.g, c.b);
+  // in the 8 bits a pixel has, so that what is drawn compares equal to it
+  const btui::Rgb c = Theme::shapeColours().of(i);
+  return QColor(qRound(c.r * 255), qRound(c.g * 255), qRound(c.b * 255));
+}
+
+QColor ShapesModel::chipTextColor(int i) {
+  return Theme::shapeColours().whiteText(i) ? QColor(Qt::white) : QColor(Qt::black);
 }
 
 QVariant ShapesModel::data(const QModelIndex & index, int role) const {
@@ -85,7 +96,7 @@ QVariant ShapesModel::data(const QModelIndex & index, int role) const {
     case IdTextRole:    return idTextOf(i);
     case LabelRole:     return QString::fromStdString(s->getName());
     case ColorRole:     return chipColor(i);
-    case TextColorRole: return btui::prefersWhiteText(i) ? QColor(Qt::white) : QColor(Qt::black);
+    case TextColorRole: return chipTextColor(i);
     case FixedRole:     return countsOf(i).fixed;
     case VariableRole:  return countsOf(i).variable;
     case WeightRole:    return s->getWeight();
@@ -150,7 +161,8 @@ void ShapesModel::edited(int selectedShape, DocumentController::Change change, i
       }
       break;
     case DocumentController::Change::Palette:
-      break;                                    // no row shows the colours
+    case DocumentController::Change::Problem:
+      break;                                    // no row shows the colours or a problem
     case DocumentController::Change::Structure:
       refresh(false, selectedShape);
       break;
@@ -179,9 +191,7 @@ void ShapesModel::requestDelete(int row) {
     const puzzle_c & p = m_doc->session().puzzle();
     if (!btui::canDeleteShape(p, row))
       return;
-    if (btui::deleteLosesSolutions(p, row))
-      emit deleteConfirmRequested(row, idTextOf(row));
-    else
+    if (m_doc->mayCostSolutions(btui::deleteLosesSolutions(p, row), [this, row] { deleteShape(row); }))
       deleteShape(row);
   });
 }
@@ -196,7 +206,10 @@ void ShapesModel::deleteShape(int row) {
    * are not selected). */
   const int keep = m_selected == row || m_selected < 0 ? std::min(row, n - 2)
                  : m_selected > row ? m_selected - 1 : m_selected;
-  if (!edit(keep, [&](puzzle_c & p) { return btui::deleteShape(p, row) >= 0; }))
+  emit shapesRenumbering();
+  const bool gone = edit(keep, [&](puzzle_c & p) { return btui::deleteShape(p, row) >= 0; });
+  emit shapesRenumbered(gone ? row : -1, -1);
+  if (!gone)
     return;
   // say what went, and that the shapes after it are renumbered (C01)
   if (row < n - 1)
@@ -215,7 +228,10 @@ void ShapesModel::moveShape(int from, int to) {
   if (!isRow(from))
     return;
   to = std::clamp(to, 0, count() - 1);
-  if (edit(to, [&](puzzle_c & p) { return btui::moveShape(p, from, to); }))
+  emit shapesRenumbering();
+  const bool moved = edit(to, [&](puzzle_c & p) { return btui::moveShape(p, from, to); });
+  emit shapesRenumbered(moved ? from : -1, to);
+  if (moved)
     emit flashRequested(tr("Order changed — shapes renumbered S1…S%1").arg(count()));
 }
 

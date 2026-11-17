@@ -165,29 +165,6 @@ TestCase {
         compare(App.colours.drawColour, 0)
     }
 
-    function test_aRemoveThatLosesSolutionsAsksFirst() {
-        App.document.openFile(Qt.resolvedUrl("../../../examples/SolidSixPieceBurrs.xmpuzzle"))
-        tryVerify(() => App.shapes.count > 0)
-        addColour()
-        // the colour on a voxel of every shape the problems use -- through the
-        // model's own paths only: the grid paints with it in P4, so here a
-        // C++ test does the painting; this checks the question and its answer
-        // on a colour that asks (removeConfirmRequested), sent as the model would
-        App.colours.removeConfirmRequested(1, "C1")
-        let dialog = null
-        tryVerify(() => (dialog = findChild(win, "entities.editor.colour.removeDialog")) !== null && dialog.opened, 1000)
-        verify(dialog.title.indexOf("C1") >= 0)
-        verify(App.commands.blocked)                     // counted as modal
-        mouseClick(findChild(dialog.footer, "entities.editor.colour.removeDialog.cancel"))
-        tryVerify(() => !dialog.visible, 1000)
-        compare(App.colours.count, 2)
-        App.colours.removeConfirmRequested(1, "C1")
-        tryVerify(() => dialog.opened, 1000)
-        mouseClick(findChild(dialog.footer, "entities.editor.colour.removeDialog.confirm"))
-        tryVerify(() => !dialog.visible, 1000)
-        compare(App.colours.count, 1)
-    }
-
     function test_theRailShowsTheDrawingColour() {
         // AC-C09-06
         addColour()

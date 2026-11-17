@@ -118,6 +118,11 @@ public:
   /** save into an xml node */
   void save(xmlWriter_c & xml, unsigned int piecenumber) const;
 
+  /** about how many bytes this state takes in memory */
+  size_t memoryBytes(void) const {
+    return sizeof(*this) + (dx.capacity() + dy.capacity() + dz.capacity()) * sizeof(int);
+  }
+
   /** set the position of a piece */
   void set(unsigned int piece, int x, int y, int z);
 
@@ -268,6 +273,9 @@ public:
   virtual unsigned int sumMoves(void) const override;
   virtual std::string movesText(void) const override;
 
+  /** about how many bytes this tree, its states and its subtrees take in memory */
+  size_t memoryBytes(void) const;
+
   void removePieces(unsigned int from, unsigned int cnt);
   void addNonPlacedPieces(unsigned int from, unsigned int cnt);
 
@@ -326,6 +334,9 @@ class separationInfo_c : public disassembly_c {
     virtual std::string movesText(void) const override;
     virtual unsigned int getSequenceLength(unsigned int x) const override;
     virtual unsigned int getNumSequences(void) const override;
+
+    /** about how many bytes this takes in memory */
+    size_t memoryBytes(void) const { return sizeof(*this) + values.capacity() * sizeof(unsigned int); }
 
     // no copying and assigning
     separationInfo_c(const separationInfo_c&) = delete;

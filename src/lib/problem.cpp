@@ -222,8 +222,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   maxHoles = 0xFFFFFFFF;
 
   std::string str = pars.getAttributeValue("maxHoles");
-  if (str.length())
-    maxHoles = atoi(str.c_str());
+  if (str.length()) {
+    const int holes = atoi(str.c_str());
+    if (holes < 0)
+      pars.exception("the maximal number of holes can not be negative");
+    maxHoles = holes;
+  }
 
   /* A hand-edited or corrupt file can claim any integer here, including
    * values outside the enum. The range check runs on the int, before the
@@ -256,6 +260,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
   }
 
   unsigned int pieces = 0;
+  bool partsRead = false;
 
   do
   {
@@ -266,6 +271,12 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
     if (pars.getName() == "shapes")  // parts are saved in this tag for historical reasons
     {
+      /* The stored solutions are read against the pieces listed so far, and
+       * every later use of them trusts that count. */
+      if (partsRead || solutions.size() > 0 || stashedAssemblies.size() > 0)
+        pars.exception("a problem can have only one shapes node, in front of its solutions");
+      partsRead = true;
+
       do
       {
         int state = pars.nextTag();
@@ -303,6 +314,11 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
 
           if (id >= puzzle.getNumberOfShapes())
             pars.exception("the shape ids must be for valid shapes");
+
+          // every part operation finds a shape's one part by its id
+          for (const auto & part : parts)
+            if (part->shapeId == id)
+              pars.exception("a shape can be listed only once in a problem");
 
           if (grp)
           {
@@ -902,6 +918,31 @@ problem_c::solveRecord_t & problem_c::solveRecord_t::operator=(solveRecord_t &&)
 bool problem_c::solveRecord_t::empty(void) const {
   return solutions.empty() && stashedAssemblies.empty() && !assm && assemblerState.empty() &&
          solveState == SS_UNSOLVED && numAssemblies == 0 && numSolutions == 0 && usedTime == 0;
+}
+
+namespace {
+  size_t solveBytes(const std::vector<std::unique_ptr<solution_c>> & solutions,
+                    const std::vector<std::unique_ptr<assembly_c>> & stash,
+                    const assembler_c * assm, const std::string & state, const std::string & version) {
+    size_t bytes = state.capacity() + version.capacity() +
+                   (solutions.capacity() + stash.capacity()) * sizeof(void *);
+    for (const auto & s : solutions)
+      bytes += s->memoryBytes();
+    for (const auto & a : stash)
+      bytes += a->memoryBytes();
+    if (assm)
+      bytes += assm->memoryBytes();
+    return bytes;
+  }
+}
+
+size_t problem_c::solveRecord_t::memoryBytes(void) const {
+  return sizeof(*this) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
+}
+
+size_t problem_c::solveRecordBytes(void) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  return sizeof(solveRecord_t) + solveBytes(solutions, stashedAssemblies, assm.get(), assemblerState, assemblerVersion);
 }
 
 void problem_c::swapSolveRecord(solveRecord_t & r) {

@@ -32,6 +32,7 @@ ToolTip {
     contentItem: Text {
         objectName: "tooltip.text"
         text: root.text
+        textFormat: Text.PlainText
         font: root.font
         color: Theme.text
         wrapMode: Text.Wrap

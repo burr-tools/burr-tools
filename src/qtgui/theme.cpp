@@ -199,7 +199,19 @@ bool Theme::updateDark(void) {
     return false;
   m_dark = d;
   emit changed();
+  emit shapeColoursChanged();
   return true;
+}
+
+void Theme::setShapePalette(btui::ShapePalette p) {
+  if (p == m_shapePalette)
+    return;
+  m_shapePalette = p;
+  emit shapeColoursChanged();
+}
+
+btui::ShapeColours Theme::shapeColours(void) {
+  return s_instance ? btui::ShapeColours{ s_instance->m_shapePalette, s_instance->m_dark } : btui::ShapeColours{};
 }
 
 QColor Theme::col(const QString & name) const {

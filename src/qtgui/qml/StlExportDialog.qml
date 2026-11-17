@@ -126,6 +126,7 @@ BtDialog {
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: shapeRow.label
+                                textFormat: Text.PlainText
                                 color: Theme.text
                                 font.pixelSize: Theme.fontSecondary
                                 elide: Text.ElideRight

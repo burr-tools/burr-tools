@@ -78,6 +78,10 @@ struct SceneFrame {
    * through them the faces of the far side, seen from behind, fill the
    * grooves -- left out, the seams show the background */
   bool cullBackFaces = true;
+  /* Each object turns about its own centre, in place (C18): the vertices lie
+   * around the origin, and each carries its place in view space in `cell`,
+   * added after the rotation (btui::buildPuzzleScene). */
+  bool anchored = false;
 };
 
 /* The 3D view's renderer on Qt's graphics abstraction (QRhi): Direct3D

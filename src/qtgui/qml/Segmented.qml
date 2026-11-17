@@ -33,8 +33,8 @@ FocusScope {
         anchors.fill: parent
         radius: Theme.radiusControl
         color: Theme.panel2
-        border.color: root.activeFocus ? Theme.accent : Theme.line
-        border.width: root.activeFocus ? 2 : 1
+        border.color: root.activeFocus && App.keyboardCues.navigating ? Theme.accent : Theme.line
+        border.width: root.activeFocus && App.keyboardCues.navigating ? 2 : 1
     }
     Row {
         id: row

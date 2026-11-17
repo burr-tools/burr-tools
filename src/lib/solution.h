@@ -103,6 +103,9 @@ public:
   /** get the solution number (0 if this solution has no disassembly */
   unsigned int getSolutionNumber(void) const { return solutionNum; }
 
+  /** about how many bytes this solution, its assembly and its disassembly take in memory */
+  size_t memoryBytes(void) const;
+
   /** remove an existing disassembly, and replace it by disassembly information */
   void removeDisassembly(void);
   /** add a new disassembly to this solution, deleting an old one, in

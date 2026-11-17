@@ -14,7 +14,7 @@ AbstractButton {
 
     background: Rectangle {
         radius: 9
-        color: root.checked ? Theme.accent : Theme.line2
+        color: root.checked ? Theme.accent : Theme.controlLine
         Behavior on color { ColorAnimation { duration: Theme.durSwitch } }
         Rectangle {
             width: 14; height: 14; radius: 7

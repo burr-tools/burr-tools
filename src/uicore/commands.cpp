@@ -118,6 +118,9 @@ namespace btui {
     constexpr sv scShapeDelMac[] = { "Backspace", "Del" };
     constexpr sv scShapeEarlier[] = { "Alt+Up" };
     constexpr sv scShapeLater[]  = { "Alt+Down" };
+    // the Puzzle workspace's pieces (C16): + also without Shift, on keyboards where it is Shift+=
+    constexpr sv scPieceMore[]   = { "+", "=" };
+    constexpr sv scPieceFewer[]  = { "-" };
 
     constexpr std::span<const sv> none;
 
@@ -186,6 +189,14 @@ namespace btui {
       { Command::ShapeDelete,      "shapes.delete",         "Delete",                 Menu::None,   false, scShapeDel,   scShapeDelMac, "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeMoveEarlier, "shapes.moveEarlier",    "Move earlier",           Menu::None,   false, scShapeEarlier, none,     "", "", "", Menu::None, Scope::ShapesList },
       { Command::ShapeMoveLater,   "shapes.moveLater",      "Move later",             Menu::None,   false, scShapeLater, none,       "", "", "", Menu::None, Scope::ShapesList },
+      { Command::ProblemRename, "problems.rename", "Rename…", Menu::None, false, scShapeRename, scShapeRenameMac, "", "", "", Menu::None, Scope::ProblemsList },
+      { Command::ProblemDuplicate, "problems.duplicate", "Duplicate", Menu::None, false, scShapeDup, none, "", "", "", Menu::None, Scope::ProblemsList },
+      { Command::ProblemDelete, "problems.delete", "Delete", Menu::None, false, scShapeDel, scShapeDelMac, "", "", "", Menu::None, Scope::ProblemsList },
+      { Command::ProblemMoveEarlier, "problems.moveEarlier", "Move earlier", Menu::None, false, scShapeEarlier, none, "", "", "", Menu::None, Scope::ProblemsList },
+      { Command::ProblemMoveLater, "problems.moveLater", "Move later", Menu::None, false, scShapeLater, none, "", "", "", Menu::None, Scope::ProblemsList },
+      { Command::PieceMore, "pieces.more", "One more", Menu::None, false, scPieceMore, none, "", "", "", Menu::None, Scope::PuzzlePieces },
+      { Command::PieceFewer, "pieces.fewer", "One fewer", Menu::None, false, scPieceFewer, none, "", "", "", Menu::None, Scope::PuzzlePieces },
+      { Command::PieceRemove, "pieces.remove", "Remove from puzzle", Menu::None, false, scShapeDel, scShapeDelMac, "", "", "", Menu::None, Scope::PuzzlePieces },
 
       // the focused 3D view: the mouse's orbit, pan and zoom, and the view cube's turns, rolls and faces
       { Command::ViewOrbitLeft,    "view.orbitLeft",        "Orbit left",             Menu::None,   false, scOrbitLeft,  none,       "", "", "", Menu::None, Scope::Viewport },

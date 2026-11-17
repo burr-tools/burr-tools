@@ -68,6 +68,9 @@ public:
 
   Q_INVOKABLE void home(void);
   Q_INVOKABLE void fit(void);
+  /* take this orientation at once, when it differs: another view's, which
+   * this one follows (the Selected piece card's view, PieceViewController) */
+  void followOrientation(btui::Quat q);
 
   // --- input from the view item, in dp ------------------------------------
 

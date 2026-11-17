@@ -63,6 +63,7 @@ Rectangle {
                         anchors { fill: parent; leftMargin: 7; rightMargin: 7 }
                         verticalAlignment: Text.AlignVCenter
                         text: row.modelData.label
+                        textFormat: Text.PlainText
                         elide: Text.ElideRight
                         color: row.modelData.textColor
                         font.pixelSize: Theme.fontSecondary

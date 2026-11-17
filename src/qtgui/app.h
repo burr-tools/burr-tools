@@ -22,11 +22,13 @@
 #define BTQT_APP_H
 
 // the controllers are Q_PROPERTY types, which moc needs complete
+#include "buildqueue.h"
 #include "coloursmodel.h"
 #include "commandcontroller.h"
 #include "documentcontroller.h"
 #include "editorcontroller.h"
 #include "inspectorcontroller.h"
+#include "puzzlecontroller.h"
 #include "imageexportcontroller.h"
 #include "keyboardcues.h"
 #include "updatecontroller.h"
@@ -36,6 +38,7 @@
 #include "settingscontroller.h"
 #include "shapesmodel.h"
 #include "statuscontroller.h"
+#include "pieceviewcontroller.h"
 #include "stlexportcontroller.h"
 #include "toolscontroller.h"
 #include "viewportcontroller.h"
@@ -73,7 +76,10 @@ class App : public QObject {
   Q_PROPERTY(CommandController * commands READ commands CONSTANT FINAL)
   Q_PROPERTY(EditorController * editor READ editor CONSTANT FINAL)
   Q_PROPERTY(ViewportController * viewport READ viewport CONSTANT FINAL)
+  // the Selected piece card's view of the piece (C17)
+  Q_PROPERTY(PieceViewController * pieceView READ pieceView CONSTANT FINAL)
   Q_PROPERTY(InspectorController * inspector READ inspector CONSTANT FINAL)
+  Q_PROPERTY(PuzzleController * puzzle READ puzzle CONSTANT FINAL)
   Q_PROPERTY(ToolsController * tools READ tools CONSTANT FINAL)
   Q_PROPERTY(StlExportController * stl READ stl CONSTANT FINAL)
   Q_PROPERTY(ImageExportController * images READ images CONSTANT FINAL)
@@ -81,6 +87,8 @@ class App : public QObject {
   Q_PROPERTY(UpdateController * updates READ updates CONSTANT FINAL)
   Q_PROPERTY(PopupWindowStyle * popupStyle READ popupStyle CONSTANT FINAL)
   Q_PROPERTY(NativeDialogs * nativeDialogs READ nativeDialogs CONSTANT FINAL)
+  // work that can wait: after start-up, a step at a time (buildqueue.h)
+  Q_PROPERTY(BuildQueue * builds READ builds CONSTANT FINAL)
   Q_PROPERTY(QString version READ version CONSTANT FINAL)
 
 public:
@@ -106,7 +114,9 @@ public:
   CommandController * commands(void) const { return m_commands; }
   EditorController * editor(void) const { return m_editor; }
   ViewportController * viewport(void) const { return m_viewport; }
+  PieceViewController * pieceView(void) const { return m_pieceView; }
   InspectorController * inspector(void) const { return m_inspector; }
+  PuzzleController * puzzle(void) const { return m_puzzle; }
   ToolsController * tools(void) const { return m_tools; }
   StlExportController * stl(void) const { return m_stl; }
   ImageExportController * images(void) const { return m_images; }
@@ -114,6 +124,7 @@ public:
   UpdateController * updates(void) const { return m_updates; }
   PopupWindowStyle * popupStyle(void) const { return m_popupStyle; }
   NativeDialogs * nativeDialogs(void) const { return m_nativeDialogs; }
+  BuildQueue * builds(void) const { return m_builds; }
 
   /* the primary screen's area for windows (without taskbar or dock) */
   Q_INVOKABLE QRect availableGeometry(void) const;
@@ -161,7 +172,9 @@ private:
   CommandController * m_commands;
   EditorController * m_editor;
   ViewportController * m_viewport;
+  PieceViewController * m_pieceView;
   InspectorController * m_inspector;
+  PuzzleController * m_puzzle;
   ToolsController * m_tools;
   StlExportController * m_stl;
   ImageExportController * m_images;
@@ -169,6 +182,7 @@ private:
   UpdateController * m_updates;
   PopupWindowStyle * m_popupStyle;
   NativeDialogs * m_nativeDialogs = nullptr;
+  BuildQueue * m_builds;
 };
 
 #endif

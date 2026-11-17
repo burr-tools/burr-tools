@@ -30,6 +30,7 @@
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
+#include <algorithm>
 #include <fstream>
 #include <random>
 #include <string>
@@ -260,12 +261,40 @@ namespace btui {
 
   puzzleHistory_c::undoResult_t DocumentSession::undo(void) {
     endStroke();
-    return hist->undo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->undo(puz.get());
+    noteSolutionsLost(held);
+    return r;
   }
 
   puzzleHistory_c::undoResult_t DocumentSession::redo(void) {
     endStroke();
-    return hist->redo(puz.get());
+    const long held = solutionsHeld();
+    const puzzleHistory_c::undoResult_t r = hist->redo(puz.get());
+    noteSolutionsLost(held);
+    return r;
+  }
+
+  void DocumentSession::beginStep(const puzzleHistory_c::selection_t & selection, unsigned int coalesceKey) {
+    hist->beginStep(selection, coalesceKey);
+  }
+
+  void DocumentSession::endStep(const puzzleHistory_c::selection_t & selection) {
+    hist->endStep(selection);
+  }
+
+  long DocumentSession::solutionsHeld(void) const {
+    long held = 0;
+    for (unsigned int i = 0; i < puz->getNumberOfProblems(); i++) {
+      const problem_c * pr = puz->getProblem(i);
+      held += long(pr->getNumberOfSavedSolutions()) + (pr->getSolveState() == SS_UNSOLVED ? 0 : 1);
+    }
+    return held + hist->solutionsKept() + puzzleHistory_c::solutionsIn(strokeLost);
+  }
+
+  void DocumentSession::noteSolutionsLost(long heldBefore) {
+    if (solutionsHeld() < heldBefore)
+      hist->markModified();
   }
 
   void DocumentSession::beginStroke(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape) {
@@ -336,15 +365,56 @@ namespace btui {
     return lost;
   }
 
+  puzzleHistory_c::discarded_t DocumentSession::takeSolutions(const std::vector<unsigned int> & problems) {
+    puzzleHistory_c::discarded_t taken;
+    for (unsigned int k : problems) {
+      if (k >= puz->getNumberOfProblems())
+        continue;
+      problem_c::solveRecord_t r;
+      puz->getProblem(k)->swapSolveRecord(r);
+      if (!r.empty())
+        taken.emplace_back(k, std::move(r));
+    }
+    return taken;
+  }
+
   void DocumentSession::keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded) {
     if (lost.empty())
       return;
-    if (recorded && hist->keepDiscarded(std::move(lost)))
-      return;
+    if (recorded)
+      switch (hist->keepDiscarded(std::move(lost))) {
+        case puzzleHistory_c::KEPT:
+          return;
+        case puzzleHistory_c::NO_ROOM:
+          // too big for the history: gone, and the file still has them
+          lost.clear();
+          hist->markModified();
+          return;
+        case puzzleHistory_c::NO_STEP:
+          break;
+      }
     // no step to keep them in: the edit changed nothing after all
     for (auto & [k, r] : lost)
       if (k < puz->getNumberOfProblems())
         puz->getProblem(k)->swapSolveRecord(r);
+  }
+
+  bool DocumentSession::keepsSolutionsOf(const std::vector<unsigned int> & shapes) const {
+    size_t bytes = puzzleHistory_c::bytesIn(strokeLost);
+    for (unsigned int k = 0; k < puz->getNumberOfProblems(); k++) {
+      const problem_c * pr = puz->getProblem(k);
+      if (std::any_of(shapes.begin(), shapes.end(), [pr](unsigned int s) { return pr->usesShape(s); }))
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + pr->solveRecordBytes();
+    }
+    return puzzleHistory_c::roomForSolutions(bytes);
+  }
+
+  bool DocumentSession::keepsSolutionsOfProblems(const std::vector<unsigned int> & problems) const {
+    size_t bytes = 0;
+    for (unsigned int k : problems)
+      if (k < puz->getNumberOfProblems())
+        bytes += sizeof(puzzleHistory_c::discarded_t::value_type) + puz->getProblem(k)->solveRecordBytes();
+    return puzzleHistory_c::roomForSolutions(bytes);
   }
 
   void DocumentSession::splitStroke(void) {

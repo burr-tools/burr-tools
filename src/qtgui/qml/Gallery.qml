@@ -275,6 +275,35 @@ ApplicationWindow {
                     Cell { kind: "compact"; ToolbarButton { iconName: "eye"; caption: "Display"; compact: true } }
                 }
                 GalleryRow {
+                    name: "pieceTile"; label: "PR-22 Piece tile"
+                    Cell { kind: "normal"; PieceTile { idText: "S3"; label: "Arm"; countText: "×1"; stripe: "#e5484d"; dragEnabled: false } }
+                    Cell { kind: "group"; PieceTile { idText: "S4"; label: "Long name"; countText: "0–2"; groupText: "G1"; stripe: "#2f6df6"; dragEnabled: false } }
+                    Cell { kind: "selected"; PieceTile { idText: "S6"; label: "A"; countText: "×3"; stripe: "#2fa85a"; selected: true; dragEnabled: false } }
+                }
+                GalleryRow {
+                    name: "libraryChip"; label: "PR-23 Library chip"
+                    Cell { kind: "normal"; LibraryChip { idText: "S2"; label: "Arm"; swatch: "#e5484d" } }
+                    Cell { kind: "used"; LibraryChip { idText: "S3"; countText: "×2"; swatch: "#2f6df6"; used: true } }
+                    Cell { kind: "selected"; LibraryChip { idText: "S4"; label: "Long piece name"; swatch: "#2fa85a"; selected: true } }
+                }
+                GalleryRow {
+                    name: "summaryStrip"; label: "PR-25 Summary strip"
+                    Cell { kind: "ok"; SummaryStrip { width: 280; ok: true; title: "Pieces can fill the result"; detail: "Result 19 voxels · Pieces n = 4, 19 voxels · Holes: 0" } }
+                    Cell { kind: "warn"; SummaryStrip { width: 280; ok: false; title: "Pieces cannot reach the result"; detail: "Result 19 voxels · Pieces n = 2, 8 voxels · Holes: 11" } }
+                }
+                GalleryRow {
+                    name: "matrixToggle"; label: "PR-26 Matrix toggle"
+                    Cell { kind: "off"; MatrixToggle {} }
+                    Cell { kind: "on"; MatrixToggle { on: true } }
+                    Cell { kind: "cursor"; MatrixToggle { cursor: true } }
+                }
+                GalleryRow {
+                    // C16's drop zone while dragging, C18's hover frame in the Puzzle scene
+                    name: "dashedFrame"; label: "Dashed frame"
+                    Cell { kind: "dropZone"; DashedFrame { width: 200; height: 48; fill: Theme.accentSoft; lineWidth: 2 } }
+                    Cell { kind: "sceneHover"; DashedFrame { width: 72; height: 72 } }
+                }
+                GalleryRow {
                     name: "railButton"; label: "PR-21 Rail button"
                     Cell { kind: "normal"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }
                     Cell { kind: "hover"; RailButton { text: "Puzzle"; iconName: "rail-puzzle" } }
@@ -452,6 +481,7 @@ ApplicationWindow {
                     Cell { kind: "shapeDarkText"; Chip { text: "S2"; fill: "#00ff00"; textColor: "black" } }
                     Cell { kind: "wide"; Chip { text: "S128"; fill: "#0000ff"; textColor: "white" } }
                     Cell { kind: "header"; Chip { kind: Chip.Header; text: "S1"; fill: "#0000ff"; textColor: "white" } }
+                    Cell { kind: "problem"; Chip { text: "P1"; neutral: true } }
                     Cell { kind: "count"; Chip { kind: Chip.Count; text: "8" } }
                     Cell { kind: "weight"; Chip { kind: Chip.Weight; text: "W2" } }
                 }

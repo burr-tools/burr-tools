@@ -88,6 +88,23 @@ TEST_CASE("single character shortcuts are told from the others", "[ui][commands]
                                                "editor.tool.variable", "editor.tool.erase", "editor.tool.paint" });
 }
 
+TEST_CASE("the Puzzle lists' keys work only in their lists", "[ui][commands]") {
+  for (Command c : { Command::ProblemRename, Command::ProblemDuplicate, Command::ProblemDelete,
+                     Command::ProblemMoveEarlier, Command::ProblemMoveLater }) {
+    INFO(commandInfo(c).key);
+    CHECK(commandInfo(c).scope == Scope::ProblemsList);
+    CHECK(commandInfo(c).menu == Menu::None);
+  }
+  // C16, overview/04: + - Del on the pieces
+  for (Command c : { Command::PieceMore, Command::PieceFewer, Command::PieceRemove }) {
+    INFO(commandInfo(c).key);
+    CHECK(commandInfo(c).scope == Scope::PuzzlePieces);
+    CHECK(commandInfo(c).menu == Menu::None);
+  }
+  CHECK(std::string(shortcutsOn(commandInfo(Command::PieceMore), Platform::Windows)[0]) == "+");
+  CHECK(std::string(shortcutsOn(commandInfo(Command::PieceFewer), Platform::Windows)[0]) == "-");
+}
+
 TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[ui][commands]") {
   const Command list[] = { Command::ShapeRename, Command::ShapeDuplicate, Command::ShapeDelete,
                            Command::ShapeMoveEarlier, Command::ShapeMoveLater };
@@ -98,9 +115,10 @@ TEST_CASE("the Shapes list's keys work only in the list, and F2 stays Save", "[u
     CHECK(i.menu == Menu::None);
     CHECK_FALSE(i.shortcuts.empty());
   }
-  // every other command is the window's, but the focused 3D view's
+  // every other command is the window's, but the focused 3D view's and the Puzzle lists'
   for (const auto & c : commandTable())
-    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list) && c.scope != Scope::Viewport)
+    if (std::find(std::begin(list), std::end(list), c.id) == std::end(list) && c.scope != Scope::Viewport &&
+        c.scope != Scope::ProblemsList && c.scope != Scope::PuzzlePieces)
       CHECK(c.scope == Scope::Window);
 
   auto first = [](Command c, Platform p) { return std::string(shortcutsOn(commandInfo(c), p)[0]); };

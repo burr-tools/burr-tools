@@ -42,6 +42,7 @@
 #include <QAbstractNativeEventFilter>
 #include <QElapsedTimer>
 #include <QFileOpenEvent>
+#include <QPointer>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
@@ -49,6 +50,7 @@
 #include <QTimer>
 #include <QTranslator>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
@@ -65,9 +67,11 @@ namespace {
   /* BURRTOOLS_STARTUP_TRACE=1 prints, on stderr, how long start-up took to
    * each step: the process's own start (Windows), the application object,
    * Main.qml, the event loop, the first frame on screen and the first frame
-   * with the workspace in it (Main.qml's contentReady). =quit also quits
-   * once that frame is up. For measuring start-up (scripts/profile-qt.sh);
-   * off, it costs one environment lookup.
+   * with the workspace in it (Main.qml's contentReady), the app ready to
+   * use; then the work left for later (App.builds): its steps, the longest,
+   * and the longest the event loop was kept from input meanwhile -- what a
+   * user would feel. =quit also quits once all that is done. For measuring
+   * start-up (scripts/profile-qt.sh); off, it costs one environment lookup.
    */
   class StartupTrace {
   public:
@@ -123,13 +127,61 @@ namespace {
       }, Qt::DirectConnection);
     }
 
+    void watchBuilds(BuildQueue * builds) {
+      if (!m_on || !builds)
+        return;
+      m_builds = builds;
+      QObject::connect(builds, &BuildQueue::stepped, qApp, [this] {
+        m_steps++;
+        m_longestStep = std::max(m_longestStep, m_builds->lastStepNs());
+      });
+      // the event loop's lateness: a 4 ms timer that fires late was kept waiting by something
+      m_probe.setTimerType(Qt::PreciseTimer);
+      m_probe.setInterval(4);
+      QObject::connect(&m_probe, &QTimer::timeout, qApp, [this] {
+        const qint64 now = m_clock.nsecsElapsed();
+        if (m_lastProbe > 0)
+          m_longestBlock = std::max(m_longestBlock, now - m_lastProbe - 4'000'000);
+        m_lastProbe = now;
+      });
+      QObject::connect(builds, &BuildQueue::holdingChanged, qApp, [this] {
+        if (m_builds->holding() || m_buildsStarted)
+          return;
+        m_buildsStarted = true;
+        mark("work left for later begins");
+        m_probe.start();
+        buildsMaybeDone();
+      });
+      QObject::connect(builds, &BuildQueue::idleChanged, qApp, [this] { buildsMaybeDone(); });
+    }
+
   private:
     void whenIdle(void) {
       QObject::connect(QAbstractEventDispatcher::instance(), &QAbstractEventDispatcher::aboutToBlock, qApp, [this] {
         mark("app ready: the GUI thread is idle");
-        if (quitWhenDone())
-          QTimer::singleShot(300, qApp, [] { QCoreApplication::exit(0); });   // not quit(): the window would refuse it (File ▸ Quit)
+        m_appReady = true;
+        quitIfDone();
       }, Qt::SingleShotConnection);
+    }
+    void buildsMaybeDone(void) {
+      if (!m_buildsStarted || m_buildsDone || !m_builds->idle())
+        return;
+      m_buildsDone = true;
+      m_probe.stop();
+      char line[200];
+      snprintf(line, sizeof line, "work left for later done: %d steps, the longest %.1f ms; input waited at most %.1f ms",
+               m_steps, m_longestStep / 1e6, std::max<qint64>(0, m_longestBlock) / 1e6);
+      mark(line);
+      quitIfDone();
+    }
+    // =quit: once the app is ready and what was left for later is done (none: the gallery)
+    void quitIfDone(void) {
+      if (!quitWhenDone() || !m_appReady || m_quitting)
+        return;
+      if (m_builds && !m_builds->idle() && !m_buildsDone)
+        return;
+      m_quitting = true;
+      QTimer::singleShot(300, qApp, [] { QCoreApplication::exit(0); });   // not quit(): the window would refuse it (File ▸ Quit)
     }
 
     bool m_on;
@@ -140,6 +192,16 @@ namespace {
     std::atomic<bool> m_firstFrame{false};
     std::atomic<bool> m_contentFrame{false};
     std::atomic<bool> m_readyFrame{false};
+    QPointer<BuildQueue> m_builds;
+    QTimer m_probe;
+    qint64 m_lastProbe = 0;
+    qint64 m_longestBlock = 0;
+    qint64 m_longestStep = 0;
+    int m_steps = 0;
+    bool m_buildsStarted = false;
+    bool m_buildsDone = false;
+    bool m_appReady = false;
+    bool m_quitting = false;
   };
 
 #ifdef Q_OS_WIN
@@ -403,6 +465,7 @@ int main(int argc, char ** argv) {
   trace.watch(mainWindow, [&app, doc] {
     return !doc->startupFilesPending() && (!doc->startupFileLoaded() || app.viewport()->meshReady());
   });
+  trace.watchBuilds(app.builds());
   /* the compiled pipelines kept between runs, in the user's cache folder
    * or beside a scratch settings file (BURRTOOLS_QT_SETTINGS); before the
    * first frame, which comes from the event loop */

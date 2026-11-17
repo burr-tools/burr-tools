@@ -99,7 +99,7 @@ public:
   Q_INVOKABLE void chooseColour(const QColor & c);
   Q_INVOKABLE void cancelChoose(void);
 
-  /* Remove, or first removeConfirmRequested() when it would lose solutions;
+  /* Remove, after the session's warning when it would lose solutions;
    * the answer comes back as removeColour(). The drawing colour becomes
    * Default (C09). */
   Q_INVOKABLE void requestRemove(int id);
@@ -118,7 +118,6 @@ signals:
   /* the colours changed under an open chooser: QML closes it, its answer
    * would go to another colour */
   void chooserCancelled(void);
-  void removeConfirmRequested(int id, const QString & name);
   /* a message for the status bar (App flashes it) */
   void flashRequested(const QString & text);
 

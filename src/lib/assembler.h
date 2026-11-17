@@ -344,6 +344,11 @@ public:
    */
   virtual std::unique_ptr<assembly_c> getAssembly(void) = 0;
 
+  /* About how many bytes the assembler holds: its matrix and search state.
+   * A paused search kept for later (the redesigned GUI's undo history) is
+   * counted by it. */
+  virtual size_t memoryBytes(void) const { return sizeof(*this); }
+
   /* Populate the lazily-filled mutable caches on the shapes shared by every
    * worker, so that a parallel search only ever reads them.
    *

@@ -1,11 +1,11 @@
 import QtQuick
 import BurrTools.Ui
 
-// A side card whose content arrives in a later phase (Puzzle, Solver).
+// A side card whose content arrives in a later phase (the Solver).
 Card {
     id: root
     property string note
-    collapseObjectName: objectName + ".collapse"     // "puzzle.left.collapse", ...
+    collapseObjectName: objectName + ".collapse"     // "solver.left.collapse", ...
 
     Text {
         anchors.centerIn: parent

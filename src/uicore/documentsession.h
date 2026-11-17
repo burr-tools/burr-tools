@@ -111,6 +111,11 @@ namespace btui {
 
       void setComment(const std::string & comment);
 
+      /* The Puzzle workspace's selection around the undo step of an edit()
+       * (puzzleHistory_c::beginStep, endStep). */
+      void beginStep(const puzzleHistory_c::selection_t & selection, unsigned int coalesceKey = 0);
+      void endStep(const puzzleHistory_c::selection_t & selection);
+
       /* Undo/redo. The result says which workspace and shape the change
        * belonged to, so the GUI can show it. A stroke that changed something
        * can be undone before it ends: undo() ends it first, which makes it a
@@ -129,15 +134,19 @@ namespace btui {
        */
       template <class F> bool edit(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape, F && f) {
         endStroke();
+        const long held = solutionsHeld();
         bool changed;
         try {
           changed = f(*puz);
         } catch (...) {
           record(kind, selectedShape);
+          noteSolutionsLost(held);
           throw;
         }
-        if (changed)
+        if (changed) {
           record(kind, selectedShape);
+          noteSolutionsLost(held);
+        }
         return changed;
       }
 
@@ -147,32 +156,52 @@ namespace btui {
        * solutions and search state, as legacy's changeShape() did; they are
        * kept in the undo step, so undo brings them back and redo drops them
        * again (PR 181 review: a saved file kept solutions that no longer fit
-       * its pieces).
+       * its pieces). Kept only while the history's memory budget has room
+       * (keepsSolutionsOf); otherwise they are lost for good.
        */
       template <class F> bool editVoxels(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape,
                                          const std::vector<unsigned int> & shapes, F && f) {
         const ShapeCopies before = copyShapes(shapes);
-        puzzleHistory_c::discarded_t lost;
         bool changed;
+        /* the solutions go after the step is recorded (it holds none), so
+         * edit() does not count what the step keeps as lost */
         try {
-          changed = edit(kind, selectedShape, [&](puzzle_c & p) {
-            bool c;
-            try {
-              c = f(p);
-            } catch (...) {
-              lost = discardChanged(before);
-              throw;
-            }
-            lost = discardChanged(before);
-            return c;
-          });
+          changed = edit(kind, selectedShape, std::forward<F>(f));
         } catch (...) {
-          keepDiscarded(std::move(lost), true);   // the step was recorded all the same
+          keepDiscarded(discardChanged(before), true);   // the step was recorded all the same
           throw;
         }
-        keepDiscarded(std::move(lost), changed);
+        keepDiscarded(discardChanged(before), changed);
         return changed;
       }
+
+      /* An edit of these shapes' voxels would keep the solutions it drops
+       * in its undo step: they fit in the history's memory budget
+       * (puzzleHistory_c::roomForSolutions), with what an open stroke holds.
+       * True when there is nothing to drop. */
+      bool keepsSolutionsOf(const std::vector<unsigned int> & shapes) const;
+
+      /* A change to what problems ask for -- piece counts, the result,
+       * groups, colour rules -- as edit(), naming the problems f changes;
+       * f must not add, remove or move problems. Those problems lose their
+       * solutions and search state, kept in the undo step as editVoxels()
+       * keeps them; the same budget (keepsSolutionsOfProblems). */
+      template <class F> bool editProblems(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape,
+                                           const std::vector<unsigned int> & problems, F && f) {
+        puzzleHistory_c::discarded_t taken = takeSolutions(problems);
+        bool changed;
+        try {
+          changed = edit(kind, selectedShape, std::forward<F>(f));
+        } catch (...) {
+          keepDiscarded(std::move(taken), true);   // the step was recorded all the same
+          throw;
+        }
+        keepDiscarded(std::move(taken), changed);
+        return changed;
+      }
+
+      /* editProblems() would keep these problems' solutions in its step */
+      bool keepsSolutionsOfProblems(const std::vector<unsigned int> & problems) const;
 
       /* Change the puzzle without an undo step, but as unsaved (solver
        * results; the comment goes through setComment()). */
@@ -201,15 +230,19 @@ namespace btui {
             return edit(strokeKind, strokeShape, std::forward<F>(f));
           return editVoxels(strokeKind, strokeShape, { strokeShape }, std::forward<F>(f));
         }
+        const long held = solutionsHeld();
         bool changed;
         try {
           changed = f(*puz);
         } catch (...) {
           markStrokeChanged();
+          noteSolutionsLost(held);
           throw;
         }
-        if (changed)
+        if (changed) {
           markStrokeChanged();
+          noteSolutionsLost(held);
+        }
         return changed;
       }
       /* true when the stroke changed the puzzle (an undo step was recorded) */
@@ -241,11 +274,21 @@ namespace btui {
        * matches its copy, or one of shapes, swapped out of them */
       puzzleHistory_c::discarded_t discardChanged(const ShapeCopies & before);
       puzzleHistory_c::discarded_t discardUsing(const std::vector<unsigned int> & shapes);
-      /* into the step just recorded; with no step, back into the problems */
+      /* the problems' solve records, taken out (editProblems) */
+      puzzleHistory_c::discarded_t takeSolutions(const std::vector<unsigned int> & problems);
+      /* into the step just recorded; with no step, back into the problems;
+       * with no room in the history's budget, lost for good */
       void keepDiscarded(puzzleHistory_c::discarded_t && lost, bool recorded);
 
       /* the current state as one undo step */
       void record(puzzleHistory_c::actionKind_e kind, unsigned int selectedShape);
+
+      /* The history holds no solutions but the solve records a step keeps
+       * (keepDiscarded), so undo cannot bring other lost ones back: the file
+       * still has them, and an undo to the save must not read clean. The
+       * records the history or an open stroke keeps count as held. */
+      long solutionsHeld(void) const;
+      void noteSolutionsLost(long heldBefore);
 
       void adopt(std::unique_ptr<puzzle_c> p);
 

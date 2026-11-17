@@ -15,7 +15,7 @@ TextField {
     color: Theme.text
     placeholderTextColor: Theme.muted
     selectionColor: Theme.accent
-    selectedTextColor: "white"
+    selectedTextColor: Theme.onAccent
     font.pixelSize: Theme.fontBody
     selectByMouse: true
 

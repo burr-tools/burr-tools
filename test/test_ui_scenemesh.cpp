@@ -292,6 +292,82 @@ TEST_CASE("flat style: spheres stay round and draw no facet lines", "[ui][scenem
   }
 }
 
+namespace {
+  /* a ball through points with their outward normals: p = c + r n, the centre
+   * and radius by least squares. A ball of a packing is drawn only in part
+   * (where it touches another there is nothing to draw), so the points' mean is
+   * no centre; the normals still point away from it. */
+  struct Ball { Vec3 centre; float radius; };
+  Ball fitBall(const std::vector<std::pair<Vec3, Vec3>> & pointsAndNormals) {
+    double a[4][5] = {};
+    for (const auto & [p, n] : pointsAndNormals) {
+      // three equations a row: p_k = c_k + r n_k
+      const double pk[3] = { p.x, p.y, p.z }, nk[3] = { n.x, n.y, n.z };
+      for (int k = 0; k < 3; k++) {
+        double row[4] = { 0, 0, 0, nk[k] };
+        row[k] = 1;
+        for (int i = 0; i < 4; i++) {
+          for (int j = 0; j < 4; j++)
+            a[i][j] += row[i] * row[j];
+          a[i][4] += row[i] * pk[k];
+        }
+      }
+    }
+    for (int i = 0; i < 4; i++) {
+      int pivot = i;
+      for (int r = i + 1; r < 4; r++)
+        if (std::fabs(a[r][i]) > std::fabs(a[pivot][i]))
+          pivot = r;
+      for (int j = 0; j < 5; j++)
+        std::swap(a[i][j], a[pivot][j]);
+      for (int r = 0; r < 4; r++)
+        if (r != i) {
+          const double f = a[r][i] / a[i][i];
+          for (int j = i; j < 5; j++)
+            a[r][j] -= f * a[i][j];
+        }
+    }
+    return { Vec3(float(a[0][4] / a[0][0]), float(a[1][4] / a[1][1]), float(a[2][4] / a[2][2])),
+             float(a[3][4] / a[3][3]) };
+  }
+}
+
+TEST_CASE("spheres side by side touch, in every style", "[ui][scenemesh]") {
+  // AC-C18-05 ("spheres touching"), C14: closely packed, as the 3D views draw them
+  gridType_c gt(gridType_c::GT_SPHERES);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  for (unsigned x = 0; x < 3; x++)
+    for (unsigned y = 0; y < 3; y++)
+      for (unsigned z = 0; z < 3; z++)
+        if (v->validCoordinate(x, y, z))
+          v->setState(x, y, z, voxel_c::VX_FILLED);
+  for (const VoxelStyle style : { VoxelStyle::Flat, VoxelStyle::Legacy }) {
+    MeshOptions o = blue();
+    o.style = style;
+    const ShapeMesh m = buildShapeMesh(*v, o);
+    // each ball's vertices by the cell they carry
+    std::map<std::array<float, 3>, std::vector<std::pair<Vec3, Vec3>>> cells;
+    for (const MeshVertex & mv : m.opaque)
+      cells[{ mv.cell[0], mv.cell[1], mv.cell[2] }].push_back(
+          { Vec3(mv.pos[0], mv.pos[1], mv.pos[2]), Vec3(mv.normal[0], mv.normal[1], mv.normal[2]) });
+    REQUIRE(cells.size() >= 2);
+    std::vector<Ball> balls;
+    for (const auto & [cell, points] : cells)
+      balls.push_back(fitBall(points));
+    float nearest = 1e9f, radius = 0;
+    for (size_t i = 0; i < balls.size(); i++) {
+      radius = std::max(radius, balls[i].radius);
+      for (size_t j = i + 1; j < balls.size(); j++)
+        nearest = std::min(nearest, length(balls[i].centre - balls[j].centre));
+    }
+    INFO("style " << int(style) << ": " << balls.size() << " balls, nearest centres " << nearest
+                  << " apart, radius " << radius);
+    // touching: two radii apart, within the tessellation's few percent -- not apart, not merged
+    CHECK(nearest <= 2 * radius * 1.05f);
+    CHECK(nearest >= 2 * radius * 0.95f);
+  }
+}
+
 TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones not drawn", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
