@@ -206,7 +206,7 @@ void assembler_1_c::GenerateFirstRow(unsigned int columns) {
   headerNodes = columns + 1;
 }
 
-int assembler_1_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z) {
+int assembler_1_c::AddPieceNode(unsigned int piece, unsigned int rot, int x, int y, int z) {
   unsigned long piecenode = left.size();
 
   left.push_back(piecenode);
@@ -330,46 +330,6 @@ assembler_1_c::assembler_1_c(std::shared_ptr<const solverSpec_t> prob, const sol
 
 assembler_1_c::~assembler_1_c() = default;
 
-/* add a piece to the cache, but only if it is not already there. If it is added return the
- * piece pointer otherwise return null
- */
-static voxel_c * addToCache(voxel_c * cache[], unsigned int * fill, voxel_c * piece) {
-
-  for (unsigned int i = 0; i < *fill; i++)
-    if (cache[i]->identicalInBB(piece)) {
-      delete piece;
-      return 0;
-    }
-
-  cache[*fill] = piece;
-  (*fill)++;
-  return piece;
-}
-
-bool assembler_1_c::canPlace(const voxel_c * piece, int x, int y, int z) const {
-
-  if (!piece->onGrid(x, y, z))
-    return false;
-
-  const voxel_c * result = getResultShape(problem);
-
-  for (unsigned int pz = piece->boundZ1(); pz <= piece->boundZ2(); pz++)
-    for (unsigned int py = piece->boundY1(); py <= piece->boundY2(); py++)
-      for (unsigned int px = piece->boundX1(); px <= piece->boundX2(); px++)
-        if (
-            // the piece can not be place if the result is empty and the piece is filled at a given voxel
-            ((piece->getState(px, py, pz) == voxel_c::VX_FILLED) &&
-             (result->getState(x+px, y+py, z+pz) == voxel_c::VX_EMPTY)) ||
-
-            // the piece can also not be placed when the colour constraints don't fit
-            !problem.placementAllowed(piece->getColor(px, py, pz), result->getColor(x+px, y+py, z+pz))
-
-           )
-          return false;
-
-  return true;
-}
-
 /**
  * this function prepares the matrix of nodes for the recursive function
  * I've done some additions to Knuths algorithm to implement variable
@@ -398,42 +358,30 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   }
 
   const voxel_c * result = getResultShape(problem);
+  const shape_c resShape = shape_c::fromVoxel(*result);
 
   /* nodes 1..n are the columns nodes */
-  GenerateFirstRow(result->countState(voxel_c::VX_FILLED)+
-      result->countState(voxel_c::VX_VARIABLE)+
-      problem.getNumberOfParts()+
-      (hasRange?1:0));
+  GenerateFirstRow(static_cast<unsigned int>(resShape.size()) +
+      problem.getNumberOfParts() +
+      (hasRange ? 1 : 0));
 
-  /* this array contains the column in our matrix that corresponds with
-   * the voxel position inside the result. We use this matrix because
-   * the calculation of the exact column depends on the number of FILLED
-   * and VARIABLE voxels and is relatively expensive to calculate
-   * with this lookup I was able to reduce the preparation time
-   * from 5 to 0.5 seconds for TheLostDay puzzle
-   */
-  std::vector<unsigned int> columns(result->getXYZ());
+  /* Assign one matrix column per non-empty cell of the result shape over (n, k),
+   * avoiding any dense bounding-box array over embedded voxel coordinates. */
+  std::vector<unsigned int> resCellCols(resShape.size());
 
   // only used, when hasRange is true, so we need to initialise it to get rid of warnings
   // the variable contains the column number where the range checks are done
   unsigned int rangeColumn = 0;
 
   {
-    int c = 1 + problem.getNumberOfParts();
-
-    for (unsigned int i = 0; i < result->getXYZ(); i++) {
-      switch(result->getState(i)) {
-      case voxel_c::VX_VARIABLE:
+    unsigned int c = 1 + problem.getNumberOfParts();
+    const auto & rCells = resShape.cells();
+    for (size_t i = 0; i < rCells.size(); i++) {
+      if (rCells[i].state == cellState_e::Variable) {
         min[c] = 0;
         holeColumns.push_back(c);
-        // fall through
-      case voxel_c::VX_FILLED:
-        columns[i] = c++;
-        break;
-      default:
-        columns[i] = 0;
-        break;
       }
+      resCellCols[i] = c++;
     }
 
     if (hasRange) {
@@ -641,14 +589,18 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * these voxels are only used once
    */
 
-  std::vector<voxel_c *> cache(sym->getNumTransformationsMirror(), nullptr);
+  /* Enumerate every piece's orientations and placements over (n, k) cell
+   * addresses via shape_c + placementFinder_c (B6). */
+  placementFinder_c finder(problem, *gt, resShape, resCellCols);
 
-  placementFinder_c finder(problem, result);
-  std::vector<long> voxelOffsets;
-  std::vector<int> positions;
-
-  const long rsx = result->getX();
-  const long rsy = result->getY();
+  std::vector<shape_c> seenShapes;
+  auto addIfNew = [&](const shape_c & candidate) -> bool {
+    for (const auto & prev : seenShapes)
+      if (prev.equalUpToTranslation(candidate, true))
+        return false;
+    seenShapes.push_back(candidate);
+    return true;
+  };
 
   /* now we insert one shape after another */
   for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
@@ -660,67 +612,63 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
     max[pc+1] = problem.getPartMaximum(pc);
     min[pc+1] = problem.getPartMinimum(pc);
 
-    unsigned int voxels = problem.getPartShape(pc)->countState(voxel_c::VX_FILLED);
+    const voxel_c * partVox = problem.getPartShape(pc);
+    const shape_c partShape = shape_c::fromVoxel(*partVox);
+    const unsigned int voxels = static_cast<unsigned int>(partShape.filledCount());
 
-    /* this array contains all the pieces found so far, this will help us
-     * to not add two times the same piece to the structure */
-    unsigned int cachefill = 0;
+    seenShapes.clear();
     unsigned int placements = 0;
 
-    /* go through all possible rotations of the piece
-     * if shape is new to cache, add it to the cache and also
-     * add the shape to the matrix, in all positions that it fits
-     */
-    for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
+    if (!partShape.empty()) {
+      const vec3i_t partHotspot{ partVox->getHx(), partVox->getHy(), partVox->getHz() };
+      const cellAddr_t origFirst = partShape.cells().front().cell;
+      const vec3i_t origFirstVox = gt->cellToVoxel(origFirst);
 
-      voxel_c * rotation = gt->getVoxel(problem.getPartShape(pc));
-      if (!rotation->transform(rot)) {
-        delete rotation;
-        continue;
-      }
+      /* go through all possible rotations of the piece:
+       * if shape is new to seenShapes, add it and emit all valid placements */
+      for (unsigned int rot = 0; rot < sym->getNumTransformations(); rot++) {
 
-      rotation = addToCache(cache.data(), &cachefill, rotation);
+        auto rotShape = partShape.transformed(*gt, rot);
+        if (!rotShape)
+          continue;
 
-      if (rotation) {
-        finder.find(rotation, voxelOffsets, positions);
+        if (!addIfNew(*rotShape))
+          continue;
 
-        for (unsigned int pos = 0; pos < positions.size(); pos += 3) {
+        // Compute the piece hotspot in result voxel coordinates for dn = (0, 0, 0):
+        // mappedFirstVox is where origFirst sits inside *rotShape before lattice
+        // translation dn; hotspotOff is T_rot(hotspot) - T_rot(origFirst).
+        vec3i_t mappedFirstVox{ 0, 0, 0 };
+        if (gt->getType() != gridType_c::GT_SPHERES) {
+          const auto mappedFirst = gt->transformCell(origFirst, rot);
+          bt_assert(mappedFirst.has_value());
+          mappedFirstVox = gt->cellToVoxel(*mappedFirst);
+        }
+        const auto hotspotOff = gt->transformVoxelOffset(partHotspot, origFirstVox, rot);
+        bt_assert(hotspotOff.has_value());
+        const vec3i_t baseHotspot = mappedFirstVox + *hotspotOff;
 
-          const int x = positions[pos];
-          const int y = positions[pos+1];
-          const int z = positions[pos+2];
-
-          int piecenode = AddPieceNode(pc, rot, x+rotation->getHx(), y+rotation->getHy(), z+rotation->getHz());
+        finder.find(*rotShape, [&](vec3i_t dn, const std::vector<unsigned int> & cols) {
+          const vec3i_t placedH = baseHotspot + gt->latticeToVoxelDelta(dn);
+          int piecenode = AddPieceNode(pc, rot, placedH.x, placedH.y, placedH.z);
           placements++;
 
-          /* now add the used cubes of the piece */
-          const long base = x + rsx * (y + rsy * (long)z);
-          for (unsigned int v = 0; v < voxelOffsets.size(); v++)
-            AddVoxelNode(columns[base + voxelOffsets[v]], piecenode);
+          for (unsigned int col : cols)
+            AddVoxelNode(col, piecenode);
 
-          // if we use the range counting and the piece is using a range, add it to
-          // the column
           if (hasRange && (min[pc+1] != max[pc+1]))
             AddRangeNode(rangeColumn, piecenode, voxels);
-        }
+        });
+
         /* for the symmetry breaker piece we also add all symmetries of the box */
         if (pc == symBreakerShape)
           for (unsigned int r = 1; r < sym->getNumTransformations(); r++)
             if (sym->symmetrieContainsTransformation(resultSym, r)) {
-
-              voxel_c * vx = gt->getVoxel(problem.getPartShape(pc));
-
-              if (!vx->transform(rot) || !vx->transform(r)) {
-                delete vx;
-                continue;
-              }
-
-              addToCache(cache.data(), &cachefill, vx);
+              if (auto symShape = rotShape->transformed(*gt, r))
+                addIfNew(*symShape);
             }
       }
     }
-
-    for (unsigned int i = 0; i < cachefill; i++)  delete cache[i];
 
     /* check, if the current piece has at least one placement */
     if (placements == 0 && problem.getPartMinimum(pc) > 0)

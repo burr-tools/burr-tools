@@ -26,6 +26,8 @@
  */
 
 #include "solver_config.h"
+#include "solver/math.h"
+#include "solver/shape.h"
 
 #include <algorithm>
 #include <vector>
@@ -39,6 +41,7 @@
 
 class voxel_c;
 class assembly_c;
+class gridType_c;
 struct solverSpec_t;
 class ThreadBudget;
 
@@ -62,53 +65,61 @@ inline bool drainedPoolComplete(bool stopped, size_t drainedTasks,
 }
 
 /**
- * Helper for the assembler preparation step: enumerates all placements of a
- * rotated piece inside the result shape.
+ * Helper for the assembler preparation step: enumerates all valid lattice
+ * placements of a rotated shape_c inside a result shape_c over (n, k) cell
+ * addresses (B6, sections 5.2-5.3 and 5.7 of design/2026-11-19-ng-merge-plan.md).
  *
- * Instead of trying every translation of the piece bounding box inside the
- * result bounding box and rescanning the whole piece for each of them, only
- * translations that put the first filled voxel of the piece (the anchor) onto
- * a non empty result voxel are candidates. All other translations can not
- * result in a valid placement. The remaining voxels are then verified with
- * single indexed reads. For results or grids where the bounding box is much
- * bigger than the number of usable voxels this removes a factor proportional
- * to the bounding box volume / non empty voxel ratio.
+ * Indexes the result in tight lattice coordinates (n - nMin, k) with zero
+ * oblique-box padding and buckets non-empty result cells by cell kind k, so
+ * anchor matching visits only cells of the anchor's exact kind and needs no
+ * onGrid() check. Falls back to sorted lookup if the lattice bounding box
+ * exceeds the dense budget.
  */
 class placementFinder_c {
 
 public:
 
-  placementFinder_c(const solverSpec_t & problem, const voxel_c * result);
+  placementFinder_c(const solverSpec_t & problem,
+                    const gridType_c & grid,
+                    const shape_c & resultShape,
+                    const std::vector<unsigned int> & resCellCols);
 
   /**
-   * find all placements of the given rotated piece.
-   *
-   * voxelOffsets receives, for each filled voxel of the piece (in the order
-   * the matrix nodes must be emitted), the result space index offset relative
-   * to a placement, so that resultindex = x + sx*(y + sy*z) + voxelOffsets[i].
-   *
-   * placements receives packed (x, y, z) translation triples of all valid
-   * placements, ordered x, then y, then z ascending, exactly like the
-   * original brute force scan produced them.
+   * Find every valid lattice translation dn of rotShape inside the result,
+   * invoking emit(dn, cols) once per placement with the exact matrix column
+   * numbers covered by rotShape's filled cells.
    */
-  void find(const voxel_c * rotation,
-      std::vector<long> & voxelOffsets,
-      std::vector<int> & placements) const;
+  void find(const shape_c & rotShape,
+            const std::function<void(vec3i_t dn, const std::vector<unsigned int> & cols)> & emit) const;
 
 private:
 
-  typedef struct {
-    int x, y, z;          ///< coordinates of the voxel
-    unsigned long index;  ///< index within the result voxel space
-    unsigned char color;  ///< colour of the result voxel
-  } resultVoxel_s;
+  struct cellSlot_s {
+    unsigned int col = 0;
+    uint16_t color = 0;
+    cellState_e state = cellState_e::Empty;
+  };
 
-  const voxel_c * res;
+  struct resCell_s {
+    vec3i_t n{};
+    long gridIdx = 0;
+    unsigned int col = 0;
+    uint16_t color = 0;
+  };
 
-  std::vector<resultVoxel_s> resultVoxels;  ///< all non empty voxels of the result
+  unsigned int kindCount_ = 1;
+  vec3i_t nMin_{};
+  vec3i_t nMax_{};
+  long nx_ = 0, ny_ = 0, nz_ = 0;
+  bool useDense_ = false;
 
-  unsigned int colorTableWidth;             ///< number of colours + 1
-  std::vector<unsigned char> colorAllowed;  ///< placementAllowed lookup table
+  std::vector<cellSlot_s> grid_;               ///< tight (n - nMin, k) table when useDense_
+  const shape_c * resShape_ = nullptr;         ///< fallback sorted lookup when !useDense_
+  std::vector<unsigned int> resCols_;          ///< parallel to resShape_->cells()
+  std::vector<std::vector<resCell_s>> byKind_; ///< non-empty result cells bucketed by kind k
+
+  unsigned int colorTableWidth_ = 1;           ///< number of colours + 1
+  std::vector<unsigned char> colorAllowed_;    ///< placementAllowed lookup table
 };
 
 /**

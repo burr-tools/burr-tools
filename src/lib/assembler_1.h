@@ -159,12 +159,6 @@ private:
   unsigned int clumpify(void);
 
 
-  /**
-   * this function is called by the default implementation of prepare
-   * to check, if the piece fits at the given position
-   */
-  bool canPlace(const voxel_c * piece, int x, int y, int z) const;
-
   /* this function creates the matrix for the search function
    * because we need to know how many nodes we need to allocate the
    * arrays with the right size, we add a parameter. If this is true
@@ -241,7 +235,7 @@ protected:
    * the return value is a number that has to be given to the voxel node creation routine
    * it contains the number of the node that is created with this function
    */
-  int AddPieceNode(unsigned int piece, unsigned int rot, unsigned int x, unsigned int y, unsigned int z);
+  int AddPieceNode(unsigned int piece, unsigned int rot, int x, int y, int z);
 
   /* adds a node with a certain weight, for piece range node counting
    */
