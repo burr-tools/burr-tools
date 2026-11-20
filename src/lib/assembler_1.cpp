@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "assembler_1.h"
+#include "cells_cover.h"
 #include "assembler_pool.h"
 #include "simd_huang_cover.h"
 
@@ -2867,7 +2868,7 @@ bool assembler_1_c::willRunParallel(unsigned int threads) const {
     return false;
   if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
     return false;
-  return (threads > 1) || canUseSimd() || !parallelTasks.empty() || !pendingHuangPrefixes.empty();
+  return (threads > 1) || canUseSimd() || canUseCells() || !parallelTasks.empty() || !pendingHuangPrefixes.empty();
 }
 
 unsigned int assembler_1_c::getRunThreads(void) const {
@@ -3140,7 +3141,11 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   if (avoidTransformedAssemblies)
     prewarmSharedShapeCaches(problem);
 
-  bool useSimd = !pendingHuangPrefixes.empty() || (parallelTasks.empty() && canUseSimd());
+  // Seeds are only valid for the engine that left them, so a remainder
+  // keeps its engine whatever the settings say now.
+  const bool useCells = !pendingHuangPrefixes.empty() ? pendingSeedsCells
+                                                      : (parallelTasks.empty() && canUseCells());
+  bool useSimd = !pendingHuangPrefixes.empty() || useCells || (parallelTasks.empty() && canUseSimd());
   if (useSimd) {
     // Never a DLX remainder here: a restored one keeps the DLX engine
     // above, and restored seeds are never saved next to one.
@@ -3149,7 +3154,7 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
     // seeds with; the matrix is still at base, as it was then.
     std::unique_ptr<ISimdHuangCover> solver = std::move(restoredSimdSolver);
     if (!solver)
-      solver = createSimdSolver();
+      solver = createSimdSolver(useCells);
 
     /* This back end has no in-flight hook, so it publishes no slots -- and
      * getFinished()'s task-based branch, which sums the slots, therefore
@@ -3248,8 +3253,10 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
      */
     runPoolDrainedHook();
     const bool huangStopped = runTok.stop_requested();
-    if (huangStopped)
+    if (huangStopped) {
       pendingHuangPrefixes = std::move(huangSalvaged);
+      pendingSeedsCells = useCells;
+    }
     if (!huangStopped || drainedPoolComplete(huangStopped, pendingHuangPrefixes.size(),
           totalTasks.load(std::memory_order_relaxed),
           completedTasks.load(std::memory_order_relaxed))) {
@@ -3574,7 +3581,19 @@ bool assembler_1_c::canUseSimd(void) const {
   return true;
 }
 
-std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
+/* The Dancing Cells engine takes every matrix: any size, and variable
+ * voxels together with piece ranges, which the bit-parallel engine leaves
+ * out. For now it runs only when asked for (settings.cells).
+ */
+bool assembler_1_c::canUseCells(void) const {
+  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
+    return false;
+  if (debug)
+    return false;
+  return settings.cells;
+}
+
+std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) const {
   const voxel_c * result = getResultShape(problem);
   unsigned int num_cols = headerNodes - 1;
   unsigned int num_shapes = problem.getNumberOfParts();
@@ -3584,7 +3603,9 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(void) const {
   unsigned int rangeColumn = hasRange ? num_cols : 0;
 
   std::unique_ptr<ISimdHuangCover> solver;
-  if (num_cols <= 256) {
+  if (cells) {
+    solver = std::make_unique<CellsCover>(num_cols, num_shapes, settings);
+  } else if (num_cols <= 256) {
     solver = std::make_unique<SimdHuangCover256>(num_cols, num_shapes, settings);
   } else if (num_cols <= 512) {
     solver = std::make_unique<SimdHuangCover512>(num_cols, num_shapes, settings);
@@ -3993,7 +4014,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   // failure must not leave partial tasks behind.
   unsigned int ptype = 0;
   pos += getInt(string+pos, &ptype);
-  if (ptype > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (ptype > 3) return ERR_CAN_NOT_RESTORE_SYNTAX;
   if (ptype != 0 && pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
   std::vector<SubtreeTask_1> newTasks;
@@ -4018,20 +4039,22 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
           return ERR_CAN_NOT_RESTORE_SYNTAX;
       newTasks.push_back(std::move(t));
     }
-  } else if (ptype == 2) {
+  } else if (ptype == 2 || ptype == 3) {
     unsigned int count = 0;
     pos += getInt(string+pos, &count);
     if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
     for (unsigned int i = 0; i < count; i++) {
       // prefix, pivot-kind bits (one per step), rest start (see
-      // HuangSeed); an empty prefix is the whole search, kept
+      // HuangSeed); an empty prefix is the whole search, kept. Type 3:
+      // the seeds of the Dancing Cells engine, a step kind per step in
+      // place of the bit (see CellsCover)
       HuangSeed seed;
       pos += stringToVector(string+pos, seed.prefix);      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       std::vector<unsigned int> pivots;
       pos += stringToVector(string+pos, pivots);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
       if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
       for (unsigned int b : pivots) {
-        if (b > 1) return ERR_CAN_NOT_RESTORE_SYNTAX;
+        if (b > (ptype == 3 ? 2u : 1u)) return ERR_CAN_NOT_RESTORE_SYNTAX;
         seed.pivotShape.push_back(static_cast<uint8_t>(b));
       }
       unsigned int restSkip = 0;
@@ -4056,7 +4079,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   // converts the matrix only once.
   std::unique_ptr<ISimdHuangCover> seedSolver;
   if (!newPrefixes.empty()) {
-    seedSolver = createSimdSolver();
+    seedSolver = createSimdSolver(ptype == 3);
     for (const auto & seed : newPrefixes)
       if (!seedSolver->seedReplays(seed))
         return ERR_CAN_NOT_RESTORE_SYNTAX;
@@ -4066,6 +4089,7 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   // the base stacks above (root-normalized on save) restore as no-op.
   parallelTasks = std::move(newTasks);
   pendingHuangPrefixes = std::move(newPrefixes);
+  pendingSeedsCells = ptype == 3;
   restoredSimdSolver = std::move(seedSolver);
   const unsigned int restoredPtype = ptype;
   if (ptype != 0) {
@@ -4159,13 +4183,14 @@ void assembler_1_c::save(xmlWriter_c & xml) const
 
   /* Parallel remainder for cross-session resume: which engine's
    * tasks, if any. 0 = none (serial stops resume from the stacks above);
-   * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes.
+   * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes;
+   * 3 = Dancing Cells decision lists, in the layout of 2.
    * Both are bounded remainders that hold only unexplored territory: DLX
    * tasks as five live stacks plus baseDepth, Huang seeds as prefix, pivot
    * bits and rest start.
    */
   unsigned int ptype = !parallelTasks.empty() ? 1
-                     : !pendingHuangPrefixes.empty() ? 2 : 0;
+                     : !pendingHuangPrefixes.empty() ? (pendingSeedsCells ? 3 : 2) : 0;
 
   if (ptype == 0) {
     vectorToStream(rows, str);
@@ -4203,7 +4228,7 @@ void assembler_1_c::save(xmlWriter_c & xml) const
       str << t.baseDepth << " ";
       vectorToStream(t.cuts, str);
     }
-  } else if (ptype == 2) {
+  } else if (ptype == 2 || ptype == 3) {
     str << pendingHuangPrefixes.size() << " ";
     for (const auto &seed : pendingHuangPrefixes) {
       vectorToStream(seed.prefix, str);

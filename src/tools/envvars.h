@@ -56,6 +56,7 @@ namespace btenv {
     // the solver, read by every program that solves; a malformed value is an error
     { "BURRTOOLS_THREADS", Scope::Solver, "<n>", "worker threads (default: the number of cores), read by the assembler and the disassembler pool each, so up to 2n run in all; a program's own setting (-t, Settings) wins" },
     { "BURRTOOLS_BITPARALLEL", Scope::Solver, "0|1", "0: classical DLX instead of the bit-parallel exact cover, in both assemblers (benchmarking)" },
+    { "BURRTOOLS_CELLS", Scope::Solver, "0|1", "1: the Dancing Cells exact cover engine in assembler 1 instead of the bit-parallel engine or DLX (benchmarking)" },
     { "BURRTOOLS_RANGE_SYMBREAK", Scope::Solver, "0|1", "0: with piece ranges, no piece is restricted to break the result's symmetry, as before (benchmarking; fresh searches only)" },
     { "BURRTOOLS_VECTOR", Scope::Solver, "auto|scalar|avx2|avx512|neon", "the most of the vector instructions a run may use (default auto: what the CPU has); scalar is the portable word loop, avx2 keeps AVX2 but not AVX-512 (benchmarking)" },
     { "BURRTOOLS_DISASM_VECTOR", Scope::Solver, "0|1", "0: the disassembler's movement analysis without vector kernels (benchmarking)" },

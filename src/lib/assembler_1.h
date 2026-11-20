@@ -134,7 +134,10 @@ private:
   bool willRunParallel(unsigned int threads) const;
 
   bool canUseSimd(void) const;
-  std::unique_ptr<ISimdHuangCover> createSimdSolver(void) const;
+  /** the solver for this matrix: the Dancing Cells engine, else the
+   *  bit-parallel one in the tier the matrix needs */
+  std::unique_ptr<ISimdHuangCover> createSimdSolver(bool cells) const;
+  bool canUseCells(void) const;
 
   friend class assemblerWorker_1;
 
@@ -213,6 +216,9 @@ private:
    * save() for cross-session resume, like parallelTasks.
    */
   std::vector<HuangSeed> pendingHuangPrefixes;
+  /* the seeds above are those of the Dancing Cells engine (CellsCover),
+   * which only that engine can read; set whenever they are */
+  bool pendingSeedsCells = false;
   /* The solver setPosition() built to check that the restored seeds
    * replay; the resumed run takes it instead of building a second one.
    * Set only together with restored seeds, and dropped with them.

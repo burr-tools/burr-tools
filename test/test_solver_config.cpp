@@ -12,9 +12,9 @@ namespace {
 
 /* every variable resolve() reads, unset for the scope */
 struct CleanEnv {
-  ScopedEnv vars[14] = {
+  ScopedEnv vars[15] = {
     { "BURRTOOLS_THREADS", nullptr }, { "BURRTOOLS_BITPARALLEL", nullptr },
-    { "BURRTOOLS_RANGE_SYMBREAK", nullptr },
+    { "BURRTOOLS_CELLS", nullptr }, { "BURRTOOLS_RANGE_SYMBREAK", nullptr },
     { "BURRTOOLS_VECTOR", nullptr }, { "BURRTOOLS_DISASM_VECTOR", nullptr },
     { "BURRTOOLS_DISASM_POOL", nullptr }, { "BURRTOOLS_HUANG_MEM_MB", nullptr },
     { "BURRTOOLS_SPLIT_FANOUT", nullptr }, { "BURRTOOLS_SPLIT_ORDER", nullptr },
@@ -41,6 +41,7 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
   const solverSettings_t d;
   CHECK(s.threads == 0);
   CHECK(s.bitParallel);
+  CHECK_FALSE(s.cells);
   CHECK(s.rangeSymmetryBreaker);
   CHECK(s.vector == VECTOR_AUTO);
   CHECK(s.disassemblerVector);
@@ -57,7 +58,7 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
 
 TEST_CASE("solver settings: the environment fills what the caller leaves unset", "[config]") {
   CleanEnv clean;
-  ScopedEnv threads("BURRTOOLS_THREADS", "3"), bits("BURRTOOLS_BITPARALLEL", "0"),
+  ScopedEnv threads("BURRTOOLS_THREADS", "3"), bits("BURRTOOLS_BITPARALLEL", "0"), cells("BURRTOOLS_CELLS", "1"),
             vec("BURRTOOLS_VECTOR", "scalar"), dvec("BURRTOOLS_DISASM_VECTOR", "0"),
             pool("BURRTOOLS_DISASM_POOL", "0"), mem("BURRTOOLS_HUANG_MEM_MB", "7"),
             fan("BURRTOOLS_SPLIT_FANOUT", "2"), order("BURRTOOLS_SPLIT_ORDER", "breadth"),
@@ -67,6 +68,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   const solverSettings_t s = solverConfig_t{}.resolve();
   CHECK(s.threads == 3);
   CHECK_FALSE(s.bitParallel);
+  CHECK(s.cells);
   CHECK(s.vector == VECTOR_SCALAR);
   CHECK_FALSE(s.avx2());
   CHECK_FALSE(s.avx512());
@@ -85,6 +87,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   solverConfig_t chosen;
   chosen.threads = 1;
   chosen.bitParallel = true;
+  chosen.cells = false;
   chosen.vector = VECTOR_AUTO;
   chosen.disassemblerPool = true;
   chosen.huangMemoryMB = 0;
@@ -94,6 +97,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   const solverSettings_t c = chosen.resolve();
   CHECK(c.threads == 1);
   CHECK(c.bitParallel);
+  CHECK_FALSE(c.cells);
   CHECK(c.vector == VECTOR_AUTO);
   CHECK(c.disassemblerPool);
   CHECK(c.huangMemoryBytes == 0);
@@ -108,7 +112,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
 TEST_CASE("solver settings: a malformed or renamed variable is an error", "[config]") {
   CleanEnv clean;
   for (auto [name, value] : { std::pair{ "BURRTOOLS_THREADS", "four" }, { "BURRTOOLS_THREADS", "-1" },
-                              { "BURRTOOLS_BITPARALLEL", "yes" }, { "BURRTOOLS_VECTOR", "sse" },
+                              { "BURRTOOLS_BITPARALLEL", "yes" }, { "BURRTOOLS_CELLS", "maybe" }, { "BURRTOOLS_VECTOR", "sse" },
                               { "BURRTOOLS_SPLIT_FANOUT", "0" }, { "BURRTOOLS_SPLIT_ORDER", "random" },
                               { "BURRTOOLS_DONATE", "2" }, { "BURRTOOLS_HUANG_MEM_MB", "1e3" },
                               { "BURRTOOLS_THREADS", " 5" }, { "BURRTOOLS_THREADS", "+5" },

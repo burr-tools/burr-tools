@@ -157,6 +157,7 @@ solverSettings_t solverConfig_t::resolve(void) const {
 
   s.threads = (unsigned int)number("BURRTOOLS_THREADS", widen(threads), s.threads, 0, 4096);
   s.bitParallel = flag("BURRTOOLS_BITPARALLEL", bitParallel, s.bitParallel);
+  s.cells = flag("BURRTOOLS_CELLS", cells, s.cells);
   s.rangeSymmetryBreaker = flag("BURRTOOLS_RANGE_SYMBREAK", rangeSymmetryBreaker, s.rangeSymmetryBreaker);
 
   if (vector)
