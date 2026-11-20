@@ -7,6 +7,8 @@
  * GNU General Public License version 3, and so is this file.
  *
  * Editor snap points are left out. Loading descriptions from files is step G7.
+ * The movement vectors of the hexagonal and Cairo prisms are not NG's (it has
+ * none for them) but this repository's (step C6).
  */
 #include "griddescriptions.h"
 
@@ -63,7 +65,17 @@ std::vector<Grid::RegisterInformation> ngGridDescriptions()
         .name                  = "Hexagonal prisms",
         .translationalSymmetry = {1, 1, 1, -1, 0, 1, 0, -1, 1},
         .physicalTranslations  = {2 * EQT, EQT, 0.0, 0, 1.5, 0.0, 0, 0.0, 1.0},
-        .movementVectors       = {},
+        /* Not in NG ("no movement analysis"); added here (step C6). The
+         * lattice columns are (1,-1,0) and (1,0,-1), physically (sqrt 3, 0, 0)
+         * and (sqrt 3 / 2, 3/2, 0): the centres of the edge neighbours at 0
+         * and 60 degrees (a hexagon of circumradius 1 has its neighbours
+         * sqrt 3 away), and (1,1,1), physically (0, 0, 1), the prism axis.
+         * So: the axis, and one vector per pair of opposite edge neighbours,
+         * at 0, 60 and 120 degrees (the third is the difference of the
+         * first two). Every cell is a lattice point, so all are lattice
+         * vectors. As for cubes, longer lattice vectors (the 30 degree
+         * directions between two neighbours) are left out. */
+        .movementVectors       = {{1, 1, 1}, {1, -1, 0}, {1, 0, -1}, {0, 1, -1}},
         .physicalShapes        = {prism({{EQT, 0.5, -0.5}, {EQT, -0.5, -0.5}, {0.0, -1.0, -0.5}, {-EQT, -0.5, -0.5}, {-EQT, 0.5, -0.5}, {0.0, 1.0, -0.5}},
                                         {0.0, 0.0, 1.0})},
         .basePositions         = {{0, 0, 0}},
@@ -77,7 +89,18 @@ std::vector<Grid::RegisterInformation> ngGridDescriptions()
             .name                  = "Cairo prisms",
             .translationalSymmetry = {2, -2, 0, 2, 2, 0, 0, 0, 1},
             .physicalTranslations  = {2, -2, 0, 2, 2, 0, 0, 0, 1},
-            .movementVectors       = {},
+            /* Not in NG ("no movement analysis"); added here (step C6): the
+             * prism axis (0,0,1) and the two shortest in-plane lattice
+             * vectors, the lattice columns (2,2,0) and (-2,2,0) (cell and
+             * physical coordinates agree on this grid), which the grid's
+             * quarter turn maps onto each other. Moves must be lattice
+             * vectors (moved pieces stay a lattice vector apart, so cells
+             * keep their kind), and the four pentagons of a lattice cell
+             * are differently oriented, so no shorter move takes a
+             * pentagon onto a pentagon: the translations of the tiling are
+             * the lattice. The next lattice vectors, (4,0,0) and (0,4,0),
+             * are left out as the face diagonals are for cubes. */
+            .movementVectors       = {{0, 0, 1}, {2, 2, 0}, {-2, 2, 0}},
             .physicalShapes =
                 {
                     prism({{0, 0, -0.5}, {1, -OFS, -0.5}, {1, -2 + OFS, -0.5}, {0, -2, -0.5}, {-OFS, -1, -0.5}}, {0, 0, 1}),

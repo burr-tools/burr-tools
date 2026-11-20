@@ -446,8 +446,8 @@ TEST_CASE("NG's six grids register, with the symmetries of our native grids", "[
     const Expect grids[] = {
         {NG_GRID_CUBES, 1, 24, 3},
         {NG_GRID_TRIANGULAR_PRISMS, 2, 12, 4},
-        {NG_GRID_HEXAGONAL_PRISMS, 1, 12, 0},
-        {NG_GRID_CAIRO_PRISMS, 4, 8, 0},
+        {NG_GRID_HEXAGONAL_PRISMS, 1, 12, 4},
+        {NG_GRID_CAIRO_PRISMS, 4, 8, 3},
         {NG_GRID_RHOMBIC_TETRAHEDRA, 24, 24, 13},
         {NG_GRID_OCTAHEDRAL_TETRAHEDRA, 10, 24, 9},
     };
