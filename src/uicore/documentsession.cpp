@@ -75,7 +75,7 @@ namespace btui {
 
     try {
       xmlParser_c pars(*str);
-      np = std::make_unique<puzzle_c>(pars);
+      np = puzzle_c::read(pars);
     }
     catch (xmlParserException_c & e) {
       r.error = std::string("load error: ") + e.what();

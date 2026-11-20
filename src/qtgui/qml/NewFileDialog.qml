@@ -6,8 +6,10 @@ import QtQuick.Layouts
 import BurrTools.Ui
 
 // File ▸ New: the one-time voxel type choice (C14). The five official types
-// in the legacy "Select space grid" order, Brick preselected. The type is
-// fixed for the life of the file.
+// in the legacy "Select space grid" order, Brick preselected; rhombic and
+// tetra-octa on BurrTools NG's grids (gridType_c ids 7 and 8, not the
+// legacy 3 and 4: cutCubeGrids_e in src/lib). The type is fixed for the
+// life of the file.
 //
 // Wireframe (each number marks its code below):
 //
@@ -34,8 +36,8 @@ BtDialog {
         { id: 0, key: "brick",   desc: qsTr("Cubes. The classic burr and polycube grid.") },
         { id: 1, key: "prism",   desc: qsTr("Triangular prisms stacked along Z.") },
         { id: 2, key: "spheres", desc: qsTr("Closely packed spheres; each touches twelve neighbours.") },
-        { id: 3, key: "rhombic", desc: qsTr("Cut cubes that build rhombic dodecahedra.") },
-        { id: 4, key: "tetoct",  desc: qsTr("Tetrahedra and octahedra, a cut cube grid.") }
+        { id: 7, key: "rhombic", desc: qsTr("Cut cubes that build rhombic dodecahedra.") },
+        { id: 8, key: "tetoct",  desc: qsTr("Tetrahedra and octahedra, a cut cube grid.") }
     ]
 
     onAboutToShow: selectedType = 0

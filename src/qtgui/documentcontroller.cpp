@@ -101,8 +101,10 @@ QString DocumentController::gridTypeDisplayName(int type) {
     case gridType_c::GT_TETRA_OCTA:       return QStringLiteral("Tetrahedra-Octahedra");
     case gridType_c::GT_HEXAGONAL_PRISM:  return QStringLiteral("Hexagonal Prism");
     case gridType_c::GT_CAIRO_PRISM:      return QStringLiteral("Cairo Prism");
-    case gridType_c::GT_RHOMBIC_TETRAHEDRA:    return QStringLiteral("Rhombic Tetrahedra (NG)");
-    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return QStringLiteral("Octahedral Tetrahedra");
+    /* this program puts rhombic and tetra-octa puzzles on NG's grids
+     * (cutCubeGrids_e), under the names the native grids had */
+    case gridType_c::GT_RHOMBIC_TETRAHEDRA:    return QStringLiteral("Rhombic Tetrahedra");
+    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return QStringLiteral("Tetrahedra-Octahedra");
     case gridType_c::GT_DESCRIBED_BRICKS:      return QStringLiteral("Brick (described)");
     case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return QStringLiteral("Triangular Prism (described)");
     default:                              return QString();

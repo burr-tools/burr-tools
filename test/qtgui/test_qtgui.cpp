@@ -818,6 +818,9 @@ private slots:
     QCOMPARE(DocumentController::gridTypeDisplayName(2), QStringLiteral("Spheres"));
     QCOMPARE(DocumentController::gridTypeDisplayName(3), QStringLiteral("Rhombic Tetrahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(4), QStringLiteral("Tetrahedra-Octahedra"));
+    // rhombic and tetra-octa on NG's grids, which this program uses, keep those names
+    QCOMPARE(DocumentController::gridTypeDisplayName(7), QStringLiteral("Rhombic Tetrahedra"));
+    QCOMPARE(DocumentController::gridTypeDisplayName(8), QStringLiteral("Tetrahedra-Octahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(99), QString());
   }
 
