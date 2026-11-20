@@ -24,6 +24,25 @@ namespace {
   }
 }
 
+TEST_CASE("newPuzzleGridTypes follows offeredForNewPuzzles for both NG and native cut-cube sets", "[ui][puzzletools]") {
+  auto ngList = newPuzzleGridTypes(cutCubeGrids_e::ng);
+  REQUIRE(ngList.size() == 7);
+  CHECK(ngList[0].type == gridType_c::GT_BRICKS);
+  CHECK(ngList[3].type == gridType_c::GT_RHOMBIC_TETRAHEDRA);
+  CHECK(ngList[4].type == gridType_c::GT_OCTAHEDRAL_TETRAHEDRA);
+  CHECK(ngList[5].type == gridType_c::GT_HEXAGONAL_PRISM);
+  CHECK(ngList[6].type == gridType_c::GT_CAIRO_PRISM);
+  for (const auto & c : ngList) {
+    CHECK(gridType_c::offeredForNewPuzzles(c.type, cutCubeGrids_e::ng));
+    CHECK(std::string(gridTypeDisplayName(c.type)) == c.name);
+  }
+
+  auto natList = newPuzzleGridTypes(cutCubeGrids_e::native);
+  REQUIRE(natList.size() == 5);
+  for (const auto & c : natList)
+    CHECK(gridType_c::offeredForNewPuzzles(c.type, cutCubeGrids_e::native));
+}
+
 TEST_CASE("bricks can be converted, and conversion replaces the document", "[ui][puzzletools]") {
   auto targets = convertTargets(gridType_c::GT_BRICKS);
   REQUIRE_FALSE(targets.empty());

@@ -31,6 +31,7 @@
 class guiGridType_c;
 class piecePositions_c;
 
+class Fl_Box;
 class Fl_Slider;
 
 class LineSpacer;
@@ -39,6 +40,9 @@ class LineSpacer;
 class VoxelEditGroup_c : public Fl_Group, public layoutable_c {
 
   gridEditor_c * sqedit;
+  Fl_Box * noEditBox;
+  Fl_Box * yAxisBar;
+  Fl_Box * xAxisBar;
   Fl_Slider * zselect;
   LineSpacer * space;
 
@@ -53,54 +57,54 @@ public:
   void cb_Zselect(Fl_Slider* o);
 
   void setZ(unsigned int val);
-  int getZ(void) { return sqedit->getZ(); }
+  int getZ(void) { return sqedit ? sqedit->getZ() : 0; }
 
   void cb_Sqedit(void) { do_callback(this, user_data()); }
 
-  int getReason(void) { return sqedit->getReason(); }
+  int getReason(void) { return sqedit ? sqedit->getReason() : 0; }
 
-  bool getMouse(void) { return sqedit->getMouse(); }
+  bool getMouse(void) { return sqedit ? sqedit->getMouse() : false; }
 
-  int getMouseX1(void) { return sqedit->getMouseX1(); }
-  int getMouseY1(void) { return sqedit->getMouseY1(); }
-  int getMouseX2(void) { return sqedit->getMouseX2(); }
-  int getMouseY2(void) { return sqedit->getMouseY2(); }
-  int getMouseZ(void) { return sqedit->getMouseZ(); }
+  int getMouseX1(void) { return sqedit ? sqedit->getMouseX1() : 0; }
+  int getMouseY1(void) { return sqedit ? sqedit->getMouseY1() : 0; }
+  int getMouseX2(void) { return sqedit ? sqedit->getMouseX2() : 0; }
+  int getMouseY2(void) { return sqedit ? sqedit->getMouseY2() : 0; }
+  int getMouseZ(void) { return sqedit ? sqedit->getMouseZ() : 0; }
 
-  int getCursorX(void) { return sqedit->getCursorX(); }
-  int getCursorY(void) { return sqedit->getCursorY(); }
-  int getCursorZ(void) { return sqedit->getCursorZ(); }
+  int getCursorX(void) { return sqedit ? sqedit->getCursorX() : 0; }
+  int getCursorY(void) { return sqedit ? sqedit->getCursorY() : 0; }
+  int getCursorZ(void) { return sqedit ? sqedit->getCursorZ() : 0; }
 
   void setPuzzle(puzzle_c * puzzle, unsigned int num);
 
   void clearPuzzle(void) {
-    sqedit->clearPuzzle();
+    if (sqedit) sqedit->clearPuzzle();
   }
 
   void setColor(unsigned int num) {
-    sqedit->setColor(num);
+    if (sqedit) sqedit->setColor(num);
   }
 
   // cppcheck-suppress duplInheritedMember
   void deactivate(void) {
-    sqedit->deactivate();
+    if (sqedit) sqedit->deactivate();
   }
 
   // cppcheck-suppress duplInheritedMember
   void activate(void) {
-    sqedit->activate();
+    if (sqedit) sqedit->activate();
   }
 
   void editSymmetries(int syms) {
-    sqedit->setTool(syms);
+    if (sqedit) sqedit->setTool(syms);
   }
 
   void editChoice(gridEditor_c::enTask c) {
-    sqedit->setTask(c);
+    if (sqedit) sqedit->setTask(c);
   }
 
   void editType(int type) {
-    sqedit->setEditType(type);
+    if (sqedit) sqedit->setEditType(type);
   }
 
   virtual void getMinSize(int *width, int *height) const {

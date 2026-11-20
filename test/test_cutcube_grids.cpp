@@ -266,11 +266,16 @@ TEST_CASE("cut cube grids: new puzzles and conversions from bricks use the grids
   CHECK(gt::offeredForNewPuzzles(gt::GT_RHOMBIC, cutCubeGrids_e::native));
   CHECK(gt::offeredForNewPuzzles(gt::GT_TETRA_OCTA, cutCubeGrids_e::native));
   CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_RHOMBIC_TETRAHEDRA, cutCubeGrids_e::native));
+  CHECK(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM));
+  CHECK(gt::offeredForNewPuzzles(gt::GT_CAIRO_PRISM));
+  CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM, cutCubeGrids_e::native));
+  CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_CAIRO_PRISM, cutCubeGrids_e::native));
   for (cutCubeGrids_e cut : {cutCubeGrids_e::ng, cutCubeGrids_e::native}) {
     CHECK(gt::offeredForNewPuzzles(gt::GT_BRICKS, cut));
     CHECK(gt::offeredForNewPuzzles(gt::GT_TRIANGULAR_PRISM, cut));
     CHECK(gt::offeredForNewPuzzles(gt::GT_SPHERES, cut));
-    CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM, cut));
+    CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_DESCRIBED_BRICKS, cut));
+    CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_DESCRIBED_TRIANGULAR_PRISM, cut));
   }
 
   CHECK(canConvert(gt::GT_BRICKS, gt::GT_RHOMBIC_TETRAHEDRA));

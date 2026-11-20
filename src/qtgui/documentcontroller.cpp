@@ -22,10 +22,12 @@
 #include "guarded.h"
 #include "localpath.h"
 
+#include "../uicore/puzzletools.h"
 #include "../lib/puzzle.h"
 
 #include <QDir>
 #include <QFileInfo>
+#include <QVariantMap>
 
 #include <utility>
 
@@ -93,22 +95,23 @@ QString DocumentController::gridTypeName(void) const {
 }
 
 QString DocumentController::gridTypeDisplayName(int type) {
-  switch (type) {
-    case gridType_c::GT_BRICKS:           return QStringLiteral("Brick");
-    case gridType_c::GT_TRIANGULAR_PRISM: return QStringLiteral("Triangular Prism");
-    case gridType_c::GT_SPHERES:          return QStringLiteral("Spheres");
-    case gridType_c::GT_RHOMBIC:          return QStringLiteral("Rhombic Tetrahedra");
-    case gridType_c::GT_TETRA_OCTA:       return QStringLiteral("Tetrahedra-Octahedra");
-    case gridType_c::GT_HEXAGONAL_PRISM:  return QStringLiteral("Hexagonal Prism");
-    case gridType_c::GT_CAIRO_PRISM:      return QStringLiteral("Cairo Prism");
-    /* this program puts rhombic and tetra-octa puzzles on NG's grids
-     * (cutCubeGrids_e), under the names the native grids had */
-    case gridType_c::GT_RHOMBIC_TETRAHEDRA:    return QStringLiteral("Rhombic Tetrahedra");
-    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return QStringLiteral("Tetrahedra-Octahedra");
-    case gridType_c::GT_DESCRIBED_BRICKS:      return QStringLiteral("Brick (described)");
-    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return QStringLiteral("Triangular Prism (described)");
-    default:                              return QString();
+  if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
+    return QString();
+  const char * name = btui::gridTypeDisplayName(gridType_c::gridType(type));
+  return name && *name ? QString::fromUtf8(name) : QString();
+}
+
+QVariantList DocumentController::newFileGridTypes(void) const {
+  QVariantList out;
+  for (const auto & entry : btui::newPuzzleGridTypes()) {
+    QVariantMap item;
+    item.insert(QStringLiteral("id"), int(entry.type));
+    item.insert(QStringLiteral("key"), QString::fromLatin1(entry.key));
+    item.insert(QStringLiteral("name"), QString::fromUtf8(entry.name));
+    item.insert(QStringLiteral("desc"), tr(entry.description));
+    out.append(item);
   }
+  return out;
 }
 
 QString DocumentController::comment(void) const {

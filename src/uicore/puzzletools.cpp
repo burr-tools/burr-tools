@@ -36,6 +36,44 @@
 
 namespace btui {
 
+  const char * gridTypeDisplayName(gridType_c::gridType type) {
+    switch (type) {
+      case gridType_c::GT_BRICKS:                     return "Brick";
+      case gridType_c::GT_TRIANGULAR_PRISM:           return "Triangular Prism";
+      case gridType_c::GT_SPHERES:                    return "Spheres";
+      case gridType_c::GT_RHOMBIC:                    return "Rhombic Tetrahedra";
+      case gridType_c::GT_TETRA_OCTA:                 return "Tetrahedra-Octahedra";
+      case gridType_c::GT_HEXAGONAL_PRISM:            return "Hexagonal Prism";
+      case gridType_c::GT_CAIRO_PRISM:                return "Cairo Prism";
+      case gridType_c::GT_RHOMBIC_TETRAHEDRA:         return "Rhombic Tetrahedra";
+      case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA:      return "Tetrahedra-Octahedra";
+      case gridType_c::GT_DESCRIBED_BRICKS:           return "Brick (described)";
+      case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "Triangular Prism (described)";
+      case gridType_c::GT_NUM_GRIDS:                  break;
+    }
+    return "";
+  }
+
+  std::vector<GridTypeChoice> newPuzzleGridTypes(cutCubeGrids_e cut) {
+    static const GridTypeChoice catalog[] = {
+      { gridType_c::GT_BRICKS,                "brick",      "Brick",                "Cubes. The classic burr and polycube grid." },
+      { gridType_c::GT_TRIANGULAR_PRISM,      "prism",      "Triangular Prism",     "Triangular prisms stacked along Z." },
+      { gridType_c::GT_SPHERES,               "spheres",    "Spheres",              "Closely packed spheres; each touches twelve neighbours." },
+      { gridType_c::GT_RHOMBIC,               "rhombic",    "Rhombic Tetrahedra",   "Cut cubes that build rhombic dodecahedra." },
+      { gridType_c::GT_TETRA_OCTA,            "tetoct",     "Tetrahedra-Octahedra", "Tetrahedra and octahedra, a cut cube grid." },
+      { gridType_c::GT_RHOMBIC_TETRAHEDRA,    "rhombic",    "Rhombic Tetrahedra",   "Cut cubes that build rhombic dodecahedra." },
+      { gridType_c::GT_OCTAHEDRAL_TETRAHEDRA, "tetoct",     "Tetrahedra-Octahedra", "Tetrahedra and octahedra, a cut cube grid." },
+      { gridType_c::GT_HEXAGONAL_PRISM,       "hexprism",   "Hexagonal Prism",      "Hexagonal prisms stacked along Z." },
+      { gridType_c::GT_CAIRO_PRISM,           "cairoprism", "Cairo Prism",          "Cairo pentagonal prisms stacked along Z." },
+    };
+    std::vector<GridTypeChoice> out;
+    for (const auto & entry : catalog) {
+      if (gridType_c::offeredForNewPuzzles(entry.type, cut))
+        out.push_back(entry);
+    }
+    return out;
+  }
+
   std::vector<gridType_c::gridType> convertTargets(gridType_c::gridType from) {
     std::vector<gridType_c::gridType> out;
     for (int i = 0; i < gridType_c::GT_NUM_GRIDS; i++)

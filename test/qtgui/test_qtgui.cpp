@@ -818,10 +818,23 @@ private slots:
     QCOMPARE(DocumentController::gridTypeDisplayName(2), QStringLiteral("Spheres"));
     QCOMPARE(DocumentController::gridTypeDisplayName(3), QStringLiteral("Rhombic Tetrahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(4), QStringLiteral("Tetrahedra-Octahedra"));
+    QCOMPARE(DocumentController::gridTypeDisplayName(5), QStringLiteral("Hexagonal Prism"));
+    QCOMPARE(DocumentController::gridTypeDisplayName(6), QStringLiteral("Cairo Prism"));
     // rhombic and tetra-octa on NG's grids, which this program uses, keep those names
     QCOMPARE(DocumentController::gridTypeDisplayName(7), QStringLiteral("Rhombic Tetrahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(8), QStringLiteral("Tetrahedra-Octahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(99), QString());
+
+    Fixture f;
+    f.make();
+    const QVariantList offered = f.app->document()->newFileGridTypes();
+    QCOMPARE(offered.size(), 7);
+    f.app->document()->newDocument(gridType_c::GT_HEXAGONAL_PRISM);
+    QCOMPARE(f.app->document()->gridType(), int(gridType_c::GT_HEXAGONAL_PRISM));
+    QCOMPARE(f.app->document()->gridTypeName(), QStringLiteral("Hexagonal Prism"));
+    f.app->document()->newDocument(gridType_c::GT_CAIRO_PRISM);
+    QCOMPARE(f.app->document()->gridType(), int(gridType_c::GT_CAIRO_PRISM));
+    QCOMPARE(f.app->document()->gridTypeName(), QStringLiteral("Cairo Prism"));
   }
 
   // --- the file flows against a real folder -------------------------------

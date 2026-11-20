@@ -129,12 +129,15 @@ class gridType_c {
     bool isDescribed(void) const { return isDescribed(type); }
 
     /** the grids a user can create a puzzle on in the GUIs: bricks, prisms,
-     *  spheres, and rhombic and tetra-octa on the grids `cut` says (the other
-     *  described grids come with step C2 of design/2026-11-19-ng-merge-plan.md) */
+     *  spheres, rhombic and tetra-octa on the grids `cut` says, plus the new
+     *  described prism grids (hexagonal and Cairo) when using NG's grids.
+     *  The cross-check grids (GT_DESCRIBED_BRICKS, GT_DESCRIBED_TRIANGULAR_PRISM)
+     *  are never offered. */
     static bool offeredForNewPuzzles(gridType t, cutCubeGrids_e cut = cutCubeGrids_e::ng) {
       if (t == GT_BRICKS || t == GT_TRIANGULAR_PRISM || t == GT_SPHERES) return true;
       if (cut == cutCubeGrids_e::native) return t == GT_RHOMBIC || t == GT_TETRA_OCTA;
-      return t == GT_RHOMBIC_TETRAHEDRA || t == GT_OCTAHEDRAL_TETRAHEDRA;
+      return t == GT_RHOMBIC_TETRAHEDRA || t == GT_OCTAHEDRAL_TETRAHEDRA ||
+             t == GT_HEXAGONAL_PRISM || t == GT_CAIRO_PRISM;
     }
 
     unsigned int getCapabilities(void) const;

@@ -39,7 +39,22 @@ class voxel_c;
  */
 namespace btui {
 
-  // --- Convert ---------------------------------------------------------------
+  // --- Grid types & Convert --------------------------------------------------
+
+  /* One entry in the File -> New voxel type picker, derived from
+   * gridType_c::offeredForNewPuzzles() in presentation order. */
+  struct GridTypeChoice {
+    gridType_c::gridType type;
+    const char * key;          ///< stable objectName suffix (e.g. "brick", "hexprism")
+    const char * name;         ///< display name
+    const char * description;  ///< short one-line description for the picker
+  };
+
+  /* Display name for any grid type (empty string if out of range). */
+  const char * gridTypeDisplayName(gridType_c::gridType type);
+
+  /* Grid types offered for File -> New, driven by gridType_c::offeredForNewPuzzles(). */
+  std::vector<GridTypeChoice> newPuzzleGridTypes(cutCubeGrids_e cut = cutCubeGrids_e::ng);
 
   /* the grid types a puzzle of this type can be converted to, in enum order */
   std::vector<gridType_c::gridType> convertTargets(gridType_c::gridType from);

@@ -5,20 +5,19 @@ import QtQuick.Controls.Basic
 import QtQuick.Layouts
 import BurrTools.Ui
 
-// File ▸ New: the one-time voxel type choice (C14). The five official types
-// in the legacy "Select space grid" order, Brick preselected; rhombic and
-// tetra-octa on BurrTools NG's grids (gridType_c ids 7 and 8, not the
-// legacy 3 and 4: cutCubeGrids_e in src/lib). The type is fixed for the
-// life of the file.
+// File ▸ New: the one-time voxel type choice (C14). Driven by
+// App.document.newFileGridTypes (gridType_c::offeredForNewPuzzles(), with
+// Brick preselected and rhombic/tetra-octa on NG's grids plus hexagonal and
+// Cairo prisms). The type is fixed for the life of the file.
 //
 // Wireframe (each number marks its code below):
 //
 //   ┌ New puzzle — select the voxel type ───┐
 //   │ ① ┌───────────────────────────────┐   │
-//   │   │ (•) Brick                     │   │   a RadioCard per type
+//   │   │ (•) Brick                     │   │   a RadioCard per offered grid
 //   │   │     Cubes. The classic burr...│   │
 //   │   └───────────────────────────────┘   │
-//   │     ( ) Prism                         │
+//   │     ( ) Triangular Prism              │
 //   │     ( ) Spheres ...                   │
 //   ├───────────────────────────────────────┤
 //   │ ②                  [Cancel] [Create]  │
@@ -32,14 +31,6 @@ BtDialog {
 
     property int selectedType: 0
 
-    readonly property list<var> types: [
-        { id: 0, key: "brick",   desc: qsTr("Cubes. The classic burr and polycube grid.") },
-        { id: 1, key: "prism",   desc: qsTr("Triangular prisms stacked along Z.") },
-        { id: 2, key: "spheres", desc: qsTr("Closely packed spheres; each touches twelve neighbours.") },
-        { id: 7, key: "rhombic", desc: qsTr("Cut cubes that build rhombic dodecahedra.") },
-        { id: 8, key: "tetoct",  desc: qsTr("Tetrahedra and octahedra, a cut cube grid.") }
-    ]
-
     onAboutToShow: selectedType = 0
     onRejected: App.document.cancelFlow()
     onAccepted: App.document.newDocument(selectedType)
@@ -47,12 +38,12 @@ BtDialog {
     contentItem: ColumnLayout {
         spacing: 8
         Repeater { // ①
-            model: root.types
+            model: App.document.newFileGridTypes
             delegate: RadioCard {
                 required property var modelData
                 objectName: "shell.newfile.type." + modelData.key
                 Layout.fillWidth: true
-                text: App.document.gridTypeDisplayName(modelData.id)
+                text: modelData.name
                 description: modelData.desc
                 selected: root.selectedType === modelData.id
                 onClicked: root.selectedType = modelData.id

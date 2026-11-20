@@ -1512,7 +1512,8 @@ static void cb_ToolTabContainer_stub(Fl_Widget* /*o*/, void*v) {
 ToolTabContainer::ToolTabContainer(int x, int y, int w, int h, const guiGridType_c * ggt)
   : layouter_c(x, y, w, h), previewHandler(0), previewUser(0), delayedClearShape(0) {
   tt = ggt->getToolTab(0, 0, 1, 1);
-  tt->callback(cb_ToolTabContainer_stub, this);
+  if (tt)
+    tt->callback(cb_ToolTabContainer_stub, this);
   end();
 }
 
@@ -1542,11 +1543,17 @@ void ToolTabContainer::emitPreview(voxel_c *preview, unsigned int shapeNum, int 
 
 void ToolTabContainer::newGridType(const guiGridType_c * ggt) {
 
-  remove(tt);
-  delete tt;
+  if (tt) {
+    remove(tt);
+    delete tt;
+    tt = nullptr;
+  }
   tt = ggt->getToolTab(0, 0, 1, 1);
-  tt->callback(cb_ToolTabContainer_stub, this);
-  add(tt);
+  if (tt) {
+    tt->callback(cb_ToolTabContainer_stub, this);
+    add(tt);
+  }
   resize(x(), y(), w(), h());
+  redraw();
 }
 

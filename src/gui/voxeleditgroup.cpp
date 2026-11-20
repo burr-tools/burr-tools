@@ -33,7 +33,7 @@
 // some tool widgets, that may be swapped out later into another file
 
 // draws an definable evenly spaced number of lines in one direction
-class LineSpacer : Fl_Widget {
+class LineSpacer : public Fl_Widget {
 
   int lines;
   bool vertical;
@@ -80,7 +80,8 @@ class LineSpacer : Fl_Widget {
 static void cb_VoxelEditGroupZselect_stub(Fl_Widget* o, void* v) { static_cast<VoxelEditGroup_c*>(v)->cb_Zselect(static_cast<Fl_Slider*>(o)); }
 static void cb_VoxelEditGroupSqedit_stub(Fl_Widget* /*o*/, void* v) { static_cast<VoxelEditGroup_c*>(v)->cb_Sqedit(); }
 
-VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt) : Fl_Group(0, 0, 300, 300), layoutable_c(x, y, w, h) {
+VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle, const guiGridType_c * ggt)
+  : Fl_Group(0, 0, 300, 300), layoutable_c(x, y, w, h), sqedit(nullptr), noEditBox(nullptr) {
 
   x = 0;
   y = 0;
@@ -96,53 +97,88 @@ VoxelEditGroup_c::VoxelEditGroup_c(int x, int y, int w, int h, puzzle_c * puzzle
 
   space = new LineSpacer(x+15, y, 5, h, 4);
 
-  {
-    Fl_Box* o = new Fl_Box(x+25, y, 5, h-5);
-    o->box(FL_FLAT_BOX);
-    o->color(fl_rgb_color(0, 192, 0));
-  }
-  {
-    Fl_Box* o = new Fl_Box(x+25, y+h-5, w-25, 5);
-    o->box(FL_FLAT_BOX);
-    o->color((Fl_Color)1);
-  }
+  yAxisBar = new Fl_Box(x+25, y, 5, h-5);
+  yAxisBar->box(FL_FLAT_BOX);
+  yAxisBar->color(fl_rgb_color(0, 192, 0));
+
+  xAxisBar = new Fl_Box(x+25, y+h-5, w-25, 5);
+  xAxisBar->box(FL_FLAT_BOX);
+  xAxisBar->color((Fl_Color)1);
+
+  noEditBox = new Fl_Box(x+35, y, w-35, h-10,
+      "2D voxel editing is not available for this grid in the legacy GUI.\n"
+      "You can view shapes in 3D, inspect problems, and solve this puzzle.");
+  noEditBox->box(FL_FLAT_BOX);
+  noEditBox->align(FL_ALIGN_CENTER | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+  noEditBox->hide();
 
   sqedit = ggt->getGridEditor(x+35, y, w-35, h-10, puzzle);
-  sqedit->tooltip(" Fill and empty voxels ");
-  sqedit->box(FL_NO_BOX);
-  sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
-  sqedit->clear_visible_focus();
-
-  resizable(sqedit);
+  if (sqedit) {
+    sqedit->tooltip(" Fill and empty voxels ");
+    sqedit->box(FL_NO_BOX);
+    sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
+    sqedit->clear_visible_focus();
+    resizable(sqedit);
+  } else {
+    zselect->hide();
+    space->hide();
+    yAxisBar->hide();
+    xAxisBar->hide();
+    noEditBox->resize(x, y, w, h);
+    noEditBox->show();
+    resizable(noEditBox);
+  }
 }
 
 void VoxelEditGroup_c::newGridType(const guiGridType_c * ggt, puzzle_c * puzzle) {
 
-  gridEditor_c * nsq;
+  int ex = sqedit ? sqedit->x() : (x() + 35);
+  int ey = sqedit ? sqedit->y() : y();
+  int ew = sqedit ? sqedit->w() : (w() > 35 ? w() - 35 : 1);
+  int eh = sqedit ? sqedit->h() : (h() > 10 ? h() - 10 : 1);
 
-  nsq = ggt->getGridEditor(sqedit->x(), sqedit->y(), sqedit->w(), sqedit->h(), puzzle);
-  nsq->tooltip(" Fill and empty voxels ");
-  nsq->box(FL_NO_BOX);
-  nsq->callback(cb_VoxelEditGroupSqedit_stub, this);
-  nsq->clear_visible_focus();
+  if (sqedit) {
+    remove(sqedit);
+    delete sqedit;
+    sqedit = nullptr;
+  }
 
-  resizable(nsq);
-
-  remove(sqedit);
-  delete sqedit;
-
-  sqedit = nsq;
-  add(sqedit);
+  sqedit = ggt->getGridEditor(ex, ey, ew, eh, puzzle);
+  if (sqedit) {
+    sqedit->tooltip(" Fill and empty voxels ");
+    sqedit->box(FL_NO_BOX);
+    sqedit->callback(cb_VoxelEditGroupSqedit_stub, this);
+    sqedit->clear_visible_focus();
+    noEditBox->hide();
+    zselect->show();
+    space->show();
+    yAxisBar->show();
+    xAxisBar->show();
+    add(sqedit);
+    resizable(sqedit);
+  } else {
+    zselect->hide();
+    space->hide();
+    yAxisBar->hide();
+    xAxisBar->hide();
+    noEditBox->resize(x(), y(), w(), h());
+    noEditBox->show();
+    resizable(noEditBox);
+  }
+  init_sizes();
+  redraw();
 }
 
 
 void VoxelEditGroup_c::setZ(unsigned int val) {
+  if (!sqedit) return;
   if (val > zselect->maximum()) val = (unsigned int)zselect->maximum();
   zselect->value(int(zselect->maximum()-val));
   sqedit->setZ(val);
 }
 
 void VoxelEditGroup_c::setPuzzle(puzzle_c * puzzle, unsigned int num) {
+  if (!sqedit) return;
   sqedit->setPuzzle(puzzle, num);
   if (puzzle && (num < puzzle->getNumberOfShapes())) {
     voxel_c * v = puzzle->getShape(num);
@@ -161,6 +197,7 @@ void VoxelEditGroup_c::draw() {
 }
 
 void VoxelEditGroup_c::cb_Zselect(Fl_Slider* o) {
+  if (!sqedit) return;
   sqedit->setZ(int(zselect->maximum() - o->value()));
 }
 

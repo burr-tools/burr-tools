@@ -26,6 +26,7 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 #include <utility>
@@ -54,6 +55,7 @@ class DocumentController : public QObject {
   Q_PROPERTY(bool canRedo READ canRedo NOTIFY stateChanged FINAL)
   Q_PROPERTY(int gridType READ gridType NOTIFY documentReplaced FINAL)
   Q_PROPERTY(QString gridTypeName READ gridTypeName NOTIFY documentReplaced FINAL)
+  Q_PROPERTY(QVariantList newFileGridTypes READ newFileGridTypes CONSTANT FINAL)
   Q_PROPERTY(QString comment READ comment NOTIFY stateChanged FINAL)
   Q_PROPERTY(bool flowPending READ flowPending NOTIFY stateChanged FINAL)
 
@@ -73,6 +75,7 @@ public:
   bool canRedo(void) const { return m_session.canRedo(); }
   int gridType(void) const;
   QString gridTypeName(void) const;
+  QVariantList newFileGridTypes(void) const;
   QString comment(void) const;
   bool flowPending(void) const { return m_pending != Pending::None; }
 
