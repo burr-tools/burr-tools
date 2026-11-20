@@ -475,8 +475,6 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
       pc += problem.getPartMaximum(i);
     }
 
-    bool tmp = sym->symmetriesLeft(resultSym, problem.getPartShape(symBreakerShape)->selfSymmetries());
-
     bool pieceRanges = false;
     for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
       if (problem.getPartMinimum(i) != problem.getPartMaximum(i)) {
@@ -484,11 +482,38 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
         break;
       }
 
+    /* With piece ranges the shape above may be one that an assembly leaves
+     * out, and such a shape cannot break the symmetry. One that is in every
+     * assembly exactly once can, whatever ranges the other shapes have:
+     * turning an assembly by a symmetry of the result gives an assembly of
+     * the same pieces, so every assembly has a turned copy with this one
+     * piece in an orientation we keep. Take the one of those shapes with the
+     * fewest symmetries in common with the result.
+     */
+    bool rangeBreaker = false;
+    if (pieceRanges && settings.rangeSymmetryBreaker) {
+      unsigned int at = 0;
+      for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
+        if (problem.getPartMinimum(i) == 1 && problem.getPartMaximum(i) == 1) {
+          unsigned int cnt = sym->countSymmetryIntersection(resultSym, problem.getPartShape(i)->selfSymmetries());
+          if (!rangeBreaker || cnt < bestFound) {
+            bestFound = cnt;
+            symBreakerShape = i;
+            symBreakerPiece = at;
+            rangeBreaker = true;
+          }
+        }
+        at += problem.getPartMaximum(i);
+      }
+    }
+
+    bool tmp = sym->symmetriesLeft(resultSym, problem.getPartShape(symBreakerShape)->selfSymmetries());
+
     if (tmp || (problem.getPartMaximum(symBreakerShape) > 1) || pieceRanges) {
 
       // we can not use the symmetry breaker shape, if there is more than one piece
       // of this shape in the problem
-      if (pieceRanges || problem.getPartMaximum(symBreakerShape) > 1) {
+      if (!rangeBreaker && (pieceRanges || problem.getPartMaximum(symBreakerShape) > 1)) {
         symBreakerShape = 0xFFFFFFFF;
         symBreakerPiece = 0xFFFFFFFF;
       }

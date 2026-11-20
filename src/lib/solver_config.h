@@ -51,6 +51,12 @@ struct solverSettings_t {
   unsigned int threads = 0;
   /** the bit-parallel exact cover engines (SIMD); false: Knuth's DLX */
   bool bitParallel = true;
+  /** assembler_1: with piece ranges, still restrict a shape that every
+   *  assembly uses exactly once to break the result's symmetry; false: no
+   *  such restriction as soon as any shape has a range (benchmarking). It
+   *  changes the matrix, so a saved search only continues under the value
+   *  it was started with. */
+  bool rangeSymmetryBreaker = true;
   vectorIsa_e vector = VECTOR_AUTO;
   /** vector kernels in the disassembler's movement closure */
   bool disassemblerVector = true;
@@ -102,6 +108,7 @@ struct solverSettings_t {
  * |--------------------|---------------------------------------------------|
  * | threads            | BURRTOOLS_THREADS=N                               |
  * | bitParallel        | BURRTOOLS_BITPARALLEL=0\|1                        |
+ * | rangeSymmetryBreaker | BURRTOOLS_RANGE_SYMBREAK=0\|1                  |
  * | vector             | BURRTOOLS_VECTOR=auto\|scalar\|avx2\|avx512\|neon |
  * | disassemblerVector | BURRTOOLS_DISASM_VECTOR=0\|1                      |
  * | disassemblerPool   | BURRTOOLS_DISASM_POOL=0\|1                        |
@@ -123,6 +130,7 @@ struct solverSettings_t {
 struct solverConfig_t {
   std::optional<unsigned int> threads;
   std::optional<bool> bitParallel;
+  std::optional<bool> rangeSymmetryBreaker;
   std::optional<vectorIsa_e> vector;
   std::optional<bool> disassemblerVector;
   std::optional<bool> disassemblerPool;

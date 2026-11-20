@@ -12,8 +12,9 @@ namespace {
 
 /* every variable resolve() reads, unset for the scope */
 struct CleanEnv {
-  ScopedEnv vars[13] = {
+  ScopedEnv vars[14] = {
     { "BURRTOOLS_THREADS", nullptr }, { "BURRTOOLS_BITPARALLEL", nullptr },
+    { "BURRTOOLS_RANGE_SYMBREAK", nullptr },
     { "BURRTOOLS_VECTOR", nullptr }, { "BURRTOOLS_DISASM_VECTOR", nullptr },
     { "BURRTOOLS_DISASM_POOL", nullptr }, { "BURRTOOLS_HUANG_MEM_MB", nullptr },
     { "BURRTOOLS_SPLIT_FANOUT", nullptr }, { "BURRTOOLS_SPLIT_ORDER", nullptr },
@@ -40,6 +41,7 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
   const solverSettings_t d;
   CHECK(s.threads == 0);
   CHECK(s.bitParallel);
+  CHECK(s.rangeSymmetryBreaker);
   CHECK(s.vector == VECTOR_AUTO);
   CHECK(s.disassemblerVector);
   CHECK(s.disassemblerPool);
