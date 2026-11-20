@@ -16,6 +16,7 @@ instead of hanging the suite.
 
 import gzip
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,9 @@ TIMEOUT = 120
 
 PUZZLE = "examples/PelikanBurr.xmpuzzle"
 SOLVE = ["-R", "-d", "-b", "0"]   # for burrTxt2: from the start, ignoring the stored result
+
+# the gzip signature, then a compression method that does not exist
+DAMAGED = b"\x1f\x8b\x7f\x00\x00\x00\x00\x00\x00\x00 and no more"
 
 failures = []
 
@@ -76,6 +80,8 @@ def check_reported(binary, args, label):
     for what, data, status, message in [
         ("empty stdin", b"", 1, "no puzzle on standard input"),
         ("junk on stdin", b"not a puzzle", 2, "could not load the puzzle"),
+        ("damaged compressed stdin", DAMAGED, 2,
+         "could not load the puzzle: damaged compressed data"),
     ]:
         name = f"{label}, {what}"
         rc, out = run(binary, args, data, name)
@@ -176,7 +182,7 @@ def test_burrtxt2(binary, compressed, plain):
 
     # no puzzle, no result: stdout stays empty for whatever it is redirected to
     with tempfile.TemporaryDirectory() as cwd:
-        for name, data in [("empty", b""), ("junk", b"not a puzzle")]:
+        for name, data in [("empty", b""), ("junk", b"not a puzzle"), ("damaged", DAMAGED)]:
             label = f"burrTxt2 {name} stdin"
             rc, out, _ = run_split(binary, ["-"], data, label, cwd)
             check(label, rc is None or out == "", f"wrote to stdout\n{out}")
@@ -196,6 +202,33 @@ def test_burrtxt2(binary, compressed, plain):
             check(label, f"outputting into {named}ttt" in out, f"did not say so\n{out}")
             check(label, "<puzzle" not in out, f"wrote the result to stdout\n{out[:300]}")
             check(label, Path(f"{named}ttt").exists(), f"wrote no file\n{out}")
+
+    # a run that fails: a pipe gets a complete puzzle or nothing, so stdout
+    # stays empty. (A named file still gets its result written, but a run on
+    # one stops at its first look at stdin, before the solver can fail.)
+    # one shape twice: its stored solutions no longer fit, so they go too
+    too_many = plain.replace(b'<shape id="1" count="1"/>', b'<shape id="1" count="2"/>', 1)
+    too_many = re.sub(rb"<solutions>.*?</solutions>", b"", too_many, flags=re.S)
+    check("burrTxt2 failing puzzle", b'count="2"' in too_many and b"<solutions>" not in too_many,
+          "the example's problem changed")
+    with tempfile.TemporaryDirectory() as cwd:
+        label = "burrTxt2 piped run that fails"
+        rc, out, messages = run_split(binary, SOLVE + ["-"], too_many, label, cwd)
+        if rc is not None:
+            check(label, rc == 1, f"exited {rc}\n{messages}")
+            check(label, "units too many" in messages, f"did not say why\n{messages}")
+            check(label, out == "", f"wrote to stdout\n{out[:300]}")
+
+    # a wrong command line is found before the file is, and still has its
+    # message go to stderr, as for any other piped run
+    with tempfile.TemporaryDirectory() as cwd:
+        for name, args in [("-t bad", ["-t", "bad", "-"]), ("-t without a number", ["-", "-t"])]:
+            label = f"burrTxt2 piped, {name}"
+            rc, out, messages = run_split(binary, args, compressed, label, cwd)
+            if rc is not None:
+                check(label, rc == 1, f"exited {rc}\n{messages}")
+                check(label, "-t requires" in messages, f"did not say so on stderr\n{messages}")
+                check(label, out == "", f"wrote to stdout\n{out}")
 
     check_reported(binary, [], "burrTxt2")
     check_terminal(binary, "burrTxt2")

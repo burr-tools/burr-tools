@@ -65,6 +65,7 @@ gzstreambuf* gzstreambuf::open( const char* name, int open_mode) {
     if (file == 0)
         return (gzstreambuf*)0;
     opened = 1;
+    failed = false;
     return this;
 }
 
@@ -76,6 +77,7 @@ gzstreambuf* gzstreambuf::open( int fd) {
         return (gzstreambuf*)0;
     mode = std::ios::in;
     opened = 1;
+    failed = false;
     return this;
 }
 
@@ -103,8 +105,11 @@ int gzstreambuf::underflow() { // used for input buffer only
     memmove( buffer + (4 - n_putback), gptr() - n_putback, n_putback);
 
     int num = gzread( file, buffer+4, bufferSize-4);
-    if (num <= 0) // ERROR or EOF
+    if (num <= 0) { // ERROR or EOF
+        if (num < 0)
+            failed = true;
         return EOF;
+    }
 
     // reset buffer pointers
     setg( buffer + (4 - n_putback),   // beginning of putback area
@@ -206,7 +211,7 @@ std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path)
   return openGzFile(path.string().c_str());
 }
 
-std::unique_ptr<std::istream> openGzDescriptor(int fd)
+std::unique_ptr<igzstream> openGzDescriptor(int fd)
 {
   // Windows numbers the stdin of a GUI program started without one -2
   if (fd < 0)

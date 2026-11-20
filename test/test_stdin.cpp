@@ -28,6 +28,7 @@
 #include "../src/tools/cliargs.h"
 #include "../src/tools/gzstream.h"
 #include "../src/tools/xml.h"
+#include "fdcompat.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -37,8 +38,9 @@
 #include <string>
 #include <thread>
 
-#ifdef _WIN32
-#include <fcntl.h>
+#ifndef _WIN32
+#include <csignal>
+#include <pthread.h>
 #endif
 
 namespace {
@@ -57,7 +59,8 @@ namespace {
   }
 
   /* A pipe holding the given data and then at its end. A thread writes it, as
-   * the data can be larger than what a pipe buffers. */
+   * the data can be larger than what a pipe buffers. A reader may stop early:
+   * the writer then fails to write, and stops too. */
   class Feed {
 
     public:
@@ -73,21 +76,31 @@ namespace {
 #endif
         reader = fds[0];
         writer = std::thread([fd = fds[1], data] {
+#ifndef _WIN32
+          /* a write to a pipe nobody reads any more raises SIGPIPE, which
+           * would kill the test binary. That signal goes to the thread that
+           * wrote, so blocking it here is enough: write() fails with EPIPE.
+           */
+          sigset_t pipeSignal;
+          sigemptyset(&pipeSignal);
+          sigaddset(&pipeSignal, SIGPIPE);
+          pthread_sigmask(SIG_BLOCK, &pipeSignal, nullptr);
+#endif
           size_t done = 0;
           while (done < data.size()) {
-            const auto n = write(fd, data.data() + done, static_cast<unsigned int>(data.size() - done));
+            const long n = btfd::write(fd, data.data() + done, data.size() - done);
             if (n <= 0)
               break;
             done += static_cast<size_t>(n);
           }
-          close(fd);
+          btfd::close(fd);
         });
       }
 
       ~Feed() {
         // a reader that stopped early must not leave the writer blocked
         if (reader >= 0)
-          close(reader);
+          btfd::close(reader);
         writer.join();
       }
 
@@ -98,7 +111,7 @@ namespace {
 
       /* Closes the read end; false if that was already done. */
       bool closeReader(void) {
-        const bool ok = close(reader) == 0;
+        const bool ok = btfd::close(reader) == 0;
         reader = -1;
         return ok;
       }
@@ -137,6 +150,15 @@ TEST_CASE("a descriptor reads every byte as it is", "[stdin]") {
   auto in = openGzDescriptor(feed.fd());
   REQUIRE(in);
   CHECK(contentOf(*in) == data);
+}
+
+/* More than any pipe buffers, of which one byte is read: the writer is still
+ * blocked when the reader goes, and must come out of that with an error. */
+TEST_CASE("a reader may stop before the data ends", "[stdin]") {
+  Feed feed(std::string(4 << 20, 'x'));
+  auto in = openGzDescriptor(feed.fd());
+  REQUIRE(in);
+  CHECK(in->get() == 'x');
 }
 
 TEST_CASE("the stream leaves the descriptor open", "[stdin]") {
@@ -180,22 +202,62 @@ TEST_CASE("a puzzle comes through whole", "[stdin]") {
 TEST_CASE("an empty input says there is no puzzle", "[stdin]") {
   Feed feed("");
   std::string error;
-  CHECK_FALSE(btcli::openPuzzleInput(feed.fd(), error));
+  bool damaged = true;
+  CHECK_FALSE(btcli::openPuzzleInput(feed.fd(), error, damaged));
   CHECK(error == "no puzzle on standard input");
+  CHECK_FALSE(damaged);
 }
 
-TEST_CASE("compressed data damaged from the start says there is no puzzle", "[stdin]") {
+TEST_CASE("compressed data damaged from the start says it is damaged", "[stdin]") {
   // the gzip signature, then a compression method that does not exist
   Feed feed(std::string("\x1f\x8b\x7f\x00\x00\x00\x00\x00\x00\x00 and no more", 22));
   std::string error;
-  CHECK_FALSE(btcli::openPuzzleInput(feed.fd(), error));
-  CHECK(error == "no puzzle on standard input");
+  bool damaged = false;
+  CHECK_FALSE(btcli::openPuzzleInput(feed.fd(), error, damaged));
+  CHECK(error == "damaged compressed data on standard input");
+  CHECK(damaged);
+}
+
+TEST_CASE("a stream tells damaged data from its end", "[stdin]") {
+  SECTION("plain data read to its end") {
+    Feed feed("plain");
+    auto in = openGzDescriptor(feed.fd());
+    REQUIRE(in);
+    CHECK(contentOf(*in) == "plain");
+    CHECK_FALSE(in->rdbuf()->readFailed());
+  }
+  SECTION("compressed data read to its end") {
+    Feed feed(bytesOf(example));
+    auto in = openGzDescriptor(feed.fd());
+    REQUIRE(in);
+    contentOf(*in);
+    CHECK_FALSE(in->rdbuf()->readFailed());
+  }
+  SECTION("compressed data that does not match its checksum") {
+    // a gzip member ends in the CRC-32 of its data, then the data's length
+    std::string data = bytesOf(example);
+    REQUIRE(data.size() > 8);
+    data[data.size() - 8] ^= 0x55;
+    Feed feed(data);
+    auto in = openGzDescriptor(feed.fd());
+    REQUIRE(in);
+    contentOf(*in);
+    CHECK(in->rdbuf()->readFailed());
+  }
 }
 
 TEST_CASE("an input that can not be read says so", "[stdin]") {
   std::string error;
-  CHECK_FALSE(btcli::openPuzzleInput(-1, error));
+  bool damaged = true;
+  CHECK_FALSE(btcli::openPuzzleInput(-1, error, damaged));
   CHECK(error == "could not read standard input");
+  CHECK_FALSE(damaged);
+}
+
+TEST_CASE("no descriptor is no terminal", "[stdin]") {
+  // never handed to _isatty(), which fails fast on Windows
+  CHECK_FALSE(btcli::isTerminal(-1));
+  CHECK_FALSE(btcli::isTerminal(-2));         // Windows' stdin of a GUI program without one
 }
 
 TEST_CASE("the file name - stands for standard input", "[stdin]") {
@@ -204,6 +266,7 @@ TEST_CASE("the file name - stands for standard input", "[stdin]") {
   CHECK_FALSE(btcli::namesStdin("./-"));
   CHECK_FALSE(btcli::namesStdin(""));
   CHECK_FALSE(btcli::namesStdin("puzzle.xmpuzzle"));
+  CHECK_FALSE(btcli::namesStdin(nullptr));
 }
 
 TEST_CASE("a solver given a file name reads that, given - standard input", "[stdin]") {

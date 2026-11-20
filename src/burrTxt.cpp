@@ -245,9 +245,14 @@ int main(int argv, char* args[]) {
   }
 
   std::string stdinError;
-  auto str = fromStdin ? btcli::openStdin(stdinError) : openGzFile(file);
+  bool damaged = false;
+  auto str = fromStdin ? btcli::openStdin(stdinError, damaged) : openGzFile(file);
 
   if (!str) {
+    if (damaged) {
+      cout << "could not load the puzzle: " << stdinError << "\n";
+      return 2;
+    }
     if (fromStdin) {
       cout << stdinError << "\n\n";
       usage();

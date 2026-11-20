@@ -69,7 +69,6 @@
 #include <QTimer>
 
 #include <ctime>
-#include <fcntl.h>
 #include <memory>
 #include <new>
 #include <optional>
@@ -84,9 +83,7 @@
 #include <commctrl.h>
 #endif
 
-#ifndef O_BINARY
-#define O_BINARY 0
-#endif
+#include "../fdcompat.h"
 
 namespace {
 
@@ -95,16 +92,16 @@ namespace {
 
     public:
 
-      explicit StdinFrom(const char * file) : saved(dup(btcli::stdinDescriptor())) {
-        const int fd = open(file, O_RDONLY | O_BINARY);
-        if (saved < 0 || fd < 0 || dup2(fd, btcli::stdinDescriptor()) < 0)
+      explicit StdinFrom(const char * file) : saved(btfd::dup(btcli::stdinDescriptor())) {
+        const int fd = btfd::openRead(file);
+        if (saved < 0 || fd < 0 || btfd::dup2(fd, btcli::stdinDescriptor()) < 0)
           qFatal("could not put %s on standard input", file);
-        close(fd);
+        btfd::close(fd);
       }
 
       ~StdinFrom() {
-        dup2(saved, btcli::stdinDescriptor());
-        close(saved);
+        btfd::dup2(saved, btcli::stdinDescriptor());
+        btfd::close(saved);
       }
 
       StdinFrom(const StdinFrom &) = delete;

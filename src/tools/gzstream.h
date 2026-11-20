@@ -49,10 +49,11 @@ private:
     char             buffer[bufferSize]; // data buffer
     char             opened;             // open/close state of stream
     int              mode;               // I/O mode
+    bool             failed;             // a gzread() returned an error
 
     int flush_buffer();
 public:
-    gzstreambuf() : file(nullptr), opened(0), mode(0) {
+    gzstreambuf() : file(nullptr), opened(0), mode(0), failed(false) {
         setp( buffer, buffer + (bufferSize-1));
         setg( buffer + 4,     // beginning of putback area
               buffer + 4,     // read position
@@ -60,6 +61,8 @@ public:
         // ASSERT: both input & output capabilities will not be used together
     }
     int is_open() { return opened; }
+    // both end the input with EOF; this tells damaged data from its end
+    bool readFailed() const { return failed; }
     gzstreambuf* open( const char* name, int open_mode);
     // for reading; on success the stream owns fd: close() closes it
     gzstreambuf* open( int fd);
@@ -126,7 +129,8 @@ std::unique_ptr<std::istream> openGzFile(const std::filesystem::path & path);
 
 // the same for an open descriptor: reads compressed or plain data through a
 // duplicate of it, so fd itself stays open and keeps its mode. Returns nullptr
-// if fd is not an open descriptor.
-std::unique_ptr<std::istream> openGzDescriptor(int fd);
+// if fd is not an open descriptor. Always a gzip stream, which can say
+// whether its data was damaged (rdbuf()->readFailed()).
+std::unique_ptr<igzstream> openGzDescriptor(int fd);
 
 #endif
