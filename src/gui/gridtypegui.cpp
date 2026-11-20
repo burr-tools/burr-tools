@@ -98,7 +98,8 @@ gridTypeSelectorWindow_c::gridTypeSelectorWindow_c(void) : LFl_Double_Window(fal
    * with all required information
    */
   for (int i = 0; i < gridType_c::GT_NUM_GRIDS; i++)
-    gti.push_back(std::make_unique<gridTypeInfos_c>(std::make_unique<gridType_c>(gridType_c::gridType(i))));
+    if (gridType_c::offeredForNewPuzzles(gridType_c::gridType(i)))
+      gti.push_back(std::make_unique<gridTypeInfos_c>(std::make_unique<gridType_c>(gridType_c::gridType(i))));
 
   /* from here on the code should not need changes when new grid types are added */
 

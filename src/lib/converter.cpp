@@ -23,6 +23,12 @@
 #include "puzzle.h"
 #include "problem.h"
 #include "voxel.h"
+#include "latticegridinfo.h"
+
+#include <algorithm>
+#include <array>
+#include <climits>
+#include <vector>
 
 bool canConvert(gridType_c::gridType src, gridType_c::gridType dst)
 {
@@ -125,3 +131,137 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type) {
   return pNew;
 }
 
+
+gridType_c::gridType describedCounterpart(gridType_c::gridType native) {
+  switch (native) {
+    case gridType_c::GT_BRICKS:           return gridType_c::GT_DESCRIBED_BRICKS;
+    case gridType_c::GT_TRIANGULAR_PRISM: return gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM;
+    case gridType_c::GT_RHOMBIC:          return gridType_c::GT_RHOMBIC_TETRAHEDRA;
+    case gridType_c::GT_TETRA_OCTA:       return gridType_c::GT_OCTAHEDRAL_TETRAHEDRA;
+    case gridType_c::GT_SPHERES:
+    case gridType_c::GT_HEXAGONAL_PRISM:
+    case gridType_c::GT_CAIRO_PRISM:
+    case gridType_c::GT_RHOMBIC_TETRAHEDRA:
+    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA:
+    case gridType_c::GT_DESCRIBED_BRICKS:
+    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM:
+    case gridType_c::GT_NUM_GRIDS:
+      break;
+  }
+  return gridType_c::GT_NUM_GRIDS;
+}
+
+namespace {
+
+/* the NG voxels one of our cells becomes, as NG's importer maps them
+ * (import.cpp at fdae7951; checked in step G0 of the grid plan) */
+void describedCells(gridType_c::gridType src, int x, int y, int z, std::vector<std::array<int, 3>> & out) {
+  out.clear();
+  switch (src) {
+    case gridType_c::GT_BRICKS:
+    case gridType_c::GT_TETRA_OCTA:
+      out.push_back({x, y, z});
+      break;
+    case gridType_c::GT_TRIANGULAR_PRISM: {
+      int xn = x + 1;
+      int yn = (3 * y + 1) / 2 - (x + y % 2) / 2;
+      int zn = -xn - yn;
+      out.push_back({xn + z, yn + z, zn + z});
+      break;
+    }
+    case gridType_c::GT_RHOMBIC: {
+      int xr = x % 5, yr = y % 5, zr = z % 5;
+      if (xr > 2) xr++;
+      if (yr > 2) yr++;
+      if (zr > 2) zr++;
+      const int bx = 6 * (x / 5) + xr, by = 6 * (y / 5) + yr, bz = 6 * (z / 5) + zr;
+      if (xr == 2) { out.push_back({bx, by, bz}); out.push_back({bx + 1, by, bz}); }
+      if (yr == 2) { out.push_back({bx, by, bz}); out.push_back({bx, by + 1, bz}); }
+      if (zr == 2) { out.push_back({bx, by, bz}); out.push_back({bx, by, bz + 1}); }
+      break;
+    }
+    default:
+      bt_assert(0);
+  }
+}
+
+} // namespace
+
+puzzle_c * convertToDescribed(const puzzle_c * p) {
+
+  const gridType_c::gridType src = p->getGridType()->getType();
+  const gridType_c::gridType dst = describedCounterpart(src);
+  if (dst == gridType_c::GT_NUM_GRIDS) return nullptr;
+
+  const latticeGridInfo_c & inf = latticeGridInfo_c::get(dst);
+  gridType_c * gt = new gridType_c(dst);
+  puzzle_c * pNew = new puzzle_c(gt);
+
+  std::vector<std::array<int, 3>> cells;
+
+  for (unsigned int i = 0; i < p->getNumberOfShapes(); i++) {
+
+    const voxel_c * v = p->getShape(i);
+
+    // the cells and their values, in NG's coordinates
+    struct cell_s { int x, y, z; voxel_type val; };
+    std::vector<cell_s> mapped;
+    int mx = INT_MAX, my = INT_MAX, mz = INT_MAX;
+
+    for (unsigned int z = 0; z < v->getZ(); z++)
+      for (unsigned int y = 0; y < v->getY(); y++)
+        for (unsigned int x = 0; x < v->getX(); x++) {
+          const voxel_type st = v->get(x, y, z);
+          if (!st) continue;
+          describedCells(src, x, y, z, cells);
+          for (const auto & c : cells) {
+            bt_assert(inf.isVoxel(c[0], c[1], c[2]));
+            mapped.push_back({c[0], c[1], c[2], st});
+            mx = std::min(mx, c[0]);
+            my = std::min(my, c[1]);
+            mz = std::min(mz, c[2]);
+          }
+        }
+
+    voxel_c * vn;
+    if (mapped.empty()) {
+      vn = gt->getVoxel(1, 1, 1, voxel_c::VX_EMPTY);
+    } else {
+      // move by a lattice vector to non negative coordinates
+      int vx, vy, vz;
+      inf.alignDown(mx, my, mz, vx, vy, vz);
+      int sx = 0, sy = 0, sz = 0;
+      for (const auto & c : mapped) {
+        sx = std::max(sx, c.x - vx + 1);
+        sy = std::max(sy, c.y - vy + 1);
+        sz = std::max(sz, c.z - vz + 1);
+      }
+      vn = gt->getVoxel(sx, sy, sz, voxel_c::VX_EMPTY);
+      vn->skipRecalcBoundingBox(true);
+      for (const auto & c : mapped)
+        vn->set(c.x - vx, c.y - vy, c.z - vz, c.val);
+      vn->skipRecalcBoundingBox(false);
+    }
+
+    vn->setName(v->getName());
+    vn->initHotspot();
+    pNew->addShape(vn);
+  }
+
+  for (unsigned int i = 0; i < p->colorNumber(); i++) {
+    unsigned char r, g, b;
+    p->getColor(i, &r, &g, &b);
+    pNew->addColor(r, g, b);
+  }
+
+  pNew->setComment(p->getComment());
+  pNew->setCommentPopup(p->getCommentPopup());
+
+  for (unsigned int i = 0; i < p->getNumberOfProblems(); i++) {
+    const problem_c * prob = p->getProblem(i);
+    problem_c * probNew = pNew->getProblem(pNew->addProblem(prob));
+    probNew->setName(prob->getName());
+  }
+
+  return pNew;
+}

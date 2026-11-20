@@ -26,6 +26,7 @@
 #include "solver_config.h"
 
 #include <memory>
+#include <mutex>
 
 class assembler_c;
 class symmetries_c;
@@ -57,6 +58,18 @@ class gridType_c {
       GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahedra
       GT_TETRA_OCTA,               ///< spacegrid for with tetrahedron and octrahera, also a cut cube
 
+      /* Described grids: BurrTools NG's grids as data (src/lib/latticegrid,
+       * design/2026-11-19-ng-merge-plan.md), one value per grid. Each maps to
+       * NG's storage id in latticeGridInfo_c. The two "described" copies of
+       * native grids exist to cross-check the described grids against the
+       * native ones; the GUIs do not offer them. */
+      GT_HEXAGONAL_PRISM,          ///< hexagons stacked in Z-direction (NG grid 3)
+      GT_CAIRO_PRISM,              ///< Cairo pentagons stacked in Z-direction (NG grid 5)
+      GT_RHOMBIC_TETRAHEDRA,       ///< NG's rhombic grid, each of our rhombic voxels is two of these (NG grid 1)
+      GT_OCTAHEDRAL_TETRAHEDRA,    ///< NG's tetrahedra and octahedra, the cells of GT_TETRA_OCTA (NG grid 2)
+      GT_DESCRIBED_BRICKS,         ///< cubes as a described grid, for cross-checks (NG grid 0)
+      GT_DESCRIBED_TRIANGULAR_PRISM, ///< triangular prisms as a described grid, for cross-checks (NG grid 4)
+
       GT_NUM_GRIDS                 ///< always the last entry, the number of different grids
     } gridType;
 
@@ -80,6 +93,9 @@ class gridType_c {
      * use
      */
     mutable std::unique_ptr<symmetries_c> sym;
+    /** creates sym once (getSymmetries() may run on several threads); a
+     * copy gets a fresh flag, as it gets no sym */
+    mutable std::once_flag symOnce;
 
   public:
 
@@ -106,6 +122,14 @@ class gridType_c {
 
     /** get the grid type */
     gridType getType(void) const { return type; }
+
+    /** is this one of the described grids (NG's grids as data) */
+    static bool isDescribed(gridType t) { return t >= GT_HEXAGONAL_PRISM && t < GT_NUM_GRIDS; }
+    bool isDescribed(void) const { return isDescribed(type); }
+
+    /** the grids a user can create a puzzle on in the GUIs: the native ones
+     *  (described grids come with step G6 of the grid plan) */
+    static bool offeredForNewPuzzles(gridType t) { return t >= GT_BRICKS && t <= GT_TETRA_OCTA; }
 
     unsigned int getCapabilities(void) const;
 

@@ -39,4 +39,20 @@ bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
  */
 puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
 
+/**
+ * The described grid (BurrTools NG's grids as data) a native grid's
+ * puzzles convert to, GT_NUM_GRIDS for none: bricks and triangular prisms
+ * to their described copies (for cross-checks), rhombic to NG's rhombic
+ * tetrahedra (each voxel becomes two), tetra-octa to NG's octahedral
+ * tetrahedra (the same cells). The coordinate maps are NG's importer's.
+ */
+gridType_c::gridType describedCounterpart(gridType_c::gridType native);
+
+/**
+ * A copy of the puzzle on describedCounterpart() of its grid, with the same
+ * shapes, colours, comment and problems; null if its grid has none. Not
+ * offered by canConvert(): the GUIs do not show described grids yet.
+ */
+puzzle_c * convertToDescribed(const puzzle_c * p);
+
 #endif

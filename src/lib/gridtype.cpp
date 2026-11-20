@@ -28,6 +28,9 @@
 #include "voxel_2.h"
 #include "voxel_3.h"
 #include "voxel_4.h"
+#include "voxel_lattice.h"
+#include "latticegridinfo.h"
+#include "symmetries_lattice.h"
 #include "symmetries_0.h"
 #include "symmetries_1.h"
 #include "symmetries_2.h"
@@ -58,6 +61,12 @@ gridType_c::gridType_c(xmlParser_c & pars)
     case GT_SPHERES:
     case GT_RHOMBIC:
     case GT_TETRA_OCTA:
+    case GT_HEXAGONAL_PRISM:
+    case GT_CAIRO_PRISM:
+    case GT_RHOMBIC_TETRAHEDRA:
+    case GT_OCTAHEDRAL_TETRAHEDRA:
+    case GT_DESCRIBED_BRICKS:
+    case GT_DESCRIBED_TRIANGULAR_PRISM:
       break;
 
     default:
@@ -106,7 +115,7 @@ gridType_c::gridType_c(gridType gt) {
       break;
 
     default:
-      bt_assert(0);
+      bt_assert(isDescribed(type));
       break;
   }
 }
@@ -130,7 +139,9 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
     case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init);
     case GT_RHOMBIC:          return new voxel_3_c(x, y, z, this, init);
     case GT_TETRA_OCTA:       return new voxel_4_c(x, y, z, this, init);
-    default: return 0;
+    default:
+      if (isDescribed(type)) return new voxel_lattice_c(x, y, z, this, init);
+      return 0;
   }
 }
 
@@ -142,7 +153,9 @@ voxel_c * gridType_c::getVoxel(xmlParser_c & pars) const
     case GT_SPHERES:          return new voxel_2_c(pars, this);
     case GT_RHOMBIC:          return new voxel_3_c(pars, this);
     case GT_TETRA_OCTA:       return new voxel_4_c(pars, this);
-    default: return 0;
+    default:
+      if (isDescribed(type)) return new voxel_lattice_c(pars, this);
+      return 0;
   }
 }
 
@@ -154,7 +167,9 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig) const
     case GT_SPHERES:          return new voxel_2_c(orig);
     case GT_RHOMBIC:          return new voxel_3_c(orig);
     case GT_TETRA_OCTA:       return new voxel_4_c(orig);
-    default: return 0;
+    default:
+      if (isDescribed(type)) return new voxel_lattice_c(orig);
+      return 0;
   }
 }
 
@@ -166,13 +181,15 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig) const
     case GT_SPHERES:          return new voxel_2_c(orig);
     case GT_RHOMBIC:          return new voxel_3_c(orig);
     case GT_TETRA_OCTA:       return new voxel_4_c(orig);
-    default: return 0;
+    default:
+      if (isDescribed(type)) return new voxel_lattice_c(orig);
+      return 0;
   }
 }
 
 const symmetries_c * gridType_c::getSymmetries(void) const
 {
-  if (!sym) {
+  std::call_once(symOnce, [this] {
     switch(type) {
       case GT_BRICKS:
       case GT_RHOMBIC:
@@ -186,9 +203,11 @@ const symmetries_c * gridType_c::getSymmetries(void) const
         sym = std::make_unique<symmetries_2_c>();
         break;
       default:
+        if (isDescribed(type))
+          sym = std::make_unique<symmetries_lattice_c>(latticeGridInfo_c::get(type));
         break;
     }
-  }
+  });
 
   return sym.get();
 }
@@ -218,7 +237,9 @@ unsigned int gridType_c::getCapabilities(void) const
     case GT_TETRA_OCTA:       return CAP_ASSEMBLE
                                    | CAP_STLEXPORT
                                    ;
-    default: return 0;
+    /* described grids: assembly now; disassembly where the grid has
+     * movement directions comes with step G4, STL export with G6 */
+    default: return isDescribed(type) ? CAP_ASSEMBLE : 0;
   }
 }
 

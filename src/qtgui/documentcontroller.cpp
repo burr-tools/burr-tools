@@ -99,6 +99,12 @@ QString DocumentController::gridTypeDisplayName(int type) {
     case gridType_c::GT_SPHERES:          return QStringLiteral("Spheres");
     case gridType_c::GT_RHOMBIC:          return QStringLiteral("Rhombic Tetrahedra");
     case gridType_c::GT_TETRA_OCTA:       return QStringLiteral("Tetrahedra-Octahedra");
+    case gridType_c::GT_HEXAGONAL_PRISM:  return QStringLiteral("Hexagonal Prism");
+    case gridType_c::GT_CAIRO_PRISM:      return QStringLiteral("Cairo Prism");
+    case gridType_c::GT_RHOMBIC_TETRAHEDRA:    return QStringLiteral("Rhombic Tetrahedra (NG)");
+    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return QStringLiteral("Octahedral Tetrahedra");
+    case gridType_c::GT_DESCRIBED_BRICKS:      return QStringLiteral("Brick (described)");
+    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return QStringLiteral("Triangular Prism (described)");
     default:                              return QString();
   }
 }
@@ -205,7 +211,7 @@ void DocumentController::resolveDiscard(int choice) {
 
 void DocumentController::newDocument(int type) {
   guarded([&] {
-    if (type < 0 || type >= gridType_c::GT_NUM_GRIDS)
+    if (type < 0 || type >= gridType_c::GT_NUM_GRIDS || !gridType_c::offeredForNewPuzzles(gridType_c::gridType(type)))
       type = gridType_c::GT_BRICKS;
     m_session.newDocument(gridType_c::gridType(type));
     if (m_pending == Pending::New)

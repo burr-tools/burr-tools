@@ -2375,6 +2375,16 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
     return false;
   }
 
+  /* The described grids (BurrTools NG's grids as data) have no editor in
+   * this program; viewing and solving them here comes with step C2 of
+   * design/2026-11-19-ng-merge-plan.md. Until then refuse the file rather
+   * than open it without an editor. */
+  if (newPuzzle->getGridType()->isDescribed()) {
+    fl_message("This puzzle uses a grid this program can not show yet. Open it in burrtools-qt or with burrTxt.");
+    if (reportedError) *reportedError = true;
+    return false;
+  }
+
   fname = f;
 
   copy_label(platform::windowTitle(fname.c_str()).c_str());

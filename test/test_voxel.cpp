@@ -1,3 +1,7 @@
+/* The voxel container, tested by addressing cells by coordinate: on the
+ * native grids (bttest::NATIVE_GRIDS). The described grids (NG's grids as
+ * data) have voxels on a lattice pattern instead; their voxel spaces are
+ * tested in test_lattice_voxel.cpp. */
 #include <catch2/catch_test_macros.hpp>
 
 #include "test_helpers.h"
@@ -27,7 +31,7 @@ TEST_CASE("voxel: a new space has the requested size and is empty", "[voxel]") {
 }
 
 TEST_CASE("voxel: every grid builds an empty space of the right size", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 2, 3, 4);
@@ -43,7 +47,7 @@ TEST_CASE("voxel: every grid builds an empty space of the right size", "[voxel]"
 }
 
 TEST_CASE("voxel: setState and getState agree on all three states", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 1, 1);
@@ -63,7 +67,7 @@ TEST_CASE("voxel: setState and getState agree on all three states", "[voxel]") {
 }
 
 TEST_CASE("voxel: colour is independent of state", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 2, 1, 1);
@@ -87,7 +91,7 @@ TEST_CASE("voxel: colour is independent of state", "[voxel]") {
 }
 
 TEST_CASE("voxel: get2 returns empty outside the space", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 2, 2, 2);
@@ -111,7 +115,7 @@ TEST_CASE("voxel: get2 returns empty outside the space", "[voxel]") {
 }
 
 TEST_CASE("voxel: the ASCII fixture helper maps axis extents without transposition", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     /*
@@ -135,7 +139,7 @@ TEST_CASE("voxel: the ASCII fixture helper maps axis extents without transpositi
 }
 
 TEST_CASE("voxel: the ASCII fixture helper maps axis positions without transposition", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     /*
@@ -169,7 +173,7 @@ TEST_CASE("voxel: the ASCII fixture helper maps axis positions without transposi
 }
 
 TEST_CASE("voxel: the ASCII fixture helper places voxels where it says", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -198,7 +202,7 @@ TEST_CASE("voxel: the ASCII fixture helper places voxels where it says", "[voxel
 }
 
 TEST_CASE("voxel: fromLayers pads ragged rows and maps '+' to VX_VARIABLE", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -237,7 +241,7 @@ TEST_CASE("voxel: fromLayers pads ragged rows and maps '+' to VX_VARIABLE", "[vo
 }
 
 TEST_CASE("voxel: getIndex and indexToXYZ are inverses over the whole space", "[voxel][index]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 4, 5);
@@ -259,7 +263,7 @@ TEST_CASE("voxel: getIndex and indexToXYZ are inverses over the whole space", "[
 }
 
 TEST_CASE("voxel: every index maps to a distinct coordinate", "[voxel][index]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 4, 5);
@@ -283,7 +287,7 @@ TEST_CASE("voxel: every index maps to a distinct coordinate", "[voxel][index]") 
 }
 
 TEST_CASE("voxel: the bounding box tracks the filled voxels", "[voxel][bbox]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -340,9 +344,9 @@ TEST_CASE("voxel: minimizePiece crops away the padding on every grid -- to a spa
     { gridType_c::GT_TETRA_OCTA,       3, 3, 3 },   // rounded up to a multiple of 3
   };
 
-  /* every grid is accounted for, so adding one to ALL_GRIDS without
+  /* every grid is accounted for, so adding one to NATIVE_GRIDS without
      deciding what it should do here fails rather than silently skipping */
-  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+  REQUIRE(std::size(expected) == std::size(NATIVE_GRIDS));
 
   for (const Expect & e : expected) {
     INFO("grid " << gridName(e.grid));
@@ -387,7 +391,7 @@ TEST_CASE("voxel: minimizePiece crops away the padding on every grid -- to a spa
 }
 
 TEST_CASE("voxel: translate moves the shape and fills the vacated cells", "[voxel][bbox]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -408,7 +412,7 @@ TEST_CASE("voxel: translate moves the shape and fills the vacated cells", "[voxe
 }
 
 TEST_CASE("voxel: translating out and back is the identity", "[voxel][bbox]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -439,7 +443,7 @@ TEST_CASE("voxel: translating out and back is the identity", "[voxel][bbox]") {
 }
 
 TEST_CASE("voxel: resize keeps the overlapping region", "[voxel][bbox]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -467,7 +471,7 @@ TEST_CASE("voxel: resize keeps the overlapping region", "[voxel][bbox]") {
 }
 
 TEST_CASE("voxel: the hotspot defaults to the origin and moves when set", "[voxel][hotspot]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     std::unique_ptr<voxel_c> v = makeVoxel(gt, 3, 3, 3);
@@ -658,7 +662,7 @@ TEST_CASE("voxel: each grid's lattice predicates are the ones its geometry relie
                                          (((x / 3 + y / 3 + z / 3) & 1) == 0); } },
   };
 
-  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+  REQUIRE(std::size(expected) == std::size(NATIVE_GRIDS));
 
   for (const Expect & e : expected) {
     INFO("grid " << gridName(e.grid));
@@ -727,7 +731,7 @@ TEST_CASE("voxel: the rhombic and tetra-octa lattices accept only their own cell
 }
 
 TEST_CASE("voxel: identicalInBB is colour-sensitive", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -748,7 +752,7 @@ TEST_CASE("voxel: identicalInBB is colour-sensitive", "[voxel]") {
 }
 
 TEST_CASE("voxel: copying preserves the name", "[voxel]") {
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
 
@@ -806,7 +810,7 @@ TEST_CASE("voxel: which coordinates hold a cell at all differs by grid", "[voxel
     { gridType_c::GT_TETRA_OCTA,        5 },
   };
 
-  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+  REQUIRE(std::size(expected) == std::size(NATIVE_GRIDS));
 
   for (const Expect & e : expected) {
     INFO("grid " << gridName(e.grid));
@@ -867,7 +871,7 @@ TEST_CASE("voxel: scaling up is implemented by some grids and is a documented no
     { gridType_c::GT_TETRA_OCTA,       true,  false },
   };
 
-  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+  REQUIRE(std::size(expected) == std::size(NATIVE_GRIDS));
 
   for (const Expect & e : expected) {
     INFO("grid " << gridName(e.grid));
@@ -933,7 +937,7 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
     { gridType_c::GT_TETRA_OCTA,       false },   // likewise a stub override
   };
 
-  REQUIRE(std::size(expected) == std::size(ALL_GRIDS));
+  REQUIRE(std::size(expected) == std::size(NATIVE_GRIDS));
 
   for (const Expect & e : expected) {
     INFO("grid " << gridName(e.grid));
@@ -986,7 +990,7 @@ TEST_CASE("voxel: transform rejects a transformation number outside the grid's t
      garbage "matrix" it would find there maps the voxels far outside the
      buffer transform() allocates, and the write lands in unrelated memory.
      The check is unconditional, so this case is not NDEBUG-guarded. */
-  for (gridType_c::gridType t : ALL_GRIDS) {
+  for (gridType_c::gridType t : NATIVE_GRIDS) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     const unsigned int limit = gt.getSymmetries()->getNumTransformationsMirror();

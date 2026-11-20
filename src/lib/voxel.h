@@ -782,6 +782,17 @@ public:
    */
   virtual void calculateSize(float * x, float * y, float * z) const { *x = 0; *y = 0; *z = 0; }
 
+  /**
+   * The box the shape's drawing mesh lies in, in drawing coordinates. On
+   * the native grids that is [0, calculateSize()]; a described grid's
+   * voxel space is a parallelepiped in drawing space, which can reach
+   * below 0, so it overrides this.
+   */
+  virtual void drawingBounds(float lo[3], float hi[3]) const {
+    lo[0] = lo[1] = lo[2] = 0;
+    calculateSize(&hi[0], &hi[1], &hi[2]);
+  }
+
 
   virtual void recalcSpaceCoordinates(float * /*x*/, float * /*y*/, float * /*z*/) const {}
 

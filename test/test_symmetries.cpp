@@ -161,7 +161,10 @@ TEST_CASE("symmetries: transAdd composes transformations", "[symmetry]") {
        GT_RHOMBIC/GT_TETRA_OCTA delegate to after padding, never fails);
        GT_TRIANGULAR_PRISM measures fewer because voxel_1_c::transform can
        legitimately return false (src/lib/voxel_1.cpp:429). */
+    /* Described grids: their transformations are a group (every product
+       exists) and voxel_lattice_c::transform never fails, so all n x n. */
     const unsigned int expectedChecked =
+      gt.isDescribed() ? n * n :
       (t == gridType_c::GT_TRIANGULAR_PRISM) ? 144u : 576u;
     REQUIRE(checked == expectedChecked);
   }

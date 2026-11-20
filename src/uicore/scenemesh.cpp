@@ -288,10 +288,10 @@ namespace btui {
 
   ShapeMesh buildShapeMesh(const voxel_c & shape, const MeshOptions & opt) {
     ShapeMesh out;
-    float cx, cy, cz;
-    shape.calculateSize(&cx, &cy, &cz);
-    out.boundsMin = { 0, 0, 0 };
-    out.boundsMax = { cx, cy, cz };
+    float lo[3], hi[3];
+    shape.drawingBounds(lo, hi);
+    out.boundsMin = { lo[0], lo[1], lo[2] };
+    out.boundsMax = { hi[0], hi[1], hi[2] };
 
     if (opt.style == VoxelStyle::Stl) {
       const std::unique_ptr<voxel_c> fixed = fixedVoxels(shape);
@@ -455,9 +455,9 @@ namespace btui {
   }
 
   Box gridBounds(const voxel_c & shape) {
-    float cx, cy, cz;
-    shape.calculateSize(&cx, &cy, &cz);
-    return { { 0, 0, 0 }, { cx, cy, cz } };
+    float lo[3], hi[3];
+    shape.drawingBounds(lo, hi);
+    return { { lo[0], lo[1], lo[2] }, { hi[0], hi[1], hi[2] } };
   }
 
   Box layerSlab(const voxel_c & shape, Plane p, int layer) {

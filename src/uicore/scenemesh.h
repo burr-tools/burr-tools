@@ -45,7 +45,7 @@ class Polyhedron;
  * lands on the same voxel and face whichever style is shown.
  *
  * Coordinates are the shape's drawing space: the shape spans
- * [0, calculateSize()] on each axis.
+ * voxel_c::drawingBounds() ([0, calculateSize()] on the native grids).
  */
 namespace btui {
 
@@ -107,7 +107,7 @@ namespace btui {
   struct ShapeMesh {
     std::vector<MeshVertex> opaque;       ///< fixed voxels, triangles
     std::vector<MeshVertex> translucent;  ///< variable voxels, triangles, alpha from MeshOptions
-    Vec3 boundsMin, boundsMax;            ///< the shape's drawing-space box, [0, calculateSize]
+    Vec3 boundsMin, boundsMax;            ///< the shape's drawing-space box, voxel_c::drawingBounds()
     bool empty(void) const { return opaque.empty() && translucent.empty(); }
   };
 

@@ -909,10 +909,20 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
   Polyhedron * res = new Polyhedron();
 
   vertexList_c vl(res);
-  std::vector<int> face3(3);
   std::vector<int> face4(4);
   std::vector<float> faceCorners;
   std::vector<float> faceCorners2;
+
+  /* a face from getConnectionFace's corners: triangles and quads on the
+   * native grids, any convex polygon on the described ones (hexagons,
+   * pentagons) */
+  std::vector<int> polygon;
+  auto addPolygon = [&](const std::vector<float> & c) {
+    polygon.clear();
+    for (size_t i = 0; i + 2 < c.size(); i += 3)
+      polygon.push_back(vl.get(c[i], c[i+1], c[i+2]));
+    return res->addFace(polygon);
+  };
 
   // make sure the 2 parameters are positive or zero and have a valid minimum size
   if (bevel < 1e-5) bevel = 0;
@@ -965,28 +975,10 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
 
               Face * f = 0;
 
-              if (faceCorners.size() == 9)
-              {
-                face3[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
-                face3[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
-                face3[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
-                f = res->addFace(face3);
-              }
-              else if (faceCorners.size() == 12)
-              {
-                face4[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
-                face4[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
-                face4[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
-                face4[3] = vl.get(faceCorners[9], faceCorners[10], faceCorners[11]);
-                f = res->addFace(face4);
-              }
-              else if (faceCorners.size() == 0)
-              {
-              }
+              if (faceCorners.size() >= 9)
+                f = addPolygon(faceCorners);
               else
-              {
-                bt_assert(0);
-              }
+                bt_assert(faceCorners.size() == 0);
 
               n++;
 
@@ -1011,27 +1003,8 @@ Polyhedron * voxel_c::getMeshInternal(double bevel, double offset, bool fast) co
               faceCorners.clear();
               getConnectionFace(x, y, z, n, bevel, offset, faceCorners);
 
-              Face * f = 0;
-
-              if (faceCorners.size() == 9)
-              {
-                face3[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
-                face3[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
-                face3[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
-                f = res->addFace(face3);
-              }
-              else if (faceCorners.size() == 12)
-              {
-                face4[0] = vl.get(faceCorners[0], faceCorners[1], faceCorners[2]);
-                face4[1] = vl.get(faceCorners[3], faceCorners[4], faceCorners[5]);
-                face4[2] = vl.get(faceCorners[6], faceCorners[7], faceCorners[8]);
-                face4[3] = vl.get(faceCorners[9], faceCorners[10], faceCorners[11]);
-                f = res->addFace(face4);
-              }
-              else
-              {
-                bt_assert(0);
-              }
+              bt_assert(faceCorners.size() >= 9);
+              Face * f = addPolygon(faceCorners);
 
               f->_flags = type;
               if (isVariable(x, y, z)) f->_flags |= FF_VARIABLE_MARK;

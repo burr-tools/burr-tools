@@ -7,12 +7,14 @@
 #include "lib/puzzle.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
+#include "lib/latticegridinfo.h"
 
 #include <cstdlib>
 #include <initializer_list>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <algorithm>
 #include <tuple>
 #include <vector>
 
@@ -20,6 +22,23 @@ namespace bttest {
 
 /** every grid type BurrTools supports, for parametrized cases */
 inline const gridType_c::gridType ALL_GRIDS[] = {
+  gridType_c::GT_BRICKS,
+  gridType_c::GT_TRIANGULAR_PRISM,
+  gridType_c::GT_SPHERES,
+  gridType_c::GT_RHOMBIC,
+  gridType_c::GT_TETRA_OCTA,
+  gridType_c::GT_HEXAGONAL_PRISM,
+  gridType_c::GT_CAIRO_PRISM,
+  gridType_c::GT_RHOMBIC_TETRAHEDRA,
+  gridType_c::GT_OCTAHEDRAL_TETRAHEDRA,
+  gridType_c::GT_DESCRIBED_BRICKS,
+  gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM,
+};
+
+/** the native grids only: for cases that address cells by coordinate,
+ *  which on the described grids (NG's grids as data) are not voxels in
+ *  general; their voxel spaces are tested in test_lattice_voxel.cpp */
+inline const gridType_c::gridType NATIVE_GRIDS[] = {
   gridType_c::GT_BRICKS,
   gridType_c::GT_TRIANGULAR_PRISM,
   gridType_c::GT_SPHERES,
@@ -35,6 +54,12 @@ inline const char * gridName(gridType_c::gridType t) {
     case gridType_c::GT_SPHERES:          return "GT_SPHERES";
     case gridType_c::GT_RHOMBIC:          return "GT_RHOMBIC";
     case gridType_c::GT_TETRA_OCTA:       return "GT_TETRA_OCTA";
+    case gridType_c::GT_HEXAGONAL_PRISM:  return "GT_HEXAGONAL_PRISM";
+    case gridType_c::GT_CAIRO_PRISM:      return "GT_CAIRO_PRISM";
+    case gridType_c::GT_RHOMBIC_TETRAHEDRA:    return "GT_RHOMBIC_TETRAHEDRA";
+    case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return "GT_OCTAHEDRAL_TETRAHEDRA";
+    case gridType_c::GT_DESCRIBED_BRICKS:      return "GT_DESCRIBED_BRICKS";
+    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "GT_DESCRIBED_TRIANGULAR_PRISM";
     default:                              return "unknown";
   }
 }
@@ -149,6 +174,54 @@ inline std::unique_ptr<voxel_c> fromLayers(const gridType_c & gt,
      handing a corrupt voxel_c to the test body. */
   if (sx == 0 || sy == 0 || sz == 0)
     throw std::invalid_argument("fromLayers: layer art is empty, which would build a degenerate 0-sized voxel space");
+
+  /* Described grids (NG's grids as data): the art's cells are not voxels
+     there in general, so cell (x, y, z) goes to the lattice translate
+     voxel + L (x, y, z) of one voxel, a linear image of the art. */
+  if (gt.isDescribed()) {
+    const latticeGridInfo_c & inf = latticeGridInfo_c::get(gt.getType());
+    int c[3][3];
+    for (int j = 0; j < 3; j++) inf.latticeColumn(j, c[j][0], c[j][1], c[j][2]);
+    struct cell_s { int x, y, z; int state; };
+    std::vector<cell_s> cells;
+    int mx = 0, my = 0, mz = 0;
+    unsigned int lz = 0;
+    for (const auto & layer : layers) {
+      for (unsigned int y = 0; y < layer.size(); y++)
+        for (unsigned int x = 0; x < layer[y].size(); x++) {
+          const char ch = layer[y][x];
+          if (ch != '#' && ch != '+') continue;
+          cell_s cl{ (int)x * c[0][0] + (int)y * c[1][0] + (int)lz * c[2][0],
+                     (int)x * c[0][1] + (int)y * c[1][1] + (int)lz * c[2][1],
+                     (int)x * c[0][2] + (int)y * c[1][2] + (int)lz * c[2][2],
+                     ch == '#' ? voxel_c::VX_FILLED : voxel_c::VX_VARIABLE };
+          mx = std::min(mx, cl.x); my = std::min(my, cl.y); mz = std::min(mz, cl.z);
+          cells.push_back(cl);
+        }
+      lz++;
+    }
+    // a voxel position with room below it for the most negative cell
+    int vx, vy, vz;
+    inf.alignDown(mx, my, mz, vx, vy, vz);
+    int bx = -1, by = 0, bz = 0;
+    for (int z = 0; z < 12 && bx < 0; z++)
+      for (int y = 0; y < 12 && bx < 0; y++)
+        for (int x = 0; x < 12 && bx < 0; x++)
+          if (inf.isVoxel(x - vx, y - vy, z - vz)) { bx = x - vx; by = y - vy; bz = z - vz; }
+    if (bx < 0)
+      throw std::logic_error("fromLayers: no voxel of the grid within 12x12x12 of the art's origin");
+    int ex = 1, ey = 1, ez = 1;
+    for (const auto & cl : cells) {
+      ex = std::max(ex, bx + cl.x + 1);
+      ey = std::max(ey, by + cl.y + 1);
+      ez = std::max(ez, bz + cl.z + 1);
+    }
+    std::unique_ptr<voxel_c> v = makeVoxel(gt, ex, ey, ez);
+    for (const auto & cl : cells)
+      v->setState(bx + cl.x, by + cl.y, bz + cl.z, cl.state);
+    v->initHotspot();
+    return v;
+  }
 
   std::unique_ptr<voxel_c> v = makeVoxel(gt, sx, sy, sz);
 
