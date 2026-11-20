@@ -250,6 +250,8 @@ void usage(bool full = false) {
   cout << "        disassembled again), the model they are for and with -P the measured play\n";
   cout << "  -D    solve the puzzle converted to the described grid (BurrTools NG's grid as data)\n";
   cout << "        its grid corresponds to: bricks, triangular prisms, rhombic, tetra-octa (cross-checks)\n";
+  cout << "  --native-grids  keep rhombic and tetra-octa puzzles on their native grids, as the FLTK GUI\n";
+  cout << "        does; without it they are read onto NG's grids, which -D then leaves as they are\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
   cout << "  -n    don't print a newline at the end of the line\n";
@@ -295,6 +297,7 @@ int main(int argv, char* args[]) {
   bool newline = true;
   bool ask = false;
   bool describedGrid = false;  // -D
+  bool nativeGrids = false;    // --native-grids
   enum {
     W_NUM_SOLUTIONS,
     W_SOLUTION_PIECES,
@@ -310,6 +313,8 @@ int main(int argv, char* args[]) {
 
       if (strcmp(args[i], "-D") == 0)
         describedGrid = true;
+      else if (strcmp(args[i], "--native-grids") == 0)
+        nativeGrids = true;
       else if (strcmp(args[i], "-d") == 0)
         disassemble = true;
       else if (strcmp(args[i], "-p") == 0)
@@ -429,9 +434,10 @@ int main(int argv, char* args[]) {
     return 2;
   }
   xmlParser_c pars(*str);
-  std::unique_ptr<puzzle_c> loaded = std::make_unique<puzzle_c>(pars);
-  /* -D: the puzzle on the described grid its grid converts to */
-  if (describedGrid) {
+  std::unique_ptr<puzzle_c> loaded = puzzle_c::read(pars, nativeGrids ? cutCubeGrids_e::native : cutCubeGrids_e::ng);
+  /* -D: the puzzle on the described grid its grid converts to; one read
+   * onto a described grid already stays */
+  if (describedGrid && !loaded->getGridType()->isDescribed()) {
     puzzle_c * converted = convertToDescribed(loaded.get());
     if (!converted) {
       cerr << "-D: this puzzle's grid has no described counterpart\n";

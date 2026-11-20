@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 TIMEOUT = 120
 
@@ -41,13 +42,30 @@ def check(label, condition, detail):
         failures.append(f"{label}: {detail}")
 
 
+# A puzzle on a grid without a disassembler: one sphere (grid type 2).
+# The rhombic and tetra-octa examples served for this until they were read
+# onto BurrTools NG's grids, which disassemble (cutCubeGrids_e in src/lib).
+NO_DISASSEMBLER_PUZZLE = (
+    '<?xml version="1.0"?>\n<puzzle version="2"><gridType type="2"/><colors/><shapes>'
+    '<voxel x="1" y="1" z="1" type="0">#</voxel><voxel x="1" y="1" z="1" type="0">#</voxel>'
+    '</shapes><problems><problem><shapes><shape id="1" count="1"/></shapes><result id="0"/>'
+    '<bitmap/></problem></problems><comment/></puzzle>\n')
+
+
+def write_no_disassembler_puzzle(folder):
+    path = Path(folder) / "OneSphere.xmpuzzle"
+    path.write_text(NO_DISASSEMBLER_PUZZLE)
+    return str(path)
+
+
 def main():
     if len(sys.argv) != 3:
         print("usage: cli_smoke_burrtxt.py <path to burrTxt> <source root>", file=sys.stderr)
         return 2
 
     binary, source_root = sys.argv[1], sys.argv[2]
-    sticks = f"{source_root}/examples/BrokenSticks.xmpuzzle"
+    scratch = tempfile.TemporaryDirectory()
+    sticks = write_no_disassembler_puzzle(scratch.name)
 
     # A grid without a disassembler must be refused up front: the
     # disassembler fails on the movement cache such a grid does not provide,
