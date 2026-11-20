@@ -5,8 +5,15 @@
 #include "lib/gridtype.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
+#include "lib/assembler.h"
+#include "lib/assembly.h"
+#include "lib/problem.h"
+#include "lib/puzzle.h"
+#include "tools/xml.h"
 
 #include <memory>
+#include <sstream>
+#include <string>
 
 using namespace bttest;
 
@@ -297,4 +304,112 @@ TEST_CASE("symmetries: normalizeTransformation returns a usable transformation",
       REQUIRE(byTr->identicalInBB(byNorm.get()));
     }
   }
+}
+
+/* ---- spheres: straight pieces under non-cubic result symmetries ----
+ *
+ * design/2026-11-19-ng-merge-plan.md, 5.8 and C4: the sphere grid turns
+ * pieces by 120 rotations that are no group (transAdd gives TND for some
+ * products). A straight piece in a result with a symmetry outside the cube
+ * group was suspected to make assembly_c::transform give up on that
+ * symmetry, so that duplicates survive. It does not, and these cases say
+ * why and guard it:
+ *
+ * - the 24 cube rotations are transformations 0 to 23 (mirrored 120 to
+ *   143), and a straight piece reaches every orientation it has by a cube
+ *   rotation, so its normalised transformation (the smallest one giving
+ *   the same orientation) is always one of them; the assembler stores
+ *   placements normalised, and assembly_c::transform normalises again;
+ * - a cube rotation composed with any of the 240, either way round, is one
+ *   of the 240 (the 120 are the rotations taking two touching pairs to
+ *   touching pairs, and a cube rotation permutes touching pairs), so the
+ *   product transform forms is never TND.
+ *
+ * The counts below are from an independent brute-force counter
+ * (bench/merge-checks/sphere_bruteforce.py: placements from all rotations
+ * computed per shape, exact cover, duplicates under the result's full
+ * symmetry group with mirror partners swapped); burrTxt agreed with it on
+ * 82 such puzzles (flat hexagons and triangles of 6 to 21 balls and
+ * stacks, mostly straight pieces).
+ */
+namespace {
+
+unsigned long countSphereAssemblies(const std::string & xml) {
+  std::istringstream in(xml);
+  xmlParser_c pars(in);
+  puzzle_c p(pars);
+  // the file gives no hotspots; as burrTxt does
+  for (unsigned int i = 0; i < p.getNumberOfShapes(); i++) p.getShape(i)->initHotspot();
+  problem_c & problem = *p.getProblem(0);
+  std::unique_ptr<assembler_c> assm = p.getGridType()->findAssembler(problem, settings());
+  REQUIRE(assm);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
+  unsigned long n = 0;
+  assm->assemble([&n](std::unique_ptr<assembly_c>) { n++; return true; });
+  return n;
+}
+
+} // namespace
+
+TEST_CASE("spheres: a straight piece is always placed by a cube rotation, which composes with every turn", "[symmetries][spheres]") {
+  gridType_c gt(gridType_c::GT_SPHERES);
+  const symmetries_c * sym = gt.getSymmetries();
+  const unsigned int n = sym->getNumTransformations();
+  REQUIRE(n == 120);
+
+  auto isCube = [n](unsigned int t) { return t < 24 || (t >= n && t < n + 24); };
+  for (unsigned int c = 0; c < 2 * n; c++)
+    if (isCube(c))
+      for (unsigned int t = 0; t < 2 * n; t++) {
+        INFO("cube " << c << " and " << t);
+        CHECK(sym->transAdd(c, t) != TND);
+        CHECK(sym->transAdd(t, c) != TND);
+      }
+
+  // straight pieces of 2, 3 and 4 touching balls along (1,1,0), (1,-1,0) and (0,1,1)
+  const int dirs[3][3] = {{1, 1, 0}, {1, -1, 0}, {0, 1, 1}};
+  for (const auto & d : dirs)
+    for (int len = 2; len <= 4; len++) {
+      INFO("direction " << d[0] << " " << d[1] << " " << d[2] << ", " << len << " balls");
+      std::unique_ptr<voxel_c> v(gt.getVoxel(8, 8, 8, voxel_c::VX_EMPTY));
+      for (int k = 0; k < len; k++) v->setState(1 + k * d[0], 4 + k * d[1], 1 + k * d[2], voxel_c::VX_FILLED);
+      v->minimizePiece();
+      v->initHotspot();
+      unsigned int reached = 0;
+      for (unsigned int t = 0; t < 2 * n; t++) {
+        std::unique_ptr<voxel_c> w(gt.getVoxel(v.get()));
+        if (!w->transform(t)) continue;
+        reached++;
+        INFO("transformation " << t);
+        CHECK(isCube(v->normalizeTransformation(t)));
+      }
+      CHECK(reached > 24);  // the piece does take non-cubic turns, which all normalise to cubic ones
+    }
+}
+
+TEST_CASE("spheres: straight pieces in a hexagon of 19 balls have the brute-force assembly counts", "[symmetries][spheres][solver]") {
+  /* The flat hexagon of 19 balls in a (111) layer: its symmetry has the
+   * 60 degree turn about the layer's normal and half turns about axes in
+   * the layer, outside the cube group. */
+  const std::string head =
+    "<?xml version=\"1.0\"?><puzzle version=\"2\"><gridType type=\"2\"/><colors/><shapes>"
+    "<voxel x=\"5\" y=\"5\" z=\"5\" type=\"0\">______________#___#___#___________#___#___#___#_______#___#___#___#___#_______"
+    "#___#___#___#___________#___#___#______________</voxel>";
+
+  // only straight pieces: 5 of two balls, 3 single balls, 2 of three balls
+  CHECK(countSphereAssemblies(head +
+    "<voxel x=\"2\" y=\"2\" z=\"2\" type=\"0\">___#_#__</voxel>"
+    "<voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel>"
+    "<voxel x=\"3\" y=\"3\" z=\"1\" type=\"0\">__#_#_#__</voxel>"
+    "</shapes><problems><problem><shapes><shape id=\"1\" count=\"5\"/><shape id=\"2\" count=\"3\"/>"
+    "<shape id=\"3\" count=\"2\"/></shapes><result id=\"0\"/><bitmap/></problem></problems></puzzle>") == 5683);
+
+  // four of two balls, one straight of four, a bent one of four, three single balls
+  CHECK(countSphereAssemblies(head +
+    "<voxel x=\"3\" y=\"1\" z=\"2\" type=\"0\">__#_#_</voxel>"
+    "<voxel x=\"5\" y=\"4\" z=\"1\" type=\"0\">____#___#___#___#___</voxel>"
+    "<voxel x=\"3\" y=\"2\" z=\"2\" type=\"0\">__#_#__#_#__</voxel>"
+    "<voxel x=\"1\" y=\"1\" z=\"1\" type=\"0\">#</voxel>"
+    "</shapes><problems><problem><shapes><shape id=\"1\" count=\"4\"/><shape id=\"2\" count=\"1\"/>"
+    "<shape id=\"3\" count=\"1\"/><shape id=\"4\" count=\"3\"/></shapes><result id=\"0\"/><bitmap/></problem></problems></puzzle>") == 578);
 }
