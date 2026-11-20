@@ -1,5 +1,6 @@
 /* The chamfered STL surface of the prism, rhombic and tetra-octa grids
- * by Minkowski operations (the Manifold library): the shape's cells are
+ * and of the described grids (NG's grids as data, whose cells are each
+ * kind's convex polyhedron from latticeGridInfo_c) by Minkowski operations (the Manifold library): the shape's cells are
  * convex hulls, the gap step is an erosion by the grid's offset bit, the
  * chamfer an expansion / erosion by its chamfer bit.
  *
@@ -24,7 +25,10 @@
  * cube's edges); the cuboctahedron with faces on the (100), (110) and
  * (111) directions, (100) and (110) at 1, (111) at 1.0557; the
  * hexagonal prism and the hexagonal bipyramid aligned to the grid, the
- * bipyramid's faces on the facet directions at 45 degrees. */
+ * bipyramid's faces on the facet directions at 45 degrees; on a described
+ * prism grid the prism and bipyramid over the polygon with an edge on
+ * every in-plane facet direction (a square for cubes, twelve sides for
+ * the Cairo pentagons). */
 #ifndef MINKMESH_H
 #define MINKMESH_H
 
@@ -35,7 +39,9 @@ class Polyhedron;
 
 namespace minkMesh {
 
-  /* is the grid handled here (prism, rhombic, tetra-octa) */
+  /* is the grid handled here (prism, rhombic, tetra-octa, the described
+   * grids: those whose cells are prisms take the prism bits, the
+   * tetrahedron grids the rhombic and tetra-octa ones) */
   bool handles(const voxel_c & v);
 
   /* the chamfered surface of the shape v as a halfedge Polyhedron in cell

@@ -4,9 +4,16 @@
 #include "lib/gridtype.h"
 #include "lib/voxel.h"
 #include "lib/stl.h"
+#include "lib/converter.h"
+#include "lib/puzzle.h"
 #include "halfedge/polyhedron.h"
+#include "halfedge/volume.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
+#include <map>
+#include <utility>
 #include <memory>
 #include <random>
 #include <array>
@@ -247,3 +254,165 @@ TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[
   }
 }
 
+
+/* ---- the described grids (NG's grids as data) ---- */
+
+namespace {
+
+const gridType_c::gridType DESCRIBED_GRIDS[] = {
+  gridType_c::GT_HEXAGONAL_PRISM,
+  gridType_c::GT_CAIRO_PRISM,
+  gridType_c::GT_RHOMBIC_TETRAHEDRA,
+  gridType_c::GT_OCTAHEDRAL_TETRAHEDRA,
+  gridType_c::GT_DESCRIBED_BRICKS,
+  gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM,
+};
+
+/* a closed, consistently oriented manifold: every directed edge (by vertex
+ * index) is used by exactly one face and its reverse by exactly one other,
+ * no face is degenerate, and the enclosed volume is positive (outward
+ * winding); the holes finalize() would have closed show up as edges
+ * without their reverse */
+void checkClosedManifold(const Polyhedron & p) {
+  std::map<std::pair<int, int>, int> uses;
+  for (Polyhedron::const_face_iterator it = p.fBegin(); it != p.fEnd(); ++it) {
+    std::vector<int> ring;
+    for (Face::const_edge_circulator e = (*it)->begin(), s = e; ; ) { ring.push_back((*e)->dst()->index()); ++e; if (e == s) break; }
+    REQUIRE(ring.size() >= 3);
+    CHECK((*it)->normal().squaredModule() > 0);
+    for (size_t k = 0; k < ring.size(); k++) uses[std::make_pair(ring[k], ring[(k + 1) % ring.size()])]++;
+  }
+  size_t bad = 0;
+  for (const auto & u : uses) {
+    auto rev = uses.find(std::make_pair(u.first.second, u.first.first));
+    if (u.second != 1 || rev == uses.end() || rev->second != 1) bad++;
+  }
+  CHECK(bad == 0);
+  CHECK(volume(p) > 0);
+}
+
+struct box_s { double lo[3] = { 1e30, 1e30, 1e30 }, hi[3] = { -1e30, -1e30, -1e30 }; };
+
+/* the exporter's mesh, its exception turned into a failure with its message */
+std::unique_ptr<Polyhedron> exported(const stlExporter_c & ex, const voxel_c & v, const char * what = "") {
+  try {
+    return std::unique_ptr<Polyhedron>(ex.getMesh(v));
+  } catch (const stlException_c & e) {
+    FAIL(what << " exporter threw: " << e.comment);
+  }
+  return nullptr;
+}
+
+box_s boundingBox(const Polyhedron & p) {
+  box_s b;
+  for (const Vertex * v : p.vertices()) {
+    const Vector3Df & q = v->position();
+    for (int k = 0; k < 3; k++) { b.lo[k] = std::min(b.lo[k], (double)q[k]); b.hi[k] = std::max(b.hi[k], (double)q[k]); }
+  }
+  return b;
+}
+
+} // namespace
+
+TEST_CASE("Minkowski mesher: every described grid exports a closed, outward manifold", "[minkmesh][stl][lattice]") {
+  for (gridType_c::gridType t : DESCRIBED_GRIDS) {
+    gridType_c gt(t);
+    INFO("grid " << t);
+    CHECK((gt.getCapabilities() & gridType_c::CAP_STLEXPORT) != 0);
+    /* boxes in NG's voxel coordinates holding a few lattice cells' worth */
+    const unsigned size = (t == gridType_c::GT_RHOMBIC_TETRAHEDRA || t == gridType_c::GT_OCTAHEDRAL_TETRAHEDRA) ? 6 : 3;
+    std::unique_ptr<voxel_c> v = shape(gt, size, size, 2);
+    REQUIRE(v->countState(voxel_c::VX_FILLED) > 2);
+    std::unique_ptr<stlExporter_c> ex(gt.getStlExporter());
+    REQUIRE(ex);
+    ex->setParameter(0, 10);
+    const double settings[][2] = { { 0, 0 }, { 0.2, 0.5 }, { 0.3, 0 }, { 0, 0.4 } };   /* offset, bevel in output units */
+    for (const auto & s : settings)
+      for (int fills = 1; fills >= 0; fills--) {
+        INFO("offset " << s[0] << " bevel " << s[1] << " fills " << fills);
+        ex->setParameter(4, s[0]); ex->setParameter(3, s[1]); ex->setParameter(5, fills);
+        std::unique_ptr<Polyhedron> p = exported(*ex, *v);
+        REQUIRE(p);
+        checkClosedManifold(*p);
+      }
+    /* the 3D view's STL style is chamfered, not the flat fallback */
+    std::unique_ptr<Polyhedron> view(v->getSTLMesh());
+    std::unique_ptr<Polyhedron> flat(v->getFlatMesh());
+    CHECK(view->numFaces() > flat->numFaces());
+  }
+}
+
+/* the same pieces exported on the native rhombic and tetra-octa grids and
+ * on NG's grids (convertToDescribed) are the same solids: equal volume and
+ * equal bounding box size, flat and chamfered */
+TEST_CASE("Minkowski mesher: rhombic and tetra-octa pieces export alike natively and on NG's grids", "[minkmesh][stl][lattice][cutcube]") {
+  const char * const files[] = {
+    "examples/HexSticks.xmpuzzle",                    /* rhombic */
+    "examples/AugmentedSecondStellation.xmpuzzle",
+    "examples/FourPieceTetrahedron.xmpuzzle",         /* tetra-octa */
+    "examples/DiagonalCube.xmpuzzle",
+  };
+  bool seen[2] = { false, false };
+  for (const char * file : files) {
+    auto nat = puzzle_c::load(file, cutCubeGrids_e::native);
+    REQUIRE(nat);
+    const gridType_c::gridType native = nat->getGridType()->getType();
+    REQUIRE((native == gridType_c::GT_RHOMBIC || native == gridType_c::GT_TETRA_OCTA));
+    seen[native == gridType_c::GT_RHOMBIC ? 0 : 1] = true;
+    std::unique_ptr<puzzle_c> ng(convertToDescribed(nat.get()));
+    REQUIRE(ng);
+    REQUIRE(ng->getNumberOfShapes() == nat->getNumberOfShapes());
+    std::unique_ptr<stlExporter_c> exN(nat->getGridType()->getStlExporter()), exD(ng->getGridType()->getStlExporter());
+    REQUIRE(exN); REQUIRE(exD);
+    unsigned compared = 0;
+    for (unsigned s = 0; s < nat->getNumberOfShapes() && compared < 2; s++) {
+      const voxel_c * vn = nat->getShape(s), * vd = ng->getShape(s);
+      if (vn->countState(voxel_c::VX_VARIABLE) || vn->countState(voxel_c::VX_FILLED) == 0) continue;
+      compared++;
+      const double settings[][3] = { { 0, 0, 1 }, { 0.2, 0.5, 1 }, { 0.2, 0.5, 0 } };   /* offset, bevel, fills */
+      for (const auto & st : settings) {
+        INFO(file << " shape " << s << " offset " << st[0] << " bevel " << st[1] << " fills " << st[2]);
+        for (stlExporter_c * ex : { exN.get(), exD.get() }) {
+          ex->setParameter(0, 10); ex->setParameter(4, st[0]); ex->setParameter(3, st[1]); ex->setParameter(5, st[2]);
+        }
+        std::unique_ptr<Polyhedron> pn = exported(*exN, *vn, "native"), pd = exported(*exD, *vd, "NG grid");
+        REQUIRE(pn); REQUIRE(pd);
+        checkClosedManifold(*pd);
+        const double voln = volume(*pn), vold = volume(*pd);
+        INFO("volume native " << voln << " NG " << vold);
+        CHECK(std::fabs(voln - vold) < 1e-4 * voln);
+        const box_s bn = boundingBox(*pn), bd = boundingBox(*pd);
+        for (int k = 0; k < 3; k++) {
+          INFO("axis " << k << " native " << bn.lo[k] << ".." << bn.hi[k] << " NG " << bd.lo[k] << ".." << bd.hi[k]);
+          CHECK(std::fabs((bn.hi[k] - bn.lo[k]) - (bd.hi[k] - bd.lo[k])) < 1e-3);
+        }
+      }
+    }
+    CHECK(compared > 0);
+  }
+  CHECK(seen[0]);
+  CHECK(seen[1]);
+}
+
+/* every facet of a described cube lies on a coordinate axis: the bevel must
+ * be the same on all three axes (prism bits would make x the prism axis and
+ * leave the edges along x sharp), so a bar has the same volume whichever
+ * axis it lies along */
+TEST_CASE("Minkowski mesher: described cubes bevel every axis alike", "[minkmesh][stl][lattice]") {
+  gridType_c gt(gridType_c::GT_DESCRIBED_BRICKS);
+  std::unique_ptr<stlExporter_c> ex(gt.getStlExporter());
+  REQUIRE(ex);
+  ex->setParameter(0, 10); ex->setParameter(4, 0); ex->setParameter(3, 0.5); ex->setParameter(5, 1);
+  const unsigned dims[3][3] = { { 3, 1, 1 }, { 1, 3, 1 }, { 1, 1, 3 } };
+  double vol[3];
+  for (int a = 0; a < 3; a++) {
+    std::unique_ptr<voxel_c> v(gt.getVoxel(dims[a][0], dims[a][1], dims[a][2], voxel_c::VX_FILLED));
+    std::unique_ptr<Polyhedron> p = exported(*ex, *v);
+    REQUIRE(p);
+    checkClosedManifold(*p);
+    vol[a] = volume(*p);
+  }
+  INFO("volumes along x, y, z: " << vol[0] << " " << vol[1] << " " << vol[2]);
+  CHECK(std::fabs(vol[0] - vol[1]) < 1e-4 * vol[0]);
+  CHECK(std::fabs(vol[0] - vol[2]) < 1e-4 * vol[0]);
+}

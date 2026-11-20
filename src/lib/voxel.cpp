@@ -1113,7 +1113,7 @@ Polyhedron * voxel_c::getSTLMeshFor(const rotationGeometry::model_t & model) con
 
 Polyhedron * voxel_c::getSTLMesh(void) const
 {
-  /* the prism, rhombic and tetra-octa grids: the same Minkowski mesher
+  /* the prism, rhombic, tetra-octa and described grids: the same Minkowski mesher
    * as the STL export, at the view's defaults (gap 0.02, bevel 0.05 in
    * cell units). A draw path must not crash: when the mesher fails the
    * reason goes to stderr and the flat mesh of the edge-line style is

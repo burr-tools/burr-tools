@@ -14,6 +14,7 @@
 #include <numbers>
 #include <tuple>
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -40,13 +41,26 @@ Manifold exactBody(const voxel_c & v, std::string & err) {
   std::vector<corner_s> corners;
   std::vector<size_t> parent;
   auto find = [&](size_t i) { while (parent[i] != i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  std::map<std::pair<unsigned, std::tuple<float, float, float> >, size_t> slot;   /* (cell, exact position) -> corner */
+  /* (cell, position) -> corner. Positions are matched within SNAP, not
+   * exactly: the native grids give the same float for a corner on every
+   * cell, the described grids add each cell's own lattice offset to its
+   * polyhedron's corners, and on irrational lattices (the hexagonal
+   * prisms' sqrt 3) the two sums can differ in the last bit. The key is
+   * the position on a SNAP raster, and the raster's neighbours are
+   * searched too, so a corner on a raster boundary is still found. */
+  const double SNAP = 1e-4;
+  typedef std::tuple<unsigned, long, long, long> key_t;
+  std::map<key_t, size_t> slot;
   auto corner = [&](unsigned cell, const vec3 & p) {
-    auto key = std::make_pair(cell, std::make_tuple((float)p.x, (float)p.y, (float)p.z));
-    auto it = slot.find(key);
-    if (it != slot.end()) return it->second;
+    const long qx = std::lround(p.x / SNAP), qy = std::lround(p.y / SNAP), qz = std::lround(p.z / SNAP);
+    for (long dx = -1; dx <= 1; dx++)
+      for (long dy = -1; dy <= 1; dy++)
+        for (long dz = -1; dz <= 1; dz++) {
+          auto it = slot.find(key_t(cell, qx + dx, qy + dy, qz + dz));
+          if (it != slot.end() && manifold::la::length(corners[it->second].p - p) < SNAP) return it->second;
+        }
     corners.push_back({ p }); parent.push_back(corners.size() - 1);
-    slot[key] = corners.size() - 1;
+    slot[key_t(cell, qx, qy, qz)] = corners.size() - 1;
     return corners.size() - 1;
   };
   auto filled = [&](int x, int y, int z) {
@@ -189,22 +203,32 @@ bool prismBits(const std::vector<vec3> & normals, bits_s & b, std::string & err)
       if (!seen) az.push_back(a);
     }
   }
-  if (az.size() != 6) { err = "prism grid: expected 6 in-plane facet directions"; return false; }
+  /* six on the native prism grid; the described prism grids have four
+   * (cubes), six (hexagons, triangles) or more (Cairo pentagons), not
+   * necessarily evenly spread */
+  if (az.size() < 3) { err = "prism grid: fewer than 3 in-plane facet directions"; return false; }
   std::sort(az.begin(), az.end());
-  const double c30 = std::cos(std::numbers::pi / 6);
+  /* the polygon with an edge at distance 1 on every facet direction: its
+   * vertex between two adjacent directions a and a' lies halfway between
+   * them, at 1 / cos((a' - a) / 2) */
+  std::vector<std::pair<double, double> > ring;              /* angle, radius */
+  for (size_t i = 0; i < az.size(); i++) {
+    double a = az[i], a2 = i + 1 < az.size() ? az[i + 1] : az[0] + 2 * std::numbers::pi;
+    double half = (a2 - a) / 2;
+    if (half >= std::numbers::pi / 2 - 1e-6) { err = "prism grid: the facet directions leave a gap of 180 degrees"; return false; }
+    ring.push_back(std::make_pair(a + half, 1 / std::cos(half)));
+  }
   for (int s = -1; s <= 1; s += 2)
-    for (double a : az) {
+    for (const auto & mr : ring) {
       /* the prism's vertices lie between adjacent facet directions */
-      double m = a + std::numbers::pi / 6, r = 1 / c30;
-      double p[3]; p[u] = r * std::cos(m); p[w] = r * std::sin(m); p[axis] = s;
+      double p[3]; p[u] = mr.second * std::cos(mr.first); p[w] = mr.second * std::sin(mr.first); p[axis] = s;
       b.offset.push_back(vec3(p[0], p[1], p[2]));
     }
-  for (double a : az) {
+  for (const auto & mr : ring) {
     /* the bipyramid's equatorial vertices between the facet directions,
      * apexes at the equatorial apothem: faces on the facet directions at
      * 45 degrees, reach 1 along every facet normal and along the axis */
-    double m = a + std::numbers::pi / 6, r = 1 / c30;
-    double p[3]; p[u] = r * std::cos(m); p[w] = r * std::sin(m); p[axis] = 0;
+    double p[3]; p[u] = mr.second * std::cos(mr.first); p[w] = mr.second * std::sin(mr.first); p[axis] = 0;
     b.chamfer.push_back(vec3(p[0], p[1], p[2]));
   }
   for (int s = -1; s <= 1; s += 2) { double p[3] = {0, 0, 0}; p[axis] = s; b.chamfer.push_back(vec3(p[0], p[1], p[2])); }
@@ -702,6 +726,8 @@ void flipFlat(const std::vector<vec3> & pos, std::vector<uint64_t> & tri) {
       size_t u = it->second;
       uint64_t D = 0;
       for (int c = 0; c < 3; c++) if (tri[3 * u + c] != A && tri[3 * u + c] != B) D = tri[3 * u + c];
+      /* flipping (A,B) to (M,D) would fold the mesh if (M,D) is already an edge */
+      if (D == M || owner.count(std::make_pair(M, D)) || owner.count(std::make_pair(D, M))) continue;
       /* the neighbour on the same plane, and the flip giving two triangles with area */
       vec3 n = manifold::la::cross(pos[B] - pos[A], pos[D] - pos[A]);
       double ln = manifold::la::length(n);
@@ -734,6 +760,9 @@ Manifold rebuilt(faces_s & f, const Manifold & input) {
   flipFlat(f.pos, f.tri);
   Manifold r = fromTriangles(f.pos, f.tri);
   if (r.Status() == Manifold::Error::NoError && !r.IsEmpty()) return r;
+  /* f.orig shares f.pos (already snapped onto the planes), so slivers along
+   * plane intersections went flat here too; flip them away before falling back */
+  flipFlat(f.pos, f.orig);
   r = fromTriangles(f.pos, f.orig);
   if (r.Status() == Manifold::Error::NoError && !r.IsEmpty()) return r;
   return input;
@@ -971,7 +1000,8 @@ bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & f
 
 bool handles(const voxel_c & v) {
   gridType_c::gridType t = v.getGridType()->getType();
-  return t == gridType_c::GT_TRIANGULAR_PRISM || t == gridType_c::GT_RHOMBIC || t == gridType_c::GT_TETRA_OCTA;
+  return t == gridType_c::GT_TRIANGULAR_PRISM || t == gridType_c::GT_RHOMBIC || t == gridType_c::GT_TETRA_OCTA ||
+         gridType_c::isDescribed(t);
 }
 
 Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::string & err)
@@ -1014,15 +1044,54 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
         cellFaces.push_back(cf);
       }
   if (cellFaces.empty()) { err = "the shape has no voxels"; return 0; }
+  if (gridType_c::isDescribed(v.getGridType()->getType())) {
+    /* the facet directions of every kind of cell of the grid, not only
+     * of those in the shape, so that the bits are the grid's and do not
+     * depend on the shape (a Cairo piece of one pentagon orientation
+     * would otherwise see five of the six directions): a box of a little
+     * over the largest lattice period (6, the tetrahedron grids) holds
+     * every kind */
+    std::unique_ptr<voxel_c> probe(v.getGridType()->getVoxel(7, 7, 7, voxel_c::VX_EMPTY));
+    for (unsigned z = 0; z < probe->getZ(); z++)
+      for (unsigned y = 0; y < probe->getY(); y++)
+        for (unsigned x = 0; x < probe->getX(); x++)
+          if (probe->validCoordinate(x, y, z)) cellNormals(*probe, x, y, z, facets);
+  }
   for (size_t i = 0, n = facets.size(); i < n; i++) {
     vec3 m = facets[i] * -1.0;
     bool seen = false;
     for (const vec3 & o : facets) if (manifold::la::dot(o, m) > 1 - 1e-6) seen = true;
     if (!seen) facets.push_back(m);
   }
+  /* the bits: the native grids by their type; a described grid by its
+   * cells' facet directions, prism bits when they are a prism's (every
+   * facet normal along one coordinate axis or perpendicular to it:
+   * hexagonal, Cairo and triangular prisms, cubes), else the cube bits,
+   * whose cuboctahedron has faces on every facet direction the
+   * tetrahedron grids have, (100), (110) and (111), as on the native
+   * rhombic and tetra-octa grids */
   bits_s b;
-  if (v.getGridType()->getType() == gridType_c::GT_TRIANGULAR_PRISM) { if (!prismBits(facets, b, err)) return 0; }
-  else b = cubeBits();
+  const gridType_c::gridType type = v.getGridType()->getType();
+  bool prism = type == gridType_c::GT_TRIANGULAR_PRISM;
+  if (gridType_c::isDescribed(type)) {
+    /* every facet on a coordinate axis: a cube, whose bevel must be the
+     * same on all three axes; prism bits would take x as the prism axis
+     * and leave the edges along x sharp */
+    bool cube = true;
+    for (const vec3 & n : facets) {
+      int ones = 0;
+      for (int a = 0; a < 3; a++) {
+        double d = std::fabs(n[a]);
+        if (std::fabs(d - 1) < 1e-6) ones++;
+        else if (d > 1e-6) cube = false;
+      }
+      if (ones != 1) cube = false;
+    }
+    std::string notPrism;
+    prism = !cube && prismBits(facets, b, notPrism);
+  }
+  if (!prism) b = cubeBits();
+  else if (b.offset.empty() && !prismBits(facets, b, err)) return 0;
   Manifold body = exactBody(v, err);
   if (body.IsEmpty()) return 0;
   Manifold outer;

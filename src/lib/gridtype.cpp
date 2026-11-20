@@ -242,10 +242,11 @@ unsigned int gridType_c::getCapabilities(void) const
                                    | CAP_STLEXPORT
                                    ;
     /* described grids: assembly; disassembly where the grid has movement
-     * directions that are lattice vectors; STL export comes with step G6 */
+     * directions that are lattice vectors; STL export through the
+     * Minkowski mesher with the cells' polyhedra (minkmesh.h) */
     default:
       if (!isDescribed(type)) return 0;
-      return CAP_ASSEMBLE | (latticeGridInfo_c::get(type).canDisassemble() ? CAP_DISASSEMBLE : 0);
+      return CAP_ASSEMBLE | CAP_STLEXPORT | (latticeGridInfo_c::get(type).canDisassemble() ? CAP_DISASSEMBLE : 0);
   }
 }
 
@@ -267,7 +268,7 @@ stlExporter_c * gridType_c::getStlExporter(void) const
     case GT_SPHERES:          return new stlExporter_2_c();
     case GT_RHOMBIC:          return new stlExporter_0_c();
     case GT_TETRA_OCTA:       return new stlExporter_0_c();
-    default: return 0;
+    default: return isDescribed(type) ? new stlExporter_0_c() : 0;
   }
 }
 
