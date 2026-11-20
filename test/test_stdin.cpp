@@ -40,7 +40,6 @@
 
 #ifndef _WIN32
 #include <csignal>
-#include <pthread.h>
 #endif
 
 namespace {
@@ -75,17 +74,16 @@ namespace {
         REQUIRE(pipe(fds) == 0);
 #endif
         reader = fds[0];
-        writer = std::thread([fd = fds[1], data] {
 #ifndef _WIN32
-          /* a write to a pipe nobody reads any more raises SIGPIPE, which
-           * would kill the test binary. That signal goes to the thread that
-           * wrote, so blocking it here is enough: write() fails with EPIPE.
-           */
-          sigset_t pipeSignal;
-          sigemptyset(&pipeSignal);
-          sigaddset(&pipeSignal, SIGPIPE);
-          pthread_sigmask(SIG_BLOCK, &pipeSignal, nullptr);
+        /* a write to a pipe nobody reads any more raises SIGPIPE, which
+         * would kill the test binary. Blocking it in the writer thread is
+         * not enough: Linux sends it to the thread that wrote, macOS to the
+         * process, and so to any thread that does not block it. Ignored,
+         * write() fails with EPIPE instead.
+         */
+        std::signal(SIGPIPE, SIG_IGN);
 #endif
+        writer = std::thread([fd = fds[1], data] {
           size_t done = 0;
           while (done < data.size()) {
             const long n = btfd::write(fd, data.data() + done, data.size() - done);
