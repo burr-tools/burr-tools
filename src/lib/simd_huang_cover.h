@@ -288,6 +288,13 @@ private:
   std::vector<Row> rows;
   std::vector<unsigned int> active_column_list;
   std::vector<unsigned int> hole_columns;
+  /* The hole columns as voxel bits. assembler_1_c's hole columns are voxel
+   * columns (min 0, max 1), so a hole is empty exactly when its bit is not in
+   * placed_voxels and an empty-hole count is a popcount. holes_are_voxels is
+   * false if some hole column is not a voxel column; search() then counts
+   * column by column. */
+  BitsetType hole_mask;
+  bool holes_are_voxels = true;
   std::unordered_map<unsigned int, uint32_t> node_to_row_idx;
   [[maybe_unused]] bool use_avx2 = false;
   [[maybe_unused]] bool use_avx512 = false;

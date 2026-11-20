@@ -228,7 +228,26 @@ int assembler_1_c::AddPieceNode(unsigned int piece, unsigned int rot, unsigned i
   return piecenode;
 }
 
+void assembler_1_c::buildNodePositions(void) {
+  nodePositions.assign(left.size(), UINT32_MAX);
+  for (size_t k = 0; k < piecePositions.size(); k++) {
+    const size_t end = k + 1 < piecePositions.size() ? piecePositions[k+1].row : left.size();
+    for (size_t n = piecePositions[k].row; n < end; n++)
+      nodePositions[n] = (uint32_t)k;
+  }
+}
+
 void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece, unsigned char *tran, int *x, int *y, int *z) const {
+
+  if (node < nodePositions.size() && nodePositions[node] != UINT32_MAX) {
+    const piecePosition &pp = piecePositions[nodePositions[node]];
+    *tran = pp.transformation;
+    *x = pp.x;
+    *y = pp.y;
+    *z = pp.z;
+    *piece = pp.piece;
+    return;
+  }
 
   // piecePositions is sorted by row: AddPieceNode appends rows in strictly
   // increasing node order (piecenode == left.size() at creation), so binary
@@ -3146,6 +3165,8 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
   const bool useCells = !pendingHuangPrefixes.empty() ? pendingSeedsCells
                                                       : (parallelTasks.empty() && canUseCells());
   bool useSimd = !pendingHuangPrefixes.empty() || useCells || (parallelTasks.empty() && canUseSimd());
+  if (useSimd)
+    buildNodePositions();
   if (useSimd) {
     // Never a DLX remainder here: a restored one keeps the DLX engine
     // above, and restored seeds are never saved next to one.
@@ -3188,27 +3209,31 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
         if (getCallback()) {
           auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
-          std::vector<unsigned int> piece(solution_nodes.size());
-          std::vector<unsigned char> tran(solution_nodes.size());
-          std::vector<int> x(solution_nodes.size());
-          std::vector<int> y(solution_nodes.size());
-          std::vector<int> z(solution_nodes.size());
-
+          /* The placements by shape, in the order found within a shape.
+           * Problems with millions of assemblies spend their time here, so
+           * one pass and one small sort, no allocation per assembly.
+           */
+          struct placed_t {
+            unsigned int piece;
+            unsigned char tran;
+            int x, y, z;
+          };
+          static thread_local std::vector<placed_t> placed;
+          placed.resize(solution_nodes.size());
           for (unsigned int i = 0; i < solution_nodes.size(); i++)
-            getPieceInformation(solution_nodes[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
+            getPieceInformation(solution_nodes[i], &placed[i].piece, &placed[i].tran,
+                                &placed[i].x, &placed[i].y, &placed[i].z);
+          std::stable_sort(placed.begin(), placed.end(),
+                           [](const placed_t & a, const placed_t & b) { return a.piece < b.piece; });
 
-          for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
-            unsigned int placed = 0;
-            for (unsigned int i = 0; i < solution_nodes.size(); i++) {
-              if (piece[i] == pc) {
-                assembly->addPlacement(tran[i], x[i], y[i], z[i]);
-                placed++;
-              }
-            }
-            while (placed < problem.getPartMaximum(pc)) {
+          size_t at = 0;
+          const unsigned int parts = problem.getNumberOfParts();
+          for (unsigned int pc = 0; pc < parts; pc++) {
+            unsigned int count = 0;
+            for (; at < placed.size() && placed[at].piece == pc; at++, count++)
+              assembly->addPlacement(placed[at].tran, placed[at].x, placed[at].y, placed[at].z);
+            for (const unsigned int max = problem.getPartMaximum(pc); count < max; count++)
               assembly->addNonPlacement();
-              placed++;
-            }
           }
 
           assembly->sort(problem);

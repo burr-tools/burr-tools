@@ -97,6 +97,10 @@ void SimdHuangCover<BitsetType>::setColumnBounds(
      * count that search() prunes on
      */
     hole_columns.push_back(col);
+    if (is_voxel && col > 0 && (col - 1) < BitsetType::NUM_WORDS * 64)
+      hole_mask.set(col - 1);
+    else
+      holes_are_voxels = false;
   }
   if (is_voxel && min_w > 0 && col > 0 && (col - 1) < BitsetType::NUM_WORDS * 64) {
     required_voxels.set(col - 1);
@@ -904,7 +908,10 @@ void SimdHuangCover<BitsetType>::search(
        * has to count them itself or it hands back assemblies with more holes
        * than the puzzle allows.
        */
-      if (all_fulfilled && holes < hole_columns.size()) {
+      if (all_fulfilled && holes < hole_columns.size() && holes_are_voxels) {
+        if (ctx.placed_voxels.countMissing(hole_mask) > holes)
+          all_fulfilled = false;
+      } else if (all_fulfilled && holes < hole_columns.size()) {
         unsigned int empty_holes = 0;
         for (unsigned int hc : hole_columns) {
           if (ctx.col_weights[hc] == 0) {
@@ -942,8 +949,21 @@ void SimdHuangCover<BitsetType>::search(
     }
   }
 
-  // Hole pruning
-  if (holes < hole_columns.size()) {
+  // Hole pruning: an empty hole no active row can fill stays empty below
+  if (holes < hole_columns.size() && holes_are_voxels) {
+    if (ctx.placed_voxels.countMissing(hole_mask) > holes) {
+      unsigned int empty_holes = 0;
+      for (size_t w = 0; w < BitsetType::NUM_WORDS; ++w) {
+        uint64_t open = hole_mask.words[w] & ~ctx.placed_voxels.words[w];
+        while (open != 0) {
+          unsigned int c = static_cast<unsigned int>(w * 64 + std::countr_zero(open) + 1);
+          open &= open - 1;
+          if (ctx.col_counts[c] == 0 && ++empty_holes > holes)
+            return;
+        }
+      }
+    }
+  } else if (holes < hole_columns.size()) {
     unsigned int empty_holes = 0;
     for (unsigned int hc : hole_columns) {
       if (ctx.col_counts[hc] == 0 && ctx.col_weights[hc] == 0) {

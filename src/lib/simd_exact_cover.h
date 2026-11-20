@@ -26,6 +26,7 @@
 #include "split_fanout.h"
 #include <cstdint>
 #include <vector>
+#include <bit>
 #include <functional>
 #include <atomic>
 #include <stop_token>
@@ -84,6 +85,13 @@ struct alignas(64) SimdBitset {
       diff |= (target.words[i] & ~words[i]);
     }
     return diff == 0;
+  }
+
+  /** number of bits set in mask but not here: popcount(mask & ~*this) */
+  unsigned int countMissing(const SimdBitset &mask) const {
+    unsigned int n = 0;
+    for (size_t i = 0; i < N_WORDS; ++i) n += static_cast<unsigned int>(std::popcount(mask.words[i] & ~words[i]));
+    return n;
   }
 
   SimdBitset operator|(const SimdBitset &other) const {

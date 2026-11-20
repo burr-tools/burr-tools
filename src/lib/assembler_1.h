@@ -331,6 +331,13 @@ private:
   };
   std::vector<piecePosition> piecePositions;
 
+  /* every matrix node's index into piecePositions, built once before the
+   * bit-parallel search (buildNodePositions): problems with millions of
+   * assemblies look up every placement of every assembly, which was a
+   * binary search over piecePositions. Empty: getPieceInformation searches. */
+  std::vector<uint32_t> nodePositions;
+  void buildNodePositions(void);
+
   /* the members for rotations rejection
    */
   bool avoidTransformedAssemblies = false;
