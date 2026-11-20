@@ -41,8 +41,26 @@ void movementCache_lattice_c::getDirection(unsigned int dir, int * x, int * y, i
   *z = d[2];
 }
 
+const std::vector<movementCache_lattice_c::filledCell_s> &
+movementCache_lattice_c::filledCellsOf(const voxel_c * sh) {
+  auto it = filledCache.find(sh);
+  if (it != filledCache.end())
+    return it->second;
+
+  std::vector<filledCell_s> cells;
+  for (unsigned int z = sh->boundZ1(); z <= sh->boundZ2(); z++)
+    for (unsigned int y = sh->boundY1(); y <= sh->boundY2(); y++)
+      for (unsigned int x = sh->boundX1(); x <= sh->boundX2(); x++) {
+        if (sh->isEmpty(x, y, z)) continue;
+        const int base = inf.base(x, y, z);
+        bt_assert(base >= 0);
+        cells.push_back({(int)x, (int)y, (int)z, base});
+      }
+  return filledCache.emplace(sh, std::move(cells)).first->second;
+}
+
 /* How far the first shape can move in each direction before it hits the
- * second, which sits at (dx, dy, dz) relative to it: every voxel of the
+ * second, which sits at (dx, dy, dz) relative to it: every filled voxel of the
  * first steps along the direction until one of the cells it must find
  * empty is filled in the second, or until it is past the second's box. The
  * same scheme as movementCache_1_c, with NG's check cells.
@@ -56,6 +74,14 @@ std::vector<unsigned int> movementCache_lattice_c::moCalcValues(const voxel_c * 
 
   const unsigned int dirs = inf.directions();
   const int ext = inf.checkReach() + 1;
+  const int xLo = (int)sh2->boundX1() - ext;
+  const int xHi = (int)sh2->boundX2() + ext;
+  const int yLo = (int)sh2->boundY1() - ext;
+  const int yHi = (int)sh2->boundY2() + ext;
+  const int zLo = (int)sh2->boundZ1() - ext;
+  const int zHi = (int)sh2->boundZ2() + ext;
+
+  const auto & filled = filledCellsOf(sh1);
   std::vector<unsigned int> move(dirs);
 
   for (unsigned int dir = 0; dir < dirs; dir++) {
@@ -63,47 +89,41 @@ std::vector<unsigned int> movementCache_lattice_c::moCalcValues(const voxel_c * 
     const auto & d = inf.direction(dir);
     unsigned int m = 32000;
 
-    for (unsigned int z = sh1->boundZ1(); z <= sh1->boundZ2() && m; z++)
-      for (unsigned int y = sh1->boundY1(); y <= sh1->boundY2() && m; y++)
-        for (unsigned int x = sh1->boundX1(); x <= sh1->boundX2() && m; x++) {
+    for (const auto & fc : filled) {
+      if (m == 0) break;
 
-          if (sh1->isEmpty(x, y, z)) continue;
+      const auto & cells = inf.moveChecks(fc.base, dir);
 
-          // the voxel's kind: both spaces are a lattice vector apart, so it is the same in either
-          const int base = inf.base(x, y, z);
-          bt_assert(base >= 0);
-          const auto & cells = inf.moveChecks(base, dir);
+      int xp = fc.x - dx;
+      int yp = fc.y - dy;
+      int zp = fc.z - dz;
 
-          int xp = (int)x - dx;
-          int yp = (int)y - dy;
-          int zp = (int)z - dz;
+      for (unsigned int s = 0; s < m; s++) {
 
-          for (unsigned int s = 0; s < m; s++) {
+        // past the second shape's box in the direction of travel: it can not be hit any more
+        if (d[0] > 0 && xp > xHi) break;
+        if (d[0] < 0 && xp < xLo) break;
+        if (d[1] > 0 && yp > yHi) break;
+        if (d[1] < 0 && yp < yLo) break;
+        if (d[2] > 0 && zp > zHi) break;
+        if (d[2] < 0 && zp < zLo) break;
 
-            // past the second shape's box in the direction of travel: it can not be hit any more
-            if (d[0] > 0 && xp > (int)sh2->boundX2() + ext) break;
-            if (d[0] < 0 && xp < (int)sh2->boundX1() - ext) break;
-            if (d[1] > 0 && yp > (int)sh2->boundY2() + ext) break;
-            if (d[1] < 0 && yp < (int)sh2->boundY1() - ext) break;
-            if (d[2] > 0 && zp > (int)sh2->boundZ2() + ext) break;
-            if (d[2] < 0 && zp < (int)sh2->boundZ1() - ext) break;
-
-            bool hit = false;
-            for (const auto & c : cells)
-              if (sh2->isFilled2(xp + c[0], yp + c[1], zp + c[2])) {
-                hit = true;
-                break;
-              }
-            if (hit) {
-              m = s;
-              break;
-            }
-
-            xp += d[0];
-            yp += d[1];
-            zp += d[2];
+        bool hit = false;
+        for (const auto & c : cells)
+          if (sh2->isFilled2(xp + c[0], yp + c[1], zp + c[2])) {
+            hit = true;
+            break;
           }
+        if (hit) {
+          m = s;
+          break;
         }
+
+        xp += d[0];
+        yp += d[1];
+        zp += d[2];
+      }
+    }
 
     move[dir] = m;
   }

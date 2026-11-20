@@ -23,6 +23,9 @@
 
 #include "movementcache.h"
 
+#include <unordered_map>
+#include <vector>
+
 class latticeGridInfo_c;
 
 /**
@@ -40,11 +43,24 @@ class movementCache_lattice_c : public movementCache_c {
 
   private:
 
+    struct filledCell_s {
+      int x, y, z;
+      int base;
+    };
+
+    const std::vector<filledCell_s> & filledCellsOf(const voxel_c * sh);
+
     std::vector<unsigned int> moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) override;
     unsigned int numDirections(void) override;
     void getDirection(unsigned int dir, int * x, int * y, int * z) override;
 
     const latticeGridInfo_c & inf;
+    /* Per-shape list of filled voxels with their precomputed base index.
+     * Described grids store oblique lattices inside an axis-aligned box whose
+     * volume can be 10x-30x larger than the filled cells; iterating only the
+     * filled cells avoids scanning empty padding on every cache miss. Keys are
+     * the stable voxel_c pointers owned by movementCache_c::shapes. */
+    std::unordered_map<const voxel_c *, std::vector<filledCell_s>> filledCache;
 
     movementCache_lattice_c(const movementCache_lattice_c &) = delete;
     movementCache_lattice_c & operator=(const movementCache_lattice_c &) = delete;
