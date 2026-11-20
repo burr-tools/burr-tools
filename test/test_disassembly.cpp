@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "test_helpers.h"
 #include "lib/disassemblernode.h"
@@ -1176,11 +1177,12 @@ namespace {
  */
 class CountingMovementCache : public movementCache_c {
 public:
-  explicit CountingMovementCache(const problem_c & p) : movementCache_c(p) {}
+  explicit CountingMovementCache(const problem_c & p, unsigned int dirs = 3) : movementCache_c(p), dirs(dirs) {}
 
   unsigned int calculations = 0;
+  const unsigned int dirs;
 
-  unsigned int numDirections(void) override { return 3; }
+  unsigned int numDirections(void) override { return dirs; }
 
   void getDirection(unsigned int dir, int * x, int * y, int * z) override {
     *x = (dir == 0) ? 1 : 0;
@@ -1188,13 +1190,19 @@ public:
     *z = (dir == 2) ? 1 : 0;
   }
 
+  /* what moCalcValues gives for a key; different in every direction */
+  static unsigned int value(int dx, int dy, int dz, unsigned int dir) {
+    return static_cast<unsigned int>((dx & 0xff) + 256 * (dy & 0xff) + 65536 * (dz & 0xff)) * 31u + dir;
+  }
+
 private:
   std::vector<unsigned int> moCalcValues(const voxel_c *, const voxel_c *,
                                          int dx, int dy, int dz) override {
     calculations++;
-    return { static_cast<unsigned int>(dx & 0xff),
-             static_cast<unsigned int>(dy & 0xff),
-             static_cast<unsigned int>(dz & 0xff) };
+    std::vector<unsigned int> v(dirs);
+    for (unsigned int d = 0; d < dirs; d++)
+      v[d] = value(dx, dy, dz, d);
+    return v;
   }
 };
 
@@ -1202,63 +1210,64 @@ private:
 
 TEST_CASE("movement cache: the table still holds every entry after it has grown",
           "[disasm][movementcache]") {
-  /* The cache starts with 101 buckets and grows once moEntries exceeds
-     that. Every other case in this file makes a handful of queries, so
-     moRehash() -- its re-bucketing and its chain surgery -- never runs at
-     all.
+  /* The table starts with 1024 slots and doubles at 70% load. Every other
+     case in this file makes a handful of queries, so the rehash never runs
+     there.
 
      The thing to assert is that the grown table still ANSWERS FROM ITSELF.
      Replaying the queries and comparing values cannot show that: a miss is
      served by recomputing moCalcValues and re-inserting, and moCalcValues
-     is a pure function of the key, so a dropped bucket produces byte-identical
+     is a pure function of the key, so a dropped entry produces identical
      replayed values. Count the computations instead -- a replay that
-     recomputes anything is a replay that found something missing. */
+     recomputes anything is a replay that found something missing.
+
+     With 3 directions every value lives in the entry; with 13 (NG's rhombic
+     tetrahedra) the ones past the eighth live in a second array beside the
+     table, which the rehash has to move along. 8 and 9 sit on either side
+     of that boundary. */
+  const unsigned int dirs = GENERATE(3u, 8u, 9u, 13u);
+  INFO(dirs << " directions");
   problem_c & problem = cubeInCageProblem();
 
-  CountingMovementCache cache(problem);
+  CountingMovementCache cache(problem, dirs);
   MoQuery q = queryFromSolution(problem, 0, 1);
 
-  /* 12 x 12 transformation pairs = 144 distinct keys, comfortably past the
-     101-entry growth threshold */
-  const unsigned int SIDE = 12;
-  const unsigned int KEYS = SIDE * SIDE;
-  REQUIRE(KEYS > 101);
+  /* 12 x 12 transformation pairs x 20 offsets = 2880 distinct keys, past
+     two growth steps (717 and 1434 entries) */
+  const unsigned int SIDE = 12, OFFSETS = 20;
+  const unsigned int KEYS = SIDE * SIDE * OFFSETS;
+  REQUIRE(KEYS > 1434);
 
-  std::vector<std::array<unsigned int, 3>> recorded;
-  recorded.reserve(KEYS);
+  auto check = [&](int off, unsigned int t1, unsigned int t2) {
+    std::vector<unsigned int> v(dirs + 1, 0xDEADBEEF);
+    cache.getMoValue(q.dx + off, q.dy, q.dz, t1, t2, q.p1, q.p2, v.data());
+    for (unsigned int d = 0; d < dirs; d++)
+      REQUIRE(v[d] == CountingMovementCache::value(q.dx + off, q.dy, q.dz, d));
+    REQUIRE(v[dirs] == 0xDEADBEEF);   // nothing written past the directions
+  };
 
-  for (unsigned int t1 = 0; t1 < SIDE; t1++)
-    for (unsigned int t2 = 0; t2 < SIDE; t2++) {
-      unsigned int v[3];
-      cache.getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
-      recorded.push_back({v[0], v[1], v[2]});
-    }
+  for (int off = 0; off < (int)OFFSETS; off++)
+    for (unsigned int t1 = 0; t1 < SIDE; t1++)
+      for (unsigned int t2 = 0; t2 < SIDE; t2++)
+        check(off, t1, t2);
 
   /* every key was new, so every key cost exactly one computation */
   REQUIRE(cache.calculations == KEYS);
-
   const unsigned int afterFill = cache.calculations;
 
-  /* Replay all of them. Each must now be served from the table, so the
-     counter must not move. Drop a bucket in moRehash and the entries in it
-     are recomputed here, which this sees and a value comparison does not. */
-  unsigned int i = 0;
-  for (unsigned int t1 = 0; t1 < SIDE; t1++)
-    for (unsigned int t2 = 0; t2 < SIDE; t2++, i++) {
-      INFO("transformations " << t1 << "," << t2);
-      unsigned int v[3];
-      cache.getMoValue(q.dx, q.dy, q.dz, t1, t2, q.p1, q.p2, v);
-      REQUIRE(v[0] == recorded[i][0]);
-      REQUIRE(v[1] == recorded[i][1]);
-      REQUIRE(v[2] == recorded[i][2]);
-    }
-
+  /* Replay all of them. Each must now be served from the table, values
+     intact, so the counter must not move. */
+  for (int off = 0; off < (int)OFFSETS; off++)
+    for (unsigned int t1 = 0; t1 < SIDE; t1++)
+      for (unsigned int t2 = 0; t2 < SIDE; t2++) {
+        INFO("offset " << off << " transformations " << t1 << "," << t2);
+        check(off, t1, t2);
+      }
   REQUIRE(cache.calculations == afterFill);
 
   /* and the counter really does move when a key genuinely is new, so the
      assertion above is not satisfied by a counter that never increments */
-  unsigned int fresh[3];
-  cache.getMoValue(q.dx + 1, q.dy, q.dz, 0, 0, q.p1, q.p2, fresh);
+  check(-1, 0, 0);
   REQUIRE(cache.calculations == afterFill + 1);
 }
 

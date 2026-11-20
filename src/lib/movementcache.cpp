@@ -24,6 +24,7 @@
 #include "problem.h"
 #include "puzzle.h"
 
+#include <algorithm>
 #include <string.h>
 
 /* the hash function. I don't know how well it performs, but it seems to be okay */
@@ -100,6 +101,7 @@ const voxel_c * movementCache_c::getTransformedShape(unsigned int s, unsigned ch
 
 void movementCache_c::rehashMoTable(size_t new_cap) {
   std::vector<moEntry> new_table(new_cap);
+  std::vector<unsigned int> new_wide(new_cap * wideDirections);
   size_t new_mask = new_cap - 1;
   for (const auto &entry : moTable) {
     if (entry.occupied) {
@@ -109,9 +111,13 @@ void movementCache_c::rehashMoTable(size_t new_cap) {
         idx = (idx + 1) & new_mask;
       }
       new_table[idx] = entry;
+      if (wideDirections)
+        std::copy_n(moWide.begin() + (&entry - moTable.data()) * wideDirections, wideDirections,
+                    new_wide.begin() + idx * wideDirections);
     }
   }
   moTable = std::move(new_table);
+  moWide = std::move(new_wide);
   moMask = new_mask;
 }
 
@@ -124,10 +130,25 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
   moKey key{s1, s2, dx, dy, dz, t1, t2};
   unsigned int h = moHashValue(s1, s2, dx, dy, dz, t1, t2);
 
+  /* the direction counts are fixed per grid; asked for once, the lookup
+   * below runs a few million times per disassembly */
+  if (!inlineDirections) [[unlikely]] {
+    const unsigned int dirs = numDirections();
+    inlineDirections = std::min(dirs, INLINE_DIRECTIONS);
+    if (dirs > INLINE_DIRECTIONS) {
+      wideDirections = dirs - INLINE_DIRECTIONS;
+      moWide.assign(moTable.size() * wideDirections, 0);
+    }
+  }
+  const unsigned int inl = inlineDirections;
+  const unsigned int dirs = inl + wideDirections;
+
   size_t idx = h & moMask;
   while (moTable[idx].occupied) {
     if (moTable[idx].key == key) {
-      memcpy(movements, moTable[idx].values.data(), numDirections() * sizeof(unsigned int));
+      memcpy(movements, moTable[idx].values.data(), inl * sizeof(unsigned int));
+      if (wideDirections) [[unlikely]]
+        memcpy(movements + INLINE_DIRECTIONS, moWide.data() + idx * wideDirections, wideDirections * sizeof(unsigned int));
       return;
     }
     idx = (idx + 1) & moMask;
@@ -135,13 +156,15 @@ void movementCache_c::getMoValue(int dx, int dy, int dz, unsigned char t1, unsig
 
   /* key not found, calculate and enter a new entry into the table */
   std::vector<unsigned int> vals = moCalcValues(getTransformedShape(s1, t1), getTransformedShape(s2, t2), dx, dy, dz);
+  bt_assert(vals.size() == dirs);
   moTable[idx].occupied = true;
   moTable[idx].key = key;
-  for (size_t i = 0; i < vals.size() && i < 8; ++i) {
+  for (size_t i = 0; i < inl; ++i)
     moTable[idx].values[i] = vals[i];
-  }
+  for (size_t i = INLINE_DIRECTIONS; i < dirs; ++i)
+    moWide[idx * wideDirections + (i - INLINE_DIRECTIONS)] = vals[i];
 
-  memcpy(movements, moTable[idx].values.data(), numDirections() * sizeof(unsigned int));
+  memcpy(movements, vals.data(), dirs * sizeof(unsigned int));
   moCount++;
 
   if (moCount * 10 >= moTable.size() * 7) {

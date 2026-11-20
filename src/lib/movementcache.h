@@ -52,6 +52,10 @@ class movementCache_c {
    * Cache key: the two involved shapes, their orientations and the
    * relative offset of the 2nd piece.
    */
+  /** values held in the entry itself; cubes have 3 directions, the other
+   *  native grids at most 4 */
+  static constexpr unsigned int INLINE_DIRECTIONS = 8;
+
   struct moKey {
     unsigned int s1 = 0; ///< id of the first involved shape
     unsigned int s2 = 0; ///< id of the second involved shape
@@ -70,13 +74,24 @@ class movementCache_c {
    */
   struct alignas(64) moEntry {
     moKey key;
-    std::array<unsigned int, 8> values{};
+    std::array<unsigned int, INLINE_DIRECTIONS> values{};
     bool occupied = false;
   };
 
   std::vector<moEntry> moTable;
   size_t moCount = 0;
   size_t moMask = 0;
+
+  /* Grids with more than INLINE_DIRECTIONS directions (NG's rhombic
+   * tetrahedra have 13) keep the rest of an entry's values here, at
+   * slot * wideDirections: a second array beside the table, so the
+   * entries of every other grid stay one cache line. Empty until the
+   * first entry of such a grid.
+   */
+  std::vector<unsigned int> moWide;
+  unsigned int wideDirections = 0;
+  /// the values held in an entry, set on the first lookup (0 before)
+  unsigned int inlineDirections = 0;
 
   void rehashMoTable(size_t new_cap);
 
