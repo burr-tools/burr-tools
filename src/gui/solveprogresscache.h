@@ -27,7 +27,7 @@
 /* What the solve tab last displayed for one problem. */
 struct solveSnapshot_c {
 
-  /* whole-solve progress in [0,1], as solveThread_c::getProgress() reported it */
+  /* whole-solve progress in [0,1], as solverSession_c::getProgress() reported it */
   float progress;
 
   /* seconds still to go, as the tab computed them from progress and elapsed */
@@ -42,7 +42,7 @@ struct solveSnapshot_c {
 
 /* The last values the solve tab painted, kept per problem.
  *
- * They have no other source once the solve ends. solveThread_c is destroyed as
+ * They have no other source once the solve ends. The active session is destroyed as
  * soon as it reports ACT_PAUSING, and the assembler that outlives it reports
  * progress from live search state that the abort has already unwound -- so
  * after Stop the bar would fall to 0% and the estimate would disappear, even

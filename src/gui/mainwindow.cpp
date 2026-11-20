@@ -68,7 +68,8 @@
 #include "../lib/puzzle.h"
 #include "../lib/problem.h"
 #include "../lib/assembler.h"
-#include "../lib/solvethread.h"
+#include "../lib/problemcollector.h"
+#include "../lib/solver/solversession.h"
 #include "../lib/disassembly.h"
 #include "../lib/disassembler_0.h"
 #include "../lib/gridtype.h"
@@ -1160,6 +1161,196 @@ void mainWindow_c::cb_BtnStart(bool prep_only) {
   updateInterface();
 }
 
+class fltkSolveSession_c {
+public:
+  fltkSolveSession_c(problem_c & p, solverOptions_t sopts, problemCollectorOptions_t copts)
+    : problem_(p),
+      spec_(makeSolverSpec(p)),
+      sessionCountOnly_(sopts.countOnly),
+      session_(std::make_unique<solverSession_c>(spec_, std::move(sopts))),
+      collector_(p, copts)
+  {}
+
+  ~fltkSolveSession_c(void) {
+    if (session_)
+      session_->abort();
+  }
+
+  problem_c & getProblem(void) { return problem_; }
+  const problem_c & getProblem(void) const { return problem_; }
+
+  bool start(bool prepOnly) {
+    prepOnly_ = prepOnly;
+    startTime_ = time(0);
+    collector_.resetDropMultiplicator();
+
+    if (!problem_.canStartSolving()) {
+      localError_ = true;
+      localErrState_ = assembler_c::ERR_CAN_NOT_START;
+      localErrParam_ = static_cast<int>(problem_.getSolveState());
+      return true;
+    }
+
+    if (problem_.getAssembler()) {
+      std::unique_ptr<assembler_c> existing = problem_.takeAssembler();
+      std::vector<std::unique_ptr<assembly_c>> stashed = problem_.takeStashedAssemblies();
+      session_->adoptPreparedAssembler(std::move(existing), std::move(stashed));
+    } else if (problem_.hasResumeData()) {
+      usedSavedResume_ = true;
+      resumeData_t res = problem_.cloneResumeData();
+      const unsigned int pieces = problem_.getNumberOfPieces();
+      std::erase_if(res.pending, [pieces](const std::unique_ptr<assembly_c> & a) {
+        return !a || a->placementCount() != pieces;
+      });
+      session_->setResume(std::move(res));
+    } else {
+      session_->setPreparedHook([this]() { problem_.beginSolving(); });
+    }
+
+    if (!session_->start(prepOnly)) {
+      if (usedSavedResume_ && session_->currentAction() != solverSession_c::ACT_ASSERT) {
+        auto info = session_->runInfo();
+        const assembler_c::errState err = info ? info->error : assembler_c::ERR_NONE;
+        if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
+          problem_.removeAllSolutions();
+        } else if (err == assembler_c::ERR_CAN_NOT_RESTORE_VERSION ||
+                   err == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX) {
+          problem_.discardResumeEngineState();
+        }
+      }
+      return true;
+    }
+
+    if (usedSavedResume_)
+      problem_.clearResumeData();
+    return true;
+  }
+
+  void stop(void) {
+    if (!localError_ && session_)
+      session_->requestPause();
+  }
+
+  void setLiveSort(int by) { collector_.setLiveSort(by); }
+
+  void drain(void) {
+    if (localError_ || !session_)
+      return;
+    if (sessionCountOnly_) {
+      if (problem_.getSolveState() == SS_SOLVING)
+        collector_.syncCountOnly(session_->assembliesFound(), session_->solutionsFound());
+    } else {
+      collector_.drainFrom(*session_);
+    }
+  }
+
+  bool isRunning(void) const {
+    if (localError_ || !session_)
+      return false;
+    return session_->sessionState() == solverState_e::Running;
+  }
+
+  /* Drain any remaining queued results, join the session, and apply the final
+   * problem state update on the FLTK GUI thread. Idempotent. */
+  void finalize(void) {
+    if (finalized_)
+      return;
+    finalized_ = true;
+    if (localError_ || !session_)
+      return;
+
+    if (sessionCountOnly_) {
+      session_->join();
+      if (problem_.getSolveState() == SS_SOLVING)
+        collector_.syncCountOnly(session_->assembliesFound(), session_->solutionsFound());
+    } else {
+      collector_.consumeAll(*session_);
+      session_->join();
+    }
+
+    const solverState_e st = session_->sessionState();
+    if (st == solverState_e::Finished) {
+      if (problem_.getSolveState() == SS_UNSOLVED)
+        problem_.beginSolving();
+      problem_.installAssembler(session_->releaseAssembler());
+      problem_.addTime(time(0) - startTime_);
+      problem_.finishedSolving();
+    } else if (st == solverState_e::Paused) {
+      if (problem_.getSolveState() == SS_UNSOLVED)
+        problem_.beginSolving();
+      resumeData_t snap = session_->state();
+      problem_.stashAssemblies(std::move(snap.pending));
+      problem_.installAssembler(session_->releaseAssembler());
+      if (!prepOnly_)
+        problem_.addTime(time(0) - startTime_);
+    } else if (st == solverState_e::Error) {
+      if (session_->currentAction() == solverSession_c::ACT_ASSERT) {
+        if (auto a = session_->releaseAssembler()) {
+          problem_.installAssembler(std::move(a));
+          problem_.removeAllSolutions();
+        }
+      }
+    }
+  }
+
+  unsigned int currentAction(void) const {
+    if (localError_)
+      return solverSession_c::ACT_ERROR;
+    return session_->currentAction();
+  }
+
+  unsigned int currentActionParameter(void) const {
+    if (localError_)
+      return 0;
+    return session_->currentActionParameter();
+  }
+
+  float getProgress(void) const {
+    if (localError_)
+      return 0.0f;
+    return session_->getProgress();
+  }
+
+  unsigned long getTime(void) const { return time(0) - startTime_; }
+  unsigned int rotationsSkipped(void) const { return session_ ? session_->rotationsSkipped() : 0; }
+
+  assembler_c::errState getErrorState(void) const {
+    if (localError_)
+      return localErrState_;
+    auto info = session_->runInfo();
+    return info ? info->error : assembler_c::ERR_NONE;
+  }
+
+  int getErrorParam(void) const {
+    if (localError_)
+      return localErrParam_;
+    auto info = session_->runInfo();
+    return info ? info->errorParam : 0;
+  }
+
+  const assert_exception & getAssertException(void) const { return session_->getAssertException(); }
+  std::exception_ptr exception(void) const { return session_ ? session_->exception() : nullptr; }
+  std::string exceptionMessage(void) const { return session_ ? session_->exceptionMessage() : std::string(); }
+
+private:
+  problem_c & problem_;
+  std::shared_ptr<const solverSpec_t> spec_;
+  bool sessionCountOnly_ = false;
+  bool prepOnly_ = false;
+  bool usedSavedResume_ = false;
+  bool localError_ = false;
+  bool finalized_ = false;
+  assembler_c::errState localErrState_ = assembler_c::ERR_NONE;
+  int localErrParam_ = 0;
+  time_t startTime_ = 0;
+  std::unique_ptr<solverSession_c> session_;
+  problemCollector_c collector_;
+};
+
+static void cb_SolveDrain_stub(void * v) {
+  static_cast<mainWindow_c *>(v)->drainActiveSolve();
+}
+
 static void cb_BtnCont_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnCont(false); }
 void mainWindow_c::cb_BtnCont(bool prep_only) {
 
@@ -1188,34 +1379,43 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
 
   bt_assert(assmThread == 0);
 
-  int par = solveThread_c::PAR_REDUCE;
-  if (KeepRotations->value() != 0) par |= solveThread_c::PAR_KEEP_ROTATIONS;
-  if (DropDisassemblies->value() != 0) par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
-  if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
-  if (JustCount->value() != 0) par |= solveThread_c::PAR_JUST_COUNT;
-  if (CompleteRotations->value() != 0) par |= solveThread_c::PAR_COMPLETE_ROTATIONS;
-  if (rotationMode() != ROTATION_OFF) par |= solveThread_c::PAR_ROTATION_MOVES;
+  solverOptions_t sopts;
+  sopts.reduce            = true;
+  sopts.keepRotations     = (KeepRotations->value() != 0);
+  sopts.disassemble       = (SolveDisasm->value() != 0);
+  sopts.completeRotations = (CompleteRotations->value() != 0);
+  sopts.rotationMoves     = (rotationMode() != ROTATION_OFF);
+  // With disassembly + JustCount, keep the session enqueuing so single-piece
+  // assemblies are still stored as solutions by problemCollector_c.
+  sopts.countOnly         = (JustCount->value() != 0) && !sopts.disassemble;
+  sopts.queueCapacity     = 1024;
 
   /* with rotation moves the solver builds its tables in the background;
    * a thread count of 0 in the preferences leaves it to the environment */
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
+  sopts.settings = settings;
+
+  problemCollectorOptions_t copts;
+  copts.disassemble       = sopts.disassemble;
+  copts.countOnly         = (JustCount->value() != 0);
+  copts.dropDisassemblies = (DropDisassemblies->value() != 0);
+  copts.sortMethod        = sortMethod->value();
+  copts.solutionLimit     = (unsigned int)(int)solLimit->value();
+  copts.solutionDrop      = (unsigned int)(int)solDrop->value();
 
   /* a fresh solve with turns stores the model it uses, so the file says
    * which pieces its disassemblies are for */
   problem_c * solved = puzzle->getProblem(prob);
-  if (par & solveThread_c::PAR_ROTATION_MOVES)
+  if (sopts.rotationMoves)
     storeSolveRotationModel(*puzzle, settings.rotation);
   /* which mode the results come from, so that the tab can say when the
    * choice differs (in memory only, like the choice) */
-  if (par & solveThread_c::PAR_DISASSM)
+  if (sopts.disassemble)
     solved->noteSolveRotationMode(rotationMode());
 
-  assmThread = std::make_unique<solveThread_c>(*solved, par, settings);
-
-  assmThread->setSortMethod(sortMethod->value());
-  assmThread->setSolutionLimits((int)solLimit->value(), (int)solDrop->value());
+  assmThread = std::make_unique<fltkSolveSession_c>(*solved, std::move(sopts), copts);
 
   // start by following the tail (newest solution) regardless of the initial
   // sort: the user hasn't picked a sort yet, and as soon as they do they will
@@ -1227,9 +1427,8 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   if (!assmThread->start(prep_only)) {
     fl_message("Could not start the solving process, the thread creation failed, sorry.");
     assmThread.reset();
-
   } else {
-
+    Fl::add_timeout(0.025, cb_SolveDrain_stub, this);
     updateInterface();
   }
 }
@@ -3158,7 +3357,7 @@ void mainWindow_c::updateInterface(void) {
       lastShown = solveProgress.recall(puzzle->getProblem(prob));
 
     float finished = 0;
-    if (assmThread && assmThread->currentAction() != solveThread_c::ACT_FINISHED &&
+    if (assmThread && assmThread->currentAction() != solverSession_c::ACT_FINISHED &&
         (prob < puzzle->getNumberOfProblems()) &&
         (&(assmThread->getProblem()) == puzzle->getProblem(prob))) {
       /* Each worker keeps its own monotone guard, and a resumed solve starts a
@@ -3550,14 +3749,14 @@ void mainWindow_c::updateInterface(void) {
       problem_c * pr = puzzle->getProblem(prob);
 
       switch(assmThread->currentAction()) {
-      case solveThread_c::ACT_PREPARATION:
+      case solverSession_c::ACT_PREPARATION:
         {
           char tmp[20];
           snprintf(tmp, 20, "prepare piece %u", assmThread->currentActionParameter()+1);
           OutputActivity->value(tmp);
         }
         break;
-      case solveThread_c::ACT_REDUCE:
+      case solverSession_c::ACT_REDUCE:
         if (pr->getAssembler()) {
           char tmp[20];
           snprintf(tmp, 20, "optimize piece %u", pr->getAssembler()->getReducePiece()+1);
@@ -3568,26 +3767,26 @@ void mainWindow_c::updateInterface(void) {
           OutputActivity->value(tmp);
         }
         break;
-      case solveThread_c::ACT_ASSEMBLING:
+      case solverSession_c::ACT_ASSEMBLING:
         OutputActivity->value("assemble");
         break;
-      case solveThread_c::ACT_DISASSEMBLING:
+      case solverSession_c::ACT_DISASSEMBLING:
         OutputActivity->value("disassemble");
         break;
-      case solveThread_c::ACT_PAUSING:
+      case solverSession_c::ACT_PAUSING:
         OutputActivity->value("pause");
         break;
-      case solveThread_c::ACT_FINISHED:
+      case solverSession_c::ACT_FINISHED:
         /* limits of the rotation tables made the search skip some turns */
         if (!pr->solvedWithRotationMode(rotationMode()))
           OutputActivity->value("finished, with other rotation moves");
         else
           OutputActivity->value(assmThread->rotationsSkipped() ? "finished, turns may be missing" : "finished");
         break;
-      case solveThread_c::ACT_WAIT_TO_STOP:
+      case solverSession_c::ACT_WAIT_TO_STOP:
         OutputActivity->value("please wait");
         break;
-      case solveThread_c::ACT_ERROR:
+      case solverSession_c::ACT_ERROR:
         OutputActivity->value("error");
         break;
       }
@@ -3707,94 +3906,117 @@ void mainWindow_c::updateInterface(void) {
   updateUndoRedoMenu();
 }
 
+void mainWindow_c::drainActiveSolve(void) {
+  if (!assmThread)
+    return;
+
+  assmThread->drain();
+
+  if (assmThread->isRunning()) {
+    Fl::repeat_timeout(0.025, cb_SolveDrain_stub, this);
+  } else {
+    update();
+  }
+}
+
 void mainWindow_c::update(void) {
 
   if (assmThread) {
 
-    // check if the thread has thrown an exception. if so, re-throw it
-    if (assmThread->currentAction() == solveThread_c::ACT_ASSERT) {
+    assmThread->drain();
 
-      auto aw = std::make_unique<assertWindow_c>("Because of an internal error the current puzzle\n"
-                                               "can not be solved\n",
-                                               &(assmThread->getAssertException()));
+    if (!assmThread->isRunning()) {
+      Fl::remove_timeout(cb_SolveDrain_stub, this);
+      assmThread->finalize();
 
-      aw->show();
+      // check if the session has thrown an assertion exception
+      if (assmThread->currentAction() == solverSession_c::ACT_ASSERT) {
 
-      while (aw->visible())
-        Fl::wait();
+        auto aw = std::make_unique<assertWindow_c>("Because of an internal error the current puzzle\n"
+                                                 "can not be solved\n",
+                                                 &(assmThread->getAssertException()));
 
-      assmThread.reset();
-      updateInterface();
-      return;
-    }
+        aw->show();
 
-    // check, if the thread has stopped, if so then delete the object
-    if ((assmThread->currentAction() == solveThread_c::ACT_PAUSING) ||
-        (assmThread->currentAction() == solveThread_c::ACT_FINISHED)) {
+        while (aw->visible())
+          Fl::wait();
 
-      puzzleHistory->markModified(); // solutions are not snapshotted; mark dirty so save prompt appears
-      assmThread.reset();
-
-    } else if (assmThread->currentAction() == solveThread_c::ACT_ERROR) {
-
-      unsigned int selectShape = 0xFFFFFFFF;
-
-      switch(assmThread->getErrorState()) {
-      case assembler_c::ERR_TOO_MANY_UNITS:
-        fl_message("Pieces contain %i units too many", assmThread->getErrorParam());
-        break;
-      case assembler_c::ERR_TOO_FEW_UNITS:
-        fl_message("Pieces contain %i units less than required\n"
-                   "See user guide sections\n"
-                   "1.3.2.1 'Voxel States'\n"
-                   "3.4.2 'Basic Drawing Tools' and\n"
-                   "3.8 'Miscellaneous Editing Tools'", assmThread->getErrorParam());
-        break;
-      case assembler_c::ERR_CAN_NOT_PLACE:
-        fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
-        selectShape = assmThread->getErrorParam();
-        break;
-      case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
-        fl_message("Impossible to restore the saved state because the internal format changed.\n"
-                   "You either have to start from the beginning or finish with the old version of BurrTools, sorry");
-        break;
-      case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
-        fl_message("Impossible to restore the saved state because something with the data is wrong.\n"
-                   "You have to start from the beginning, sorry");
-        break;
-      case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-        fl_message("The saved search was stopped before it had any search state to save.\n"
-                   "It can not be continued, so it has been reset -- please start it again.");
-        break;
-      case assembler_c::ERR_CAN_NOT_START:
-        if (assmThread->getErrorParam() == SS_SOLVED)
-          fl_message("The problem is already solved.\n"
-                     "Use Start, not Continue, to solve it again from the beginning.");
-        else
-          fl_message("The problem can not be continued in its current state.\n"
-                     "Use Start to solve it from the beginning.");
-        break;
-      case assembler_c::ERR_PUZZLE_UNHANDABLE:
-        fl_message("Something went wrong the program can not solve your puzzle definitions.\n"
-                   "You should send the puzzle file to the programmer!");
-        break;
-      default:
-        break;
-      }
-
-      if (selectShape < puzzle->getNumberOfShapes()) {
-        TaskSelectionTab->value(TabPieces);
-        PcSel->setSelection(selectShape);
-        activateShape(PcSel->getSelection());
+        assmThread.reset();
         updateInterface();
-        StatPieceInfo(PcSel->getSelection());
+        return;
       }
 
-      assmThread.reset();
+      if ((assmThread->currentAction() == solverSession_c::ACT_PAUSING) ||
+          (assmThread->currentAction() == solverSession_c::ACT_FINISHED)) {
+
+        puzzleHistory->markModified(); // solutions are not snapshotted; mark dirty so save prompt appears
+        assmThread.reset();
+
+      } else if (assmThread->currentAction() == solverSession_c::ACT_ERROR) {
+
+        unsigned int selectShape = 0xFFFFFFFF;
+
+        if (assmThread->exception()) {
+          fl_message("Error while solving: %s", assmThread->exceptionMessage().c_str());
+        } else {
+          switch(assmThread->getErrorState()) {
+          case assembler_c::ERR_TOO_MANY_UNITS:
+            fl_message("Pieces contain %i units too many", assmThread->getErrorParam());
+            break;
+          case assembler_c::ERR_TOO_FEW_UNITS:
+            fl_message("Pieces contain %i units less than required\n"
+                       "See user guide sections\n"
+                       "1.3.2.1 'Voxel States'\n"
+                       "3.4.2 'Basic Drawing Tools' and\n"
+                       "3.8 'Miscellaneous Editing Tools'", assmThread->getErrorParam());
+            break;
+          case assembler_c::ERR_CAN_NOT_PLACE:
+            fl_message("Piece %i can be placed nowhere within the result", assmThread->getErrorParam()+1);
+            selectShape = assmThread->getErrorParam();
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+            fl_message("Impossible to restore the saved state because the internal format changed.\n"
+                       "You either have to start from the beginning or finish with the old version of BurrTools, sorry");
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+            fl_message("Impossible to restore the saved state because something with the data is wrong.\n"
+                       "You have to start from the beginning, sorry");
+            break;
+          case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+            fl_message("The saved search was stopped before it had any search state to save.\n"
+                       "It can not be continued, so it has been reset -- please start it again.");
+            break;
+          case assembler_c::ERR_CAN_NOT_START:
+            if (assmThread->getErrorParam() == SS_SOLVED)
+              fl_message("The problem is already solved.\n"
+                         "Use Start, not Continue, to solve it again from the beginning.");
+            else
+              fl_message("The problem can not be continued in its current state.\n"
+                         "Use Start to solve it from the beginning.");
+            break;
+          case assembler_c::ERR_PUZZLE_UNHANDABLE:
+            fl_message("Something went wrong the program can not solve your puzzle definitions.\n"
+                       "You should send the puzzle file to the programmer!");
+            break;
+          default:
+            break;
+          }
+        }
+
+        if (selectShape < puzzle->getNumberOfShapes()) {
+          TaskSelectionTab->value(TabPieces);
+          PcSel->setSelection(selectShape);
+          activateShape(PcSel->getSelection());
+          updateInterface();
+          StatPieceInfo(PcSel->getSelection());
+        }
+
+        assmThread.reset();
+      }
     }
 
-    // update the window, either when the thread stopped and so the buttons need to
-    // be updated, or then the thread works for the currently selected problem
+    // update the window, either when the session stopped and so the buttons need to
+    // be updated, or when the session works for the currently selected problem
     if (!assmThread || &(assmThread->getProblem()) == puzzle->getProblem(solutionProblem->getSelection()))
       updateInterface();
   }
@@ -4791,6 +5013,8 @@ mainWindow_c::mainWindow_c(gridType_c * gt)
 }
 
 mainWindow_c::~mainWindow_c() {
+  Fl::remove_timeout(cb_SolveDrain_stub, this);
+  assmThread.reset();
   delete updateChecker;
 
   config.windowPos(x(), y(), w(), h());

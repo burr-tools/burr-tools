@@ -41,7 +41,7 @@ class updateChecker_c;
 class puzzle_c;
 class puzzleHistory_c;
 class problem_c;
-class solveThread_c;
+class fltkSolveSession_c;
 class disasmToMoves_c;
 class gridType_c;
 class guiGridType_c;
@@ -78,7 +78,7 @@ class mainWindow_c : public LFl_Double_Window {
   std::unique_ptr<guiGridType_c> ggt;  // this is the guigridtype for the puzzle, is must always be in sync
   std::string fname;
   std::unique_ptr<disasmToMoves_c> disassemble;
-  std::unique_ptr<solveThread_c> assmThread;
+  std::unique_ptr<fltkSolveSession_c> assmThread;
   bool SolutionEmpty;
 
   /* What the solve tab last painted for each problem.
@@ -315,6 +315,7 @@ public:
    * the solving progress, that works in background
    */
   void update(void);
+  void drainActiveSolve(void);
 
   /* Starts an update check: manual ones report every outcome, automatic
    * ones only an available update.
