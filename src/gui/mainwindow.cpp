@@ -1936,7 +1936,7 @@ void mainWindow_c::cb_Convert(void) {
 
   if (win.okSelected())
   {
-    puzzle_c * p = doConvert(puzzle.get(), win.getTargetType());
+    puzzle_c * p = doConvert(puzzle.get(), win.getTargetType(), cutCubeGrids_e::native);
 
     if (p)
     {
@@ -2365,7 +2365,9 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
   std::unique_ptr<puzzle_c> newPuzzle;
 
   try {
-    newPuzzle = std::make_unique<puzzle_c>(pars);
+    /* this program keeps the native rhombic and tetra-octa grids, with
+     * their editors (cutCubeGrids_e) */
+    newPuzzle = puzzle_c::read(pars, cutCubeGrids_e::native);
   }
 
   catch (xmlParserException_c &e)

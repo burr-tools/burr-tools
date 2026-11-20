@@ -51,7 +51,7 @@ convertWindow_c::convertWindow_c(gridType_c::gridType srcType) : LFl_Double_Wind
 
   for (int i = 0; i < gridType_c::GT_NUM_GRIDS; i++)
   {
-    if (canConvert(srcType, (gridType_c::gridType)i))
+    if (canConvert(srcType, (gridType_c::gridType)i, cutCubeGrids_e::native))
     {
       found = true;
 

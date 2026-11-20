@@ -282,6 +282,16 @@ bool latticeGridInfo_c::apply(unsigned int t, int & x, int & y, int & z) const {
   return true;
 }
 
+unsigned char latticeGridInfo_c::transformationWithMatrix(const int m[9]) const {
+  for (unsigned int t = 0; t < trans.size(); t++) {
+    bool same = true;
+    for (int k = 0; k < 9 && same; k++)
+      same = trans[t].m[k] == (long)m[k] * trans[t].den;
+    if (same) return (unsigned char)t;
+  }
+  return TND;
+}
+
 void latticeGridInfo_c::alignDown(int mx, int my, int mz, int & vx, int & vy, int & vz) const {
 
   // start from the lattice cell of m, then look at the cells around it

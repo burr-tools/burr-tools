@@ -24,6 +24,7 @@
 #include "types.h"
 #include "bt_assert.h"
 #include "solver_config.h"
+#include "cutcubegrids.h"
 
 #include <memory>
 #include <mutex>
@@ -127,9 +128,14 @@ class gridType_c {
     static bool isDescribed(gridType t) { return t >= GT_HEXAGONAL_PRISM && t < GT_NUM_GRIDS; }
     bool isDescribed(void) const { return isDescribed(type); }
 
-    /** the grids a user can create a puzzle on in the GUIs: the native ones
-     *  (described grids come with step G6 of the grid plan) */
-    static bool offeredForNewPuzzles(gridType t) { return t >= GT_BRICKS && t <= GT_TETRA_OCTA; }
+    /** the grids a user can create a puzzle on in the GUIs: bricks, prisms,
+     *  spheres, and rhombic and tetra-octa on the grids `cut` says (the other
+     *  described grids come with step C2 of design/2026-11-19-ng-merge-plan.md) */
+    static bool offeredForNewPuzzles(gridType t, cutCubeGrids_e cut = cutCubeGrids_e::ng) {
+      if (t == GT_BRICKS || t == GT_TRIANGULAR_PRISM || t == GT_SPHERES) return true;
+      if (cut == cutCubeGrids_e::native) return t == GT_RHOMBIC || t == GT_TETRA_OCTA;
+      return t == GT_RHOMBIC_TETRAHEDRA || t == GT_OCTAHEDRAL_TETRAHEDRA;
+    }
 
     unsigned int getCapabilities(void) const;
 

@@ -444,6 +444,16 @@ public:
    */
   void removeAllSolutions(void);                                             // resetToUnsolved
 
+  /**
+   * For a puzzle converted to another grid (convertToDescribed()): take
+   * orig's solve state, counters, time and rotation-mode record, with the
+   * given solutions (orig's, converted to this problem's grid). The search
+   * state (assembler state, stashed assemblies) is not taken: a paused
+   * search stays SS_SOLVING but cannot be continued, as with a state saved
+   * by another version. Only on a problem without results.
+   */
+  void adoptResults(const problem_c & orig, std::vector<std::unique_ptr<solution_c>> sols);
+
   /** \name  functions used while solving the puzzle.
    * the assembler engine can be put into the problem to save it together
    * with the problem and later on resume, or even to just pause solving

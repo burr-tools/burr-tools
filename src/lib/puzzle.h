@@ -35,6 +35,7 @@
 #include <optional>
 
 #include "rotationgeometry.h"
+#include "cutcubegrids.h"
 
 class voxel_c;
 class gridType_c;
@@ -116,12 +117,22 @@ public:
   puzzle_c(std::unique_ptr<gridType_c> g);
 
   /**
-   * load the puzzle from the XML file
+   * load the puzzle from the XML file, on the grid the file names, native
+   * rhombic and tetra-octa included. Front ends read with read() or
+   * load(), which convert those to NG's grids unless asked not to.
    */
   puzzle_c(xmlParser_c & pars);
 
-  /** load the puzzle from a file (handles gzip and uncompressed) */
-  static std::unique_ptr<puzzle_c> load(const std::filesystem::path & filename);
+  /**
+   * Read a puzzle from XML. Rhombic and tetra-octa puzzles are converted to
+   * NG's grids with their saved assemblies (convertToDescribed()) unless
+   * `cut` is cutCubeGrids_e::native, which the FLTK GUI asks for. A
+   * conversion that fails throws xmlParserException_c, as a bad file does.
+   */
+  static std::unique_ptr<puzzle_c> read(xmlParser_c & pars, cutCubeGrids_e cut = cutCubeGrids_e::ng);
+
+  /** load the puzzle from a file (handles gzip and uncompressed), as read() does */
+  static std::unique_ptr<puzzle_c> load(const std::filesystem::path & filename, cutCubeGrids_e cut = cutCubeGrids_e::ng);
 
   /**
    * save the puzzle using the given XML-writer

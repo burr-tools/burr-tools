@@ -162,7 +162,8 @@ static int solve(int argv, char* args[]) {
     return 2;
   }
   xmlParser_c pars(*str);
-  puzzle_c p(pars);
+  std::unique_ptr<puzzle_c> loaded = puzzle_c::read(pars);
+  puzzle_c & p = *loaded;
 
   if (firstProblem < 0 || (unsigned int)firstProblem >= p.getNumberOfProblems()) {
     cout << "the file has " << p.getNumberOfProblems() << " problem(s), there is no problem "

@@ -423,7 +423,9 @@ int firstKindIndex(const std::vector<std::string> & t) {
 
 TEST_CASE("restore validates the step kinds of Dancing Cells and bit-parallel remainders",
           "[cells][assembler][resume][save]") {
-  auto p = loadPuzzle("examples/PiecesOfEight.xmpuzzle");
+  /* the native grid: the tampered steps below are valid or not for this
+   * puzzle's matrix, which NG's rhombic grid (the default read) changes */
+  auto p = puzzle_c::load("examples/PiecesOfEight.xmpuzzle", cutCubeGrids_e::native);
   problem_c & problem = *p->getProblem(0);
 
   auto restoreCode = [&](const std::string & payload, const std::string & version) {

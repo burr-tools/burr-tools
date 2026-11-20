@@ -27,9 +27,11 @@ class puzzle_c;
 
 /**
  * returns true, if it is possible to convert this puzzle to the
- * given gridType
+ * given gridType. Bricks convert to rhombic and tetra-octa, on NG's grids
+ * (GT_RHOMBIC_TETRAHEDRA, GT_OCTAHEDRAL_TETRAHEDRA) by default and on the
+ * native ones (GT_RHOMBIC, GT_TETRA_OCTA) for the FLTK GUI (cutCubeGrids_e).
  */
-bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
+bool canConvert(gridType_c::gridType src, gridType_c::gridType dst, cutCubeGrids_e cut = cutCubeGrids_e::ng);
 
 /**
  * Create a new puzzle with a new gridtype but identical shapes.
@@ -37,7 +39,7 @@ bool canConvert(gridType_c::gridType src, gridType_c::gridType dst);
  * If the conversion can't be done (you should check first with canConvert)
  * a NULL pointer will be returned
  */
-puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
+puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type, cutCubeGrids_e cut = cutCubeGrids_e::ng);
 
 /**
  * The described grid (BurrTools NG's grids as data) a native grid's
@@ -49,9 +51,25 @@ puzzle_c * doConvert(puzzle_c * p, gridType_c::gridType type);
 gridType_c::gridType describedCounterpart(gridType_c::gridType native);
 
 /**
+ * The transformation of describedCounterpart(native) that is native's
+ * transformation t: the one with the same rotation matrix. Defined for the
+ * grids that transform with the cube's matrices (bricks, rhombic,
+ * tetra-octa); TND otherwise.
+ */
+unsigned char describedTransformation(gridType_c::gridType native, unsigned int t);
+
+/**
  * A copy of the puzzle on describedCounterpart() of its grid, with the same
- * shapes, colours, comment and problems; null if its grid has none. Not
- * offered by canConvert(): the GUIs do not show described grids yet.
+ * shapes, colours, comment and problems; null if its grid has none.
+ *
+ * The problems keep their solve state, counters and saved assemblies: each
+ * piece covers the cells the importer's map gives for its native cells,
+ * placed with describedTransformation(). Disassemblies and the search
+ * state are dropped (see problem_c::adoptResults()). Triangular prisms,
+ * converted only for cross-checks, keep no results.
+ *
+ * Reading a file converts rhombic and tetra-octa puzzles with this
+ * (puzzle_c::read(), cutCubeGrids_e).
  */
 puzzle_c * convertToDescribed(const puzzle_c * p);
 

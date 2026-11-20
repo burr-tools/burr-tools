@@ -67,6 +67,22 @@ def check(label, condition, detail):
         failures.append(f"{label}: {detail}")
 
 
+# A puzzle on a grid without a disassembler: one sphere (grid type 2).
+# The rhombic and tetra-octa examples served for this until they were read
+# onto BurrTools NG's grids, which disassemble (cutCubeGrids_e in src/lib).
+NO_DISASSEMBLER_PUZZLE = (
+    '<?xml version="1.0"?>\n<puzzle version="2"><gridType type="2"/><colors/><shapes>'
+    '<voxel x="1" y="1" z="1" type="0">#</voxel><voxel x="1" y="1" z="1" type="0">#</voxel>'
+    '</shapes><problems><problem><shapes><shape id="1" count="1"/></shapes><result id="0"/>'
+    '<bitmap/></problem></problems><comment/></puzzle>\n')
+
+
+def write_no_disassembler_puzzle(folder):
+    path = Path(folder) / "OneSphere.xmpuzzle"
+    path.write_text(NO_DISASSEMBLER_PUZZLE)
+    return str(path)
+
+
 def main():
     if len(sys.argv) != 3:
         print("usage: cli_smoke.py <path to burrTxt2> <source root>", file=sys.stderr)
@@ -76,6 +92,8 @@ def main():
     # absolute: Windows runs a bare relative path ("build/burrTxt2.exe")
     # only while NoDefaultCurrentDirectoryInExePath is unset
     binary = str(Path(binary).resolve())
+    scratch = tempfile.TemporaryDirectory()
+    no_disassembler = write_no_disassembler_puzzle(scratch.name)
 
     # -h/--help: the usage and the environment variables, exit 0. A wrong
     # command line gets the usage alone, so the long list of variables does
@@ -97,7 +115,7 @@ def main():
     # builds one: the disassembler asserts on the movement cache such a grid
     # does not provide, on the main thread where nothing catches it.
     label = "disassembly on a grid that has no disassembler"
-    rc, out = run(binary, ["-R", "-d", "-b", "0"], "examples/BrokenSticks.xmpuzzle",
+    rc, out = run(binary, ["-R", "-d", "-b", "0"], no_disassembler,
                   source_root, label)
     if rc is not None:
         check(label, rc != -6 and "assert_exception" not in out,
@@ -107,7 +125,7 @@ def main():
 
     # The same grid assembles fine, so without -d the run must still work.
     label = "assembly on a grid that has no disassembler"
-    rc, out = run(binary, ["-R", "-b", "0"], "examples/BrokenSticks.xmpuzzle",
+    rc, out = run(binary, ["-R", "-b", "0"], no_disassembler,
                   source_root, label)
     if rc is not None:
         check(label, rc == 0, f"exited {rc}\n{out}")

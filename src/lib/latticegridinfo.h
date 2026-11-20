@@ -92,6 +92,13 @@ class latticeGridInfo_c {
      */
     void alignDown(int mx, int my, int mz, int & vx, int & vy, int & vz) const;
 
+    /**
+     * Our transformation whose linear part in voxel coordinates is the
+     * integer matrix m (row major, applied to column vectors like
+     * apply()); TND when the grid has none
+     */
+    unsigned char transformationWithMatrix(const int m[9]) const;
+
     /// first t1, then t2; TND when that is not one of the grid's transformations
     unsigned char product(unsigned char t1, unsigned char t2) const { return mult[t1 * transformations() + t2]; }
 

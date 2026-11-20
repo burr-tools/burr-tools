@@ -25,6 +25,8 @@
 #include "rotationtables.h"
 #include "solution.h"
 #include "voxel.h"
+#include "converter.h"
+#include "gridtype.h"
 
 #include "../tools/xml.h"
 #include "../tools/gzstream.h"
@@ -266,14 +268,29 @@ void puzzle_c::save(xmlWriter_c & xml) const
   xml.endTag("puzzle");
 }
 
-std::unique_ptr<puzzle_c> puzzle_c::load(const std::filesystem::path & filename)
+std::unique_ptr<puzzle_c> puzzle_c::read(xmlParser_c & pars, cutCubeGrids_e cut)
+{
+  auto p = std::make_unique<puzzle_c>(pars);
+  const gridType_c::gridType type = p->getGridType()->getType();
+  if (cut == cutCubeGrids_e::ng && (type == gridType_c::GT_RHOMBIC || type == gridType_c::GT_TETRA_OCTA)) {
+    try {
+      p.reset(convertToDescribed(p.get()));
+    } catch (const std::exception & e) {
+      pars.exception(std::string("converting the puzzle to its grid: ") + e.what());
+    }
+    bt_assert(p);
+  }
+  return p;
+}
+
+std::unique_ptr<puzzle_c> puzzle_c::load(const std::filesystem::path & filename, cutCubeGrids_e cut)
 {
   auto str = openGzFile(filename);
   if (!str || !str->good()) {
     throw std::runtime_error("Could not open puzzle file: " + filename.string());
   }
   xmlParser_c pars(*str);
-  return std::make_unique<puzzle_c>(pars);
+  return read(pars, cut);
 }
 
 void puzzle_c::save(const std::filesystem::path & filename) const

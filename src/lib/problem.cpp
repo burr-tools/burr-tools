@@ -899,6 +899,19 @@ void problem_c::removeAllSolutions(void) {
   solveRotationModeMixed = false;
 }
 
+void problem_c::adoptResults(const problem_c & orig, std::vector<std::unique_ptr<solution_c>> sols) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  bt_assert(solveState == SS_UNSOLVED && solutions.empty() && !assm);
+  solutions = std::move(sols);
+  solveState = orig.solveState.load();
+  numAssemblies = orig.numAssemblies.load();
+  numSolutions = orig.numSolutions.load();
+  usedTime = orig.usedTime.load();
+  solveRotationMode = orig.solveRotationMode;
+  runRotationMode = orig.runRotationMode;
+  solveRotationModeMixed = orig.solveRotationModeMixed;
+}
+
 void problem_c::noteSolveRotationMode(rotationMode_e mode) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   runRotationMode = mode;
