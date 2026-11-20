@@ -27,6 +27,7 @@
 #include "puzzle.h"
 #include "solution.h"
 #include "rotationtables.h"
+#include "solver/solverspec.h"
 
 #include "../tools/xml.h"
 
@@ -631,6 +632,43 @@ voxel_c * getResultShape(problem_c & problem)
 {
   bt_assert(problem.resultValid());
   return problem.getPuzzle().getShape(problem.getResultId());
+}
+
+std::shared_ptr<const solverSpec_t> makeSolverSpec(const problem_c & problem)
+{
+  const puzzle_c & puzzle = problem.getPuzzle();
+  auto spec = std::make_shared<solverSpec_t>();
+
+  spec->grid = puzzle.getGridTypeShared();
+  spec->shapes.resize(puzzle.getNumberOfShapes());
+  auto copy = [&](unsigned int shapeId) {
+    if (!spec->shapes[shapeId])
+      spec->shapes[shapeId].reset(spec->grid->getVoxel(*puzzle.getShape(shapeId)));
+  };
+
+  for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
+    solverPart_t part;
+    part.shapeId = problem.getShapeIdOfPart(i);
+    part.min = problem.getPartMinimum(i);
+    part.max = problem.getPartMaximum(i);
+    for (unsigned int g = 0; g < problem.getNumberOfPartGroups(i); g++)
+      part.groups.emplace_back(problem.getPartGroupId(i, g), problem.getPartGroupCount(i, g));
+    copy(part.shapeId);
+    spec->parts.push_back(std::move(part));
+  }
+
+  if (problem.resultValid()) {
+    spec->result = problem.getResultId();
+    copy(spec->result);
+  }
+
+  spec->colours = puzzle.colorNumber();
+  spec->colourConstraints = problem.getColorConstraints();
+  if (problem.maxHolesDefined())
+    spec->maxHoles = problem.getMaxHoles();
+  spec->rotationModel = puzzle.getRotationModel();
+
+  return spec;
 }
 
 void problem_c::setShapeMinimum(unsigned int shape, unsigned int count)

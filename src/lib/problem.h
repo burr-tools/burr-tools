@@ -44,6 +44,7 @@ class assembly_c;
 class gridType_c;
 class puzzle_c;
 class part_c;
+struct solverSpec_t;
 class solution_c;
 class xmlWriter_c;
 class xmlParser_c;
@@ -620,6 +621,14 @@ const voxel_c * getResultShape(const problem_c & problem);
  * Make sure to only call getResultId[Shape] when you know that the shape is valid
  */
 voxel_c * getResultShape(problem_c & problem);
+
+/**
+ * The problem as an immutable value for the solver (src/lib/solver/solverspec.h):
+ * copies of the shapes it uses, its parts, result, colours, colour
+ * constraints, hole limit and the puzzle's rotation model, sharing the
+ * puzzle's grid. The engines read nothing else of the problem.
+ */
+std::shared_ptr<const solverSpec_t> makeSolverSpec(const problem_c & problem);
 
 
 #endif

@@ -57,7 +57,7 @@ private:
    * normally it doesn't change, except if you convert
    * a puzzle of one grid type into an other with a converter
    */
-  std::unique_ptr<gridType_c> gt;
+  std::shared_ptr<gridType_c> gt;
 
   /**
    * The vector with the shapes
@@ -152,6 +152,9 @@ public:
   //@{
   const gridType_c * getGridType(void) const { return gt.get(); }
   gridType_c * getGridType(void) { return gt.get(); }
+  /** the grid, shared: a solverSpec_t built from a problem of this puzzle
+   *  keeps it alive (makeSolverSpec) */
+  std::shared_ptr<const gridType_c> getGridTypeShared(void) const { return gt; }
   //@}
 
 
