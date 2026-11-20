@@ -12,7 +12,7 @@ namespace {
 
 /* every variable resolve() reads, unset for the scope */
 struct CleanEnv {
-  ScopedEnv vars[18] = {
+  ScopedEnv vars[19] = {
     { "BURRTOOLS_THREADS", nullptr }, { "BURRTOOLS_BITPARALLEL", nullptr },
     { "BURRTOOLS_CELLS", nullptr }, { "BURRTOOLS_RANGE_SYMBREAK", nullptr },
     { "BURRTOOLS_CELLS_FALLBACK", nullptr }, { "BURRTOOLS_ONE_ASSEMBLER", nullptr },
@@ -22,6 +22,7 @@ struct CleanEnv {
     { "BURRTOOLS_DONATE", nullptr }, { "BURRTOOLS_DONATE_EVERY", nullptr },
     { "BURRTOOLS_THREAD_BUDGET", nullptr }, { "BURRTOOLS_ROT_MODE", nullptr },
     { "BURRTOOLS_ROT_STATS", nullptr }, { "BURRTOOLS_SPLIT_BREADTH_FIRST", nullptr },
+    { "BURRTOOLS_MERGE_COLUMNS", nullptr },
   };
 };
 
@@ -43,6 +44,7 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
   CHECK(s.threads == 0);
   CHECK(s.bitParallel);
   CHECK(s.rangeSymmetryBreaker);
+  CHECK(s.mergeColumns);
   CHECK(s.vector == VECTOR_AUTO);
   CHECK(s.disassemblerVector);
   CHECK(s.disassemblerPool);
@@ -63,7 +65,8 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
             fan("BURRTOOLS_SPLIT_FANOUT", "2"),
             donate("BURRTOOLS_DONATE", "0"), every("BURRTOOLS_DONATE_EVERY", "5"),
             budget("BURRTOOLS_THREAD_BUDGET", "0"), mode("BURRTOOLS_ROT_MODE", "slow"),
-            symbreak("BURRTOOLS_RANGE_SYMBREAK", "0");
+            symbreak("BURRTOOLS_RANGE_SYMBREAK", "0"),
+            merge("BURRTOOLS_MERGE_COLUMNS", "0");
 
   const solverSettings_t s = solverConfig_t{}.resolve();
   CHECK(s.threads == 3);
@@ -80,6 +83,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   CHECK_FALSE(s.donate);
   CHECK(s.donateEvery == 5);
   CHECK_FALSE(s.threadBudget);
+  CHECK_FALSE(s.mergeColumns);
   CHECK(s.rotation.mode == ROTATION_SLOW);
 
   /* and the caller's choice wins over it */
@@ -93,6 +97,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   chosen.donate = true;
   chosen.rotation.mode = ROTATION_FAST;
   chosen.rangeSymmetryBreaker = true;
+  chosen.mergeColumns = true;
   const solverSettings_t c = chosen.resolve();
   CHECK(c.threads == 1);
   CHECK(c.bitParallel);
@@ -103,6 +108,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   CHECK(c.donate);
   CHECK(c.rotation.mode == ROTATION_FAST);
   CHECK(c.rangeSymmetryBreaker);
+  CHECK(c.mergeColumns);
   /* unchosen fields still come from the environment */
   CHECK_FALSE(c.disassemblerVector);
   CHECK(c.donateEvery == 5);

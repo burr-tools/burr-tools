@@ -59,6 +59,12 @@ struct solverSettings_t {
    *  changes the matrix, so a saved search only continues under the value
    *  it was started with. */
   bool rangeSymmetryBreaker = true;
+  /** assembler_1: the engines get one column for voxel columns that are
+   *  covered by exactly the same rows (a rhombic dodecahedron is 192 voxel
+   *  columns natively, 384 on NG's grid); false: one column per voxel
+   *  (benchmarking). Neither the results nor the search tree change, and a
+   *  saved search continues under either value. */
+  bool mergeColumns = true;
   vectorIsa_e vector = VECTOR_AUTO;
   /** vector kernels in the disassembler's movement closure */
   bool disassemblerVector = true;
@@ -109,6 +115,7 @@ struct solverSettings_t {
  * | threads            | BURRTOOLS_THREADS=N                               |
  * | bitParallel        | BURRTOOLS_BITPARALLEL=0\|1                        |
  * | rangeSymmetryBreaker | BURRTOOLS_RANGE_SYMBREAK=0\|1                  |
+ * | mergeColumns       | BURRTOOLS_MERGE_COLUMNS=0\|1                      |
  * | vector             | BURRTOOLS_VECTOR=auto\|scalar\|avx2\|avx512\|neon |
  * | disassemblerVector | BURRTOOLS_DISASM_VECTOR=0\|1                      |
  * | disassemblerPool   | BURRTOOLS_DISASM_POOL=0\|1                        |
@@ -130,6 +137,7 @@ struct solverConfig_t {
   std::optional<unsigned int> threads;
   std::optional<bool> bitParallel;
   std::optional<bool> rangeSymmetryBreaker;
+  std::optional<bool> mergeColumns;
   std::optional<vectorIsa_e> vector;
   std::optional<bool> disassemblerVector;
   std::optional<bool> disassemblerPool;

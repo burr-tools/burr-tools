@@ -101,11 +101,23 @@ private:
   bool canUseSimd(void) const;
   /** whether the bit-parallel engine can represent this matrix at all,
    *  whatever the settings and the memory budget say: part of canUseSimd(),
-   *  and what a restored remainder of that engine must meet */
-  bool simdEngineSupports(void) const;
+   *  and what a restored remainder of that engine must meet. forceMerge:
+   *  judge the columns merged whatever settings.mergeColumns says (a
+   *  bit-parallel remainder, which may only fit merged) */
+  bool simdEngineSupports(bool forceMerge = false) const;
   /** the solver for this matrix: the Dancing Cells engine, else the
-   *  bit-parallel one in the tier the matrix needs */
-  std::unique_ptr<ISimdHuangCover> createSimdSolver(bool cells) const;
+   *  bit-parallel one in the tier the matrix needs; forceMerge as for
+   *  simdEngineSupports() */
+  std::unique_ptr<ISimdHuangCover> createSimdSolver(bool cells, bool forceMerge = false) const;
+  /** The columns the engines get: the matrix's live columns in ring order,
+   *  less, with settings.mergeColumns, every voxel column covered by exactly
+   *  the same rows as an earlier one. map[c] is column c's number in the
+   *  engine, numbered from 1 in the same order, 0 when it is left out.
+   *  Returns the engine's column count; rows and nodes (if not null) get
+   *  the rows and the matrix nodes the engine will hold. forceMerge merges
+   *  as if settings.mergeColumns were on. */
+  unsigned int engineColumns(std::vector<unsigned int> & map, uint64_t * rows, uint64_t * nodes,
+                             bool forceMerge = false) const;
 
   /* grants test/test_solver.cpp read access to totalTasks/completedTasks,
    * to assert that donations and stops conserve progress units directly

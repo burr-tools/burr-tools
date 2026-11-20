@@ -1194,8 +1194,11 @@ void assembler_1_c::search(unsigned int workers) {
   const bool useCells = !pendingHuangPrefixes.empty() ? pendingSeedsCells : !canUseSimd();
   buildNodePositions();
   std::unique_ptr<ISimdHuangCover> solver = std::move(restoredSimdSolver);
+  // A bit-parallel remainder may come from a run with column merging on
+  // that only fit the engine merged: build it merged whatever the setting
+  // says now (merging changes neither the results nor the search tree).
   if (!solver)
-    solver = createSimdSolver(useCells);
+    solver = createSimdSolver(useCells, /*forceMerge=*/!pendingHuangPrefixes.empty() && !useCells);
 
   // Incremental in-session resume (issue #111): consume previously
   // salvaged prefixes as seeds; collect fresh salvage for a possible next
@@ -1315,35 +1318,37 @@ bool assembler_1_c::canUseSimd(void) const {
   if (!simdEngineSupports())
     return false;
 
+  // The engine's columns, after merging identical voxel columns
+  // (engineColumns), decide the tier and the size limits.
+  //
   // Memory footprint guard (issue #92): voxel_mask is tier-sized, so a
   // high-tier puzzle with many placement rows would allocate hundreds of MB
   // where Dancing Cells copes in tens. Refuse the SIMD path past the budget;
-  // the fallback stays correct, just slower. Counts rows and matrix nodes in
-  // one pass over the shape columns (node count feeds the alias-table and
-  // vector-payload part of the estimate).
+  // the fallback stays correct, just slower. The node count feeds the
+  // alias-table and vector-payload part of the estimate.
   {
+    std::vector<unsigned int> map;
     uint64_t estRows = 0;
     uint64_t estNodes = 0;
-    const unsigned int nShapes = problem.getNumberOfParts();
-    for (unsigned int s = 1; s <= nShapes; s++)
-      for (unsigned int r = down[s]; r != s; r = down[r]) {
-        estRows++;
-        for (unsigned int c = right[r]; c != r; c = right[c])
-          estNodes++;
-      }
-    if (!huang_memory::fitsMemoryBudget(headerNodes - 1, estRows, estNodes, settings.huangMemoryBytes))
+    const unsigned int cols = engineColumns(map, &estRows, &estNodes);
+    if (cols > 32768)
+      return false;
+    if (!huang_memory::fitsMemoryBudget(cols, estRows, estNodes, settings.huangMemoryBytes))
       return false;
   }
 
   return true;
 }
 
-bool assembler_1_c::simdEngineSupports(void) const {
+bool assembler_1_c::simdEngineSupports(bool forceMerge) const {
 
-  // the widest tier (SimdHuangCover32768)
-  if (headerNodes - 1 > 32768)
-    return false;
-
+  // the widest tier (SimdHuangCover32768); merging identical voxel columns
+  // can only shrink the column count, so only compute it past the limit
+  if (headerNodes - 1 > 32768) {
+    std::vector<unsigned int> map;
+    if (engineColumns(map, nullptr, nullptr, forceMerge) > 32768)
+      return false;
+  }
   // NOTE: range puzzles (matrix has one more column than shapes + filled +
   // variable voxels: the piece-count range column) are deliberately NOT
   // excluded here. SimdHuangCover models the range column explicitly
@@ -1366,14 +1371,109 @@ bool assembler_1_c::simdEngineSupports(void) const {
   return true;
 }
 
-std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) const {
+/* Columns that are covered by exactly the same rows can be one column: a
+ * row covers all of them or none. The matrix does not merge them, only
+ * reduce() does (clumpify), and that is optional; without it a rhombic
+ * dodecahedron of the native grid is 192 voxel columns and on NG's grid 384,
+ * which the engines carry in every row and, in the bit-parallel engine, in
+ * the width of every bitset. Merging them here leaves the matrix, and with
+ * it reduce(), the node ids in seeds and saved searches, alone.
+ *
+ * Results and the search tree stay the same: both engines branch on the
+ * first column with the fewest rows, in column order, and of identical
+ * columns the first is kept, so they branch on the same rows. Only plain
+ * voxel columns are merged: shape and range columns carry counts, and the
+ * hole columns are counted one by one for the empty-hole limit.
+ */
+unsigned int assembler_1_c::engineColumns(std::vector<unsigned int> & map, uint64_t * rows, uint64_t * nodes,
+                                          bool forceMerge) const {
+
+  const unsigned int numCols = headerNodes - 1;
+  const unsigned int numShapes = problem.getNumberOfParts();
+  const bool merge = settings.mergeColumns || forceMerge;
+
+  map.assign(headerNodes, 0);
+
+  /* which columns may merge */
+  std::vector<bool> mergeable(headerNodes, false);
+  if (merge) {
+    const voxel_c * result = getResultShape(problem);
+    const unsigned int resCells = result->countState(voxel_c::VX_FILLED) + result->countState(voxel_c::VX_VARIABLE);
+    const bool hasRange = (numCols == numShapes + resCells + 1);
+    for (unsigned int c = right[0]; c; c = right[c])
+      mergeable[c] = c > numShapes && !(hasRange && c == numCols);
+    for (unsigned int hc : holeColumns)
+      mergeable[hc] = false;
+  }
+
+  /* per mergeable column the rows touching it, with their weights, in one
+   * fixed row order */
+  std::vector<std::vector<unsigned int>> sig(merge ? headerNodes : 0);
+  uint64_t rowCount = 0;
+  std::vector<uint64_t> colNodes(headerNodes, 0);
+  for (unsigned int s = 1; s <= numShapes; s++)
+    for (unsigned int r = down[s]; r != s; r = down[r]) {
+      unsigned int n = r;
+      do {
+        const unsigned int c = colCount[n];
+        colNodes[c]++;
+        if (mergeable[c]) {
+          sig[c].push_back((unsigned int)rowCount);
+          sig[c].push_back(weight[n]);
+        }
+        n = right[n];
+      } while (n != r);
+      rowCount++;
+    }
+
+  /* group by a hash of the signature, compare exactly within a group */
+  std::unordered_map<uint64_t, std::vector<unsigned int>> groups;
+  /* the shape columns keep their numbers, the engines expect them at 1 to
+   * numShapes; the nodes counted are those besides a row's shape node, as
+   * the memory estimate always counted them */
+  unsigned int count = numShapes;
+  uint64_t nodeCount = 0;
+  for (unsigned int c = 1; c <= numShapes; c++)
+    map[c] = c;
+  for (unsigned int c = right[0]; c; c = right[c]) {
+    if (c <= numShapes)
+      continue;
+    if (mergeable[c]) {
+      uint64_t h = 14695981039346656037ull;
+      h = (h ^ min[c]) * 1099511628211ull;
+      h = (h ^ max[c]) * 1099511628211ull;
+      for (unsigned int v : sig[c])
+        h = (h ^ v) * 1099511628211ull;
+      std::vector<unsigned int> & group = groups[h];
+      bool dup = false;
+      for (unsigned int k : group)
+        if (min[k] == min[c] && max[k] == max[c] && sig[k] == sig[c]) {
+          dup = true;
+          break;
+        }
+      if (dup)
+        continue;
+      group.push_back(c);
+    }
+    map[c] = ++count;
+    nodeCount += colNodes[c];
+  }
+
+  if (rows) *rows = rowCount;
+  if (nodes) *nodes = nodeCount;
+  return count;
+}
+
+std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells, bool forceMerge) const {
   const voxel_c * result = getResultShape(problem);
-  unsigned int num_cols = headerNodes - 1;
   unsigned int num_shapes = problem.getNumberOfParts();
   unsigned int res_filled = result->countState(voxel_c::VX_FILLED);
   unsigned int res_vari = result->countState(voxel_c::VX_VARIABLE);
-  bool hasRange = (num_cols == (num_shapes + res_filled + res_vari + 1));
-  unsigned int rangeColumn = hasRange ? num_cols : 0;
+  bool hasRange = (headerNodes - 1 == (num_shapes + res_filled + res_vari + 1));
+  unsigned int rangeMatrixColumn = hasRange ? headerNodes - 1 : 0;
+
+  std::vector<unsigned int> map;
+  unsigned int num_cols = engineColumns(map, nullptr, nullptr, forceMerge);
 
   std::unique_ptr<ISimdHuangCover> solver;
   if (cells) {
@@ -1405,8 +1505,10 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) con
    * an unsatisfiable constraint and ends the search at the root.
    */
   for (unsigned int c = right[0]; c != 0; c = right[c]) {
+    if (!map[c])
+      continue;
     bool is_shape = (c <= num_shapes);
-    bool is_range = (hasRange && c == rangeColumn);
+    bool is_range = (hasRange && c == rangeMatrixColumn);
     bool is_voxel = (!is_shape && !is_range);
     bool is_hole = false;
     for (unsigned int hc : holeColumns) {
@@ -1415,7 +1517,7 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) con
         break;
       }
     }
-    solver->setColumnBounds(c, min[c], max[c], is_voxel, is_shape, is_range, is_hole);
+    solver->setColumnBounds(map[c], min[c], max[c], is_voxel, is_shape, is_range, is_hole);
   }
 
   for (unsigned int pc = 0; pc < num_shapes; pc++) {
@@ -1431,9 +1533,11 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) con
         nodes_in_row.push_back(curr);
         unsigned int col = colCount[curr];
         unsigned int w = weight[curr];
-        cols.push_back(col);
-        weights.push_back(w);
-        if (hasRange && col == rangeColumn) {
+        if (map[col]) {
+          cols.push_back(map[col]);
+          weights.push_back(w);
+        }
+        if (hasRange && col == rangeMatrixColumn) {
           range_w = w;
         }
         curr = right[curr];
@@ -1593,10 +1697,13 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   // solver, and the run takes this solver over (restoredSimdSolver), so a
   // resume converts the matrix only once.
   // A remainder of the bit-parallel engine needs a matrix that engine can
-  // take (settings.bitParallel aside: the seeds keep their engine).
-  if (ptype == 2 && !simdEngineSupports())
+  // take (settings.bitParallel aside: the seeds keep their engine). It was
+  // judged with column merging on if the saving run merged, so judge and
+  // build it merged whatever settings.mergeColumns says now: a matrix over
+  // the widest tier unmerged but within it merged still continues.
+  if (ptype == 2 && !simdEngineSupports(/*forceMerge=*/true))
     return ERR_CAN_NOT_RESTORE_SYNTAX;
-  std::unique_ptr<ISimdHuangCover> seedSolver = createSimdSolver(ptype == 3);
+  std::unique_ptr<ISimdHuangCover> seedSolver = createSimdSolver(ptype == 3, /*forceMerge=*/ptype == 2);
   for (const auto & seed : newPrefixes)
     if (!seedSolver->seedReplays(seed))
       return ERR_CAN_NOT_RESTORE_SYNTAX;

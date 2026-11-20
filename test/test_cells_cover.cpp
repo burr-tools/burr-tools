@@ -850,6 +850,131 @@ TEST_CASE("the range symmetry breaker leaves the examples' assemblies alone",
   }
 }
 
+/* solverSettings_t::mergeColumns: the engines get one column for voxel
+ * columns covered by the same rows. Same assemblies with either engine,
+ * and a search stopped under one value finishes under the other, since the
+ * saved remainder names rows, not columns. The rhombic puzzle merges the
+ * most (a rhombic dodecahedron is many cells); the others cover duplicate
+ * shapes, piece ranges and variable voxels, whose hole columns stay. */
+TEST_CASE("merging identical voxel columns leaves assemblies and saved searches alone",
+          "[cells][assembler][simd][save]") {
+  const char * paths[] = {
+    "examples/PiecesOfEight.xmpuzzle", "examples/CubeInCage.xmpuzzle",
+    "examples/DemoPieceGenerator.xmpuzzle", "examples/PelikanBurr.xmpuzzle",
+  };
+  for (const char * path : paths) {
+    for (bool bitParallel : {true, false}) {
+      INFO(path << (bitParallel ? ", default engine" : ", Dancing Cells"));
+      auto p = loadPuzzle(path);
+      problem_c & problem = *p->getProblem(0);
+      Set merged, plain;
+      {
+        ScopedSettings env;
+        env->bitParallel = bitParallel;
+        env->mergeColumns = true;
+        merged = solveAll(problem, 2);
+      }
+      {
+        ScopedSettings env;
+        env->bitParallel = bitParallel;
+        env->mergeColumns = false;
+        plain = solveAll(problem, 2);
+      }
+      REQUIRE(!merged.empty());
+      CHECK(merged == plain);
+
+      if (merged.size() < 2)
+        continue;
+      for (bool mergeFirst : {true, false}) {
+        INFO("stopped with merging " << (mergeFirst ? "on" : "off"));
+        Recorder cb;
+        std::string state;
+        {
+          ScopedSettings env;
+          env->bitParallel = bitParallel;
+          env->mergeColumns = mergeFirst;
+          state = stopAfter(problem, 1, 1, cb);
+        }
+        ScopedSettings env;
+        env->bitParallel = bitParallel;
+        env->mergeColumns = !mergeFirst;
+        const Set rest = resumeAll(problem, 1, state);
+        CHECK(unite(cb.fingerprints, rest) == merged);
+        CHECK(cb.fingerprints.size() + rest.size() == merged.size());
+      }
+    }
+  }
+}
+
+/* A matrix over the bit-parallel engine's widest tier (32768 columns)
+ * unmerged but far within it merged runs bit-parallel with merging on (the
+ * default) and saves a bit-parallel remainder. That remainder must continue
+ * with merging off too: setPosition() and the next run judge and build it
+ * merged. Two slabs stacked into a 33x33x31 block: 33759 voxel columns,
+ * merged one per layer. */
+TEST_CASE("a bit-parallel search that fits the engine only merged continues with merging off",
+          "[cells][assembler][simd][save]") {
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const gridType_c & gt = *puzzle->getGridType();
+  const unsigned int thin  = puzzle->addShape(std::unique_ptr<voxel_c>(gt.getVoxel(33, 33, 15, voxel_c::VX_FILLED)));
+  const unsigned int thick = puzzle->addShape(std::unique_ptr<voxel_c>(gt.getVoxel(33, 33, 16, voxel_c::VX_FILLED)));
+  const unsigned int block = puzzle->addShape(std::unique_ptr<voxel_c>(gt.getVoxel(33, 33, 31, voxel_c::VX_FILLED)));
+  problem_c & problem = *puzzle->getProblem(puzzle->addProblem());
+  problem.setResultId(block);
+  problem.setShapeMinimum(thin, 1);
+  problem.setShapeMaximum(thin, 1);
+  problem.setShapeMinimum(thick, 1);
+  problem.setShapeMaximum(thick, 1);
+
+  Set all;
+  {
+    ScopedSettings env;
+    env->mergeColumns = true;
+    all = solveAll(problem, 2);
+  }
+  REQUIRE(!all.empty());
+
+  // stop the merged run as its task pool is seeded: everything is left as
+  // bit-parallel seeds
+  std::string state;
+  {
+    ScopedSettings env;
+    env->mergeColumns = true;
+    assembler_1_c assm(problem, bttest::settings());
+    assm.setNumThreads(2);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
+    assm.setPoolSeedHook([&]() { assm.stop(); });
+    Recorder none;
+    assm.assemble(&none);
+    CHECK(none.fingerprints.empty());
+    state = saveState(assm);
+  }
+  REQUIRE(remainderType(state) == 2);
+
+  ScopedSettings env;
+  env->mergeColumns = false;
+  {
+    INFO("restored with merging off");
+    CHECK(resumeAll(problem, 2, state) == all);
+  }
+  {
+    INFO("restored with merging off, stopped again, continued in the same assembler");
+    assembler_1_c restored(problem, bttest::settings());
+    restored.setNumThreads(2);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
+    const std::string payload = contentOf(state);
+    REQUIRE(restored.setPosition(payload.c_str(), versionOf(state).c_str()) == assembler_c::ERR_NONE);
+    restored.setPoolSeedHook([&]() { restored.stop(); });
+    Recorder first;
+    restored.assemble(&first);
+    REQUIRE(remainderType(saveState(restored)) == 2);
+    restored.setPoolSeedHook({});
+    Recorder rest;
+    restored.assemble(&rest);
+    CHECK(unite(first.fingerprints, rest.fingerprints) == all);
+  }
+}
+
 /* Dancing Cells is the engine wherever the bit-parallel one does not run:
  * a matrix it declines (here through its memory budget) and variable
  * voxels together with piece ranges, which it does not model; and every
