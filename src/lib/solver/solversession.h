@@ -64,8 +64,8 @@ struct solverOptions_t {
   bool completeRotations = false;
   bool rotationMoves     = false;
   /** count assemblies/solutions without enqueuing results. The engines still
-   *  build each assembly internally (as solveThread_c always did); only the
-   *  queue and the host's storage are skipped */
+   *  build each assembly internally; only the queue and host storage are
+   *  skipped */
   bool countOnly         = false;
   /** soft backpressure bound while Running (0 = unbounded); lifted on pause()
    *  for the bounded O(num_threads) in-flight items so workers never deadlock */
@@ -117,7 +117,7 @@ enum class solverState_e {
  */
 class solverSession_c : private assembler_cb {
 public:
-  /** Fine-grained activity phases for progress display (matches solveThread_c). */
+  /** Fine-grained activity phases for progress display. */
   enum {
     ACT_PREPARATION,
     ACT_REDUCE,
@@ -251,25 +251,25 @@ public:
   void setPoolDrainedHook(std::function<void()> hook);
   void setPoolSeedHook(std::function<void()> hook);
   void setAssemblyPhaseEndedHook(std::function<void()> hook);
+  /** Read-only access to the live assembler pointer for test inspections. */
+  assembler_c * assemblerForTest(void) const { return assmPtr_.load(std::memory_order_acquire); }
+  /** Optional assembler_cb interceptor for deterministic phase/progress tests. */
+  void setAssemblyInterceptor(assembler_cb * cb) { assemblyCb_ = cb; }
+  /** Forward an intercepted assembly into this session's pipeline. */
+  bool submitAssemblyForTest(std::unique_ptr<assembly_c> a) { return assembly(std::move(a)); }
+  /** Expose the active phase's thread budget to test interceptors. */
+  ThreadBudget * threadBudgetForTest(void) const { return threadBudget_.get(); }
   //@}
 
-  /** \name Transitional bridge for solveThread_c (removed in B5) */
+  /** \name Host problem_c / FLTK PlacementBrowser integration */
   //@{
   /** Adopt an already-prepared assembler (and any pending assemblies) in Idle. */
   void adoptPreparedAssembler(std::unique_ptr<assembler_c> existing,
                               std::vector<std::unique_ptr<assembly_c>> pending = {});
   /** Release ownership of the internal assembler when not Running. */
   std::unique_ptr<assembler_c> releaseAssembler(void);
-  /** Read-only access to the live assembler pointer for legacy pollers. */
-  assembler_c * assemblerForLegacyBridge(void) const { return assmPtr_.load(std::memory_order_acquire); }
   /** Optional hook invoked right after fresh preparation succeeds (before assembling). */
   void setPreparedHook(std::function<void()> hook);
-  /** Optional assembler_cb interceptor for legacy solveThread_c subclasses. */
-  void setAssemblyInterceptor(assembler_cb * cb) { assemblyCb_ = cb; }
-  /** Forward an intercepted assembly into this session's pipeline. */
-  bool submitAssemblyForLegacyBridge(std::unique_ptr<assembly_c> a) { return assembly(std::move(a)); }
-  /** Expose the active phase's thread budget to legacy solveThread_c subclasses. */
-  ThreadBudget * threadBudgetForLegacyBridge(void) const { return threadBudget_.get(); }
   //@}
 
 private:
@@ -338,7 +338,7 @@ private:
   std::atomic<uint64_t> solutionsFound_{0};
   double accumulatedSeconds_ = 0.0;
 
-  // Progress model state (matches solveThread_c)
+  // Progress model state
   std::atomic<long long> assemblyStartNs_{0};
   std::atomic<long long> assemblyEndNs_{0};
   std::atomic<unsigned int> assemblyThreads_{1};

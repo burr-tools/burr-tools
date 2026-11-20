@@ -1,7 +1,7 @@
 /* Tests for the GUI's last-painted solve progress cache.
  *
  * The cache exists because the values the solve tab shows have no source once
- * the solve thread is gone: solveThread_c is destroyed as soon as it reports
+ * the solver session is gone: it is destroyed as soon as it reports
  * ACT_PAUSING, and the assembler's own getFinished() reads live search state
  * that the abort has already unwound. So the GUI remembers what it last
  * painted, per problem, and shows that instead.

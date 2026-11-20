@@ -180,8 +180,8 @@ result callback body, GUI.
    (`acquire`/`release`, `pop_task`/`finishTask`, `submit`/`finish`/`abort`/`requestStop`);
    internal refactors then don't touch the spec.
 4. Any PR touching `thread_budget.h`, `assembler_pool.h`,
-   `disassemblerpool.h`, `assembler.h`, `solvethread.h` or
-   `solver/solversession.h` states "spec unaffected" or updates the spec
+   `disassemblerpool.h`, `assembler.h` or `solver/solversession.h`
+   states "spec unaffected" or updates the spec
    — `just spec-check` must pass.
 5. TLC already caught two model bugs during construction (a TOCTOU on a
    bound counter split across an atomicity label; an unguarded `finishTask`

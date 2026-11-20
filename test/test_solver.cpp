@@ -3,7 +3,8 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "lib/puzzle.h"
-#include "lib/solvethread.h"
+#include "lib/problemcollector.h"
+#include "lib/solver/solversession.h"
 #include "lib/voxel.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
@@ -1941,11 +1942,11 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
 
 
 /* A problem loaded in SS_SOLVED with no saved assembler state cannot be
- * continued: setAssembler() rejects that combination, so run() ends in
- * ACT_ASSERT. stopped() has to report that as a stopped state, or a caller
- * polling for the worker to finish waits on a thread that has already exited.
+ * continued: canStartSolving() returns false and beginSolving()/setAssembler()
+ * reject it cleanly, while a decoupled solverSession_c on its solverSpec_t
+ * still runs to completion without touching the solved problem.
  */
-TEST_CASE("solveThread on an already solved problem stops instead of wedging", "[solver][resume]") {
+TEST_CASE("already solved problem rejects continuing without wedging", "[solver][resume]") {
   std::unique_ptr<std::istream> str(openGzFile("examples/PelikanBurr.xmpuzzle"));
   REQUIRE(str != nullptr);
 
@@ -1958,26 +1959,29 @@ TEST_CASE("solveThread on an already solved problem stops instead of wedging", "
   // the shipped example is stored in the finished state
   REQUIRE(problem->getSolveState() == SS_SOLVED);
   REQUIRE(problem->getAssembler() == nullptr);
+  CHECK_FALSE(problem->canStartSolving());
+  CHECK_THROWS_AS(problem->beginSolving(), assert_exception);
+  CHECK_THROWS_AS(problem->setAssembler(nullptr), assert_exception);
+  CHECK(problem->getSolveState() == SS_SOLVED);
 
   for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
     p.getShape(i)->initHotspot();
 
-  solveThread_c thread(*problem, solveThread_c::PAR_REDUCE | solveThread_c::PAR_JUST_COUNT, bttest::settings());
-  REQUIRE(thread.start(false));
+  solverOptions_t opts;
+  opts.reduce = true;
+  opts.countOnly = true;
+  opts.settings = bttest::settings();
+  solverSession_c session(makeSolverSpec(*problem), opts);
+  REQUIRE(session.start(false));
+  session.join();
 
-  // poll the way burrTxt2 does, but with a bound so a wedged thread fails
-  // the test instead of hanging the suite
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(20);
-  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline)
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-
-  CHECK(thread.stopped());
-  CHECK(thread.currentAction() != solveThread_c::ACT_ASSEMBLING);
+  CHECK(session.sessionState() == solverState_e::Finished);
+  CHECK(session.currentAction() == solverSession_c::ACT_FINISHED);
 }
 
 namespace {
 
-/* Solve with reduce() applied first, the way solveThread_c does. The other
+/* Solve with reduce() applied first, the way solverSession_c does. The other
  * helper in this file skips reduce(), so it searches a different matrix than
  * the real solve path builds.
  */
@@ -3030,8 +3034,9 @@ public:
  * where the search found its last assembly would decide what the bar holds
  * when the hook runs.
  */
-class latchWindowSolveThread_c : public solveThread_c {
+class latchWindowInterceptor_c : public assembler_cb {
 
+  solverSession_c & session_;
   std::mutex heldMutex;
   std::vector<std::unique_ptr<assembly_c>> held;
 
@@ -3041,13 +3046,12 @@ class latchWindowSolveThread_c : public solveThread_c {
 
 public:
 
-  using solveThread_c::solveThread_c;
+  explicit latchWindowInterceptor_c(solverSession_c & s) : session_(s) {
+    session_.setAssemblyInterceptor(this);
+    session_.setAssemblyPhaseEndedHook([this]() { onAssemblyPhaseEnded(); });
+  }
 
-  // assemblyPhaseEnded() is called on the worker: join it while this
-  // subclass is still intact
-  ~latchWindowSolveThread_c() override { joinThread(); }
-
-  /* written on the worker in assemblyPhaseEnded(), read by the test after
+  /* written on the worker in onAssemblyPhaseEnded(), read by the test after
    * waitForPhaseEnd() returned true */
   size_t assembliesHeld = 0;
   bool budgetPresent = false;
@@ -3062,15 +3066,17 @@ public:
     return phaseCv.wait_until(lock, deadline, [this] { return phaseEnded; });
   }
 
-protected:
-
   bool assembly(std::unique_ptr<assembly_c> a) override {
     std::lock_guard<std::mutex> lock(heldMutex);
     held.push_back(std::move(a));
     return true;
   }
 
-  void assemblyPhaseEnded(void) override {
+  ThreadBudget * threadBudget(void) override {
+    return session_.threadBudgetForTest();
+  }
+
+  void onAssemblyPhaseEnded(void) {
     std::vector<std::unique_ptr<assembly_c>> found;
     {
       std::lock_guard<std::mutex> lock(heldMutex);
@@ -3078,9 +3084,7 @@ protected:
     }
     assembliesHeld = found.size();
 
-    /* public in assembler_cb, where the assemblers ask for it */
-    assembler_cb & cb = *this;
-    ThreadBudget * budget = cb.threadBudget();
+    ThreadBudget * budget = session_.threadBudgetForTest();
     budgetPresent = (budget != nullptr);
 
     {
@@ -3088,10 +3092,10 @@ protected:
       tokensHeld = holders.all();
 
       for (auto & a : found)
-        solveThread_c::assembly(std::move(a));
+        session_.submitAssemblyForTest(std::move(a));
 
-      latchValue = getProgress();
-      latchOutstanding = workOutstanding();
+      latchValue = session_.getProgress();
+      latchOutstanding = session_.workOutstanding();
     }
 
     /* Once one disassembly is delivered, the blend has evidence and the bar
@@ -3103,11 +3107,11 @@ protected:
      * rather than a hang. */
     if (assembliesHeld) {
       const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(60);
-      while (getProblem().getNumAssemblies() == 0 &&
+      while (session_.assembliesFound() == 0 &&
              std::chrono::steady_clock::now() < deadline)
         std::this_thread::yield();
-      delivered = getProblem().getNumAssemblies() > 0;
-      deliveredValue = getProgress();
+      delivered = session_.assembliesFound() > 0;
+      deliveredValue = session_.getProgress();
     }
 
     {
@@ -3120,7 +3124,7 @@ protected:
 
 }
 
-/* The GUI reads solveThread_c::getProgress(), so the properties the bar
+/* The GUI reads solverSession_c::getProgress(), so the properties the bar
  * depends on are asserted here rather than by driving FLTK: the value is
  * bounded, never moves backwards, stays strictly below 1.0 for as long as the
  * solve is running, and lands on exactly 1.0 when the solve reports finished.
@@ -3137,14 +3141,14 @@ protected:
  * complete the model's assembly-only answer is its "counted but not done"
  * sentinel. Published into the monotone guard, that caps to runningCap and
  * latches: every genuine blended value afterwards is lower, so the guard
- * locks them all out for the whole disassembly tail. latchWindowSolveThread_c
+ * locks them all out for the whole disassembly tail. latchWindowInterceptor_c
  * reads the bar in exactly that state, so the latch is caught on every run
  * rather than on the runs where a sampler happened to look at the right
  * moment; the samples from the test thread afterwards only add properties
  * that hold whenever they are taken, so their number does not matter.
  */
-TEST_CASE("solve thread reports monotone whole-solve progress",
-          "[solvethread][progress]") {
+TEST_CASE("solver session reports monotone whole-solve progress",
+          "[session][progress]") {
   /* two threads, not the machine's count: with one the pool disassembles
    * inline and has no budget to hold; the latch window is held open
    * through the budget */
@@ -3157,38 +3161,40 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
-
-  /* the shipped examples are saved already solved, and solveThread_c
-   * asserts solveState == SS_UNSOLVED on the way in
-   */
   problem->removeAllSolutions();
 
-  latchWindowSolveThread_c thread(*problem, solveThread_c::PAR_DISASSM, bttest::settings());
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.settings = bttest::settings();
+
+  solverSession_c session(makeSolverSpec(*problem), opts);
+  latchWindowInterceptor_c interceptor(session);
 
   /* nothing has started yet, so there is nothing to report and no
    * assembler to read it from */
-  REQUIRE(thread.getProgress() == 0.0f);
+  REQUIRE(session.getProgress() == 0.0f);
 
-  REQUIRE(thread.start());
+  REQUIRE(session.start());
 
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-  REQUIRE(thread.waitForPhaseEnd(deadline));
+  REQUIRE(interceptor.waitForPhaseEnd(deadline));
 
-  REQUIRE(thread.budgetPresent);
-  REQUIRE(thread.tokensHeld);
-  REQUIRE(thread.assembliesHeld > 0);
+  REQUIRE(interceptor.budgetPresent);
+  REQUIRE(interceptor.tokensHeld);
+  REQUIRE(interceptor.assembliesHeld > 0);
 
   /* The latch window: assembly complete, every assembly counted, none
    * disassembled. The bar holds what it held -- 0, nothing was published
    * before -- instead of jumping to the cap. */
-  CHECK(thread.latchOutstanding);
-  CHECK(thread.latchValue == 0.0f);
-  CHECK(thread.latchValue < solveThread_c::runningCap);
+  CHECK(interceptor.latchOutstanding);
+  CHECK(interceptor.latchValue == 0.0f);
+  CHECK(interceptor.latchValue < solverSession_c::runningCap);
 
   /* and it moves as soon as there is evidence */
-  REQUIRE(thread.delivered);
-  CHECK(thread.deliveredValue > thread.latchValue);
-  CHECK(thread.deliveredValue < 1.0f);
+  REQUIRE(interceptor.delivered);
+  CHECK(interceptor.deliveredValue > interceptor.latchValue);
+  CHECK(interceptor.deliveredValue < 1.0f);
 
   struct sample_t {
     float value;
@@ -3196,58 +3202,65 @@ TEST_CASE("solve thread reports monotone whole-solve progress",
     bool finished;      // ACT_FINISHED may have been set before value was read
   };
   std::vector<sample_t> samples;
+  std::vector<solverResult_t> drained;
 
-  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline) {
-    const float v = thread.getProgress();
+  while (session.sessionState() == solverState_e::Running &&
+         std::chrono::steady_clock::now() < deadline) {
+    session.drain(drained);
+    const float v = session.getProgress();
     /* read after the sample: workOutstanding() never goes back to true, so
      * true here means the work was outstanding when v was reported */
-    const bool outstanding = thread.workOutstanding();
+    const bool outstanding = session.workOutstanding();
     /* read after the sample too: not finished here means v was reported by
      * a running solve */
-    const bool finished = thread.currentAction() == solveThread_c::ACT_FINISHED;
+    const bool finished = session.currentAction() == solverSession_c::ACT_FINISHED;
     samples.push_back({v, outstanding, finished});
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
+  session.join();
+  session.drain(drained);
 
-  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+  REQUIRE(session.sessionState() == solverState_e::Finished);
+  REQUIRE(session.currentAction() == solverSession_c::ACT_FINISHED);
 
   /* Every value the running solve reported is in [0, 1), and none moved
    * backwards: the hook's two values come before every sample (the sampler
    * waited for the hook), and all of them are read off one monotone guard.
    * The cap may be reported once the counted work is done -- the worker then
-   * still joins the pool's workers and merger and delivers the results
-   * before it reports ACT_FINISHED -- but never while work remains. That
-   * relies on no honest value reaching the cap while work remains, and on
-   * this puzzle none comes close: over 140 runs, idle and with the machine
-   * twice oversubscribed, the highest value reported with work outstanding
-   * was 0.9896 -- ten times further from 1 than the cap is.
+   * still joins the pool's workers and delivers the results before it reports
+   * ACT_FINISHED -- but never while work remains. That relies on no honest
+   * value reaching the cap while work remains, and on this puzzle none comes
+   * close: over 140 runs, idle and with the machine twice oversubscribed, the
+   * highest value reported with work outstanding was 0.9896 -- ten times
+   * further from 1 than the cap is.
    */
   bool samplesInRange = true;
   bool samplesMonotone = true;
   size_t capWhileOutstanding = 0;
-  float previous = thread.deliveredValue;
+  float previous = interceptor.deliveredValue;
   for (const auto & s : samples) {
     if (s.value < 0.0f || s.value > 1.0f || (!s.finished && s.value >= 1.0f))
       samplesInRange = false;
     if (s.value < previous)
       samplesMonotone = false;
-    if (s.value >= solveThread_c::runningCap && s.outstanding)
+    if (s.value >= solverSession_c::runningCap && s.outstanding)
       capWhileOutstanding++;
     previous = s.value;
   }
 
   INFO(samples.size() << " samples after the assembly phase, latch window at "
-       << thread.latchValue << ", first delivery at " << thread.deliveredValue);
+       << interceptor.latchValue << ", first delivery at " << interceptor.deliveredValue);
   CHECK(samplesInRange);
   CHECK(samplesMonotone);
   CHECK(capWhileOutstanding == 0);
 
   // getProgress() == 1.0f, checked twice: idempotent, the GUI polls repeatedly
-  CHECK(thread.getProgress() == 1.0f);
-  CHECK(thread.getProgress() == 1.0f);
+  CHECK(session.getProgress() == 1.0f);
+  CHECK(session.getProgress() == 1.0f);
 
   /* holding the assemblies back lost none of them */
-  CHECK(problem->getNumAssemblies() == thread.assembliesHeld);
+  CHECK(session.assembliesFound() == interceptor.assembliesHeld);
+  CHECK(drained.size() == interceptor.assembliesHeld);
 }
 
 namespace {
@@ -3257,29 +3270,30 @@ namespace {
  * sampler gets scheduled. The reads and their recording share one mutex, so
  * the recorded order is the order the guard published them in.
  */
-class searchReadSolveThread_c : public solveThread_c {
+class searchReadInterceptor_c : public assembler_cb {
 
+  solverSession_c & session_;
   std::mutex readsMutex;
 
 public:
 
-  using solveThread_c::solveThread_c;
-
-  // assembly() is called on the assembler's workers: join them while this
-  // subclass is still intact
-  ~searchReadSolveThread_c() override { joinThread(); }
+  explicit searchReadInterceptor_c(solverSession_c & s) : session_(s) {
+    session_.setAssemblyInterceptor(this);
+  }
 
   /* written by the workers, read by the test once the solve has finished */
   std::vector<float> reads;
 
-protected:
-
   bool assembly(std::unique_ptr<assembly_c> a) override {
     {
       std::lock_guard<std::mutex> lock(readsMutex);
-      reads.push_back(getProgress());
+      reads.push_back(session_.getProgress());
     }
-    return solveThread_c::assembly(std::move(a));
+    return session_.submitAssemblyForTest(std::move(a));
+  }
+
+  ThreadBudget * threadBudget(void) override {
+    return session_.threadBudgetForTest();
   }
 };
 
@@ -3291,8 +3305,8 @@ protected:
  * the cap -- the search is running, so work is outstanding -- and none moves
  * backwards.
  */
-TEST_CASE("solve thread progress during the search is in range and monotone",
-          "[solvethread][progress]") {
+TEST_CASE("solver session progress during the search is in range and monotone",
+          "[session][progress]") {
   bttest::ScopedSettings s;
   s->threads = 2;
   s->disassemblerPool = true;
@@ -3303,28 +3317,36 @@ TEST_CASE("solve thread progress during the search is in range and monotone",
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  searchReadSolveThread_c thread(*problem, solveThread_c::PAR_DISASSM, bttest::settings());
-  REQUIRE(thread.start());
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.settings = bttest::settings();
 
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-  while (!thread.stopped() && std::chrono::steady_clock::now() < deadline)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+  solverSession_c session(makeSolverSpec(*problem), opts);
+  searchReadInterceptor_c interceptor(session);
+  REQUIRE(session.start());
+
+  size_t drainedCount = 0;
+  while (session.pop())
+    drainedCount++;
+  session.join();
+  REQUIRE(session.sessionState() == solverState_e::Finished);
+  REQUIRE(session.currentAction() == solverSession_c::ACT_FINISHED);
 
   /* one read per assembly */
-  REQUIRE(thread.reads.size() == problem->getNumAssemblies());
-  REQUIRE(thread.reads.size() > 1);
+  REQUIRE(interceptor.reads.size() == drainedCount);
+  REQUIRE(interceptor.reads.size() > 1);
 
   bool inRange = true;
   bool monotone = true;
-  for (size_t i = 0; i < thread.reads.size(); i++) {
-    if (thread.reads[i] < 0.0f || thread.reads[i] >= solveThread_c::runningCap)
+  for (size_t i = 0; i < interceptor.reads.size(); i++) {
+    if (interceptor.reads[i] < 0.0f || interceptor.reads[i] >= solverSession_c::runningCap)
       inRange = false;
-    if (i && thread.reads[i] < thread.reads[i-1])
+    if (i && interceptor.reads[i] < interceptor.reads[i-1])
       monotone = false;
   }
-  INFO(thread.reads.size() << " reads, from " << thread.reads.front()
-       << " to " << thread.reads.back());
+  INFO(interceptor.reads.size() << " reads, from " << interceptor.reads.front()
+       << " to " << interceptor.reads.back());
   CHECK(inRange);
   CHECK(monotone);
 }
@@ -3343,15 +3365,15 @@ TEST_CASE("solve thread progress during the search is in range and monotone",
  * assemblies all live at the end of the search does.
  */
 TEST_CASE("with no disassembly evidence the bar never publishes the cap",
-          "[solvethread][progress]") {
+          "[session][progress]") {
 
-  const float cap = solveThread_c::runningCap;
+  const float cap = solverSession_c::runningCap;
   const float held = 0.4f;   // whatever the guard is already holding
 
   SECTION("below the cap the assembly fraction is reported as it stands") {
-    CHECK(solveThread_c::noEvidenceProgress(0.0f, 0.0f) == 0.0f);
-    CHECK(solveThread_c::noEvidenceProgress(0.5f, held) == 0.5f);
-    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(cap, 0.0f), held)
+    CHECK(solverSession_c::noEvidenceProgress(0.0f, 0.0f) == 0.0f);
+    CHECK(solverSession_c::noEvidenceProgress(0.5f, held) == 0.5f);
+    CHECK(solverSession_c::noEvidenceProgress(std::nextafter(cap, 0.0f), held)
           == std::nextafter(cap, 0.0f));
   }
 
@@ -3359,13 +3381,13 @@ TEST_CASE("with no disassembly evidence the bar never publishes the cap",
     /* the case the old 1.0f threshold could not see: still running, so the
      * fraction is below 1, but at or past the cap
      */
-    CHECK(solveThread_c::noEvidenceProgress(cap, held) == held);
-    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) == held);
-    CHECK(solveThread_c::noEvidenceProgress(std::nextafter(1.0f, 0.0f), held) == held);
-    CHECK(solveThread_c::noEvidenceProgress(1.0f, held) == held);
+    CHECK(solverSession_c::noEvidenceProgress(cap, held) == held);
+    CHECK(solverSession_c::noEvidenceProgress(0.9995f, held) == held);
+    CHECK(solverSession_c::noEvidenceProgress(std::nextafter(1.0f, 0.0f), held) == held);
+    CHECK(solverSession_c::noEvidenceProgress(1.0f, held) == held);
 
     /* and none of them is the cap, which is the value that pins the guard */
-    CHECK(solveThread_c::noEvidenceProgress(0.9995f, held) < cap);
+    CHECK(solverSession_c::noEvidenceProgress(0.9995f, held) < cap);
   }
 
   SECTION("holding cannot move the bar backwards") {
@@ -3373,13 +3395,13 @@ TEST_CASE("with no disassembly evidence the bar never publishes the cap",
      * decrease -- holding is a pause, not a retreat
      */
     for (float a : {cap, 0.9995f, 1.0f})
-      CHECK(solveThread_c::noEvidenceProgress(a, held) == held);
+      CHECK(solverSession_c::noEvidenceProgress(a, held) == held);
   }
 }
 
 /* The cost basis the blend is built on, across the GUI's resume path.
  *
- * solveThread_c records how far the assembler already was when it picked it
+ * solverSession_c records how far the assembler already was when it picked it
  * up, and progressModel_c::projectAssemblyCost() charges the assembly phase
  * for the whole of its fraction by extrapolating from what THIS run measured
  * between that base and the live fraction. A base at or above the live
@@ -3392,47 +3414,57 @@ TEST_CASE("with no disassembly evidence the bar never publishes the cap",
  * exactly 0 and the projection must return the measured cost untouched.
  */
 TEST_CASE("a fresh solve keeps a zero assembly cost basis",
-          "[solvethread][progress]") {
+          "[session][progress]") {
   auto p = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  solveThread_c thread(*problem, solveThread_c::PAR_DISASSM, bttest::settings());
-  REQUIRE(thread.start());
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.settings = bttest::settings();
+
+  solverSession_c session(makeSolverSpec(*problem), opts);
+  REQUIRE(session.start());
 
   float worstBase = 0.0f;
+  std::vector<solverResult_t> drained;
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-  while (!thread.stopped() &&
-         thread.currentAction() != solveThread_c::ACT_ASSERT &&
+  while (session.sessionState() == solverState_e::Running &&
+         session.currentAction() != solverSession_c::ACT_ASSERT &&
          std::chrono::steady_clock::now() < deadline) {
-    thread.getProgress();   // the GUI's poll, which is what maintains the basis
-    const float base = thread.getAssemblyBaseFraction();
+    session.drain(drained);
+    session.getProgress();   // the GUI's poll, which is what maintains the basis
+    const float base = session.getAssemblyBaseFraction();
     if (base > worstBase) worstBase = base;
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
+  session.join();
+  session.drain(drained);
 
-  REQUIRE(thread.currentAction() == solveThread_c::ACT_FINISHED);
+  REQUIRE(session.sessionState() == solverState_e::Finished);
+  REQUIRE(session.currentAction() == solverSession_c::ACT_FINISHED);
 
   /* exactly zero, at every moment of the solve and after it: that is what
    * makes the projection the identity on the measured cost
    */
   CHECK(worstBase == 0.0f);
-  CHECK(thread.getAssemblyBaseFraction() == 0.0f);
+  CHECK(session.getAssemblyBaseFraction() == 0.0f);
   CHECK(progressModel_c::projectAssemblyCost(37.5, 0.4f,
-                                             thread.getAssemblyBaseFraction()) == 37.5);
+                                             session.getAssemblyBaseFraction()) == 37.5);
 }
 
 /* The resume case, and the regression this test exists for.
  *
  * A paused-then-continued solve, driven the way the GUI drives it: one
- * solveThread_c is started and stopped, destroyed, and a second is built on
- * the same problem, which finds the assembler the first left behind and picks
- * up its search state.
+ * solverSession_c is started and paused, hands over its prepared assembler,
+ * is destroyed, and a second is built on the same assembler and picks up its
+ * search state.
  *
  * The assembly fraction survives that handover; the seconds that bought it do
- * not, because they belonged to the first thread. Feeding the model this run's
+ * not, because they belonged to the first session. Feeding the model this run's
  * seconds against the whole of the carried fraction under-projects the
  * assembly phase by exactly the ratio of the two, so the blend collapses
  * towards the disassembly fraction and the monotone guard pins it there while
@@ -3447,41 +3479,53 @@ TEST_CASE("a fresh solve keeps a zero assembly cost basis",
  * long enough to pause in the middle of and still have a stretch left to watch.
  */
 TEST_CASE("a resumed solve keeps the assembly cost basis alive",
-          "[solvethread][progress][stress]") {
+          "[session][progress][stress]") {
   auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
+  auto spec = makeSolverSpec(*problem);
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.settings = bttest::settings();
+
   /* ---- the first solve, paused part-way through assembly ---- */
   float paused = 0.0f;
+  std::unique_ptr<assembler_c> handedAssm;
+  std::vector<std::unique_ptr<assembly_c>> handedPending;
   {
-    solveThread_c first(*problem, solveThread_c::PAR_DISASSM, bttest::settings());
+    solverSession_c first(spec, opts);
     REQUIRE(first.start());
 
     /* Pause on observed progress, not on a wall clock. A fixed budget fails in
      * both directions: too long and a fast machine finishes the assembly
      * inside it, leaving nothing to resume; too short and a slow one pauses at
      * a fraction so small that the second run's window swamps it. Waiting for
-     * the thread's own published progress is machine-independent, and reading
-     * it is race-free -- getProgress() is the atomic the GUI polls, so nothing
-     * here touches problem_c while the worker is installing the assembler.
+     * the session's own published progress is machine-independent, and reading
+     * it is race-free.
      */
+    std::vector<solverResult_t> drained;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    while (!first.stopped() &&
+    while (first.sessionState() == solverState_e::Running &&
            first.getProgress() < 0.05f &&
-           std::chrono::steady_clock::now() < deadline)
+           std::chrono::steady_clock::now() < deadline) {
+      first.drain(drained);
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
 
-    first.stop();
-    const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-    while (!first.stopped() && std::chrono::steady_clock::now() < joinBy)
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    REQUIRE(first.stopped());
-    REQUIRE(first.currentAction() == solveThread_c::ACT_PAUSING);
+    first.pause();
+    first.drain(drained);
+    REQUIRE(first.sessionState() == solverState_e::Paused);
+    REQUIRE(first.currentAction() == solverSession_c::ACT_PAUSING);
 
-    paused = problem->getAssembler()->getFinished();
+    resumeData_t saved = first.state();
+    handedPending = std::move(saved.pending);
+    handedAssm = first.releaseAssembler();
+    REQUIRE(handedAssm != nullptr);
+    paused = handedAssm->getFinished();
   }
 
   INFO("paused at " << paused);
@@ -3489,10 +3533,7 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   REQUIRE(paused > 0.0f);
   REQUIRE(paused < 1.0f);
 
-  /* ---- the continue: a new thread over the assembler the first left ---- */
-  assembler_c * assm = problem->getAssembler();
-  REQUIRE(assm != nullptr);
-
+  /* ---- the continue: a new session over the assembler the first left ---- */
   /* The loop below polls getFinished() while the worker searches. That is the
    * call's documented contract ("It must be possible to call this function
    * while assemble is running") and what the GUI does on every refresh, but it
@@ -3502,9 +3543,11 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
    * future change routes this resume to the serial path, this fails loudly
    * instead of the polling quietly becoming a race.
    */
-  REQUIRE(assm->getRunThreads() > 1);
+  REQUIRE(handedAssm->getRunThreads() > 1);
+  assembler_c * assm = handedAssm.get();
 
-  solveThread_c second(*problem, solveThread_c::PAR_DISASSM, bttest::settings());
+  solverSession_c second(spec, opts);
+  second.adoptPreparedAssembler(std::move(handedAssm), std::move(handedPending));
   REQUIRE(second.start());
 
   unsigned int samples = 0;    // samples taken during the assembly phase
@@ -3514,13 +3557,16 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
   float reached = 0.0f, baseSeen = -1.0f;
   double worstLeverage = 0.0; // smallest projected/session cost ratio seen
   float leverageA = 0.0f, leverageBase = 0.0f;  // the pair that produced it
+  std::vector<solverResult_t> drained2;
 
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(300);
-  while (!second.stopped() &&
-         second.currentAction() != solveThread_c::ACT_ASSERT &&
+  while (second.sessionState() == solverState_e::Running &&
+         second.currentAction() != solverSession_c::ACT_ASSERT &&
          std::chrono::steady_clock::now() < deadline) {
 
-    if (second.currentAction() == solveThread_c::ACT_ASSEMBLING) {
+    second.drain(drained2);
+
+    if (second.currentAction() == solverSession_c::ACT_ASSEMBLING) {
 
       /* the GUI's own poll, which is what maintains the basis */
       second.getProgress();
@@ -3570,18 +3616,11 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 
-  second.stop();
-  const auto joinBy = std::chrono::steady_clock::now() + std::chrono::seconds(300);
-  while (!second.stopped() && std::chrono::steady_clock::now() < joinBy)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  REQUIRE(second.stopped());
+  second.pause();
+  second.drain(drained2);
+  REQUIRE(second.sessionState() != solverState_e::Running);
 
-  /* Read once the worker has stopped writing it: it is a plain counter, and
-   * polling it from here while the pool's merger thread counts into it is an
-   * unsynchronised read ThreadSanitizer flags. Monotone, so a non-zero value
-   * now means disassembly results were being counted during the window above.
-   */
-  const unsigned long disassembled = problem->getNumAssemblies();
+  const uint64_t disassembled = second.assembliesFound();
 
   INFO("assembly-phase samples: " << samples
        << ", past the trust threshold: " << trusted
@@ -3608,7 +3647,7 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
    * assembler at different moments, and getProgress()'s ratchet may lower the
    * base to whatever the resumed run first reports. Both directions of that
    * are covered -- it must be a real head start, and it must never claim more
-   * of one than the first thread actually achieved.
+   * of one than the first session actually achieved.
    */
   CHECK(baseSeen > 0.0f);
   CHECK(baseSeen <= paused);
@@ -3669,5 +3708,5 @@ TEST_CASE("a resumed solve keeps the assembly cost basis alive",
    * what a pinned resume would report.
    */
   CHECK(second.getProgress() >= 0.0f);
-  CHECK(second.getProgress() < solveThread_c::runningCap);
+  CHECK(second.getProgress() < solverSession_c::runningCap);
 }

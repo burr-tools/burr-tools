@@ -30,7 +30,7 @@
 #include "bt_assert.h"
 
 /* Kill switch (benchmarking only): with solverSettings_t::threadBudget
- * false (BURRTOOLS_THREAD_BUDGET=0) solveThread_c creates no budget, the
+ * false (BURRTOOLS_THREAD_BUDGET=0) solverSession_c creates no budget, the
  * pointer stays null and both pools behave exactly as without any cap, so
  * capped vs uncapped can be A/B measured from the same build. */
 

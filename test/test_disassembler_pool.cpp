@@ -2,7 +2,8 @@
 
 #include "test_helpers.h"
 #include "lib/disassemblerpool.h"
-#include "lib/solvethread.h"
+#include "lib/problemcollector.h"
+#include "lib/solver/solversession.h"
 #include "lib/puzzle.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
@@ -70,7 +71,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
 } // namespace
 
 TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm][pool][equivalence]") {
-  /* Solve Pelikan Burr twice through solveThread_c:
+  /* Solve Pelikan Burr twice through solverSession_c + problemCollector_c:
    * 1. Once with BURRTOOLS_DISASM_POOL=0 (sequential fallback)
    * 2. Once with multi-threaded disassembler pool (4 threads)
    * Assert identical assembly count, solution count, and solution movesText.
@@ -93,28 +94,37 @@ TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm
     REQUIRE(problem != nullptr);
     problem->removeAllSolutions();
 
-    int par = solveThread_c::PAR_DISASSM |
-              solveThread_c::PAR_KEEP_ROTATIONS;
+    solverOptions_t opts;
+    opts.reduce = false;
+    opts.disassemble = true;
+    opts.keepRotations = true;
+    opts.settings = bttest::settings();
 
-    solveThread_c st(*problem, par, bttest::settings());
-    REQUIRE(st.start());
+    problemCollectorOptions_t copts;
+    copts.disassemble = true;
+    problemCollector_c collector(*problem, copts);
 
-    while (st.isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    solverSession_c s(makeSolverSpec(*problem), opts);
+    s.setPreparedHook([problem]() { problem->beginSolving(); });
+    REQUIRE(s.start());
+
+    collector.consumeAll(s);
+    s.join();
+
+    if (s.currentAction() == solverSession_c::ACT_ASSERT) {
+      FAIL(std::string("solverSession threw assert: ") + s.getAssertException().what());
     }
-
-    if (st.currentAction() == solveThread_c::ACT_ASSERT) {
-      FAIL(std::string("solveThread threw assert: ") + st.getAssertException().what());
-    }
+    REQUIRE(s.sessionState() == solverState_e::Finished);
+    problem->finishedSolving();
 
     SolveData data;
     data.assemblies = problem->getNumAssemblies();
     data.solutions = problem->getNumSolutions();
 
     for (unsigned int i = 0; i < problem->getNumberOfSavedSolutions(); i++) {
-      const solution_c * s = problem->getSavedSolution(i);
-      if (s && s->getDisassembly()) {
-        data.moves.push_back(s->getDisassembly()->movesText());
+      const solution_c * sol = problem->getSavedSolution(i);
+      if (sol && sol->getDisassembly()) {
+        data.moves.push_back(sol->getDisassembly()->movesText());
       }
     }
 
@@ -379,7 +389,7 @@ TEST_CASE("disassembler pool: exception in callback propagates cleanly to finish
   CHECK_THROWS_AS(pool.finish(), std::runtime_error);
 }
 
-TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, progress, and continue", "[disasm][pool][solvethread]") {
+TEST_CASE("disassembler pool: interactive solver session lifecycle with pause, progress, and continue", "[disasm][pool][session]") {
   SECTION("exact-once problem: pause during search, poll progress, and continue to completion") {
     auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
     REQUIRE(p != nullptr);
@@ -387,29 +397,37 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     REQUIRE(problem != nullptr);
     problem->removeAllSolutions();
 
-    int par = solveThread_c::PAR_DISASSM |
-              solveThread_c::PAR_KEEP_ROTATIONS;
+    auto spec = makeSolverSpec(*problem);
+    solverOptions_t opts;
+    opts.reduce = false;
+    opts.disassemble = true;
+    opts.keepRotations = true;
+    opts.settings = bttest::settings();
 
-    unsigned long first_phase_assemblies = 0;
-    unsigned int final_act1 = solveThread_c::ACT_PAUSING;
+    problemCollectorOptions_t copts;
+    copts.disassemble = true;
+
+    problemCollector_c collector(*problem, copts);
+
+    solverState_e finalState1 = solverState_e::Idle;
+    std::optional<resumeData_t> saved;
     {
-      solveThread_c st1(*problem, par, bttest::settings());
-      REQUIRE(st1.start(false));
+      solverSession_c s1(spec, opts);
+      s1.setPreparedHook([problem]() { problem->beginSolving(); });
+      REQUIRE(s1.start(false));
 
       // Poll metrics during execution and pause as soon as work has begun
-      while (st1.isRunning()) {
-        unsigned int act = st1.currentAction();
-        st1.currentActionParameter();
-        st1.getTime();
+      while (s1.sessionState() == solverState_e::Running) {
+        unsigned int act = s1.currentAction();
+        s1.currentActionParameter();
+        s1.getProgress();
+        collector.drainFrom(s1);
 
-        if (act == solveThread_c::ACT_ASSEMBLING ||
-            act == solveThread_c::ACT_DISASSEMBLING ||
-            (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
+        if (act == solverSession_c::ACT_ASSEMBLING ||
+            act == solverSession_c::ACT_DISASSEMBLING ||
+            s1.assembliesFound() > 0) {
           auto stop_start = std::chrono::steady_clock::now();
-          st1.stop();
-          while (st1.isRunning()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-          }
+          s1.pause();
           auto stop_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - stop_start
           ).count();
@@ -418,41 +436,51 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
         }
         std::this_thread::yield();
       }
+      s1.join();
+      collector.drainFrom(s1);
 
-      CHECK(st1.stopped());
-      final_act1 = st1.currentAction();
-      CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
-      if (problem->numAssembliesKnown()) {
-        first_phase_assemblies = problem->getNumAssemblies();
+      finalState1 = s1.sessionState();
+      CHECK((finalState1 == solverState_e::Paused || finalState1 == solverState_e::Finished));
+      if (finalState1 == solverState_e::Paused) {
+        CHECK(s1.currentAction() == solverSession_c::ACT_PAUSING);
+        saved = s1.state();
+        problem->setResumeData(saved->clone());
+      } else {
+        CHECK(s1.currentAction() == solverSession_c::ACT_FINISHED);
+        problem->finishedSolving();
       }
     }
 
-    // Branch on whether the thread actually finished searching, not on
+    // Branch on whether the session actually finished searching, not on
     // assembly count: the search can find all 12 assemblies in the window
-    // between the poll loop noticing work has started and stop() taking
-    // effect, which leaves the thread paused (SS_SOLVING) rather than
-    // finished (SS_SOLVED) even though every assembly has been found.
-    if (final_act1 != solveThread_c::ACT_FINISHED) {
+    // between the poll loop noticing work has started and pause() taking
+    // effect, which leaves the session Paused (SS_SOLVING) rather than
+    // Finished (SS_SOLVED) even though every assembly has been found.
+    if (finalState1 != solverState_e::Finished) {
       CHECK(problem->getSolveState() == SS_SOLVING);
+      REQUIRE(saved.has_value());
 
-      solveThread_c st2(*problem, par, bttest::settings());
-      REQUIRE(st2.start(false));
+      solverSession_c s2(spec, opts);
+      s2.setResume(std::move(*saved));
+      REQUIRE(s2.start(false));
 
-      while (st2.isRunning()) {
-        st2.currentAction();
-        st2.currentActionParameter();
-        st2.getTime();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      while (auto r = s2.pop()) {
+        s2.currentAction();
+        s2.currentActionParameter();
+        s2.getProgress();
+        collector.consume(std::move(*r));
       }
+      s2.join();
 
-      CHECK(st2.stopped());
-      CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+      CHECK(s2.sessionState() == solverState_e::Finished);
+      CHECK(s2.currentAction() == solverSession_c::ACT_FINISHED);
+      problem->finishedSolving();
       CHECK(problem->getSolveState() == SS_SOLVED);
       CHECK(problem->getNumAssemblies() == 12);
       CHECK(problem->getNumSolutions() == 1);
     } else {
       CHECK(problem->getSolveState() == SS_SOLVED);
-      CHECK(first_phase_assemblies == 12);
+      CHECK(problem->getNumAssemblies() == 12);
       CHECK(problem->getNumSolutions() == 1);
     }
   }
@@ -464,64 +492,82 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     REQUIRE(problem != nullptr);
     problem->removeAllSolutions();
 
-    int par = solveThread_c::PAR_KEEP_ROTATIONS;
+    auto spec = makeSolverSpec(*problem);
+    solverOptions_t opts;
+    opts.reduce = false;
+    opts.disassemble = false;
+    opts.keepRotations = true;
+    opts.settings = bttest::settings();
 
-    unsigned long first_phase_assemblies = 0;
-    unsigned int final_act1 = solveThread_c::ACT_PAUSING;
+    problemCollectorOptions_t copts;
+    copts.disassemble = false;
+
+    problemCollector_c collector(*problem, copts);
+
+    solverState_e finalState1 = solverState_e::Idle;
+    std::optional<resumeData_t> saved;
     {
-      solveThread_c st1(*problem, par, bttest::settings());
-      REQUIRE(st1.start(false));
+      solverSession_c s1(spec, opts);
+      s1.setPreparedHook([problem]() { problem->beginSolving(); });
+      REQUIRE(s1.start(false));
 
-      while (st1.isRunning()) {
-        unsigned int act = st1.currentAction();
-        st1.currentActionParameter();
-        st1.getTime();
+      while (s1.sessionState() == solverState_e::Running) {
+        unsigned int act = s1.currentAction();
+        s1.currentActionParameter();
+        s1.getProgress();
+        collector.drainFrom(s1);
 
-        if (act == solveThread_c::ACT_ASSEMBLING ||
-            (problem->numAssembliesKnown() && problem->getNumAssemblies() > 0)) {
-          st1.stop();
+        if (act == solverSession_c::ACT_ASSEMBLING ||
+            s1.assembliesFound() > 0) {
+          s1.pause();
           break;
         }
         std::this_thread::yield();
       }
+      s1.join();
+      collector.drainFrom(s1);
 
-      while (st1.isRunning()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      }
-
-      CHECK(st1.stopped());
-      final_act1 = st1.currentAction();
-      CHECK((final_act1 == solveThread_c::ACT_PAUSING || final_act1 == solveThread_c::ACT_FINISHED));
-      if (problem->numAssembliesKnown()) {
-        first_phase_assemblies = problem->getNumAssemblies();
+      finalState1 = s1.sessionState();
+      CHECK((finalState1 == solverState_e::Paused || finalState1 == solverState_e::Finished));
+      if (finalState1 == solverState_e::Paused) {
+        CHECK(s1.currentAction() == solverSession_c::ACT_PAUSING);
+        saved = s1.state();
+        problem->setResumeData(saved->clone());
+      } else {
+        CHECK(s1.currentAction() == solverSession_c::ACT_FINISHED);
+        problem->finishedSolving();
       }
     }
 
-    // Branch on whether the thread actually finished searching, not on
+    // Branch on whether the session actually finished searching, not on
     // assembly count: the search can find all 96 assemblies in the window
-    // between the poll loop noticing work has started and stop() taking
-    // effect, which leaves the thread paused (SS_SOLVING) rather than
-    // finished (SS_SOLVED) even though every assembly has been found.
-    if (final_act1 != solveThread_c::ACT_FINISHED) {
+    // between the poll loop noticing work has started and pause() taking
+    // effect, which leaves the session Paused (SS_SOLVING) rather than
+    // Finished (SS_SOLVED) even though every assembly has been found.
+    if (finalState1 != solverState_e::Finished) {
       CHECK(problem->getSolveState() == SS_SOLVING);
+      REQUIRE(saved.has_value());
 
-      solveThread_c st2(*problem, par, bttest::settings());
-      REQUIRE(st2.start(false));
+      solverSession_c s2(spec, opts);
+      s2.setResume(std::move(*saved));
+      REQUIRE(s2.start(false));
 
-      while (st2.isRunning()) {
-        st2.currentAction();
-        st2.currentActionParameter();
-        st2.getTime();
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      while (auto r = s2.pop()) {
+        s2.currentAction();
+        s2.currentActionParameter();
+        s2.getProgress();
+        collector.consume(std::move(*r));
       }
+      s2.join();
 
-      CHECK(st2.stopped());
-      CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+      CHECK(s2.sessionState() == solverState_e::Finished);
+      CHECK(s2.currentAction() == solverSession_c::ACT_FINISHED);
+      problem->finishedSolving();
       CHECK(problem->getSolveState() == SS_SOLVED);
       CHECK(problem->getNumAssemblies() == 96);
     } else {
       CHECK(problem->getSolveState() == SS_SOLVED);
-      CHECK(first_phase_assemblies == 96);
+      CHECK(problem->getNumAssemblies() == 96);
     }
   }
 }
@@ -530,93 +576,103 @@ namespace {
 
 /* Stops the solve between the assembler completing its search and the
  * disassembly pool draining. The first assembly found is held back and only
- * handed to the pool after stop(), so the pool salvages it instead of
+ * handed to the pool after requestPause(), so the pool salvages it instead of
  * disassembling it: the run ends with the search complete but an assembly
  * still undisassembled, which is the state a GUI Stop lands in when it
  * arrives just as a fast search finishes.
  */
-class stopAfterSearchSolveThread_c : public solveThread_c {
-  std::mutex heldMutex;
-  std::unique_ptr<assembly_c> held;
+class stopAfterSearchInterceptor_c : public assembler_cb {
+  solverSession_c & session_;
+  std::mutex heldMutex_;
+  std::unique_ptr<assembly_c> held_;
 
 public:
-  using solveThread_c::solveThread_c;
+  explicit stopAfterSearchInterceptor_c(solverSession_c & s) : session_(s) {
+    session_.setAssemblyInterceptor(this);
+    session_.setAssemblyPhaseEndedHook([this]() { onAssemblyPhaseEnded(); });
+  }
 
-  // assemblyPhaseEnded() is called on the worker: join it while this
-  // subclass is still intact
-  ~stopAfterSearchSolveThread_c() override { joinThread(); }
-
-protected:
   bool assembly(std::unique_ptr<assembly_c> a) override {
     {
-      std::lock_guard<std::mutex> lock(heldMutex);
-      if (!held) {
-        held = std::move(a);
+      std::lock_guard<std::mutex> lock(heldMutex_);
+      if (!held_) {
+        held_ = std::move(a);
         return true;
       }
     }
-    return solveThread_c::assembly(std::move(a));
+    return session_.submitAssemblyForTest(std::move(a));
   }
 
-  void assemblyPhaseEnded(void) override {
-    stop();
-    std::lock_guard<std::mutex> lock(heldMutex);
-    if (held)
-      solveThread_c::assembly(std::move(held));
+  ThreadBudget * threadBudget(void) override {
+    return session_.threadBudgetForTest();
+  }
+
+  void onAssemblyPhaseEnded(void) {
+    session_.requestPause();
+    std::lock_guard<std::mutex> lock(heldMutex_);
+    if (held_)
+      session_.submitAssemblyForTest(std::move(held_));
   }
 };
 
 }
 
-TEST_CASE("solveThread_c: a stop after the search completes stays resumable until every assembly is disassembled", "[disasm][pool][solvethread]") {
+TEST_CASE("solverSession_c: a stop after the search completes stays resumable until every assembly is disassembled", "[disasm][pool][session]") {
   auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   problem_c * problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS;
+  auto spec = makeSolverSpec(*problem);
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.keepRotations = true;
+  opts.settings = bttest::settings();
 
+  problemCollectorOptions_t copts;
+  copts.disassemble = true;
+
+  problemCollector_c collector(*problem, copts);
+  std::optional<resumeData_t> saved;
   {
-    stopAfterSearchSolveThread_c st1(*problem, par, bttest::settings());
-    REQUIRE(st1.start(false));
-    while (st1.isRunning())
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    solverSession_c s1(spec, opts);
+    stopAfterSearchInterceptor_c interceptor(s1);
+    s1.setPreparedHook([problem]() { problem->beginSolving(); });
+    REQUIRE(s1.start(false));
+
+    collector.consumeAll(s1);
+    s1.join();
 
     // The search is complete, but the held-back assembly was salvaged
     // rather than disassembled, so the solve is paused, not finished.
-    REQUIRE(problem->getAssembler() != nullptr);
-    CHECK(problem->getAssembler()->getFinished() >= 1);
-    CHECK(st1.currentAction() == solveThread_c::ACT_PAUSING);
+    REQUIRE(s1.assemblerForTest() != nullptr);
+    CHECK(s1.assemblerForTest()->getFinished() >= 1);
+    CHECK(s1.sessionState() == solverState_e::Paused);
+    CHECK(s1.currentAction() == solverSession_c::ACT_PAUSING);
+    saved = s1.state();
+    CHECK_FALSE(saved->pending.empty());
+    problem->setResumeData(saved->clone());
     CHECK(problem->getSolveState() == SS_SOLVING);
   }
 
-  // Continue disassembles the stashed assembly and only then finishes.
-  solveThread_c st2(*problem, par, bttest::settings());
-  REQUIRE(st2.start(false));
-  while (st2.isRunning())
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  // Continue disassembles the pending assembly and only then finishes.
+  solverSession_c s2(spec, opts);
+  s2.setResume(std::move(*saved));
+  REQUIRE(s2.start(false));
+  collector.consumeAll(s2);
+  s2.join();
 
-  CHECK(st2.currentAction() == solveThread_c::ACT_FINISHED);
+  CHECK(s2.sessionState() == solverState_e::Finished);
+  CHECK(s2.currentAction() == solverSession_c::ACT_FINISHED);
+  problem->finishedSolving();
   CHECK(problem->getSolveState() == SS_SOLVED);
   CHECK(problem->getNumAssemblies() == 12);
   CHECK(problem->getNumSolutions() == 1);
 }
 
-namespace {
-// Bounded join-poll for the lifecycle tests below: a wedged worker must fail
-// the test, not hang the suite. Polls stopped() (true the moment the worker
-// publishes its terminal action), not isRunning().
-inline bool waitForStop(const solveThread_c & st, int seconds = 60) {
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
-  while (!st.stopped() && std::chrono::steady_clock::now() < deadline)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-  return st.stopped();
-}
-}
-
-TEST_CASE("solveThread_c: lifecycle guard invariants", "[solvethread][lifecycle]") {
+TEST_CASE("solverSession_c: lifecycle guard invariants", "[session][lifecycle]") {
   // LIFECYCLE-1..4 from design/2026-10-13-solver-lifecycle.md, asserted as
   // post-mortem checks on real runs. Deterministic by construction: only
   // terminal states are inspected, no timing windows.
@@ -630,112 +686,138 @@ TEST_CASE("solveThread_c: lifecycle guard invariants", "[solvethread][lifecycle]
   CHECK(problem->getSolveState() == SS_UNSOLVED);
   CHECK(problem->canStartSolving());
 
-  const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS;
+  auto spec = makeSolverSpec(*problem);
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.keepRotations = true;
+  opts.settings = bttest::settings();
 
-  solveThread_c st(*problem, par, bttest::settings());
-  REQUIRE(st.start(false));
-  REQUIRE(waitForStop(st));
-  REQUIRE(st.currentAction() == solveThread_c::ACT_FINISHED);
+  problemCollectorOptions_t copts;
+  copts.disassemble = true;
+  problemCollector_c collector(*problem, copts);
+
+  solverSession_c s(spec, opts);
+  s.setPreparedHook([problem]() { problem->beginSolving(); });
+  REQUIRE(s.start(false));
+  collector.consumeAll(s);
+  s.join();
+  REQUIRE(s.sessionState() == solverState_e::Finished);
+  REQUIRE(s.currentAction() == solverSession_c::ACT_FINISHED);
+  problem->finishedSolving();
 
   // LIFECYCLE-1: FINISHED implies solved, search complete, nothing stashed.
   CHECK(problem->getSolveState() == SS_SOLVED);
-  REQUIRE(problem->getAssembler() != nullptr);
-  CHECK(problem->getAssembler()->getFinished() >= 1);
+  REQUIRE(s.assemblerForTest() != nullptr);
+  CHECK(s.assemblerForTest()->getFinished() >= 1);
   auto stashed = problem->takeStashedAssemblies();
   CHECK(stashed.empty());
 
   // LIFECYCLE-4: a solved problem must be reset before restarting.
   CHECK(!problem->canStartSolving());
 
-  // LIFECYCLE-3: stop() is a no-op on terminal states.
-  st.stop();
-  CHECK(st.currentAction() == solveThread_c::ACT_FINISHED);
-  CHECK(st.stopped());
+  // LIFECYCLE-3: pause() and abort() are no-ops on terminal states.
+  s.pause();
+  CHECK(s.sessionState() == solverState_e::Finished);
+  CHECK(s.currentAction() == solverSession_c::ACT_FINISHED);
+  s.abort();
+  CHECK(s.sessionState() == solverState_e::Finished);
+  CHECK(s.currentAction() == solverSession_c::ACT_FINISHED);
 
   // LIFECYCLE-4: reset restores startability; LIFECYCLE-2 is covered by the
-  // pause-branch checks in the lifecycle tests above (PAUSING implies
-  // SS_SOLVING with the assembler present).
+  // pause-branch checks in the lifecycle tests above (Paused implies
+  // SS_SOLVING with resume data present).
   problem->removeAllSolutions();
   CHECK(problem->getSolveState() == SS_UNSOLVED);
   CHECK(problem->canStartSolving());
 }
 
-TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes", "[solvethread][lifecycle]") {
-  // LIFECYCLE-4 enforcement: misuse fails loud unconditionally. Double-start
-  // and reuse throw on the caller; an unstartable problem fails the run to
-  // ACT_ERROR worker-side, where every polling frontend already handles it --
-  // and the problem is left exactly as it was.
+TEST_CASE("solverSession_c: lifecycle misuse is rejected loudly in all build modes", "[session][lifecycle]") {
+  // LIFECYCLE-4 enforcement: misuse fails loud unconditionally. Double-start,
+  // reuse after finish, and state() outside Paused throw on the caller; an
+  // already-solved problem refuses beginSolving()/setAssembler() without
+  // clobbering its stored solutions.
   auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   problem_c * problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS;
+  auto spec = makeSolverSpec(*problem);
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = true;
+  opts.keepRotations = true;
+  opts.settings = bttest::settings();
 
-  solveThread_c st(*problem, par, bttest::settings());
-  REQUIRE(st.start(false));
+  problemCollectorOptions_t copts;
+  copts.disassemble = true;
+  problemCollector_c collector(*problem, copts);
+
+  solverSession_c s(spec, opts);
+  s.setPreparedHook([problem]() { problem->beginSolving(); });
+  REQUIRE(s.start(false));
 
   // Double-start while running throws instead of clobbering the worker.
-  CHECK_THROWS_AS(st.start(false), assert_exception);
+  CHECK_THROWS_AS(s.start(false), assert_exception);
 
-  REQUIRE(waitForStop(st));
-  REQUIRE(st.currentAction() == solveThread_c::ACT_FINISHED);
+  collector.consumeAll(s);
+  s.join();
+  REQUIRE(s.sessionState() == solverState_e::Finished);
+  REQUIRE(s.currentAction() == solverSession_c::ACT_FINISHED);
+  problem->finishedSolving();
 
-  // Reuse after finish throws: one object per run, the monotone progress
-  // guard and pool state must not leak across runs.
-  CHECK_THROWS_AS(st.start(false), assert_exception);
+  // Reuse after finish and state() outside Paused throw.
+  CHECK_THROWS_AS(s.start(false), assert_exception);
+  CHECK_THROWS_AS(s.state(), assert_exception);
 
-  // Starting a solved problem without reset is rejected worker-side: the run
-  // ends in ACT_ERROR with ERR_CAN_NOT_START in all build modes, so polling
-  // frontends observe a stopped thread instead of a
-  // wedged or silently-clobbered solve -- and the solved problem is left
-  // exactly as it was.
-  solveThread_c fresh(*problem, par, bttest::settings());
-  REQUIRE(fresh.start(false));
-  REQUIRE(waitForStop(fresh, 20));
-  REQUIRE(fresh.currentAction() == solveThread_c::ACT_ERROR);
-  CHECK(fresh.getErrorState() == assembler_c::ERR_CAN_NOT_START);
+  // A solved problem refuses starting without reset and stays intact.
+  CHECK_FALSE(problem->canStartSolving());
+  CHECK_THROWS_AS(problem->beginSolving(), assert_exception);
   CHECK(problem->getSolveState() == SS_SOLVED);
-  CHECK(problem->getAssembler() != nullptr);
   CHECK(problem->getNumAssemblies() == 12);
   CHECK(problem->getNumSolutions() == 1);
 
-  // After the reset the problem solves cleanly with a new object (one
-  // object per run: `fresh` is spent).
+  // After the reset the problem solves cleanly with a new session.
   problem->removeAllSolutions();
-  solveThread_c resumed(*problem, par, bttest::settings());
+  problemCollector_c collector2(*problem, copts);
+  solverSession_c resumed(spec, opts);
+  resumed.setPreparedHook([problem]() { problem->beginSolving(); });
   REQUIRE(resumed.start(false));
-  REQUIRE(waitForStop(resumed));
-  CHECK(resumed.currentAction() == solveThread_c::ACT_FINISHED);
+  collector2.consumeAll(resumed);
+  resumed.join();
+  CHECK(resumed.sessionState() == solverState_e::Finished);
+  CHECK(resumed.currentAction() == solverSession_c::ACT_FINISHED);
+  problem->finishedSolving();
   CHECK(problem->getSolveState() == SS_SOLVED);
   CHECK(problem->getNumAssemblies() == 12);
 }
 
-TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvethread][threads]") {
+TEST_CASE("solverSession_c: explicit thread count reaches the assembler", "[session][threads]") {
   auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   problem_c * problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  int par = solveThread_c::PAR_KEEP_ROTATIONS;
+  solverOptions_t opts;
+  opts.reduce = false;
+  opts.disassemble = false;
+  opts.keepRotations = true;
+  opts.settings = bttest::withThreads(2);
 
-  solveThread_c st(*problem, par, bttest::withThreads(2));
-  REQUIRE(st.start());
+  solverSession_c s(makeSolverSpec(*problem), opts);
+  REQUIRE(s.start(false));
+  while (s.pop()) {}
+  s.join();
 
-  while (st.isRunning()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  if (s.currentAction() == solverSession_c::ACT_ASSERT) {
+    FAIL(std::string("solverSession threw assert: ") + s.getAssertException().what());
   }
 
-  if (st.currentAction() == solveThread_c::ACT_ASSERT) {
-    FAIL(std::string("solveThread threw assert: ") + st.getAssertException().what());
-  }
-
-  REQUIRE(problem->getAssembler() != nullptr);
-  CHECK(problem->getAssembler()->getNumThreads() == 2);
+  REQUIRE(s.sessionState() == solverState_e::Finished);
+  REQUIRE(s.assemblerForTest() != nullptr);
+  CHECK(s.assemblerForTest()->getNumThreads() == 2);
 }
 
 /* The progress model weights disassembly against assembly by measured seconds,

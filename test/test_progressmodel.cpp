@@ -129,15 +129,15 @@ TEST_CASE("progress model stays monotone while the projection revises",
         < progressModel_c::evaluate(sample(0.5f, 0.8)).fraction - 0.01f);
 }
 
-/* Characterises the model, and pins why solveThread_c::getProgress() carries a
- * monotone guard of its own rather than relying on this one.
+/* Characterises the model, and pins why solverSession_c::getProgress() carries
+ * a monotone guard of its own rather than relying on this one.
  *
  * evaluate() is a cost-weighted mean of the two phase fractions, so a
  * projection that revises the DISASSEMBLY cost upward shifts weight onto the
  * phase that is further behind, and the blend falls. Here 800 assemblies
  * disassemble in 0.1 s each and the 801st takes 220 s on its own -- one
  * assembly with a huge movement tree, an ordinary thing for a puzzle to have.
- * If this ever stops holding, the guard in solvethread.cpp has become
+ * If this ever stops holding, the guard in solversession.cpp has become
  * unnecessary and the comment there should say so.
  */
 TEST_CASE("progress model is not monotone when the disassembly projection revises",
@@ -185,7 +185,7 @@ TEST_CASE("progress model reaches 1.0 only when both phases are complete",
 
 /* Characterises a known limitation rather than a desired behaviour.
  *
- * solveThread_c::getProgress() clamps a rounded-up assemblyFraction to the
+ * solverSession_c::getProgress() clamps a rounded-up assemblyFraction to the
  * largest float below 1 while assembly is demonstrably still running, so the
  * model is never told "assembly complete" on a float rounding artefact. That
  * clamp makes the input honest, but it does not change what the caller ends up
@@ -200,7 +200,7 @@ TEST_CASE("progress model reaches 1.0 only when both phases are complete",
  *
  * Pinned here so the limitation stays checkable: if a future change to
  * evaluate() makes the clamped case land meaningfully below the cap, this test
- * fails and the comment in solvethread.cpp needs revisiting.
+ * fails and the comment in solversession.cpp needs revisiting.
  */
 TEST_CASE("clamping a rounded-up assembly fraction does not lower a drained blend",
           "[progress]") {
@@ -225,11 +225,12 @@ TEST_CASE("clamping a rounded-up assembly fraction does not lower a drained blen
   CHECK(clamped > 0.999f);
 }
 
-/* The cost basis a resumed solve reports. A solveThread_c is built per solve
- * and destroyed on pause, so the seconds that bought the assembly fraction the
- * assembler carries across the pause are gone; only the fraction survives.
- * Feeding the model the current run's seconds against the whole of that
- * fraction under-projects the assembly phase by exactly the ratio of the two.
+/* The cost basis a resumed solve reports. When a new solverSession_c is built
+ * over an adopted assembler after pause, the seconds that bought the assembly
+ * fraction the assembler carries across the pause are gone; only the fraction
+ * survives. Feeding the model the current run's seconds against the whole of
+ * that fraction under-projects the assembly phase by exactly the ratio of the
+ * two.
  */
 TEST_CASE("assembly cost is projected across a resume", "[progress]") {
 

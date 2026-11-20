@@ -8,7 +8,7 @@
 #include "lib/problem.h"
 #include "lib/puzzle.h"
 #include "lib/rotationtables.h"
-#include "lib/solvethread.h"
+#include "lib/solver/solversession.h"
 #include "lib/stl.h"
 #include "test_helpers.h"
 
@@ -244,17 +244,24 @@ TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rot
 
   SECTION("solver") {
     /* while the tables are alive the solver reuses them instead of building */
-    solverSettings_t settings;
-    settings.threads = 2;
-    settings.rotation = SMALL;
-    solveThread_c plain(problem, solveThread_c::PAR_DISASSM, settings);
+    auto spec = makeSolverSpec(problem);
+    solverOptions_t opts;
+    opts.settings.threads = 2;
+    opts.settings.rotation = SMALL;
+
+    opts.disassemble = true;
+    opts.rotationMoves = false;
+    solverSession_c plain(spec, opts);
     CHECK_FALSE(plain.rotationMoves());
 
-    solveThread_c rotating(problem, solveThread_c::PAR_DISASSM | solveThread_c::PAR_ROTATION_MOVES, settings);
+    opts.rotationMoves = true;
+    solverSession_c rotating(spec, opts);
     CHECK(rotating.rotationMoves());
 
     /* rotation moves are part of the disassembly: nothing without it */
-    solveThread_c noDisassembly(problem, solveThread_c::PAR_ROTATION_MOVES, settings);
+    opts.disassemble = false;
+    opts.rotationMoves = true;
+    solverSession_c noDisassembly(spec, opts);
     CHECK_FALSE(noDisassembly.rotationMoves());
   }
 }

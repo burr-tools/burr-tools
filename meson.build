@@ -132,7 +132,6 @@ libburr_src = [
   'src/lib/solver/solverspec.cpp',
   'src/lib/solver/solversession.cpp',
   'src/lib/solution.cpp',
-  'src/lib/solvethread.cpp',
   'src/lib/stl.cpp',
   'src/lib/stl_0.cpp',
   'src/lib/stl_2.cpp',

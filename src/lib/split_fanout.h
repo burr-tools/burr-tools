@@ -58,7 +58,7 @@ inline constexpr unsigned int kDefault = 16;
  * does not step back.
  *
  * Invariant: every outstanding task holds at least one unit. Completed
- * units reach the total only when no work is left, and solvethread treats
+ * units reach the total only when no work is left, and solverSession_c treats
  * a full bar as a finished search -- a 0-unit piece would let it finish
  * with that piece unsearched. So a donor gives away units only while it
  * holds two or more and keeps at least one (give() below), and a stop that
