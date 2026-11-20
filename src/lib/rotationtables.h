@@ -34,8 +34,7 @@
 #include <unordered_map>
 #include <vector>
 
-class problem_c;
-class puzzle_c;
+struct solverSpec_t;
 class stlExporter_c;
 class disassemblerNode_c;
 
@@ -129,7 +128,7 @@ struct rotationConfig_t {
  *  of its pieces, plus one. That covers every turn of a single piece and of
  *  every group that stays within the assembled shape; turns of groups
  *  spread wider are skipped, and reported (rotationContext_c::getSkipped). */
-int rotationRadiusFor(const problem_c & problem);
+int rotationRadiusFor(const solverSpec_t & problem);
 
 /**
  * The rotation tables for a problem, or nullptr when rotation moves are not
@@ -145,7 +144,7 @@ int rotationRadiusFor(const problem_c & problem);
  * callers do it once, before starting worker threads.
  */
 std::shared_ptr<const rotationGeometry::rotationTables_c>
-rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings);
+rotationTablesFor(const solverSpec_t & problem, const rotationSettings_t & settings);
 
 /** Same, with an explicit radius; for callers without a problem and tests. */
 std::shared_ptr<const rotationGeometry::rotationTables_c>
@@ -204,14 +203,14 @@ class rotationContext_c {
     /** relaxed: ROTATION_BALANCED's gate tables, the model's at
      *  rotationGatePlay; empty in the other modes, which need none (a
      *  balanced context given none uses the model's tables as its gate) */
-    rotationContext_c(const problem_c & problem, const rotationSettings_t & settings,
+    rotationContext_c(std::shared_ptr<const solverSpec_t> problem, const rotationSettings_t & settings,
                       std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables,
                       std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> relaxed = {});
 
     /** Does not wait for tables still being built in the background. */
     ~rotationContext_c();
 
-    const problem_c & getProblem(void) const { return problem; }
+    const solverSpec_t & getProblem(void) const { return problem; }
 
     /** The problem's own table radius (rotationRadiusFor). The tables may
      *  be larger, served from the cache; turns are only looked for within
@@ -312,7 +311,7 @@ class rotationContext_c {
     /** Limits that made the search skip turns, a bit set of skip_e. */
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
-      SKIP_PIECES = 2,   ///< a (sub)problem had more pieces than groups can address
+      SKIP_PIECES = 2,   ///< a (sub)problem with more pieces than groups can address
       SKIP_GROUPS = 4,   ///< more than 16 closures: only single closures were tried, not their unions
       SKIP_PLANNER = 8   ///< a turn was left undecided (decideSettings_t::resolution, maxBoxes)
     };
@@ -325,7 +324,8 @@ class rotationContext_c {
 
   private:
 
-    const problem_c & problem;
+    std::shared_ptr<const solverSpec_t> spec;
+    const solverSpec_t & problem;   ///< *spec
     const int problemRadius;
     const rotationSettings_t settings;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
@@ -407,7 +407,7 @@ struct optimizeControl_t {
  * bisection of planner runs per turn), meant for the few disassemblies that
  * are reported. See design/2026-10-19-rotation-moves.md.
  */
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & settings,
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const solverSpec_t & problem, const rotationSettings_t & settings,
                          const optimizeControl_t & control = {});
 
 /**
@@ -417,21 +417,10 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
  * solver searches. rotationContextFor and optimizeTurns apply it
  * themselves.
  */
-rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings);
+rotationSettings_t rotationSettingsFor(const solverSpec_t & problem, rotationSettings_t settings);
 
-/** The model a problem's rotation moves are checked for: its puzzle's, else
- *  the default (rotationSettings_t::model). */
-rotationGeometry::model_t rotationModelOf(const problem_c & problem);
-
-/** The pieces of a puzzle: its model, else the default. The same for every
- *  shape and problem; the 3D views' STL style draws only a stored one
- *  (puzzle_c::getRotationModel), so a puzzle without keeps their own look. */
-rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
-
-/** A solve that turns pieces stores the model it checks them for when the
- *  puzzle has none, so that a saved file says which pieces its
- *  disassemblies are for. The front ends call it before such a solve. */
-void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings);
+/* rotationModelOf and storeSolveRotationModel, which read and write the
+ * document, are with puzzle_c */
 
 /** For an STL export dialog: whether the exporter's bevel and offset make
  *  the pieces the turns are checked for (`expected`, from rotationModelOf). */
@@ -458,6 +447,6 @@ std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::mode
  * Only balanced builds a second set of tables (its gate, rotationGatePlay).
  */
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & settings, bool background = false);
+rotationContextFor(std::shared_ptr<const solverSpec_t> problem, const rotationSettings_t & settings, bool background = false);
 
 #endif

@@ -110,7 +110,7 @@ std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
 /* all assemblies, with the settings in scope */
 Set solveAll(problem_c & problem, unsigned int threads) {
   Recorder cb;
-  assembler_1_c assm(problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
   assm.setNumThreads(threads);
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
@@ -119,7 +119,7 @@ Set solveAll(problem_c & problem, unsigned int threads) {
 
 /* A run that stops after k assemblies; returns the saved state. */
 std::string stopAfter(problem_c & problem, unsigned int threads, unsigned int k, Recorder & cb) {
-  assembler_1_c assm(problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
   assm.setNumThreads(threads);
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   unsigned int seen = 0;
@@ -134,7 +134,7 @@ std::string stopAfter(problem_c & problem, unsigned int threads, unsigned int k,
 /* restore a saved state into a fresh assembler (settings in scope) and
  * run it to the end */
 Set resumeAll(problem_c & problem, unsigned int threads, const std::string & state) {
-  assembler_1_c restored(problem, bttest::settings());
+  assembler_1_c restored(makeSolverSpec(problem), bttest::settings());
   restored.setNumThreads(threads);
   REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
   const std::string payload = contentOf(state);
@@ -254,7 +254,7 @@ TEST_CASE("Dancing Cells donates and replays seeds exactly once",
         env->donateEvery = every;
 
         Recorder cb;
-        assembler_1_c assm(problem, bttest::settings());
+        assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
         assm.setNumThreads(threads);
         REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
         assm.assemble(&cb);
@@ -291,7 +291,7 @@ TEST_CASE("Dancing Cells stop and continue delivers every assembly exactly once"
         env->bitParallel = false;
         env->donateEvery = c.every;
 
-        assembler_1_c assm(problem, bttest::settings());
+        assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
         assm.setNumThreads(c.threads);
         REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
@@ -353,7 +353,7 @@ TEST_CASE("Dancing Cells state saved, restored and continued is exact-once",
            * and the new remainder is still the cells engine's, then finish
            * it under the other setting */
           {
-            assembler_1_c restored(problem, bttest::settings());
+            assembler_1_c restored(makeSolverSpec(problem), bttest::settings());
             restored.setNumThreads(c.threads);
             REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
             const std::string payload = contentOf(state);
@@ -429,7 +429,7 @@ TEST_CASE("restore validates the step kinds of Dancing Cells and bit-parallel re
   problem_c & problem = *p->getProblem(0);
 
   auto restoreCode = [&](const std::string & payload, const std::string & version) {
-    assembler_1_c assm(problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     return assm.setPosition(payload.c_str(), version.c_str());
   };
@@ -818,7 +818,7 @@ TEST_CASE("the range symmetry breaker restricts the placements of a shape used e
   auto placements = [&](bool breaker) {
     ScopedSettings env;
     env->rangeSymmetryBreaker = breaker;
-    assembler_1_c assm(problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     // piece 0 is the L, the only shape with min == max == 1
     return assm.getPiecePlacementCount(0);
@@ -940,7 +940,7 @@ TEST_CASE("a bit-parallel search that fits the engine only merged continues with
   {
     ScopedSettings env;
     env->mergeColumns = true;
-    assembler_1_c assm(problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
     assm.setNumThreads(2);
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.setPoolSeedHook([&]() { assm.stop(); });
@@ -959,7 +959,7 @@ TEST_CASE("a bit-parallel search that fits the engine only merged continues with
   }
   {
     INFO("restored with merging off, stopped again, continued in the same assembler");
-    assembler_1_c restored(problem, bttest::settings());
+    assembler_1_c restored(makeSolverSpec(problem), bttest::settings());
     restored.setNumThreads(2);
     REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     const std::string payload = contentOf(state);
@@ -1026,7 +1026,7 @@ TEST_CASE("Dancing Cells runs where the bit-parallel engine does not",
 TEST_CASE("restore refuses a bit-parallel remainder the bit-parallel engine cannot take",
           "[cells][assembler][save]") {
   auto restore = [](problem_c & problem, const char * payload) {
-    assembler_1_c assm(problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     return assm.setPosition(payload, "2.2");
   };

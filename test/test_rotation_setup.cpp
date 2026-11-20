@@ -36,12 +36,12 @@ problem_c & pelikan(void) {
 }
 
 std::shared_ptr<const rotationGeometry::rotationTables_c> pelikanTables(void) {
-  static auto tables = rotationTablesFor(pelikan(), SMALL);
+  static auto tables = rotationTablesFor(*makeSolverSpec(pelikan()), SMALL);
   return tables;
 }
 
 std::shared_ptr<rotationContext_c> pelikanContext(void) {
-  static auto context = rotationContextFor(pelikan(), SMALL);
+  static auto context = rotationContextFor(makeSolverSpec(pelikan()), SMALL);
   return context;
 }
 
@@ -111,12 +111,12 @@ TEST_CASE("rotation tables exist only for cube grids", "[rotations]") {
 
   auto tables = pelikanTables();
   REQUIRE(tables != nullptr);
-  CHECK(tables->getRadius() >= rotationRadiusFor(pelikan()));
-  CHECK(rotationTablesFor(pelikan(), SMALL) == tables);
+  CHECK(tables->getRadius() >= rotationRadiusFor(*makeSolverSpec(pelikan())));
+  CHECK(rotationTablesFor(*makeSolverSpec(pelikan()), SMALL) == tables);
 
   auto hex = loadPuzzle("examples/HexSticks.xmpuzzle");
   REQUIRE(hex->getGridType()->getType() != gridType_c::GT_BRICKS);
-  CHECK(rotationTablesFor(*hex->getProblem(0), SMALL) == nullptr);
+  CHECK(rotationTablesFor(*makeSolverSpec(*hex->getProblem(0)), SMALL) == nullptr);
 }
 
 TEST_CASE("a rotation context exists only for cube grids and shares the tables", "[rotations]") {
@@ -126,12 +126,12 @@ TEST_CASE("a rotation context exists only for cube grids and shares the tables",
   CHECK(&context->tables() == pelikanTables().get());
 
   /* built in the background: the same tables once they are there */
-  auto background = rotationContextFor(pelikan(), SMALL, true);
+  auto background = rotationContextFor(makeSolverSpec(pelikan()), SMALL, true);
   REQUIRE(background != nullptr);
   CHECK(&background->tables() == pelikanTables().get());
 
   auto hex = loadPuzzle("examples/HexSticks.xmpuzzle");
-  CHECK(rotationContextFor(*hex->getProblem(0), SMALL) == nullptr);
+  CHECK(rotationContextFor(makeSolverSpec(*hex->getProblem(0)), SMALL) == nullptr);
 }
 
 TEST_CASE("the puzzle's stored model wins over the settings' default", "[rotations]") {
@@ -139,19 +139,19 @@ TEST_CASE("the puzzle's stored model wins over the settings' default", "[rotatio
   auto puzzle = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   problem_c & problem = *puzzle->getProblem(0);
 
-  auto plain = rotationContextFor(problem, SMALL);
+  auto plain = rotationContextFor(makeSolverSpec(problem), SMALL);
   REQUIRE(plain != nullptr);
   CHECK(plain->getSettings().model.play == SMALL.model.play);
   CHECK(plain->getSettings().model.chamfer == SMALL.model.chamfer);
 
   puzzle->setRotationModel({ 0.06, 0.04 });
-  auto stored = rotationContextFor(problem, SMALL);
+  auto stored = rotationContextFor(makeSolverSpec(problem), SMALL);
   REQUIRE(stored != nullptr);
   CHECK(stored->getSettings().model.play == 0.06);
   CHECK(stored->getSettings().model.chamfer == 0.04);
   /* the rest of the settings are the solver's */
   CHECK(stored->getSettings().amounts == SMALL.amounts);
-  CHECK(rotationSettingsFor(problem, SMALL).model.chamfer == 0.04);
+  CHECK(rotationSettingsFor(*makeSolverSpec(problem), SMALL).model.chamfer == 0.04);
 }
 
 TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
@@ -165,17 +165,17 @@ TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
   };
 
   /* off: none at all, as without rotation moves */
-  CHECK(rotationContextFor(problem, in(ROTATION_OFF)) == nullptr);
+  CHECK(rotationContextFor(makeSolverSpec(problem), in(ROTATION_OFF)) == nullptr);
 
   /* fast: the family only, its groups from the family's tables */
-  auto fast = rotationContextFor(problem, in(ROTATION_FAST));
+  auto fast = rotationContextFor(makeSolverSpec(problem), in(ROTATION_FAST));
   REQUIRE(fast != nullptr);
   CHECK_FALSE(fast->planner());
   CHECK_FALSE(fast->endPoseClosure());
   CHECK(&fast->closureTables() == &fast->tables());
 
   /* balanced: a second set of tables, the gate, at play + max(play, 0.04) */
-  auto balanced = rotationContextFor(problem, in(ROTATION_BALANCED));
+  auto balanced = rotationContextFor(makeSolverSpec(problem), in(ROTATION_BALANCED));
   REQUIRE(balanced != nullptr);
   CHECK(balanced->planner());
   CHECK_FALSE(balanced->endPoseClosure());
@@ -183,7 +183,7 @@ TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
   CHECK(balanced->closureTables().getRadius() == balanced->tables().getRadius());
 
   /* slow: no second set; its groups come from the end pose */
-  auto slow = rotationContextFor(problem, in(ROTATION_SLOW));
+  auto slow = rotationContextFor(makeSolverSpec(problem), in(ROTATION_SLOW));
   REQUIRE(slow != nullptr);
   CHECK(slow->planner());
   CHECK(slow->endPoseClosure());
@@ -192,7 +192,7 @@ TEST_CASE("each rotation mode gets the context it needs", "[rotations]") {
 
 TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotations]") {
 
-  rotationContext_c context(pelikan(), rotationSettings_t{}, std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
+  rotationContext_c context(makeSolverSpec(pelikan()), rotationSettings_t{}, std::async(std::launch::deferred, [] { return pelikanTables(); }).share());
   const rotationPairKey_t key = { 1, 2 }, other = { 1, 3 };
 
   const rotationPivotSet_t * found = nullptr;
@@ -228,16 +228,16 @@ TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rot
   REQUIRE(context != nullptr);
 
   SECTION("single disassembler") {
-    CHECK_FALSE(disassembler_0_c(problem, bttest::settings()).rotationMoves());
-    CHECK(disassembler_0_c(problem, bttest::settings(), context).rotationMoves());
+    CHECK_FALSE(disassembler_0_c(makeSolverSpec(problem), bttest::settings()).rotationMoves());
+    CHECK(disassembler_0_c(makeSolverSpec(problem), bttest::settings(), context).rotationMoves());
   }
 
   SECTION("disassembler pool") {
     auto ignore = [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {};
     for (unsigned int threads : { 1u, 2u }) {
-      disassemblerPool_c off(problem, bttest::withThreads(threads), ignore);
+      disassemblerPool_c off(makeSolverSpec(problem), bttest::withThreads(threads), ignore);
       CHECK(off.getRotationContext() == nullptr);
-      disassemblerPool_c on(problem, bttest::withThreads(threads), ignore, context);
+      disassemblerPool_c on(makeSolverSpec(problem), bttest::withThreads(threads), ignore, context);
       CHECK(on.getRotationContext() == context.get());
     }
   }

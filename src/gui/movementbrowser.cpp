@@ -37,6 +37,7 @@
 #include "../lib/movementcache.h"
 #include "../lib/voxel.h"
 #include "../lib/solution.h"
+#include "../lib/solver/solverspec.h"
 
 #include <FL/Fl_Tree_Item.H>
 #include <math.h>
@@ -293,7 +294,7 @@ void movementBrowser_c::cb_AddMovement(void) {
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  auto c = puz->getPuzzle().getGridType()->getMovementCache(*puz);
+  auto c = puz->getPuzzle().getGridType()->getMovementCache(makeSolverSpec(*puz));
 
   AddMovementDialog dlg(c.get(), s->pieces, puz);
 
@@ -369,7 +370,7 @@ void movementBrowser_c::selectSpecificMovement(unsigned int piece, int x, int y,
   nodeData_s * s = (nodeData_s *)(nd->user_data());
   if (!s) return;
 
-  movementAnalysator_c mv(*puz, settings);
+  movementAnalysator_c mv(makeSolverSpec(*puz), settings);
 
   disassemblerNode_c * newNode = mv.findMatching(s->node, s->pieces, piece, x, y, z);
 
@@ -405,7 +406,7 @@ void movementBrowser_c::cb_NodeAnalyze(unsigned int /*level*/) {
 
   std::vector<disassemblerNode_c*> res;
 
-  movementAnalysator_c mv(*puz, settings);
+  movementAnalysator_c mv(makeSolverSpec(*puz), settings);
   mv.completeFind(s->node, s->pieces, &res);
 
   for (unsigned int i = 0; i < res.size(); i++)

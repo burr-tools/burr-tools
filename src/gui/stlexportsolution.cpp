@@ -31,6 +31,7 @@
 #include "../lib/voxel.h"
 #include "../lib/bt_assert.h"
 #include "../lib/rotationtables.h"
+#include "../lib/solver/solverspec.h"
 
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/face.h"
@@ -355,7 +356,7 @@ stlExportSolution_c::stlExportSolution_c(puzzle_c * p,
   /* the pieces can't change while the modal dialog is open */
   const solution_c * sav = pr ? pr->getSavedSolution(sol) : nullptr;
   if (sav && sav->getAssembly())
-    pieceSpaces = sav->getAssembly()->createPieceSpaces(*pr);
+    pieceSpaces = sav->getAssembly()->createPieceSpaces(*makeSolverSpec(*pr));
 
   /* --- What to export (row 0) --- */
   {

@@ -23,19 +23,19 @@
 #include "disassembler_0.h"
 #include "assembly.h"
 #include "disassembly.h"
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "gridtype.h"
+#include "assembler.h"
 
 #include <chrono>
 #include <algorithm>
 
 disassemblerPool_c::disassemblerPool_c(
-  const problem_c & puz,
+  std::shared_ptr<const solverSpec_t> puz,
   const solverSettings_t & s,
   ResultCallback cb,
   std::shared_ptr<rotationContext_c> rotations
-) : puzzle(puz),
+) : puzzle(std::move(puz)),
     settings(s),
     num_threads(s.threads),
     on_result(std::move(cb)),
@@ -43,9 +43,14 @@ disassemblerPool_c::disassemblerPool_c(
 {
   // Pre-warm lazy caches on the constructor thread before any worker threads start.
   // gridType_c::getSymmetries() lazily initializes a mutable pointer without internal locks.
-  if (puzzle.getPuzzle().getGridType()) {
-    puzzle.getPuzzle().getGridType()->getSymmetries();
+  if (puzzle->getGridType()) {
+    puzzle->getGridType()->getSymmetries();
   }
+  /* The same for the shapes' lazy caches, which every worker's disassembler
+   * reads. The assembler warms the shapes of its own spec; this pool may
+   * have another (a continued search keeps the assembler of its first run). */
+  if (puzzle->resultValid())
+    assembler_c::prewarmSharedShapeCaches(*puzzle);
 
   if (!settings.disassemblerPool) {
     is_inline = true;

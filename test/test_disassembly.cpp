@@ -417,11 +417,11 @@ const separation_c & cubeInCageSeparation() {
     REQUIRE(gt != nullptr);
     REQUIRE((gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE));
 
-    std::unique_ptr<assembler_c> assm(gt->findAssembler(*problem, bttest::settings()));
+    std::unique_ptr<assembler_c> assm(gt->findAssembler(makeSolverSpec(*problem), bttest::settings()));
     REQUIRE(assm != nullptr);
     REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
-    disassembler_0_c disasm(*problem, bttest::settings());
+    disassembler_0_c disasm(makeSolverSpec(*problem), bttest::settings());
 
     struct StopAtFirstSolution : public assembler_cb {
       disassembler_0_c * disasm;
@@ -1074,7 +1074,7 @@ TEST_CASE("movement cache: the cube grid yields a movementCache_0_c -- and repea
   const gridType_c * gt = problem.getPuzzle().getGridType();
   REQUIRE(gt->getType() == gridType_c::GT_BRICKS);
 
-  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(cache != nullptr);
   REQUIRE(dynamic_cast<movementCache_0_c *>(cache.get()) != nullptr);
   REQUIRE(cache->numDirections() == 3);
@@ -1132,7 +1132,7 @@ TEST_CASE("movement cache: cube grid queries for a set of piece pairs do not dep
     { 4, 5, { 0, 0, 0 } },
   };
 
-  std::unique_ptr<movementCache_c> forwardCache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> forwardCache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(forwardCache != nullptr);
   unsigned int forward[3][3];
   for (unsigned int k = 0; k < 3; k++) {
@@ -1140,7 +1140,7 @@ TEST_CASE("movement cache: cube grid queries for a set of piece pairs do not dep
     forwardCache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, forward[k]);
   }
 
-  std::unique_ptr<movementCache_c> backwardCache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> backwardCache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(backwardCache != nullptr);
   unsigned int backward[3][3];
   for (unsigned int k = 3; k-- > 0; ) {
@@ -1177,7 +1177,7 @@ namespace {
  */
 class CountingMovementCache : public movementCache_c {
 public:
-  explicit CountingMovementCache(const problem_c & p, unsigned int dirs = 3) : movementCache_c(p), dirs(dirs) {}
+  explicit CountingMovementCache(const problem_c & p, unsigned int dirs = 3) : movementCache_c(makeSolverSpec(p)), dirs(dirs) {}
 
   unsigned int calculations = 0;
   const unsigned int dirs;
@@ -1279,7 +1279,7 @@ TEST_CASE("movement cache: the triangular-prism grid yields a movementCache_1_c 
   const gridType_c * gt = problem.getPuzzle().getGridType();
   REQUIRE(gt->getType() == gridType_c::GT_TRIANGULAR_PRISM);
 
-  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(cache != nullptr);
   REQUIRE(dynamic_cast<movementCache_1_c *>(cache.get()) != nullptr);
   REQUIRE(cache->numDirections() == 4);
@@ -1317,7 +1317,7 @@ TEST_CASE("movement cache: triangular-prism grid queries for a set of piece pair
     { 5, 7, { 0, 32000, 1, 1 } },
   };
 
-  std::unique_ptr<movementCache_c> forwardCache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> forwardCache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(forwardCache != nullptr);
   unsigned int forward[3][4];
   for (unsigned int k = 0; k < 3; k++) {
@@ -1325,7 +1325,7 @@ TEST_CASE("movement cache: triangular-prism grid queries for a set of piece pair
     forwardCache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, forward[k]);
   }
 
-  std::unique_ptr<movementCache_c> backwardCache(gt->getMovementCache(problem));
+  std::unique_ptr<movementCache_c> backwardCache(gt->getMovementCache(makeSolverSpec(problem)));
   REQUIRE(backwardCache != nullptr);
   unsigned int backward[3][4];
   for (unsigned int k = 3; k-- > 0; ) {
@@ -1353,7 +1353,7 @@ TEST_CASE("movement cache: grid types without an implementation yield no cache a
   for (gridType_c::gridType t : { gridType_c::GT_SPHERES, gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA }) {
     INFO("grid type " << t);
     gridType_c gt(t);
-    std::unique_ptr<movementCache_c> cache(gt.getMovementCache(problem));
+    std::unique_ptr<movementCache_c> cache(gt.getMovementCache(makeSolverSpec(problem)));
     CHECK(cache == nullptr);
   }
 }
@@ -1379,7 +1379,7 @@ TEST_CASE("movement analysator: stats count the move search", "[disasm][movement
       pieces.push_back(j);
   REQUIRE(pieces.size() > 1);
 
-  movementAnalysator_c analys(problem, bttest::settings());
+  movementAnalysator_c analys(makeSolverSpec(problem), bttest::settings());
 
   CHECK(analys.getStats().checkCalls == 0);
   CHECK(analys.getStats().checkSuccess == 0);
@@ -1428,7 +1428,7 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
       pieces.push_back(j);
   REQUIRE(pieces.size() > 1);
 
-  movementAnalysator_c analysA(problem, bttest::settings());
+  movementAnalysator_c analysA(makeSolverSpec(problem), bttest::settings());
   analysA.init_find(&root, pieces);
 
   disassemblerNode_c * child = nullptr;
@@ -1451,7 +1451,7 @@ TEST_CASE("movement analysator: incremental prepare matches full prepare", "[dis
   }
 
   // Now run child on fresh analysB (full path from scratch)
-  movementAnalysator_c analysB(problem, bttest::settings());
+  movementAnalysator_c analysB(makeSolverSpec(problem), bttest::settings());
   analysB.init_find(child, pieces);
   std::vector<disassemblerNode_c *> successorsB;
   while (disassemblerNode_c * n = analysB.find()) {
@@ -1506,7 +1506,7 @@ TEST_CASE("movement analysator: differential comparison with and without BURRTOO
   {
     ScopedSettings env;
     env->disassemblerVector = true;
-    movementAnalysator_c analysSimd(problem, bttest::settings());
+    movementAnalysator_c analysSimd(makeSolverSpec(problem), bttest::settings());
     analysSimd.init_find(&root, pieces);
     while (disassemblerNode_c * n = analysSimd.find()) {
       simdNodes.push_back(n);
@@ -1517,7 +1517,7 @@ TEST_CASE("movement analysator: differential comparison with and without BURRTOO
   {
     ScopedSettings env;
     env->disassemblerVector = false;
-    movementAnalysator_c analysScalar(problem, bttest::settings());
+    movementAnalysator_c analysScalar(makeSolverSpec(problem), bttest::settings());
     analysScalar.init_find(&root, pieces);
     while (disassemblerNode_c * n = analysScalar.find()) {
       scalarNodes.push_back(n);

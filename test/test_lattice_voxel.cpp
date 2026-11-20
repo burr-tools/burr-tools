@@ -223,7 +223,7 @@ TEST_CASE("described grids: converted puzzles have the assemblies of the native 
   };
 
   auto count = [](problem_c & problem) {
-    std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem, bttest::settings());
+    std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(makeSolverSpec(problem), bttest::settings());
     REQUIRE(assm);
     REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
     unsigned long n = 0;
@@ -273,12 +273,12 @@ namespace {
 
 /* assemblies and the ones that come apart, as burrTxt -d counts them */
 std::pair<unsigned long, unsigned long> solve(problem_c & problem) {
-  std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem, bttest::settings());
+  std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(makeSolverSpec(problem), bttest::settings());
   REQUIRE(assm);
   REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
   std::vector<std::unique_ptr<assembly_c>> found;
   assm->assemble([&found](std::unique_ptr<assembly_c> a) { found.push_back(std::move(a)); return true; });
-  disassembler_0_c d(problem, bttest::settings());
+  disassembler_0_c d(makeSolverSpec(problem), bttest::settings());
   unsigned long solutions = 0;
   for (const auto & a : found)
     if (d.disassemble(a.get())) solutions++;
@@ -503,7 +503,7 @@ TEST_CASE("described grids: dominoes on one layer give the region's perfect matc
     INFO(d.kinds << " kinds of pairs, " << d.matchings << " matchings");
     problem_c & problem = *d.puzzle->getProblem(0);
 
-    std::unique_ptr<assembler_c> assm = d.puzzle->getGridType()->findAssembler(problem, bttest::settings());
+    std::unique_ptr<assembler_c> assm = d.puzzle->getGridType()->findAssembler(makeSolverSpec(problem), bttest::settings());
     REQUIRE(assm);
     REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
     unsigned long n = 0;

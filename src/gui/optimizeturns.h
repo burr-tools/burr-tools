@@ -32,6 +32,7 @@
 #include <thread>
 
 class problem_c;
+struct solverSpec_t;
 class separation_c;
 class LFl_Progress;
 
@@ -67,6 +68,7 @@ class optimizeTurnsWindow_c : public LFl_Double_Window {
   private:
 
     problem_c * problem;
+    std::shared_ptr<const solverSpec_t> spec;   ///< *problem, for the worker
     const assembly_c * assembly;
     rotationSettings_t settings;
     std::unique_ptr<separation_c> copy, result;

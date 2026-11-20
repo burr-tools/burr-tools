@@ -36,7 +36,7 @@ class movementCache_lattice_c : public movementCache_c {
 
   public:
 
-    movementCache_lattice_c(const problem_c & puz, const latticeGridInfo_c & info);
+    movementCache_lattice_c(std::shared_ptr<const solverSpec_t> puz, const latticeGridInfo_c & info);
 
   private:
 

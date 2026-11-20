@@ -74,6 +74,7 @@
 #include "../lib/gridtype.h"
 #include "../lib/disasmtomoves.h"
 #include "../lib/rotationtables.h"
+#include "../lib/solver/solverspec.h"
 #include "../lib/assembly.h"
 #include "../lib/converter.h"
 #include "../lib/millable.h"
@@ -1472,7 +1473,7 @@ bool mainWindow_c::solverSettings(solverSettings_t & out) {
   return true;
 }
 
-std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(const problem_c & pr, const solverSettings_t & settings) {
+std::shared_ptr<rotationContext_c> mainWindow_c::rotationContextForGui(std::shared_ptr<const solverSpec_t> pr, const solverSettings_t & settings) {
   if (rotationMode() == ROTATION_OFF)
     return nullptr;
   /* the add-disassembly actions run here on the UI thread anyway; building
@@ -1506,7 +1507,8 @@ void mainWindow_c::cb_AddDisasm(void) {
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
+  const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(spec, settings, rotationContextForGui(spec, settings));
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
@@ -1539,7 +1541,8 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
+  const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*pr);
+  auto dis = std::make_unique<disassembler_0_c>(spec, settings, rotationContextForGui(spec, settings));
 
   auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1984,9 +1987,10 @@ void mainWindow_c::cb_AssembliesToShapes(void) {
 
     voxelTableVector_c voxelTab(&sh);
 
+    const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*pr);
     for (unsigned int s = 0; s < pr->getNumberOfSavedSolutions(); s++)
     {
-      auto shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*pr);
+      auto shape = pr->getSavedSolution(s)->getAssembly()->createSpace(*spec);
 
       if ((filter & assmImportWindow_c::dropDisconnected) && !shape->connected(0, true, voxel_c::VX_EMPTY))
         continue;

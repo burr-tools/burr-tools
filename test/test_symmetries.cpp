@@ -341,7 +341,7 @@ unsigned long countSphereAssemblies(const std::string & xml) {
   // the file gives no hotspots; as burrTxt does
   for (unsigned int i = 0; i < p.getNumberOfShapes(); i++) p.getShape(i)->initHotspot();
   problem_c & problem = *p.getProblem(0);
-  std::unique_ptr<assembler_c> assm = p.getGridType()->findAssembler(problem, settings());
+  std::unique_ptr<assembler_c> assm = p.getGridType()->findAssembler(makeSolverSpec(problem), settings());
   REQUIRE(assm);
   REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
   unsigned long n = 0;

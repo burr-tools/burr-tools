@@ -32,6 +32,7 @@
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/rotationtables.h"
+#include "lib/solver/solverspec.h"
 #include "lib/voxel.h"
 #include "lib/solution.h"
 #include "lib/converter.h"
@@ -72,7 +73,7 @@ std::unique_ptr<disassembler_c> d;
 /* with -P, the play a disassembly with turns needs; this also replaces
  * the turns' paths by those with the most room (see optimizeTurns). Slow:
  * only when the play is printed or stored (used) */
-static std::optional<turnPlay_t> measurePlay(separation_c * da, const assembly_c * a, const problem_c & problem, bool used) {
+static std::optional<turnPlay_t> measurePlay(separation_c * da, const assembly_c * a, const solverSpec_t & problem, bool used) {
   if (!reportPlay || !used || !da->sumRotations())
     return std::nullopt;
   return optimizeTurns(da, a, problem, settings.rotation);
@@ -102,7 +103,7 @@ static void printLevel(const std::string & level, const separation_c * da, const
 
 /* -w: keep the measured play with the solution, at the problem's bevel,
  * and the bevel at its play */
-static void keepPlay(solution_c * s, const std::optional<turnPlay_t> & play, const problem_c & problem) {
+static void keepPlay(solution_c * s, const std::optional<turnPlay_t> & play, const solverSpec_t & problem) {
   if (play && !play->failed) {
     const rotationGeometry::model_t model = rotationSettingsFor(problem, settings.rotation).model;
     solutionPlay_t p{ play->upper, play->lower, model.chamfer };
@@ -117,7 +118,7 @@ static void keepPlay(solution_c * s, const std::optional<turnPlay_t> & play, con
 }
 
 /* the rotation context for -R, nullptr without it: then no rotation code runs */
-static std::shared_ptr<rotationContext_c> rotationContext(const problem_c & problem) {
+static std::shared_ptr<rotationContext_c> rotationContext(std::shared_ptr<const solverSpec_t> problem) {
   if (!rotationMoves)
     return nullptr;
   auto context = rotationContextFor(problem, settings.rotation);
@@ -159,17 +160,18 @@ public:
   std::atomic<int> Solutions{0};
   int pn;
   problem_c * puzzle;
+  std::shared_ptr<const solverSpec_t> spec;
   std::unique_ptr<disassemblerPool_c> pool;
 
-  explicit asm_cb(problem_c * p) : pn(p->getNumberOfPieces()), puzzle(p) {
+  asm_cb(problem_c * p, std::shared_ptr<const solverSpec_t> s) : pn(p->getNumberOfPieces()), puzzle(p), spec(std::move(s)) {
     if (disassemble) {
       pool = std::make_unique<disassemblerPool_c>(
-        *p,
+        spec,
         settings,
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
           if (da) {
             Solutions++;
-            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *puzzle, !quiet || allProblems || writeFile);
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *spec, !quiet || allProblems || writeFile);
 
             if (printSolutions)
               print(a.get(), puzzle);
@@ -186,14 +188,14 @@ public:
               /* added, then counted, as the GUI's solve thread does */
               auto guard = puzzle->lockSolutions();
               puzzle->addSolution(a.release(), da.release());
-              keepPlay(puzzle->getSavedSolution(puzzle->getNumberOfSavedSolutions() - 1), play, *puzzle);
+              keepPlay(puzzle->getSavedSolution(puzzle->getNumberOfSavedSolutions() - 1), play, *spec);
               puzzle->incNumSolutions();
             }
           }
           if (writeFile)
             puzzle->incNumAssemblies();
         },
-        rotationContext(*p)
+        rotationContext(spec)
       );
     }
   }
@@ -551,7 +553,8 @@ int main(int argv, char* args[]) {
         problem->removeAllSolutions();
       }
 
-      auto assm = p.getGridType()->findAssembler(*problem, settings);
+      const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*problem);
+      auto assm = p.getGridType()->findAssembler(spec, settings);
 
       switch (assm->createMatrix(false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
@@ -598,7 +601,7 @@ int main(int argv, char* args[]) {
         run = problem->getAssembler();
       }
 
-      asm_cb a(problem);
+      asm_cb a(problem, spec);
 
       run->assemble(&a);
       a.finish();
@@ -622,8 +625,9 @@ int main(int argv, char* args[]) {
       if (rotationMoves && writeFile)
         storeSolveRotationModel(p, settings.rotation);
 
-      auto context = rotationContext(*problem);
-      d = std::make_unique<disassembler_0_c>(*problem, settings, context);
+      const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*problem);
+      auto context = rotationContext(spec);
+      d = std::make_unique<disassembler_0_c>(spec, settings, context);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
 
@@ -638,7 +642,7 @@ int main(int argv, char* args[]) {
             solution->setDisassembly(std::unique_ptr<separation_c>());
 
           if (da) {
-            const std::optional<turnPlay_t> play = measurePlay(da.get(), solution->getAssembly(), *problem, !quiet || writeFile);
+            const std::optional<turnPlay_t> play = measurePlay(da.get(), solution->getAssembly(), *spec, !quiet || writeFile);
 
             if (printSolutions)
               print(solution->getAssembly(), problem);
@@ -651,7 +655,7 @@ int main(int argv, char* args[]) {
 
             if (writeFile) {
               solution->setDisassembly(std::move(da));
-              keepPlay(solution, play, *problem);
+              keepPlay(solution, play, *spec);
             }
           }
         }

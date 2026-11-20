@@ -37,7 +37,7 @@
 
 class voxel_c;
 class assembly_c;
-class problem_c;
+struct solverSpec_t;
 class xmlWriter_c;
 class ThreadBudget;
 
@@ -77,7 +77,7 @@ class placementFinder_c {
 
 public:
 
-  placementFinder_c(const problem_c & problem, const voxel_c * result);
+  placementFinder_c(const solverSpec_t & problem, const voxel_c * result);
 
   /**
    * find all placements of the given rotated piece.
@@ -357,7 +357,7 @@ public:
    *
    * Call this from the master before spawning workers.
    */
-  static void prewarmSharedShapeCaches(const problem_c & problem);
+  static void prewarmSharedShapeCaches(const solverSpec_t & problem);
 
   /* upper bound on worker threads. The count arrives from -t, from
    * BURRTOOLS_THREADS and from Problem.solve(threads=...), none of which is

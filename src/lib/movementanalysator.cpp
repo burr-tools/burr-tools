@@ -22,8 +22,7 @@
 
 #include "bt_assert.h"
 #include "movementcache.h"
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "disassemblernode.h"
 #include "voxel.h"
 #include "disassemblerhashes.h"
@@ -521,20 +520,22 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem, const solverSettings_t & settings,
+movementAnalysator_c::movementAnalysator_c(std::shared_ptr<const solverSpec_t> spec, const solverSettings_t & settings,
                                            std::shared_ptr<rotationContext_c> rotationContext) :
-  cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
-  matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
-  movement(problem.getNumberOfPieces()),
-  weights(problem.getNumberOfPieces()),
-  check(problem.getNumberOfPieces(), 0),
-  piecenumber(problem.getNumberOfPieces()),
-  planar_block(problem.getNumberOfPieces() * problem.getNumberOfPieces(), 0),
+  cache(spec->getGridType()->getMovementCache(spec)),
+  matrix(cache ? cache->numDirections() * spec->getNumberOfPieces() * spec->getNumberOfPieces() : 0, 0),
+  movement(spec->getNumberOfPieces()),
+  weights(spec->getNumberOfPieces()),
+  check(spec->getNumberOfPieces(), 0),
+  piecenumber(spec->getNumberOfPieces()),
+  planar_block(spec->getNumberOfPieces() * spec->getNumberOfPieces(), 0),
   prevFill(matrix.size(), 0),
   nodes(std::make_unique<countingNodeHash>()),
   nextstate(-1),
   maxstep((unsigned int) -1),
   rotation(std::move(rotationContext)) {
+
+  const solverSpec_t & problem = *spec;
 
   /* the RFW closure kernel, fixed for the analyser's life */
   use_avx512_kernel = settings.disassemblerVector && settings.avx512();
@@ -555,7 +556,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem, const solv
   }
 
   if (rotation) {
-    rotationProblem = &problem;
+    rotationProblem = spec;
     for (unsigned int i = 0; i < problem.getNumberOfParts(); i++) {
       partVoxels.push_back(problem.getPartShape(i));
       for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
@@ -563,7 +564,7 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem, const solv
     }
     /* sized for every orientation up front: callers hold references to
      * entries of several orientations at once, a later resize would move them */
-    const unsigned int orientations = problem.getPuzzle().getGridType()->getSymmetries()->getNumTransformationsMirror();
+    const unsigned int orientations = problem.getGridType()->getSymmetries()->getNumTransformationsMirror();
     hotspotCells.assign(partVoxels.size(), std::vector<std::vector<rotationGeometry::cell_t>>(orientations));
     planeCellCache.assign(partVoxels.size(), std::vector<planeCells_t>(3 * orientations));
   }
@@ -1028,7 +1029,7 @@ movementAnalysator_c::cellsAroundHotspot(unsigned int part, unsigned int trans) 
   /* a piece has at least one cube, so empty means not computed yet */
   std::vector<rotationGeometry::cell_t> & cells = byTrans[trans];
   if (cells.empty()) {
-    std::unique_ptr<voxel_c> v(rotationProblem->getPuzzle().getGridType()->getVoxel(*partVoxels[part]));
+    std::unique_ptr<voxel_c> v(rotationProblem->getGridType()->getVoxel(*partVoxels[part]));
     bt_assert2(v->transform(trans));
     for (unsigned int z = 0; z < v->getZ(); z++)
       for (unsigned int y = 0; y < v->getY(); y++)
@@ -1302,7 +1303,7 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
 void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, unsigned int sense,
                                            int pu, int pv, int path, bool inverse) {
 
-  const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
+  const symmetries_c * sym = rotationProblem->getGridType()->getSymmetries();
   const unsigned int pn = pieces->size();
   int hx, hy, hz;
   rotationGeometry::pivotOf(axis, pu, pv, &hx, &hy, &hz);

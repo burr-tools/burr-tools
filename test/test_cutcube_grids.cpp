@@ -19,6 +19,7 @@
 #include "lib/solution.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
+#include "lib/solver/solverspec.h"
 #include "tools/xml.h"
 
 #include <algorithm>
@@ -215,8 +216,8 @@ TEST_CASE("cut cube grids: examples load onto NG's grids, their saved assemblies
         for (unsigned int i = 0; i < an.placementCount(); i++)
           CHECK(ag.isPlaced(i) == an.isPlaced(i));
 
-        const auto sn = an.createPieceSpaces(pn);
-        const auto sg = ag.createPieceSpaces(pg);
+        const auto sn = an.createPieceSpaces(*makeSolverSpec(pn));
+        const auto sg = ag.createPieceSpaces(*makeSolverSpec(pg));
         REQUIRE(sg.size() == sn.size());
         std::set<cell_t> all;
         for (size_t i = 0; i < sn.size(); i++) {

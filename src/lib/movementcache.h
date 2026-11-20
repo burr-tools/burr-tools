@@ -22,10 +22,11 @@
 #define __MOVEMENTCACHE_H__
 
 #include <array>
+#include <memory>
 #include <vector>
 
 class voxel_c;
-class problem_c;
+struct solverSpec_t;
 class gridType_c;
 
 /**
@@ -117,6 +118,9 @@ class movementCache_c {
   /// the gridtype used. We need this to make copies and transformations of the shapes
   const gridType_c * gt;
 
+  /// the problem; the untransformed shapes above point into it
+  std::shared_ptr<const solverSpec_t> spec;
+
   /// get the transformed shape from the shapes array, calculating missing ones
   const voxel_c * getTransformedShape(unsigned int s, unsigned char t);
 
@@ -125,7 +129,7 @@ public:
   /** create the cache. The cache is then fixed to the puzzle and the problem, it can
    * and should be reused to analyse all assemblies found but can not be used for another puzzle
    */
-  movementCache_c(const problem_c & puz);
+  movementCache_c(std::shared_ptr<const solverSpec_t> puz);
 
   virtual ~movementCache_c(void);
 

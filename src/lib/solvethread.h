@@ -34,6 +34,7 @@
 #include <thread>
 
 class problem_c;
+struct solverSpec_t;
 
 /* this class will handle the solving of one problem of the puzzle, it can also
  * be used to continue an already started solution, so that you can save you results
@@ -152,6 +153,9 @@ class solveThread_c : public assembler_cb {
   private:
 
     problem_c & puzzle;
+    /* the problem as the solver sees it, built when the thread is made;
+     * a new assembler and the disassembly pool share it */
+    std::shared_ptr<const solverSpec_t> spec;
     int parameters;
     /* threads, engines and toggles of the assembler and the disassembly
      * pool, rotation settings for PAR_ROTATION_MOVES */

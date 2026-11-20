@@ -114,7 +114,7 @@ TEST_CASE("assembler: pieces holding more cells than the result is rejected as t
   /* a four-cell result and pieces totalling five */
   Fixture f = bars(4, {3, 2});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_TOO_MANY_UNITS);
 
@@ -129,7 +129,7 @@ TEST_CASE("assembler: pieces holding fewer cells than the result is rejected as 
   /* a six-cell result and pieces totalling four */
   Fixture f = bars(6, {3, 1});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_TOO_FEW_UNITS);
   REQUIRE(assm.getErrorsParam() == 2);
@@ -150,7 +150,7 @@ TEST_CASE("assembler: variable cells in the result absorb a shortfall rather tha
   res->setState(4, 0, 0, voxel_c::VX_VARIABLE);
   res->setState(5, 0, 0, voxel_c::VX_VARIABLE);
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 }
@@ -187,7 +187,7 @@ TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before
   problem->setShapeMinimum(single, 1);
   problem->setShapeMaximum(single, 1);
 
-  assembler_1_c assm(*problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*problem), bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_CAN_NOT_PLACE);
 
@@ -209,7 +209,7 @@ TEST_CASE("assembler: a well-formed problem passes createMatrix", "[assembler][c
      everything. */
   Fixture f = bars(5, {3, 2});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
 
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 }
@@ -231,7 +231,7 @@ TEST_CASE("assembler: findAssembler picks assembler_1 for every problem",
   h.problem->setShapeMaximum(0, 2);
 
   for (Fixture * x : {&f, &g, &h}) {
-    std::unique_ptr<assembler_c> a = x->puzzle->getGridType()->findAssembler(*x->problem, bttest::settings());
+    std::unique_ptr<assembler_c> a = x->puzzle->getGridType()->findAssembler(makeSolverSpec(*x->problem), bttest::settings());
     REQUIRE(a != nullptr);
     REQUIRE(std::string(assemblerKind(a.get())) == "assembler_1");
     REQUIRE(a->createMatrix(false, false) == assembler_c::ERR_NONE);
@@ -292,7 +292,7 @@ TEST_CASE("assembler: a one-dimensional puzzle yields the assemblies its geometr
      draft of this case asserted two and was wrong about why. */
   Fixture f = bars(6, {2, 4});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -314,7 +314,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
 
   int total = 0;
   {
-    assembler_1_c assm(*f.problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     CountingCallback cb;
@@ -324,7 +324,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
 
   REQUIRE(total > 1);
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -338,7 +338,7 @@ TEST_CASE("assembler: stopped() reports idleness -- and stop() before a run is c
           "[assembler][config]") {
   Fixture f = bars(6, {1, 2, 3});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   /* Two things here read the wrong way round from their names, and both
@@ -373,7 +373,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
 
   int total = 0;
   {
-    assembler_1_c assm(*f.problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
@@ -396,7 +396,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
     }
   };
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   StoppingCallback cb;
@@ -413,7 +413,7 @@ TEST_CASE("assembler: getFinished reports completion between zero and one",
           "[assembler][config]") {
   Fixture f = bars(6, {1, 2, 3});
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   REQUIRE(assm.getFinished() >= 0.0f);
@@ -445,7 +445,7 @@ TEST_CASE("assembler: a range lets assembler_1 use a different number of pieces"
   problem->setShapeMinimum(piece, 1);
   problem->setShapeMaximum(piece, 3);
 
-  assembler_1_c assm(*problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -464,7 +464,7 @@ TEST_CASE("assembler: the hole limit changes nothing when the result is filled e
 
   int withoutLimit = 0;
   {
-    assembler_1_c assm(*f.problem, bttest::settings());
+    assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
     REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
@@ -476,7 +476,7 @@ TEST_CASE("assembler: the hole limit changes nothing when the result is filled e
   f.problem->setMaxHoles(0);
   REQUIRE(f.problem->getMaxHoles() == 0);
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -526,7 +526,7 @@ int assembliesUnderHoleLimit(int maxHoles) {
   Fixture f = rangedWithVariableResult();
   if (maxHoles >= 0) f.problem->setMaxHoles(maxHoles);
 
-  assembler_1_c assm(*f.problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(*f.problem), bttest::settings());
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
@@ -596,7 +596,7 @@ SolveCheck resolve(const char * path, unsigned int problemIdx) {
   const gridType_c * gt = problem->getPuzzle().getGridType();
   REQUIRE(gt != nullptr);
 
-  std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem, bttest::settings());
+  std::unique_ptr<assembler_c> assm = gt->findAssembler(makeSolverSpec(*problem), bttest::settings());
   REQUIRE(assm != nullptr);
   REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
@@ -675,7 +675,7 @@ TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
     problem_c * problem = p->getProblem(0);
     REQUIRE(problem != nullptr);
 
-    std::unique_ptr<assembler_c> assm = p->getGridType()->findAssembler(*problem, bttest::settings());
+    std::unique_ptr<assembler_c> assm = p->getGridType()->findAssembler(makeSolverSpec(*problem), bttest::settings());
     REQUIRE(assm != nullptr);
     REQUIRE(assm->createMatrix(keepRotations, false) == assembler_c::ERR_NONE);
 

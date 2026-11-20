@@ -53,9 +53,9 @@ private:
 
 public:
 
-  disassembler_0_c(const problem_c & puz, const solverSettings_t & settings,
+  disassembler_0_c(std::shared_ptr<const solverSpec_t> puz, const solverSettings_t & settings,
                    std::shared_ptr<rotationContext_c> rotationContext = nullptr) :
-    disassembler_a_c(puz, settings, std::move(rotationContext)) { }
+    disassembler_a_c(std::move(puz), settings, std::move(rotationContext)) { }
   ~disassembler_0_c() { }
 
 private:

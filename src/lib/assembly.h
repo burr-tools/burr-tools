@@ -30,7 +30,7 @@
 // this value is used for transformation to specify unplaced pieces
 #define UNPLACED_TRANS 0xff
 
-class problem_c;
+struct solverSpec_t;
 class voxel_c;
 class xmlWriter_c;
 class xmlParser_c;
@@ -185,7 +185,7 @@ private:
    * returns true, if all shapes are at least the minimum required times
    * inside the assembly
    */
-  bool validSolution(const problem_c & puz) const;
+  bool validSolution(const solverSpec_t & puz) const;
 
   /* a placed piece, transformed into its orientation in the assembly, and
    * where its voxel space sits in the space of the whole assembly */
@@ -201,7 +201,7 @@ private:
     int sizeX = 1, sizeY = 1, sizeZ = 1;
   };
 
-  placedPieces_c placedPieces(const problem_c & puz) const;
+  placedPieces_c placedPieces(const solverSpec_t & puz) const;
 
 public:
 
@@ -291,13 +291,13 @@ public:
    * maybe some pieces have already been replaced while other are still in their
    * initial position, so you have to throw away the assembly when that happens
    */
-  bool transform(unsigned char trans, const problem_c & puz, const mirrorInfo_c * mir);
+  bool transform(unsigned char trans, const solverSpec_t & puz, const mirrorInfo_c * mir);
 
   /**
    * return true, if this is a non-normal assembly.
    * This is used to drop rotated assemblies
    */
-  bool smallerRotationExists(const problem_c & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const;
+  bool smallerRotationExists(const solverSpec_t & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const;
 
   /**
    * exchange 2 shapes.
@@ -317,12 +317,12 @@ public:
    * sort the pieces within the assembly so that multipieces are ordered by
    * ascending placement order.
    */
-  void sort(const problem_c & puz);
+  void sort(const solverSpec_t & puz);
 
   /** calculate a voxelspace that is identical to the assembly with
    * all pieces put into the space
    */
-  std::unique_ptr<voxel_c> createSpace(const problem_c & puz) const;
+  std::unique_ptr<voxel_c> createSpace(const solverSpec_t & puz) const;
 
   /** calculate one voxelspace per placed piece of the assembly. All
    * spaces have the size of the whole assembly, so the pieces keep their
@@ -331,7 +331,7 @@ public:
    * with each piece meshed on its own (e.g. STL export, where each piece
    * gets its own offset and bevel)
    */
-  std::vector<std::unique_ptr<voxel_c>> createPieceSpaces(const problem_c & puz) const;
+  std::vector<std::unique_ptr<voxel_c>> createPieceSpaces(const solverSpec_t & puz) const;
 
   void removePieces(unsigned int from, unsigned int cnt);
 

@@ -34,7 +34,7 @@
 #include <thread>
 #include <stop_token>
 
-class problem_c;
+struct solverSpec_t;
 class gridType_c;
 class mirrorInfo_c;
 class ISimdHuangCover;
@@ -55,7 +55,9 @@ class assembler_1_c : public assembler_c {
 
 protected:
 
-  const problem_c & problem;
+  /** the problem; `problem` is *spec, which the assembler keeps alive */
+  std::shared_ptr<const solverSpec_t> spec;
+  const solverSpec_t & problem;
 
 private:
 
@@ -286,7 +288,7 @@ protected:
 
 public:
 
-  assembler_1_c(const problem_c & problem, const solverSettings_t & settings);
+  assembler_1_c(std::shared_ptr<const solverSpec_t> spec, const solverSettings_t & settings);
   ~assembler_1_c(void);
 
   /* functions that are overloaded from assembler_c, for comments see there */
@@ -305,7 +307,7 @@ public:
   void reduce(void) override;
   unsigned int getReducePiece(void) const override { return reducePiece; }
 
-  static bool canHandle(const problem_c & p);
+  static bool canHandle(const solverSpec_t & p);
 
   /* some more special information to find out possible piece placements */
   bool getPiecePlacementSupported(void) const override { return true; }

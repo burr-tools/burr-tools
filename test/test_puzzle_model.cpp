@@ -1204,7 +1204,7 @@ TEST_CASE("assembly: transform matches the grid's own rotation matrix and hotspo
    * re-normalisation step leaves the transformation at 0 and the position
    * untouched. sort() then places the two pieces of the one part in
    * ascending x, which is already the order the raw numbers came out in. */
-  REQUIRE(a.transform(10, *f.problem, nullptr));
+  REQUIRE(a.transform(10, *makeSolverSpec(*f.problem), nullptr));
 
   REQUIRE(a.getTransformation(0) == 0);
   REQUIRE(a.getX(0) == 0);
@@ -1234,7 +1234,7 @@ bool aSmallerRotationExists(const assembly_c & a, const problem_c & problem,
       continue;
 
     assembly_c tmp(&a);
-    if (!tmp.transform(t, problem, nullptr))
+    if (!tmp.transform(t, *makeSolverSpec(problem), nullptr))
       continue;
 
     if (isLexSmaller(tmp, a, 0))
@@ -1270,7 +1270,7 @@ TEST_CASE("assembly: smallerRotationExists is false when the pivot-first order a
   // assembly back to itself, so no candidate comes out smaller
   REQUIRE_FALSE(expected);
 
-  REQUIRE_FALSE(a.smallerRotationExists(*f.problem, 0, nullptr, false));
+  REQUIRE_FALSE(a.smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, false));
 }
 
 TEST_CASE("assembly: smallerRotationExists is true when the domino's cell swap maps the assembly to a smaller one",
@@ -1290,7 +1290,7 @@ TEST_CASE("assembly: smallerRotationExists is true when the domino's cell swap m
   // at the pivot placement -- so a real smaller rotation does exist here
   REQUIRE(expected);
 
-  REQUIRE(a.smallerRotationExists(*f.problem, 0, nullptr, false));
+  REQUIRE(a.smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, false));
 }
 
 TEST_CASE("assembly: sort orders the placements of each part by ascending placement -- leaving other parts alone",
@@ -1311,7 +1311,7 @@ TEST_CASE("assembly: sort orders the placements of each part by ascending placem
   // sort could not pass the check below by accident
   REQUIRE_FALSE((a.getX(0) < a.getX(1) && a.getX(1) < a.getX(2)));
 
-  a.sort(*pr);
+  a.sort(*makeSolverSpec(*pr));
 
   REQUIRE(a.getX(0) == 1);
   REQUIRE(a.getX(1) == 3);
@@ -1386,7 +1386,7 @@ TEST_CASE("assembly: createSpace assembles a voxel space matching the problem's 
   problem_c & pr = pelikanProblem();
   const assembly_c * assm = pr.getSavedSolution(0)->getAssembly();
 
-  std::unique_ptr<voxel_c> assembled = assm->createSpace(pr);
+  std::unique_ptr<voxel_c> assembled = assm->createSpace(*makeSolverSpec(pr));
   const voxel_c * result = getResultShape(pr);
 
   REQUIRE(assembled->getX() == result->getX());
@@ -1433,8 +1433,8 @@ TEST_CASE("assembly: createPieceSpaces gives each placed piece its own space, to
       if (!assm) continue;
       INFO(entry.path().filename().string() << " problem " << p);
 
-      std::unique_ptr<voxel_c> whole = assm->createSpace(pr);
-      std::vector<std::unique_ptr<voxel_c>> pieces = assm->createPieceSpaces(pr);
+      std::unique_ptr<voxel_c> whole = assm->createSpace(*makeSolverSpec(pr));
+      std::vector<std::unique_ptr<voxel_c>> pieces = assm->createPieceSpaces(*makeSolverSpec(pr));
 
       unsigned int placed = 0;
       for (unsigned int i = 0; i < assm->placementCount(); i++)
@@ -1698,12 +1698,12 @@ TEST_CASE("assembly: only the complete smallerRotationExists search finds a tran
 
     assembly_c tmp(a.get());
     INFO("self-symmetry transformation " << t);
-    REQUIRE(tmp.transform(t, *f.problem, nullptr));
+    REQUIRE(tmp.transform(t, *makeSolverSpec(*f.problem), nullptr));
     REQUIRE(tmp.getX(0) == 1);
     REQUIRE(tmp.getX(1) == 2);
   }
 
-  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 0, nullptr, false));
+  REQUIRE_FALSE(a->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, false));
 
   /* The complete branch does translate: it builds the assembly's own voxel
      space and slides it over every position where it still fits the result.
@@ -1711,7 +1711,7 @@ TEST_CASE("assembly: only the complete smallerRotationExists search finds a tran
      the very first placement -- so the answer flips. This is the only thing
      that separates the two branches, and it is exactly the shifting search
      `complete` exists to run. */
-  REQUIRE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE(a->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 }
 
 TEST_CASE("assembly: the complete search reports nothing smaller for an assembly already pushed "
@@ -1724,11 +1724,11 @@ TEST_CASE("assembly: the complete search reports nothing smaller for an assembly
      bar does either */
   std::unique_ptr<assembly_c> a = barAssembly(gt, 0, 1);
 
-  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE_FALSE(a->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 
   /* the paired positive case, so this is not merely "the function says no" */
   std::unique_ptr<assembly_c> b = barAssembly(gt, 2, 3);
-  REQUIRE(b->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE(b->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 }
 
 TEST_CASE("assembly: the complete search only accepts a position where the assembly fills the "
@@ -1746,14 +1746,14 @@ TEST_CASE("assembly: the complete search only accepts a position where the assem
      clashes at every offset and no candidate is ever accepted -- the answer
      is false no matter where the pair sits. */
   std::unique_ptr<assembly_c> spread = barAssembly(gt, 0, 2);
-  REQUIRE_FALSE(spread->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE_FALSE(spread->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 
   /* the same spread pair moved right, where a translation to a strictly
      smaller position plainly exists on the geometry alone -- still false,
      which is what shows the rejection comes from the hole rather than from
      the pair already being as far left as it goes */
   std::unique_ptr<assembly_c> spreadRight = barAssembly(gt, 1, 3);
-  REQUIRE_FALSE(spreadRight->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE_FALSE(spreadRight->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 
   /* The control, and the reason the two falses above mean something: the
      same two pieces made contiguous, with exactly the same leftward slack
@@ -1761,7 +1761,7 @@ TEST_CASE("assembly: the complete search only accepts a position where the assem
      between this and the case above is the interior hole and nothing
      else. */
   std::unique_ptr<assembly_c> contiguous = barAssembly(gt, 1, 2);
-  REQUIRE(contiguous->smallerRotationExists(*f.problem, 0, nullptr, true));
+  REQUIRE(contiguous->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
 }
 
 TEST_CASE("assembly: the pivot decides the comparison -- the same assembly answers differently "
@@ -1785,6 +1785,6 @@ TEST_CASE("assembly: the pivot decides the comparison -- the same assembly answe
      argument entirely would have to give the same answer twice. */
   std::unique_ptr<assembly_c> a = barAssembly(gt, 1, 0);
 
-  REQUIRE(a->smallerRotationExists(*f.problem, 0, nullptr, true));
-  REQUIRE_FALSE(a->smallerRotationExists(*f.problem, 1, nullptr, true));
+  REQUIRE(a->smallerRotationExists(*makeSolverSpec(*f.problem), 0, nullptr, true));
+  REQUIRE_FALSE(a->smallerRotationExists(*makeSolverSpec(*f.problem), 1, nullptr, true));
 }

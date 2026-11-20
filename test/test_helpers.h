@@ -5,6 +5,7 @@
 #include "lib/solver_config.h"
 #include "lib/problem.h"
 #include "lib/puzzle.h"
+#include "lib/solver/solverspec.h"
 #include "lib/symmetries.h"
 #include "lib/voxel.h"
 #include "lib/latticegridinfo.h"

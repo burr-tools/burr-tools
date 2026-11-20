@@ -42,6 +42,7 @@ class gridType_c;
 class problem_c;
 class xmlWriter_c;
 class xmlParser_c;
+struct rotationSettings_t;   // rotationtables.h
 
 /**
  * This class defines the puzzle.
@@ -294,5 +295,20 @@ public:
   puzzle_c& operator=(const puzzle_c&) = delete;
 
 };
+
+/** The model a problem's rotation moves are checked for: its puzzle's, else
+ *  the default (rotationSettings_t::model). */
+rotationGeometry::model_t rotationModelOf(const problem_c & problem);
+
+/** The pieces of a puzzle: its model, else the default. The same for every
+ *  shape and problem; the 3D views' STL style draws only a stored one
+ *  (puzzle_c::getRotationModel), so a puzzle without keeps their own look. */
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle);
+
+/** A solve that turns pieces stores the model it checks them for when the
+ *  puzzle has none, so that a saved file says which pieces its
+ *  disassemblies are for. The front ends call it before such a solve,
+ *  before building its solverSpec_t (the solver only reads the model). */
+void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings);
 
 #endif

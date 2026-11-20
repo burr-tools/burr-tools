@@ -9,6 +9,7 @@
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
 #include "lib/rotationtables.h"
+#include "lib/solver/solverspec.h"
 #include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
@@ -155,7 +156,8 @@ void SolutionIterator::worker_run(std::stop_token st) {
     config.rotation.mode = rotation_mode;
     const solverSettings_t settings = config.resolve();
 
-    assm = gt->findAssembler(*problem, settings);
+    const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*problem);
+    assm = gt->findAssembler(spec, settings);
     if (!assm) {
       push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"}, st);
       return;
@@ -195,8 +197,8 @@ void SolutionIterator::worker_run(std::stop_token st) {
       // sharedRotationTables), so solving designs of one size in sequence
       // builds them once.
       // ROTATION_OFF gives no context
-      std::shared_ptr<rotationContext_c> rotation = rotationContextFor(*problem, settings.rotation);
-      disasm = std::make_unique<disassembler_0_c>(*problem, settings, std::move(rotation));
+      std::shared_ptr<rotationContext_c> rotation = rotationContextFor(spec, settings.rotation);
+      disasm = std::make_unique<disassembler_0_c>(spec, settings, std::move(rotation));
     }
 
     unsigned int asm_count{0};

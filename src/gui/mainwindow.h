@@ -30,6 +30,7 @@
 #include <memory>
 
 class rotationContext_c;
+struct solverSpec_t;
 #include <string>
 
 class VoxelEditGroup_c;
@@ -178,7 +179,7 @@ class mainWindow_c : public LFl_Double_Window {
 
   /* the rotation context for disassembling the given problem right here
    * with the mode RotationMoves chooses, nullptr when it is off */
-  std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr, const solverSettings_t & settings);
+  std::shared_ptr<rotationContext_c> rotationContextForGui(std::shared_ptr<const solverSpec_t> pr, const solverSettings_t & settings);
 
   FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;

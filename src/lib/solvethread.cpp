@@ -23,6 +23,7 @@
 #include "disassembly.h"
 #include "problem.h"
 #include "puzzle.h"
+#include "solver/solverspec.h"
 #include "assembly.h"
 #include "disassembler_0.h"
 #include "progressmodel.h"
@@ -88,7 +89,7 @@ void solveThread_c::run(void){
       /* otherwise we have to create a new one
        */
       action = solveThread_c::ACT_PREPARATION;
-      std::unique_ptr<assembler_c> new_assm = puzzle.getPuzzle().getGridType()->findAssembler(puzzle, settings);
+      std::unique_ptr<assembler_c> new_assm = gridType_c::findAssembler(spec, settings);
       a = new_assm.get();
       assm.store(a, std::memory_order_release);
 
@@ -247,6 +248,7 @@ void solveThread_c::run(void){
 solveThread_c::solveThread_c(problem_c & puz, int par, const solverSettings_t & s) :
 action(ACT_PREPARATION),
 puzzle(puz),
+spec(makeSolverSpec(puz)),
 parameters(par),
 settings(s),
 sortMethod(SRT_COMPLETE_MOVES),
@@ -272,10 +274,10 @@ assm(0)
      * context and the disassemblers skip rotation moves entirely. */
     std::shared_ptr<rotationContext_c> rotationContext;
     if (par & PAR_ROTATION_MOVES)
-      rotationContext = rotationContextFor(puz, settings.rotation, true);
+      rotationContext = rotationContextFor(spec, settings.rotation, true);
 
     disasm_pool = std::make_unique<disassemblerPool_c>(
-      puz,
+      spec,
       settings,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         onDisassemblyResult(seqNo, std::move(a), std::move(s));

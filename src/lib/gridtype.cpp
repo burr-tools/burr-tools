@@ -37,7 +37,7 @@
 #include "symmetries_2.h"
 #include "stl_0.h"
 #include "stl_2.h"
-#include "problem.h"
+#include "solver/solverspec.h"
 
 #include "../tools/xml.h"
 
@@ -123,7 +123,7 @@ gridType_c::gridType_c(gridType gt) {
 
 gridType_c::~gridType_c(void) = default;
 
-std::unique_ptr<movementCache_c> gridType_c::getMovementCache(const problem_c & puz) const
+std::unique_ptr<movementCache_c> gridType_c::getMovementCache(std::shared_ptr<const solverSpec_t> puz) const
 {
   switch (type) {
     case GT_BRICKS:           return std::make_unique<movementCache_0_c>(puz);
@@ -250,11 +250,11 @@ unsigned int gridType_c::getCapabilities(void) const
   }
 }
 
-std::unique_ptr<assembler_c> gridType_c::findAssembler(const problem_c & p, const solverSettings_t & settings)
+std::unique_ptr<assembler_c> gridType_c::findAssembler(std::shared_ptr<const solverSpec_t> p, const solverSettings_t & settings)
 {
-  if (assembler_1_c::canHandle(p)) {
+  if (assembler_1_c::canHandle(*p)) {
     fprintf(stderr, "using assembler 1\n");
-    return std::make_unique<assembler_1_c>(p, settings);
+    return std::make_unique<assembler_1_c>(std::move(p), settings);
   }
 
   return nullptr;

@@ -23,7 +23,7 @@
 
 class assembly_c;
 class separation_c;
-class problem_c;
+struct solverSpec_t;
 class disassembler_0_c;
 class ThreadBudget;
 
@@ -63,7 +63,7 @@ public:
    *  rotationContext: rotation moves are considered iff given; every
    *  worker's disassembler shares it. */
   disassemblerPool_c(
-    const problem_c & puzzle,
+    std::shared_ptr<const solverSpec_t> puzzle,
     const solverSettings_t & settings,
     ResultCallback on_result,
     std::shared_ptr<rotationContext_c> rotationContext = nullptr
@@ -141,7 +141,7 @@ private:
     std::unique_ptr<separation_c> separation;
   };
 
-  const problem_c & puzzle;
+  std::shared_ptr<const solverSpec_t> puzzle;
   const solverSettings_t settings;
   unsigned int num_threads;
   ResultCallback on_result;

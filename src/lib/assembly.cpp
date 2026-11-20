@@ -20,8 +20,7 @@
  */
 #include "assembly.h"
 
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "bt_assert.h"
 #include "voxel.h"
 
@@ -175,7 +174,7 @@ void assembly_c::save(xmlWriter_c & xml) const
   xml.endTag("assembly");
 }
 
-void assembly_c::sort(const problem_c & puz) {
+void assembly_c::sort(const solverSpec_t & puz) {
 
   int p = 0;
 
@@ -217,7 +216,7 @@ void assembly_c::sort(const problem_c & puz) {
   }
 }
 
-bool assembly_c::transform(unsigned char trans, const problem_c & puz, const mirrorInfo_c * mir) {
+bool assembly_c::transform(unsigned char trans, const solverSpec_t & puz, const mirrorInfo_c * mir) {
 
   if (trans == 0) return true;
 
@@ -607,7 +606,7 @@ bool assembly_c::containsMirroredPieces(void) const {
   return false;
 }
 
-bool assembly_c::validSolution(const problem_c & puz) const {
+bool assembly_c::validSolution(const solverSpec_t & puz) const {
 
   unsigned int pos = 0;
 
@@ -627,7 +626,7 @@ bool assembly_c::validSolution(const problem_c & puz) const {
   return true;
 }
 
-bool assembly_c::smallerRotationExists(const problem_c & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const {
+bool assembly_c::smallerRotationExists(const solverSpec_t & puz, unsigned int pivot, const mirrorInfo_c * mir, bool complete) const {
 
   /* we only need to check for mirrored transformations, if mirrorInfo is given
    * if not we assume that the piece set contains at least one piece that has no
@@ -788,7 +787,7 @@ int assembly_c::comparePieces(const assembly_c * b) const {
   return 0;
 }
 
-assembly_c::placedPieces_c assembly_c::placedPieces(const problem_c & puz) const {
+assembly_c::placedPieces_c assembly_c::placedPieces(const solverSpec_t & puz) const {
 
   placedPieces_c res;
 
@@ -799,7 +798,7 @@ assembly_c::placedPieces_c assembly_c::placedPieces(const problem_c & puz) const
 
       unsigned int j = puz.getPartIdToPieceId(i);
 
-      std::unique_ptr<voxel_c> pc(puz.getPuzzle().getGridType()->getVoxel(puz.getPartShape(j)));
+      std::unique_ptr<voxel_c> pc(puz.getGridType()->getVoxel(puz.getPartShape(j)));
 
       // transform() mutates pc: never hide the call inside bt_assert, or
       // NDEBUG builds silently assemble untransformed pieces (wrong space).
@@ -830,12 +829,12 @@ static void placeInto(voxel_c & space, const voxel_c & pc, int dx, int dy, int d
       }
 }
 
-std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
+std::unique_ptr<voxel_c> assembly_c::createSpace(const solverSpec_t & puz) const {
 
   placedPieces_c placed = placedPieces(puz);
 
   // create a shape identical in size with the result shape of the problem
-  std::unique_ptr<voxel_c> res(puz.getPuzzle().getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
+  std::unique_ptr<voxel_c> res(puz.getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
   res->skipRecalcBoundingBox(true);
 
   // now iterate over all shapes in the assembly and place them into the result
@@ -847,7 +846,7 @@ std::unique_ptr<voxel_c> assembly_c::createSpace(const problem_c & puz) const {
   return res;
 }
 
-std::vector<std::unique_ptr<voxel_c>> assembly_c::createPieceSpaces(const problem_c & puz) const {
+std::vector<std::unique_ptr<voxel_c>> assembly_c::createPieceSpaces(const solverSpec_t & puz) const {
 
   placedPieces_c placed = placedPieces(puz);
 
@@ -856,7 +855,7 @@ std::vector<std::unique_ptr<voxel_c>> assembly_c::createPieceSpaces(const proble
   // each piece into its own space of the size of the whole assembly
   for (const placedPiece_c & p : placed.pieces) {
 
-    std::unique_ptr<voxel_c> space(puz.getPuzzle().getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
+    std::unique_ptr<voxel_c> space(puz.getGridType()->getVoxel(placed.sizeX, placed.sizeY, placed.sizeZ, 0));
     space->skipRecalcBoundingBox(true);
 
     placeInto(*space, *p.shape, p.dx, p.dy, p.dz);

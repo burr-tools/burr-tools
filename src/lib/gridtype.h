@@ -32,7 +32,7 @@
 class assembler_c;
 class symmetries_c;
 class voxel_c;
-class problem_c;
+struct solverSpec_t;
 class stlExporter_c;
 class movementCache_c;
 class xmlWriter_c;
@@ -140,7 +140,7 @@ class gridType_c {
     unsigned int getCapabilities(void) const;
 
     /// return a movement cache instance for this grid type
-    std::unique_ptr<movementCache_c> getMovementCache(const problem_c & puz) const;
+    std::unique_ptr<movementCache_c> getMovementCache(std::shared_ptr<const solverSpec_t> puz) const;
 
     /// create a new voxel space of this grid type with the given dimensions
     voxel_c * getVoxel(unsigned int x, unsigned int y, unsigned int z, voxel_type init) const;
@@ -171,7 +171,7 @@ class gridType_c {
      * because we are not dependent on the gridtype this function is static
      * but it needs to know the puzzle
      */
-    static std::unique_ptr<assembler_c> findAssembler(const problem_c & p, const solverSettings_t & settings);
+    static std::unique_ptr<assembler_c> findAssembler(std::shared_ptr<const solverSpec_t> p, const solverSettings_t & settings);
 
   public:
 

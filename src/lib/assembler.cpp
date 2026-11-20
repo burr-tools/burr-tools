@@ -20,8 +20,7 @@
  */
 #include "assembler.h"
 
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "voxel.h"
 #include "symmetries.h"
 #include "gridtype.h"
@@ -33,10 +32,10 @@
 #include <cstdlib>
 #include <thread>
 
-placementFinder_c::placementFinder_c(const problem_c & problem, const voxel_c * result) :
+placementFinder_c::placementFinder_c(const solverSpec_t & problem, const voxel_c * result) :
   res(result)
 {
-  colorTableWidth = problem.getPuzzle().colorNumber() + 1;
+  colorTableWidth = problem.colorNumber() + 1;
 
   if (colorTableWidth > 1) {
     colorAllowed.resize(colorTableWidth * colorTableWidth);
@@ -251,9 +250,9 @@ void assembler_c::assemble(std::function<bool(std::unique_ptr<assembly_c>)> call
   assemble(&adapter);
 }
 
-void assembler_c::prewarmSharedShapeCaches(const problem_c & problem) {
+void assembler_c::prewarmSharedShapeCaches(const solverSpec_t & problem) {
 
-  const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
+  const symmetries_c * sym = problem.getGridType()->getSymmetries();
   const unsigned int numTrans = sym ? sym->getNumTransformationsMirror() : 0;
 
   auto warm = [numTrans](const voxel_c * v) {

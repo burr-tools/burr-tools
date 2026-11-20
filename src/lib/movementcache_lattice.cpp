@@ -24,8 +24,8 @@
 #include "voxel.h"
 #include "bt_assert.h"
 
-movementCache_lattice_c::movementCache_lattice_c(const problem_c & puz, const latticeGridInfo_c & info)
-  : movementCache_c(puz), inf(info) {
+movementCache_lattice_c::movementCache_lattice_c(std::shared_ptr<const solverSpec_t> puz, const latticeGridInfo_c & info)
+  : movementCache_c(std::move(puz)), inf(info) {
   bt_assert(inf.canDisassemble());
 }
 

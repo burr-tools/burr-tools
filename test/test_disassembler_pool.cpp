@@ -58,7 +58,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
   cb.out = &found;
   cb.limit = limit;
 
-  assembler_1_c assm(problem, bttest::settings());
+  assembler_1_c assm(makeSolverSpec(problem), bttest::settings());
   assm.setNumThreads(1);
   REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
@@ -151,7 +151,7 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
 
   {
     disassemblerPool_c pool(
-      *problem,
+      makeSolverSpec(*problem),
       bttest::withThreads(4),
       [&](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
         (void)a;
@@ -196,7 +196,7 @@ TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[
   std::mutex cbMutex;
 
   disassemblerPool_c pool(
-    *problem,
+    makeSolverSpec(*problem),
     bttest::withThreads(2),
     [&](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
       (void)a;
@@ -297,7 +297,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
 
   SECTION("abort without finish") {
     disassemblerPool_c pool(
-      *problem,
+      makeSolverSpec(*problem),
       bttest::withThreads(4),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
@@ -312,7 +312,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
 
   SECTION("double abort") {
     disassemblerPool_c pool(
-      *problem,
+      makeSolverSpec(*problem),
       bttest::withThreads(4),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
@@ -324,7 +324,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
 
   SECTION("finish then abort") {
     disassemblerPool_c pool(
-      *problem,
+      makeSolverSpec(*problem),
       bttest::withThreads(2),
       [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
     );
@@ -336,7 +336,7 @@ TEST_CASE("disassembler pool: lifecycle abort without hang or leaks", "[disasm][
   SECTION("destruction with pending work") {
     {
       disassemblerPool_c pool(
-        *problem,
+        makeSolverSpec(*problem),
         bttest::withThreads(4),
         [](uint64_t, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {}
       );
@@ -357,7 +357,7 @@ TEST_CASE("disassembler pool: exception in callback propagates cleanly to finish
   const gridType_c * gt = problem->getPuzzle().getGridType();
 
   disassemblerPool_c pool(
-    *problem,
+    makeSolverSpec(*problem),
     bttest::withThreads(2),
     [](uint64_t seqNo, std::unique_ptr<assembly_c>, std::unique_ptr<separation_c>) {
       if (seqNo == 2) {
@@ -752,7 +752,7 @@ TEST_CASE("disassembler pool reports counts and accumulated cost",
     auto found = collectSomeAssemblies(*problem, 5);
     REQUIRE_FALSE(found.empty());
 
-    disassemblerPool_c pool(*problem, bttest::withThreads(2), nullptr);
+    disassemblerPool_c pool(makeSolverSpec(*problem), bttest::withThreads(2), nullptr);
     const unsigned long n = found.size();
     for (auto & a : found) pool.submit(std::move(a));
     pool.finish();
@@ -770,7 +770,7 @@ TEST_CASE("disassembler pool reports counts and accumulated cost",
     auto found = collectSomeAssemblies(*problem, 5);
     REQUIRE_FALSE(found.empty());
 
-    disassemblerPool_c pool(*problem, bttest::withThreads(1), nullptr);
+    disassemblerPool_c pool(makeSolverSpec(*problem), bttest::withThreads(1), nullptr);
     const unsigned long n = found.size();
     for (auto & a : found) pool.submit(std::move(a));
     pool.finish();

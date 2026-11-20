@@ -24,8 +24,7 @@
 #include "disassemblernode.h"
 #include "disassembly.h"
 #include "gridtype.h"
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "stl.h"
 #include "symmetries.h"
 #include "voxel.h"
@@ -76,7 +75,7 @@ std::vector<rotationGeometry::pathSpec_t> rotationFamily(const rotationSettings_
 }
 
 
-int rotationRadiusFor(const problem_c & problem) {
+int rotationRadiusFor(const solverSpec_t & problem) {
   auto extent = [](const voxel_c * v) {
     return (int)std::max({ v->boundX2() - v->boundX1(), v->boundY2() - v->boundY1(), v->boundZ2() - v->boundZ1() }) + 1;
   };
@@ -194,24 +193,24 @@ void releaseRotationTables(void) {
 }
 
 std::shared_ptr<const rotationTables_c>
-rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings) {
+rotationTablesFor(const solverSpec_t & problem, const rotationSettings_t & settings) {
 
-  if (problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
+  if (problem.getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
     return nullptr;
 
   return sharedRotationTables(settings, rotationRadiusFor(problem));
 }
 
-rotationContext_c::rotationContext_c(const problem_c & p, const rotationSettings_t & s,
+rotationContext_c::rotationContext_c(std::shared_ptr<const solverSpec_t> p, const rotationSettings_t & s,
                                      std::shared_future<std::shared_ptr<const rotationTables_c>> tables,
                                      std::shared_future<std::shared_ptr<const rotationTables_c>> relaxed) :
-  problem(p),
-  problemRadius(rotationRadiusFor(p)),
+  spec(std::move(p)), problem(*spec),
+  problemRadius(rotationRadiusFor(problem)),
   settings(s),
   tableFuture(std::move(tables)),
   relaxedFuture(std::move(relaxed))
 {
-  const gridType_c * gt = problem.getPuzzle().getGridType();
+  const gridType_c * gt = problem.getGridType();
   const unsigned int orientations = gt->getSymmetries()->getNumTransformations();
 
   for (unsigned int part = 0; part < problem.getNumberOfParts(); part++) {
@@ -474,23 +473,10 @@ rotationGeometry::pathSpec_t rotationContext_c::pathSpec(unsigned int sense, uns
   return { rotationGeometry::PATH_PLANNED, sense, 0, 0, *plannedPaths[index - family] };
 }
 
-rotationSettings_t rotationSettingsFor(const problem_c & problem, rotationSettings_t settings) {
-  if (problem.getPuzzle().getRotationModel())
-    settings.model = *problem.getPuzzle().getRotationModel();
+rotationSettings_t rotationSettingsFor(const solverSpec_t & problem, rotationSettings_t settings) {
+  if (problem.getRotationModel())
+    settings.model = *problem.getRotationModel();
   return settings;
-}
-
-rotationGeometry::model_t rotationModelOf(const problem_c & problem) {
-  return rotationModelOf(problem.getPuzzle());
-}
-
-rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle) {
-  return puzzle.getRotationModel().value_or(rotationSettings_t{}.model);
-}
-
-void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings) {
-  if (!puzzle.getRotationModel())
-    puzzle.setRotationModel(settings.model);
 }
 
 stlModelState_t stlModelState(const stlExporter_c & stl, const rotationGeometry::model_t & expected) {
@@ -524,14 +510,14 @@ std::string stlModelNote(const stlExporter_c & stl, const rotationGeometry::mode
 }
 
 std::shared_ptr<rotationContext_c>
-rotationContextFor(const problem_c & problem, const rotationSettings_t & given, bool background) {
+rotationContextFor(std::shared_ptr<const solverSpec_t> problem, const rotationSettings_t & given, bool background) {
 
   if (given.mode == ROTATION_OFF ||
-      problem.getPuzzle().getGridType()->getType() != gridType_c::GT_BRICKS || !problem.resultValid())
+      problem->getGridType()->getType() != gridType_c::GT_BRICKS || !problem->resultValid())
     return nullptr;
 
-  const rotationSettings_t settings = rotationSettingsFor(problem, given);
-  const int radius = rotationRadiusFor(problem);
+  const rotationSettings_t settings = rotationSettingsFor(*problem, given);
+  const int radius = rotationRadiusFor(*problem);
   auto tablesOf = [background, radius](const rotationSettings_t & s) {
     if (background)
       return std::async(std::launch::async, [s, radius] { return sharedRotationTables(s, radius); }).share();
@@ -555,7 +541,7 @@ rotationContextFor(const problem_c & problem, const rotationSettings_t & given, 
       relaxed = ready.get_future().share();
     }
   }
-  return std::make_shared<rotationContext_c>(problem, settings, tables, std::move(relaxed));
+  return std::make_shared<rotationContext_c>(std::move(problem), settings, tables, std::move(relaxed));
 }
 
 namespace {
@@ -575,10 +561,10 @@ struct turnScene_t {
  * (the states of s, then the removed part, then the left one); f returns
  * false to stop. False if stopped. */
 template <class F>
-bool walkTurns(separation_c * s, const assembly_c * a, const problem_c & problem, F & f) {
+bool walkTurns(separation_c * s, const assembly_c * a, const solverSpec_t & problem, F & f) {
 
   using rotationGeometry::cell_t;
-  const gridType_c * gt = problem.getPuzzle().getGridType();
+  const gridType_c * gt = problem.getGridType();
 
   /* the cells of piece k of the separation in state st */
   auto cellsOf = [&](const state_c * st, unsigned int k) {
@@ -637,7 +623,7 @@ rotationGeometry::knownPath_t recordedPath(const turnScene_t & t) {
 
 }
 
-turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c & problem, const rotationSettings_t & given,
+turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const solverSpec_t & problem, const rotationSettings_t & given,
                          const optimizeControl_t & control) {
   turnPlay_t result;
   rotationSettings_t settings = rotationSettingsFor(problem, given);

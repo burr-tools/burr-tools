@@ -28,7 +28,7 @@
 #include <memory>
 
 class grouping_c;
-class problem_c;
+struct solverSpec_t;
 class disassemblerNode_c;
 class assembly_c;
 
@@ -52,7 +52,8 @@ class disassembler_a_c : public disassembler_c {
     /**
      * the problem we solve
      */
-    const problem_c & puzzle;
+    std::shared_ptr<const solverSpec_t> spec;
+    const solverSpec_t & puzzle;   ///< *spec
 
     /**
      * For grouping pieces
@@ -109,7 +110,7 @@ class disassembler_a_c : public disassembler_c {
      * rotationContextFor); it is shared by all disassemblers of a solve.
      * The settings choose the movement analysis kernels.
      */
-    disassembler_a_c(const problem_c & puz, const solverSettings_t & settings,
+    disassembler_a_c(std::shared_ptr<const solverSpec_t> puz, const solverSettings_t & settings,
                      std::shared_ptr<rotationContext_c> rotationContext = nullptr);
     ~disassembler_a_c(void);
 

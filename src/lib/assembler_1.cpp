@@ -24,8 +24,7 @@
 #include "simd_huang_cover.h"
 
 #include "bt_assert.h"
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 #include "voxel.h"
 #include "assembly.h"
 #include "gridtype.h"
@@ -321,9 +320,9 @@ void assembler_1_c::AddRangeNode(unsigned int col, unsigned int piecenode, unsig
   colCount[col] += wg;
 }
 
-assembler_1_c::assembler_1_c(const problem_c & prob, const solverSettings_t & s) :
+assembler_1_c::assembler_1_c(std::shared_ptr<const solverSpec_t> prob, const solverSettings_t & s) :
   assembler_c(s),
-  problem(prob),
+  spec(std::move(prob)), problem(*spec),
   avoidTransformedAssemblies(false), avoidTransformedMirror(nullptr),
   iterations(0),
   reducePiece(0)
@@ -457,8 +456,8 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
    * that are present in the piece
    */
   symmetries_t resultSym = result->selfSymmetries();
-  const gridType_c * gt = problem.getPuzzle().getGridType();
-  const symmetries_c * sym = problem.getPuzzle().getGridType()->getSymmetries();
+  const gridType_c * gt = problem.getGridType();
+  const symmetries_c * sym = problem.getGridType()->getSymmetries();
   unsigned int symBreakerShape = 0xFFFFFFFF;
 
   /* so, if we have just the self-symmetry in the result, everything needs to be tried
@@ -1219,7 +1218,7 @@ void assembler_1_c::search(unsigned int workers) {
     [this, runTok](const std::vector<unsigned int> &solution_nodes, bool &consumed) -> bool {
       consumed = (getCallback() == nullptr);
       if (getCallback()) {
-        auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
+        auto assembly = std::make_unique<assembly_c>(problem.getGridType());
 
         /* The placements by shape, in the order found within a shape.
          * Problems with millions of assemblies spend their time here, so
@@ -1806,7 +1805,7 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
   return colCount[shape+1];
 }
 
-bool assembler_1_c::canHandle(const problem_c &) {
+bool assembler_1_c::canHandle(const solverSpec_t &) {
 
   // right now there are no limits
 

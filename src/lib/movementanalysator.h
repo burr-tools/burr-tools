@@ -26,7 +26,7 @@
 #include <cstdint>
 #include <unordered_map>
 
-class problem_c;
+struct solverSpec_t;
 class disassemblerNode_c;
 class movementCache_c;
 class assembly_c;
@@ -140,7 +140,7 @@ class movementAnalysator_c {
     /* Rotation phase of find() (state 3), only entered with tables: all
      * rotation moves of the search node are generated at once on entry and
      * then handed out one per call. */
-    const problem_c * rotationProblem = nullptr;
+    std::shared_ptr<const solverSpec_t> rotationProblem;
     std::vector<const voxel_c *> partVoxels;      ///< shape of every part
     std::vector<unsigned int> piecePart;          ///< part of every piece
     /* cells of part p in orientation t relative to its hotspot, built lazily */
@@ -192,7 +192,7 @@ class movementAnalysator_c {
      * given (see rotationContextFor). The settings choose the closure
      * kernels (disassemblerVector and the vector instructions).
      */
-    movementAnalysator_c(const problem_c & puz, const solverSettings_t & settings,
+    movementAnalysator_c(std::shared_ptr<const solverSpec_t> puz, const solverSettings_t & settings,
                          std::shared_ptr<rotationContext_c> rotationContext = nullptr);
 
     /** The rotation tables in use, nullptr when rotation moves are off. */

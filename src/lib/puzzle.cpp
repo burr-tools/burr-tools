@@ -551,3 +551,16 @@ void puzzle_c::clearRotationModel(void)
   setRotationModel(rotationSettings_t{}.model);
   rotationModel.reset();
 }
+
+rotationGeometry::model_t rotationModelOf(const problem_c & problem) {
+  return rotationModelOf(problem.getPuzzle());
+}
+
+rotationGeometry::model_t rotationModelOf(const puzzle_c & puzzle) {
+  return puzzle.getRotationModel().value_or(rotationSettings_t{}.model);
+}
+
+void storeSolveRotationModel(puzzle_c & puzzle, const rotationSettings_t & settings) {
+  if (!puzzle.getRotationModel())
+    puzzle.setRotationModel(settings.model);
+}

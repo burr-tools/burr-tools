@@ -21,16 +21,18 @@
 #include "disassembler_a.h"
 
 #include "bt_assert.h"
-#include "problem.h"
+#include "solver/solverspec.h"
 #include "grouping.h"
 #include "disassemblernode.h"
 #include "movementanalysator.h"
 #include "assembly.h"
 #include "disassembly.h"
 
-disassembler_a_c::disassembler_a_c(const problem_c & puz, const solverSettings_t & settings,
+disassembler_a_c::disassembler_a_c(std::shared_ptr<const solverSpec_t> sp, const solverSettings_t & settings,
                                    std::shared_ptr<rotationContext_c> rotationContext) :
-  disassembler_c(), puzzle(puz), groups(std::make_unique<grouping_c>()) {
+  disassembler_c(), spec(std::move(sp)), puzzle(*spec), groups(std::make_unique<grouping_c>()) {
+
+  const solverSpec_t & puz = puzzle;
 
   /* Initialise the grouping class */
   for (unsigned int i = 0; i < puz.getNumberOfParts(); i++)
@@ -46,7 +48,7 @@ disassembler_a_c::disassembler_a_c(const problem_c & puz, const solverSettings_t
     for (unsigned int j = 0; j < puz.getPartMaximum(i); j++)
       piece2shape[p++] = i;
 
-  analyse = std::make_unique<movementAnalysator_c>(puzzle, settings, std::move(rotationContext));
+  analyse = std::make_unique<movementAnalysator_c>(spec, settings, std::move(rotationContext));
 }
 
 disassembler_a_c::~disassembler_a_c() = default;

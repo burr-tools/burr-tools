@@ -26,6 +26,7 @@
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
 #include "../lib/solution.h"
+#include "../lib/solver/solverspec.h"
 #include "../lib/symmetries.h"
 #include "../lib/voxel.h"
 #include "../lib/voxeltable.h"
@@ -66,8 +67,9 @@ namespace btui {
     std::vector<std::unique_ptr<voxel_c>> found;
     VectorTable table(found);
 
+    const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*src);
     for (unsigned int s = 0; s < src->getNumberOfSavedSolutions(); s++) {
-      auto shape = src->getSavedSolution(s)->getAssembly()->createSpace(*src);
+      auto shape = src->getSavedSolution(s)->getAssembly()->createSpace(*spec);
 
       if (opt.dropDisconnected && !shape->connected(0, true, voxel_c::VX_EMPTY))
         continue;

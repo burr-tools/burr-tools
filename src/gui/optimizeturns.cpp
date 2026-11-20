@@ -23,6 +23,7 @@
 #include "../lib/disassembly.h"
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
+#include "../lib/solver/solverspec.h"
 
 #include <stdio.h>
 
@@ -37,7 +38,7 @@ static void cb_Keep_stub(Fl_Widget * /*o*/, void * v) { static_cast<optimizeTurn
 static void cb_Cancel_stub(Fl_Widget * /*o*/, void * v) { static_cast<optimizeTurnsWindow_c*>(v)->cb_Cancel(); }
 
 optimizeTurnsWindow_c::optimizeTurnsWindow_c(problem_c * pr, const solution_c * solution, const rotationSettings_t & s) :
-  LFl_Double_Window(false), problem(pr), assembly(solution->getAssembly()), settings(s),
+  LFl_Double_Window(false), problem(pr), spec(makeSolverSpec(*pr)), assembly(solution->getAssembly()), settings(s),
   copy(std::make_unique<separation_c>(solution->getDisassembly())), turns(solution->getDisassembly()->sumRotations())
 {
   label("Optimize Turns");
@@ -80,7 +81,7 @@ optimizeTurnsWindow_c::optimizeTurnsWindow_c(problem_c * pr, const solution_c * 
     optimizeControl_t control;
     control.stop = &stop;
     control.done = &done;
-    outcome = optimizeTurns(copy.get(), assembly, *problem, settings, control);
+    outcome = optimizeTurns(copy.get(), assembly, *spec, settings, control);
     finished = true;
   });
   Fl::add_timeout(0.1, cb_Poll_stub, this);

@@ -21,8 +21,7 @@
 #include "movementcache.h"
 
 #include "voxel.h"
-#include "problem.h"
-#include "puzzle.h"
+#include "solver/solverspec.h"
 
 #include <algorithm>
 #include <string.h>
@@ -44,14 +43,17 @@ static unsigned int moHashValue(unsigned int s1, unsigned int s2, int dx, int dy
   return val;
 }
 
-movementCache_c::movementCache_c(const problem_c & puzzle)
+movementCache_c::movementCache_c(std::shared_ptr<const solverSpec_t> puz)
   : moTable(1024),
     moMask(1023),
-    shapes(puzzle.getNumberOfParts(), std::vector<const voxel_c*>(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations(), nullptr)),
-    pieces(puzzle.getNumberOfPieces()),
-    num_shapes(puzzle.getNumberOfParts()),
-    num_transformations(puzzle.getPuzzle().getGridType()->getSymmetries()->getNumTransformations()),
-    gt(puzzle.getPuzzle().getGridType()) {
+    shapes(puz->getNumberOfParts(), std::vector<const voxel_c*>(puz->getGridType()->getSymmetries()->getNumTransformations(), nullptr)),
+    pieces(puz->getNumberOfPieces()),
+    num_shapes(puz->getNumberOfParts()),
+    num_transformations(puz->getGridType()->getSymmetries()->getNumTransformations()),
+    gt(puz->getGridType()),
+    spec(std::move(puz)) {
+
+  const solverSpec_t & puzzle = *spec;
 
   /* Initialise the shape array with the shapes from the
    * puzzle problem. The shape with transformation 0 is just
