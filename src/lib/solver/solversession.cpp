@@ -422,6 +422,21 @@ std::optional<solverResult_t> solverSession_c::pop(void) {
   return r;
 }
 
+std::optional<solverResult_t> solverSession_c::popFor(std::chrono::milliseconds timeout) {
+  std::unique_lock<std::mutex> lock(queueMutex_);
+  if (queue_.empty() && state_ == solverState_e::Running && timeout.count() > 0) {
+    cvNotEmpty_.wait_for(lock, timeout, [this]() {
+      return !queue_.empty() || state_ != solverState_e::Running;
+    });
+  }
+  if (queue_.empty())
+    return std::nullopt;
+  solverResult_t r = std::move(queue_.front());
+  queue_.pop_front();
+  cvNotFull_.notify_one();
+  return r;
+}
+
 size_t solverSession_c::drain(std::vector<solverResult_t> & out, size_t maxItems) {
   if (maxItems == 0)
     return 0;

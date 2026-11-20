@@ -28,10 +28,10 @@
 #include "lib/assembly.h"
 #include "lib/disassembler.h"
 #include "lib/disassembler_0.h"
-#include "lib/disassemblerpool.h"
 #include "lib/disassembly.h"
 #include "lib/print.h"
 #include "lib/rotationtables.h"
+#include "lib/solver/solversession.h"
 #include "lib/solver/solverspec.h"
 #include "lib/voxel.h"
 #include "lib/solution.h"
@@ -49,7 +49,6 @@
 #include <fstream>
 #include <iostream>
 #include <atomic>
-#include <mutex>
 
 using namespace std;
 
@@ -128,6 +127,28 @@ static std::shared_ptr<rotationContext_c> rotationContext(std::shared_ptr<const 
   return context;
 }
 
+/* An internal assertion or another exception ended the solve: say so on
+ * stderr (the caller exits non-zero). True when the session failed that way. */
+static bool reportSolverFailure(const solverSession_c & session) {
+  if (session.sessionState() != solverState_e::Error)
+    return false;
+  if (session.currentAction() == solverSession_c::ACT_ASSERT) {
+    const assert_exception & e = session.getAssertException();
+    cerr << "\nInternal error in BurrTools\n";
+    cerr << " file      : " << (e.file ? e.file : "?") << "\n";
+    cerr << " function  : " << (e.function ? e.function : "?") << "\n";
+    cerr << " line      : " << e.line << "\n";
+    cerr << " expression: " << (e.expr ? e.expr : "?") << "\n";
+    cerr << "You should send the puzzle file to the programmer!\n";
+    return true;
+  }
+  if (session.exception()) {
+    cerr << "\nInternal error in BurrTools: " << session.exceptionMessage() << "\n";
+    return true;
+  }
+  return false;
+}
+
 /* say so when limits made the search skip rotation moves */
 static void reportSkippedRotations(const rotationContext_c * context) {
   if (!context)
@@ -152,81 +173,6 @@ static void reportSkippedRotations(const rotationContext_c * context) {
             (unsigned long long)st.undecided, st.plannerSeconds, st.impossibleSeconds, st.worstSeconds);
   }
 }
-
-class asm_cb : public assembler_cb {
-
-public:
-
-  std::atomic<int> Assemblies{0};
-  std::atomic<int> Solutions{0};
-  int pn;
-  problem_c * puzzle;
-  std::shared_ptr<const solverSpec_t> spec;
-  std::unique_ptr<disassemblerPool_c> pool;
-  /* the pool's workers deliver concurrently: one result at a time */
-  std::mutex resultMutex;
-
-  asm_cb(problem_c * p, std::shared_ptr<const solverSpec_t> s) : pn(p->getNumberOfPieces()), puzzle(p), spec(std::move(s)) {
-    if (disassemble) {
-      pool = std::make_unique<disassemblerPool_c>(
-        spec,
-        settings,
-        [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
-          std::lock_guard<std::mutex> lock(resultMutex);
-          if (da) {
-            Solutions++;
-            const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *spec, !quiet || allProblems || writeFile);
-
-            if (printSolutions)
-              print(a.get(), puzzle);
-
-            if (!quiet || allProblems)
-            {
-              printLevel(da->movesText(), da.get(), play);
-            }
-
-            if (printDisassemble)
-              print(da.get(), a.get(), puzzle);
-
-            if (writeFile) {
-              /* added, then counted, as the GUI's solve thread does */
-              auto guard = puzzle->lockSolutions();
-              puzzle->addSolution(a.release(), da.release());
-              keepPlay(puzzle->getSavedSolution(puzzle->getNumberOfSavedSolutions() - 1), play, *spec);
-              puzzle->incNumSolutions();
-            }
-          }
-          if (writeFile)
-            puzzle->incNumAssemblies();
-        },
-        rotationContext(spec)
-      );
-    }
-  }
-
-  bool assembly(std::unique_ptr<assembly_c> a) override {
-
-    Assemblies++;
-
-    if (disassemble) {
-      pool->submit(std::move(a));
-    } else {
-      if (printSolutions)
-        print(a.get(), puzzle);
-      if (writeFile) {
-        puzzle->addSolution(a.release());
-        puzzle->incNumAssemblies();
-      }
-    }
-
-    return true;
-  }
-
-  void finish() {
-    if (pool)
-      pool->finish();
-  }
-};
 
 /* The usage; with full (-h, --help) the environment variables too, which
  * a wrong command line would only scroll the usage away with. */
@@ -558,61 +504,127 @@ int main(int argv, char* args[]) {
       }
 
       const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*problem);
-      auto assm = p.getGridType()->findAssembler(spec, settings);
 
-      switch (assm->createMatrix(false, false)) {
-      case assembler_c::ERR_TOO_MANY_UNITS:
-        printf("%i units too many for the result shape\n", assm->getErrorsParam());
-        return 0;
-      case assembler_c::ERR_TOO_FEW_UNITS:
-        printf("%i units too few for the result shape\n", assm->getErrorsParam());
-        return 0;
-      case assembler_c::ERR_CAN_NOT_PLACE:
-        printf("Piece %i can be place nowhere in the result shape\n", assm->getErrorsParam());
-        return 0;
-      case assembler_c::ERR_NONE:
-        /* no error case */
-        break;
-      case assembler_c::ERR_PUZZLE_UNHANDABLE:
-        printf("The puzzles contains features not yet supported by burrTxt\n");
-        return 0;
-      case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
-      case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
-      case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-      case assembler_c::ERR_CAN_NOT_START:
-        /* all other errors should not occur (CAN_NOT_START is rejected at
-         * run/setAssembler level, never by matrix creation) */
-        printf("Oops internal error\n");
-        return 0;
+      solverOptions_t opts;
+      opts.reduce            = reduce;
+      opts.disassemble       = disassemble;
+      opts.keepRotations     = false;
+      opts.completeRotations = false;
+      opts.rotationMoves     = rotationMoves && settings.rotation.mode != ROTATION_OFF;
+      /* with -d the solutions counted are the assemblies that come apart,
+       * so the results are looked at (single-piece assemblies count as
+       * assemblies only, as they always did here) */
+      opts.countOnly         = !printSolutions && !printDisassemble && !writeFile && !disassemble;
+      opts.settings          = settings;
+
+      solverSession_c session(spec, opts);
+      if (opts.disassemble && opts.rotationMoves && !session.rotationContext())
+        cerr << "rotation moves are only available for cube grids, ignoring -R\n";
+
+      if (reduce && !quiet)
+        cout << "start reduce\n\n";
+
+      session.start(/*stopAfterPreparation=*/true);
+      session.join();
+
+      if (reportSolverFailure(session))
+        return 1;
+
+      if (session.sessionState() == solverState_e::Error) {
+        auto info = session.runInfo();
+        const assembler_c::errState err = info ? info->error : assembler_c::ERR_PUZZLE_UNHANDABLE;
+        const int param = info ? info->errorParam : 0;
+        switch (err) {
+        case assembler_c::ERR_TOO_MANY_UNITS:
+          printf("%i units too many for the result shape\n", param);
+          return 0;
+        case assembler_c::ERR_TOO_FEW_UNITS:
+          printf("%i units too few for the result shape\n", param);
+          return 0;
+        case assembler_c::ERR_CAN_NOT_PLACE:
+          printf("Piece %i can be place nowhere in the result shape\n", param);
+          return 0;
+        case assembler_c::ERR_NONE:
+          break;
+        case assembler_c::ERR_PUZZLE_UNHANDABLE:
+          printf("The puzzles contains features not yet supported by burrTxt\n");
+          return 0;
+        case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+        case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+        case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+        case assembler_c::ERR_CAN_NOT_START:
+          printf("Oops internal error\n");
+          return 0;
+        }
       }
 
-      if (reduce) {
-        if (!quiet)
-          cout << "start reduce\n\n";
-        assm->reduce();
-        if (!quiet)
-          cout << "finished reduce\n\n";
-      }
+      if (reduce && !quiet)
+        cout << "finished reduce\n\n";
 
       if (allProblems)
         cout << "problem: " << problem->getName() << endl;
 
-      /* with -w the problem runs the assembler, so it is solving while the
-       * solutions come in, and solved after */
-      assembler_c * run = assm.get();
-      if (writeFile) {
-        problem->setAssembler(std::move(assm));
-        run = problem->getAssembler();
+      if (writeFile)
+        problem->beginSolving();
+
+      if (!session.resume()) {
+        if (!reportSolverFailure(session))
+          cerr << "the solver did not start\n";
+        return 1;
       }
 
-      asm_cb a(problem, spec);
+      uint64_t solutions = 0;
+      if (opts.countOnly) {
+        session.join();
+      } else {
+        while (auto r = session.pop()) {
+          if (disassemble) {
+            if (r->separation) {
+              solutions++;
+              const std::optional<turnPlay_t> play =
+                measurePlay(r->separation.get(), r->assembly.get(), *spec, !quiet || allProblems || writeFile);
 
-      run->assemble(&a);
-      a.finish();
-      if (a.pool)
-        reportSkippedRotations(a.pool->getRotationContext());
+              if (printSolutions)
+                print(r->assembly.get(), problem);
 
-      cout << a.Assemblies.load() << " assemblies and " << a.Solutions.load() << " solutions found with " << run->getIterations() << " iterations ";
+              if (!quiet || allProblems)
+                printLevel(r->separation->movesText(), r->separation.get(), play);
+
+              if (printDisassemble)
+                print(r->separation.get(), r->assembly.get(), problem);
+
+              if (writeFile) {
+                auto guard = problem->lockSolutions();
+                problem->addSolution(r->assembly.release(), r->separation.release());
+                keepPlay(problem->getSavedSolution(problem->getNumberOfSavedSolutions() - 1), play, *spec);
+                problem->incNumSolutions();
+              }
+            }
+            if (writeFile)
+              problem->incNumAssemblies();
+          } else {
+            if (printSolutions)
+              print(r->assembly.get(), problem);
+            if (writeFile) {
+              problem->addSolution(r->assembly.release());
+              problem->incNumAssemblies();
+            }
+          }
+        }
+        session.join();
+      }
+
+      if (session.sessionState() != solverState_e::Finished) {
+        if (!reportSolverFailure(session))
+          cerr << "the solver stopped before the search was complete\n";
+        return 1;
+      }
+
+      reportSkippedRotations(session.rotationContext());
+
+      cout << session.assembliesFound() << " assemblies and "
+           << solutions << " solutions found with "
+           << session.getIterations() << " iterations ";
       if (writeFile)
         problem->finishedSolving();
 

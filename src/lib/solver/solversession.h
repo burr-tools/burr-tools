@@ -42,6 +42,7 @@
 #include "../thread_budget.h"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
@@ -201,6 +202,11 @@ public:
    *  std::nullopt once empty and not Running, or at once after abort(). */
   std::optional<solverResult_t> pop(void);
 
+  /** Timed pull: returns a queued item immediately if one is ready, waits up
+   *  to timeout while Running, or returns std::nullopt on timeout or once
+   *  empty and not Running. */
+  std::optional<solverResult_t> popFor(std::chrono::milliseconds timeout);
+
   /** Non-blocking batch pull: appends up to maxItems queued results to out
    *  and returns how many were moved. */
   size_t drain(std::vector<solverResult_t> & out, size_t maxItems = SIZE_MAX);
@@ -217,6 +223,7 @@ public:
   std::optional<solverRunInfo_t> runInfo(void) const;
 
   bool rotationMoves(void) const { return rotationContext_ != nullptr; }
+  const rotationContext_c * rotationContext(void) const { return rotationContext_.get(); }
   unsigned int rotationsSkipped(void) const;
   float getAssemblyBaseFraction(void) const { return assemblyBaseFraction_.load(std::memory_order_relaxed); }
   bool workOutstanding(void) const;
