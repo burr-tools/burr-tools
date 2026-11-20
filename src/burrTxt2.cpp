@@ -21,7 +21,8 @@
 
 #include "lib/puzzle.h"
 #include "lib/problem.h"
-#include "lib/solvethread.h"
+#include "lib/problemcollector.h"
+#include "lib/solver/solversession.h"
 #include "lib/bt_assert.h"
 #include "lib/gridtype.h"
 #include "lib/voxel.h"
@@ -30,10 +31,13 @@
 #include "tools/envvars.h"
 #include "tools/cliargs.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -71,15 +75,52 @@ bool checkInput(void)
   FD_ZERO (&set);
   FD_SET (STDIN_FILENO, &set);
 
-  /* Initialize the timeout data structure. */
+  /* Non-blocking check so the consumer loop keeps draining the bounded
+   * result queue promptly while polling stdin for an interactive stop. */
   struct timeval timeout;
-  timeout.tv_sec = 1;
+  timeout.tv_sec = 0;
   timeout.tv_usec = 0;
 
   /* select returns 0 if timeout, 1 if input available, -1 if error. */
-  return select(FD_SETSIZE, &set, NULL, NULL, &timeout);
+  return select(FD_SETSIZE, &set, NULL, NULL, &timeout) > 0;
 }
 
+static void printError(assembler_c::errState err, int param) {
+  cout << "\rerror: ";
+  switch (err) {
+    case assembler_c::ERR_TOO_MANY_UNITS:
+      cout << "Pieces contain " << param << " units too many\n";
+      break;
+    case assembler_c::ERR_TOO_FEW_UNITS:
+      cout << "Pieces contain " << param << " units less than required\n";
+      break;
+    case assembler_c::ERR_CAN_NOT_PLACE:
+      cout << "Piece " << param+1 << " can be placed nowhere within the result\n";
+      break;
+    case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
+      cout << "Impossible to restore the saved state because the internal format changed.\n";
+      cout << "You either have to start from the beginning or finish with the old version of BurrTools, sorry\n";
+      break;
+    case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
+      cout << "Impossible to restore the saved state because something with the data is wrong.\n";
+      cout << "You have to start from the beginning, sorry\n";
+      break;
+    case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
+      cout << "The saved search was stopped before it had any search state to save.\n";
+      cout << "That can not be continued, so it has been reset -- please start it again\n";
+      break;
+    case assembler_c::ERR_PUZZLE_UNHANDABLE:
+      cout << "Something went wrong the program can not solve your puzzle definitions.\n";
+      cout << "You should send the puzzle file to the programmer!\n";
+      break;
+    case assembler_c::ERR_CAN_NOT_START:
+      cout << "The problem can not be started in its current state, use -R to solve it again\n";
+      break;
+    case assembler_c::ERR_NONE:
+      cout << "unknown\n";
+      break;
+  }
+}
 
 static int solve(int argv, char* args[]) {
 
@@ -93,7 +134,10 @@ static int solve(int argv, char* args[]) {
     return 0;
   }
 
-  int par = solveThread_c::PAR_REDUCE;
+  solverOptions_t opts;
+  opts.reduce = true;
+  problemCollectorOptions_t collectorOpts;
+
   bool restart = false;
   int filenumber = 0;
   int firstProblem = 0;
@@ -105,16 +149,18 @@ static int solve(int argv, char* args[]) {
 
     if (strcmp(args[i], "-R") == 0)
       restart = true;
-    else if (strcmp(args[i], "-d") == 0)
-      par |= solveThread_c::PAR_DISASSM;
+    else if (strcmp(args[i], "-d") == 0) {
+      opts.disassemble = true;
+      collectorOpts.disassemble = true;
+    }
     else if (strcmp(args[i], "-c") == 0)
-      par |= solveThread_c::PAR_JUST_COUNT;
+      collectorOpts.countOnly = true;
     else if (strcmp(args[i], "-m") == 0)
       cerr << "-m is deprecated and ignored: mirror duplicates are always removed\n";
     else if (strcmp(args[i], "-r") == 0)
-      par |= solveThread_c::PAR_KEEP_ROTATIONS;
+      opts.keepRotations = true;
     else if (strcmp(args[i], "-p") == 0)
-      par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
+      collectorOpts.dropDisassemblies = true;
     else if (strcmp(args[i], "-b") == 0) {
       firstProblem = atoi(args[i+1]);
       lastProblem = firstProblem + 1;
@@ -155,6 +201,11 @@ static int solve(int argv, char* args[]) {
     cerr << e.what() << "\n";
     return 1;
   }
+  opts.settings = settings;
+  /* -c with -d still hands every disassembled assembly to the collector,
+   * which counts them and keeps single-piece assemblies as solutions, as the
+   * solve thread always did; only without -d is nothing enqueued at all */
+  opts.countOnly = collectorOpts.countOnly && !opts.disassemble;
 
   auto str = openGzFile(args[filenumber]);
   if (!str) {
@@ -171,11 +222,6 @@ static int solve(int argv, char* args[]) {
     return 2;
   }
 
-  /* not every space grid has a solver, and fewer still have a disassembler.
-   * Check before we build one: the disassembler asserts on the movement cache
-   * a grid without CAP_DISASSEMBLE does not provide, and that assert happens
-   * while constructing the solver thread, where nothing catches it.
-   */
   const unsigned int caps = p.getGridType()->getCapabilities();
 
   if (!(caps & gridType_c::CAP_ASSEMBLE)) {
@@ -183,7 +229,7 @@ static int solve(int argv, char* args[]) {
     return 2;
   }
 
-  if ((par & solveThread_c::PAR_DISASSM) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
+  if (opts.disassemble && !(caps & gridType_c::CAP_DISASSEMBLE)) {
     cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
     cout << "drop -d to just assemble the puzzle\n";
     return 2;
@@ -215,7 +261,7 @@ static int solve(int argv, char* args[]) {
 
     /* without -R we continue where an earlier run left off. A problem that is
      * already finished, or whose information was invalidated by editing, has
-     * nothing to continue from, and setAssembler's precondition rejects one.
+     * nothing to continue from.
      */
     if (!problem->canStartSolving()) {
       cout << "problem " << pr << " (" << problem->getName() << ") ";
@@ -228,110 +274,155 @@ static int solve(int argv, char* args[]) {
       continue;
     }
 
-    solveThread_c assmThread(*problem, par, settings);
+    const time_t startTime = time(0);
+    solverSession_c session(makeSolverSpec(*problem), opts);
+    problemCollector_c collector(*problem, collectorOpts);
+    collector.resetDropMultiplicator();
 
-    if (!assmThread.start(false)) {
-      cout << "Could not start Solver\n";
+    bool usedSavedResume = false;
+    if (problem->hasResumeData()) {
+      usedSavedResume = true;
+      resumeData_t res = problem->cloneResumeData();
+      const unsigned int pieces = problem->getNumberOfPieces();
+      std::erase_if(res.pending, [pieces](const std::unique_ptr<assembly_c> & a) {
+        return !a || a->placementCount() != pieces;
+      });
+      session.setResume(std::move(res));
+    } else {
+      session.setPreparedHook([problem]() { problem->beginSolving(); });
+    }
+
+    if (!session.start(false)) {
+      if (session.exception()) {
+        cout << "\rException in Solver: " << session.exceptionMessage() << "\n";
+        exitCode = 1;
+      } else if (session.currentAction() == solverSession_c::ACT_ASSERT) {
+        const auto & ex = session.getAssertException();
+        cout << "\rException in Solver\n";
+        cout << " file      : " << ex.file << "\n";
+        cout << " function  : " << ex.function << "\n";
+        cout << " line      : " << ex.line << "\n";
+        cout << " expression: " << ex.expr << "\n";
+        exitCode = 1;
+      } else {
+        auto info = session.runInfo();
+        const assembler_c::errState err = info ? info->error : assembler_c::ERR_NONE;
+        const int param = info ? info->errorParam : 0;
+        if (usedSavedResume) {
+          if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
+            problem->removeAllSolutions();
+          } else if (err == assembler_c::ERR_CAN_NOT_RESTORE_VERSION ||
+                     err == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX) {
+            problem->discardResumeEngineState();
+          }
+        }
+        printError(err, param);
+        exitCode = 1;
+      }
+      cout.flush();
       continue;
     }
 
-    while (!assmThread.stopped()) {
+    if (usedSavedResume)
+      problem->clearResumeData();
 
+    auto lastPrint = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+
+    while (session.sessionState() == solverState_e::Running) {
       if (checkInput()) {
         cout << "abborting \n";
-        assmThread.stop();
-
-        while (!assmThread.stopped())
-#ifdef WIN32
-          Sleep(1);
-#else
-          sleep(1);
-#endif
-
+        cout.flush();
+        session.pause();
         break;
       }
 
-      float finished = (problem->getAssembler())
-        ? problem->getAssembler()->getFinished()
-        : 0;
-
-      switch (assmThread.currentAction()) {
-        case solveThread_c::ACT_PREPARATION:
-          cout << "\rpreparing piece " << assmThread.currentActionParameter()+1;
-          break;
-        case solveThread_c::ACT_REDUCE:
-          cout << "\rreducing piece " << assmThread.currentActionParameter()+1;
-          break;
-        case solveThread_c::ACT_ASSEMBLING:
-          cout << "\rassembling " << finished*100 << "% done";
-          break;
-        case solveThread_c::ACT_DISASSEMBLING:
-          cout << "\rdisassembling " << finished*100 << "% done";
-          break;
-        case solveThread_c::ACT_WAIT_TO_STOP:
-          cout << "\rwaiting for solver to stop";
-          break;
+      if (opts.countOnly) {
+        if (problem->getSolveState() == SS_SOLVING)
+          collector.syncCountOnly(session.assembliesFound(), session.solutionsFound());
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      } else {
+        if (auto item = session.popFor(std::chrono::milliseconds(50))) {
+          collector.consume(std::move(*item));
+          collector.drainFrom(session);
+        }
       }
 
-      cout.flush();
-
-    }
-
-    /* report how the run ended. Each of these states means the worker has left
-     * run() for good, so each needs an answer here; a state handled nowhere
-     * leaves the loop above waiting on a thread that has already exited.
-     */
-    switch (assmThread.currentAction()) {
-      case solveThread_c::ACT_FINISHED:
-        cout << "\rdone\n";
-        break;
-      case solveThread_c::ACT_PAUSING:
-        cout << "\rstopped, the puzzle is not completely solved\n";
-        break;
-      case solveThread_c::ACT_ASSERT:
-        cout << "\rException in Solver\n";
-        cout << " file      : " << assmThread.getAssertException().file << "\n";
-        cout << " function  : " << assmThread.getAssertException().function << "\n";
-        cout << " line      : " << assmThread.getAssertException().line << "\n";
-        cout << " expression: " << assmThread.getAssertException().expr << "\n";
-        exitCode = 1;
-        break;
-      case solveThread_c::ACT_ERROR:
-        cout << "\rerror: ";
-        switch (assmThread.getErrorState()) {
-          case assembler_c::ERR_TOO_MANY_UNITS:
-            cout << "Pieces contain " << assmThread.getErrorParam() << " units too many\n";
+      const auto now = std::chrono::steady_clock::now();
+      if (now - lastPrint >= std::chrono::milliseconds(500)) {
+        lastPrint = now;
+        const float finished = session.getProgress();
+        switch (session.currentAction()) {
+          case solverSession_c::ACT_PREPARATION:
+            cout << "\rpreparing piece " << session.currentActionParameter()+1;
             break;
-          case assembler_c::ERR_TOO_FEW_UNITS:
-            cout << "Pieces contain " << assmThread.getErrorParam() << " units less than required\n";
+          case solverSession_c::ACT_REDUCE:
+            cout << "\rreducing piece " << session.currentActionParameter()+1;
             break;
-          case assembler_c::ERR_CAN_NOT_PLACE:
-            cout << "Piece " << assmThread.getErrorParam()+1 << " can be placed nowhere within the result\n";
+          case solverSession_c::ACT_ASSEMBLING:
+            cout << "\rassembling " << finished*100 << "% done";
             break;
-          case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
-            cout << "Impossible to restore the saved state because the internal format changed.\n";
-            cout << "You either have to start from the beginning or finish with the old version of BurrTools, sorry\n";
+          case solverSession_c::ACT_DISASSEMBLING:
+            cout << "\rdisassembling " << finished*100 << "% done";
             break;
-          case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
-            cout << "Impossible to restore the saved state because something with the data is wrong.\n";
-            cout << "You have to start from the beginning, sorry\n";
-            break;
-          case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-            cout << "The saved search was stopped before it had any search state to save.\n";
-            cout << "That can not be continued, so it has been reset -- please start it again\n";
-            break;
-          case assembler_c::ERR_PUZZLE_UNHANDABLE:
-            cout << "Something went wrong the program can not solve your puzzle definitions.\n";
-            cout << "You should send the puzzle file to the programmer!\n";
-            break;
-          case assembler_c::ERR_CAN_NOT_START:
-            cout << "The problem can not be started in its current state, use -R to solve it again\n";
-            break;
-          case assembler_c::ERR_NONE:
-            cout << "unknown\n";
+          case solverSession_c::ACT_WAIT_TO_STOP:
+            cout << "\rwaiting for solver to stop";
             break;
         }
-        exitCode = 1;
+        cout.flush();
+      }
+    }
+
+    if (opts.countOnly) {
+      session.join();
+      if (problem->getSolveState() == SS_SOLVING)
+        collector.syncCountOnly(session.assembliesFound(), session.solutionsFound());
+    } else {
+      collector.consumeAll(session);
+      session.join();
+    }
+
+    switch (session.sessionState()) {
+      case solverState_e::Finished:
+        if (problem->getSolveState() == SS_UNSOLVED)
+          problem->beginSolving();
+        problem->addTime(time(0) - startTime);
+        problem->finishedSolving();
+        cout << "\rdone\n";
+        break;
+      case solverState_e::Paused:
+        if (problem->getSolveState() == SS_UNSOLVED)
+          problem->beginSolving();
+        problem->setResumeData(session.state());
+        problem->addTime(time(0) - startTime);
+        cout << "\rstopped, the puzzle is not completely solved\n";
+        break;
+      case solverState_e::Error:
+        if (session.exception()) {
+          if (problem->getSolveState() == SS_SOLVING)
+            problem->removeAllSolutions();
+          cout << "\rException in Solver: " << session.exceptionMessage() << "\n";
+          exitCode = 1;
+        } else if (session.currentAction() == solverSession_c::ACT_ASSERT) {
+          const auto & ex = session.getAssertException();
+          if (problem->getSolveState() == SS_SOLVING)
+            problem->removeAllSolutions();
+          cout << "\rException in Solver\n";
+          cout << " file      : " << ex.file << "\n";
+          cout << " function  : " << ex.function << "\n";
+          cout << " line      : " << ex.line << "\n";
+          cout << " expression: " << ex.expr << "\n";
+          exitCode = 1;
+        } else {
+          auto info = session.runInfo();
+          printError(info ? info->error : assembler_c::ERR_NONE,
+                     info ? info->errorParam : 0);
+          exitCode = 1;
+        }
+        break;
+      case solverState_e::Idle:
+      case solverState_e::Running:
+      case solverState_e::Stopped:
+        cout << "\rstopped, the puzzle is not completely solved\n";
         break;
     }
 
@@ -365,5 +456,3 @@ int main(int argv, char* args[]) {
     return 1;
   }
 }
-
-
