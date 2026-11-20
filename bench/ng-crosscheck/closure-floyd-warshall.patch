@@ -1,0 +1,55 @@
+--- a/src/lib/linearmovementanalyzer.h
++++ b/src/lib/linearmovementanalyzer.h
+@@ -108,34 +108,30 @@
+     // ensure the following property
+     // when p1 can be moved relative to p2 by x units and p3 and be moved relative to p1 by y units
+     // then p3 can be moved by maximal x+y units relative to p2
++    //
++    // this is the shortest-path closure of the matrix (min over sums), and
++    // with no negative entries one Floyd-Warshall pass reaches it: p1, the
++    // piece in between, must be the outermost loop. That replaces repeating
++    // the whole triple loop until nothing changes. Per direction, as before.
+     for (size_t d = 0; d < directions; d++)
+-    {
+-        while (true)
+-        {
+-            bool changes = false;
++        for (size_t p1 = 0; p1 < pieces; p1++)
++            for (size_t p3 = 0; p3 < pieces; p3++)
++            {
++                const index_type y = matrix[idx(p3, p1, d)];
++                if (y == inf) continue;
+ 
+-            for (size_t p1 = 0; p1 < pieces; p1++)
+                 for (size_t p2 = 0; p2 < pieces; p2++)
+-                    for (size_t p3 = 0; p3 < pieces; p3++)
+-                    {
+-                        index_type x = matrix[idx(p1, p2, d)];
+-                        index_type y = matrix[idx(p3, p1, d)];
++                {
++                    const index_type x = matrix[idx(p1, p2, d)];
+ 
+-                        if (x < inf && y < inf)
+-                        {
+-                            index_type z = x + y;
++                    if (x < inf)
++                    {
++                        const index_type z = x + y;
+ 
+-                            if (z < matrix[idx(p3, p2, d)])
+-                            {
+-                                matrix[idx(p3, p2, d)] = z;
+-                                changes                = true;
+-                            }
+-                        }
++                        if (z < matrix[idx(p3, p2, d)]) matrix[idx(p3, p2, d)] = z;
+                     }
+-
+-            if (!changes) break;
+-        }
+-    }
++                }
++            }
+ 
+     // the algorithm analyses one direction with one movement amount
+     // at a time, first it tries to take out pieces all directions

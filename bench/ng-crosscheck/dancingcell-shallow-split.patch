@@ -1,0 +1,137 @@
+--- a/src/lib/dancingcell.cpp
++++ b/src/lib/dancingcell.cpp
+@@ -12,6 +12,7 @@
+ 
+ namespace BurrTools::PuzzleLibrary {
+ 
++bool g_shallowSplit = false;
+ namespace {
+ // the dancing cell algorithm for the MCC problem
+ // see the art of computer programming by Knuth chapter 7.2.2.3
+@@ -107,6 +108,7 @@
+         // the remaining may need conversion
+         // TODO remove, it is on the stack frames
+         std::vector<size_t> SOL;
++        size_t floorFrames = 0; // prototype: a shallow split-off copy is done when it returns to this depth
+         size_t SOL_low = 0; // the first n entries of SOL can come from beeing split off of an origin solver
+ 
+         // marker bit for the highest bits of size_t
+@@ -124,6 +126,7 @@
+         struct Frame
+         {
+                 int state = 0;
++                bool given = false; // prototype: the discard branch of this frame was split off
+                 size_t f  = 0;
+                 OptionItem x;
+                 RestorationData storestate;
+@@ -142,6 +145,7 @@
+             if (activeFrames == frames.size()) frames.emplace_back();
+             activeFrames++;
+             frames[activeFrames - 1].state = 0;
++            frames[activeFrames - 1].given = false;
+         }
+ 
+         void popFrame()
+@@ -188,7 +192,7 @@
+                 std::vector<int> slackbound;
+         };
+ 
+-        std::unique_ptr<SetupData> setup;
++        std::shared_ptr<SetupData> setup;
+ 
+         // a pile of type safe getters and little helper functions
+ 
+@@ -833,7 +837,7 @@
+         {
+             // prepare for setting up a mcc matrix
+ 
+-            setup = std::make_unique<SetupData>();
++            setup = std::make_shared<SetupData>();
+ 
+             // we need to know the number of primary items to later
+             // on properly setup the SECOND variable and check that primary
+@@ -1021,7 +1025,7 @@
+             // and continue running until we are back in a state 0
+             popFrame();
+ 
+-            while (activeFrames > 0)
++            while (activeFrames > floorFrames)
+             {
+                 auto & f = topFrame();
+                 switch (f.state)
+@@ -1045,6 +1049,7 @@
+                         // returning from recursion after selecting an option
+                         SOL.pop_back();
+                         restoreItemSetSizes(f.storestate);
++                        if (f.given) { popFrame(); break; }
+                         discardOption(f.x);
+                         f.state = 1;
+                         pushFrame();
+@@ -1055,6 +1060,9 @@
+ 
+         [[nodiscard]] std::unique_ptr<MCCSolver> split() override
+         {
++            if (g_shallowSplit)
++                if (auto r = splitShallow()) return r;
++
+             // first count the number of options left for each item and with that create a new ITEM and SET array. The SET array will not contain the indices
+             // into the nodes then iterate over the nodes and if they are still active create new ones
+ 
+@@ -1251,7 +1259,7 @@
+ 
+             if (iterations) iterations++;
+ 
+-            while (activeFrames > 0)
++            while (activeFrames > floorFrames)
+             {
+                 auto & f = topFrame();
+                 switch (f.state)
+@@ -1329,6 +1337,7 @@
+                         // returning from recursion after selecting an option
+                         SOL.pop_back();
+                         restoreItemSetSizes(f.storestate);
++                        if (f.given) { popFrame(); break; }
+                         discardOption(f.x);
+                         f.state = 1;
+                         pushFrame();
+@@ -1337,7 +1346,39 @@
+             }
+         }
+ 
+-        [[nodiscard]] bool finished() const override { return activeFrames == 0; }
++        [[nodiscard]] bool finished() const override { return activeFrames <= floorFrames; }
++
++        // prototype: split off the untried remainder of the shallowest open branching frame
++        std::unique_ptr<MCCSolver> splitShallow()
++        {
++            size_t k = floorFrames;
++            while (k < activeFrames && !(frames[k].state == 3 && !frames[k].given)) k++;
++            if (k + 1 >= activeFrames) return nullptr;
++
++            auto res = std::make_unique<DancingCellSolver>(*this);
++            while (res->activeFrames - 1 > k)
++            {
++                auto & f = res->topFrame();
++                switch (f.state)
++                {
++                    case 2: res->SOL.resize(f.f); break;
++                    case 3: res->SOL.pop_back(); res->restoreItemSetSizes(f.storestate); break;
++                    default: break;
++                }
++                res->popFrame();
++            }
++            {
++                auto & f = res->topFrame();
++                res->SOL.pop_back();
++                res->restoreItemSetSizes(f.storestate);
++                res->discardOption(f.x);
++                f.state = 1;
++                res->pushFrame();
++            }
++            res->floorFrames = k;
++            frames[k].given  = true;
++            return res;
++        }
+ 
+         [[nodiscard]] float progress() const override
+         {
