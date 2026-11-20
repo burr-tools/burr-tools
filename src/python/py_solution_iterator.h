@@ -40,7 +40,6 @@ public:
                    bool disassemble = true,
                    bool reduce = false,
                    bool keep_rotations = false,
-                   bool keep_mirror = false,
                    unsigned int threads = 0,
                    rotationMode_e rotation_mode = ROTATION_OFF);
   ~SolutionIterator();
@@ -64,7 +63,6 @@ private:
   bool disassemble;
   bool reduce;
   bool keep_rotations;
-  bool keep_mirror;
   unsigned int threads;
   rotationMode_e rotation_mode;   ///< ROTATION_OFF: no rotation moves
 

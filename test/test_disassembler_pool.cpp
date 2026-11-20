@@ -60,7 +60,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
 
   assembler_1_c assm(problem, bttest::settings());
   assm.setNumThreads(1);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
 
   return found;
@@ -93,8 +93,7 @@ TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm
     problem->removeAllSolutions();
 
     int par = solveThread_c::PAR_DISASSM |
-              solveThread_c::PAR_KEEP_ROTATIONS |
-              solveThread_c::PAR_KEEP_MIRROR;
+              solveThread_c::PAR_KEEP_ROTATIONS;
 
     solveThread_c st(*problem, par, bttest::settings());
     REQUIRE(st.start());
@@ -383,8 +382,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     problem->removeAllSolutions();
 
     int par = solveThread_c::PAR_DISASSM |
-              solveThread_c::PAR_KEEP_ROTATIONS |
-              solveThread_c::PAR_KEEP_MIRROR;
+              solveThread_c::PAR_KEEP_ROTATIONS;
 
     unsigned long first_phase_assemblies = 0;
     unsigned int final_act1 = solveThread_c::ACT_PAUSING;
@@ -460,8 +458,7 @@ TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, pro
     REQUIRE(problem != nullptr);
     problem->removeAllSolutions();
 
-    int par = solveThread_c::PAR_KEEP_ROTATIONS |
-              solveThread_c::PAR_KEEP_MIRROR;
+    int par = solveThread_c::PAR_KEEP_ROTATIONS;
 
     unsigned long first_phase_assemblies = 0;
     unsigned int final_act1 = solveThread_c::ACT_PAUSING;
@@ -573,8 +570,7 @@ TEST_CASE("solveThread_c: a stop after the search completes stays resumable unti
   problem->removeAllSolutions();
 
   const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS |
-                  solveThread_c::PAR_KEEP_MIRROR;
+                  solveThread_c::PAR_KEEP_ROTATIONS;
 
   {
     stopAfterSearchSolveThread_c st1(*problem, par, bttest::settings());
@@ -629,8 +625,7 @@ TEST_CASE("solveThread_c: lifecycle guard invariants", "[solvethread][lifecycle]
   CHECK(problem->canStartSolving());
 
   const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS |
-                  solveThread_c::PAR_KEEP_MIRROR;
+                  solveThread_c::PAR_KEEP_ROTATIONS;
 
   solveThread_c st(*problem, par, bttest::settings());
   REQUIRE(st.start(false));
@@ -672,8 +667,7 @@ TEST_CASE("solveThread_c: lifecycle misuse is rejected loudly in all build modes
   problem->removeAllSolutions();
 
   const int par = solveThread_c::PAR_DISASSM |
-                  solveThread_c::PAR_KEEP_ROTATIONS |
-                  solveThread_c::PAR_KEEP_MIRROR;
+                  solveThread_c::PAR_KEEP_ROTATIONS;
 
   solveThread_c st(*problem, par, bttest::settings());
   REQUIRE(st.start(false));
@@ -721,7 +715,7 @@ TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvet
   REQUIRE(problem != nullptr);
   problem->removeAllSolutions();
 
-  int par = solveThread_c::PAR_KEEP_ROTATIONS | solveThread_c::PAR_KEEP_MIRROR;
+  int par = solveThread_c::PAR_KEEP_ROTATIONS;
 
   solveThread_c st(*problem, par, bttest::withThreads(2));
   REQUIRE(st.start());

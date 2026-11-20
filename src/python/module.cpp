@@ -120,6 +120,7 @@ PYBIND11_MODULE(burrtools, m) {
          py::arg("threads") = 0,
          py::arg("rotations") = "off",
          "Start solving the problem and return an iterator yielding Solution objects (threads: 0 = all cores; "
+         "keep_mirror is deprecated and ignored: mirror duplicates are always removed, True emits a DeprecationWarning; "
          "rotations: also allow quarter turns of piece groups when disassembling, cube grids only: "
          "\"fast\" (the fixed turn paths only), \"balanced\" (also plans turns those paths make with more "
          "play), \"slow\" (also plans every other turn that ends in a free place) or \"off\" (the "

@@ -734,7 +734,7 @@ int assembler_1_c::prepare(bool hasRange, unsigned int rangeMin, unsigned int ra
   return 1;
 }
 
-assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRotations, bool comp) {
+assembler_1_c::errState assembler_1_c::createMatrix(bool keepRotations, bool comp) {
 
   bt_assert(problem.resultValid());
 
@@ -814,10 +814,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
     errorsState = ERR_CAN_NOT_PLACE;
     errorsParam = -error;
     return errorsState;
-  }
-
-  if (keepMirror) {
-    avoidTransformedMirror.reset();
   }
 
   if (keepRotations)

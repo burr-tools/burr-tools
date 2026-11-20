@@ -418,7 +418,7 @@ const separation_c & cubeInCageSeparation() {
 
     std::unique_ptr<assembler_c> assm(gt->findAssembler(*problem, bttest::settings()));
     REQUIRE(assm != nullptr);
-    REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
     disassembler_0_c disasm(*problem, bttest::settings());
 

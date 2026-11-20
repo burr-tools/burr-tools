@@ -216,7 +216,7 @@ void placementFinder_c::find(const voxel_c * rotation,
   }
 }
 
-assembler_c::errState assembler_c::createMatrix(bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/)
+assembler_c::errState assembler_c::createMatrix(bool /*keepRotations*/, bool /*complete*/)
 {
   return ERR_NONE;
 }

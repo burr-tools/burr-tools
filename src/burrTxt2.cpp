@@ -54,7 +54,7 @@ void usage(bool full = false) {
   cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
   cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
   cout << "  -c    just count solutions\n";
-  cout << "  -m    keep mirror solutions\n";
+  cout << "  -m    (deprecated, ignored)\n";
   cout << "  -r    keep rotated solutions\n";
   cout << "  -p    drop disassemblies and replace by information about disassembly\n";
   cout << "  -b    selecte problem, else 0\n";
@@ -110,7 +110,7 @@ static int solve(int argv, char* args[]) {
     else if (strcmp(args[i], "-c") == 0)
       par |= solveThread_c::PAR_JUST_COUNT;
     else if (strcmp(args[i], "-m") == 0)
-      par |= solveThread_c::PAR_KEEP_MIRROR;
+      cerr << "-m is deprecated and ignored: mirror duplicates are always removed\n";
     else if (strcmp(args[i], "-r") == 0)
       par |= solveThread_c::PAR_KEEP_ROTATIONS;
     else if (strcmp(args[i], "-p") == 0)

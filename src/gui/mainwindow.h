@@ -162,7 +162,7 @@ class mainWindow_c : public LFl_Double_Window {
   ButtonGroup_c *editMode;
 
   layouter_c *TabSolve;
-  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepMirrors, *KeepRotations, *CompleteRotations;
+  Fl_Check_Button *SolveDisasm, *JustCount, *DropDisassemblies, *KeepRotations, *CompleteRotations;
   /* Rotation moves: Off, Fast, Balanced, Slow (rotationMode()); per solve,
    * never saved */
   Fl_Choice *RotationMoves;

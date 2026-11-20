@@ -22,7 +22,6 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
                                    bool disassemble,
                                    bool reduce,
                                    bool keep_rotations,
-                                   bool keep_mirror,
                                    unsigned int threads,
                                    rotationMode_e rotation_mode)
   : puzzle(std::move(puz)),
@@ -30,7 +29,6 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
     disassemble(disassemble),
     reduce(reduce),
     keep_rotations(keep_rotations),
-    keep_mirror(keep_mirror),
     threads(threads),
     rotation_mode(rotation_mode)
 {
@@ -170,7 +168,7 @@ void SolutionIterator::worker_run(std::stop_token st) {
       return;
     }
 
-    assembler_c::errState err = assm->createMatrix(keep_mirror, keep_rotations, false);
+    assembler_c::errState err = assm->createMatrix(keep_rotations, false);
     if (err != assembler_c::ERR_NONE) {
       active_assm.store(nullptr, std::memory_order_release);
       std::string msg = std::string("Matrix creation error in assembler: ") + assembler_c::getErrorMessage(err);

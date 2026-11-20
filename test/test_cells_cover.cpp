@@ -112,7 +112,7 @@ Set solveAll(problem_c & problem, unsigned int threads) {
   Recorder cb;
   assembler_1_c assm(problem, bttest::settings());
   assm.setNumThreads(threads);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
   return std::move(cb.fingerprints);
 }
@@ -121,7 +121,7 @@ Set solveAll(problem_c & problem, unsigned int threads) {
 std::string stopAfter(problem_c & problem, unsigned int threads, unsigned int k, Recorder & cb) {
   assembler_1_c assm(problem, bttest::settings());
   assm.setNumThreads(threads);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   unsigned int seen = 0;
   assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
     cb.assembly(std::move(a));
@@ -136,7 +136,7 @@ std::string stopAfter(problem_c & problem, unsigned int threads, unsigned int k,
 Set resumeAll(problem_c & problem, unsigned int threads, const std::string & state) {
   assembler_1_c restored(problem, bttest::settings());
   restored.setNumThreads(threads);
-  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
   const std::string payload = contentOf(state);
   REQUIRE(restored.setPosition(payload.c_str(), versionOf(state).c_str()) == assembler_c::ERR_NONE);
   Recorder cb;
@@ -256,7 +256,7 @@ TEST_CASE("Dancing Cells donates and replays seeds exactly once",
         Recorder cb;
         assembler_1_c assm(problem, bttest::settings());
         assm.setNumThreads(threads);
-        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
         assm.assemble(&cb);
         CHECK(assm.getDonations() > 0);
         CHECK(cb.fingerprints == baseline);
@@ -293,7 +293,7 @@ TEST_CASE("Dancing Cells stop and continue delivers every assembly exactly once"
 
         assembler_1_c assm(problem, bttest::settings());
         assm.setNumThreads(c.threads);
-        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
         Recorder cb1, cb2;
         unsigned int seen = 0;
@@ -355,7 +355,7 @@ TEST_CASE("Dancing Cells state saved, restored and continued is exact-once",
           {
             assembler_1_c restored(problem, bttest::settings());
             restored.setNumThreads(c.threads);
-            REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+            REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
             const std::string payload = contentOf(state);
             REQUIRE(restored.setPosition(payload.c_str(), versionOf(state).c_str())
                     == assembler_c::ERR_NONE);
@@ -428,7 +428,7 @@ TEST_CASE("restore validates the step kinds of Dancing Cells and bit-parallel re
 
   auto restoreCode = [&](const std::string & payload, const std::string & version) {
     assembler_1_c assm(problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     return assm.setPosition(payload.c_str(), version.c_str());
   };
 
@@ -817,7 +817,7 @@ TEST_CASE("the range symmetry breaker restricts the placements of a shape used e
     ScopedSettings env;
     env->rangeSymmetryBreaker = breaker;
     assembler_1_c assm(problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     // piece 0 is the L, the only shape with min == max == 1
     return assm.getPiecePlacementCount(0);
   };
@@ -900,7 +900,7 @@ TEST_CASE("restore refuses a bit-parallel remainder the bit-parallel engine cann
           "[cells][assembler][save]") {
   auto restore = [](problem_c & problem, const char * payload) {
     assembler_1_c assm(problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     return assm.setPosition(payload, "2.2");
   };
 

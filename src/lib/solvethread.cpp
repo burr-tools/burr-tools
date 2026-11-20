@@ -92,7 +92,7 @@ void solveThread_c::run(void){
       a = new_assm.get();
       assm.store(a, std::memory_order_release);
 
-      errState = a->createMatrix(parameters & PAR_KEEP_MIRROR, parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
+      errState = a->createMatrix(parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
       if (errState != assembler_c::ERR_NONE) {
 
         errParam = a->getErrorsParam();

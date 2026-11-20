@@ -236,6 +236,23 @@ class TestBurrTools(unittest.TestCase):
         asms_multi = list(prob.solve(disassemble=False, threads=4))
         self.assertEqual(len(asms_multi), 12)
 
+    def test_keep_mirror_deprecated(self):
+        import warnings
+        puzzle = burrtools.load(self.puzzle_path)
+        prob = puzzle.problems[0]
+        expected = len(list(prob.solve(disassemble=False)))
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            asms = list(prob.solve(disassemble=False, keep_mirror=True))
+        self.assertTrue(any(issubclass(w.category, DeprecationWarning) for w in caught))
+        self.assertEqual(len(asms), expected)
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            list(prob.solve(disassemble=False, keep_mirror=False))
+        self.assertFalse(any(issubclass(w.category, DeprecationWarning) for w in caught))
+
 if __name__ == "__main__":
     unittest.main()
 

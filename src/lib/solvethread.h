@@ -160,7 +160,6 @@ class solveThread_c : public assembler_cb {
   public:
 
     static const int PAR_REDUCE =             0x01;  // do a reduction after preparation
-    static const int PAR_KEEP_MIRROR =        0x02;  // keep mirror solutions
     static const int PAR_KEEP_ROTATIONS =     0x04;  // keep rotated solutions
     static const int PAR_DROP_DISASSEMBLIES = 0x08;  // remove disassembly instructions after analysis
     static const int PAR_DISASSM =            0x10;  // do the disassembly analysis

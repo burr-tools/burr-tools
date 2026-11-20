@@ -6,6 +6,7 @@
 #include "lib/rotationtables.h"
 
 #include <stdexcept>
+#include <pybind11/pybind11.h>
 
 PyProblem::PyProblem(std::shared_ptr<puzzle_c> puz, unsigned int idx)
   : puzzle(std::move(puz)), problem_idx(idx) {
@@ -91,6 +92,13 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
                                                     bool keep_mirror,
                                                     unsigned int threads,
                                                     const std::string & rotations) {
+  if (keep_mirror) {
+    // Deprecated: the solver always removes mirror duplicates.
+    if (PyErr_WarnEx(PyExc_DeprecationWarning,
+                     "keep_mirror is deprecated and ignored: mirror duplicates are always removed", 1) < 0) {
+      throw pybind11::error_already_set();
+    }
+  }
   const std::optional<rotationMode_e> mode = rotationModeFromName(rotations);
   if (!mode)
     throw std::invalid_argument("rotations must be \"off\", \"fast\", \"balanced\" or \"slow\"");
@@ -100,7 +108,6 @@ std::unique_ptr<SolutionIterator> PyProblem::solve(bool disassemble,
     disassemble,
     reduce,
     keep_rotations,
-    keep_mirror,
     threads,
     *mode
   );

@@ -1188,7 +1188,6 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   bt_assert(assmThread == 0);
 
   int par = solveThread_c::PAR_REDUCE;
-  if (KeepMirrors->value() != 0) par |= solveThread_c::PAR_KEEP_MIRROR;
   if (KeepRotations->value() != 0) par |= solveThread_c::PAR_KEEP_ROTATIONS;
   if (DropDisassemblies->value() != 0) par |= solveThread_c::PAR_DROP_DISASSEMBLIES;
   if (SolveDisasm->value() != 0) par |= solveThread_c::PAR_DISASSM;
@@ -4357,11 +4356,7 @@ void mainWindow_c::CreateSolveTab(void) {
     DropDisassemblies->tooltip(" Don\'t save the Disassemblies, just the information about them ");
     DropDisassemblies->clear_visible_focus();
 
-    KeepMirrors = new LFl_Check_Button("Keep Mirror Solutions", 1, 1, 1, 1);
-    KeepMirrors->tooltip(" Don't remove solutions that are mirrors of another solution ");
-    KeepMirrors->clear_visible_focus();
-
-    KeepRotations = new LFl_Check_Button("Keep Rotated Solutions", 1, 2, 1, 1);
+    KeepRotations = new LFl_Check_Button("Keep Rotated Solutions", 1, 1, 1, 1);
     KeepRotations->tooltip(" Don't remove solutions that are rotations of other solutions ");
     KeepRotations->clear_visible_focus();
 

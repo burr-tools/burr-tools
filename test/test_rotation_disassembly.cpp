@@ -75,7 +75,7 @@ class collect_c : public assembler_cb {
 std::vector<std::unique_ptr<assembly_c>> assembleAll(problem_c & problem) {
   std::unique_ptr<assembler_c> assm = problem.getPuzzle().getGridType()->findAssembler(problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
   collect_c cb;
   assm->assemble(&cb);
   return std::move(cb.assemblies);

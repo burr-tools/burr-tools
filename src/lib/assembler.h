@@ -192,10 +192,10 @@ public:
 
   /**
    * the part of the initialisation that may take a while.
-   * when keep mirror is true, the assembler must not throw away mirror solutions
-   * but it still removes solutions that are rotations.
+   * mirror duplicates are always removed; solutions that are rotations are
+   * removed too unless keepRotations is true.
    */
-  virtual errState createMatrix(bool /*keepMirror*/, bool /*keepRotations*/, bool /*complete*/);
+  virtual errState createMatrix(bool /*keepRotations*/, bool /*complete*/);
 
   /**
    * when createMatrix returns an error you can call this function to

@@ -117,7 +117,7 @@ SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool dis
   std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
 
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   std::unique_ptr<disassembler_c> disasm;
   if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
@@ -324,7 +324,7 @@ TEST_CASE("Assembler early stop on false callback return and derived assemble ov
   // Test assembler_1_c: calls assemble with lambda overload directly on derived assembler_1_c
   {
     assembler_1_c assm(*problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int count = 0;
     assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
       count++;
@@ -360,7 +360,7 @@ TEST_CASE("Parallel assembler produces identical results to single-threaded", "[
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     disassembler_0_c disasm(*problem, bttest::settings());
     TestAssemblerCallback cb(&disasm);
     assm.assemble(&cb);
@@ -373,7 +373,7 @@ TEST_CASE("Parallel assembler produces identical results to single-threaded", "[
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     disassembler_0_c disasm(*problem, bttest::settings());
     TestAssemblerCallback cb(&disasm);
     assm.assemble(&cb);
@@ -395,7 +395,7 @@ TEST_CASE("Parallel assembler pause and continue does not duplicate solutions", 
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     TestAssemblerCallback cb;
     assm.assemble(&cb);
     total_expected = cb.assemblies;
@@ -406,7 +406,7 @@ TEST_CASE("Parallel assembler pause and continue does not duplicate solutions", 
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     int phase1_count = 0;
     class StoppingCallback : public assembler_cb {
@@ -481,7 +481,7 @@ TEST_CASE("Assembler clamps an absurd thread count instead of trying to spawn it
   assm.setNumThreads(1000000);
   CHECK(assm.getNumThreads() <= 256);
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   int seen = 0;
   assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool { seen++; return true; });
   CHECK(seen == 12);
@@ -516,7 +516,7 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -531,7 +531,7 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(true, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     INFO("symmetry breaking must be active for this test to be meaningful");
     REQUIRE(cb.fingerprints.size() > serial.size());
@@ -549,7 +549,7 @@ TEST_CASE("Parallel assembler matches serial on a symmetry-breaking puzzle",
   RecordingAssemblerCallback cb;
   assembler_1_c assm(*problemFresh, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
 
   CHECK(cb.fingerprints == serial);
@@ -566,7 +566,7 @@ TEST_CASE("Parallel assembler 1 produces identical results to single-threaded", 
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -576,7 +576,7 @@ TEST_CASE("Parallel assembler 1 produces identical results to single-threaded", 
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     /* the set, not the size: a lost assembly paired with a duplicated one
      * would pass a count comparison
@@ -607,7 +607,7 @@ TEST_CASE("Parallel assembler 1 does not duplicate assemblies when task generati
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -616,7 +616,7 @@ TEST_CASE("Parallel assembler 1 does not duplicate assemblies when task generati
   RecordingAssemblerCallback cb;
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(64);          // targetTasks = 256, unreachable at depth 1
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
   CHECK(cb.fingerprints == serial);
 }
@@ -636,7 +636,7 @@ TEST_CASE("Parallel assembler 1 pause and continue does not duplicate assemblies
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -644,7 +644,7 @@ TEST_CASE("Parallel assembler 1 pause and continue does not duplicate assemblies
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   RecordingAssemblerCallback cb;
   int seen = 0;
@@ -681,7 +681,7 @@ TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
     simdIterations = assm.getIterations();
@@ -694,7 +694,7 @@ TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     REQUIRE(cb.fingerprints == serial);
     INFO("the bit-parallel engine must differ in iteration count from Dancing Cells");
@@ -703,7 +703,7 @@ TEST_CASE("Huang-SIMD pause and continue resumes salvaged prefixes",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   RecordingAssemblerCallback cb;
   int seen = 0;
@@ -736,7 +736,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -748,7 +748,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       cb1.assembly(std::move(a));
@@ -768,7 +768,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
   // Phase 2: restore into a fresh assembler and continue.
   {
     assembler_1_c restored(*problem, bttest::settings());
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -797,7 +797,7 @@ static void checkChainedStopsExactOnce(problem_c & problem) {
     RecordingAssemblerCallback cb;
     Assembler assm(problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     baseline = std::move(cb.fingerprints);
   }
@@ -810,7 +810,7 @@ static void checkChainedStopsExactOnce(problem_c & problem) {
                    RecordingAssemblerCallback & cb, bool & finished) {
     Assembler assm(problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     if (!in.empty()) {
       std::string payload = extractAssemblerContent(in);
       REQUIRE(assm.setPosition(payload.c_str(), assemblerVersionOf(in).c_str())
@@ -925,7 +925,7 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -936,7 +936,7 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       cb1.assembly(std::move(a));
@@ -952,7 +952,7 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
 
   {
     assembler_1_c restored(*problem, bttest::settings());
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -987,7 +987,7 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(true, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     unbroken = cb.fingerprints.size();
     INFO("symmetry breaking must be active for this test to be meaningful");
@@ -999,7 +999,7 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1013,7 +1013,7 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       cb1.assembly(std::move(a));
@@ -1029,7 +1029,7 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
 
   {
     assembler_1_c restored(*problem, bttest::settings());
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -1064,7 +1064,7 @@ TEST_CASE("Second save in a single-threaded chain resumes exact-once",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1077,7 +1077,7 @@ TEST_CASE("Second save in a single-threaded chain resumes exact-once",
     return str.str();
   };
   auto restoreInto = [&](const std::string & state, assembler_1_c & restored) {
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -1089,7 +1089,7 @@ TEST_CASE("Second save in a single-threaded chain resumes exact-once",
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       cb1.assembly(std::move(a));
@@ -1148,7 +1148,7 @@ TEST_CASE("In-session parallel-then-serial continue does not duplicate",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1156,7 +1156,7 @@ TEST_CASE("In-session parallel-then-serial continue does not duplicate",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   RecordingAssemblerCallback cb;
   int seen = 0;
@@ -1186,7 +1186,7 @@ TEST_CASE("Dancing Cells save, load and continue reproduces the full multiset",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1197,7 +1197,7 @@ TEST_CASE("Dancing Cells save, load and continue reproduces the full multiset",
   {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       cb1.assembly(std::move(a));
@@ -1215,7 +1215,7 @@ TEST_CASE("Dancing Cells save, load and continue reproduces the full multiset",
 
   {
     assembler_1_c restored(*problem, bttest::settings());
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -1237,7 +1237,7 @@ TEST_CASE("Parallel assembler 1 stops promptly when aborted", "[assembler][paral
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   int count = 0;
   assm.assemble([&count](std::unique_ptr<assembly_c>) -> bool {
@@ -1282,7 +1282,7 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1297,7 +1297,7 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(true, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     INFO("symmetry breaking must be active for this test to be meaningful");
     REQUIRE(cb.fingerprints.size() > serial.size());
@@ -1315,7 +1315,7 @@ TEST_CASE("Parallel assembler 1 matches serial on a symmetry-breaking puzzle",
   RecordingAssemblerCallback cb;
   assembler_1_c assm(*problemFresh, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
 
   CHECK(cb.fingerprints == serial);
@@ -1338,7 +1338,7 @@ TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -1346,7 +1346,7 @@ TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   RecordingAssemblerCallback cb1;
   int seen = 0;
@@ -1369,7 +1369,7 @@ TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
   /* resumes from saved tasks (issue #90) rather than refusing or silently
    * starting over */
   assembler_1_c restored(*problem, bttest::settings());
-  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
   std::string payload = extractAssemblerContent(state);
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
         == assembler_c::ERR_NONE);
@@ -1402,7 +1402,7 @@ TEST_CASE("Parallel assembler 1: the interrupted flag does not break normal rest
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(1);            // serial: a resumable stop
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   int seen = 0;
   assm.assemble([&seen](std::unique_ptr<assembly_c>) -> bool { seen++; return false; });
@@ -1418,7 +1418,7 @@ TEST_CASE("Parallel assembler 1: the interrupted flag does not break normal rest
   }
 
   assembler_1_c restored(*problem, bttest::settings());
-  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
   std::string payload = extractAssemblerContent(state);
   CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
         == assembler_c::ERR_NONE);
@@ -1436,7 +1436,7 @@ TEST_CASE("Parallel assembler 1 does not report stale progress on a later run",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   assm.assemble([](std::unique_ptr<assembly_c>) -> bool { return true; });
   REQUIRE(assm.getFinished() >= 1.0f);
 
@@ -1445,7 +1445,7 @@ TEST_CASE("Parallel assembler 1 does not report stale progress on a later run",
    */
   assembler_1_c again(*problem, bttest::settings());
   again.setNumThreads(4);
-  REQUIRE(again.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(again.createMatrix(false, false) == assembler_c::ERR_NONE);
   CHECK(again.getFinished() < 1.0f);
 }
 
@@ -1541,7 +1541,7 @@ TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as r
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     baseline = std::move(cb.fingerprints);
   }
@@ -1549,7 +1549,7 @@ TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as r
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(1);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   RecordingAssemblerCallback cb1;
   int seen = 0;
@@ -1572,7 +1572,7 @@ TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as r
 
   assembler_1_c restored(*problem, bttest::settings());
   restored.setNumThreads(1);
-  REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   std::string payload = extractAssemblerContent(state);
 
@@ -1612,7 +1612,7 @@ TEST_CASE("Saved interrupted search XML size is bounded and independent of solut
 
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
@@ -1637,7 +1637,7 @@ TEST_CASE("Saved interrupted search XML size is bounded and independent of solut
 
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     int seen = 0;
     assm.assemble([&](std::unique_ptr<assembly_c>) -> bool {
@@ -1671,7 +1671,7 @@ TEST_CASE("Search state saved by another version is refused on restore",
   {
     /* what assembler_0 wrote, which is gone */
     assembler_1_c assm(*problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CHECK(assm.setPosition("1 0 0 (0 0) 1", "1.6") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
     CHECK(assm.setPosition("0 0 0 0 (0 0) 0 0", "1.7") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
     CHECK(assm.setPosition("0 0 0 (0 0) 0", nullptr) == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
@@ -1679,7 +1679,7 @@ TEST_CASE("Search state saved by another version is refused on restore",
 
   {
     assembler_1_c assm(*problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CHECK(assm.setPosition("1 0 0 0 0 0 0 0 0", "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
     CHECK(assm.setPosition("0 0 0 0 0 0 0 0 0", "2.1") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
     CHECK(assm.setPosition("0 0 0 0 0 0 0", "2.0") == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
@@ -1717,7 +1717,7 @@ TEST_CASE("a stop before the pool is seeded keeps a resumed remainder",
     auto make = [&]() {
       std::unique_ptr<assembler_c> assm(new assembler_1_c(*problem, bttest::settings()));
       assm->setNumThreads(4);
-      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
       return assm;
     };
 
@@ -1785,7 +1785,7 @@ TEST_CASE("restore refuses remainders save() never writes",
   REQUIRE(problem != nullptr);
 
   assembler_1_c assm(*problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
   // state (0 not started, 1 stopped, 2 complete), then for 1: engine type,
   // seed count, seeds
   CHECK(assm.setPosition("3", "2.2") == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
@@ -1826,7 +1826,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     {
       RecordingAssemblerCallback cb;
       assembler_1_c assm(*problem, bttest::settings());
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       baseline = std::move(cb.fingerprints);
     }
@@ -1837,7 +1837,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     {
       assembler_1_c assm(*problem, bttest::settings());
       assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       int seen = 0;
       assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
         cb1.assembly(std::move(a));
@@ -1857,7 +1857,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     disableSimd->bitParallel = false;
     assembler_1_c restored(*problem, bttest::settings());
     restored.setNumThreads(1);
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -1883,7 +1883,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     {
       RecordingAssemblerCallback cb;
       assembler_1_c assm(*problem, bttest::settings());
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       baseline = std::move(cb.fingerprints);
     }
@@ -1894,7 +1894,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     {
       assembler_1_c assm(*problem, bttest::settings());
       assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       int seen = 0;
       assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
         cb1.assembly(std::move(a));
@@ -1914,7 +1914,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
     disableSimd->bitParallel = false;
     assembler_1_c restored(*problem, bttest::settings());
     restored.setNumThreads(1);
-    REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
     std::string payload = extractAssemblerContent(state);
     CHECK(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
           == assembler_c::ERR_NONE);
@@ -1982,7 +1982,7 @@ int assembliesAfterReduce(const char * path, bool forceDlx) {
 
   std::unique_ptr<assembler_c> assm = problem->getPuzzle().getGridType()->findAssembler(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   assm->reduce();
 
@@ -2025,7 +2025,7 @@ TEST_CASE("Parallel exact-once search: completed search does not replay on secon
 
   std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   TestAssemblerCallback cb1(nullptr);
   assm->assemble(&cb1);
@@ -2050,7 +2050,7 @@ TEST_CASE("Parallel exact-once search: completed search does not replay on secon
 
   std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm2 != nullptr);
-  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm2->createMatrix(false, false) == assembler_c::ERR_NONE);
   assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
   CHECK(err == assembler_c::ERR_NONE);
   CHECK(assm2->getFinished() == 1.0f);
@@ -2072,7 +2072,7 @@ TEST_CASE("Single-threaded exact-once search: completed search does not replay o
 
   std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   TestAssemblerCallback cb1(nullptr);
   assm->assemble(&cb1);
@@ -2097,7 +2097,7 @@ TEST_CASE("Single-threaded exact-once search: completed search does not replay o
 
   std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm2 != nullptr);
-  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm2->createMatrix(false, false) == assembler_c::ERR_NONE);
   assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
   CHECK(err == assembler_c::ERR_NONE);
   CHECK(assm2->getFinished() == 1.0f);
@@ -2117,7 +2117,7 @@ TEST_CASE("Parallel assembler 1 SIMD: completed search does not replay on second
 
   std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   TestAssemblerCallback cb1(nullptr);
   assm->assemble(&cb1);
@@ -2142,7 +2142,7 @@ TEST_CASE("Parallel assembler 1 SIMD: completed search does not replay on second
 
   std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm2 != nullptr);
-  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm2->createMatrix(false, false) == assembler_c::ERR_NONE);
   assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
   CHECK(err == assembler_c::ERR_NONE);
   CHECK(assm2->getFinished() == 1.0f);
@@ -2164,7 +2164,7 @@ TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on
 
   std::unique_ptr<assembler_c> assm = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   TestAssemblerCallback cb1(nullptr);
   assm->assemble(&cb1);
@@ -2189,7 +2189,7 @@ TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on
 
   std::unique_ptr<assembler_c> assm2 = std::make_unique<assembler_1_c>(*problem, bttest::settings());
   REQUIRE(assm2 != nullptr);
-  REQUIRE(assm2->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm2->createMatrix(false, false) == assembler_c::ERR_NONE);
   assembler_c::errState err = assm2->setPosition(state.c_str(), version.c_str());
   CHECK(err == assembler_c::ERR_NONE);
   CHECK(assm2->getFinished() == 1.0f);
@@ -2226,7 +2226,7 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
   SECTION("default engine, 4 threads") {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CHECK(assm.getFinished() < 1.0f);
 
     TestAssemblerCallback cb;
@@ -2234,7 +2234,7 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
     CHECK(assm.getFinished() == 1.0f);
 
     /* preparing again must restart, not inherit the completed state */
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CHECK(assm.getFinished() < 1.0f);
   }
 
@@ -2244,7 +2244,7 @@ TEST_CASE("a freshly prepared assembler does not report itself finished",
     noSimd->bitParallel = false;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CHECK(assm.getFinished() < 1.0f);
 
     TestAssemblerCallback cb;
@@ -2440,7 +2440,7 @@ TEST_CASE("a stop after the pool drained completes the run",
     auto make = [&]() {
       std::unique_ptr<assembler_c> assm(new assembler_1_c(*problem, bttest::settings()));
       assm->setNumThreads(4);
-      REQUIRE(assm->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
       return assm;
     };
 
@@ -2522,7 +2522,7 @@ TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);  // Dancing Cells on one thread: the pool runs inline, nobody to donate to
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     serial = std::move(cb.fingerprints);
   }
@@ -2535,7 +2535,7 @@ TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(1);
-    REQUIRE(assm.createMatrix(false, true, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(true, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     REQUIRE(cb.fingerprints.size() > serial.size());
   }
@@ -2552,7 +2552,7 @@ TEST_CASE("Forced donation matches serial on a symmetry-breaking puzzle",
     RecordingAssemblerCallback cb;
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(c.threads);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     assm.assemble(&cb);
     CHECK(assm.getDonations() > 0);
     CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
@@ -2600,7 +2600,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       RecordingAssemblerCallback cb;
       assembler_1_c assm(*problem, bttest::settings());
       assm.setNumThreads(4);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       baseline = std::move(cb.fingerprints);
     }
@@ -2612,7 +2612,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       RecordingAssemblerCallback cb;
       assembler_1_c assm(*problem, bttest::settings());
       assm.setNumThreads(c.threads);
-      REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+      REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
       assm.assemble(&cb);
       CHECK(assm.getDonations() > 0);
       CHECK(Assembler1UnitsTestAccess::unitsConserved(assm));
@@ -2626,7 +2626,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       {
         assembler_1_c assm(*problem, bttest::settings());
         assm.setNumThreads(c.threads);
-        REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
         unsigned int seen = 0;
         assm.assemble([&](std::unique_ptr<assembly_c> a) -> bool {
           cb1.assembly(std::move(a));
@@ -2640,7 +2640,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
       {
         assembler_1_c restored(*problem, bttest::settings());
         restored.setNumThreads(c.threads);
-        REQUIRE(restored.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+        REQUIRE(restored.createMatrix(false, false) == assembler_c::ERR_NONE);
         std::string payload = extractAssemblerContent(state);
         REQUIRE(restored.setPosition(payload.c_str(), assemblerVersionOf(state).c_str())
                 == assembler_c::ERR_NONE);
@@ -2704,7 +2704,7 @@ TEST_CASE("Huang parallel assembly progress is monotone and ends at 1.0",
   auto produce = [&]() {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     TestAssemblerCallback cb;
     ProgressTrace t = traceSolve(assm, cb);
@@ -2748,7 +2748,7 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
   auto produce = [&]() {
     assembler_1_c assm(*problem, bttest::settings());
     assm.setNumThreads(4);
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     TestAssemblerCallback cb;
     /* 22 samples: one is dropped below and more than 20 are required */
@@ -2823,7 +2823,7 @@ TEST_CASE("Dancing Cells progress stays task-based when a remainder resumes on o
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   /* a parallel run, stopped from the callback so the abort is deterministic.
    * Tasks that had already drained when the abort landed are counted, so
@@ -2874,7 +2874,7 @@ TEST_CASE("Huang parallel progress does not restart after a resume",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   /* Paused from the callback rather than after a wall-clock budget: the pause
    * has to leave completed tasks behind or the case passes vacuously, and a
@@ -2920,7 +2920,7 @@ TEST_CASE("getRunThreads reports the width the next run will really have",
 
   assembler_1_c assm(*problem, bttest::settings());
   assm.setNumThreads(4);
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   /* fresh: the configured width */
   CHECK(assm.getRunThreads() == 4);

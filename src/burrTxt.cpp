@@ -530,7 +530,7 @@ int main(int argv, char* args[]) {
 
       auto assm = p.getGridType()->findAssembler(*problem, settings);
 
-      switch (assm->createMatrix(false, false, false)) {
+      switch (assm->createMatrix(false, false)) {
       case assembler_c::ERR_TOO_MANY_UNITS:
         printf("%i units too many for the result shape\n", assm->getErrorsParam());
         return 0;

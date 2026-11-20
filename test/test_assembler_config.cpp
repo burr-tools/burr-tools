@@ -116,7 +116,7 @@ TEST_CASE("assembler: pieces holding more cells than the result is rejected as t
 
   assembler_1_c assm(*f.problem, bttest::settings());
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_TOO_MANY_UNITS);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_TOO_MANY_UNITS);
 
   /* getErrorsParam reports the size of the mismatch, which is what the GUI
      shows the user. Asserting the value, not merely that it is non-zero:
@@ -131,7 +131,7 @@ TEST_CASE("assembler: pieces holding fewer cells than the result is rejected as 
 
   assembler_1_c assm(*f.problem, bttest::settings());
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_TOO_FEW_UNITS);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_TOO_FEW_UNITS);
   REQUIRE(assm.getErrorsParam() == 2);
 }
 
@@ -152,7 +152,7 @@ TEST_CASE("assembler: variable cells in the result absorb a shortfall rather tha
 
   assembler_1_c assm(*f.problem, bttest::settings());
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 }
 
 TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before any search",
@@ -189,7 +189,7 @@ TEST_CASE("assembler: a piece that fits nowhere in the result is rejected before
 
   assembler_1_c assm(*problem, bttest::settings());
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_CAN_NOT_PLACE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_CAN_NOT_PLACE);
 
   /* The parameter names WHICH piece could not be placed, so the user is
      told what to change -- and it names it by SHAPE id, not by the
@@ -211,7 +211,7 @@ TEST_CASE("assembler: a well-formed problem passes createMatrix", "[assembler][c
 
   assembler_1_c assm(*f.problem, bttest::settings());
 
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 }
 
 /* ------------------------------------------------------------------ */
@@ -234,7 +234,7 @@ TEST_CASE("assembler: findAssembler picks assembler_1 for every problem",
     std::unique_ptr<assembler_c> a = x->puzzle->getGridType()->findAssembler(*x->problem, bttest::settings());
     REQUIRE(a != nullptr);
     REQUIRE(std::string(assemblerKind(a.get())) == "assembler_1");
-    REQUIRE(a->createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(a->createMatrix(false, false) == assembler_c::ERR_NONE);
   }
 }
 
@@ -293,7 +293,7 @@ TEST_CASE("assembler: a one-dimensional puzzle yields the assemblies its geometr
   Fixture f = bars(6, {2, 4});
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   assm.assemble(&cb);
@@ -315,7 +315,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
   int total = 0;
   {
     assembler_1_c assm(*f.problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
     CountingCallback cb;
     assm.assemble(&cb);
@@ -325,7 +325,7 @@ TEST_CASE("assembler: returning false from the callback stops the search", "[ass
   REQUIRE(total > 1);
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   cb.stopAfter = 1;
@@ -339,7 +339,7 @@ TEST_CASE("assembler: stopped() reports idleness -- and stop() before a run is c
   Fixture f = bars(6, {1, 2, 3});
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   /* Two things here read the wrong way round from their names, and both
      are pinned rather than assumed.
@@ -374,7 +374,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
   int total = 0;
   {
     assembler_1_c assm(*f.problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
     total = cb.assemblies;
@@ -397,7 +397,7 @@ TEST_CASE("assembler: stop() called from inside the callback halts the search",
   };
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   StoppingCallback cb;
   cb.assm = &assm;
@@ -414,7 +414,7 @@ TEST_CASE("assembler: getFinished reports completion between zero and one",
   Fixture f = bars(6, {1, 2, 3});
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   REQUIRE(assm.getFinished() >= 0.0f);
   REQUIRE(assm.getFinished() <= 1.0f);
@@ -446,7 +446,7 @@ TEST_CASE("assembler: a range lets assembler_1 use a different number of pieces"
   problem->setShapeMaximum(piece, 3);
 
   assembler_1_c assm(*problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   assm.assemble(&cb);
@@ -465,7 +465,7 @@ TEST_CASE("assembler: the hole limit changes nothing when the result is filled e
   int withoutLimit = 0;
   {
     assembler_1_c assm(*f.problem, bttest::settings());
-    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
     CountingCallback cb;
     assm.assemble(&cb);
     withoutLimit = cb.assemblies;
@@ -477,7 +477,7 @@ TEST_CASE("assembler: the hole limit changes nothing when the result is filled e
   REQUIRE(f.problem->getMaxHoles() == 0);
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   assm.assemble(&cb);
@@ -527,7 +527,7 @@ int assembliesUnderHoleLimit(int maxHoles) {
   if (maxHoles >= 0) f.problem->setMaxHoles(maxHoles);
 
   assembler_1_c assm(*f.problem, bttest::settings());
-  REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm.createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   assm.assemble(&cb);
@@ -580,7 +580,7 @@ struct SolveCheck {
   int found;
 };
 
-SolveCheck resolve(const char * path, unsigned int problemIdx, bool keepMirror) {
+SolveCheck resolve(const char * path, unsigned int problemIdx) {
   std::unique_ptr<puzzle_c> p = puzzle_c::load(path);
   REQUIRE(p != nullptr);
   REQUIRE(problemIdx < p->getNumberOfProblems());
@@ -598,7 +598,7 @@ SolveCheck resolve(const char * path, unsigned int problemIdx, bool keepMirror) 
 
   std::unique_ptr<assembler_c> assm = gt->findAssembler(*problem, bttest::settings());
   REQUIRE(assm != nullptr);
-  REQUIRE(assm->createMatrix(keepMirror, false, false) == assembler_c::ERR_NONE);
+  REQUIRE(assm->createMatrix(false, false) == assembler_c::ERR_NONE);
 
   CountingCallback cb;
   assm->assemble(&cb);
@@ -617,37 +617,32 @@ TEST_CASE("assembler: re-solving the bundled puzzles reproduces the assembly cou
      package, and the reason the expected values here did not have to be
      invented or recorded from a run.
 
-     The keepMirror column is not decoration. A problem's recorded count
-     depends on which reductions were enabled when whoever saved the file
-     ran the solver, and they did not all use the same setting. Solid Six
-     Piece Burrs records 1063, which is what the assembler produces with
-     mirror solutions KEPT; with mirror reduction on it finds 588, and
-     both are correct answers to different questions. The next case pins
-     that relationship rather than leaving this column looking arbitrary.
+     Solid Six Piece Burrs is not in the list: it records 1063, which is
+     the count with mirror solutions kept, an option the solver no longer
+     has (with mirror reduction on it finds 588).
 
      Tagged [stress] so it lands in the slow suite: `just test` stays the
      fast loop and `just test-all` -- what CI runs -- includes this. */
-  struct Case { const char * path; unsigned int problem; bool keepMirror; const char * name; };
+  struct Case { const char * path; unsigned int problem; const char * name; };
 
   const Case cases[] = {
-    { "examples/12PieceSeparation.xmpuzzle",         0, false, "12 Piece Separation" },
-    { "examples/AlPackino.xmpuzzle",                 0, false, "Al Packino" },
-    { "examples/BrokenSticks.xmpuzzle",              0, false, "Broken Sticks" },
-    { "examples/DiagonalCube.xmpuzzle",              0, false, "Diagonal Cube" },
-    { "examples/PermutatedThirdStellation.xmpuzzle", 0, false, "Permutated Third Stellation" },
-    { "examples/FourPieceTetrahedron.xmpuzzle",      0, false, "Four Piece Tetrahedron" },
-    { "examples/BallRoom.xmpuzzle",                  0, false, "Ball Room problem 0" },
-    { "examples/BallRoom.xmpuzzle",                  1, false, "Ball Room problem 1" },
-    { "examples/BallRoom.xmpuzzle",                  2, false, "Ball Room problem 2" },
-    { "examples/HexSticks.xmpuzzle",                 0, false, "Hex Sticks" },
-    { "examples/PiecesOfEight.xmpuzzle",             2, false, "Pieces of Eight problem 2" },
-    { "examples/SolidSixPieceBurrs.xmpuzzle",        0, true,  "Solid Six Piece Burrs" },
+    { "examples/12PieceSeparation.xmpuzzle",         0, "12 Piece Separation" },
+    { "examples/AlPackino.xmpuzzle",                 0, "Al Packino" },
+    { "examples/BrokenSticks.xmpuzzle",              0, "Broken Sticks" },
+    { "examples/DiagonalCube.xmpuzzle",              0, "Diagonal Cube" },
+    { "examples/PermutatedThirdStellation.xmpuzzle", 0, "Permutated Third Stellation" },
+    { "examples/FourPieceTetrahedron.xmpuzzle",      0, "Four Piece Tetrahedron" },
+    { "examples/BallRoom.xmpuzzle",                  0, "Ball Room problem 0" },
+    { "examples/BallRoom.xmpuzzle",                  1, "Ball Room problem 1" },
+    { "examples/BallRoom.xmpuzzle",                  2, "Ball Room problem 2" },
+    { "examples/HexSticks.xmpuzzle",                 0, "Hex Sticks" },
+    { "examples/PiecesOfEight.xmpuzzle",             2, "Pieces of Eight problem 2" },
   };
 
   for (const Case & c : cases) {
-    INFO(c.name << (c.keepMirror ? " (mirror solutions kept)" : ""));
+    INFO(c.name);
 
-    SolveCheck r = resolve(c.path, c.problem, c.keepMirror);
+    SolveCheck r = resolve(c.path, c.problem);
 
     /* the premise: the file records a real search, not an empty one. A
        problem recording zero assemblies would make the comparison below
@@ -660,29 +655,20 @@ TEST_CASE("assembler: re-solving the bundled puzzles reproduces the assembly cou
 
 TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
           "[assembler][stress]") {
-  /* Each reduction can only ever merge assemblies, never invent one, so
-     turning one off must report at least as many. That ordering is the
-     property, and it holds whatever the absolute figures are.
+  /* Rotation reduction can only ever merge assemblies, never invent one, so
+     turning it off must report at least as many. Hex Sticks is where it
+     bites: 33 against 744.
 
-     It takes two puzzles, because no single cheap one exercises both
-     flags. Solid Six Piece Burrs is where mirror reduction bites -- 588
-     with it on, 1063 with mirror solutions kept -- and that second figure
-     is what its file records, which is what makes the keepMirror column in
-     the case above a derived value rather than a magic constant. Hex
-     Sticks is where rotation reduction bites: 33 against 744.
+     This is also the only place createMatrix's keepRotations argument is
+     exercised at all; every other case in the suite passes false.
 
-     This is also the only place createMatrix's keepMirror and
-     keepRotations arguments are exercised at all; every other case in the
-     suite passes false for both.
-
-     Solid Six Piece Burrs with keepRotations was deliberately dropped from
-     this case. It finds 12,597 assemblies, and under gcov instrumentation
-     the dancing-links inner loop in assembler_1.cpp then accumulates over
+     Solid Six Piece Burrs with keepRotations was deliberately not used. It
+     finds 12,597 assemblies, and under gcov instrumentation the
+     dancing-links inner loop in assembler_1.cpp then accumulates over
      four billion hits -- past the threshold at which gcovr rejects the
      counter as a parse error (gcc bug 68080) and `just coverage` fails
-     outright. Hex Sticks demonstrates the same property for a thousandth
-     of the work. */
-  auto count = [](const char * path, bool keepMirror, bool keepRotations) {
+     outright. */
+  auto count = [](const char * path, bool keepRotations) {
     std::unique_ptr<puzzle_c> p = puzzle_c::load(path);
     REQUIRE(p != nullptr);
 
@@ -691,34 +677,17 @@ TEST_CASE("assembler: relaxing a reduction reports at least as many assemblies",
 
     std::unique_ptr<assembler_c> assm = p->getGridType()->findAssembler(*problem, bttest::settings());
     REQUIRE(assm != nullptr);
-    REQUIRE(assm->createMatrix(keepMirror, keepRotations, false) == assembler_c::ERR_NONE);
+    REQUIRE(assm->createMatrix(keepRotations, false) == assembler_c::ERR_NONE);
 
     CountingCallback cb;
     assm->assemble(&cb);
     return cb.assemblies;
   };
 
-  const char * burrs = "examples/SolidSixPieceBurrs.xmpuzzle";
   const char * sticks = "examples/HexSticks.xmpuzzle";
 
-  const int burrsReduced = count(burrs, false, false);
-  const int burrsMirrorKept = count(burrs, true, false);
-
-  REQUIRE(burrsReduced > 0);
-
-  /* relaxing cannot lose an assembly... */
-  REQUIRE(burrsMirrorKept >= burrsReduced);
-  /* ...and here it genuinely gains some, so the inequality is not holding
-     by equality -- which it would against an assembler ignoring the flag */
-  REQUIRE(burrsMirrorKept > burrsReduced);
-
-  /* the figure the file records is the mirror-kept one */
-  std::unique_ptr<puzzle_c> p = puzzle_c::load(burrs);
-  REQUIRE(p != nullptr);
-  REQUIRE(p->getProblem(0)->getNumAssemblies() == (unsigned int)burrsMirrorKept);
-
-  const int sticksReduced = count(sticks, false, false);
-  const int sticksRotationsKept = count(sticks, false, true);
+  const int sticksReduced = count(sticks, false);
+  const int sticksRotationsKept = count(sticks, true);
 
   REQUIRE(sticksReduced > 0);
   REQUIRE(sticksRotationsKept >= sticksReduced);
