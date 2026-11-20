@@ -3,34 +3,16 @@
 #include "py_solution.h"
 #include "lib/rotationtables.h"
 
-#include <memory>
-#include <deque>
-#include <mutex>
-#include <condition_variable>
-#include <thread>
-#include <stop_token>
 #include <atomic>
-#include <string>
+#include <memory>
 
 class puzzle_c;
-class assembler_c;
-class disassembler_c;
+class solverSession_c;
 
-/* Streaming, unordered, one-shot solver for the Python bindings.
- *
- * This deliberately does NOT reuse solveThread_c: that orchestrator is
- * built around problem-side solution storage and the pause/resume state
- * machine -- both of which this iterator rejects in favor of
- * first-result-as-fast-as-possible streaming. Forcing one through the
- * other would mean a streaming mode on solveThread_c, complicating it for
- * no gain.
- *
- * Consequences of the split, stated so nobody has to rediscover them:
- * - Delivery order is unspecified (arrival order, varies between runs).
- * - No pause/resume: each solve() builds a fresh assembler and runs to
- *   exhaustion or stop(); continuing means solving again. The GUI/CLI
- *   pause/resume contract (see solveThread_c) does not apply here.
- * - Disassembly runs inline in the assemble callback, never pooled.
+/* Streaming, one-shot solver for the Python bindings, backed by
+ * solverSession_c: disassembly runs in parallel across the pool and results
+ * stream out of the bounded pull queue as soon as they finish, in no
+ * particular order.
  */
 class SolutionIterator {
 public:
@@ -48,44 +30,15 @@ public:
 
   void stop();
   unsigned long get_iterations() const;
-  bool is_finished() const { return finished.load(); }
+  bool is_finished() const { return finished_.load(std::memory_order_acquire); }
 
 private:
-  struct QueueItem {
-    enum Type { ITEM_SOLUTION, ITEM_FINISHED, ITEM_ERROR } type{ITEM_SOLUTION};
-    PySolution solution;
-    std::string error_message;
-  };
-
-  std::shared_ptr<puzzle_c> puzzle;
-  unsigned int problem_idx;
-  bool disassemble;
-  bool reduce;
-  bool keep_rotations;
-  unsigned int threads;
-  rotationMode_e rotation_mode;   ///< ROTATION_OFF: no rotation moves
-
-  std::unique_ptr<assembler_c> assm;
-  std::unique_ptr<disassembler_c> disasm;
-  std::atomic<assembler_c*> active_assm{nullptr};
-
-  std::atomic<bool> finished{false};
-  std::atomic<unsigned long> iterations{0};
-
-  std::mutex queue_mutex;
-  // condition_variable_any (not plain condition_variable): the wait overloads
-  // taking std::stop_token register a stop callback, so request_stop() wakes
-  // a worker blocked in push_item without manual notify_all() races.
-  std::condition_variable_any cv_can_pop;
-  std::condition_variable_any cv_can_push;
-  std::deque<QueueItem> queue;
-  static constexpr size_t MAX_QUEUE_SIZE = 4;
-
-  std::jthread worker_thread;
-  // Single-joiner guard: stop() may run from explicit user calls and the
-  // destructor; joining the same jthread twice would terminate.
-  std::once_flag stop_join_once_;
-
-  void worker_run(std::stop_token st);
-  void push_item(QueueItem && item, std::stop_token st);
+  std::shared_ptr<puzzle_c> puzzle_;
+  std::unique_ptr<solverSession_c> session_;
+  bool disassemble_{false};
+  unsigned int asm_count_{0};
+  unsigned int sol_count_{0};
+  std::atomic<bool> finished_{false};
+  std::atomic<bool> stopped_{false};
+  std::atomic<unsigned long> last_iterations_{0};
 };

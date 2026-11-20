@@ -38,8 +38,12 @@ PYBIND11_MODULE(burrtools, m) {
 
   // Solution
   py::class_<PySolution>(m, "Solution", "A puzzle solution found by the solver")
-    .def_readonly("assembly_number", &PySolution::assembly_number, "Sequence number of the assembly")
-    .def_readonly("solution_number", &PySolution::solution_number, "Sequence number among valid solutions")
+    .def_readonly("assembly_number", &PySolution::assembly_number,
+                  "Sequence number of the assembly, counted in delivery order. With disassembly the "
+                  "solver streams unordered (results arrive as worker threads finish), so the numbers "
+                  "can differ between runs with more than one thread; the set of solutions does not")
+    .def_readonly("solution_number", &PySolution::solution_number,
+                  "Sequence number among valid solutions, in delivery order (see assembly_number)")
     .def_readonly("has_disassembly", &PySolution::has_disassembly, "Whether disassembly analysis was performed")
     .def_readonly("moves_text", &PySolution::moves_text, "Disassembly sequence string (e.g. '14.2.1')")
     .def_readonly("total_moves", &PySolution::total_moves, "Total number of moves to fully disassemble")
@@ -56,7 +60,10 @@ PYBIND11_MODULE(burrtools, m) {
     });
 
   // SolutionIterator
-  py::class_<SolutionIterator>(m, "SolutionIterator", "Streaming iterator yielding solutions as they are found")
+  py::class_<SolutionIterator>(m, "SolutionIterator",
+                               "Streaming iterator yielding solutions as they are found. With disassembly "
+                               "the solutions arrive in the order worker threads finish them (unordered "
+                               "streaming), not in the order the assemblies were found")
     .def("__iter__", &SolutionIterator::iter)
     .def("__next__", &SolutionIterator::next)
     .def("stop", &SolutionIterator::stop, "Stop the background solving process immediately")

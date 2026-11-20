@@ -1,20 +1,18 @@
 #include "py_solution_iterator.h"
 
-#include "lib/puzzle.h"
-#include "lib/problem.h"
-#include "lib/assembler.h"
 #include "lib/assembly.h"
-#include "lib/disassembler.h"
-#include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
-#include "lib/rotationtables.h"
+#include "lib/problem.h"
+#include "lib/puzzle.h"
+#include "lib/solver/solversession.h"
 #include "lib/solver/solverspec.h"
 #include "lib/voxel.h"
 
 #include <pybind11/pybind11.h>
 #include <chrono>
 #include <stdexcept>
+#include <string>
 
 namespace py = pybind11;
 
@@ -25,22 +23,51 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
                                    bool keep_rotations,
                                    unsigned int threads,
                                    rotationMode_e rotation_mode)
-  : puzzle(std::move(puz)),
-    problem_idx(problem_idx),
-    disassemble(disassemble),
-    reduce(reduce),
-    keep_rotations(keep_rotations),
-    threads(threads),
-    rotation_mode(rotation_mode)
+  : puzzle_(std::move(puz))
 {
-  if (!puzzle) {
+  if (!puzzle_) {
     throw std::invalid_argument("Puzzle pointer is null");
   }
-  if (problem_idx >= puzzle->getNumberOfProblems()) {
+  if (problem_idx >= puzzle_->getNumberOfProblems()) {
     throw std::out_of_range("Problem index out of range");
   }
 
-  worker_thread = std::jthread([this](std::stop_token st) { worker_run(st); });
+  problem_c * problem = puzzle_->getProblem(problem_idx);
+  const gridType_c * gt = problem->getPuzzle().getGridType();
+
+  // Every front end normalises shape hotspots before solving (burrTxt,
+  // burrTxt2 and the GUI all call initHotspot() on every shape): hotspot
+  // coordinates feed placement output, and a stored non-canonical hotspot
+  // would make this path disagree with the rest.
+  for (unsigned int i = 0; i < puzzle_->getNumberOfShapes(); i++) {
+    puzzle_->getShape(i)->initHotspot();
+  }
+
+  solverConfig_t config;
+  if (threads > 0) {
+    config.threads = threads;
+  }
+  config.rotation.mode = rotation_mode;
+  const solverSettings_t settings = config.resolve();
+
+  const bool canDisassemble = (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE) != 0;
+  disassemble_ = disassemble && canDisassemble;
+
+  solverOptions_t opts;
+  opts.reduce            = reduce;
+  opts.disassemble       = disassemble_;
+  opts.keepRotations     = keep_rotations;
+  opts.completeRotations = false;
+  opts.rotationMoves     = disassemble_ && (rotation_mode != ROTATION_OFF);
+  opts.countOnly         = false;
+  opts.queueCapacity     = 4;
+  opts.settings          = settings;
+
+  session_ = std::make_unique<solverSession_c>(makeSolverSpec(*problem), std::move(opts));
+  if (!session_->start()) {
+    finished_.store(true, std::memory_order_release);
+    throw std::runtime_error("Failed to start solver session");
+  }
 }
 
 SolutionIterator::~SolutionIterator() {
@@ -48,220 +75,121 @@ SolutionIterator::~SolutionIterator() {
 }
 
 unsigned long SolutionIterator::get_iterations() const {
-  assembler_c * a = active_assm.load(std::memory_order_acquire);
-  if (a) {
-    return a->getIterations();
+  if (session_) {
+    unsigned long cur = session_->getIterations();
+    if (cur > 0)
+      return cur;
   }
-  return iterations.load(std::memory_order_relaxed);
+  return last_iterations_.load(std::memory_order_relaxed);
 }
 
 void SolutionIterator::stop() {
-  // Idempotent: wakes any token-aware wait (push_item) via the registered
-  // stop callback, even if the worker is blocked with a full queue.
-  worker_thread.request_stop();
-  assembler_c * a = active_assm.load(std::memory_order_acquire);
-  if (a) {
-    a->stop();
+  stopped_.store(true, std::memory_order_release);
+  if (session_) {
+    session_->abort();
+    last_iterations_.store(session_->getIterations(), std::memory_order_relaxed);
   }
-  std::call_once(stop_join_once_, [this]() {
-    if (worker_thread.joinable()) {
-      worker_thread.join();
-    }
-  });
-}
-
-void SolutionIterator::push_item(QueueItem && item, std::stop_token st) {
-  std::unique_lock<std::mutex> lock(queue_mutex);
-  // Token-aware wait: request_stop() unblocks this natively, so dropping
-  // the iterator can never strand the worker on a full queue.
-  if (!cv_can_push.wait(lock, st, [this]() {
-        return queue.size() < MAX_QUEUE_SIZE;
-      })) {
-    return;
-  }
-  if (st.stop_requested()) {
-    return;
-  }
-  queue.push_back(std::move(item));
-  cv_can_pop.notify_one();
 }
 
 PySolution SolutionIterator::next() {
   while (true) {
+    if (finished_.load(std::memory_order_acquire) ||
+        stopped_.load(std::memory_order_acquire)) {
+      throw py::stop_iteration();
+    }
+
+    std::optional<solverResult_t> item;
     {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      if (!queue.empty()) {
-        QueueItem item = std::move(queue.front());
-        queue.pop_front();
-        cv_can_push.notify_one();
+      py::gil_scoped_release release;
+      item = session_->popFor(std::chrono::milliseconds(50));
+    }
 
-        if (item.type == QueueItem::ITEM_SOLUTION) {
-          return item.solution;
-        } else if (item.type == QueueItem::ITEM_FINISHED) {
-          finished.store(true);
-          throw py::stop_iteration();
-        } else {
-          finished.store(true);
-          throw std::runtime_error(item.error_message);
-        }
+    if (!item) {
+      if (PyErr_CheckSignals() != 0) {
+        stop();
+        throw py::error_already_set();
       }
 
-      if (finished.load()) {
+      const solverState_e st = session_->sessionState();
+      if (st == solverState_e::Running) {
+        continue;
+      }
+
+      // One final non-blocking pop in case an item arrived right before
+      // the session transitioned out of Running.
+      item = session_->popFor(std::chrono::milliseconds(0));
+      if (!item) {
+        session_->join();
+        last_iterations_.store(session_->getIterations(), std::memory_order_relaxed);
+        finished_.store(true, std::memory_order_release);
+
+        if (st == solverState_e::Error) {
+          if (session_->exception())
+            throw std::runtime_error(session_->exceptionMessage());
+          if (session_->currentAction() == solverSession_c::ACT_ASSERT) {
+            const auto & ex = session_->getAssertException();
+            throw std::runtime_error(ex.expr ? ex.expr : "Internal solver assertion");
+          }
+          auto info = session_->runInfo();
+          const assembler_c::errState err = info ? info->error : assembler_c::ERR_NONE;
+          if (err == assembler_c::ERR_PUZZLE_UNHANDABLE)
+            throw std::runtime_error("Failed to create assembler for problem");
+          std::string msg = std::string("Matrix creation error in assembler: ") +
+                            assembler_c::getErrorMessage(err);
+          throw std::runtime_error(msg);
+        }
+
         throw py::stop_iteration();
       }
-      // The stop_source outlives the join, so this stays true after stop()
-      // even once the thread is reaped (unlike the jthread's own token).
-      if (worker_thread.get_stop_source().stop_requested()) {
-        throw py::stop_iteration();
-      }
-
-      {
-        py::gil_scoped_release release;
-        cv_can_pop.wait_for(lock, std::chrono::milliseconds(50));
-      }
     }
 
-    if (PyErr_CheckSignals() != 0) {
-      stop();
-      throw py::error_already_set();
-    }
-  }
-}
-
-void SolutionIterator::worker_run(std::stop_token st) {
-  try {
-    if (st.stop_requested()) {
-      return;
+    if (stopped_.load(std::memory_order_acquire)) {
+      throw py::stop_iteration();
     }
 
-    problem_c * problem = puzzle->getProblem(problem_idx);
-    const gridType_c * gt = problem->getPuzzle().getGridType();
+    asm_count_++;
+    const assembly_c * a = item->assembly.get();
+    const separation_c * da = item->separation.get();
 
-    // Every front end normalises shape hotspots before solving (burrTxt,
-    // burrTxt2 and the GUI all call initHotspot() on every
-    // shape): hotspot coordinates feed placement output, and a stored
-    // non-canonical hotspot would make this path disagree with the rest.
-    // This must stay a normalisation, not a cache prewarm -- the assemblers
-    // already prewarm shared caches themselves before spawning workers.
-    for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
-      puzzle->getShape(i)->initHotspot();
+    if (disassemble_ && !da) {
+      // Assembly did not disassemble; skip to the next result.
+      continue;
     }
 
-    // threads=0 (the default) leaves the count to BURRTOOLS_THREADS, else
-    // every core; everything else from the environment, then the defaults
-    solverConfig_t config;
-    if (threads > 0) {
-      config.threads = threads;
-    }
-    config.rotation.mode = rotation_mode;
-    const solverSettings_t settings = config.resolve();
+    PySolution sol;
+    sol.assembly_number = asm_count_;
+    sol.has_disassembly = false;
+    sol.total_moves = 0;
+    sol.level = 0;
 
-    const std::shared_ptr<const solverSpec_t> spec = makeSolverSpec(*problem);
-    assm = gt->findAssembler(spec, settings);
-    if (!assm) {
-      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"}, st);
-      return;
-    }
-
-    active_assm.store(assm.get(), std::memory_order_release);
-    if (st.stop_requested()) {
-      assm->stop();
-      active_assm.store(nullptr, std::memory_order_release);
-      return;
-    }
-
-    assembler_c::errState err = assm->createMatrix(keep_rotations, false);
-    if (err != assembler_c::ERR_NONE) {
-      active_assm.store(nullptr, std::memory_order_release);
-      std::string msg = std::string("Matrix creation error in assembler: ") + assembler_c::getErrorMessage(err);
-      push_item(QueueItem{QueueItem::ITEM_ERROR, {}, msg}, st);
-      return;
-    }
-
-    if (st.stop_requested()) {
-      active_assm.store(nullptr, std::memory_order_release);
-      return;
-    }
-
-    if (reduce) {
-      assm->reduce();
-    }
-
-    if (st.stop_requested()) {
-      active_assm.store(nullptr, std::memory_order_release);
-      return;
-    }
-
-    if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-      // Rotation tables are shared and kept between solves (see
-      // sharedRotationTables), so solving designs of one size in sequence
-      // builds them once.
-      // ROTATION_OFF gives no context
-      std::shared_ptr<rotationContext_c> rotation = rotationContextFor(spec, settings.rotation);
-      disasm = std::make_unique<disassembler_0_c>(spec, settings, std::move(rotation));
-    }
-
-    unsigned int asm_count{0};
-    unsigned int sol_count{0};
-
-    assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
-      if (st.stop_requested()) {
-        return false;
-      }
-
-      asm_count++;
-
-      PySolution sol;
-      sol.assembly_number = asm_count;
-      sol.has_disassembly = false;
-      sol.total_moves = 0;
-      sol.level = 0;
-
-      for (unsigned int i = 0; i < a->placementCount(); i++) {
-        PyPlacement p;
-        p.piece_id = i;
-        p.is_placed = a->isPlaced(i);
-        if (p.is_placed) {
-          p.x = a->getX(i);
-          p.y = a->getY(i);
-          p.z = a->getZ(i);
-          p.transformation = a->getTransformation(i);
-        } else {
-          p.x = p.y = p.z = 0;
-          p.transformation = 0xff;
-        }
-        sol.placements.push_back(p);
-      }
-
-      if (disassemble && disasm) {
-        auto da = disasm->disassemble(a.get());
-        if (da) {
-          sol_count++;
-          sol.solution_number = sol_count;
-          sol.has_disassembly = true;
-          sol.total_moves = da->sumMoves();
-          sol.level = da->getMoves();
-          sol.moves_text = da->movesText();
-        } else {
-          return !st.stop_requested();
-        }
+    sol.placements.reserve(a->placementCount());
+    for (unsigned int i = 0; i < a->placementCount(); i++) {
+      PyPlacement p;
+      p.piece_id = i;
+      p.is_placed = a->isPlaced(i);
+      if (p.is_placed) {
+        p.x = a->getX(i);
+        p.y = a->getY(i);
+        p.z = a->getZ(i);
+        p.transformation = a->getTransformation(i);
       } else {
-        sol.solution_number = asm_count;
+        p.x = p.y = p.z = 0;
+        p.transformation = 0xff;
       }
+      sol.placements.push_back(p);
+    }
 
-      push_item(QueueItem{QueueItem::ITEM_SOLUTION, std::move(sol), ""}, st);
-      return !st.stop_requested();
-    });
+    if (disassemble_) {
+      sol_count_++;
+      sol.solution_number = sol_count_;
+      sol.has_disassembly = true;
+      sol.total_moves = da->sumMoves();
+      sol.level = da->getMoves();
+      sol.moves_text = da->movesText();
+    } else {
+      sol.solution_number = asm_count_;
+    }
 
-    iterations.store(assm->getIterations(), std::memory_order_relaxed);
-    active_assm.store(nullptr, std::memory_order_release);
-
-    push_item(QueueItem{QueueItem::ITEM_FINISHED, {}, ""}, st);
-  } catch (const std::exception & e) {
-    active_assm.store(nullptr, std::memory_order_release);
-    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, e.what()}, st);
-  } catch (...) {
-    active_assm.store(nullptr, std::memory_order_release);
-    push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Unknown C++ exception occurred during solving"}, st);
+    return sol;
   }
 }
