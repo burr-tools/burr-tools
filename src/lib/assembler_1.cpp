@@ -252,8 +252,9 @@ void assembler_1_c::getPieceInformation(unsigned int node, unsigned int * piece,
   // piecePositions is sorted by row: AddPieceNode appends rows in strictly
   // increasing node order (piecenode == left.size() at creation), so binary
   // search finds the last entry with row <= node in O(log n) per call.
-  // The not-found path throws unconditionally (see assembler_0_c for why
-  // this is bt_te rather than bt_assert or an early return).
+  // The not-found path throws unconditionally (bt_te, not bt_assert or an
+  // early return): a node that maps to no placement is a corrupt matrix or
+  // seed, and must not turn into a wrong assembly in release builds.
   unsigned int lo = 0, hi = static_cast<unsigned int>(piecePositions.size());
   while (lo < hi) {
     unsigned int mid = lo + (hi - lo) / 2;
@@ -327,8 +328,6 @@ assembler_1_c::assembler_1_c(const problem_c & prob, const solverSettings_t & s)
   iterations(0),
   reducePiece(0)
 {
-  next_row_stack.push_back(0);
-  task_stack.push_back(0);
 }
 
 assembler_1_c::~assembler_1_c() = default;
@@ -740,7 +739,6 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   bt_assert(problem.resultValid());
 
   complete = comp;
-  parallelTasks.clear();
   pendingHuangPrefixes.clear();
   restoredSimdSolver.reset();
 
@@ -825,22 +823,11 @@ assembler_1_c::errState assembler_1_c::createMatrix(bool keepMirror, bool keepRo
   if (keepRotations)
     avoidTransformedAssemblies = false;
 
+  /* back to the state the constructor left, so getFinished() does not read a
+   * previous run's leftovers */
   totalTasks.store(0, std::memory_order_relaxed);
   completedTasks.store(0, std::memory_order_relaxed);
-  inFlightProgress.store(false, std::memory_order_relaxed);
-  {
-    std::lock_guard<std::mutex> lock(progressMutex);
-    workerProgress.clear();
-  }
   searchComplete.store(false, std::memory_order_relaxed);
-
-  /* back to the state the constructor left, so getFinished() does not read a
-   * previous run's leftovers. A completed search -- serial or parallel --
-   * clears both stacks, and an empty next_row_stack is what the fallback
-   * branch of getFinished() reports as a finished search.
-   */
-  task_stack = { 0 };
-  next_row_stack = { 0 };
 
   errorsState = ERR_NONE;
   return errorsState;
@@ -1010,7 +997,7 @@ void assembler_1_c::reduce(void) {
 
   for (unsigned int col = right[0]; col; col = right[col]) {
 
-    // this is taken from the assembler 0 reduce
+    // this was taken from the reduce of assembler 0 (removed 2026-11-16)
     // as I don't know how to generalise the approach
     // we do it only on columns with min = max = 1
     if (min[col] == 0) continue;
@@ -1137,77 +1124,6 @@ void assembler_1_c::checkForTransformedAssemblies(unsigned int pivot, std::uniqu
   avoidTransformedMirror = std::move(mir);
 }
 
-std::unique_ptr<assembly_c> assembler_1_c::getAssembly(void) {
-
-  auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
-
-  /* the placement of each selected row; heap allocated rather than on the
-   * stack because rows.size() grows with the puzzle and has no upper bound
-   */
-  std::vector<unsigned int> piece(rows.size());
-  std::vector<unsigned char> tran(rows.size());
-  std::vector<int> x(rows.size());
-  std::vector<int> y(rows.size());
-  std::vector<int> z(rows.size());
-
-  for (unsigned int i = 0; i < rows.size(); i++)
-    getPieceInformation(rows[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
-
-  for (unsigned int pc = 0; pc < problem.getNumberOfParts(); pc++) {
-    unsigned int placed = 0;
-    for (unsigned int i = 0; i < rows.size(); i++) {
-
-      if (piece[i] == pc) {
-        assembly->addPlacement(tran[i], x[i], y[i], z[i]);
-        placed++;
-      }
-    }
-
-    while (placed < problem.getPartMaximum(pc)) {
-      assembly->addNonPlacement();
-      placed++;
-    }
-  }
-
-  assembly->sort(problem);
-
-  return assembly;
-}
-
-/* this function handles the assemblies found by the assembler engine
- */
-void assembler_1_c::solution(void) {
-
-  if (getCallback()) {
-
-    std::unique_ptr<assembly_c> assembly = getAssembly();
-
-    if (avoidTransformedAssemblies && assembly->smallerRotationExists(problem, avoidTransformedPivot, avoidTransformedMirror.get(), complete))
-      return;
-
-    assembly->sort(problem);
-
-    if (!getCallback()->assembly(std::move(assembly)))
-      stop();
-
-#if 0
-    // as the below debug code has been way too useful an way too many
-    // situations and I rewrote it again and again and again, I will finally
-    // leave it in here, adapt to your needs
-    assembly_c * assembly = getAssembly();
-
-    for (unsigned int t = 0; t < 8; t++)
-    {
-      assembly_c * a = new assembly_c(assembly);
-      a->transform(t, problem, avoidTransformedMirror);
-      getCallback()->assembly(a);
-    }
-
-    delete assembly;
-#endif
-  }
-}
-
 bool assembler_1_c::open_column_conditions_fulfillable(void) {
 
   for (int col = right[0]; col; col = right[col]) {
@@ -1219,80 +1135,6 @@ bool assembler_1_c::open_column_conditions_fulfillable(void) {
   return true;
 }
 
-
-static bool betterParams(int n_sum, int /*n_min*/, int n_max, int o_sum, int /*o_min*/, int o_max) {
-
-  // we need to find that column that
-  // will result in the fewest number of possibilities fo
-  // fulfill the column condition. It is not simple to find that
-  // in the old version it was simple the number of rows (sum)
-  // what was used, now something a bit more scientific
-
-
-//  if (n_min < 0) n_min = 0;
-//  if (o_min < 0) o_min = 0;
-
-  return n_sum*n_max < o_sum*o_max;
-}
-
-int assembler_1_c::find_best_unclosed_column(void) {
-  int col = right[0];
-
-  // if we have no column -> return no column
-  if (col == 0) return -1;
-
-  // first column is best column for the beginning
-  int bestcol = col;
-  col = right[col];
-
-  while (col) {
-    if (betterParams(colCount[col], min[col]-weight[col], max[col]-weight[col],
-          colCount[bestcol], min[bestcol]-weight[bestcol], max[bestcol]-weight[bestcol]))
-
-      bestcol = col;
-
-    if (colCount[col] == 0)
-      return col;
-
-    col = right[col];
-  }
-
-  return bestcol;
-}
-
-void assembler_1_c::cover_column_only(int col) {
-  right[left[col]] = right[col];
-  left[right[col]] = left[col];
-}
-
-void assembler_1_c::uncover_column_only(int col) {
-  right[left[col]] = col;
-  left[right[col]] = col;
-}
-
-void assembler_1_c::cover_column_rows(int col) {
-
-  for (int r = down[col]; r != col; r = down[r]) {
-    colCount[col] -= weight[r];
-    for (int c = right[r]; c != r; c = right[c]) {
-      up[down[c]] = up[c];
-      down[up[c]] = down[c];
-      colCount[colCount[c]] -= weight[c];
-    }
-  }
-}
-
-void assembler_1_c::uncover_column_rows(int col) {
-
-  for (int r = up[col]; r != col; r = up[r]) {
-    for (int c = left[r]; c != r; c = left[c]) {
-      colCount[colCount[c]] += weight[c];
-      up[down[c]] = c;
-      down[up[c]] = c;
-    }
-    colCount[col] += weight[r];
-  }
-}
 
 void assembler_1_c::hiderow(int r) {
 
@@ -1323,1571 +1165,13 @@ void assembler_1_c::unhiderow(int r) {
   }
 }
 
-// remove all rows from the matrix that would exceed the maximum weight
-// in an open column when added to the current weight
-// the columns to check are defined by the riven node, all columns
-// that are occupied by this row are checked
-//
-// each time the function is called the hidden rows are saved and
-// can be unhidden by calling the unhiderows function below
-// they must come in pairs but can be stacked
-void assembler_1_c::hiderows(unsigned int row) {
-
-  // put in the separator
-  hidden_rows.push_back(0);
-
-  for (unsigned int r = right[row]; r != row; r = right[r]) {
-    int col = colCount[r];
-
-    // this can be sped up by sorting the entries and stopping removal
-    // as soon as we reach a valid value, but we have to start from the top
-    // we only need to check columns that have a non zero value in the current row
-    // as ony those weights have changed
-
-    // now check all rows of this column for too big weights
-    for (int rr = down[col]; rr != col; rr = down[rr])
-      if (weight[rr] + weight[col] > max[col]) {
-        hiderow(rr);
-        hidden_rows.push_back(rr);
-      }
-  }
-}
-
-void assembler_1_c::unhiderows(void) {
-
-  while (hidden_rows.back()) {
-    unhiderow(hidden_rows.back());
-    hidden_rows.pop_back();
-  }
-
-  // Remove separator
-  hidden_rows.pop_back();
-}
-
-bool assembler_1_c::column_condition_fulfilled(int col) {
-  return (weight[col] >= min[col]) && (weight[col] <= max[col]);
-}
-
-bool assembler_1_c::column_condition_fulfillable(int col) {
-  if (weight[col] > max[col]) return false;
-  if (weight[col] + colCount[col] < min[col]) return false;
-  return true;
-}
-
-
-#if 0
-
-// this is the recursive version of the method below. I will keep it
-// here and also try to keep it up to date to the changes I do to the
-// real function because this version is a bit more easy to understand
-
-// this function gets the number of a node
-// if the node is 0 then a new column must be selected and covered
-// if the node is not 0 then it is the node in the selected column and
-// in the row that has to be worked on next
-
-void assembler_1_c::rec(unsigned int next_row) {
-
-  //-------> case 0
-
-  // check holes, if there are too many holes, we return
-  if (holes < holeColumns.size()) {
-    unsigned int cnt = holes;
-    for (int i = 0; i < holeColumns.size(); i++)
-      if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0)
-        if (cnt == 0)
-          return;
-        else
-          cnt--;
-  }
-
-  // when we get called with a header node (including 0)
-  // we have done all rows and need to select a new column
-  if (next_row < headerNodes) {
-    // no column selected, so find a new one
-
-
-    // when no column is left we have found a solution
-    if (right[0] == 0) {
-      solution();
-      return;
-    }
-
-
-    /* probably the same criterium as in the old dancing link algorithm
-     * leads to good guesses here, so find the column, with the least
-     * number of nodes > 0 in it
-     */
-    int col = find_best_unclosed_column();
-
-    if (col == -1) {
-      return;
-    }
-
-    // when there are no rows in the selected column, we don't need to find
-    // any row set and can continue right on with a new column
-    if (colCount[col] == 0) {
-
-      if (column_condition_fulfilled(col)) {
-        // remove this column from the column list
-        // we don not need to remove the rows, as there are no
-        // and we start a new column
-        cover_column_only(col);
-
-        rec(0);
-
-        //-------> case 1
-
-        // reinsert this column
-        uncover_column_only(col);
-      }
-
-    } else {
-
-      // we can assume here that the columns condition is fulfillable
-      // because whenever we call this function all columns that are left
-      // must be fulfillable
-
-      // remove this column from the column list
-      // do not yet remove the rows of this column, this will be done
-      // shortly before we recursively call this function again
-      cover_column_only(col);
-
-      // try to find all row sets that fulfil this columns condition
-      rec(down[col]);
-
-      //-------> case 1
-
-      // reinsert this column
-      uncover_column_only(col);
-    }
-
-    return;
-  }
-
-  unsigned int col = colCount[next_row];
-
-  // make sure wan can actually achieve something, the false case should
-  // have been checked before calling this function
-  bt_assert(column_condition_fulfillable(col));
-
-
-  // it might be that the condition for this column is already fulfilled, without adding a single
-  // line to the column that is why we do this check here at the start of the function
-  if (column_condition_fulfilled(col)) {
-
-    pushFinished(colCount[colCount[next_row]]+1);
-
-    // remove all rows that are left within this column
-    // this way we make sure we are _not_ changing this columns value any more
-    cover_column_rows(col);
-
-    if (open_column_conditions_fulfillable())
-      rec(0);
-
-    //-------> case 2
-
-    // reinsert rows of this column
-    uncover_column_rows(col);
-
-    (finished_a.back())++;
-
-  } else {
-
-    pushFinished(colCount[colCount[next_row]]);
-
-  }
-
-  //-------> case 3
-
-  // add a unhiderows marker, so that the rows hidden in the loop
-  // below can be unhidden properly
-  hidden_rows.push_back(0);
-
-  // now try all rows starting with the row given as parameter
-  // and go down until we are in the header. When we go up
-  // from the header we actually end in a node with a higher
-  // number, that's the end check
-  //-------> case 4
-  for (unsigned int row = next_row; up[row] < row ; row = down[row]) {
-
-    rows.push_back(row);
-
-    // add row to rowset
-    weight[colCount[row]] += weight[row];
-    for (unsigned int r = right[row]; r != row; r = right[r])
-      weight[colCount[r]] += weight[r];
-
-    // if there are unfulfillable columns we don't even need to check any further
-    if (open_column_conditions_fulfillable()) {
-
-      // remove useless rows (that are rows that have too much weight
-      // in one of their nodes that would overflow the expected weight
-      hiderows(row);
-
-      if (open_column_conditions_fulfillable()) {
-
-        if (colCount[col] == 0) {
-
-          // when there are no more rows in the current column
-          // we can immediately start a new column
-          // if the current column condition is really fulfilled
-          if (column_condition_fulfilled(col))
-            rec(0);
-
-        } else {
-
-          // we need to recurse, if there are rows left and the current
-          // column condition is still fulfillable, we need to check
-          // the current column again because this column is no longer open,
-          // is was removed on selection
-          if (column_condition_fulfillable(col)) {
-
-            unsigned int newrow = row;
-
-            // do gown until we hit a row that is still inside the matrix
-            // this works because rows are hidden one by one and so the double link
-            // to the row above or below is no longer intact, when the row is gone, the down
-            // pointer still points to the row that is was below before the row was hidden, but
-            // the pointer from the row below doesn't point up to us, so we do down until
-            // the link down-up points back to us
-            while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
-
-            rec(newrow);
-          }
-        }
-      }
-
-  //-------> case 5
-      // reinsert the rows removed above
-      unhiderows();
-    }
-
-  //-------> case 6
-    // remove row from rowset
-    for (unsigned int r = left[row]; r != row; r = left[r])
-      weight[colCount[r]] -= weight[r];
-    weight[colCount[row]] -= weight[row];
-
-    rows.pop_back();
-
-    (finished_a.back())++;
-
-    // after we finished with this row, we will never use it again, so
-    // remove it from the matrix
-    hiderow(row);
-    hidden_rows.push_back(row);
-  }
-
-  //-------> case 7
-
-  // reinsert all the rows that were remove over the course of the
-  // row by row inspection
-  unhiderows();
-
-  popFinished();
-}
-
-#endif
-
-void assembler_1_c::iterative(void) {
-
-  unsigned int row, col;
-
-  // A serial run supersedes any saved parallel remainder: it resumes from
-  // the stacks, so stale tasks/prefixes must not linger into a later save()
-  // (their subtrees are re-covered here; the pool remainder is rebuilt
-  // from scratch on the next parallel run).
-  parallelTasks.clear();
-  pendingHuangPrefixes.clear();
-  restoredSimdSolver.reset();
-  // The serial stacks are a real resume point from here on; a flag left over
-  // from an earlier parallel stop would make save() mark them unresumable.
-  parallelInterrupted = false;
-
-  // Snapshot of the run token: assemble()/debug_step() refreshed the source
-  // before calling here, so this stays valid for the whole serial search.
-  std::stop_token runTok = currentRunToken();
-
-  while (task_stack.size() > 0) {
-
-    iterations.store(iterations.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
-
-    // wan can only restore the states 1, 2 and 5. Internal states will alway
-    // be one of those, but the last state might differ, so continue looping
-    // until the final state is 1, 2 or 5
-    if (runTok.stop_requested()) {
-      if (task_stack.back() == 1 ||
-          task_stack.back() == 2 ||
-          task_stack.back() == 5)
-        break;
-    }
-
-    // the debugger
-    if (debug) {
-      if (task_stack.back() == 1 ||
-          task_stack.back() == 2 ||
-          task_stack.back() == 5) {
-        if (debug_loops <= 0)
-          break;
-
-        debug_loops --;
-      }
-    }
-
-    // the cases in this switch are marked in the function above
-    switch (task_stack.back()) {
-
-      case 0:
-        // standard entry into function
-
-        // check holes, if there are too many holes, we return
-        if (holes < holeColumns.size()) {
-          unsigned int cnt = holes;
-          bool ret = false;
-          unsigned int i;
-          for (i = 0; i < holeColumns.size(); i++) {
-            if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0) {
-              if (cnt == 0) {
-                next_row_stack.pop_back();
-                task_stack.pop_back();
-                ret = true;
-                break;
-              } else {
-                cnt--;
-              }
-            }
-          }
-          bt_assert(ret == (i < holeColumns.size()));
-          if (ret) {
-            if (debug) fprintf(stderr, "backtrack because of too many holes\n");
-            break;
-          }
-        }
-
-        // when we get called with a header node (including 0)
-        // we have done all rows and need to select a new column
-        if (next_row_stack.back() < headerNodes) {
-          // no column selected, so find a new one
-
-
-          // when no column is left we have found a solution
-          if (right[0] == 0) {
-            solution();
-            next_row_stack.pop_back();
-            task_stack.pop_back();
-            break;
-          }
-
-          /* probably the same criterium as in the old dancing link algorithm
-           * leads to good guesses here, so find the column, with the least
-           * number of nodes > 0 in it
-           */
-          int col = find_best_unclosed_column();
-
-          if (col == -1) {
-            if (debug) fprintf(stderr, "backtrack because could not find column\n");
-            next_row_stack.pop_back();
-            task_stack.pop_back();
-            break;
-          }
-
-          if (debug) fprintf(stderr, "found column %i with count %u\n", col, colCount[col]);
-
-          // when there are no rows in the selected column, we don't need to find
-          // any row set and can continue right on with a new column
-          if (colCount[col] == 0) {
-
-            if (column_condition_fulfilled(col)) {
-              // remove this column from the column list
-              // we don not need to remove the rows, as there are no
-              // and we start a new column
-              cover_column_only(col);
-
-              column_stack.push_back(col);
-              task_stack.back() = 1;
-              task_stack.push_back(0);
-              next_row_stack.push_back(0);
-
-              break;
-            }
-
-            if (debug) fprintf(stderr, "backtrack because columns condition not fulfilled\n");
-
-          } else {
-
-            // we can assume here that the columns condition is fulfillable
-            // because whenever we call this function all columns that are left
-            // must be fulfillable
-
-            // remove this column from the column list
-            // do not yet remove the rows of this column, this will be done
-            // shortly before we recursively call this function again
-            cover_column_only(col);
-
-            column_stack.push_back(col);
-            task_stack.back() = 1;
-            task_stack.push_back(0);
-            next_row_stack.push_back(down[col]);
-
-            break;
-          }
-
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          break;
-        }
-
-        col = colCount[next_row_stack.back()];
-
-        // make sure wan can actually achieve something, the false case sould
-        // have been checked before calling this function
-        bt_assert(column_condition_fulfillable(col));
-
-        // it might be that the condition for this column is already fulfilled, without adding a single
-        // line to the column that is why we do this check here at the start of the function
-        if (column_condition_fulfilled(col)) {
-
-          if (debug) fprintf(stderr, "column %u condition fulfilled, recurse\n", col);
-
-          pushFinished(colCount[colCount[next_row_stack.back()]]+1);
-
-          // remove all rows that are left within this column
-          // this way we make sure we are _not_ changing this columns value any more
-          cover_column_rows(col);
-
-          if (open_column_conditions_fulfillable()) {
-            task_stack.back() = 2;
-            task_stack.push_back(0);
-            next_row_stack.push_back(0);
-            break;
-          }
-
-          task_stack.back() = 2;
-          break;
-
-        } else {
-
-          pushFinished(colCount[colCount[next_row_stack.back()]]);
-        }
-
-        task_stack.back() = 3;
-        break;
-
-      case 1:
-
-        // reinsert this column
-        if (debug) fprintf(stderr, "reinserting column %u\n", column_stack.back());
-
-        uncover_column_only(column_stack.back());
-
-        column_stack.pop_back();
-        next_row_stack.pop_back();
-        task_stack.pop_back();
-        break;
-
-      case 2:
-
-        // reinsert rows of this column
-        uncover_column_rows(colCount[next_row_stack.back()]);
-
-        (finished_a.back())++;
-
-        // fall through
-      case 3:
-
-        // add a unhiderows marker, so that the rows hidden in the loop
-        // below can be unhidden properly
-        hidden_rows.push_back(0);
-
-        row = next_row_stack.back();
-
-        if (up[row] < row) {
-          rows.push_back(row);
-          // fall through to state 4
-        } else {
-          task_stack.back() = 7;
-          break;
-        }
-
-	// fall through
-      case 4:
-
-        row = rows.back();
-        col = colCount[next_row_stack.back()];
-
-        if (debug) fprintf(stderr, "add row %u for columns %u\n", row, col);
-
-        // add row to rowset
-        weight[colCount[row]] += weight[row];
-        for (unsigned int r = right[row]; r != row; r = right[r])
-          weight[colCount[r]] += weight[r];
-
-        // if there are unfulfillable columns we don't even need to check any further
-        if (open_column_conditions_fulfillable()) {
-
-          // remove useless rows (that are rows that have too much weight
-          // in one of their nodes that would overflow the expected weight
-          hiderows(row);
-
-          if (open_column_conditions_fulfillable()) {
-
-            if (colCount[col] == 0) {
-
-              // when there are no more rows in the current column
-              // we can immediately start a new column
-              // if the current column condition is really fulfilled
-              if (column_condition_fulfilled(col)) {
-
-                if (debug) fprintf(stderr, "recurse because columns %u condition fulfilled\n", col);
-
-                task_stack.back() = 5;
-                task_stack.push_back(0);
-                next_row_stack.push_back(0);
-                break;
-              }
-
-            } else {
-
-              // we need to recurse, if there are rows left and the current
-              // column condition is still fulfillable, we need to check
-              // the current column again because this column is no longer open,
-              // is was removed on selection
-              if (column_condition_fulfillable(col)) {
-
-                unsigned int newrow = row;
-
-                // do gown until we hit a row that is still inside the matrix
-                // this works because rows are hidden one by one and so the double link
-                // to the row above or below is no longer intact, when the row is gone, the down
-                // pointer still points to the row that is was below before the row was hidden, but
-                // the pointer from the row below doesn't point up to us, so we do down until
-                // the link down-up points back to us
-                while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow) newrow = down[newrow];
-
-                task_stack.back() = 5;
-                task_stack.push_back(0);
-                next_row_stack.push_back(newrow);
-                break;
-              }
-
-              if (debug) fprintf(stderr, "no recurse because columns %u condition fulfillable\n", col);
-            }
-          }
-
-          // fall through to state 5
-
-        } else {
-
-          if (debug) fprintf(stderr, "no recurse because one columns condition fulfillable\n");
-          task_stack.back() = 6;
-          break;
-        }
-
-        // fall through
-      case 5:
-
-        unhiderows();
-
-        // fall through
-      case 6:
-
-        // remove row from rowset
-        row = rows.back();
-
-        if (debug) fprintf(stderr, "remove row %u\n", row);
-
-        for (unsigned int r = left[row]; r != row; r = left[r])
-          weight[colCount[r]] -= weight[r];
-        weight[colCount[row]] -= weight[row];
-
-        rows.pop_back();
-
-        (finished_a.back())++;
-
-        // after we finished with this row, we will never use it again, so
-        // remove it from the matrix
-        hiderow(row);
-        hidden_rows.push_back(row);
-
-        row = down[row];
-
-        if (up[row] < row) {
-          rows.push_back(row);
-          task_stack.back() = 4;
-          break;
-        }
-          // else fall through to state 7
-
-        // fall through
-      case 7:
-
-        // reinsert all the rows that were remove over the course of the
-        // row by row inspection
-        unhiderows();
-
-        popFinished();
-
-        next_row_stack.pop_back();
-        task_stack.pop_back();
-        break;
-
-      default:
-
-        bt_assert(0);
-        break;
-    }
-  }
-
-  /* debug-stepping can break out via debug_loops <= 0 with the stop token
-   * still unfired; that is not completion, so gate the flag on !debug too.
-   */
-  if (!runTok.stop_requested() && !debug)
-    searchComplete.store(true, std::memory_order_relaxed);
-}
-
-namespace {
-
-/* Number of row children a node of the Huang search has, counted exactly.
- *
- * The row loop of the search (states 3/4/5/6) starts at `start` and walks
- * down[] until the validity test up[r] < r fails, which happens when the walk
- * wraps round to the column header. Every step of that walk is one child of
- * the node, whether or not the child ends up being recursed into.
- *
- * The chain is stable across the loop: state 6 hides the row it has just
- * finished, but hiderow() does not touch that row's OWN down pointer, so the
- * walk still reaches the same successors; the rows hiderows() hides in state 4
- * are put back by unhiderows() before state 6 advances; and a child subtree
- * restores the matrix exactly as it found it. So the count taken once, before
- * the loop starts, is the count the loop will actually make.
- *
- * colCount[col] is NOT this number. It is the sum of the row WEIGHTS in the
- * column, and assembler_1_c's range column carries weights greater than one
- * (AddRangeNode stores the piece's voxel count). The serial getFinished()
- * divides by colCount and so under-reports on range puzzles -- exactly the
- * puzzles this engine exists for -- which is why the count is walked here.
- */
-unsigned int countRowChildren(const std::vector<unsigned int> & up,
-                              const std::vector<unsigned int> & down,
-                              unsigned int start) {
-  unsigned int n = 0;
-  unsigned int r = start;
-  while (up[r] < r) {
-    n++;
-    r = down[r];
-  }
-  return n;
-}
-
-}
-
-/* How much of one subtree a depth-first walk has got through, measured the
- * way the serial getFinished() measures the whole search: a node with n
- * children gives each child 1/n of its own weight.
- *
- * The mechanism is a stack mirroring the search's task_stack. Each level holds
- * the weight of its node not yet attributed anywhere (`remaining`), the weight
- * one child slot of that node gets (`childShare`), and the weight held by the
- * slot being handled now (`curSlot`). Weight leaves the stack only into
- * `done`.
- *
- * Two properties follow, and the publication machinery relies on both:
- *
- *  - Conservation. done + (remaining + curSlot summed over the live stack) is
- *    invariantly 1: push() moves curSlot from a parent into the new level
- *    rather than creating it, beginSlot() never takes more than remaining, and
- *    pop() hands everything a level still holds to done. So a walk that drains
- *    leaves done at exactly 1, and done never exceeds 1 on the way there. That
- *    does not depend on the child count being right: an n too small is clamped
- *    by beginSlot(), an n too large leaves a residue pop() credits. A wrong n
- *    makes the value lumpy; it cannot make it exceed 1 or fall short at the
- *    end, which is what getFinished() needs from it.
- *
- *  - Monotonicity. done only ever grows, because nothing subtracts from it.
- *    The nested-path estimate the serial path publishes has no such property
- *    (it divides by denominators that covering moves, and a backtrack drops a
- *    level before the level above advances), which is why the DLX engine needs
- *    a high-water ratchet on top of it. This formulation needs none.
- */
-class huangSubtreeProgress_c {
-
-  struct level_c {
-    double remaining;   // share of this node not yet attributed anywhere
-    double childShare;  // share each child slot of this node receives
-    double curSlot;     // share held by the child slot being handled now
-  };
-
-  std::vector<level_c> levels;
-  double done = 0;
-
-public:
-
-  /* start a walk whose root node is the whole of the subtree being measured */
-  void reset(void) {
-    levels.clear();
-    levels.push_back({ 1.0, 1.0, 0.0 });
-    done = 0;
-  }
-
-  /* credit everything the (possibly aborted) walk still holds, so the
-   * conservation invariant holds even when the walk did not drain
-   */
-  void flush(void) {
-    while (!levels.empty()) pop();
-  }
-
-  double doneShare(void) const { return done; }
-
-  /* the share level i has not attributed yet: its untried child slots */
-  double remainingAt(size_t i) const {
-    return i < levels.size() ? levels[i].remaining : 0.0;
-  }
-
-  /* Give that share away and return it: the walk will never reach those
-   * slots, so done plus the live stack then sums to 1 minus what was given
-   * away.
-   */
-  double takeRemaining(size_t i) {
-    if (i >= levels.size()) return 0.0;
-    const double r = levels[i].remaining;
-    levels[i].remaining = 0.0;
-    levels[i].childShare = 0.0;
-    return r;
-  }
-
-  void setChildren(unsigned int n) {
-    if (levels.empty()) return;
-    levels.back().childShare = (n > 0) ? levels.back().remaining / n : 0.0;
-  }
-
-  void beginSlot(void) {
-    if (levels.empty()) return;
-    level_c & l = levels.back();
-    double s = (l.childShare < l.remaining) ? l.childShare : l.remaining;
-    l.remaining -= s;
-    l.curSlot = s;
-  }
-
-  /* the current slot is finished without being descended into */
-  void endSlot(void) {
-    if (levels.empty()) return;
-    done += levels.back().curSlot;
-    levels.back().curSlot = 0.0;
-  }
-
-  /* descend into the current slot; it becomes the new top level */
-  void push(void) {
-    double s = 0.0;
-    if (!levels.empty()) {
-      s = levels.back().curSlot;
-      levels.back().curSlot = 0.0;
-    }
-    levels.push_back({ s, s, 0.0 });
-  }
-
-  void pop(void) {
-    if (levels.empty()) return;
-    done += levels.back().remaining + levels.back().curSlot;
-    levels.pop_back();
-  }
-};
-
-class assemblerWorker_1 {
-  assembler_1_c & parent;
-
-  // The run's stop token, fixed for the worker's lifetime (captured once at
-  // construction, so the hot search loop never touches shared run state).
-  std::stop_token stop;
-
-  std::vector<unsigned int> left;
-  std::vector<unsigned int> right;
-  std::vector<unsigned int> up;
-  std::vector<unsigned int> down;
-  std::vector<unsigned int> colCount;
-  std::vector<unsigned int> weight;
-
-  /* no private base_* copies here: searchSubtree() re-seeds from
-   * parent.base_*, which is fixed for the whole parallel run
-   */
-
-  std::vector<unsigned int> rows;
-  std::vector<unsigned int> hidden_rows;
-  std::vector<unsigned int> task_stack;
-  std::vector<unsigned int> next_row_stack;
-  std::vector<unsigned int> column_stack;
-
-  unsigned long local_iterations = 0;
-  unsigned long flushed_iterations = 0;
-
-  /* how much of the current task this worker has got through; worker-private,
-   * only its value is published, through the atomic slot
-   */
-  huangSubtreeProgress_c tracker;
-  /* the published slot is in task-equivalents: the tracker's share of the
-   * current task times the task's units at pop over a whole task's
-   */
-  double slotScale = 1.0;
-
-  /* Split on demand (see donate()): cut[i] != 0 ends frame i after its
-   * current row. donatePool null = no donation.
-   */
-  std::vector<unsigned char> cut;
-  bool isCut(size_t i) const { return i < cut.size() && cut[i]; }
-  AssemblyTaskPool<assembler_1_c::SubtreeTask_1> * donatePool = nullptr;
-  unsigned long donateInterval = 128;
-  bool donateForced = false;
-  unsigned long nextDonatePoll = 0;
-  assembler_1_c::SubtreeTask_1 * curTask = nullptr;
-  size_t rootUnits = 0;
-  unsigned int curBase = 0;
-  bool curIsPiece = false;  // curTask is a donated piece: top 5 at its root
-
-  void cover_column_only(int col) {
-    right[left[col]] = right[col];
-    left[right[col]] = left[col];
-  }
-
-  void uncover_column_only(int col) {
-    right[left[col]] = col;
-    left[right[col]] = col;
-  }
-
-  void cover_column_rows(int col) {
-    for (int r = down[col]; r != col; r = down[r]) {
-      colCount[col] -= weight[r];
-      for (int c = right[r]; c != r; c = right[c]) {
-        up[down[c]] = up[c];
-        down[up[c]] = down[c];
-        colCount[colCount[c]] -= weight[c];
-      }
-    }
-  }
-
-  void uncover_column_rows(int col) {
-    for (int r = up[col]; r != col; r = up[r]) {
-      for (int c = left[r]; c != r; c = left[c]) {
-        colCount[colCount[c]] += weight[c];
-        up[down[c]] = c;
-        down[up[c]] = c;
-      }
-      colCount[col] += weight[r];
-    }
-  }
-
-  void hiderow(int r) {
-    for (int rr = right[r]; rr != r; rr = right[rr]) {
-      up[down[rr]] = up[rr];
-      down[up[rr]] = down[rr];
-      colCount[colCount[rr]] -= weight[rr];
-    }
-    up[down[r]] = up[r];
-    down[up[r]] = down[r];
-    colCount[colCount[r]] -= weight[r];
-  }
-
-  void unhiderow(int r) {
-    up[down[r]] = r;
-    down[up[r]] = r;
-    colCount[colCount[r]] += weight[r];
-    for (int rr = left[r]; rr != r; rr = left[rr]) {
-      up[down[rr]] = rr;
-      down[up[rr]] = rr;
-      colCount[colCount[rr]] += weight[rr];
-    }
-  }
-
-  void hiderows(unsigned int row) {
-    hidden_rows.push_back(0);
-    for (unsigned int r = right[row]; r != row; r = right[r]) {
-      int col = colCount[r];
-      for (int rr = down[col]; rr != col; rr = down[rr]) {
-        if (weight[rr] + weight[col] > parent.max[col]) {
-          hiderow(rr);
-          hidden_rows.push_back(rr);
-        }
-      }
-    }
-  }
-
-  void unhiderows(void) {
-    while (hidden_rows.back()) {
-      unhiderow(hidden_rows.back());
-      hidden_rows.pop_back();
-    }
-    hidden_rows.pop_back();
-  }
-
-  bool column_condition_fulfilled(int col) {
-    return (weight[col] >= parent.min[col]) && (weight[col] <= parent.max[col]);
-  }
-
-  bool column_condition_fulfillable(int col) {
-    if (weight[col] > parent.max[col]) return false;
-    if (weight[col] + colCount[col] < parent.min[col]) return false;
-    return true;
-  }
-
-  bool open_column_conditions_fulfillable(void) {
-    for (int col = right[0]; col; col = right[col]) {
-      if (weight[col] > parent.max[col]) return false;
-      if (weight[col] + colCount[col] < parent.min[col]) return false;
-    }
-    return true;
-  }
-
-  int find_best_unclosed_column(void) {
-    int col = right[0];
-    if (col == 0) return -1;
-    int bestcol = col;
-    col = right[col];
-    while (col) {
-      if (betterParams(colCount[col], parent.min[col] - weight[col], parent.max[col] - weight[col],
-                       colCount[bestcol], parent.min[bestcol] - weight[bestcol], parent.max[bestcol] - weight[bestcol]))
-        bestcol = col;
-      if (colCount[col] == 0)
-        return col;
-      col = right[col];
-    }
-    return bestcol;
-  }
-
-  /* Delivery outcome: true means the stacks may advance past the solution
-   * (delivered, filtered as a rotation, or nobody to deliver to). False
-   * means the
-   * solution was found but never delivered (stop arrived first): the
-   * caller must hold the stacks so the requeued task re-discovers and
-   * delivers it on resume.
-   */
-  bool worker_solution(void) {
-    if (parent.getCallback()) {
-      auto assembly = std::make_unique<assembly_c>(parent.problem.getPuzzle().getGridType());
-
-      std::vector<unsigned int> piece(rows.size());
-      std::vector<unsigned char> tran(rows.size());
-      std::vector<int> x(rows.size());
-      std::vector<int> y(rows.size());
-      std::vector<int> z(rows.size());
-
-      for (unsigned int i = 0; i < rows.size(); i++)
-        parent.getPieceInformation(rows[i], &piece[i], &tran[i], &x[i], &y[i], &z[i]);
-
-      for (unsigned int pc = 0; pc < parent.problem.getNumberOfParts(); pc++) {
-        unsigned int placed = 0;
-        for (unsigned int i = 0; i < rows.size(); i++) {
-          if (piece[i] == pc) {
-            assembly->addPlacement(tran[i], x[i], y[i], z[i]);
-            placed++;
-          }
-        }
-        while (placed < parent.problem.getPartMaximum(pc)) {
-          assembly->addNonPlacement();
-          placed++;
-        }
-      }
-
-      assembly->sort(parent.problem);
-
-      if (parent.avoidTransformedAssemblies &&
-          assembly->smallerRotationExists(parent.problem, parent.avoidTransformedPivot,
-                                          parent.avoidTransformedMirror.get(), parent.complete)) {
-        return true;
-      }
-
-      {
-        std::lock_guard<std::mutex> lock(parent.callbackMutex);
-        if (stop.stop_requested())
-          return false;
-        if (!parent.getCallback()->assembly(std::move(assembly)))
-          parent.stop();
-      }
-      return true;
-    }
-    return true;
-  }
-
-  void restoreMatrix(const assembler_1_c::SubtreeTask_1 & task) {
-    task_stack = task.task_stack;
-    next_row_stack = task.next_row_stack;
-    column_stack = task.column_stack;
-    rows = task.rows;
-    hidden_rows = task.hidden_rows;
-
-    unsigned int column_stack_pos = 0;
-    unsigned int hiderows_pos = 0;
-    unsigned int row_pos = 0;
-
-    for (size_t i = 0; i < task_stack.size(); i++) {
-      // All entries below the frontier are settled covers (1/2/5: pushes
-      // always settle the parent first, so 0/3/4/6/7 never occur below the
-      // top). The frontier itself is replayed too: tops 1/2/5 carry live
-      // covers the resume cases uncover, 0/3/7 are cover-clean (column/row
-      // selection not yet applied, a 7's tried-rows segment is empty) and
-      // replay as no-ops. A top 4 is not clean: case 6 hid every row tried
-      // so far at this level into the segment case 3 opened, then moved on
-      // to the next row (the state a drained top-6 stop lands in). Those
-      // hides are replayed; the next row's own weight and hiderows are not
-      // applied yet (case 4 does that on resume).
-      switch (task_stack[i]) {
-        case 0:
-        case 3:
-        case 7:
-          break;
-        case 4:
-          bt_assert(i + 1 == task_stack.size());
-          hiderows_pos++;
-          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
-            hiderow(hidden_rows[hiderows_pos++]);
-          }
-          break;
-        case 1:
-          cover_column_only(column_stack[column_stack_pos++]);
-          break;
-        case 2:
-          cover_column_rows(column_stack[column_stack_pos - 1]);
-          break;
-        case 5: {
-          hiderows_pos++;
-          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
-            hiderow(hidden_rows[hiderows_pos++]);
-          }
-
-          unsigned int r = rows[row_pos++];
-          weight[colCount[r]] += weight[r];
-          for (unsigned int rc = right[r]; rc != r; rc = right[rc])
-            weight[colCount[rc]] += weight[rc];
-
-          hiderows_pos++;
-          while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
-            hiderow(hidden_rows[hiderows_pos++]);
-          }
-          break;
-        }
-        default:
-          bt_assert(false);
-      }
-    }
-  }
-
-  void worker_iterative(unsigned int base_depth, assembler_1_c::WorkerProgress * slot) {
-    unsigned int row, col;
-
-    /* The task this worker was handed is the whole of what this walk
-     * measures, so the tracker starts at 0 and drains to 1 (minus what the
-     * task donates) as it runs out; getFinished() adds it scaled by the
-     * task's units (slotScale).
-     */
-    seedTracker(base_depth);
-    if (slot)
-      slot->fraction.store(0.0f, std::memory_order_relaxed);
-
-    while (!task_stack.empty() && task_stack.size() >= base_depth &&
-           (!stop.stop_requested() || task_stack.back() == 6)) {
-      // A stopped top-6 (mid-row bookkeeping with covers applied) drains
-      // through case 6 below: it never delivers or descends, so this is
-      // bounded by the live depth and lands on a cover-clean frontier
-      // (0/3/4/7) or a replayed whole one (1/2/5, see restoreMatrix).
-      // Every other stopped top is already one of those: write-back is
-      // exact for all of them.
-      local_iterations++;
-      if ((local_iterations - flushed_iterations) >= 128) {
-        parent.iterations.fetch_add(local_iterations - flushed_iterations, std::memory_order_relaxed);
-        flushed_iterations = local_iterations;
-      }
-      if (donatePool && local_iterations >= nextDonatePoll) {
-        nextDonatePoll = local_iterations + donateInterval;
-        if (donateForced || donatePool->wants_work())
-          donate();
-      }
-
-      /* Publishing is a single relaxed float store -- the tracker keeps the
-       * value up to date incrementally, so there is no walk to amortise --
-       * but the store still dirties a cache line other threads read, so it
-       * is not done per node. 4K nodes was the interval measured for the DLX
-       * engine (unmeasurable cost, ~23 ms per worker); 64K would publish
-       * more slowly than the 250 ms GUI refresh and defeat the purpose.
-       */
-      if ((local_iterations & 0xFFF) == 0 && slot)
-        slot->fraction.store(static_cast<float>(tracker.doneShare() * slotScale), std::memory_order_relaxed);
-
-      switch (task_stack.back()) {
-        case 0:
-          if (parent.holes < parent.holeColumns.size()) {
-            unsigned int cnt = parent.holes;
-            bool ret = false;
-            for (unsigned int i = 0; i < parent.holeColumns.size(); i++) {
-              if (colCount[parent.holeColumns[i]] == 0 && weight[parent.holeColumns[i]] == 0) {
-                if (cnt == 0) {
-                  next_row_stack.pop_back();
-                  task_stack.pop_back();
-                  tracker.pop();
-                  ret = true;
-                  break;
-                } else {
-                  cnt--;
-                }
-              }
-            }
-            if (ret) break;
-          }
-
-          if (next_row_stack.back() < parent.headerNodes) {
-            if (right[0] == 0) {
-              if (worker_solution()) {
-                next_row_stack.pop_back();
-                task_stack.pop_back();
-                tracker.pop();
-              }
-              // Missed (see worker_solution): hold the stacks so the
-              // requeued task re-discovers the solution on resume.
-              // The loop head re-checks stop and exits.
-              break;
-            }
-
-            int c = find_best_unclosed_column();
-            if (c == -1) {
-              next_row_stack.pop_back();
-              task_stack.pop_back();
-              tracker.pop();
-              break;
-            }
-
-            /* selecting a column is a chain step, not a branch: whichever of
-             * the two arms below is taken, this node has exactly one child
-             */
-            if (colCount[c] == 0) {
-              if (column_condition_fulfilled(c)) {
-                cover_column_only(c);
-                column_stack.push_back(c);
-                task_stack.back() = 1;
-                task_stack.push_back(0);
-                next_row_stack.push_back(0);
-                tracker.setChildren(1);
-                tracker.beginSlot();
-                tracker.push();
-                break;
-              }
-            } else {
-              cover_column_only(c);
-              column_stack.push_back(c);
-              task_stack.back() = 1;
-              task_stack.push_back(0);
-              next_row_stack.push_back(down[c]);
-              tracker.setChildren(1);
-              tracker.beginSlot();
-              tracker.push();
-              break;
-            }
-
-            next_row_stack.pop_back();
-            task_stack.pop_back();
-            tracker.pop();
-            break;
-          }
-
-          col = colCount[next_row_stack.back()];
-          bt_assert(column_condition_fulfillable(col));
-
-          /* This node's children are the rows still in the column, plus -- if
-           * the column's condition is already met with no row added at all --
-           * one more for the empty row set. The count is taken here, before
-           * cover_column_rows() disturbs the chain, and covers both arms
-           * because states 2 and 3 both go on to walk the rows from
-           * next_row_stack.back().
-           */
-          tracker.setChildren(countRowChildren(up, down, next_row_stack.back()) +
-                              (column_condition_fulfilled(col) ? 1u : 0u));
-
-          if (column_condition_fulfilled(col)) {
-            tracker.beginSlot();
-            cover_column_rows(col);
-            if (open_column_conditions_fulfillable()) {
-              task_stack.back() = 2;
-              task_stack.push_back(0);
-              next_row_stack.push_back(0);
-              tracker.push();
-              break;
-            }
-            /* the empty-row-set child is not viable; state 2 below credits
-             * its slot, which tracker.beginSlot() is still holding
-             */
-            task_stack.back() = 2;
-            break;
-          }
-
-          task_stack.back() = 3;
-          break;
-
-        case 1:
-          uncover_column_only(column_stack.back());
-          column_stack.pop_back();
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          tracker.pop();
-          break;
-
-        case 2:
-          uncover_column_rows(colCount[next_row_stack.back()]);
-          /* end of the empty-row-set slot: a no-op when it was descended
-           * into, because push() already moved its share to the child
-           */
-          tracker.endSlot();
-          [[fallthrough]];
-
-        case 3:
-          hidden_rows.push_back(0);
-          row = next_row_stack.back();
-          if (up[row] < row) {
-            rows.push_back(row);
-            tracker.beginSlot();
-            [[fallthrough]];
-          } else {
-            task_stack.back() = 7;
-            break;
-          }
-
-        case 4:
-          row = rows.back();
-          col = colCount[next_row_stack.back()];
-          weight[colCount[row]] += weight[row];
-          for (unsigned int r = right[row]; r != row; r = right[r])
-            weight[colCount[r]] += weight[r];
-
-          if (open_column_conditions_fulfillable()) {
-            hiderows(row);
-            if (open_column_conditions_fulfillable()) {
-              if (colCount[col] == 0) {
-                if (column_condition_fulfilled(col)) {
-                  task_stack.back() = 5;
-                  task_stack.push_back(0);
-                  next_row_stack.push_back(0);
-                  tracker.push();
-                  break;
-                }
-              } else {
-                if (column_condition_fulfillable(col)) {
-                  unsigned int newrow = row;
-                  while ((down[newrow] >= parent.headerNodes) && up[down[newrow]] != newrow)
-                    newrow = down[newrow];
-                  task_stack.back() = 5;
-                  task_stack.push_back(0);
-                  next_row_stack.push_back(newrow);
-                  tracker.push();
-                  break;
-                }
-              }
-            }
-          } else {
-            task_stack.back() = 6;
-            break;
-          }
-          [[fallthrough]];
-
-        case 5:
-          unhiderows();
-          [[fallthrough]];
-
-        case 6:
-          /* end of this row's slot, reached both when the row was descended
-           * into (share already handed to the child) and when it was rejected
-           * outright (share credited here)
-           */
-          tracker.endSlot();
-
-          row = rows.back();
-          for (unsigned int r = left[row]; r != row; r = left[r])
-            weight[colCount[r]] -= weight[r];
-          weight[colCount[row]] -= weight[row];
-          rows.pop_back();
-
-          hiderow(row);
-          hidden_rows.push_back(row);
-
-          row = down[row];
-          // a cut frame's later rows belong to a donated task
-          if (up[row] < row && !isCut(task_stack.size() - 1)) {
-            rows.push_back(row);
-            task_stack.back() = 4;
-            tracker.beginSlot();
-            break;
-          }
-          [[fallthrough]];
-
-        case 7:
-          unhiderows();
-          if (task_stack.size() - 1 < cut.size())
-            cut[task_stack.size() - 1] = 0;
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          tracker.pop();
-          break;
-
-        default:
-          bt_assert(0);
-          break;
-      }
-    }
-
-    /* An aborted walk leaves levels on the stack; crediting them makes the
-     * published value 1 either way, which keeps the tracker's conservation
-     * invariant a property of the class rather than of how it is driven. The
-     * task loop clears the slot on the way out regardless, so this value is
-     * only ever visible for the instant between the two.
-     */
-    tracker.flush();
-    if (slot)
-      slot->fraction.store(static_cast<float>(tracker.doneShare() * slotScale), std::memory_order_relaxed);
-  }
-
-public:
-  assemblerWorker_1(assembler_1_c & p, std::stop_token stop_ = {})
-    : parent(p),
-      stop(stop_),
-      left(p.base_left),
-      right(p.base_right),
-      up(p.base_up),
-      down(p.base_down),
-      colCount(p.base_colCount),
-      weight(p.base_weight)
-  {
-    rows.reserve(parent.headerNodes);
-    hidden_rows.reserve(parent.headerNodes * 4);
-    task_stack.reserve(parent.headerNodes);
-    next_row_stack.reserve(parent.headerNodes);
-    column_stack.reserve(parent.headerNodes);
-  }
-
-  void searchSubtree(assembler_1_c::SubtreeTask_1 & task,
-                     assembler_1_c::WorkerProgress * slot) {
-    /* re-seed straight from the parent: base_* is written once in assemble()
-     * and never touched while workers run, so a private copy per worker only
-     * doubled the resident matrix count (2*nthreads+1 instead of nthreads+1)
-     */
-    left = parent.base_left;
-    right = parent.base_right;
-    up = parent.base_up;
-    down = parent.base_down;
-    colCount = parent.base_colCount;
-    weight = parent.base_weight;
-
-    // The territory root, not the live frontier: write-back overwrites the
-    // stacks with a deeper position, and resuming with that size as base
-    // would exit early, abandoning the ancestor levels' alternatives.
-    const unsigned int base =
-        task.baseDepth != 0 ? task.baseDepth
-                            : static_cast<unsigned int>(task.task_stack.size());
-    slotScale = static_cast<double>(task.units) / static_cast<double>(TaskUnits::kWhole);
-    curTask = &task;
-    rootUnits = task.units;
-    curBase = base;
-    curIsPiece = !task.task_stack.empty() && task.task_stack.size() == base &&
-                 task.task_stack.back() == 5;
-    cut.assign(task.task_stack.size() + 1, 0);
-    for (unsigned int c : task.cuts)
-      cut[c] = 1;
-    restoreMatrix(task);
-    worker_iterative(base, slot);
-    curTask = nullptr;
-  }
-
-  /* Start the tracker for a task whose territory root is frame
-   * base_depth - 1. A generated task's stacks end at that root, so this is
-   * just reset(). A written-back task resumes deeper: the frames between
-   * the root and the live top still hold untried children (the rows after
-   * a state-5 frame's current row, a state-2 frame's rows after its empty
-   * row set), so each gets a level with its current child as the active
-   * slot. Every frame of the territory then has a tracker level --
-   * level j is stack index base_depth - 1 + j -- which donate() relies on.
-   * The live top frame gets a level too, with no active slot: a top 5 (a
-   * donated piece, or a write-back between two rows) resumes in case 5/6
-   * with its current row already searched, so its children are the rows
-   * after that row; a top 2 has searched its empty row set, so they are
-   * the frame's rows. Without the count the level keeps reset()'s single
-   * slot, and the first of those rows takes the whole share: the task
-   * reads as done after one row, and donate() finds nothing left to give.
-   * The counts come from the restored matrix, where deeper hides can only
-   * hide rows, so they may undercount; beginSlot() clamps and pop()
-   * credits any residue, so conservation holds either way.
-   */
-  void seedTracker(unsigned int base_depth) {
-    tracker.reset();
-    if (base_depth == 0 || task_stack.empty())
-      return;
-    size_t rowIdx = 0;
-    for (size_t i = 0; i + 1 < base_depth && i < task_stack.size(); i++)
-      if (task_stack[i] == 5)
-        rowIdx++;
-    for (size_t i = base_depth - 1; i + 1 < task_stack.size(); i++) {
-      unsigned int n = 1;
-      if (task_stack[i] == 5) {
-        if (!isCut(i))
-          n += countRowChildren(up, down, down[rows[rowIdx]]);
-        rowIdx++;
-      } else if (task_stack[i] == 2) {
-        n += countRowChildren(up, down, next_row_stack[i]);
-      }
-      tracker.setChildren(n);
-      tracker.beginSlot();
-      tracker.push();
-    }
-    const size_t top = task_stack.size() - 1;
-    if (top + 1 < base_depth)
-      return;
-    if (task_stack[top] == 5) {
-      bt_assert(rowIdx + 1 == rows.size());  // case 6 continues from rows.back()
-      tracker.setChildren(isCut(top) ? 0 : countRowChildren(up, down, down[rows[rowIdx]]));
-    } else if (task_stack[top] == 2)
-      tracker.setChildren(countRowChildren(up, down, next_row_stack[top]));
-  }
-
-  void enableDonation(AssemblyTaskPool<assembler_1_c::SubtreeTask_1> & pool,
-                      unsigned long every) {
-    donatePool = &pool;
-    donateForced = every > 0;
-    donateInterval = every > 0 ? every : 128;
-  }
-
-  /* Split on demand: hand the remaining rows of the shallowest open row
-   * frame to the pool.
-   *
-   * A frame in state 5 has placed a row and descended; when its child
-   * returns, case 5 undoes the row's hides and case 6 moves on to the next
-   * row. The donated task is the stacks truncated just after that frame,
-   * top 5: restoreMatrix() replays every frame up to it exactly (top 5 is
-   * replayed whole), so on resume the receiver runs case 5 and 6 itself and
-   * walks precisely the rows after the current one, on the frame's own
-   * matrix. baseDepth = frame + 1 ends the task when the frame pops. The
-   * donor sets cut[frame]: its case 6 then ends the frame after the current
-   * row. The cut survives a write-back (SubtreeTask_1::cuts).
-   *
-   * Open frames: state 5 below the top, inside the task's territory
-   * (index >= baseDepth - 1), not cut, and with a next row in the live
-   * matrix. Deeper hides only unlink rows, so a next row seen here exists
-   * at the frame too.
-   *
-   * Progress: the tracker follows every frame of the territory (see
-   * seedTracker()). The piece receives floor(share x units at pop) of the
-   * frame's unattributed tracker share and the tracker gives that share
-   * away, so the donor's walk then drains to 1 minus it: its published
-   * slot (done x units at pop) never exceeds the units it still holds, and
-   * the handoff at finish never over-reports. A share too small for one
-   * unit, or a donor that cannot spare one, is not donated (TaskUnits).
-   *
-   * Unless forced (tests), the donor claims the pool's hunger signal before
-   * it gives, so one waiter draws one donation, not one from every busy
-   * worker that polls before the first push lands.
-   */
-  void donate() {
-    const size_t top = task_stack.size() - 1;
-    size_t rowIdx = 0, columnIdx = 0, markers = 0;
-    const size_t first = curBase > 0 ? curBase - 1 : 0;
-    for (size_t i = 0; i < top; i++) {
-      const unsigned int st = task_stack[i];
-      if (st == 1)
-        columnIdx++;
-      if (st != 5)
-        continue;
-      rowIdx++;
-      markers += 2;
-      if (i < first || isCut(i))
-        continue;
-      const unsigned int r = down[rows[rowIdx - 1]];
-      if (!(up[r] < r))
-        continue;
-      const size_t level = i - first;
-      const size_t units = static_cast<size_t>(
-          tracker.remainingAt(level) * static_cast<double>(rootUnits));
-      if (units < 1 || curTask->units < units + 1)
-        continue;  // too small to carry a unit, or nothing to spare (TaskUnits)
-      // one donor per waiter: the pool's hunger flag goes to whoever claims
-      // it first, and only once there is something to give
-      if (!donateForced && !donatePool->claim_work())
-        return;
-
-      assembler_1_c::SubtreeTask_1 piece;
-      piece.task_stack.assign(task_stack.begin(), task_stack.begin() + i + 1);
-      piece.next_row_stack.assign(next_row_stack.begin(), next_row_stack.begin() + i + 1);
-      piece.column_stack.assign(column_stack.begin(), column_stack.begin() + columnIdx);
-      piece.rows.assign(rows.begin(), rows.begin() + rowIdx);
-      // hidden_rows: two 0-led segments per state-5 frame; keep everything
-      // before the next frame's first marker
-      size_t end = 0, seen = 0;
-      while (end < hidden_rows.size()) {
-        if (hidden_rows[end] == 0) {
-          if (seen == markers)
-            break;
-          seen++;
-        }
-        end++;
-      }
-      piece.hidden_rows.assign(hidden_rows.begin(), hidden_rows.begin() + end);
-      // restoreMatrix() consumes exactly two segments per state-5 frame
-      bt_assert(static_cast<size_t>(std::count(piece.hidden_rows.begin(),
-                                               piece.hidden_rows.end(), 0u)) == markers);
-      piece.baseDepth = static_cast<unsigned int>(i + 1);
-      for (size_t k = 0; k < i; k++)
-        if (isCut(k))
-          piece.cuts.push_back(static_cast<unsigned int>(k));
-
-      tracker.takeRemaining(level);
-      piece.units = units;
-      curTask->units -= units;
-      if (cut.size() <= i)
-        cut.resize(i + 1, 0);
-      cut[i] = 1;
-      parent.donations.fetch_add(1, std::memory_order_relaxed);
-      if (level == 0 && curIsPiece)
-        parent.redonations.fetch_add(1, std::memory_order_relaxed);
-      std::vector<assembler_1_c::SubtreeTask_1> one;
-      one.push_back(std::move(piece));
-      donatePool->push_tasks(std::move(one));
-      return;
-    }
-  }
-
-  size_t liveDepth() const { return task_stack.size(); }
-
-  /* Live position write-back for an interrupted task: the five stacks fully
-   * determine the matrix via restoreMatrix(), so copying them back resumes
-   * exactly where the worker stopped -- delivered solutions sit behind the
-   * frontier (stacks advanced past them), missed ones hold it (see
-   * worker_solution).
-   */
-  void writeBack(assembler_1_c::SubtreeTask_1 & task) const {
-    task.task_stack = task_stack;
-    task.next_row_stack = next_row_stack;
-    task.column_stack = column_stack;
-    task.rows = rows;
-    task.hidden_rows = hidden_rows;
-    task.cuts.clear();
-    for (size_t i = 0; i < task_stack.size(); i++)
-      if (isCut(i))
-        task.cuts.push_back(static_cast<unsigned int>(i));
-  }
-
-  void flushIterations() {
-    unsigned long unflushed = local_iterations - flushed_iterations;
-    if (unflushed > 0) {
-      parent.iterations.fetch_add(unflushed, std::memory_order_relaxed);
-      flushed_iterations = local_iterations;
-    }
-  }
-};
 
 bool assembler_1_c::willRunParallel(unsigned int threads) const {
-  /* the condition assemble() dispatches on, in one place. A
-   * task_stack/next_row_stack that is not at its initial state is a resumed
-   * search: the task generator cannot start from it, so a resume runs serially
-   * however many threads are configured. SIMD-eligible fresh runs take the
-   * task-based parallel path even with a single thread: parallelMultiSearch()
-   * runs worker 0 inline with no extra thread, and its pool remainder makes
-   * an interrupted run resumable.
-   */
-  if (errorsState != ERR_NONE)
-    return false;
-  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
-    return false;
-  return (threads > 1) || canUseSimd() || canUseCells() || !parallelTasks.empty() || !pendingHuangPrefixes.empty();
+  /* every run with work left takes the task pool, even with one thread (the
+   * pool runs worker 0 inline): its remainder is what makes a stopped run
+   * resumable */
+  (void)threads;
+  return errorsState == ERR_NONE && !searchComplete.load(std::memory_order_relaxed);
 }
 
 unsigned int assembler_1_c::getRunThreads(void) const {
@@ -2895,258 +1179,7 @@ unsigned int assembler_1_c::getRunThreads(void) const {
   return willRunParallel(threads) ? threads : 1;
 }
 
-void assembler_1_c::generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks) {
-  tasks.clear();
-
-  left = base_left;
-  right = base_right;
-  up = base_up;
-  down = base_down;
-  colCount = base_colCount;
-  weight = base_weight;
-
-  task_stack = { 0 };
-  next_row_stack = { 0 };
-  column_stack.clear();
-  rows.clear();
-  hidden_rows.clear();
-
-  unsigned int row, col;
-
-  // Task generation runs once per run on the master: snapshot the token
-  // rather than touching shared run state per generated node.
-  std::stop_token runTok = currentRunToken();
-
-  while (task_stack.size() > 0 && !runTok.stop_requested()) {
-    iterations.fetch_add(1, std::memory_order_relaxed);
-
-    switch (task_stack.back()) {
-      case 0:
-        if (holes < holeColumns.size()) {
-          unsigned int cnt = holes;
-          bool ret = false;
-          for (unsigned int i = 0; i < holeColumns.size(); i++) {
-            if (colCount[holeColumns[i]] == 0 && weight[holeColumns[i]] == 0) {
-              if (cnt == 0) {
-                next_row_stack.pop_back();
-                task_stack.pop_back();
-                ret = true;
-                break;
-              } else {
-                cnt--;
-              }
-            }
-          }
-          if (ret) break;
-        }
-
-        if (next_row_stack.back() < headerNodes && right[0] == 0) {
-          SubtreeTask_1 t;
-          t.task_stack = task_stack;
-          t.next_row_stack = next_row_stack;
-          t.column_stack = column_stack;
-          t.rows = rows;
-          t.hidden_rows = hidden_rows;
-          t.baseDepth = static_cast<unsigned int>(task_stack.size());
-          tasks.push_back(std::move(t));
-
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          break;
-        }
-
-        if (rows.size() >= cutoff_depth) {
-          SubtreeTask_1 t;
-          t.task_stack = task_stack;
-          t.next_row_stack = next_row_stack;
-          t.column_stack = column_stack;
-          t.rows = rows;
-          t.hidden_rows = hidden_rows;
-          t.baseDepth = static_cast<unsigned int>(task_stack.size());
-          tasks.push_back(std::move(t));
-
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          break;
-        }
-
-        if (next_row_stack.back() < headerNodes) {
-          int c = find_best_unclosed_column();
-          if (c == -1) {
-            next_row_stack.pop_back();
-            task_stack.pop_back();
-            break;
-          }
-
-          if (colCount[c] == 0) {
-            if (column_condition_fulfilled(c)) {
-              cover_column_only(c);
-              column_stack.push_back(c);
-              task_stack.back() = 1;
-              task_stack.push_back(0);
-              next_row_stack.push_back(0);
-              break;
-            }
-          } else {
-            cover_column_only(c);
-            column_stack.push_back(c);
-            task_stack.back() = 1;
-            task_stack.push_back(0);
-            next_row_stack.push_back(down[c]);
-            break;
-          }
-
-          next_row_stack.pop_back();
-          task_stack.pop_back();
-          break;
-        }
-
-        col = colCount[next_row_stack.back()];
-        bt_assert(column_condition_fulfillable(col));
-
-        if (column_condition_fulfilled(col)) {
-          cover_column_rows(col);
-          if (open_column_conditions_fulfillable()) {
-            task_stack.back() = 2;
-            task_stack.push_back(0);
-            next_row_stack.push_back(0);
-            break;
-          }
-          task_stack.back() = 2;
-          break;
-        }
-
-        task_stack.back() = 3;
-        break;
-
-      case 1:
-        uncover_column_only(column_stack.back());
-        column_stack.pop_back();
-        next_row_stack.pop_back();
-        task_stack.pop_back();
-        break;
-
-      case 2:
-        uncover_column_rows(colCount[next_row_stack.back()]);
-        [[fallthrough]];
-
-      case 3:
-        hidden_rows.push_back(0);
-        row = next_row_stack.back();
-        if (up[row] < row) {
-          rows.push_back(row);
-          [[fallthrough]];
-        } else {
-          task_stack.back() = 7;
-          break;
-        }
-
-      case 4:
-        row = rows.back();
-        col = colCount[next_row_stack.back()];
-        weight[colCount[row]] += weight[row];
-        for (unsigned int r = right[row]; r != row; r = right[r])
-          weight[colCount[r]] += weight[r];
-
-        if (open_column_conditions_fulfillable()) {
-          hiderows(row);
-          if (open_column_conditions_fulfillable()) {
-            if (colCount[col] == 0) {
-              if (column_condition_fulfilled(col)) {
-                task_stack.back() = 5;
-                task_stack.push_back(0);
-                next_row_stack.push_back(0);
-                break;
-              }
-            } else {
-              if (column_condition_fulfillable(col)) {
-                unsigned int newrow = row;
-                while ((down[newrow] >= headerNodes) && up[down[newrow]] != newrow)
-                  newrow = down[newrow];
-                task_stack.back() = 5;
-                task_stack.push_back(0);
-                next_row_stack.push_back(newrow);
-                break;
-              }
-            }
-          }
-        } else {
-          task_stack.back() = 6;
-          break;
-        }
-        [[fallthrough]];
-
-      case 5:
-        unhiderows();
-        [[fallthrough]];
-
-      case 6:
-        row = rows.back();
-        for (unsigned int r = left[row]; r != row; r = left[r])
-          weight[colCount[r]] -= weight[r];
-        weight[colCount[row]] -= weight[row];
-        rows.pop_back();
-
-        hiderow(row);
-        hidden_rows.push_back(row);
-
-        row = down[row];
-        if (up[row] < row) {
-          rows.push_back(row);
-          task_stack.back() = 4;
-          break;
-        }
-        [[fallthrough]];
-
-      case 7:
-        unhiderows();
-        next_row_stack.pop_back();
-        task_stack.pop_back();
-        break;
-
-      default:
-        bt_assert(0);
-        break;
-    }
-  }
-
-  left = base_left;
-  right = base_right;
-  up = base_up;
-  down = base_down;
-  colCount = base_colCount;
-  weight = base_weight;
-
-  task_stack = { 0 };
-  next_row_stack = { 0 };
-  column_stack.clear();
-  rows.clear();
-  hidden_rows.clear();
-}
-
-void assembler_1_c::generateSubtreeTasks(
-    std::vector<SubtreeTask_1> & tasks,
-    unsigned int targetTasks,
-    unsigned int maxDepth)
-{
-  tasks.clear();
-  unsigned int cutoff_depth = 1;
-  if (maxDepth == 0) maxDepth = 1;
-
-  // Once per run on the master (see generateTasksAtDepth above).
-  std::stop_token runTok = currentRunToken();
-
-  while (cutoff_depth <= maxDepth && !runTok.stop_requested()) {
-    generateTasksAtDepth(cutoff_depth, tasks);
-    if (tasks.size() >= targetTasks || tasks.empty())
-      break;
-    if (cutoff_depth == maxDepth)
-      break;
-    cutoff_depth++;
-  }
-}
-
-void assembler_1_c::parallelMultiSearch(unsigned int workers) {
+void assembler_1_c::search(unsigned int workers) {
   // Snapshot of the run token: assemble() refreshed the source. Captured
   // once here and handed to the solver/workers by value; nothing below
   // touches shared run state in a hot path.
@@ -3162,411 +1195,134 @@ void assembler_1_c::parallelMultiSearch(unsigned int workers) {
 
   // Seeds are only valid for the engine that left them, so a remainder
   // keeps its engine whatever the settings say now.
-  const bool useCells = !pendingHuangPrefixes.empty() ? pendingSeedsCells
-                                                      : (parallelTasks.empty() && canUseCells());
-  bool useSimd = !pendingHuangPrefixes.empty() || useCells || (parallelTasks.empty() && canUseSimd());
-  if (useSimd)
-    buildNodePositions();
-  if (useSimd) {
-    // Never a DLX remainder here: a restored one keeps the DLX engine
-    // above, and restored seeds are never saved next to one.
-    bt_assert(parallelTasks.empty());
-    // A restored remainder brings the solver setPosition() checked its
-    // seeds with; the matrix is still at base, as it was then.
-    std::unique_ptr<ISimdHuangCover> solver = std::move(restoredSimdSolver);
-    if (!solver)
-      solver = createSimdSolver(useCells);
+  const bool useCells = !pendingHuangPrefixes.empty() ? pendingSeedsCells : !canUseSimd();
+  buildNodePositions();
+  std::unique_ptr<ISimdHuangCover> solver = std::move(restoredSimdSolver);
+  if (!solver)
+    solver = createSimdSolver(useCells);
 
-    /* This back end has no in-flight hook, so it publishes no slots -- and
-     * getFinished()'s task-based branch, which sums the slots, therefore
-     * reduces to completed over total tasks for it. Cleared rather than
-     * assumed empty, so that reduction is a property of this function and not
-     * of whatever ran before it.
-     */
-    {
-      std::lock_guard<std::mutex> lock(progressMutex);
-      workerProgress.clear();
-    }
-
-    // Incremental in-session resume (issue #111): consume previously
-    // salvaged prefixes as seeds; collect fresh salvage for a possible next
-    // run. Separate vectors: seeds are read up front while salvage is
-    // appended during the run.
-    std::vector<HuangSeed> huangSeeds;
-    huangSeeds.swap(pendingHuangPrefixes);
-    std::vector<HuangSeed> huangSalvaged;
-    // The solver makes the pre-pool stop check itself (salvaging its
-    // seeds), so the hook fires right before it.
-    runPoolSeedHook();
-    solver->parallelSolve(
-      workers,
-      // consumed: done with this solution (delivered, filtered, or nobody
-      // to deliver to -- as in assembler_0); false only when the stop
-      // declined it, which the solver then keeps as a remainder piece (see
-      // SimdHuangCover::StopTrace).
-      [this, runTok](const std::vector<unsigned int> &solution_nodes, bool &consumed) -> bool {
-        consumed = (getCallback() == nullptr);
-        if (getCallback()) {
-          auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
-
-          /* The placements by shape, in the order found within a shape.
-           * Problems with millions of assemblies spend their time here, so
-           * one pass and one small sort, no allocation per assembly.
-           */
-          struct placed_t {
-            unsigned int piece;
-            unsigned char tran;
-            int x, y, z;
-          };
-          static thread_local std::vector<placed_t> placed;
-          placed.resize(solution_nodes.size());
-          for (unsigned int i = 0; i < solution_nodes.size(); i++)
-            getPieceInformation(solution_nodes[i], &placed[i].piece, &placed[i].tran,
-                                &placed[i].x, &placed[i].y, &placed[i].z);
-          std::stable_sort(placed.begin(), placed.end(),
-                           [](const placed_t & a, const placed_t & b) { return a.piece < b.piece; });
-
-          size_t at = 0;
-          const unsigned int parts = problem.getNumberOfParts();
-          for (unsigned int pc = 0; pc < parts; pc++) {
-            unsigned int count = 0;
-            for (; at < placed.size() && placed[at].piece == pc; at++, count++)
-              assembly->addPlacement(placed[at].tran, placed[at].x, placed[at].y, placed[at].z);
-            for (const unsigned int max = problem.getPartMaximum(pc); count < max; count++)
-              assembly->addNonPlacement();
-          }
-
-          assembly->sort(problem);
-
-          if (avoidTransformedAssemblies &&
-              assembly->smallerRotationExists(problem, avoidTransformedPivot,
-                                              avoidTransformedMirror.get(), complete)) {
-            consumed = true;
-            return true;
-          }
-
-          {
-            std::lock_guard<std::mutex> lock(callbackMutex);
-            if (runTok.stop_requested())
-              return false;
-            consumed = true;
-            if (!getCallback()->assembly(std::move(assembly))) {
-              stop();
-              return false;
-            }
-          }
-        }
-        return !runTok.stop_requested();
-      },
-      // The run source (not just its token): a throwing cover worker fires
-      // it so siblings stop promptly. Safe to borrow: no refresh happens
-      // while this run's workers exist.
-      runStop,
-      iterations,
-      totalTasks,
-      completedTasks,
-      (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr,
-      huangSeeds.empty() ? nullptr : &huangSeeds,
-      &huangSalvaged,
-      &donations
-    );
-
-    /* Same stop-after-drain rule as the DLX paths (see
-     * drainedPoolComplete): a stop that lands after every seeded task was
-     * counted with nothing salvaged completes exactly as an unstopped run
-     * instead of saving an empty interrupted remainder.
-     */
-    runPoolDrainedHook();
-    const bool huangStopped = runTok.stop_requested();
-    if (huangStopped) {
-      pendingHuangPrefixes = std::move(huangSalvaged);
-      pendingSeedsCells = useCells;
-    }
-    if (!huangStopped || drainedPoolComplete(huangStopped, pendingHuangPrefixes.size(),
-          totalTasks.load(std::memory_order_relaxed),
-          completedTasks.load(std::memory_order_relaxed))) {
-      /* Same reset as the DLX completion path below. Without clearing the
-       * stacks a completed run still looks like an unstarted search, so
-       * save() would write interrupted = 0 next to the root position and the
-       * reload would replay everything, re-reporting every assembly.
-       */
-      next_row_stack.clear();
-      task_stack.clear();
-      parallelTasks.clear();
-      pendingHuangPrefixes.clear();
-      restoredSimdSolver.reset();
-      parallelInterrupted = false;
-      searchComplete.store(true, std::memory_order_relaxed);
-    } else {
-      // Keep the salvaged in-flight prefixes plus pool remainder; the next
-      // assemble() resumes from them instead of regenerating everything.
-      parallelInterrupted = true;
-    }
-
-    running.store(false, std::memory_order_relaxed);
-    return;
-  }
-
-  // Never a Huang remainder here: restored seeds keep the SIMD engine.
-  bt_assert(pendingHuangPrefixes.empty() && !restoredSimdSolver);
-
-  // Only a list generated by this call may be discarded on a stop below; a
-  // restored remainder is the sole record of what earlier runs left open.
-  const bool generated = parallelTasks.empty();
-  if (generated) {
-    unsigned int targetTasks = std::max(16u, workers * 4);
-    unsigned int maxDepth = std::min(piecenumber, 3u);
-    generateSubtreeTasks(parallelTasks, targetTasks, maxDepth);
-    completedTasks.store(0, std::memory_order_release);
-
-    /* Published with release ordering, matched by getFinished()'s acquire
-     * load of totalTasks: a reader that sees this run's total is guaranteed
-     * to see the completedTasks reset that precedes it, never a stale count
-     * left by a previous run. Stored only here, inside the fresh-generation
-     * branch -- not on every call -- because it is the denominator this
-     * engine's getFinished() actually divides by (unlike assembler_0_c,
-     * where totalTasks is only a >0 gate): on a resumed run parallelTasks
-     * holds just the pool remainder a prior pause drained back into it, and
-     * re-storing that smaller count here would shrink the denominator out
-     * from under the completed count already accumulated against the
-     * original total. A resumed run therefore skips this whole block and
-     * leaves both totalTasks and completedTasks exactly as the paused run
-     * left them. Generated tasks are weighted equally (one TaskUnits::kWhole
-     * each; see the note on workerProgress in the header for why this
-     * engine does not weight them by structural share); donations and stops
-     * only move units between tasks.
-     */
-    totalTasks.store(parallelTasks.size() * TaskUnits::kWhole, std::memory_order_release);
-  }
-
+  // Incremental in-session resume (issue #111): consume previously
+  // salvaged prefixes as seeds; collect fresh salvage for a possible next
+  // run. Separate vectors: seeds are read up front while salvage is
+  // appended during the run.
+  std::vector<HuangSeed> huangSeeds;
+  huangSeeds.swap(pendingHuangPrefixes);
+  std::vector<HuangSeed> huangSalvaged;
+  // The solver makes the pre-pool stop check itself (salvaging its
+  // seeds), so the hook fires right before it.
   runPoolSeedHook();
+  solver->parallelSolve(
+    workers,
+    // consumed: done with this solution (delivered, filtered, or nobody
+    // to deliver to); false only when the stop
+    // declined it, which the solver then keeps as a remainder piece (see
+    // SimdHuangCover::StopTrace).
+    [this, runTok](const std::vector<unsigned int> &solution_nodes, bool &consumed) -> bool {
+      consumed = (getCallback() == nullptr);
+      if (getCallback()) {
+        auto assembly = std::make_unique<assembly_c>(problem.getPuzzle().getGridType());
 
-  if (runTok.stop_requested()) {
-    // Stopped before searching. A list generated by this call may be
-    // partial (stopped mid-generation) and would silently drop subtrees on
-    // continue/save: discard it; nothing was searched yet, so regenerating
-    // it is exact, and save() refuses the position (no tasks). A resumed
-    // remainder is kept as is: regenerating instead would search, and
-    // report, the territory earlier runs already covered a second time.
-    if (generated)
-      parallelTasks.clear();
-    parallelInterrupted = true;
-    running.store(false, std::memory_order_relaxed);
-    return;
-  }
+        /* The placements by shape, in the order found within a shape.
+         * Problems with millions of assemblies spend their time here, so
+         * one pass and one small sort, no allocation per assembly.
+         */
+        struct placed_t {
+          unsigned int piece;
+          unsigned char tran;
+          int x, y, z;
+        };
+        static thread_local std::vector<placed_t> placed;
+        placed.resize(solution_nodes.size());
+        for (unsigned int i = 0; i < solution_nodes.size(); i++)
+          getPieceInformation(solution_nodes[i], &placed[i].piece, &placed[i].tran,
+                              &placed[i].x, &placed[i].y, &placed[i].z);
+        std::stable_sort(placed.begin(), placed.end(),
+                         [](const placed_t & a, const placed_t & b) { return a.piece < b.piece; });
 
-  if (parallelTasks.empty()) {
-    /* completed before total, both release, for the reason given above */
-    completedTasks.store(1, std::memory_order_release);
-    totalTasks.store(1, std::memory_order_release);
-    searchComplete.store(true, std::memory_order_relaxed);
-    running.store(false, std::memory_order_relaxed);
-    return;
-  }
-
-  // Non-terminating pool as in assembler_0 (see assembler_pool.h): idle
-  // workers wait for quiescence, so siblings blocked in
-  // disassemblerPool_c::submit are still alive when disassembly permits
-  // return. Running tasks split on demand when siblings wait (see
-  // assemblerWorker_1::donate), so skew between seeded subtrees does not
-  // leave workers idle.
-  AssemblyTaskPool<SubtreeTask_1> pool;
-  pool.seed(std::move(parallelTasks));
-  parallelTasks.clear();
-  ThreadBudget *runBudget = nullptr;
-  if (assembler_cb *cb = getCallback()) {
-    runBudget = cb->threadBudget();
-    pool.setBudget(runBudget);
-  }
-
-  // Deliver stop promptly to parked workers: pop_task() and the budget gate
-  // observe the run token only in their predicates, so firing runStop alone
-  // would leave them asleep until the next release() or task_done(). This
-  // only wakes -- in-flight tasks, retry pushes and drain() are unaffected,
-  // so in-session resume keeps working.
-  std::stop_callback wakeParkedOnStop(runTok, [&] {
-    pool.notify();
-    if (runBudget != nullptr)
-      runBudget->notify();
-  });
-
-  std::exception_ptr workerException = nullptr;
-  std::mutex exceptionMutex;
-
-  /* One published slot per worker, sized here -- before any worker starts --
-   * and left alone until they have all joined. The GUI thread is already
-   * polling getFinished() at this point, so the vector is built under
-   * progressMutex; without it a reader can walk the vector while push_back
-   * is reallocating it.
-   */
-  {
-    std::lock_guard<std::mutex> lock(progressMutex);
-    workerProgress.clear();
-    workerProgress.reserve(workers);
-    for (unsigned int i = 0; i < workers; i++)
-      workerProgress.push_back(std::make_unique<WorkerProgress>());
-  }
-
-  // Split on demand (see assemblerWorker_1::donate); toggles as in
-  // assembler_0, fixed for the run.
-  const bool donate = settings.donate;
-  const unsigned long donateEvery = settings.donateEvery;
-
-  auto workerFunc = [this, &pool, &workerException, &exceptionMutex, runTok,
-                     donate, donateEvery](std::stop_token st, unsigned int workerIdx) {
-    try {
-      assemblerWorker_1 worker(*this, runTok);
-      WorkerProgress * slot = workerProgress[workerIdx].get();
-      if (donate)
-        worker.enableDonation(pool, donateEvery);
-
-      SubtreeTask_1 task;
-      while (pool.pop_task(task, runTok, st)) {
-        try {
-          // Territory root for the completion check below (see baseDepth):
-          // the live stacks may already sit deeper on a resumed task.
-          const size_t rootDepth =
-              task.baseDepth != 0 ? task.baseDepth : task.task_stack.size();
-          worker.searchSubtree(task, slot);
-
-          /* The order of the handoff matters. The slot is cleared before the
-           * task is counted, and getFinished() reads completedTasks before
-           * the slots, so the only value a reader can catch part-way through
-           * is a momentarily low one -- never a task counted twice, once in
-           * completedTasks and once in a slot still reading 1. The reverse
-           * order would momentarily over-report, and solvethread.cpp treats
-           * getFinished() >= 1 as "finished": a transient over-report there
-           * would end the solve while workers were still running.
-           *
-           * Program order is not enough to get that on its own. Both
-           * accesses relaxed leaves them unordered, and on arm64 -- the
-           * development and CI platform -- a reader really can observe the
-           * incremented counter while still seeing the old slot's 1.0, which
-           * is the double count. The fetch_add is therefore a release and
-           * getFinished()'s load of completedTasks an acquire: a reader that
-           * sees this increment is guaranteed to see the slot clear that
-           * precedes it.
-           *
-           * The slot is cleared whether or not the task completed. A task
-           * the run token cut short is not counted -- it has to be redone on
-           * a resume -- so leaving its in-flight term standing would report
-           * work that is about to be thrown away.
-           */
-          if (slot)
-            slot->fraction.store(0.0f, std::memory_order_relaxed);
-          const bool stopped = runTok.stop_requested() || st.stop_requested();
-          // Popped below the task's root, the territory is exhausted
-          // (every pop advances past searched, dead or delivered
-          // ground): nothing to resume. This also covers
-          // the stop-after-completion race, which a blind requeue would
-          // resume into an empty frontier.
-          const bool exhausted = worker.liveDepth() < rootDepth;
-          if (stopped && !exhausted) {
-            // Interrupted mid-task: write back the live stacks (see
-            // writeBack) and requeue. Delivered solutions sit behind the
-            // frontier; missed ones hold it for rediscovery. The same task
-            // re-enters the pool, not new work, so totalTasks stays.
-            worker.writeBack(task);
-            std::vector<SubtreeTask_1> retry;
-            retry.push_back(std::move(task));
-            pool.push_tasks(std::move(retry));
-          }
-          if (!stopped || exhausted)
-            completedTasks.fetch_add(task.units, std::memory_order_release);
-        } catch (...) {
-          pool.finishTask();
-          throw;
+        size_t at = 0;
+        const unsigned int parts = problem.getNumberOfParts();
+        for (unsigned int pc = 0; pc < parts; pc++) {
+          unsigned int count = 0;
+          for (; at < placed.size() && placed[at].piece == pc; at++, count++)
+            assembly->addPlacement(placed[at].tran, placed[at].x, placed[at].y, placed[at].z);
+          for (const unsigned int max = problem.getPartMaximum(pc); count < max; count++)
+            assembly->addNonPlacement();
         }
-        pool.finishTask();
+
+        assembly->sort(problem);
+
+        if (avoidTransformedAssemblies &&
+            assembly->smallerRotationExists(problem, avoidTransformedPivot,
+                                            avoidTransformedMirror.get(), complete)) {
+          consumed = true;
+          return true;
+        }
+
+        {
+          std::lock_guard<std::mutex> lock(callbackMutex);
+          if (runTok.stop_requested())
+            return false;
+          consumed = true;
+          if (!getCallback()->assembly(std::move(assembly))) {
+            stop();
+            return false;
+          }
+        }
       }
+      return !runTok.stop_requested();
+    },
+    // The run source (not just its token): a throwing cover worker fires
+    // it so siblings stop promptly. Safe to borrow: no refresh happens
+    // while this run's workers exist.
+    runStop,
+    iterations,
+    totalTasks,
+    completedTasks,
+    (getCallback() != nullptr) ? getCallback()->threadBudget() : nullptr,
+    huangSeeds.empty() ? nullptr : &huangSeeds,
+    &huangSalvaged,
+    &donations
+  );
 
-      worker.flushIterations();
-    } catch (...) {
-      std::lock_guard<std::mutex> lock(exceptionMutex);
-      if (!workerException)
-        workerException = std::current_exception();
-      // Fire the run source so siblings stop promptly (see SIMD branch).
-      stop();
-    }
-  };
-
-  std::vector<std::jthread> threads;
-  threads.reserve(workers - 1);
-
-  for (unsigned int i = 1; i < workers; i++) {
-    threads.emplace_back(workerFunc, i);
-  }
-
-  workerFunc(std::stop_token{}, 0);
-
-  for (auto & t : threads) {
-    if (t.joinable())
-      t.join();
-  }
-
-  /* Every worker has joined, so the slots are dead: drop them rather than
-   * leave the last published in-flight terms standing for a later poll to add
-   * to the completed count. Under progressMutex for the same reason they were
-   * built under it -- the GUI thread may still be walking the vector.
-   */
-  {
-    std::lock_guard<std::mutex> lock(progressMutex);
-    workerProgress.clear();
-  }
-
-  if (workerException) {
-    running.store(false, std::memory_order_relaxed);
-    std::rethrow_exception(workerException);
-  }
-
-  /* Same stop-after-drain rule as assembler_0 (see drainedPoolComplete):
-   * a stop that lands after every task was counted with nothing left
-   * queued completes exactly as an unstopped run instead of saving an
-   * empty interrupted remainder.
+  /* The stop-after-drain rule (see drainedPoolComplete): a stop that lands after every seeded task was
+   * counted with nothing salvaged completes exactly as an unstopped run
+   * instead of saving an empty interrupted remainder.
    */
   runPoolDrainedHook();
-  const bool dlxStopped = runTok.stop_requested();
-  if (dlxStopped)
-    parallelTasks = pool.drain();
-  if (!dlxStopped || drainedPoolComplete(dlxStopped, parallelTasks.size(),
+  const bool huangStopped = runTok.stop_requested();
+  if (huangStopped) {
+    pendingHuangPrefixes = std::move(huangSalvaged);
+    pendingSeedsCells = useCells;
+  }
+  if (!huangStopped || drainedPoolComplete(huangStopped, pendingHuangPrefixes.size(),
         totalTasks.load(std::memory_order_relaxed),
         completedTasks.load(std::memory_order_relaxed))) {
-    next_row_stack.clear();
-    task_stack.clear();
-    parallelTasks.clear();
+    /* searchComplete is what keeps a completed search from running again:
+     * save() records it, so a reload does not replay everything and
+     * re-report every assembly. */
     pendingHuangPrefixes.clear();
     restoredSimdSolver.reset();
-    parallelInterrupted = false;
     searchComplete.store(true, std::memory_order_relaxed);
-  } else {
-    /* Stopped part way. Continuing in this session is fine -- the pool
-     * remainder plus re-queued in-flight tasks (live stacks written back)
-     * are saved back into parallelTasks. generateTasksAtDepth() resets the
-     * master back to the root on every exit, so the base stacks carry no
-     * resume point; save() persists the remainder instead (appended below)
-     * and setPosition() resumes from it.
-     */
-    parallelInterrupted = true;
   }
+  // Otherwise the salvaged in-flight prefixes plus pool remainder stay; the
+  // next assemble() resumes from them instead of regenerating everything.
 
-  running.store(false, std::memory_order_relaxed);
 }
 
+/* The bit-parallel engine (SimdHuangCover) where it fits; Dancing Cells
+ * (CellsCover) takes every other matrix, and every matrix with
+ * settings.bitParallel off. */
 bool assembler_1_c::canUseSimd(void) const {
-  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
-    return false;
   if (!settings.bitParallel)
     return false;
-  if (debug)
-    return false;
 
-  if (headerNodes - 1 > 32768)
+  if (!simdEngineSupports())
     return false;
 
   // Memory footprint guard (issue #92): voxel_mask is tier-sized, so a
   // high-tier puzzle with many placement rows would allocate hundreds of MB
-  // where DLX copes in tens. Refuse the SIMD path past the budget; the
-  // fallback stays correct, just slower. Counts rows and matrix nodes in
+  // where Dancing Cells copes in tens. Refuse the SIMD path past the budget;
+  // the fallback stays correct, just slower. Counts rows and matrix nodes in
   // one pass over the shape columns (node count feeds the alias-table and
   // vector-payload part of the estimate).
   {
@@ -3583,20 +1339,28 @@ bool assembler_1_c::canUseSimd(void) const {
       return false;
   }
 
+  return true;
+}
+
+bool assembler_1_c::simdEngineSupports(void) const {
+
+  // the widest tier (SimdHuangCover32768)
+  if (headerNodes - 1 > 32768)
+    return false;
 
   // NOTE: range puzzles (matrix has one more column than shapes + filled +
   // variable voxels: the piece-count range column) are deliberately NOT
   // excluded here. SimdHuangCover models the range column explicitly
   // (is_range bounds, per-row range_weight, max pruning in every filterRows
-  // kernel, min/max goal check in search()) and the SIMD-vs-DLX equivalence
-  // test covers range puzzles, so falling back to DLX would only cost the
-  // ~10x speedup (SolidSix: 7.9s -> 0.64s).
+  // kernel, min/max goal check in search()) and the engine equivalence
+  // tests cover range puzzles, so falling back would only cost speed
+  // (SolidSix: 0.45 s against 2.0 s on Dancing Cells).
   const voxel_c * result = getResultShape(problem);
   unsigned int res_vari = result ? result->countState(voxel_c::VX_VARIABLE) : 0;
 
   if (res_vari > 0) {
     // If there are variable voxels AND any shape has min < max,
-    // solutions can have variable number of pieces filling variable voxels. Fall back to DLX.
+    // solutions can have variable number of pieces filling variable voxels: Dancing Cells.
     for (unsigned int s = 0; s < problem.getNumberOfParts(); s++) {
       if (problem.getPartMinimum(s) != problem.getPartMaximum(s))
         return false;
@@ -3604,20 +1368,6 @@ bool assembler_1_c::canUseSimd(void) const {
   }
 
   return true;
-}
-
-/* The Dancing Cells engine takes every matrix: any size, and variable
- * voxels together with piece ranges, which the bit-parallel engine leaves
- * out. It runs where that engine does not (settings.cellsFallback), in
- * place of dancing links, or everywhere (settings.cells). With the
- * bit-parallel engines switched off the search is dancing links, as ever.
- */
-bool assembler_1_c::canUseCells(void) const {
-  if (task_stack.size() != 1 || !rows.empty() || next_row_stack.size() != 1)
-    return false;
-  if (debug)
-    return false;
-  return settings.cells || (settings.cellsFallback && settings.bitParallel && !canUseSimd());
 }
 
 std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) const {
@@ -3705,109 +1455,17 @@ std::unique_ptr<ISimdHuangCover> assembler_1_c::createSimdSolver(bool cells) con
 
 void assembler_1_c::assemble(assembler_cb * callback) {
 
-  running.store(true, std::memory_order_relaxed);
+  // Canonical per-run refresh: everything below observes this run's token;
+  // a second assemble() starts unstopped.
+  beginRun();
 
-  // Canonical per-run refresh: everything below (serial or parallel, SIMD
-  // or DLX) observes this run's token; a second assemble() starts unstopped.
-  std::stop_token runTok = beginRun();
-  debug = false;
-
-  const unsigned int threads = getEffectiveThreads();
-  /* Single dispatch source, shared with getRunThreads(): willRunParallel()
-   * covers the multi-thread case and SIMD-eligible fresh runs
-   * (single-threaded ones included). Only serial DLX resumes reach the
-   * iterative path below.
-   */
-  const bool runParallel = willRunParallel(threads);
-
-  /* getFinished() is polled from the GUI thread throughout the solve, and its
-   * fallback branch reads finished_a/finished_b and next_row_stack -- the
-   * single-threaded progress state. The parallel path writes all three from
-   * this thread without holding finishedMutex: the reserve() just below
-   * reallocates finished_a, and task generation pushes and pops
-   * next_row_stack several thousand times. ThreadSanitizer flags both.
-   *
-   * Switching getFinished() over to the task-based source here, before any of
-   * that happens, keeps it off that state for the whole of the parallel run.
-   * While the task list is still being generated totalTasks is 0, which the
-   * task-based branch reports as 0 -- correct, and reading only atomics.
-   *
-   * The switch is made under finishedMutex, which getFinished() holds across
-   * its whole body. That is what orders a poll that arrived BEFORE the switch
-   * -- and so did read finished_a and next_row_stack, legitimately, while
-   * nothing was running -- against the writes below: read, then lock, then
-   * write, with the lock carrying the happens-before edge. inFlightProgress is
-   * atomic in its own right, so the lock is not what
-   * makes storing it safe; it is what makes this switch indivisible from
-   * getFinished()'s point of view, so no poll can land between "flag says
-   * parallel" and "finished_a/next_row_stack are mid-write".
-   *
-   * It is switched back OFF for a non-parallel run, not merely left alone, and
-   * the task counters are zeroed with it. A solve aborted on the parallel path
-   * leaves both the flag and the counters holding that run's numbers, and the
-   * flag is what selects the task-ratio branch of getFinished() -- so a resume
-   * with one thread would otherwise report the abandoned run's constant ratio
-   * for the whole of the serial search.
-   *
-   * The counters are cleared with it even though the flag alone would satisfy
-   * the regression test on this tree: getFinished() has only one task-ratio
-   * branch left, so nothing reads them once the flag is off. It had two when
-   * this fix was first written, and clearing only the flag moved the stale
-   * value from one branch to the other -- the test reproduced it bit for bit
-   * either way. Leaving an abandoned run's numbers in the counters is what
-   * made that possible, so they go too.
-   */
-  {
-    std::lock_guard<std::mutex> lock(finishedMutex);
-    inFlightProgress.store(runParallel, std::memory_order_relaxed);
-    if (!runParallel) {
-      totalTasks.store(0, std::memory_order_relaxed);
-      completedTasks.store(0, std::memory_order_relaxed);
-    }
-  }
-
-  finished_a.reserve(headerNodes);
-  finished_b.reserve(headerNodes);
-
-  base_left = left;
-  base_right = right;
-  base_up = up;
-  base_down = down;
-  base_colCount = colCount;
-  base_weight = weight;
-
-  if (errorsState == ERR_NONE) {
-
-    // run, when something to do
-    if (next_row_stack.size()) {
-      asm_bc = callback;
-      if (runParallel) {
-        parallelMultiSearch(threads);
-      } else {
-        // Serial DLX path (non-SIMD fresh runs and resumes): hold a budget
-        // token too (see assembler_0_c::assemble).
-        BudgetGuard budget(callback != nullptr ? callback->threadBudget() : nullptr,
-                           runTok);
-        if (callback == nullptr || budget.holds()) {
-          iterative();
-        }
-      }
-    }
+  if (willRunParallel(getEffectiveThreads())) {
+    asm_bc = callback;
+    running.store(true, std::memory_order_relaxed);
+    search(getEffectiveThreads());
   }
 
   running.store(false, std::memory_order_relaxed);
-}
-
-void assembler_1_c::pushFinished(unsigned int b) {
-  std::lock_guard<std::mutex> guard(finishedMutex);
-  finished_b.push_back(b);
-  finished_a.push_back(0);
-}
-
-void assembler_1_c::popFinished(void) {
-  std::lock_guard<std::mutex> guard(finishedMutex);
-  finished_a.pop_back();
-  finished_b.pop_back();
 }
 
 float assembler_1_c::getFinished(void) const {
@@ -3815,159 +1473,20 @@ float assembler_1_c::getFinished(void) const {
   if (searchComplete.load(std::memory_order_relaxed))
     return 1.0f;
 
-  /* Held across the whole body, not just the finished_a/finished_b walk at the
-   * bottom. Besides keeping those vectors from changing size under the read
-   * (it is locked against pushFinished/popFinished, so a slot is never exposed
-   * mid construction or destruction), it is the edge that orders this call
-   * against assemble() switching the progress source over -- see the note
-   * there. Nothing a worker does takes this mutex, so no worker ever blocks
-   * on it.
-   */
-  std::lock_guard<std::mutex> guard(finishedMutex);
-
-  /* Completed subtree tasks plus how far each running worker has got into the
-   * task it holds. Without the second term a task contributes nothing until it
-   * finishes, which is what made the bar sit still on the tail task. The
-   * counters are in progress units and the slots in task-equivalents (see
-   * TaskUnits): every generated task is worth the same, and donations only
-   * move units between tasks; see the note on workerProgress in the header
-   * for why this engine does not weight generated tasks by structural
-   * share.
+  /* Completed tasks over all tasks, in progress units (see TaskUnits): a
+   * task that donates part of its territory, or is divided at a stop,
+   * splits its units among the pieces, so the total never moves and the
+   * bar never steps back. totalTasks is 0 until a run has its task list.
    *
-   * Only published atomics are read here; a worker's matrix and its progress
-   * tracker are private to its thread and are never touched from this (GUI)
-   * thread. completedTasks is read before the slots on purpose, and with
-   * acquire ordering -- see the ordering note in the worker loop of
-   * parallelMultiSearch().
-   *
-   * This is also the SIMD back end's progress. It publishes no worker slots,
-   * so the loop below adds nothing and the expression reduces to completed
-   * tasks over total tasks, the only granularity it has.
-   *
-   * The sum is accumulated in double, not float. It starts at the completed
-   * task COUNT, which is ~105 on Burr-Glar, where consecutive floats are about
-   * 7.6e-6 apart -- so a legitimate tail fraction within ~6e-6 of 1 would
-   * round the sum up to the full task count and the quotient to exactly 1.0f,
-   * reporting a finished search while a worker was still running. In double
-   * the same rounding needs the fraction to be within ~1e-14 of 1, i.e. to
-   * have genuinely drained.
+   * acquire, paired with the release stores that publish the denominator:
+   * seeing this run's total guarantees seeing this run's completed count,
+   * never the previous run's.
    */
-  if (inFlightProgress.load(std::memory_order_relaxed)) {
-    /* acquire, paired with the release stores that publish the denominator in
-     * parallelMultiSearch(): seeing this run's total guarantees seeing this
-     * run's seeded completed count, never the previous run's.
-     */
-    size_t n = totalTasks.load(std::memory_order_acquire);
-    if (n == 0) return 0;
-
-    /* The counter and the slots are read as a SNAPSHOT, seqlock style: read
-     * the counter, walk the slots, read the counter again, and accept the
-     * pair only if the counter did not move. This is what makes the value
-     * monotone, and it is worth spelling out why the obvious cheaper fixes
-     * are not enough.
-     *
-     * A worker hands a task over in two steps -- clear my slot, then add one
-     * to completedTasks -- and a reader must never be caught seeing both the
-     * increment AND the slot's outgoing value, because that counts the task
-     * twice and an over-report is what pushes the sum to 1.0 and ends a solve
-     * with work left (solvethread.cpp treats getFinished() >= 1 as finished).
-     * Reading the counter first and clearing the slot first makes the torn
-     * read LOW instead of high, which is safe but not monotone: a handoff
-     * that starts and finishes between the counter load and the slot walk is
-     * invisible to both, and the sample lands up to a whole task below its
-     * predecessor.
-     *
-     * Re-reading the counter afterwards and taking max(counter + slots,
-     * counter_after) narrows that but does not close it. Measured, with the
-     * reader's window widened to 3 ms: the traces in test_solver.cpp still
-     * fail monotone with the max in place. The reason is that the max recovers
-     * the finished task only by DISCARDING every other worker's in-flight
-     * term, so it loses whenever those terms sum to less than one task --
-     * which is most of the time.
-     *
-     * Retaking the snapshot recovers both. On a retry the counter already
-     * carries the finished task and the slot walk sees the finishing worker's
-     * fresh fraction, so nothing is lost and nothing is counted twice. One
-     * attempt succeeds unless a handoff lands inside the walk; the retry
-     * budget is small because falling back is safe rather than wrong -- a
-     * reader that gives up uses the counter alone, which is monotone and
-     * cannot over-report. That fallback is exactly the max above.
-     *
-     * The window that remains is a worker stalled BETWEEN its slot store and
-     * its own fetch_add, two adjacent instructions, for the whole of a read.
-     * No amount of reader-side work closes that one; only a lock on the
-     * worker's hot path would.
-     */
-    size_t done = completedTasks.load(std::memory_order_acquire);
-    double best = 0;
-
-    for (unsigned int attempt = 0; attempt < 4; attempt++) {
-      double sum = 0;
-      {
-        std::lock_guard<std::mutex> lock(progressMutex);
-        for (const auto & w : workerProgress)
-          if (w)
-            sum += w->fraction.load(std::memory_order_relaxed);
-      }
-
-      /* Every attempt's pair is kept as a floor, not just the consistent one.
-       *
-       * `done` was read BEFORE this walk, so any task counted since is absent
-       * from it, and a slot still showing that task is therefore not a second
-       * copy of it: the pair can only under-report, never over-report. That
-       * makes the largest pair seen a safe answer whether or not the snapshot
-       * ever came out clean.
-       *
-       * It is also what the exhaustion path needs. Four failed attempts move
-       * `done` by at most four tasks, while the in-flight terms they discard
-       * are worth up to one per worker -- so returning the bare counter would
-       * drop the value whenever there are more than four workers, which is
-       * exactly the non-monotonicity this snapshot exists to remove, just in
-       * a rarer window.
-       */
-      // counters in units, slots in task-equivalents (see TaskUnits)
-      const double candidate =
-          static_cast<double>(done) / static_cast<double>(TaskUnits::kWhole) + sum;
-      if (candidate > best)
-        best = candidate;
-
-      const size_t after = completedTasks.load(std::memory_order_acquire);
-      if (after == done)
-        break;
-
-      /* a handoff landed inside the walk: `sum` and `after` disagree about
-       * that task, so retake the pair
-       */
-      done = after;
-    }
-
-    double erg = best / (static_cast<double>(n) / static_cast<double>(TaskUnits::kWhole));
-    return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
-  }
-
-  /* Reaching here means inFlightProgress is off, i.e. a serial DLX run --
-   * and assemble() zeroes totalTasks for exactly those, so there is no
-   * task-count source to consult. All SIMD runs (including single-threaded
-   * ones) take the task-based parallel path and are served by the branch
-   * above.
-   */
-
-  if (next_row_stack.size() == 0) return 1;
-
-  float erg = 0;
-
-  for (int r = finished_a.size()-1; r >= 0; r--) {
-
-    erg += finished_a[r];
-    /* pushFinished() can be handed a zero column count, and inf/NaN here
-     * would clamp to 1.0 and read as a finished search
-     */
-    if (finished_b[r] == 0)
-      continue;
-    erg /= finished_b[r];
-  }
-
-  return erg;
+  const size_t n = totalTasks.load(std::memory_order_acquire);
+  if (n == 0) return 0;
+  const size_t done = completedTasks.load(std::memory_order_acquire);
+  const double erg = static_cast<double>(done) / static_cast<double>(n);
+  return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
 }
 
 static unsigned int getInt(const char * s, unsigned int * i) {
@@ -4007,7 +1526,6 @@ static int stringToVector(const char * string, std::vector<unsigned int> & v) {
 assembler_c::errState assembler_1_c::setPosition(const char * string, const char * version) {
 
   unsigned int len = strlen(string);
-  parallelTasks.clear();
   pendingHuangPrefixes.clear();
   restoredSimdSolver.reset();
   resetTaskProgress();
@@ -4017,169 +1535,83 @@ assembler_c::errState assembler_1_c::setPosition(const char * string, const char
   /* Only the current version resumes: a paused search saved by another
    * BurrTools version is refused (the found assemblies stay, the search
    * starts over -- see the README, "Pausing a search and continuing
-   * later"). That keeps a single
-   * reader and no legacy resume paths.
+   * later"). That keeps a single reader and no legacy resume paths.
    */
   if (version == nullptr || strcmp(version, ASSEMBLER_VERSION) != 0)
     return ERR_CAN_NOT_RESTORE_VERSION;
 
-  /* leading flag written by save(): 1 indicates an interrupted search */
-  unsigned int interrupted = 0;
-  pos += getInt(string+pos, &interrupted);
-  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  /* the state written by save(): 0 not started, 1 stopped part way (the
+   * engine and its seeds follow), 2 complete */
+  unsigned int state = 0;
+  pos += getInt(string+pos, &state);
+  if (state > 2) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  pos += stringToVector(string+pos, rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, finished_a);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  pos += stringToVector(string+pos, finished_b);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (state == 2) {
+    searchComplete.store(true, std::memory_order_relaxed);
+    return ERR_NONE;
+  }
+  if (state == 0) {
+    searchComplete.store(false, std::memory_order_relaxed);
+    return ERR_NONE;
+  }
 
-  // The parallel remainder follows the stacks: task type (always written by
-  // save(), 0 = none), then the tasks. Parse into locals first: a syntax
-  // failure must not leave partial tasks behind.
+  /* the engine of the seeds (2 the bit-parallel engine, 3 Dancing Cells),
+   * then the seeds: prefix, a step kind per step (a pivot bit for 2, a
+   * kind from 0 to 2 for 3, see HuangSeed and CellsCover), rest start */
+  if (pos >= len) return ERR_CAN_NOT_RESTORE_INTERRUPTED;
   unsigned int ptype = 0;
   pos += getInt(string+pos, &ptype);
-  if (ptype > 3) return ERR_CAN_NOT_RESTORE_SYNTAX;
-  if (ptype != 0 && pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (ptype != 2 && ptype != 3) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  std::vector<SubtreeTask_1> newTasks;
+  // Parse into locals first: a syntax failure must not leave partial seeds
+  // behind.
   std::vector<HuangSeed> newPrefixes;
-  if (ptype == 1) {
-    unsigned int count = 0;
-    pos += getInt(string+pos, &count);
-    if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    for (unsigned int i = 0; i < count; i++) {
-      SubtreeTask_1 t;
-      pos += stringToVector(string+pos, t.task_stack);     if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      pos += stringToVector(string+pos, t.next_row_stack); if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      pos += stringToVector(string+pos, t.column_stack);   if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      pos += stringToVector(string+pos, t.rows);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      pos += stringToVector(string+pos, t.hidden_rows);    if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      unsigned int baseDepth = 0;
-      pos += getInt(string+pos, &baseDepth);               if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      t.baseDepth = baseDepth;
-      pos += stringToVector(string+pos, t.cuts);           if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      for (unsigned int c : t.cuts)
-        if (c >= t.task_stack.size() || t.task_stack[c] != 5)
-          return ERR_CAN_NOT_RESTORE_SYNTAX;
-      newTasks.push_back(std::move(t));
+  unsigned int count = 0;
+  pos += getInt(string+pos, &count);
+  if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
+  for (unsigned int i = 0; i < count; i++) {
+    HuangSeed seed;
+    pos += stringToVector(string+pos, seed.prefix);      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    std::vector<unsigned int> pivots;
+    pos += stringToVector(string+pos, pivots);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    for (unsigned int b : pivots) {
+      if (b > (ptype == 3 ? 2u : 1u)) return ERR_CAN_NOT_RESTORE_SYNTAX;
+      seed.pivotShape.push_back(static_cast<uint8_t>(b));
     }
-  } else if (ptype == 2 || ptype == 3) {
-    unsigned int count = 0;
-    pos += getInt(string+pos, &count);
-    if (pos >= len && count > 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-    for (unsigned int i = 0; i < count; i++) {
-      // prefix, pivot-kind bits (one per step), rest start (see
-      // HuangSeed); an empty prefix is the whole search, kept. Type 3:
-      // the seeds of the Dancing Cells engine, a step kind per step in
-      // place of the bit (see CellsCover)
-      HuangSeed seed;
-      pos += stringToVector(string+pos, seed.prefix);      if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      std::vector<unsigned int> pivots;
-      pos += stringToVector(string+pos, pivots);           if (pos >= len) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      if (pivots.size() != seed.prefix.size()) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      for (unsigned int b : pivots) {
-        if (b > (ptype == 3 ? 2u : 1u)) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        seed.pivotShape.push_back(static_cast<uint8_t>(b));
-      }
-      unsigned int restSkip = 0;
-      pos += getInt(string+pos, &restSkip);                if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
-      seed.restSkip = restSkip;
-      newPrefixes.push_back(std::move(seed));
-    }
+    unsigned int restSkip = 0;
+    pos += getInt(string+pos, &restSkip);                if (pos >= len && i + 1 < count) return ERR_CAN_NOT_RESTORE_SYNTAX;
+    seed.restSkip = restSkip;
+    newPrefixes.push_back(std::move(seed));
   }
 
-  // save() writes a task type only with tasks behind it: an empty list
+  // save() writes a stopped search only with seeds behind it: an empty list
   // would restore as a fresh search over the solutions already stored.
-  const bool noTasks = newTasks.empty() && newPrefixes.empty();
-  if (ptype != 0 && noTasks)
-    return ERR_CAN_NOT_RESTORE_SYNTAX;
-  if (interrupted && noTasks)
+  if (newPrefixes.empty())
     return ERR_CAN_NOT_RESTORE_INTERRUPTED;
 
-  // Huang seeds must replay on this matrix: parallelSolve() treats one that
+  // The seeds must replay on this matrix: parallelSolve() treats one that
   // does not as an error, since skipping it would lose its territory. The
-  // matrix is still at base here, exactly as the run will build the solver.
-  // The run takes this solver over (restoredSimdSolver), so a resume
-  // converts the matrix only once.
-  std::unique_ptr<ISimdHuangCover> seedSolver;
-  if (!newPrefixes.empty()) {
-    seedSolver = createSimdSolver(ptype == 3);
-    for (const auto & seed : newPrefixes)
-      if (!seedSolver->seedReplays(seed))
-        return ERR_CAN_NOT_RESTORE_SYNTAX;
-  }
+  // matrix is as createMatrix() left it, exactly as the run will build the
+  // solver, and the run takes this solver over (restoredSimdSolver), so a
+  // resume converts the matrix only once.
+  // A remainder of the bit-parallel engine needs a matrix that engine can
+  // take (settings.bitParallel aside: the seeds keep their engine).
+  if (ptype == 2 && !simdEngineSupports())
+    return ERR_CAN_NOT_RESTORE_SYNTAX;
+  std::unique_ptr<ISimdHuangCover> seedSolver = createSimdSolver(ptype == 3);
+  for (const auto & seed : newPrefixes)
+    if (!seedSolver->seedReplays(seed))
+      return ERR_CAN_NOT_RESTORE_SYNTAX;
 
-  // Commit the remainder: a parallel continue resumes from these while
-  // the base stacks above (root-normalized on save) restore as no-op.
-  parallelTasks = std::move(newTasks);
   pendingHuangPrefixes = std::move(newPrefixes);
   pendingSeedsCells = ptype == 3;
   restoredSimdSolver = std::move(seedSolver);
-  const unsigned int restoredPtype = ptype;
-  if (ptype != 0) {
-    totalTasks.store((parallelTasks.size() + pendingHuangPrefixes.size()) * TaskUnits::kWhole,
-                     std::memory_order_relaxed);
-    completedTasks.store(0, std::memory_order_relaxed);
-    parallelInterrupted = false;
-  }
-
-  // now we need to restore the matrix to the right state
-
-  unsigned int column_stack_pos = 0;
-  unsigned int col, row;
-  unsigned int hiderows_pos = 0;
-  unsigned int row_pos = 0;
-
-  for (unsigned int i = 0; i < task_stack.size(); i++) {
-
-    switch (task_stack[i]) {
-
-      case 1:
-        cover_column_only(column_stack[column_stack_pos++]);
-        break;
-      case 2:
-        if (column_stack_pos == 0) return ERR_CAN_NOT_RESTORE_SYNTAX;
-        col = column_stack[column_stack_pos-1];
-        cover_column_rows(col);
-        break;
-      case 5:
-        hiderows_pos++;
-        while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
-          hiderow(hidden_rows[hiderows_pos++]);
-        }
-
-        row = rows[row_pos++];
-        // add row to rowset
-        weight[colCount[row]] += weight[row];
-        for (unsigned int r = right[row]; r != row; r = right[r])
-          weight[colCount[r]] += weight[r];
-
-        hiderows_pos++;
-        while (hiderows_pos < hidden_rows.size() && hidden_rows[hiderows_pos] > 0) {
-          hiderow(hidden_rows[hiderows_pos++]);
-        }
-
-        break;
-
-      default:
-        return ERR_CAN_NOT_RESTORE_SYNTAX;
-    }
-  }
-
-  if (restoredPtype != 0) {
-    /* Remainder restored: prime fresh-root stacks so assemble() runs at
-     * all (it gates on non-empty next_row_stack) and the parallel dispatch
-     * sees its canonical entry shape. The matrix is already at base after
-     * createMatrix, so {0} is exactly consistent.
-     */
-    task_stack.clear();
-    next_row_stack.clear();
-    task_stack.push_back(0);
-    next_row_stack.push_back(0);
-  }
+  // completed first, then the total with release (see getFinished())
+  completedTasks.store(0, std::memory_order_relaxed);
+  totalTasks.store(pendingHuangPrefixes.size() * TaskUnits::kWhole, std::memory_order_release);
+  searchComplete.store(false, std::memory_order_relaxed);
 
   return ERR_NONE;
 }
@@ -4199,76 +1631,30 @@ void assembler_1_c::save(xmlWriter_c & xml) const
 
   std::ostream & str = xml.addContent();
 
-  /* leading flag: 1 marks a search that stopped before finishing.
-   * Reloading such a position resumes it only when task data follows
-   * (appended below); a task-less stop is refused with
-   * ERR_CAN_NOT_RESTORE_INTERRUPTED. State saved by any other version
-   * never gets here: setPosition() refuses it with
-   * ERR_CAN_NOT_RESTORE_VERSION.
+  /* the state: 0 not started, 1 stopped part way, 2 complete. A stopped
+   * search is followed by its remainder: the engine (2 the bit-parallel
+   * engine, 3 Dancing Cells) and its seeds, prefix, step kinds and rest
+   * start each. The remainder holds only unexplored territory. A stop
+   * without seeds (before the pool was seeded) saves as not started: nothing
+   * was searched.
    */
-  str << (parallelInterrupted ? 1 : 0) << " ";
-
-  /* Parallel remainder for cross-session resume: which engine's
-   * tasks, if any. 0 = none (serial stops resume from the stacks above);
-   * 1 = DLX SubtreeTask_1 snapshots; 2 = Huang placed-node prefixes;
-   * 3 = Dancing Cells decision lists, in the layout of 2.
-   * Both are bounded remainders that hold only unexplored territory: DLX
-   * tasks as five live stacks plus baseDepth, Huang seeds as prefix, pivot
-   * bits and rest start.
-   */
-  unsigned int ptype = !parallelTasks.empty() ? 1
-                     : !pendingHuangPrefixes.empty() ? (pendingSeedsCells ? 3 : 2) : 0;
-
-  if (ptype == 0) {
-    vectorToStream(rows, str);
-    vectorToStream(task_stack, str);
-    vectorToStream(next_row_stack, str);
-    vectorToStream(column_stack, str);
-    vectorToStream(hidden_rows, str);
-    vectorToStream(finished_a, str);
-    vectorToStream(finished_b, str);
+  if (searchComplete.load(std::memory_order_relaxed)) {
+    str << "2 ";
+  } else if (pendingHuangPrefixes.empty()) {
+    str << "0 ";
   } else {
-    /* With tasks present the base stacks are meaningless (parallel runs
-     * never touch the master stacks; task generation leaves its own
-     * mid-generation state behind). Normalize to EMPTY, not root-{0}: the
-     * restore loop has no case 0 (only 1/2/5 occur below a stopped top, so
-     * {0} fails syntax while empty restores as untouched base).
-     */
-    static const std::vector<unsigned int> kEmpty;
-    vectorToStream(kEmpty, str);    // rows
-    vectorToStream(kEmpty, str);    // task_stack
-    vectorToStream(kEmpty, str);    // next_row_stack
-    vectorToStream(kEmpty, str);    // column_stack
-    vectorToStream(kEmpty, str);    // hidden_rows
-    vectorToStream(kEmpty, str);    // finished_a
-    vectorToStream(kEmpty, str);    // finished_b
-  }
-  str << ptype << " ";
-  if (ptype == 1) {
-    str << parallelTasks.size() << " ";
-    for (const auto &t : parallelTasks) {
-      vectorToStream(t.task_stack, str);
-      vectorToStream(t.next_row_stack, str);
-      vectorToStream(t.column_stack, str);
-      vectorToStream(t.rows, str);
-      vectorToStream(t.hidden_rows, str);
-      str << t.baseDepth << " ";
-      vectorToStream(t.cuts, str);
-    }
-  } else if (ptype == 2 || ptype == 3) {
-    str << pendingHuangPrefixes.size() << " ";
+    str << "1 " << (pendingSeedsCells ? 3 : 2) << " " << pendingHuangPrefixes.size() << " ";
     for (const auto &seed : pendingHuangPrefixes) {
       vectorToStream(seed.prefix, str);
-      // setPosition() requires one pivot bit per step: a seed without
-      // them is a bug here, not something to pad.
+      // setPosition() requires one step kind per step: a seed without them
+      // is a bug here, not something to pad.
       if (seed.pivotShape.size() != seed.prefix.size())
-        bt_te("assembler_1_c::save: Huang seed without one pivot bit per prefix step");
+        bt_te("assembler_1_c::save: seed without one step kind per prefix step");
       std::vector<unsigned int> pivots(seed.pivotShape.begin(), seed.pivotShape.end());
       vectorToStream(pivots, str);
       str << seed.restSkip << " ";
     }
   }
-
 
   xml.endTag("assembler");
 }
@@ -4315,16 +1701,6 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
   }
 
   return colCount[shape+1];
-}
-
-void assembler_1_c::debug_step(unsigned long num) {
-  debug = true;
-  debug_loops = num;
-  // Own run entry (does not go through assemble()): refresh first.
-  beginRun();
-  asm_bc = 0;
-  iterative();
-  debug = false;
 }
 
 bool assembler_1_c::canHandle(const problem_c &) {

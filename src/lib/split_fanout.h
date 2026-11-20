@@ -24,8 +24,7 @@
 /**
  * Fan-out cap K for dividing one search level into tasks: a level with
  * more remaining branches than K yields K singleton tasks plus one rest
- * task for the others. Used by assembler_0's runtime splitter and by the
- * stop-time remainders of every engine; it bounds the queue and the saved
+ * task for the others. Used by the stop-time remainders of every engine; it bounds the queue and the saved
  * remainder at O(depth x K) per task. Any K >= 1 is exact -- K trades
  * remainder size against how finely a resume can balance its work.
  *
@@ -37,11 +36,6 @@ namespace SplitFanout {
 
 inline constexpr unsigned int kDefault = 16;
 
-/* solverSettings_t::splitBreadthFirst (BURRTOOLS_SPLIT_ORDER=breadth)
- * queues assembler_0's split children at the back (breadth-first order)
- * instead of the front, for A/B benchmarking the depth-first order (see
- * AssemblyTaskPool::push_tasks_front). Fixed for a run. */
-
 /* Donation (split on demand): a running task, in every engine, hands the
  * unexplored part of its shallowest open level to the pool whenever a
  * sibling is waiting for work, and stops before that part itself. Tasks
@@ -50,8 +44,7 @@ inline constexpr unsigned int kDefault = 16;
  * started. Busy workers poll the pool's hunger flag every few hundred
  * nodes; one donor claims it per waiter.
  * solverSettings_t::donate = false (BURRTOOLS_DONATE=0) turns it off (A/B
- * toggle): assembler_0 then splits eagerly at pop time again, assembler_1
- * runs its tasks as seeded. solverSettings_t::donateEvery
+ * toggle): the tasks then run as seeded. solverSettings_t::donateEvery
  * (BURRTOOLS_DONATE_EVERY=N, tests only) additionally donates every N
  * search nodes whether or not anyone is waiting, so donation paths run
  * deterministically even single-threaded. Both fixed for a run. */

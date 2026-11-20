@@ -1610,62 +1610,6 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
   redraw();
 }
 
-void voxelFrame_c::showAssemblerState(const problem_c * puz, const assembly_c * assm) {
-
-  bt_assert(puz->resultValid());
-
-  hideMarker();
-  clearSpaces();
-  if (puz)
-    spaceModel = puz->getPuzzle().getRotationModel();
-
-  if (puz) {
-
-    unsigned int num;
-    unsigned int piece = 0;
-
-    // and now the shapes
-    for (unsigned int p = 0; p < puz->getNumberOfParts(); p++)
-      for (unsigned int q = 0; q < puz->getPartMaximum(p); q++) {
-
-        if (assm->isPlaced(piece)) {
-
-          voxel_c * vx = puz->getPuzzle().getGridType()->getVoxel(puz->getPartShape(p));
-
-          bt_assert2(vx->transform(assm->getTransformation(piece)));
-
-          num = addSpace(vx);
-
-          setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
-
-          setSpaceColor(num,
-              pieceColorR(puz->getShapeIdOfPart(p), q),
-              pieceColorG(puz->getShapeIdOfPart(p), q),
-              pieceColorB(puz->getShapeIdOfPart(p), q), 1);
-
-        }
-
-        piece++;
-      }
-
-    float cx, cy, cz;
-    getResultShape(*puz)->calculateSize(&cx, &cy, &cz);
-    setCenter(cx*0.5, cy*0.5, cz*0.5);
-
-    trans = CenterTranslateRoateScale;
-    _showCoordinateSystem = false;
-
-    num = addSpace(puz->getPuzzle().getGridType()->getVoxel(getResultShape(*puz)));
-    setSpaceColor(num,
-                        pieceColorR(puz->getResultId()),
-                        pieceColorG(puz->getResultId()),
-                        pieceColorB(puz->getResultId()), 1);
-    setDrawingMode(num, gridline);
-  }
-
-  redraw();
-}
-
 void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsigned char t, int x, int y, int z)
 {
   bt_assert(puz->resultValid());

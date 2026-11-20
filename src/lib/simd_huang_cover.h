@@ -21,7 +21,8 @@
 #ifndef __SIMD_HUANG_COVER_H__
 #define __SIMD_HUANG_COVER_H__
 
-#include "simd_exact_cover.h"
+#include "simd_bitset.h"
+#include "solver_config.h"
 #include "split_fanout.h"
 
 class ThreadBudget;
@@ -120,7 +121,7 @@ public:
   // fails to compile on macOS when the body fires the source on exceptions.
   //
   // resume_seeds/salvaged_seeds implement bounded in-session resume,
-  // mirroring the DLX pool remainder: when non-null and non-empty, the pool
+  // as the remainder of a stop: when non-null and non-empty, the pool
   // is seeded from these seeds instead of generateTasks(); when
   // salvaged_seeds is non-null, the remainder of interrupted in-flight
   // tasks (divided at the stop, see StopTrace) and the pool remainder are
@@ -187,7 +188,7 @@ class SimdHuangCover : public ISimdHuangCover {
 public:
   struct Row {
     BitsetType voxel_mask;            // bitmask of voxels covered
-    unsigned int node_id = 0;         // original DLX node ID
+    unsigned int node_id = 0;         // the matrix node (assembler_1_c's node id)
     unsigned int shape_id = 0;        // piece shape index (0 .. num_shapes-1)
     unsigned int shape_col = 0;       // column index for piece shape
     unsigned int shape_row_idx = 0;   // row index within this shape's placements
@@ -319,8 +320,8 @@ private:
     std::vector<unsigned int> current_solution;
     std::vector<uint32_t> col_counts;
     uint64_t local_iterations = 0;
-    // Nodes already published (see flushIterations in simd_exact_cover.h
-    // for the batching contract shared by both solvers).
+    // Nodes already published (see flushIterations below for the
+    // batching contract).
     uint64_t flushed_iterations = 0;
     // Set by parallelSolve's workers to collect the remainder of an
     // interrupted task (see StopTrace); null elsewhere. Only touched on
@@ -345,8 +346,7 @@ private:
   };
 
   /* Hand the shallowest live frame's untried branches to the pool as a
-   * rest seed and end that frame after its current branch (see the
-   * SimdExactCover counterpart). depth is the node being entered, so
+   * rest seed and end that frame after its current branch. depth is the node being entered, so
    * frames root..depth-1 are live. */
   void donateFrame(unsigned int depth, SearchContext &ctx) const;
 
@@ -514,8 +514,9 @@ private:
   void recordFrame(unsigned int depth, unsigned int best_col, size_t next,
                    size_t end, SearchContext &ctx) const;
 
-  // Recursive hot path: the token is borrowed, not copied (see
-  // SimdExactCover::search for why).
+  // Recursive hot path: the token is borrowed, not copied, so billions of
+  // nodes pay no atomic refcount traffic; every caller passes a token owned
+  // by a frame that outlives the recursion.
   // start > 0 resumes a rest: the branch loop of this (root) frame begins
   // at that index of its active-row list. Recursive calls pass 0.
   void search(

@@ -702,12 +702,13 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   }
 
   // Counters are in progress units (see TaskUnits). A resume keeps the
-  // paused run's counters (as the DLX path does): the seeds carry exactly
+  // paused run's counters: the seeds carry exactly
   // the units the paused run had not completed, so resetting here would
   // drop the bar back to 0.
   if (resume_seeds == nullptr || resume_seeds->empty()) {
-    total_tasks.store(tasks.size() * TaskUnits::kWhole, std::memory_order_relaxed);
+    // completed first, then the total with release: getFinished() reads them acquire, in reverse
     completed_tasks.store(0, std::memory_order_relaxed);
+    total_tasks.store(tasks.size() * TaskUnits::kWhole, std::memory_order_release);
   }
 
   if (tasks.empty() || stop.stop_requested()) {
@@ -730,7 +731,7 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   pool.seed(std::move(tasks));
   pool.setBudget(budget);
 
-  // Deliver stop promptly to parked workers (see assembler_0_c): waking only,
+  // Deliver stop promptly to parked workers: waking only,
   // no state change, so in-flight tasks are unaffected.
   std::stop_callback wakeParkedOnStop(stop, [&] {
     pool.notify();
@@ -873,7 +874,7 @@ void SimdHuangCover<BitsetType>::search(
   }
 
   ctx.local_iterations++;
-  // Batched publish (DLX-worker idiom): at most one relaxed add per 256
+  // Batched publish: at most one relaxed add per 256
   // nodes; remainder flushes at solutions keep live readers advancing.
   if (ctx.local_iterations - ctx.flushed_iterations >= 256) {
     iterations.fetch_add(256, std::memory_order_relaxed);

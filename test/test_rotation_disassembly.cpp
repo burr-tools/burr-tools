@@ -3,7 +3,7 @@
 
 #include "test_helpers.h"
 #include "lib/assembler.h"
-#include "lib/assembler_0.h"
+#include "lib/assembler_1.h"
 #include "lib/assembly.h"
 #include "lib/disasmtomoves.h"
 #include "lib/disassembler_0.h"
@@ -519,7 +519,7 @@ TEST_CASE("a rotation model change resets the problems, and a tighter one drops 
                 .disassemble(assemblies[0].get());
     REQUIRE(da != nullptr);
     REQUIRE(da->sumRotations() > 0);
-    problem.setAssembler(std::make_unique<assembler_0_c>(problem, bttest::settings()));
+    problem.setAssembler(std::make_unique<assembler_1_c>(problem, bttest::settings()));
     problem.addSolution(new assembly_c(assemblies[0].get()), da.release());
     problem.incNumAssemblies();
     problem.incNumSolutions();

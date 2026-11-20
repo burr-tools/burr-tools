@@ -12,16 +12,16 @@ namespace {
 
 /* every variable resolve() reads, unset for the scope */
 struct CleanEnv {
-  ScopedEnv vars[16] = {
+  ScopedEnv vars[18] = {
     { "BURRTOOLS_THREADS", nullptr }, { "BURRTOOLS_BITPARALLEL", nullptr },
     { "BURRTOOLS_CELLS", nullptr }, { "BURRTOOLS_RANGE_SYMBREAK", nullptr },
-    { "BURRTOOLS_CELLS_FALLBACK", nullptr },
+    { "BURRTOOLS_CELLS_FALLBACK", nullptr }, { "BURRTOOLS_ONE_ASSEMBLER", nullptr },
     { "BURRTOOLS_VECTOR", nullptr }, { "BURRTOOLS_DISASM_VECTOR", nullptr },
     { "BURRTOOLS_DISASM_POOL", nullptr }, { "BURRTOOLS_HUANG_MEM_MB", nullptr },
     { "BURRTOOLS_SPLIT_FANOUT", nullptr }, { "BURRTOOLS_SPLIT_ORDER", nullptr },
     { "BURRTOOLS_DONATE", nullptr }, { "BURRTOOLS_DONATE_EVERY", nullptr },
     { "BURRTOOLS_THREAD_BUDGET", nullptr }, { "BURRTOOLS_ROT_MODE", nullptr },
-    { "BURRTOOLS_ROT_STATS", nullptr },
+    { "BURRTOOLS_ROT_STATS", nullptr }, { "BURRTOOLS_SPLIT_BREADTH_FIRST", nullptr },
   };
 };
 
@@ -42,15 +42,12 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
   const solverSettings_t d;
   CHECK(s.threads == 0);
   CHECK(s.bitParallel);
-  CHECK_FALSE(s.cells);
   CHECK(s.rangeSymmetryBreaker);
-  CHECK(s.cellsFallback);
   CHECK(s.vector == VECTOR_AUTO);
   CHECK(s.disassemblerVector);
   CHECK(s.disassemblerPool);
   CHECK(s.huangMemoryBytes == d.huangMemoryBytes);
   CHECK(s.splitFanout == SplitFanout::kDefault);
-  CHECK_FALSE(s.splitBreadthFirst);
   CHECK(s.donate);
   CHECK(s.donateEvery == 0);
   CHECK(s.threadBudget);
@@ -60,17 +57,18 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
 
 TEST_CASE("solver settings: the environment fills what the caller leaves unset", "[config]") {
   CleanEnv clean;
-  ScopedEnv threads("BURRTOOLS_THREADS", "3"), bits("BURRTOOLS_BITPARALLEL", "0"), cells("BURRTOOLS_CELLS", "1"),
+  ScopedEnv threads("BURRTOOLS_THREADS", "3"), bits("BURRTOOLS_BITPARALLEL", "0"),
             vec("BURRTOOLS_VECTOR", "scalar"), dvec("BURRTOOLS_DISASM_VECTOR", "0"),
             pool("BURRTOOLS_DISASM_POOL", "0"), mem("BURRTOOLS_HUANG_MEM_MB", "7"),
-            fan("BURRTOOLS_SPLIT_FANOUT", "2"), order("BURRTOOLS_SPLIT_ORDER", "breadth"),
+            fan("BURRTOOLS_SPLIT_FANOUT", "2"),
             donate("BURRTOOLS_DONATE", "0"), every("BURRTOOLS_DONATE_EVERY", "5"),
-            budget("BURRTOOLS_THREAD_BUDGET", "0"), mode("BURRTOOLS_ROT_MODE", "slow");
+            budget("BURRTOOLS_THREAD_BUDGET", "0"), mode("BURRTOOLS_ROT_MODE", "slow"),
+            symbreak("BURRTOOLS_RANGE_SYMBREAK", "0");
 
   const solverSettings_t s = solverConfig_t{}.resolve();
   CHECK(s.threads == 3);
   CHECK_FALSE(s.bitParallel);
-  CHECK(s.cells);
+  CHECK_FALSE(s.rangeSymmetryBreaker);
   CHECK(s.vector == VECTOR_SCALAR);
   CHECK_FALSE(s.avx2());
   CHECK_FALSE(s.avx512());
@@ -79,7 +77,6 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   CHECK_FALSE(s.disassemblerPool);
   CHECK(s.huangMemoryBytes == (uint64_t(7) << 20));
   CHECK(s.splitFanout == 2);
-  CHECK(s.splitBreadthFirst);
   CHECK_FALSE(s.donate);
   CHECK(s.donateEvery == 5);
   CHECK_FALSE(s.threadBudget);
@@ -89,23 +86,23 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   solverConfig_t chosen;
   chosen.threads = 1;
   chosen.bitParallel = true;
-  chosen.cells = false;
   chosen.vector = VECTOR_AUTO;
   chosen.disassemblerPool = true;
   chosen.huangMemoryMB = 0;
   chosen.splitFanout = 16;
   chosen.donate = true;
   chosen.rotation.mode = ROTATION_FAST;
+  chosen.rangeSymmetryBreaker = true;
   const solverSettings_t c = chosen.resolve();
   CHECK(c.threads == 1);
   CHECK(c.bitParallel);
-  CHECK_FALSE(c.cells);
   CHECK(c.vector == VECTOR_AUTO);
   CHECK(c.disassemblerPool);
   CHECK(c.huangMemoryBytes == 0);
   CHECK(c.splitFanout == 16);
   CHECK(c.donate);
   CHECK(c.rotation.mode == ROTATION_FAST);
+  CHECK(c.rangeSymmetryBreaker);
   /* unchosen fields still come from the environment */
   CHECK_FALSE(c.disassemblerVector);
   CHECK(c.donateEvery == 5);
@@ -114,9 +111,10 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
 TEST_CASE("solver settings: a malformed or renamed variable is an error", "[config]") {
   CleanEnv clean;
   for (auto [name, value] : { std::pair{ "BURRTOOLS_THREADS", "four" }, { "BURRTOOLS_THREADS", "-1" },
-                              { "BURRTOOLS_BITPARALLEL", "yes" }, { "BURRTOOLS_CELLS", "maybe" }, { "BURRTOOLS_VECTOR", "sse" },
-                              { "BURRTOOLS_SPLIT_FANOUT", "0" }, { "BURRTOOLS_SPLIT_ORDER", "random" },
+                              { "BURRTOOLS_BITPARALLEL", "yes" }, { "BURRTOOLS_CELLS", "1" }, { "BURRTOOLS_CELLS_FALLBACK", "0" }, { "BURRTOOLS_VECTOR", "sse" },
+                              { "BURRTOOLS_SPLIT_FANOUT", "0" }, { "BURRTOOLS_SPLIT_ORDER", "breadth" }, { "BURRTOOLS_ONE_ASSEMBLER", "1" },
                               { "BURRTOOLS_DONATE", "2" }, { "BURRTOOLS_HUANG_MEM_MB", "1e3" },
+                              { "BURRTOOLS_RANGE_SYMBREAK", "maybe" }, { "BURRTOOLS_SPLIT_BREADTH_FIRST", "1" },
                               { "BURRTOOLS_THREADS", " 5" }, { "BURRTOOLS_THREADS", "+5" },
                               { "BURRTOOLS_DONATE_EVERY", " -1" } }) {
     ScopedEnv bad(name, value);
@@ -129,6 +127,14 @@ TEST_CASE("solver settings: a malformed or renamed variable is an error", "[conf
     solverConfig_t c;
     c.splitFanout = 0;
     CHECK(errorOf(c).find("BURRTOOLS_SPLIT_FANOUT") != std::string::npos);
+  }
+
+  /* a toggle of something gone says so, and names no other toggle that is gone too */
+  {
+    ScopedEnv gone("BURRTOOLS_SPLIT_BREADTH_FIRST", "1");
+    const std::string e = errorOf(solverConfig_t{});
+    CHECK(e.find("was removed") != std::string::npos);
+    CHECK(e.find("BURRTOOLS_SPLIT_ORDER") == std::string::npos);
   }
 
   /* an old name says what replaced it, instead of measuring the default */

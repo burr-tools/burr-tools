@@ -142,12 +142,24 @@ static void rejectRenamed(void) {
     { "BURRTOOLS_NO_DISASM_SIMD", "BURRTOOLS_DISASM_VECTOR=0" },
     { "BURRTOOLS_NO_DISASM_POOL", "BURRTOOLS_DISASM_POOL=0" },
     { "BURRTOOLS_NO_DONATE", "BURRTOOLS_DONATE=0" },
-    { "BURRTOOLS_SPLIT_BREADTH_FIRST", "BURRTOOLS_SPLIT_ORDER=breadth" },
     { "BURRTOOLS_NO_BUDGET", "BURRTOOLS_THREAD_BUDGET=0" },
   };
   for (const auto & r : renamed)
     if (readEnv(r[0]))
       throw std::invalid_argument(std::string(r[0]) + " was renamed: use " + r[1]);
+
+  /* toggles of engines that are gone (2026-11-16, design/2026-11-19-ng-
+   * merge-plan.md section 7.1): setting one is an error too */
+  static const char * const removed[][2] = {
+    { "BURRTOOLS_ONE_ASSEMBLER", "there is only one assembler now" },
+    { "BURRTOOLS_CELLS", "Dancing Cells runs wherever the bit-parallel engine does not; BURRTOOLS_BITPARALLEL=0 runs it everywhere" },
+    { "BURRTOOLS_CELLS_FALLBACK", "dancing links is gone, Dancing Cells is the only fallback" },
+    { "BURRTOOLS_SPLIT_ORDER", "it applied to assembler 0, which is gone" },
+    { "BURRTOOLS_SPLIT_BREADTH_FIRST", "it applied to assembler 0, which is gone" },
+  };
+  for (const auto & r : removed)
+    if (readEnv(r[0]))
+      throw std::invalid_argument(std::string(r[0]) + " was removed: " + r[1]);
 }
 
 solverSettings_t solverConfig_t::resolve(void) const {
@@ -157,8 +169,6 @@ solverSettings_t solverConfig_t::resolve(void) const {
 
   s.threads = (unsigned int)number("BURRTOOLS_THREADS", widen(threads), s.threads, 0, 4096);
   s.bitParallel = flag("BURRTOOLS_BITPARALLEL", bitParallel, s.bitParallel);
-  s.cells = flag("BURRTOOLS_CELLS", cells, s.cells);
-  s.cellsFallback = flag("BURRTOOLS_CELLS_FALLBACK", cellsFallback, s.cellsFallback);
   s.rangeSymmetryBreaker = flag("BURRTOOLS_RANGE_SYMBREAK", rangeSymmetryBreaker, s.rangeSymmetryBreaker);
 
   if (vector)
@@ -176,14 +186,6 @@ solverSettings_t solverConfig_t::resolve(void) const {
   s.disassemblerPool = flag("BURRTOOLS_DISASM_POOL", disassemblerPool, s.disassemblerPool);
   s.huangMemoryBytes = number("BURRTOOLS_HUANG_MEM_MB", widen(huangMemoryMB), s.huangMemoryBytes >> 20, 0, uint64_t(1) << 40) << 20;
   s.splitFanout = (unsigned int)number("BURRTOOLS_SPLIT_FANOUT", widen(splitFanout), s.splitFanout, 1, 4096);
-
-  if (splitBreadthFirst)
-    s.splitBreadthFirst = *splitBreadthFirst;
-  else if (auto v = readEnv("BURRTOOLS_SPLIT_ORDER")) {
-    if (*v != "depth" && *v != "breadth")
-      bad("BURRTOOLS_SPLIT_ORDER", "depth or breadth");
-    s.splitBreadthFirst = (*v == "breadth");
-  }
 
   s.donate = flag("BURRTOOLS_DONATE", donate, s.donate);
   s.donateEvery = (unsigned long)number("BURRTOOLS_DONATE_EVERY", widen(donateEvery), s.donateEvery, 0, ~0ul);

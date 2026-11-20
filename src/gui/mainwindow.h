@@ -180,7 +180,7 @@ class mainWindow_c : public LFl_Double_Window {
    * with the mode RotationMoves chooses, nullptr when it is off */
   std::shared_ptr<rotationContext_c> rotationContextForGui(const problem_c & pr, const solverSettings_t & settings);
 
-  FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnStep, *BtnMovement;
+  FlatButton *BtnPrepare, *BtnStart, *BtnCont, *BtnStop, *BtnPlacement, *BtnMovement;
   FlatButton *BtnNewShape, *BtnDelShape, *BtnCpyShape, *BtnRenShape, *BtnShapeLeft, *BtnShapeRight, *BtnWeightInc, *BtnWeightDec;
   FlatButton *BtnNewColor, *BtnDelColor, *BtnChnColor;
   FlatButton *BtnNewProb, *BtnDelProb, *BtnCpyProb, *BtnRenProb, *BtnProbLeft, *BtnProbRight;
@@ -383,7 +383,6 @@ public:
   void cb_BtnStop(void);
   void cb_BtnPlacementBrowser(void);
   void cb_BtnMovementBrowser(void);
-  void cb_BtnAssemblerStep(void);
 
   void cb_SolutionSel(Fl_Value_Slider*);
   void cb_SolutionAnim(Fl_Value_Slider*);

@@ -37,20 +37,18 @@
 class problem_c;
 class gridType_c;
 class mirrorInfo_c;
-class assemblerWorker_1;
 class ISimdHuangCover;
 
 /**
  * This class is an assembler class.
  *
  * This assembler is written with ideas from Wei-Hwa Huang. It can handle ranges for the piece
- * numbers and thus also multiple instances of one piece.
+ * numbers and thus also multiple instances of one piece; it takes every problem.
  *
- * But for simple cases it is not really optimal.
- *
- * It also has a problem with guessing how much of the analysis it done. This number is growing exponentially
- * meaning in the beginning it is growing very slowly resulting in huge time-left numbers while at the
- * end it is getting very fast and the time-left value dropping really fast.
+ * It searches with one of two exact cover engines: the bit-parallel
+ * SimdHuangCover where the matrix fits, else Dancing Cells (CellsCover).
+ * Both run in a task pool and leave a stopped search as a list of seeds
+ * (HuangSeed).
  */
 
 class assembler_1_c : public assembler_c {
@@ -66,6 +64,9 @@ private:
    *
    * colCount is a shared member. It is column for normal nodes and count for
    * column header nodes
+   *
+   * The matrix is built and reduced in these dancing-links arrays; the
+   * search runs on a copy in one of the two engines (createSimdSolver).
    */
   std::vector<unsigned int> left;
   std::vector<unsigned int> right;
@@ -83,63 +84,28 @@ private:
   std::vector<unsigned int> holeColumns;
   unsigned int holes = 0;
 
-  /* this function gets called whenever an assembly was found
-   * when a callback is available it will call getAssembly to
-   * obtain the assembly for the found solution when the
-   * field avoidTransformedAssemblies is true then the assembly
-   * is checked, if it has been found before. The assembly
-   * is normalised in inserted into a set of assemblies for
-   * later reference
-   */
-  void solution(void);
-
   /* used to save if the search is running */
   std::atomic<bool> running{false};
 
-  struct SubtreeTask_1 {
-    std::vector<unsigned int> task_stack;
-    std::vector<unsigned int> next_row_stack;
-    std::vector<unsigned int> column_stack;
-    std::vector<unsigned int> rows;
-    std::vector<unsigned int> hidden_rows;
-    /* Root depth of the task's territory: the stack size the search must
-     * pop below to finish. Write-back overwrites the five stacks with the
-     * live (deeper) frontier, so the root would be lost without this --
-     * and resuming with the live size as base exits early, abandoning the
-     * ancestor levels' remaining alternatives. Set at generation, never
-     * touched by write-back.
-     */
-    unsigned int baseDepth = 0;
-    /* Stack indices of frames whose remaining rows were donated (split on
-     * demand): such a frame ends after its current row. Saved with the
-     * stacks, so a written-back task keeps them.
-     */
-    std::vector<unsigned int> cuts;
-    // progress units this task carries (see TaskUnits); not saved -- a
-    // task read from a file is a whole one
-    size_t units = TaskUnits::kWhole;
-  };
-
   // tasks donated by running workers to idle siblings (diagnostics, tests)
   std::atomic<unsigned long> donations{0};
-  // of those, the ones a donated piece gave from its own root frame (tests:
-  // the frame it resumes between two rows must stay divisible)
-  std::atomic<unsigned long> redonations{0};
 
-  void generateTasksAtDepth(unsigned int cutoff_depth, std::vector<SubtreeTask_1> & tasks);
-  void generateSubtreeTasks(std::vector<SubtreeTask_1> & tasks, unsigned int targetTasks, unsigned int maxDepth);
-  void parallelMultiSearch(unsigned int workers);
+  /* the search: the engine, its task pool and the remainder of a stop */
+  void search(unsigned int workers);
 
-  /* true when the next assemble() call will take the parallel path */
+  /* true when the next assemble() call has work to do */
   bool willRunParallel(unsigned int threads) const;
 
+  /** whether the bit-parallel engine takes this matrix; Dancing Cells
+   *  takes it otherwise */
   bool canUseSimd(void) const;
+  /** whether the bit-parallel engine can represent this matrix at all,
+   *  whatever the settings and the memory budget say: part of canUseSimd(),
+   *  and what a restored remainder of that engine must meet */
+  bool simdEngineSupports(void) const;
   /** the solver for this matrix: the Dancing Cells engine, else the
    *  bit-parallel one in the tier the matrix needs */
   std::unique_ptr<ISimdHuangCover> createSimdSolver(bool cells) const;
-  bool canUseCells(void) const;
-
-  friend class assemblerWorker_1;
 
   /* grants test/test_solver.cpp read access to totalTasks/completedTasks,
    * to assert that donations and stops conserve progress units directly
@@ -148,72 +114,15 @@ private:
    */
   friend struct Assembler1UnitsTestAccess;
 
-  std::vector<SubtreeTask_1> parallelTasks;
-
-  /* getFinished() has two progress sources and this picks between them: the
-   * task-based one used for the whole of a parallel run, and the
-   * single-threaded finished_a/finished_b estimate used otherwise. totalTasks
-   * cannot make the choice on its own -- it is 0 while the task list is still
-   * being generated, and it keeps an aborted parallel run's value afterwards.
-   *
-   * Both parallel back ends report through the one task-based expression,
-   * completed tasks plus each in-flight worker's fraction of the task it
-   * holds. The SIMD back end has no in-flight hook, and publishes no worker
-   * slots at all, so for it that expression is just completed over total
-   * tasks -- which is exactly what it can report.
-   *
-   * assemble() clears this, and the task counters with it, for a non-parallel
-   * run; see the note there.
-   */
-  std::atomic<bool> inFlightProgress{false};
-
-  /* Each in-flight worker publishes how far into its current subtree task it
-   * has got, so a long-running task contributes continuously instead of
-   * nothing until it completes. Read by the GUI thread via getFinished();
-   * never dereferences a worker's private matrix.
-   *
-   * Tasks are weighted EQUALLY here -- one slot is worth 1/totalTasks -- and
-   * that is a measured decision, not an omission. assembler_0_c weights its
-   * tasks by their structural share of the search tree; the same weighting was
-   * implemented for this engine and rejected, because assembler_1_c generates
-   * its tasks by running the real search to a cutoff depth and so meets the
-   * search's own pruning while doing so. On Burr-Glar that handed instantly
-   * dead subtrees 96.9% of the weight inside the first 10 ms, and the bar sat
-   * at 0.9694 for a whole 3 s sample -- strictly worse than the unweighted bar
-   * it would have replaced.
-   *
-   * assembler_0_c's structural share has since been measured too, and shows
-   * the same anti-correlation at a smaller scale: it opens DiagonalCube at
-   * 0.5 before any worker starts. It is kept there rather than rejected; see
-   * the prunedTaskShare note in assembler_0.h for the numbers and the reason.
-   *
-   * std::atomic is neither copyable nor movable, so the slots are held by
-   * pointer rather than by value.
-   *
-   * The slots themselves are atomic, but the vector holding them is not:
-   * getFinished() runs on the GUI thread and is already being polled while
-   * parallelMultiSearch() is still sizing the vector, which ThreadSanitizer
-   * duly flags. progressMutex guards the vector's structure -- not the slot
-   * values, which the workers keep publishing lock-free. It is only ever held
-   * while the vector is (re)built and while getFinished() walks it, so a
-   * worker never blocks on it and the GUI contends with nothing.
-   */
-  struct WorkerProgress {
-    std::atomic<float> fraction{0.0f};
-  };
-  mutable std::mutex progressMutex;
-  std::vector<std::unique_ptr<WorkerProgress>> workerProgress;
-
   /* true only after a search drained without being aborted. "not running" is
    * not the same as "finished": a prepared-but-unstarted assembler is also
    * not running.
    */
   std::atomic<bool> searchComplete{false};
-  /* Salvaged Huang-SIMD placed-node prefixes for incremental in-session
-   * resume (issue #111): interrupted in-flight tasks plus the pool
-   * remainder, filled by parallelSolve on stop. The next assemble() feeds
-   * them back as seeds instead of regenerating everything. Persisted by
-   * save() for cross-session resume, like parallelTasks.
+  /* The remainder of a stopped search, as seeds (issue #111): interrupted
+   * in-flight tasks plus the pool remainder, filled by parallelSolve on
+   * stop. The next assemble() feeds them back instead of starting over;
+   * save() persists them for a resume in another session.
    */
   std::vector<HuangSeed> pendingHuangPrefixes;
   /* the seeds above are those of the Dancing Cells engine (CellsCover),
@@ -225,64 +134,12 @@ private:
    */
   std::unique_ptr<ISimdHuangCover> restoredSimdSolver;
 
-  /* Pristine base matrix saved before search starts */
-  /* set when a parallel search stopped before finishing. save() records
-   * the flag; setPosition() refuses reloads that carry it WITHOUT task
-   * data (format 2.1 task-less stops), but resumes reloads whose
-   * pool remainder was persisted alongside it.
-   */
-  bool parallelInterrupted = false;
-
-  std::vector<unsigned int> base_left;
-  std::vector<unsigned int> base_right;
-  std::vector<unsigned int> base_up;
-  std::vector<unsigned int> base_down;
-  std::vector<unsigned int> base_colCount;
-  std::vector<unsigned int> base_weight;
-
-  std::vector<unsigned int> rows;
-  std::vector<unsigned int> finished_a;
-  std::vector<unsigned int> finished_b;
-
-  /* getFinished() (GUI thread) reads finished_a/finished_b while the worker
-   * mutates them. reserve() (see assemble) stops the buffer from moving, but a
-   * concurrent pop_back would shrink the size under the reader and expose the
-   * popped, now-unconstructed slot. This mutex serialises getFinished with the
-   * pop_backs so the reader only ever sees constructed elements; the far more
-   * frequent push_back / back()++ stay lock free (they only ever add or bump a
-   * value the reader can tolerate reading stale).
-   */
-  mutable std::mutex finishedMutex;
-
-  /* push/pop the progress stacks under finishedMutex so getFinished (GUI
-   * thread) never observes a size change while a slot is being constructed or
-   * destructed. back()++ stays lock free - it only bumps an existing value.
-   */
-  void pushFinished(unsigned int b);
-  void popFinished(void);
-  std::vector<unsigned int> hidden_rows;  // rows that nodes to rows that are currently hidden
-  // because there are several batched of rows that need hiding these batches are separated
-  // by a zero because the header row will never get hidden...
-  std::vector<unsigned int>task_stack;
-  std::vector<unsigned int>next_row_stack;
-  std::vector<unsigned int>column_stack;
-
   unsigned int headerNodes = 0;  // number of nodes within the header
 
+  /* matrix operations of reduce() */
   bool open_column_conditions_fulfillable(void);
-  int find_best_unclosed_column(void);
-  void cover_column_only(int col);
-  void uncover_column_only(int col);
-  void cover_column_rows(int col);
-  void uncover_column_rows(int col);
   void hiderow(int r);
   void unhiderow(int r);
-  void hiderows(unsigned int r);
-  void unhiderows(void);
-  bool column_condition_fulfilled(int col);
-  bool column_condition_fulfillable(int col);
-//  void rec(unsigned int next_row);
-  void iterative(void);
   void remove_row(unsigned int r);
   void remove_column(unsigned int c);
   unsigned int clumpify(void);
@@ -346,11 +203,6 @@ private:
 
   /// set to true, when complete analysis is requested
   bool complete = false;
-
-  /* the variables for debugging assembling processes
-   */
-  bool debug = false;         // debugging enabled
-  int debug_loops = 0;    // how many loops to run ?
 
   std::atomic<unsigned long> iterations{0};  // single-writer counter, read cross-thread by getIterations
 
@@ -440,8 +292,6 @@ public:
   void save(xmlWriter_c & xml) const override;
   void reduce(void) override;
   unsigned int getReducePiece(void) const override { return reducePiece; }
-  void debug_step(unsigned long num = 1) override;
-  std::unique_ptr<assembly_c> getAssembly(void) override;
 
   static bool canHandle(const problem_c & p);
 

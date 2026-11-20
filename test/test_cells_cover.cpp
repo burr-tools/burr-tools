@@ -1,5 +1,6 @@
 /* Tests of the Dancing Cells exact cover engine (CellsCover, selected with
- * solverSettings_t::cells) and of the assembler_1 range symmetry breaker
+ * solverSettings_t::bitParallel off, and wherever the bit-parallel engine
+ * declines a matrix) and of the assembler_1 range symmetry breaker
  * (solverSettings_t::rangeSymmetryBreaker).
  *
  * The engine is compared with the default engine on real puzzles (which
@@ -85,18 +86,18 @@ std::string saveState(const assembler_1_c & assm) {
   return str.str();
 }
 
-/* The remainder type of saved state: 0 none, 1 DLX, 2 bit-parallel seeds,
- * 3 Dancing Cells seeds. It is the token after the interrupted flag and
- * seven (empty) stack vectors, so it tells which engine a stopped run used.
+/* The remainder type of saved state: 0 none, 2 bit-parallel seeds, 3
+ * Dancing Cells seeds. A stopped search saves state 1 and then the type,
+ * so it tells which engine a stopped run used.
  */
 unsigned int remainderType(const std::string & state) {
   std::istringstream in(contentOf(state));
-  std::vector<unsigned int> tok;
-  unsigned int v;
-  while (tok.size() < 9 && (in >> v))
-    tok.push_back(v);
-  REQUIRE(tok.size() == 9);
-  return tok[8];
+  unsigned int st = 0, type = 0;
+  REQUIRE(bool(in >> st));
+  if (st != 1)
+    return 0;
+  REQUIRE(bool(in >> type));
+  return type;
 }
 
 std::unique_ptr<puzzle_c> loadPuzzle(const char * path) {
@@ -151,16 +152,17 @@ Set unite(Set a, const Set & b) {
 struct Puzzle {
   const char * path;
   const char * what;
+  size_t assemblies;
 };
 
 /* the assembler_1 puzzles: duplicate shapes, piece ranges, variable voxels
  * with fixed counts (the one case the cells engine takes that is not
  * range-free), all small */
 const Puzzle kPuzzles[] = {
-  {"examples/CubeInCage.xmpuzzle",       "duplicate shapes"},
-  {"examples/PiecesOfEight.xmpuzzle",    "piece ranges"},
-  {"examples/DemoMirrorParadox.xmpuzzle","ranges and duplicates"},
-  {"examples/PelikanBurr.xmpuzzle",      "variable voxels, fixed counts"},
+  {"examples/CubeInCage.xmpuzzle",       "duplicate shapes", 96},
+  {"examples/PiecesOfEight.xmpuzzle",    "piece ranges", 6},
+  {"examples/DemoMirrorParadox.xmpuzzle","ranges and duplicates", 1},
+  {"examples/PelikanBurr.xmpuzzle",      "variable voxels, fixed counts", 12},
 };
 
 } // namespace
@@ -176,7 +178,7 @@ TEST_CASE("Dancing Cells finds the same assemblies as the default engine",
       Set baseline;
       {
         ScopedSettings env;
-        env->cells = false;
+        env->bitParallel = true;
         baseline = solveAll(problem, threads);
       }
       REQUIRE(!baseline.empty());
@@ -184,18 +186,15 @@ TEST_CASE("Dancing Cells finds the same assemblies as the default engine",
       Set cells;
       {
         ScopedSettings env;
-        env->cells = true;
+        env->bitParallel = false;
         cells = solveAll(problem, threads);
       }
       CHECK(cells.size() == baseline.size());
       CHECK(cells == baseline);
 
-      /* DLX, to be sure the baseline itself is not the odd one out */
-      {
-        ScopedSettings env;
-        env->bitParallel = false;
-        CHECK(solveAll(problem, 1) == baseline);
-      }
+      /* the counts dancing links found when it was still here (removed
+       * 2026-11-16), so the baseline itself is not the odd one out */
+      CHECK(baseline.size() == pz.assemblies);
     }
   }
 }
@@ -219,7 +218,7 @@ TEST_CASE("the cells setting selects the Dancing Cells engine",
        * a stop after one assembly needs at least two assemblies */
       for (bool cells : {false, true}) {
         ScopedSettings env;
-        env->cells = cells;
+        env->bitParallel = !cells;
         Recorder cb;
         const std::string state = stopAfter(problem, threads, 1, cb);
         CHECK(remainderType(state) == (cells ? 3u : 2u));
@@ -242,7 +241,7 @@ TEST_CASE("Dancing Cells donates and replays seeds exactly once",
     Set baseline;
     {
       ScopedSettings env;
-      env->cells = false;
+      env->bitParallel = true;
       baseline = solveAll(problem, 4);
     }
     REQUIRE(baseline.size() > 3);
@@ -251,7 +250,7 @@ TEST_CASE("Dancing Cells donates and replays seeds exactly once",
       for (unsigned int threads : {1u, 4u}) {
         INFO(path << ", every " << every << ", " << threads << " threads");
         ScopedSettings env;
-        env->cells = true;
+        env->bitParallel = false;
         env->donateEvery = every;
 
         Recorder cb;
@@ -279,7 +278,7 @@ TEST_CASE("Dancing Cells stop and continue delivers every assembly exactly once"
     Set baseline;
     {
       ScopedSettings env;
-      env->cells = false;
+      env->bitParallel = true;
       baseline = solveAll(problem, 4);
     }
     REQUIRE(baseline.size() > 3);
@@ -289,7 +288,7 @@ TEST_CASE("Dancing Cells stop and continue delivers every assembly exactly once"
       for (unsigned int k : {1u, 2u, n / 2, n - 1}) {
         INFO(path << ", " << c.threads << " threads, every " << c.every << ", stop after " << k);
         ScopedSettings env;
-        env->cells = true;
+        env->bitParallel = false;
         env->donateEvery = c.every;
 
         assembler_1_c assm(problem, bttest::settings());
@@ -325,7 +324,7 @@ TEST_CASE("Dancing Cells state saved, restored and continued is exact-once",
     Set baseline;
     {
       ScopedSettings env;
-      env->cells = false;
+      env->bitParallel = true;
       baseline = solveAll(problem, 4);
     }
     REQUIRE(baseline.size() > 3);
@@ -340,14 +339,14 @@ TEST_CASE("Dancing Cells state saved, restored and continued is exact-once",
           std::string state;
           {
             ScopedSettings env;
-            env->cells = true;
+            env->bitParallel = false;
             env->donateEvery = c.every;
             state = stopAfter(problem, c.threads, k, cb1);
           }
           REQUIRE(remainderType(state) == 3u);
 
           ScopedSettings env;
-          env->cells = cellsOnRestore;
+          env->bitParallel = !cellsOnRestore;
           env->donateEvery = c.every;
 
           /* the remainder keeps its engine: stop the continued run again
@@ -371,7 +370,7 @@ TEST_CASE("Dancing Cells state saved, restored and continued is exact-once",
             CHECK(remainderType(state2) == 3u);
 
             ScopedSettings flip;
-            flip->cells = !cellsOnRestore;
+            flip->bitParallel = cellsOnRestore;
             const Set rest = resumeAll(problem, c.threads, state2);
             const Set all = unite(unite(cb1.fingerprints, cb2.fingerprints), rest);
             CHECK(all == baseline);
@@ -408,10 +407,10 @@ std::string join(const std::vector<std::string> & t) {
 }
 
 /* index of the first step kind of the first seed of a type 2/3 payload:
- * interrupted, seven vectors, type, count, then prefix (n, n ids) and the
- * kinds (n, n values); -1 when that prefix is empty */
+ * state, type, count, then prefix (n, n ids) and the kinds (n, n values);
+ * -1 when that prefix is empty */
 int firstKindIndex(const std::vector<std::string> & t) {
-  const size_t countAt = 9;
+  const size_t countAt = 2;   // state, type, then the seed count
   const size_t n = std::stoul(t.at(countAt + 1));
   if (n == 0)
     return -1;
@@ -436,7 +435,7 @@ TEST_CASE("restore validates the step kinds of Dancing Cells and bit-parallel re
   for (bool cells : {true, false}) {
     INFO(std::string(cells ? "type 3" : "type 2"));
     ScopedSettings env;
-    env->cells = cells;
+    env->bitParallel = !cells;
     Recorder cb;
     const std::string state = stopAfter(problem, 1, 1, cb);
     REQUIRE(remainderType(state) == (cells ? 3u : 2u));
@@ -462,12 +461,12 @@ TEST_CASE("restore validates the step kinds of Dancing Cells and bit-parallel re
   /* a type 3 remainder naming a row the matrix does not have */
   {
     ScopedSettings env;
-    env->cells = true;
+    env->bitParallel = false;
     Recorder cb;
     const std::string state = stopAfter(problem, 1, 1, cb);
     std::vector<std::string> t = tokens(contentOf(state));
     REQUIRE(firstKindIndex(t) > 0);
-    t[9 + 2] = "999999";   // first prefix node
+    t[2 + 2] = "999999";   // first prefix node
     CHECK(restoreCode(join(t), versionOf(state)) == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
   }
 }
@@ -777,9 +776,9 @@ TEST_CASE("the range symmetry breaker does not change the assemblies found",
   auto p = makeRangePuzzle();
   problem_c & problem = *p->getProblem(0);
 
-  struct Engine { const char * name; bool cells; bool bitParallel; };
+  struct Engine { const char * name; bool bitParallel; };
   const Engine engines[] = {
-    {"default", false, true}, {"cells", true, true}, {"DLX", false, false},
+    {"default", true}, {"cells", false},
   };
 
   Set reference;
@@ -789,14 +788,12 @@ TEST_CASE("the range symmetry breaker does not change the assemblies found",
       Set on, off;
       {
         ScopedSettings env;
-        env->cells = e.cells;
         env->bitParallel = e.bitParallel;
         env->rangeSymmetryBreaker = true;
         on = solveAll(problem, threads);
       }
       {
         ScopedSettings env;
-        env->cells = e.cells;
         env->bitParallel = e.bitParallel;
         env->rangeSymmetryBreaker = false;
         off = solveAll(problem, threads);
@@ -853,53 +850,76 @@ TEST_CASE("the range symmetry breaker leaves the examples' assemblies alone",
 
 /* Dancing Cells is the engine wherever the bit-parallel one does not run:
  * a matrix it declines (here through its memory budget) and variable
- * voxels together with piece ranges, which it does not model. Dancing
- * links stays the engine with the bit-parallel engines switched off, and
- * with the fallback switched off.
+ * voxels together with piece ranges, which it does not model; and every
+ * matrix with the bit-parallel engine switched off.
  */
 TEST_CASE("Dancing Cells runs where the bit-parallel engine does not",
           "[cells][assembler][save]") {
   struct Case {
     const char * path;
     bool overBudget; // else: declined for variable voxels with piece ranges
+    size_t assemblies; // what dancing links found (removed 2026-11-16)
   };
   const Case cases[] = {
-    { "examples/CubeInCage.xmpuzzle", true },
-    { "examples/DemoPieceGenerator.xmpuzzle", false },
+    { "examples/CubeInCage.xmpuzzle", true, 96 },
+    { "examples/DemoPieceGenerator.xmpuzzle", false, 928 },
   };
   for (const auto & c : cases) {
     INFO(c.path);
     auto p = loadPuzzle(c.path);
     problem_c & problem = *p->getProblem(0);
 
-    Set links;
+    Set forced;
     {
       ScopedSettings env;
       env->bitParallel = false;
-      links = solveAll(problem, 4);
+      forced = solveAll(problem, 4);
       Recorder cb;
-      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) != 3u);
+      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) == 3u);
     }
-    REQUIRE(links.size() > 3);
+    CHECK(forced.size() == c.assemblies);
 
     {
       ScopedSettings env;
       if (c.overBudget)
         env->huangMemoryBytes = 0;
-      CHECK(solveAll(problem, 1) == links);
-      CHECK(solveAll(problem, 4) == links);
+      CHECK(solveAll(problem, 1) == forced);
+      CHECK(solveAll(problem, 4) == forced);
       Recorder cb;
       CHECK(remainderType(stopAfter(problem, 4, 1, cb)) == 3u);
     }
-    {
-      ScopedSettings env;
-      if (c.overBudget)
-        env->huangMemoryBytes = 0;
-      env->cellsFallback = false;
-      CHECK(solveAll(problem, 4) == links);
-      Recorder cb;
-      CHECK(remainderType(stopAfter(problem, 4, 1, cb)) != 3u);
-    }
+  }
+}
+
+/* A bit-parallel remainder restores only on a matrix that engine can take
+ * at all: not on one it declines for variable voxels with piece ranges.
+ * The memory budget and the bitParallel setting do not count: the seeds
+ * keep the engine that left them.
+ */
+TEST_CASE("restore refuses a bit-parallel remainder the bit-parallel engine cannot take",
+          "[cells][assembler][save]") {
+  auto restore = [](problem_c & problem, const char * payload) {
+    assembler_1_c assm(problem, bttest::settings());
+    REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
+    return assm.setPosition(payload, "2.2");
+  };
+
+  {
+    INFO("variable voxels with piece ranges");
+    auto p = loadPuzzle("examples/DemoPieceGenerator.xmpuzzle");
+    problem_c & problem = *p->getProblem(0);
+    CHECK(restore(problem, "1 2 1 0 0 0") == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX);
+    CHECK(restore(problem, "1 3 1 0 0 0") == assembler_c::ERR_NONE);
+  }
+  {
+    INFO("over the memory budget, with the bit-parallel engine off");
+    auto p = loadPuzzle("examples/CubeInCage.xmpuzzle");
+    problem_c & problem = *p->getProblem(0);
+    ScopedSettings env;
+    env->huangMemoryBytes = 0;
+    env->bitParallel = false;
+    CHECK(restore(problem, "1 2 1 0 0 0") == assembler_c::ERR_NONE);
+    CHECK(restore(problem, "1 3 1 0 0 0") == assembler_c::ERR_NONE);
   }
 }
 
@@ -923,7 +943,7 @@ TEST_CASE("Dancing Cells divides the search into tasks exactly once",
     {
       ScopedSettings env;
       env->bitParallel = false;
-      env->cellsFallback = false;
+      env->donate = false;
       baseline = solveAll(problem, 1);
     }
     REQUIRE(baseline.size() > 3);
@@ -933,10 +953,17 @@ TEST_CASE("Dancing Cells divides the search into tasks exactly once",
         for (unsigned int threads : {2u, 4u}) {
           INFO(path << ", fanout " << fanout << ", donate " << donate << ", " << threads << " threads");
           ScopedSettings env;
-          env->cells = true;
+          env->bitParallel = false;
           env->splitFanout = fanout;
           env->donate = donate;
           CHECK(solveAll(problem, threads) == baseline);
+
+          // stopped half way, saved and restored
+          Recorder cb;
+          const std::string state = stopAfter(problem, threads, static_cast<unsigned int>(baseline.size() / 2), cb);
+          const Set rest = resumeAll(problem, threads, state);
+          CHECK(unite(cb.fingerprints, rest) == baseline);
+          CHECK(cb.fingerprints.size() + rest.size() == baseline.size());
         }
       }
     }

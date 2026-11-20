@@ -1081,26 +1081,6 @@ void mainWindow_c::cb_BtnMovementBrowser(void) {
     Fl::wait();
 }
 
-static void cb_BtnAssemblerStep_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_BtnAssemblerStep(); }
-void mainWindow_c::cb_BtnAssemblerStep(void) {
-
-  bt_assert(assmThread == 0);
-
-  assembler_c * assm = (assembler_c*)puzzle->getProblem(solutionProblem->getSelection())->getAssembler();
-
-  bt_assert(assm);
-
-  assm->debug_step(1);
-
-  if (assm->getFinished() >= 1)
-    puzzle->getProblem(solutionProblem->getSelection())->finishedSolving();
-
-  updateInterface();
-
-  auto a = assm->getAssembly();
-  View3D->getView()->showAssemblerState(puzzle->getProblem(solutionProblem->getSelection()), a.get());
-}
-
 static void cb_AllowColor_stub(Fl_Widget* /*o*/, void* v) { ((mainWindow_c*)v)->cb_AllowColor(); }
 void mainWindow_c::cb_AllowColor(void) {
 
@@ -3334,14 +3314,6 @@ void mainWindow_c::updateInterface(void) {
         BtnPlacement->deactivate();
       }
 
-      // the step button is only active when the placements browser can be active AND when the puzzle is not
-      // yet completely solved
-      if (pr->getAssembler() && !assmThread && (pr->getSolveState() != SS_SOLVED)) {
-        if (BtnStep) BtnStep->activate();
-      } else {
-        if (BtnStep) BtnStep->deactivate();
-      }
-
       if (pr->getNumberOfSavedSolutions() >= 2) {
         BtnSrtFind->activate();
         BtnSrtLevel->activate();
@@ -3471,7 +3443,6 @@ void mainWindow_c::updateInterface(void) {
 
       BtnPlacement->deactivate();
       BtnMovement->deactivate();
-      if (BtnStep) BtnStep->deactivate();
       if (BtnPrepare) BtnPrepare->deactivate();
 
       BtnSrtFind->deactivate();
@@ -4493,15 +4464,6 @@ void mainWindow_c::CreateSolveTab(void) {
 
     BtnMovement = new LFlatButton_c(2, 0, 1, 1, "Movements", " Browse the possible movements for an assembly ", cb_BtnMovementBrowser_stub, this);
     static_cast<LFlatButton_c*>(BtnMovement)->weight(1, 0);
-
-    if (expertMode)
-    {
-      (new LFl_Box(3, 0))->setMinimumSize(SZ_GAP, 0);
-
-      BtnStep = new LFlatButton_c(4, 0, 1, 1, "Step", " Make one step in the assembler ", cb_BtnAssemblerStep_stub, this);
-      static_cast<LFlatButton_c*>(BtnStep)->weight(1, 0);
-    } else
-      BtnStep = 0;
 
     o->end();
 

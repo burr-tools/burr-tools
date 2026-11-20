@@ -8,16 +8,18 @@
 
 ## 1. Executive Summary & Solver Taxonomy
 
-In BurrTools, puzzle assembly problems are routed to one of two solver engines based on piece constraints:
+BurrTools has one assembler, `assembler_1_c`, with two exact cover engines:
 
-- **Assembler 0 (`assembler_0_c`):** Used when **every piece shape has count = 1** (no duplicate shapes, no piece ranges). Maps directly to the Exact Cover problem and solves using either hardware-vectorized SIMD exact cover (`SimdExactCover<BitsetType>`) or Knuth's Algorithm X (Dancing Links / DLX).
-- **Assembler 1 (`assembler_1_c`):** Used when puzzles contain **duplicate piece shapes** (count > 1) or **piece ranges** (min != max) or variable voxels (holes). Solves using Huang's algorithm, either via hardware-vectorized SIMD cover (`SimdHuangCover<BitsetType>`) or DLX with multi-counting.
+- **Bit-parallel (`SimdHuangCover<BitsetType>`):** Huang's formulation with multiplicities and ranges, hardware-vectorized (AVX-512, AVX2 or NEON). Used wherever the matrix fits it: up to 32,768 columns, within the `BURRTOOLS_HUANG_MEM_MB` budget, and not variable voxels (holes) together with piece ranges.
+- **Dancing Cells (`CellsCover`, Knuth 7.2.2.3):** used for every other matrix, and for every matrix when `BURRTOOLS_BITPARALLEL=0`.
+
+The categories below date from when `assembler_0_c` (every piece shape used once) was a separate assembler; it and its `SimdExactCover` engine have been removed, and those problems now run on `assembler_1_c`.
 
 ### Dataset Statistics (289 Problems Analyzed)
 
 | Category | Count | Share | SIMD Support |
 | :--- | :--- | :--- | :--- |
-| **Assembler 0** (Unique pieces, count = 1) | 210 | 72.7% | `SimdExactCover` (tiers 256..32768) |
+| **Unique pieces** (count = 1, formerly assembler 0) | 210 | 72.7% | `SimdHuangCover` (tiers 256..32768) |
 | **Assembler 1 (<= 256 cols)** | 39 | 13.5% | `SimdHuangCover256` (previous baseline) |
 | **Assembler 1 (> 256 cols)** | **40** | **13.8%** | **`SimdHuangCover` 512..32768 (NEW in this branch)** |
 | **Total** | **289** | **100.0%** | |
@@ -26,7 +28,7 @@ In BurrTools, puzzle assembly problems are routed to one of two solver engines b
 
 ## 2. Assembler 1 Puzzles with > 256 Columns (Direct Beneficiaries)
 
-Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns fell back to classic single-threaded or CPU-intensive DLX. With the `huang-simd-tiers` branch, these **40 puzzles** now use hardware-vectorized SIMD search (AVX-512, AVX2, or NEON):
+Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns fell back to a slower fallback engine. With the `huang-simd-tiers` branch, these **40 puzzles** now use hardware-vectorized SIMD search (AVX-512, AVX2, or NEON):
 
 
 | Puzzle Path | Prob | Problem Name | Grid | Pieces | Result Dim | Result Voxels | Columns | SIMD Tier |
@@ -79,17 +81,17 @@ Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns f
 
 | Puzzle | Prob | Backend | Columns | SIMD Tier | Pieces | Result Dim | Voxels | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 0 | Assembler 0 | 91 | **256** | 10 | 9x9x1 | 81# | 9x9 square: 10 unique pieces (pure exact cover) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 1 | Assembler 0 | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 square: 11 unique pieces (pure exact cover) |
-| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 2 | Assembler 0 | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 Alt: 11 unique pieces (pure exact cover) |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 0 | Unique pieces | 91 | **256** | 10 | 9x9x1 | 81# | 9x9 square: 10 unique pieces (pure exact cover) |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 1 | Unique pieces | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 square: 11 unique pieces (pure exact cover) |
+| **George Bell/LominoSquareProblems9-15.xmpuzzle** | 2 | Unique pieces | 111 | **256** | 11 | 10x10x1 | 100# | 10x10 Alt: 11 unique pieces (pure exact cover) |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 3 | Assembler 1 | 135 | **256** | 9..13 | 11x11x1 | 121# | 11x11 square: piece ranges 9..13 pieces (Huang). 5 asm / 5 sol, ~1.1s |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 4 | Assembler 1 | 159 | **256** | 9..14 | 12x12x1 | 144# | 12x12 square: piece ranges 9..14 pieces (Huang). 28 asm / 28 sol, ~4.0s |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 5 | Assembler 1 | 186 | **256** | 0..16 | 13x13x1 | 169# | 13x13 square: piece ranges 0..16 pieces (Huang). 7 asm / 7 sol, ~21s |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 6 | Assembler 1 | 214 | **256** | 0..17 | 14x14x1 | 196# | 14x14 square: piece ranges 0..17 pieces (Huang). 5 asm / 5 sol, ~78s. *Not in the default corpus* |
 | **George Bell/LominoSquareProblems9-15.xmpuzzle** | 7 | Assembler 1 | 245 | **256** | 0..19 | 15x15x1 | 225# | 15x15 square: piece ranges 0..19 pieces (Huang). 2 asm / 2 sol, ~293s. *Not in the default corpus* |
-| **James Fortune/kangaroo.xmpuzzle** | 0 | Assembler 0 | 205 | **DLX fallback** | 13 | 8x8x8 | 192# + 160+ | 6 pieces, 9,831 assemblies, level 10 disasm |
-| **James Fortune/unlucky block.xmpuzzle** | 0 | Assembler 0 | 300 | **DLX fallback** | 4 | 8x8x8 | 296# + 216+ | 7 pieces, interlocking assembly & disasm |
-| **Jack Krijnen/Excelsior.xmpuzzle** | 0 | Assembler 0 | 210 | **DLX fallback** | 18 | 8x8x8 | 192# + 160+ | 6 pieces, 7 assemblies, level 14 disasm (disasm dominated) |
+| **James Fortune/kangaroo.xmpuzzle** | 0 | Unique pieces | 205 | **Dancing Cells** | 13 | 8x8x8 | 192# + 160+ | 6 pieces, 9,831 assemblies, level 10 disasm |
+| **James Fortune/unlucky block.xmpuzzle** | 0 | Unique pieces | 300 | **Dancing Cells** | 4 | 8x8x8 | 296# + 216+ | 7 pieces, interlocking assembly & disasm |
+| **Jack Krijnen/Excelsior.xmpuzzle** | 0 | Unique pieces | 210 | **Dancing Cells** | 18 | 8x8x8 | 192# + 160+ | 6 pieces, 7 assemblies, level 14 disasm (disasm dominated) |
 | **Tyler Hudson/Third_Times_the_Charm.xmpuzzle** | 0 | Assembler 1 | 521 | **1024** | 20 | 8x8x8 | 384# + 128+ | 20 pieces (8 shapes), 71 assemblies (Assembler 1 > 256 cols!) |
 | **SolidSixPieceBurrs.xmpuzzle** | 0 | Assembler 1 | 130 | **256** | 0..150 | 6x6x6 | 104# | Duplicate stick shapes, 588 assemblies, 179 solutions |
 | **Jack Krijnen/Simplicity.xmpuzzle** | 0 | Assembler 1 | 356 | **512** | 18 | 8x8x8 | 192# + 160+ | 18 pieces (3 shapes), 188 assemblies, level 10 (Assembler 1 > 256 cols!) |
@@ -100,9 +102,9 @@ Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns f
 | **Jack Krijnen/JiminyJack.xmpuzzle** | 0 | Assembler 1 | 367 | **512** | 18 | 8x8x8 | 192# + 160+ | 180,516 assemblies, 1 solution. ~8.9s, 585 MB |
 | **Jack Krijnen/Tipperary.xmpuzzle** | 0 | Assembler 1 | 367 | **512** | 18 | 8x8x8 | 192# + 160+ | Heaviest assembler in the corpus: 519,827 assemblies. ~20s, 325 MB |
 | **Jack Krijnen/The36plus.xmpuzzle** | 0 | Assembler 1 | 827 | **1024** | 36 | 10x10x10 | 360# + 432+ | Disassembly-dominated: 0.01s assembly, ~128s disassembly (52 asm / 1 sol). 394 MB |
-| **Jack Krijnen/Burrly Sane for Professionals.xmpuzzle** | 0 | Assembler 0 | >300 | **DLX fallback** | 18 | 8x8x8 | 192# + 160+ | 895 assemblies, 1 solution; assembler 0 above 300 assemblies. ~0.4s, 62 MB |
-| **PelikanBurr.xmpuzzle** | 0 | Assembler 0 | 303 | **DLX fallback** | 7 | 8x8x8 | 296# + 216+ | 6 unique pieces, micro-search (~5ms assembly, level 4 disasm) |
-| **DraculasDentalDesaster.xmpuzzle** | 0 | Assembler 0 | 729 | **DLX fallback** | 9 | 14x14x14 | 720# + 936+ | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disasm) |
+| **Jack Krijnen/Burrly Sane for Professionals.xmpuzzle** | 0 | Unique pieces | >300 | **Dancing Cells** | 18 | 8x8x8 | 192# + 160+ | 895 assemblies, 1 solution; every piece used once, above 300 assemblies. ~0.4s, 62 MB |
+| **PelikanBurr.xmpuzzle** | 0 | Unique pieces | 303 | **Dancing Cells** | 7 | 8x8x8 | 296# + 216+ | 6 unique pieces, micro-search (~5ms assembly, level 4 disasm) |
+| **DraculasDentalDesaster.xmpuzzle** | 0 | Unique pieces | 729 | **Dancing Cells** | 9 | 14x14x14 | 720# + 936+ | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disasm) |
 | **Girish Sharma/cylindrical 18 - small.xmpuzzle** | 0 | Assembler 1 | 1167 | **2048** | 0..946 | 13x13x13 | 1026# + 72+ | 13x13x13 grid, 68 shapes, 1026# voxels, deep search (Assembler 1 tier 2048!) |
 
 ---
@@ -110,11 +112,11 @@ Previously, any puzzle solved by Assembler 1 with more than 256 matrix columns f
 ## 4. How to Run Interleaved A/B Benchmarks Outside the Harness
 
 
-To benchmark the speedup of `SimdHuangCover` extended tiers against the DLX baseline, run the following commands in a terminal:
+To benchmark the speedup of `SimdHuangCover` extended tiers against the Dancing Cells baseline, run the following commands in a terminal:
 
 
 ```bash
-# 1. Create baseline wrapper (forces DLX fallback via BURRTOOLS_BITPARALLEL=0)
+# 1. Create baseline wrapper (forces Dancing Cells via BURRTOOLS_BITPARALLEL=0)
 cat << 'EOF' > build/burrTxt-base
 #!/bin/sh
 exec env BURRTOOLS_BITPARALLEL=0 $(dirname "$0")/burrTxt "$@"

@@ -10,7 +10,7 @@ puzzles = [
 ]
 
 configs = [
-    ("DLX (1 thread)", {"BURRTOOLS_BITPARALLEL": "0"}, ["-t", "1"]),
+    ("Dancing Cells (1 thread)", {"BURRTOOLS_BITPARALLEL": "0"}, ["-t", "1"]),
     ("SIMD (1 thread)", {}, ["-t", "1"]),
     ("SIMD (4 threads)", {}, ["-t", "4"]),
     ("SIMD (8 threads)", {}, ["-t", "8"]),

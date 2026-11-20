@@ -49,17 +49,10 @@ struct solverSettings_t {
   /** worker threads of the assembler and of the disassembly pool, each;
    *  0 = hardware concurrency (both clamp to their own maximum) */
   unsigned int threads = 0;
-  /** the bit-parallel exact cover engines (SIMD); false: Knuth's DLX */
+  /** the bit-parallel exact cover engine (SimdHuangCover) wherever the
+   *  matrix fits it, Dancing Cells for the rest; false: Dancing Cells for
+   *  every matrix */
   bool bitParallel = true;
-  /** the Dancing Cells exact cover engine in assembler_1 (piece ranges,
-   *  duplicate pieces); false: the bit-parallel engine or DLX as chosen by
-   *  bitParallel */
-  bool cells = false;
-  /** assembler_1: Dancing Cells where the bit-parallel engine does not run
-   *  (matrix over its limits, variable voxels with piece ranges); false:
-   *  dancing links there. Without bitParallel the search is dancing links
-   *  either way. */
-  bool cellsFallback = true;
   /** assembler_1: with piece ranges, still restrict a shape that every
    *  assembly uses exactly once to break the result's symmetry; false: no
    *  such restriction as soon as any shape has a range (benchmarking). It
@@ -72,9 +65,9 @@ struct solverSettings_t {
   /** disassemble in a pool of worker threads; false: inline, in order */
   bool disassemblerPool = true;
   /** Memory the Huang SIMD engine's matrix may take before assembler_1
-   *  falls back to DLX (issue #92), 0 disables that engine. SIMD buys
-   *  speed, never capability, so erring toward DLX past this is always
-   *  safe. Desktop-class floor, deliberately conservative.
+   *  falls back to Dancing Cells (issue #92), 0 disables that engine. SIMD
+   *  buys speed, never capability, so erring toward Dancing Cells past this
+   *  is always safe. Desktop-class floor, deliberately conservative.
    *
    *  Scope note: the gate caps the matrix only (rows x tier bytes + nodes x
    *  per-node overhead). Per-task state is not counted: generateTasks()
@@ -86,8 +79,6 @@ struct solverSettings_t {
   /** fan-out cap when a search level is divided into tasks
    *  (src/lib/split_fanout.h) */
   unsigned int splitFanout = SplitFanout::kDefault;
-  /** assembler_0 queues split children at the back (breadth-first) */
-  bool splitBreadthFirst = false;
   /** split on demand: running tasks hand work to waiting siblings */
   bool donate = true;
   /** tests only: also donate every N nodes, 0 = only on demand */
@@ -117,15 +108,12 @@ struct solverSettings_t {
  * |--------------------|---------------------------------------------------|
  * | threads            | BURRTOOLS_THREADS=N                               |
  * | bitParallel        | BURRTOOLS_BITPARALLEL=0\|1                        |
- * | cells              | BURRTOOLS_CELLS=0\|1                              |
- * | cellsFallback      | BURRTOOLS_CELLS_FALLBACK=0\|1                     |
  * | rangeSymmetryBreaker | BURRTOOLS_RANGE_SYMBREAK=0\|1                  |
  * | vector             | BURRTOOLS_VECTOR=auto\|scalar\|avx2\|avx512\|neon |
  * | disassemblerVector | BURRTOOLS_DISASM_VECTOR=0\|1                      |
  * | disassemblerPool   | BURRTOOLS_DISASM_POOL=0\|1                        |
  * | huangMemoryMB      | BURRTOOLS_HUANG_MEM_MB=N                          |
  * | splitFanout        | BURRTOOLS_SPLIT_FANOUT=N (1 to 4096)              |
- * | splitBreadthFirst  | BURRTOOLS_SPLIT_ORDER=depth\|breadth              |
  * | donate             | BURRTOOLS_DONATE=0\|1                             |
  * | donateEvery        | BURRTOOLS_DONATE_EVERY=N                          |
  * | threadBudget       | BURRTOOLS_THREAD_BUDGET=0\|1                      |
@@ -134,22 +122,19 @@ struct solverSettings_t {
  * rotation.mode only says how turns are decided when a front end turns
  * rotation moves on (burrTxt -R, the GUI, Python); off then means none.
  *
- * An unparsable value, or one of the names these had before 2026-10-28, is
- * an error (std::invalid_argument), never silently the default: an A/B run must not
+ * An unparsable value, one of the names these had before 2026-10-28, or a
+ * variable whose engine is gone, is an error (std::invalid_argument), never silently the default: an A/B run must not
  * measure the same code twice.
  */
 struct solverConfig_t {
   std::optional<unsigned int> threads;
   std::optional<bool> bitParallel;
-  std::optional<bool> cells;
-  std::optional<bool> cellsFallback;
   std::optional<bool> rangeSymmetryBreaker;
   std::optional<vectorIsa_e> vector;
   std::optional<bool> disassemblerVector;
   std::optional<bool> disassemblerPool;
   std::optional<uint64_t> huangMemoryMB;
   std::optional<unsigned int> splitFanout;
-  std::optional<bool> splitBreadthFirst;
   std::optional<bool> donate;
   std::optional<unsigned long> donateEvery;
   std::optional<bool> threadBudget;

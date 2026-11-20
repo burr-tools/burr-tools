@@ -2,7 +2,7 @@
 
 #include "test_helpers.h"
 
-#include "lib/assembler_0.h"
+#include "lib/assembler_1.h"
 #include "lib/assembly.h"
 #include "lib/disassembly.h"
 #include "lib/gridtype.h"
@@ -376,7 +376,7 @@ TEST_CASE("problem: a fresh problem holds no assembler", "[problem][assembler]")
      pointer elsewhere; this one was not pinned at all. */
   assembler_c * raw = nullptr;
   {
-    auto assm = std::make_unique<assembler_0_c>(*f.problem, bttest::settings());
+    auto assm = std::make_unique<assembler_1_c>(*f.problem, bttest::settings());
     raw = assm.get();
     f.problem->setAssembler(std::move(assm));
   }
@@ -397,7 +397,7 @@ namespace {
    addSolution asserts solveState == SS_SOLVING, and the only way into that
    state is setAssembler() on a problem with no saved assembler blob
    (problem.cpp: the else branch). So the fixture attaches a genuine
-   assembler_0_c -- it is never asked to assemble anything -- and then hands
+   assembler_1_c -- it is never asked to assemble anything -- and then hands
    the problem assemblies built by hand.
 
    The result is a 1x3 bar and the pieces are unit cubes, so any placement
@@ -424,7 +424,7 @@ SolvingFixture makeSolvingFixture(unsigned int maxA, unsigned int maxB) {
   f.problem->setShapeMaximum(f.shapeA, maxA);
   f.problem->setShapeMaximum(f.shapeB, maxB);
 
-  f.problem->setAssembler(std::make_unique<assembler_0_c>(*f.problem, bttest::settings()));
+  f.problem->setAssembler(std::make_unique<assembler_1_c>(*f.problem, bttest::settings()));
 
   return f;
 }
@@ -663,7 +663,7 @@ TEST_CASE("problem: a refused restore keeps SOLVING but can no longer start",
   REQUIRE(pr->getSolveState() == SS_SOLVING);
   REQUIRE(pr->canStartSolving());
 
-  CHECK(pr->setAssembler(std::make_unique<assembler_0_c>(*pr, bttest::settings()))
+  CHECK(pr->setAssembler(std::make_unique<assembler_1_c>(*pr, bttest::settings()))
         == assembler_c::ERR_CAN_NOT_RESTORE_VERSION);
   CHECK(pr->getSolveState() == SS_SOLVING);
   CHECK_FALSE(pr->canStartSolving());
@@ -796,7 +796,7 @@ TEST_CASE("problem: which rotation mode the solve state comes from, in memory", 
   CHECK_FALSE(p.solvedWithRotationMode(ROTATION_OFF));
 
   /* continuing with the same mode keeps it, with another one mixes them */
-  p.setAssembler(std::make_unique<assembler_0_c>(p, bttest::settings()));
+  p.setAssembler(std::make_unique<assembler_1_c>(p, bttest::settings()));
   REQUIRE(p.getSolveState() == SS_SOLVING);
   p.noteSolveRotationMode(ROTATION_FAST);
   CHECK(p.solvedWithRotationMode(ROTATION_FAST));
@@ -810,7 +810,7 @@ TEST_CASE("problem: which rotation mode the solve state comes from, in memory", 
   CHECK(p.solvedWithRotationMode(ROTATION_SLOW));
   CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
   p.noteSolveRotationMode(ROTATION_SLOW);
-  p.setAssembler(std::make_unique<assembler_0_c>(p, bttest::settings()));
+  p.setAssembler(std::make_unique<assembler_1_c>(p, bttest::settings()));
   p.finishedSolving();
   CHECK_FALSE(p.solvedWithRotationMode(ROTATION_FAST));
   auto back = reloadEdited(*f.puzzle, [](std::string &) {});

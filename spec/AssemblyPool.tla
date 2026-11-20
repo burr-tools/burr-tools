@@ -175,8 +175,8 @@ Workers == 1..N
 
   }  \* end worker
 
-  \* Task generation (assembler_0/1 generateTasksAtDepth /
-  \* generateSubtreeTasks): the master emits subtasks one per step; workers
+  \* Task generation (SimdHuangCover::generateTasks /
+  \* CellsCover task division): the master emits subtasks one per step; workers
   \* start only once the list is complete. A stop mid-generation discards
   \* the partial list and marks interrupted (the PR #118 fix: a save after
   \* this refuses instead of persisting a partial, silently lossy resume

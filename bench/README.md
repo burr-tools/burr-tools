@@ -13,7 +13,7 @@ Accurately measuring puzzle solver performance requires strict experimental cont
 2. **Dual Metrics: Time & Memory:**
    - **Wall-Clock Time (s):** Real-world elapsed solve time.
    - **CPU Utilization (%):** Calculated as `(User CPU + System CPU) / Wall Time * 100%`. Single-core workloads report ~100%; multi-core scaling reaches 400%–800%+ depending on CPU thread count.
-   - **Peak Resident Memory / RSS (MB):** Measured via `os.wait4()` querying the Linux kernel's `ru_maxrss` structure upon process termination. This captures the true peak memory consumption of the solver process including thread stacks and DLX matrix clones.
+   - **Peak Resident Memory / RSS (MB):** Measured via `os.wait4()` querying the Linux kernel's `ru_maxrss` structure upon process termination. This captures the true peak memory consumption of the solver process including thread stacks and matrix clones.
 3. **Statistical Robustness (Medians):**
    Reports the median across runs for both time and peak RSS to eliminate outliers from background OS tasks or context switches.
 4. **Correctness Invariants:**
@@ -29,12 +29,12 @@ The benchmark suite defines 21 representative puzzles spanning distinct problem 
 
 | Puzzle / Path | Problem | Solver Backend | Pieces / Characteristics | Approx. Baseline Time |
 | :--- | :--- | :--- | :--- | :--- |
-| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 1 (10x10) | `assembler_0_c` (Knuth DLX) | 11 unique pieces, pure exact-cover assembly | ~1.9s (scaled: ~0.7s) |
-| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 2 (10x10 Alt) | `assembler_0_c` (Knuth DLX) | 11 unique pieces, pure exact-cover assembly | ~1.9s (scaled: ~0.7s) |
-| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 0 (9x9) | `assembler_0_c` (Knuth DLX) | 10 unique pieces, pure exact-cover assembly | ~0.4s (scaled: ~0.18s) |
-| **James Fortune / kangaroo.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 6 unique pieces, 9,831 assemblies + level 10 disassembly | ~1.7s (scaled: ~1.2s) |
-| **James Fortune / unlucky block.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 7 unique pieces, interlocking assembly & disassembly | ~1-3s |
-| **Jack Krijnen / Excelsior.xmpuzzle** | Prob 0 | `assembler_0_c` + Disassembler | 6 unique pieces, 7 assemblies + level 14 disassembly | ~1.8s |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 1 (10x10) | `assembler_1_c` | 11 unique pieces, pure exact-cover assembly | ~1.9s (scaled: ~0.7s) |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 2 (10x10 Alt) | `assembler_1_c` | 11 unique pieces, pure exact-cover assembly | ~1.9s (scaled: ~0.7s) |
+| **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 0 (9x9) | `assembler_1_c` | 10 unique pieces, pure exact-cover assembly | ~0.4s (scaled: ~0.18s) |
+| **James Fortune / kangaroo.xmpuzzle** | Prob 0 | `assembler_1_c` + Disassembler | 6 unique pieces, 9,831 assemblies + level 10 disassembly | ~1.7s (scaled: ~1.2s) |
+| **James Fortune / unlucky block.xmpuzzle** | Prob 0 | `assembler_1_c` + Disassembler | 7 unique pieces, interlocking assembly & disassembly | ~1-3s |
+| **Jack Krijnen / Excelsior.xmpuzzle** | Prob 0 | `assembler_1_c` + Disassembler | 6 unique pieces, 7 assemblies + level 14 disassembly | ~1.8s |
 | **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 3 (11x11) | `assembler_1_c` (Huang) | Pieces with ranges/choices, 5 assemblies / 5 solutions | ~1.1s |
 | **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 4 (12x12) | `assembler_1_c` (Huang) | Piece ranges 9..14, 28 assemblies / 28 solutions | ~4.0s |
 | **George Bell / LominoSquareProblems9-15.xmpuzzle** | Prob 5 (13x13) | `assembler_1_c` (Huang) | Piece ranges 0..16, 7 assemblies / 7 solutions | ~21s |
@@ -43,14 +43,14 @@ The benchmark suite defines 21 representative puzzles spanning distinct problem 
 | **Jack Krijnen / Simplicity.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Duplicate pieces, 188 assemblies + level 10 disassembly | ~3.2s |
 | **Jack Krijnen / BottomLine.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Duplicate pieces, 76 assemblies + level 11 disassembly | ~1.1s |
 | **Jack Krijnen / Tippy.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | Duplicate pieces, 460 assemblies, 111 solutions | ~0.6s |
-| **examples/PelikanBurr.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 6 unique pieces, micro-search (~5ms assembly, level 4 disassembly) | ~0.15s |
-| **examples/DraculasDentalDesaster.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disassembly) | ~0.14s |
+| **examples/PelikanBurr.xmpuzzle** | Prob 0 | `assembler_1_c` | 6 unique pieces, micro-search (~5ms assembly, level 4 disassembly) | ~0.15s |
+| **examples/DraculasDentalDesaster.xmpuzzle** | Prob 0 | `assembler_1_c` | 6 unique pieces, 84 assemblies (~8ms assembly, level 8 disassembly) | ~0.14s |
 | **Jack Krijnen / TheCube.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 13 pieces, 741 cols (tier 1024), 9,728 assemblies / 2 solutions | ~4.0s |
 | **Jack Krijnen / CondorsPeeper.xmpuzzle** | Prob 1 | `assembler_1_c` (Huang) | 18 pieces, 370 cols, 29,467 assemblies / 1 solution | ~2.2s |
 | **Jack Krijnen / JiminyJack.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 18 pieces, 367 cols, 180,516 assemblies / 1 solution | ~8.9s |
 | **Jack Krijnen / Tipperary.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 18 pieces, 519,827 assemblies — the heaviest assembler in the corpus | ~20s |
 | **Jack Krijnen / The36plus.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 36 pieces, 827 cols. Disassembly-dominated: 0.01s assembly, ~128s disassembly | ~128s |
-| **Jack Krijnen / Burrly Sane for Professionals.xmpuzzle** | Prob 0 | `assembler_0_c` (Knuth DLX) | 895 assemblies / 1 solution; assembler 0 above 300 assemblies | ~0.4s |
+| **Jack Krijnen / Burrly Sane for Professionals.xmpuzzle** | Prob 0 | `assembler_1_c` | 895 assemblies / 1 solution; every piece used once, above 300 assemblies | ~0.4s |
 
 > [!NOTE]
 > Puzzles located in `puzzles/BTFiles/` come from the Brett Kuehner BTFiles archive. If a puzzle file is not found on disk, the benchmark runner automatically notes it and skips it gracefully. The `examples/*.xmpuzzle` subset is always available in the repository.
@@ -165,4 +165,4 @@ James Fortune/kangaroo.xmpuzzle                               15.20M       19.65
 SolidSixPieceBurrs.xmpuzzle                                   14.10M       14.10M       +0.00M        +0.0%
 PelikanBurr.xmpuzzle                                          13.73M       17.78M       +4.05M       +29.5%
 ```
-*(Notice: The threaded version allocates ~4 MB for thread stacks and private worker DLX matrix clones across 8 worker threads—a very modest and completely bounded memory overhead).*
+*(Notice: The threaded version allocates ~4 MB for thread stacks and private worker matrix clones across 8 worker threads—a very modest and completely bounded memory overhead).*

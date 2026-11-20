@@ -6,7 +6,7 @@
 #include "lib/puzzle.h"
 #include "lib/problem.h"
 #include "lib/assembler.h"
-#include "lib/assembler_0.h"
+#include "lib/assembler_1.h"
 #include "lib/assembly.h"
 #include "lib/disassembly.h"
 #include "lib/solution.h"
@@ -58,7 +58,7 @@ std::vector<std::unique_ptr<assembly_c>> collectSomeAssemblies(const problem_c &
   cb.out = &found;
   cb.limit = limit;
 
-  assembler_0_c assm(problem, bttest::settings());
+  assembler_1_c assm(problem, bttest::settings());
   assm.setNumThreads(1);
   REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
   assm.assemble(&cb);
@@ -375,7 +375,7 @@ TEST_CASE("disassembler pool: exception in callback propagates cleanly to finish
 }
 
 TEST_CASE("disassembler pool: interactive solve thread lifecycle with pause, progress, and continue", "[disasm][pool][solvethread]") {
-  SECTION("assembler 0 pause during search, poll progress, and continue to completion") {
+  SECTION("exact-once problem: pause during search, poll progress, and continue to completion") {
     auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
     REQUIRE(p != nullptr);
     problem_c * problem = p->getProblem(0);

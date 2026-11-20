@@ -24,7 +24,7 @@
 
 #include "disassembler_0.h"
 #include "disassembly.h"
-#include "assembler_0.h"
+#include "assembler_1.h"
 #include "puzzle.h"
 #include "voxel.h"
 #include "gridtype.h"
@@ -39,8 +39,8 @@ puzzleSol_c::puzzleSol_c(puzzle_c * p, unsigned int prob) {
   puzzle = p;
   this->prob = prob;
 
-  assembler_0_c *assm = new assembler_0_c(p->getGridType()->getAssemblerFrontend());
-  if (assm->createMatrix(p, prob, false, false) == assembler_0_c::ERR_NONE) {
+  assembler_1_c *assm = new assembler_1_c(p->getGridType()->getAssemblerFrontend());
+  if (assm->createMatrix(p, prob, false, false) == assembler_1_c::ERR_NONE) {
 
     solutions = 0;
 

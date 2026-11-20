@@ -48,8 +48,7 @@ class ThreadBudget;
  * continue regenerate and re-search everything from scratch, or refuse the
  * restore.
  *
- * Shared by all three drain sites (assembler_0 DLX/SIMD, assembler_1 DLX,
- * assembler_1 Huang) so the condition cannot silently diverge between
+ * Shared by the drain sites of assembler_1's engines so the condition cannot silently diverge between
  * engines; its truth table is unit-tested directly.
  *
  * Note this is protocol-shape neutral (task requeue/drain/finish pairing
@@ -344,16 +343,6 @@ public:
       unsigned int /*piece*/, unsigned char * /*ran*/, int * /*x*/, int * /*y*/, int * /*z*/) const { return 0; }
 
 
-  /* finally some debugging functions that allow to look how, why, and where pieces are placed */
-
-  /* do exactly the given number of rounds in the assembler, and then stop */
-  virtual void debug_step(unsigned long /*num*/) {};
-
-  /* returns the assembly for the current state of the assembler or the solution assembly, if
-   * the assembler is currently at a solution
-   */
-  virtual std::unique_ptr<assembly_c> getAssembly(void) = 0;
-
   /* Populate the lazily-filled mutable caches on the shapes shared by every
    * worker, so that a parallel search only ever reads them.
    *
@@ -411,7 +400,7 @@ public:
 
   /* One cancellation contract for all engines.
    *
-   * A stop_source refreshed at every run entry (assemble()/debug_step()).
+   * A stop_source refreshed at every run entry (assemble()).
    * Workers and search loops observe its token; stop() fires it.
    *
    * Not safe for concurrent runs on one instance: refreshing races with a
@@ -421,7 +410,7 @@ public:
   mutable std::mutex runStopMutex;
 
   /* Start a new run: refresh the stop source and hand out its token.
-   * Call once at assemble()/debug_step() entry, before any worker exists.
+   * Call once at assemble() entry, before any worker exists.
    */
   std::stop_token beginRun() {
     std::lock_guard<std::mutex> lock(runStopMutex);

@@ -40,15 +40,15 @@ LIST_ONLY=0
 #   PATH:PROB_IDX | DESCRIPTION & CHARACTERISTICS
 # ------------------------------------------------------------------------------
 PUZZLE_DEFINITIONS=(
-  # --- Pure Assembly: Unique Pieces (assembler_0_c Knuth DLX) ---
-  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:1|George Bell 10x10 Lomino Square (prob 1): Pure exact-cover assembly, 11 unique pieces (assembler_0 DLX). ~2s baseline, ~2.6x speedup."
-  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:2|George Bell 10x10 Alt Lomino Square (prob 2): Pure exact-cover assembly, 11 unique pieces (assembler_0 DLX). ~2s baseline, ~2.5x speedup."
-  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:0|George Bell 9x9 Lomino Square (prob 0): Pure exact-cover assembly, 10 unique pieces (assembler_0 DLX). ~0.4s baseline, ~2.4x speedup."
+  # --- Pure Assembly: Unique Pieces (every piece used once) ---
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:1|George Bell 10x10 Lomino Square (prob 1): Pure exact-cover assembly, 11 unique pieces (every piece used once). ~2s baseline, ~2.6x speedup."
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:2|George Bell 10x10 Alt Lomino Square (prob 2): Pure exact-cover assembly, 11 unique pieces (every piece used once). ~2s baseline, ~2.5x speedup."
+  "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:0|George Bell 9x9 Lomino Square (prob 0): Pure exact-cover assembly, 10 unique pieces (every piece used once). ~0.4s baseline, ~2.4x speedup."
 
-  # --- Mixed Assembly + Disassembly: Unique Pieces (assembler_0_c + disassembler) ---
-  "puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle|James Fortune Kangaroo: 6 unique pieces (assembler_0 DLX). 9,831 assemblies (~1.1s) + level 10 disassembly (~0.6s). ~1.7s total."
-  "puzzles/BTFiles/James Fortune/unlucky block.xmpuzzle|James Fortune Unlucky Block: 7 unique pieces (assembler_0 DLX). Interlocking block assembly + disassembly."
-  "puzzles/BTFiles/Jack Krijnen/Excelsior.xmpuzzle|Jack Krijnen Excelsior: 6 unique pieces (assembler_0 DLX). 7 assemblies (~1.8s) + level 14 disassembly."
+  # --- Mixed Assembly + Disassembly: Unique Pieces (every piece used once, assembler + disassembler) ---
+  "puzzles/BTFiles/James Fortune/kangaroo.xmpuzzle|James Fortune Kangaroo: 6 unique pieces (every piece used once). 9,831 assemblies (~1.1s) + level 10 disassembly (~0.6s). ~1.7s total."
+  "puzzles/BTFiles/James Fortune/unlucky block.xmpuzzle|James Fortune Unlucky Block: 7 unique pieces (every piece used once). Interlocking block assembly + disassembly."
+  "puzzles/BTFiles/Jack Krijnen/Excelsior.xmpuzzle|Jack Krijnen Excelsior: 6 unique pieces (every piece used once). 7 assemblies (~1.8s) + level 14 disassembly."
 
   # --- Puzzles with Duplicate Shapes / Ranges (assembler_1_c Huang Algorithm) ---
   "puzzles/BTFiles/George Bell/LominoSquareProblems9-15.xmpuzzle:3|George Bell 11x11 Lomino Square (prob 3): Piece ranges (assembler_1). 5 assemblies, 5 solutions (~1.1s)."
@@ -70,7 +70,7 @@ PUZZLE_DEFINITIONS=(
   "puzzles/BTFiles/Jack Krijnen/JiminyJack.xmpuzzle|Jack Krijnen Jiminy Jack: 18 pieces, 367 columns. 180,516 assemblies (~8.9s), 585 MB peak RSS."
   "puzzles/BTFiles/Jack Krijnen/Tipperary.xmpuzzle|Jack Krijnen Tipperary: Heaviest assembler in the corpus. 519,827 assemblies (~20s), 325 MB peak RSS."
   "puzzles/BTFiles/Jack Krijnen/The36plus.xmpuzzle|Jack Krijnen The36+: 36 pieces, 827 columns. Disassembly-dominated: 0.01s assembly, ~128s disassembly (~128s total)."
-  "puzzles/BTFiles/Jack Krijnen/Burrly Sane for Professionals.xmpuzzle|Jack Krijnen Burrly Sane for Professionals: assembler 0 above 300 assemblies. 895 assemblies (~0.4s)."
+  "puzzles/BTFiles/Jack Krijnen/Burrly Sane for Professionals.xmpuzzle|Jack Krijnen Burrly Sane for Professionals: every piece used once, above 300 assemblies. 895 assemblies (~0.4s)."
 )
 
 # Parse command-line flags

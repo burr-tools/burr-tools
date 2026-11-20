@@ -261,7 +261,7 @@ public:
 
   /// True while more workers wait for a task than the queue holds: the
   /// "hungry" signal for donation (a running task hands part of its
-  /// unexplored territory to the pool, see assembler_0's donate()). A
+  /// unexplored territory to the pool, see SimdHuangCover::donateFrame()). A
   /// relaxed load of a flag kept in step with the guarded counters, so
   /// workers may poll it from inside the search loop without touching the
   /// mutex. It is only a hint: a stale read costs at most one needless

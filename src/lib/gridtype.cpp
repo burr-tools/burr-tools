@@ -20,7 +20,6 @@
  */
 #include "gridtype.h"
 
-#include "assembler_0.h"
 #include "assembler_1.h"
 #include "movementcache_0.h"
 #include "movementcache_1.h"
@@ -225,10 +224,6 @@ unsigned int gridType_c::getCapabilities(void) const
 
 std::unique_ptr<assembler_c> gridType_c::findAssembler(const problem_c & p, const solverSettings_t & settings)
 {
-  if (assembler_0_c::canHandle(p)) {
-    fprintf(stderr, "using assembler 0\n");
-    return std::make_unique<assembler_0_c>(p, settings);
-  }
   if (assembler_1_c::canHandle(p)) {
     fprintf(stderr, "using assembler 1\n");
     return std::make_unique<assembler_1_c>(p, settings);
