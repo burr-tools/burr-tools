@@ -19,6 +19,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <string>
 #include <vector>
 
 using namespace BurrTools::PuzzleLibrary;
@@ -252,6 +253,77 @@ TEST_CASE("NG's symmetry groups are closed and the full cube group has 24 rotati
     hex.addSymmetry(TRotation(TRotation::ROT_060_XYZ));
     hex.addSymmetry(TRotation(TRotation::ROT_180_XYzz));
     CHECK(hex.symmetries().size() == 12);
+}
+
+// BurrTools: NG indexed the unify and intersect tables with a stride of GRP_COUNT
+// where they have GRP_COUNT + 1 columns, so a group with the invalid one came out
+// as the next group with the trivial one
+TEST_CASE("NG's group union and intersection: exact, and invalid with the invalid group", "[latticegrid]")
+{
+    initTables();
+
+    // no group holds the cube's rotations and a sixth of a turn
+    RotationalSymmetryGroup invalid;
+    invalid.addSymmetry(TRotation(TRotation::ROT_090_X));
+    invalid.addSymmetry(TRotation(TRotation::ROT_090_Y));
+    invalid.addSymmetry(TRotation(TRotation::ROT_060_XYZ));
+    REQUIRE_FALSE(invalid);
+
+    std::vector<RotationalSymmetryGroup> all;
+    for (auto g : RotationalSymmetryGroup::allGroups()) all.push_back(g);
+
+    for (const auto & g : all)
+    {
+        INFO("group " << static_cast<int>(g.value()));
+        auto u = g;
+        u.unify(invalid);
+        CHECK_FALSE(u);
+        auto i = g;
+        i.intersect(invalid);
+        CHECK_FALSE(i);
+        auto u2 = invalid;
+        u2.unify(g);
+        CHECK_FALSE(u2);
+        auto i2 = invalid;
+        i2.intersect(g);
+        CHECK_FALSE(i2);
+        // and adding a rotation does not make it valid again
+        for (auto r : g.symmetries())
+        {
+            auto a = invalid;
+            a.addSymmetry(r);
+            CHECK_FALSE(a);
+        }
+    }
+
+    auto subset = [](TRotationSet a, TRotationSet b) { return (a & b) == a; };
+    int bad = 0;
+    std::string first;
+    for (const auto & g1 : all)
+        for (const auto & g2 : all)
+        {
+            const TRotationSet both = g1.symmetries() | g2.symmetries();
+
+            // the intersection of two groups is a group
+            auto i = g1;
+            i.intersect(g2);
+            const bool iOk = i && i.symmetries() == (g1.symmetries() & g2.symmetries());
+
+            // the union is the smallest group holding both, invalid when there is none
+            auto u = g1;
+            u.unify(g2);
+            bool uOk = !u || subset(both, u.symmetries());
+            for (const auto & h : all)
+                if (subset(both, h.symmetries()) && (!u || !subset(u.symmetries(), h.symmetries()))) uOk = false;
+
+            if (!iOk || !uOk)
+            {
+                if (bad++ == 0)
+                    first = std::to_string(g1.value()) + " and " + std::to_string(g2.value()) + (iOk ? ": union" : ": intersection");
+            }
+        }
+    INFO("first wrong pair: " << first);
+    CHECK(bad == 0);
 }
 
 namespace {

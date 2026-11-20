@@ -331,7 +331,9 @@ void RotationalSymmetryGroup::init_tables()
             }
 
             // check, if there is a unique best fit .. maybe there is not
-            if (bbb == 0)
+            // BurrTools: the invalid group stays invalid (NG's empty set for it made
+            // the invalid group plus a rotation the group of that rotation)
+            if (bbb == 0 || sym1 == GRP_COUNT)
             {
                 // you can not always unify, e.g. cube and triangular transformations will not always merge
                 UnifySymmetryTransformation[sym1 * TRotation::NUM_ROTATION_MATRICES + tra] = GRP_COUNT;
@@ -350,6 +352,10 @@ void RotationalSymmetryGroup::init_tables()
         }
 
     // calculate the union and intersection tables
+    // BurrTools: a row is GRP_COUNT + 1 long, the invalid group included; NG strode by GRP_COUNT,
+    // so each (sym1, invalid) entry landed on (sym1 + 1, 0) and was overwritten. The union with
+    // the invalid group is invalid, as the intersection already was (its set is empty, so the
+    // loop below alone would return sym1)
     for (int sym1 = 0; sym1 < GRP_COUNT + 1; sym1++)
         for (int sym2 = 0; sym2 < GRP_COUNT + 1; sym2++)
         {
@@ -364,13 +370,13 @@ void RotationalSymmetryGroup::init_tables()
             for (int sym = 0; sym < GRP_COUNT; sym++)
                 if (GroupSymmetries[sym] == s)
                 {
-                    found                                              = true;
-                    IntersectSymmetrySymmetry[sym1 * GRP_COUNT + sym2] = sym;
+                    found                                                    = true;
+                    IntersectSymmetrySymmetry[sym1 * (GRP_COUNT + 1) + sym2] = sym;
                 }
 
             if (sym1 == GRP_COUNT || sym2 == GRP_COUNT)
             {
-                IntersectSymmetrySymmetry[sym1 * GRP_COUNT + sym2] = GRP_COUNT;
+                IntersectSymmetrySymmetry[sym1 * (GRP_COUNT + 1) + sym2] = GRP_COUNT;
             }
             else if (!found)
             {
@@ -387,7 +393,7 @@ void RotationalSymmetryGroup::init_tables()
                 if (!sym) break;
             }
 
-            UnifySymmetrySymmetry[sym1 * GRP_COUNT + sym2] = sym.value();
+            UnifySymmetrySymmetry[sym1 * (GRP_COUNT + 1) + sym2] = (sym1 == GRP_COUNT || sym2 == GRP_COUNT) ? GRP_COUNT : sym.value();
         }
 }
 
@@ -414,6 +420,15 @@ std::tuple<RotationalSymmetryGroup, uint8_t> RotationalSymmetryGroup::calculateR
 
     RotationalSymmetryGroup subset;
 
+    // the complete rotation groups of cubes and of hexagons. BurrTools: NG indexed
+    // UnifySymmetryTransformation with a rotation where it takes a group
+    RotationalSymmetryGroup cubeGroup;
+    cubeGroup.addSymmetry(TRotation(TRotation::ROT_090_X));
+    cubeGroup.addSymmetry(TRotation(TRotation::ROT_090_Y));
+    RotationalSymmetryGroup hexagonGroup;
+    hexagonGroup.addSymmetry(TRotation(TRotation::ROT_060_XYZ));
+    hexagonGroup.addSymmetry(TRotation(TRotation::ROT_180_XYzz));
+
     // now iterate over all possible rotation axis and assemble
     // the possible rotational symmetries, if we are on an axis
     for (auto & s : g->rotationalSymmetries)
@@ -431,8 +446,7 @@ std::tuple<RotationalSymmetryGroup, uint8_t> RotationalSymmetryGroup::calculateR
 
                 // once we reached a complete rotational group, e.g. all rotations of cubes or hexagons
                 // there is no need to continue, because we will never get more
-                if ((subset.value() == UnifySymmetryTransformation[TRotation::ROT_090_X * TRotation::NUM_ROTATION_MATRICES + TRotation::ROT_090_Y])
-                    || (subset.value() == UnifySymmetryTransformation[TRotation::ROT_060_XYZ * TRotation::NUM_ROTATION_MATRICES + TRotation::ROT_180_XYzz]))
+                if ((subset.value() == cubeGroup.value()) || (subset.value() == hexagonGroup.value()))
                 {
                     break;
                 }

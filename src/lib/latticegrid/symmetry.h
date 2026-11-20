@@ -307,9 +307,10 @@ class RotationalSymmetryGroup
         void addSymmetry(TRotation r) { group = UnifySymmetryTransformation[group * TRotation::NUM_ROTATION_MATRICES + r.value()]; }
 
         // unify or intersect this group with the given group
-        void unify(RotationalSymmetryGroup s) { group = UnifySymmetrySymmetry[group * GRP_COUNT + s.group]; }
+        // BurrTools: the tables have GRP_COUNT + 1 columns (NG strode by GRP_COUNT, see symmetry.cpp)
+        void unify(RotationalSymmetryGroup s) { group = UnifySymmetrySymmetry[group * (GRP_COUNT + 1) + s.group]; }
 
-        void intersect(RotationalSymmetryGroup s) { group = IntersectSymmetrySymmetry[group * GRP_COUNT + s.group]; }
+        void intersect(RotationalSymmetryGroup s) { group = IntersectSymmetrySymmetry[group * (GRP_COUNT + 1) + s.group]; }
 
         // check, if there are mirror symmetries in the group
         [[nodiscard]] bool containsMirrorTransformations() const { return GroupSymmetries[group].containsMirrorTransformations(); }
