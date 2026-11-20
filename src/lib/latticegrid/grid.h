@@ -399,8 +399,10 @@ class Grid
         // and only calculated on demand
         struct ExpensiveInformation : public Information
         {
-                // has this information been calculated?
-                bool initialized = false;
+                // calculates the information below exactly once (ensureInformation); BurrTools: replaces
+                // NG's plain bool, which raced when two threads asked for the same grid. Fine as a
+                // member because ExpensiveInformation only lives in a shared_ptr and is never copied
+                std::once_flag initOnce;
 
                 // this vector contains a list of all rotation axes of the grid that go through the base-epiped.
                 // the initial definitions in this vector will be replaced by a normalized and extended list
@@ -460,8 +462,8 @@ class Grid
         // mutex for information_ vector
         static std::mutex informationMutex_;
 
-        // make sure the expensive part of the information is filled in
-        // before calling this make sure you got the mutex
+        // make sure the expensive part of the information is filled in;
+        // thread safe (std::call_once), call it without holding informationMutex_
         static void ensureInformation(ExpensiveInformation & info);
 
     public:

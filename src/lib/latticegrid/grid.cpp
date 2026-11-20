@@ -1860,7 +1860,8 @@ void Grid::removeGrid(Grid & g)
 
 void Grid::ensureInformation(ExpensiveInformation & inf)
 {
-    if (!inf.initialized)
+    // BurrTools: std::call_once instead of NG's unsynchronised "initialized" flag
+    std::call_once(inf.initOnce, [&inf]
     {
         findGridSymmetries(inf.inverseTranslationalSymmetry,
                            inf.translationalSymmetry,
@@ -1905,9 +1906,7 @@ void Grid::ensureInformation(ExpensiveInformation & inf)
                     inf.movementChecksExtend = std::max<int8_t>(inf.movementChecksExtend, c.z());
                     inf.movementChecksExtend = std::max<int8_t>(inf.movementChecksExtend, -c.z());
                 }
-
-        inf.initialized = true;
-    }
+    });
 }
 
 static bool pointInsidePolyhedron(const Vector<float> & p, const Grid::Polyhedron & polyhedron, const float epsilon)
