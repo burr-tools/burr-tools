@@ -52,6 +52,13 @@ The benchmark suite defines 21 representative puzzles spanning distinct problem 
 | **Jack Krijnen / The36plus.xmpuzzle** | Prob 0 | `assembler_1_c` (Huang) | 36 pieces, 827 cols. Disassembly-dominated: 0.01s assembly, ~128s disassembly | ~128s |
 | **Jack Krijnen / Burrly Sane for Professionals.xmpuzzle** | Prob 0 | `assembler_1_c` | 895 assemblies / 1 solution; every piece used once, above 300 assemblies | ~0.4s |
 
+Not in the default list: **bench/RhombicDodecahedraBox.xmpuzzle**, 36 rhombic dodecahedra in nine pieces of four on the native rhombic grid (type 3), 22,344 assemblies, made by `bench/gen_rhombic_puzzle.py` because the corpus has no large rhombic puzzle. It measures the cost of NG's rhombic grid, which `burrTxt` reads it onto (two cells per native voxel, step C1 of `design/2026-11-19-ng-merge-plan.md`), against the native grid; assemble only:
+
+```sh
+bench/merge-checks/best_of.sh "LC_ALL=C" --native-grids bench/RhombicDodecahedraBox.xmpuzzle   # native
+bench/merge-checks/best_of.sh "LC_ALL=C" bench/RhombicDodecahedraBox.xmpuzzle                  # NG's grid
+```
+
 > [!NOTE]
 > Puzzles located in `puzzles/BTFiles/` come from the Brett Kuehner BTFiles archive. If a puzzle file is not found on disk, the benchmark runner automatically notes it and skips it gracefully. The `examples/*.xmpuzzle` subset is always available in the repository.
 
