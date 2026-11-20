@@ -25,9 +25,13 @@
 #include "bt_assert.h"
 #include "solver_config.h"
 #include "cutcubegrids.h"
+#include "solver/math.h"
+#include "solver/shape.h"
 
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <vector>
 
 class assembler_c;
 class symmetries_c;
@@ -163,6 +167,48 @@ class gridType_c {
 
     /// return an STL exporter for this grid
     stlExporter_c * getStlExporter(void) const;
+
+    /** \name Cell-address (n, k) and placement operations (B6) */
+    //@{
+    /** Number of cell kinds K inside one repeating lattice cell (k in [0, K)). */
+    unsigned int kindCount(void) const;
+
+    /** Exact bijection from cell address (n, k) to the grid's voxel coordinates. */
+    vec3i_t cellToVoxel(cellAddr_t c) const;
+
+    /** Exact inverse from voxel coordinates to (n, k); nullopt if not a valid cell. */
+    std::optional<cellAddr_t> voxelToCell(vec3i_t v) const;
+
+    /** Convert a lattice translation vector dn to a voxel-coordinate delta (always onGrid). */
+    vec3i_t latticeToVoxelDelta(vec3i_t dn) const;
+
+    /** Exact inverse from a voxel-coordinate delta to a lattice vector; nullopt if not onGrid. */
+    std::optional<vec3i_t> voxelDeltaToLattice(vec3i_t dv) const;
+
+    /**
+     * Transform a single cell (n, k) by grid turn g (0 <= g < numTransformationsMirror).
+     * Always succeeds for periodic grids; for spheres, returns nullopt when
+     * the rotated cell does not land on the FCC packing relative to the origin.
+     */
+    std::optional<cellAddr_t> transformCell(cellAddr_t c, unsigned int turn) const;
+
+    /**
+     * Transform a set of cells by grid turn g in place. For spheres, turns
+     * about the first cell so any valid shape rotation succeeds regardless of
+     * where the shape sits in space; returns false if any cell leaves the grid.
+     */
+    bool transformCells(std::vector<cellEntry_t> & cells, unsigned int turn) const;
+
+    /**
+     * Transform an arbitrary grid voxel point p relative to a reference voxel
+     * point ref by grid turn g, returning T_g(p) - T_g(ref) in voxel coordinates.
+     * Used to map legacy hotspots across turns identically to voxel_c::transform.
+     */
+    std::optional<vec3i_t> transformVoxelOffset(vec3i_t p, vec3i_t ref, unsigned int turn) const;
+
+    /** Physical 3x3 rotation/mirror matrix for turn g. */
+    mat3d_t physicalTransformMatrix(unsigned int turn) const;
+    //@}
 
     /**
      * Find a suitable assembler for the given problem.

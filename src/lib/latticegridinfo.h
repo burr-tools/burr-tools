@@ -71,6 +71,14 @@ class latticeGridInfo_c {
     bool isVoxel(int x, int y, int z) const;
     /// the kind of voxel at (x, y, z) (NG's base position index), -1 if none
     int base(int x, int y, int z) const;
+    /// number of cell kinds (base positions per lattice cell)
+    unsigned int baseCount(void) const;
+    /// base position of cell kind k in NG's voxel coordinates
+    std::array<int, 3> basePosition(unsigned int k) const;
+    /// decompose voxel coordinates (x, y, z) into (k, n) with p = base[k] + L * n; k == -1 if invalid
+    std::pair<int, std::array<int, 3>> decomposeVoxel(int x, int y, int z) const;
+    /// decompose a lattice translation vector (dx, dy, dz) = L * n; false if not on the lattice
+    bool decomposeLatticeVector(int dx, int dy, int dz, int & n0, int & n1, int & n2) const;
     /// column j of the lattice: the translations are its integer combinations
     void latticeColumn(int j, int & x, int & y, int & z) const { x = L[j]; y = L[3+j]; z = L[6+j]; }
 

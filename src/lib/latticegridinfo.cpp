@@ -261,6 +261,31 @@ int latticeGridInfo_c::base(int x, int y, int z) const {
   return ng->grid.getBaseForVoxelPosition(Vector<int>(x, y, z)).first;
 }
 
+unsigned int latticeGridInfo_c::baseCount(void) const {
+  return static_cast<unsigned int>(ng->inf->basePositions.size());
+}
+
+std::array<int, 3> latticeGridInfo_c::basePosition(unsigned int k) const {
+  bt_assert(k < ng->inf->basePositions.size());
+  const auto & p = ng->inf->basePositions[k];
+  return { p.x(), p.y(), p.z() };
+}
+
+std::pair<int, std::array<int, 3>> latticeGridInfo_c::decomposeVoxel(int x, int y, int z) const {
+  auto [b, e] = ng->grid.getBaseForVoxelPosition(Vector<int>(x, y, z));
+  return { b, { e.x(), e.y(), e.z() } };
+}
+
+bool latticeGridInfo_c::decomposeLatticeVector(int dx, int dy, int dz, int & n0, int & n1, int & n2) const {
+  auto [e, rem] = ng->grid.getEpipedAndRemainderForVoxelPosition(Vector<int>(dx, dy, dz));
+  if (rem.x() != 0 || rem.y() != 0 || rem.z() != 0)
+    return false;
+  n0 = e.x();
+  n1 = e.y();
+  n2 = e.z();
+  return true;
+}
+
 bool latticeGridInfo_c::isVoxel(int x, int y, int z) const {
   return base(x, y, z) >= 0;
 }
