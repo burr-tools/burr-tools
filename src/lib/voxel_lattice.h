@@ -69,6 +69,26 @@ class voxel_lattice_c : public voxel_c {
 
     const latticeGridInfo_c & info(void) const { return inf; }
 
+    /* whether scale(amount) is exact on this grid: every cell grown by
+     * amount about the origin is a union of cells of the grid. True for the
+     * cubes and triangular prisms; false for hexagons and Cairo pentagons,
+     * whose grown cells cut cells. The answer is computed once per grid and
+     * amount. */
+    bool canScale(unsigned int amount) const;
+
+    /* grows the shape by amount (canScale(amount) must hold, else nothing
+     * happens): each cell becomes the cells that fill it grown. With grid,
+     * only the cells along its edges and those on its faces towards an empty
+     * neighbour, so the shape's cells show as a frame (the editor's "Grid
+     * Scale"). */
+    void scale(unsigned int amount, bool grid = false) override;
+
+    /* moves the contents by a lattice vector, keeping the box: to the
+     * smallest coordinates they can have in it, or as near its middle as a
+     * lattice vector gets them (the editor's "origin" and "centre") */
+    void moveToOrigin(void);
+    void centreInBox(void);
+
   private:
 
     const latticeGridInfo_c & inf;

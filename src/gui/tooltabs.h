@@ -36,6 +36,8 @@ struct TaskPreviewInfo {
   int transformIdx = -1;       // voxel_c::transform() index, if this task calls transform()
   bool hasTranslate = false;   // true if this task is a literal cardinal/diagonal nudge
   int dx = 0, dy = 0, dz = 0;  // nudge delta in grid units, valid only when hasTranslate
+  bool hasPhysical = false;    // the nudge's direction in physical space (described grids,
+  float px = 0, py = 0, pz = 0;  // whose grid units are not physical ones)
 };
 
 // the class that contains the tool tab
@@ -121,6 +123,27 @@ class ToolTab_4 : public ToolTab {
 public:
 
   ToolTab_4(int x, int y, int w, int h);
+
+  void setVoxelSpace(puzzle_c * puz, unsigned int sh);
+
+  void cb_size(void);
+  void cb_transform(long task);
+  void applyTask(voxel_c * space, long task, TaskPreviewInfo * info = nullptr);
+};
+
+/* the tool tab of the described grids (NG's): the operations come from the
+ * grid's own transformations and lattice (latticeGridInfo_c::flip, turn,
+ * shiftVector; voxel_lattice_c::scale, moveToOrigin, centreInBox), and a
+ * button whose operation the grid lacks is greyed out */
+class ToolTab_lattice : public ToolTab {
+
+  ChangeSize * changeSize = nullptr;
+
+  void updateButtons(void);
+
+public:
+
+  ToolTab_lattice(int x, int y, int w, int h);
 
   void setVoxelSpace(puzzle_c * puz, unsigned int sh);
 

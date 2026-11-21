@@ -24,10 +24,17 @@
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
 #include "../lib/gridtype.h"
+#include "../lib/latticegridinfo.h"
+#include "../lib/symmetries.h"
+#include "../lib/voxel_lattice.h"
 #include "WindowWidgets.h"
 #include "guigridtype.h"
 #include <stdlib.h>
 #include <math.h>
+
+#include <functional>
+#include <memory>
+#include <string>
 
 #include "FL/fl_ask.H"
 #include "FL/Fl.H"
@@ -1307,6 +1314,220 @@ static int computeTransformGeometry(const voxel_c * origShape, int transformIdx,
   return 0;
 }
 
+/* ToolTab_lattice: the described grids */
+
+static void cb_ToolTabLatticeSize_stub(Fl_Widget* o, long /*v*/) { static_cast<ToolTab_lattice*>(o->parent()->parent()->parent())->cb_size(); }
+static void cb_ToolTabLatticeTransform_stub(Fl_Widget* o, long v) { static_cast<ToolTab_lattice*>(o->parent())->cb_transform(v); }
+static void cb_ToolTabLatticeTransform2_stub(Fl_Widget* o, long v) { static_cast<ToolTab_lattice*>(o->parent()->parent())->cb_transform(v); }
+
+/* every button of the tab that does task (the buttons pass their task as
+ * the callback's argument) */
+static void forTaskButtons(Fl_Group * g, long task, const std::function<void(Fl_Widget *)> & f) {
+  for (int i = 0; i < g->children(); i++) {
+    Fl_Widget * w = g->child(i);
+    if (dynamic_cast<LFlatButton_c *>(w)) {
+      if (w->argument() == task) f(w);
+    } else if (Fl_Group * sub = w->as_group()) {
+      forTaskButtons(sub, task, f);
+    }
+  }
+}
+
+ToolTab_lattice::ToolTab_lattice(int x, int y, int w, int h) : ToolTab(x, y, w, h) {
+
+  {
+    layouter_c * o = new layouter_c(0, 1, 1, 1);
+    o->label("Size");
+    o->pitch(3);
+
+    layouter_c *o2 = new layouter_c(0, 0, 1, 1);
+
+    changeSize = new ChangeSize(0, 1, 1, 1);
+    changeSize->callback(cb_ToolTabLatticeSize_stub);
+
+    toAll = new LFl_Check_Button("Apply to All Shapes", 0, 0, 1, 1);
+    toAll->tooltip(" If this is active, all operations (including transformations and constrains are done to all shapes ");
+    toAll->clear_visible_focus();
+    toAll->stretchHCenter();
+
+    o2->end();
+    o2->weight(1, 0);
+
+    (new LFl_Box(1, 0, 1, 1))->setMinimumSize(5, 0);
+
+    o2 = new SizeButtons(2, 0, 1, 1, true);
+    o2->callback(cb_ToolTabLatticeTransform2_stub);
+
+    o->end();
+  }
+  {
+    Fl_Group* o = new TransformButtons(0, 1, 1, 1, 0);
+    o->callback(cb_ToolTabLatticeTransform_stub);
+    o->hide();
+  }
+  {
+    Fl_Group* o = new ToolsButtons(0, 1, 1, 1);
+    o->callback(cb_ToolTabLatticeTransform_stub);
+    o->hide();
+  }
+
+  end();
+}
+
+void ToolTab_lattice::setVoxelSpace(puzzle_c * puz, unsigned int sh) {
+  puzzle = puz;
+  shape = sh;
+
+  bt_assert(!puzzle || puzzle->getGridType()->isDescribed());
+
+  if (puzzle && shape < puzzle->getNumberOfShapes())
+    changeSize->setXYZ(puzzle->getShape(shape)->getX(),
+        puzzle->getShape(shape)->getY(),
+        puzzle->getShape(shape)->getZ());
+  else
+    changeSize->setXYZ(0, 0, 0);
+
+  updateButtons();
+}
+
+void ToolTab_lattice::updateButtons(void) {
+
+  if (!puzzle) return;
+  const gridType_c * gt = puzzle->getGridType();
+  if (!gt->isDescribed()) return;
+  const latticeGridInfo_c & inf = latticeGridInfo_c::get(gt->getType());
+  std::unique_ptr<voxel_c> probe(gt->getVoxel(1, 1, 1, voxel_c::VX_EMPTY));
+  const voxel_lattice_c * lv = dynamic_cast<const voxel_lattice_c *>(probe.get());
+
+  auto set = [this](long task, bool on, const std::string & tip) {
+    forTaskButtons(this, task, [&](Fl_Widget * w) {
+      if (on) w->activate(); else w->deactivate();
+      if (!tip.empty()) w->copy_tooltip(tip.c_str());
+    });
+  };
+
+  // nudges: along the lattice vector nearest to each axis
+  static const char * const axisName[3] = {"X", "Y", "Z"};
+  for (int a = 0; a < 3; a++) {
+    int x, y, z;
+    const bool ok = inf.shiftVector(a, x, y, z);
+    float p[3] = {(float)x, (float)y, (float)z};
+    if (ok) inf.toPhysical(p[0], p[1], p[2]);
+    const bool straight = ok && std::fabs(p[(a+1)%3]) < 1e-4f && std::fabs(p[(a+2)%3]) < 1e-4f;
+    char tip[120];
+    snprintf(tip, sizeof(tip), " Shift up along %s%s ", axisName[a], straight ? "" : " (the nearest direction the grid has)");
+    set(2*a, ok, tip);
+    snprintf(tip, sizeof(tip), " Shift down along %s%s ", axisName[a], straight ? "" : " (the nearest direction the grid has)");
+    set(2*a+1, ok, tip);
+  }
+
+  // turns: clockwise 6, 9, 10 and anticlockwise 7, 8, 11 about x, y, z
+  static const long cw[3] = {6, 9, 10}, acw[3] = {7, 8, 11};
+  for (int a = 0; a < 3; a++) {
+    double deg = 0;
+    char tip[120];
+    const bool c = inf.turn(a, true, &deg) != TND;
+    snprintf(tip, sizeof(tip), " Rotate %.0f\u00b0 clockwise along %s-Axis ", deg, axisName[a]);
+    set(cw[a], c, c ? tip : "");
+    const bool ac = inf.turn(a, false, &deg) != TND;
+    snprintf(tip, sizeof(tip), " Rotate %.0f\u00b0 anticlockwise along %s-Axis ", deg, axisName[a]);
+    set(acw[a], ac, ac ? tip : "");
+  }
+
+  // flips 12, 13, 14
+  for (int a = 0; a < 3; a++)
+    set(12 + a, inf.flip(a) != TND, "");
+
+  set(22, lv && lv->canScale(2), "");
+  set(23, lv && lv->canScale(3), "");
+  set(41, lv && lv->canScale(5), "");
+  set(26, false, "");  // scaling down: not on any grid but the cubes (0.8 had it nowhere else either)
+}
+
+void ToolTab_lattice::cb_size(void) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    resizeSpace(toAll->value(), changeSize, puzzle, shape);
+    do_callback();
+  }
+}
+
+void ToolTab_lattice::applyTask(voxel_c * space, long task, TaskPreviewInfo * info) {
+
+  voxel_lattice_c * lv = dynamic_cast<voxel_lattice_c *>(space);
+  if (!lv) return;
+  const latticeGridInfo_c & inf = lv->info();
+
+  auto doTurn = [&](unsigned char t) {
+    if (t == TND) return;
+    space->transform(t);
+    if (info) info->transformIdx = t;
+  };
+
+  switch (task) {
+    case 0: case 1: case 2: case 3: case 4: case 5:
+      {
+        int x, y, z;
+        if (!inf.shiftVector(task / 2, x, y, z)) break;
+        if (task & 1) { x = -x; y = -y; z = -z; }
+        space->translate(x, y, z, 0);
+        if (info) {
+          float p[3] = {(float)x, (float)y, (float)z};
+          inf.toPhysical(p[0], p[1], p[2]);
+          info->hasPhysical = true;
+          info->px = p[0]; info->py = p[1]; info->pz = p[2];
+        }
+      }
+      break;
+    /* "clockwise" as on the cube grid's tab: the right-hand turn, seen
+     * looking along the axis (test_lattice_tools.cpp checks they agree) */
+    case  6: doTurn(inf.turn(0, true)); break;
+    case  7: doTurn(inf.turn(0, false)); break;
+    case  9: doTurn(inf.turn(1, true)); break;
+    case  8: doTurn(inf.turn(1, false)); break;
+    case 10: doTurn(inf.turn(2, true)); break;
+    case 11: doTurn(inf.turn(2, false)); break;
+    case 12: doTurn(inf.flip(0)); break;
+    case 13: doTurn(inf.flip(1)); break;
+    case 14: doTurn(inf.flip(2)); break;
+    case 15: space->minimizePiece(); break;
+    case 16: space->actionOnSpace(voxel_c::ACT_FIXED, true); break;
+    case 17: space->actionOnSpace(voxel_c::ACT_FIXED, false); break;
+    case 18: space->actionOnSpace(voxel_c::ACT_VARIABLE, true); break;
+    case 19: space->actionOnSpace(voxel_c::ACT_VARIABLE, false); break;
+    case 20: space->actionOnSpace(voxel_c::ACT_DECOLOR, true); break;
+    case 21: space->actionOnSpace(voxel_c::ACT_DECOLOR, false); break;
+    case 22: space->scale(2); break;
+    case 23: space->scale(3); break;
+    case 24: lv->moveToOrigin(); break;
+    case 25: lv->centreInBox(); break;
+    case 40: space->fillHoles(0); break;
+    case 41: space->scale(5, true); break;
+  }
+}
+
+void ToolTab_lattice::cb_transform(long task) {
+  if (puzzle && shape < puzzle->getNumberOfShapes()) {
+
+    int ss, se;
+
+    if (toAll->value() && ((task == 15) || ((task >= 22) && (task <= 25)))) {
+      ss = 0;
+      se = puzzle->getNumberOfShapes();
+    } else {
+      ss = shape;
+      se = shape+1;
+    }
+
+    for (int s = ss; s < se; s++) {
+      applyTask(puzzle->getShape(s), task);
+      puzzle->getShape(s)->initHotspot();
+    }
+
+    do_callback(this, user_data());
+  }
+}
+
 void ToolTab::previewTransform(long task, bool on) {
   ToolTabContainer *c = dynamic_cast<ToolTabContainer*>(parent());
   if (!c)
@@ -1326,6 +1547,12 @@ void ToolTab::previewTransform(long task, bool on) {
 
   if (info.transformIdx >= 0) {
     kind = computeTransformGeometry(puzzle->getShape(shape), info.transformIdx, axis, &angleDeg);
+  } else if (info.hasPhysical && (info.px || info.py || info.pz)) {
+    float len = sqrtf(info.px*info.px + info.py*info.py + info.pz*info.pz);
+    axis[0] = info.px/len;
+    axis[1] = info.py/len;
+    axis[2] = info.pz/len;
+    kind = 3;
   } else if (info.hasTranslate && (info.dx || info.dy || info.dz)) {
     float len = sqrtf((float)(info.dx*info.dx + info.dy*info.dy + info.dz*info.dz));
     axis[0] = info.dx/len;

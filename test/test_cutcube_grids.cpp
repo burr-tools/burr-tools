@@ -268,11 +268,11 @@ TEST_CASE("cut cube grids: new puzzles and conversions from bricks use the grids
   CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_RHOMBIC_TETRAHEDRA, cutCubeGrids_e::native));
   CHECK(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM));
   CHECK(gt::offeredForNewPuzzles(gt::GT_CAIRO_PRISM));
-  CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM, cutCubeGrids_e::native));
-  CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_CAIRO_PRISM, cutCubeGrids_e::native));
-  // triangular prisms on NG's grid, which the FLTK GUI cannot edit (C3)
+  CHECK(gt::offeredForNewPuzzles(gt::GT_HEXAGONAL_PRISM, cutCubeGrids_e::native));
+  CHECK(gt::offeredForNewPuzzles(gt::GT_CAIRO_PRISM, cutCubeGrids_e::native));
+  // the prisms on NG's grids, in every GUI (FLTK edits them since PR 30)
   CHECK(gt::offeredForNewPuzzles(gt::GT_DESCRIBED_TRIANGULAR_PRISM));
-  CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_DESCRIBED_TRIANGULAR_PRISM, cutCubeGrids_e::native));
+  CHECK(gt::offeredForNewPuzzles(gt::GT_DESCRIBED_TRIANGULAR_PRISM, cutCubeGrids_e::native));
   for (cutCubeGrids_e cut : {cutCubeGrids_e::ng, cutCubeGrids_e::native}) {
     CHECK(gt::offeredForNewPuzzles(gt::GT_BRICKS, cut));
     CHECK_FALSE(gt::offeredForNewPuzzles(gt::GT_TRIANGULAR_PRISM, cut));

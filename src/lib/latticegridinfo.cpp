@@ -361,6 +361,59 @@ unsigned char latticeGridInfo_c::flip(int axis) const {
   return TND;
 }
 
+unsigned char latticeGridInfo_c::turn(int axis, bool anticlockwise, double * degrees) const {
+  // the plane of the turn: a = the next axis, b = the one after (right handed)
+  const int a = (axis + 1) % 3, b = (axis + 2) % 3;
+  unsigned char best = TND;
+  double bestAngle = 0;
+  for (unsigned int t = 0; t < trans.size(); t++) {
+    const double * m = trans[t].phys;
+    const double det = m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]);
+    if (det < 0) continue;
+    // the axis stays where it is
+    bool fixes = true;
+    for (int r = 0; r < 3; r++)
+      fixes = fixes && std::fabs(m[3*r+axis] - (r == axis ? 1.0 : 0.0)) < 1e-6;
+    if (!fixes) continue;
+    // the angle by which e_a turns towards e_b
+    double ang = std::atan2(m[3*b+a], m[3*a+a]) * 180.0 / M_PI;
+    if (!anticlockwise) ang = -ang;
+    if (ang < -1e-6) ang += 360.0;
+    if (ang < 1e-6) continue;  // the identity
+    if (best == TND || ang < bestAngle - 1e-6) {
+      best = (unsigned char)t;
+      bestAngle = ang;
+    }
+  }
+  if (degrees) *degrees = bestAngle;
+  return best;
+}
+
+bool latticeGridInfo_c::shiftVector(int axis, int & x, int & y, int & z) const {
+  bool found = false;
+  double bestCos = 0, bestLen = 0;
+  const int R = 3;
+  for (int n0 = -R; n0 <= R; n0++)
+    for (int n1 = -R; n1 <= R; n1++)
+      for (int n2 = -R; n2 <= R; n2++) {
+        const int vx = L[0]*n0 + L[1]*n1 + L[2]*n2;
+        const int vy = L[3]*n0 + L[4]*n1 + L[5]*n2;
+        const int vz = L[6]*n0 + L[7]*n1 + L[8]*n2;
+        float p[3] = {(float)vx, (float)vy, (float)vz};
+        toPhysical(p[0], p[1], p[2]);
+        const double len = std::sqrt((double)p[0]*p[0] + (double)p[1]*p[1] + (double)p[2]*p[2]);
+        if (len < 1e-6 || p[axis] < 1e-6) continue;
+        const double c = p[axis] / len;
+        if (!found || c > bestCos + 1e-6 || (std::fabs(c - bestCos) <= 1e-6 && len < bestLen - 1e-6)) {
+          found = true;
+          bestCos = c;
+          bestLen = len;
+          x = vx; y = vy; z = vz;
+        }
+      }
+  return found;
+}
+
 void latticeGridInfo_c::toPhysical(float & x, float & y, float & z) const {
   const float a = x, b = y, c = z;
   x = v2p[0]*a + v2p[1]*b + v2p[2]*c;

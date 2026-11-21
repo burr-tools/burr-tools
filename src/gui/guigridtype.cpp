@@ -55,7 +55,9 @@ gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h
     case gridType_c::GT_SPHERES: return new gridTypeGui_2_c(x, y, w, h, gt);
     case gridType_c::GT_RHOMBIC: return new gridTypeGui_0_c(x, y, w, h, gt);
     case gridType_c::GT_TETRA_OCTA: return new gridTypeGui_0_c(x, y, w, h, gt);
-    default: return 0;
+    default:
+      if (gt->isDescribed()) return new gridTypeGui_lattice_c(x, y, w, h, gt);
+      return 0;
   }
 }
 
@@ -93,7 +95,10 @@ ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
     case gridType_c::GT_SPHERES: return new ToolTab_2(x, y, w, h);
     case gridType_c::GT_RHOMBIC: return new ToolTab_3(x, y, w, h);
     case gridType_c::GT_TETRA_OCTA: return new ToolTab_4(x, y, w, h);
-    default: return 0;
+    default:
+      // the described grids (NG's): one tab for all, from the grid's data
+      if (gt->isDescribed()) return new ToolTab_lattice(x, y, w, h);
+      return 0;
   }
 }
 

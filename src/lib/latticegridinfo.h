@@ -113,9 +113,22 @@ class latticeGridInfo_c {
     /// the linear part of t in physical space, row major
     void physicalMatrix(unsigned int t, double m[9]) const;
 
-    /// the transformation that mirrors in the plane perpendicular to
-    /// physical axis (0 x, 1 y, 2 z); TND when the grid has none
+    /**
+     * The editing operations of a shape editor's tool tab, from the grid's
+     * own transformations and lattice (physical axes: 0 x, 1 y, 2 z):
+     *  - flip(a): the mirror in the plane perpendicular to axis a;
+     *  - turn(a, anticlockwise): the turn about axis a by the smallest angle
+     *    the grid has, anticlockwise (right hand rule) or clockwise, with its
+     *    angle in degrees (180 is both);
+     *  - shiftVector(a): the lattice vector to nudge a shape by along +a: of
+     *    the lattice vectors with a positive component along a, the one at
+     *    the smallest angle to it, the shortest of those; -a nudges by its
+     *    negative, so the two undo each other.
+     * TND or false when the grid has none.
+     */
     unsigned char flip(int axis) const;
+    unsigned char turn(int axis, bool anticlockwise, double * degrees = nullptr) const;
+    bool shiftVector(int axis, int & x, int & y, int & z) const;
 
     /// physical position of the voxel coordinates (x, y, z), linear part only
     void toPhysical(float & x, float & y, float & z) const;

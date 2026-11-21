@@ -46,6 +46,13 @@ gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * /*gt*/
   end();
 }
 
+gridTypeGui_lattice_c::gridTypeGui_lattice_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
+
+  new LFl_Box("There are no parameters for this space grid!", x, y, w, h);
+
+  end();
+}
+
 
 class gridTypeInfos_c {
   public:

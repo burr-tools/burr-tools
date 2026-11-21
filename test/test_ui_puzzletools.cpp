@@ -38,9 +38,11 @@ TEST_CASE("newPuzzleGridTypes follows offeredForNewPuzzles for both NG and nativ
     CHECK(std::string(gridTypeDisplayName(c.type)) == c.name);
   }
 
-  // the FLTK GUI's: no prisms, it has no editor for NG's grids (C3)
+  // the native cut grids (the FLTK GUI's): the native rhombic and
+  // tetra-octa grids in place of NG's, the prisms as with NG's
   auto natList = newPuzzleGridTypes(cutCubeGrids_e::native);
-  REQUIRE(natList.size() == 4);
+  REQUIRE(natList.size() == 7);
+  CHECK(natList[1].type == gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM);
   for (const auto & c : natList)
     CHECK(gridType_c::offeredForNewPuzzles(c.type, cutCubeGrids_e::native));
 }

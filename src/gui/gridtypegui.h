@@ -54,6 +54,14 @@ class gridTypeGui_2_c : public gridTypeGui_c {
     gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * gt);
 };
 
+/* the described grids (NG's): no parameters */
+class gridTypeGui_lattice_c : public gridTypeGui_c {
+
+  public:
+
+    gridTypeGui_lattice_c(int x, int y, int w, int h, gridType_c * gt);
+};
+
 /* this window allows you to edit the parameters of one
  * grid type
  */

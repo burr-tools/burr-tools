@@ -132,16 +132,16 @@ class gridType_c {
     static bool isDescribed(gridType t) { return t >= GT_HEXAGONAL_PRISM && t < GT_NUM_GRIDS; }
     bool isDescribed(void) const { return isDescribed(type); }
 
-    /** the grids a user can create a puzzle on in the GUIs: bricks and
-     *  spheres; rhombic and tetra-octa on the grids `cut` says; with NG's
-     *  grids also triangular, hexagonal and Cairo prisms. The FLTK GUI
-     *  (native cut grids) has no editor for NG's grids, so it offers no
-     *  prisms. The cross-check grid GT_DESCRIBED_BRICKS is never offered. */
+    /** the grids a user can create a puzzle on in the GUIs: bricks,
+     *  spheres, and triangular, hexagonal and Cairo prisms (NG's grids,
+     *  which every GUI edits); rhombic and tetra-octa on the grids `cut`
+     *  says (the FLTK GUI keeps the native ones). The cross-check grid
+     *  GT_DESCRIBED_BRICKS is never offered. */
     static bool offeredForNewPuzzles(gridType t, cutCubeGrids_e cut = cutCubeGrids_e::ng) {
-      if (t == GT_BRICKS || t == GT_SPHERES) return true;
+      if (t == GT_BRICKS || t == GT_SPHERES || t == GT_DESCRIBED_TRIANGULAR_PRISM ||
+          t == GT_HEXAGONAL_PRISM || t == GT_CAIRO_PRISM) return true;
       if (cut != cutCubeGrids_e::ng) return t == GT_RHOMBIC || t == GT_TETRA_OCTA;
-      return t == GT_DESCRIBED_TRIANGULAR_PRISM || t == GT_RHOMBIC_TETRAHEDRA || t == GT_OCTAHEDRAL_TETRAHEDRA ||
-             t == GT_HEXAGONAL_PRISM || t == GT_CAIRO_PRISM;
+      return t == GT_RHOMBIC_TETRAHEDRA || t == GT_OCTAHEDRAL_TETRAHEDRA;
     }
 
     unsigned int getCapabilities(void) const;
