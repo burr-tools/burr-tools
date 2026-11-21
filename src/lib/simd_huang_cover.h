@@ -24,6 +24,7 @@
 #include "simd_bitset.h"
 #include "solver_config.h"
 #include "split_fanout.h"
+#include "subtree_progress.h"
 
 class ThreadBudget;
 
@@ -178,6 +179,14 @@ public:
    *  comparison cannot tell which one actually ran.
    */
   virtual const char * activeKernel() const = 0;
+
+  /** Where parallelSolve()'s workers publish their progress within the task
+   *  they hold (see subtree_progress.h); null: they publish nothing. Set
+   *  before the run, by the one who reads the slots. */
+  void setProgressSlots(workerProgressSlots_c * slots) { progressSlots = slots; }
+
+protected:
+  workerProgressSlots_c * progressSlots = nullptr;
 };
 
 /**
@@ -343,6 +352,13 @@ private:
     std::vector<uint32_t> frame_count;
     std::vector<size_t> frame_next;
     std::vector<size_t> frame_end;
+    // Progress within the task (see subtree_progress.h): the walk's
+    // tracker, the worker's slot (null: nothing published), the task's
+    // units now and as it started.
+    subtreeProgress_c progress;
+    std::atomic<double> *progressSlot = nullptr;
+    const size_t *progressUnits = nullptr;
+    size_t progressRootUnits = 0;
   };
 
   /* Hand the shallowest live frame's untried branches to the pool as a

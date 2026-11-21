@@ -115,7 +115,10 @@ private:
 
   /* one decision of the search stack; state 0: not looked at yet, 1: row x
    * is selected, 2: row x is discarded. closed: the search without x is not
-   * this stack's to do (donated, or never part of its seed).
+   * this stack's to do (donated, or never part of its seed). w: the share of
+   * the task this frame still stands for and has not searched (progress
+   * within the task, see subtree_progress.h): the whole node in state 0, the
+   * search without x in state 1, nothing in state 2.
    */
   struct Frame {
     uint32_t x = NONE;
@@ -123,6 +126,7 @@ private:
     uint32_t snap = 0;
     uint8_t state = 0;
     bool closed = false;
+    double w = 0;
   };
 
   /* everything a search changes; one per worker, copied from the base */
@@ -138,7 +142,22 @@ private:
     std::vector<uint32_t> snap;  // stack of saved list lengths, see snapshot()
     std::vector<uint32_t> sol;   // selected rows
     std::vector<Frame> frames;
+    // progress within the task: the shares searched and given away; with
+    // the frames' w they sum to 1
+    double done = 0;
+    double given = 0;
   };
+
+  /* where a worker publishes its progress within the task it holds */
+  struct Published {
+    std::atomic<double> * slot;
+    const size_t * units;   // the task's units now
+    size_t rootUnits;       // and as it started
+  };
+
+  /* the stack of a fresh task: its weight on the node to search and on the
+   * open frames of its seed, whose searches without their row are its too */
+  static void startProgress(State & st);
 
   struct Donor;
 
@@ -214,7 +233,7 @@ private:
 
   template <class Counter>
   bool run(State & st, ConsumeCallback & callback, const std::stop_token & stop,
-           Counter & iterations, Donor * donor) const;
+           Counter & iterations, Donor * donor, const Published * published = nullptr) const;
 };
 
 #endif // __CELLS_COVER_H__

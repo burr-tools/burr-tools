@@ -139,6 +139,9 @@ private:
    * save() persists them for a resume in another session.
    */
   std::vector<HuangSeed> pendingHuangPrefixes;
+  /* the workers' progress within the tasks they hold, while a search runs
+   * (see getFinished()) */
+  workerProgressSlots_c progressSlots;
   /* the seeds above are those of the Dancing Cells engine (CellsCover),
    * which only that engine can read; set whenever they are */
   bool pendingSeedsCells = false;

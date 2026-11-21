@@ -2737,28 +2737,34 @@ TEST_CASE("Huang parallel assembly progress is monotone and ends at 1.0",
   CHECK(finishedAtOne);
 }
 
-/* The Huang twin of "parallel assembly progress advances smoothly".
+/* The Huang twin of "parallel assembly progress advances smoothly", on both
+ * engines: Dancing Cells (bitParallel off) and the bit-parallel one.
  *
- * Burr-Glar's full solve on this path is several minutes, far longer than CI
- * can afford, so the run is stopped after a bounded budget and the assertions
- * are made on the partial curve: plateau length and granularity are shape
- * properties, not length properties. The terminal sample is dropped -- an
- * aborted run clears every in-flight term at once, so its endpoint is an
- * artifact of the abort rather than a point on the curve.
+ * Burr-Glar's full solve is longer than CI can afford, so the run is stopped
+ * after a bounded budget and the assertions are made on the partial curve:
+ * plateau length and granularity are shape properties, not length
+ * properties. The terminal sample is dropped -- an aborted run clears every
+ * in-flight term at once, so its endpoint is an artifact of the abort
+ * rather than a point on the curve.
  *
- * Measured on this machine, 3 s of Burr-Glar on the DLX path: without the
- * in-flight term the sample takes 11 distinct values of 129 with a 30.2%
- * plateau; with it, see the report for the current figures.
+ * The curve moves within a task only through the workers' progress slots
+ * (subtree_progress.h). Measured on this machine, 3 s of Burr-Glar on
+ * Dancing Cells: without them 5 to 8 distinct values of 149; with them 149
+ * of 149 and a 0.7% plateau.
  */
 TEST_CASE("Huang parallel assembly progress advances smoothly",
           "[assembler][parallel][progress]") {
-  ScopedNoSimd dlxPath;
+  const bool cells = GENERATE(true, false);
+  INFO((cells ? "Dancing Cells" : "bit-parallel"));
+  ScopedSettings engine;
+  engine->bitParallel = !cells;
 
   auto p = puzzle_c::load("examples/Burr-Glar.xmpuzzle");
   REQUIRE(p != nullptr);
   auto problem = p->getProblem(0);
   REQUIRE(problem != nullptr);
 
+  unsigned long iterations = 0;
   auto produce = [&]() {
     assembler_1_c assm(makeSolverSpec(*problem), bttest::settings());
     assm.setNumThreads(4);
@@ -2772,6 +2778,7 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
     /* drop the terminal sample of the stopped run before asserting on shape */
     REQUIRE(t.samples.size() > 1);
     t.samples.pop_back();
+    iterations = assm.getIterations();
     return t;
   };
   /* see the note on the handoff window on traceUntilMonotone */
@@ -2797,14 +2804,31 @@ TEST_CASE("Huang parallel assembly progress advances smoothly",
    */
   CHECK(*std::max_element(t.samples.begin(), t.samples.end()) < 1.0f);
 
-  /* No assertion on the SHAPE of the curve (how long it stands still,
-   * how many values it takes): neither engine publishes progress within a
-   * task, only whole tasks as they complete, so over a 3 s budget the curve
-   * moves in a few steps. The in-flight term this case was written for
-   * belonged to the dancing-links search, which is gone. Progress within a
-   * task is an open item of design/2026-11-19-ng-merge-plan.md (7.1); the
-   * shape assertions come back with it.
+  /* The two assertions about the SHAPE of the curve -- how long it can stand
+   * still and how many values it takes -- need the search to be running at a
+   * realistic node rate, because a worker publishes once every 4096 nodes and
+   * that is what sets how often the curve can move at all. This build does
+   * ~12.2M nodes in the budget, so a worker publishes every ~4 ms against a
+   * 20 ms sampling interval, and the curve has room to be smooth.
+   *
+   * A ThreadSanitizer build does ~253K -- 48x slower -- which stretches the
+   * publication interval to ~195 ms and makes the sampled curve a picture of
+   * the instrumentation rather than of the progress code: measured there,
+   * 22 distinct values of 114 with a 37% plateau, against 115 of 117 and 2.6%
+   * here. The case still runs under the sanitizer, and everything above this
+   * point is still asserted there, because what the sanitizer is for is the
+   * cross-thread publication these samples drive. Only the shape is left to
+   * builds that can produce one, and a build that cannot says so rather than
+   * passing quietly.
    */
+  if (iterations > 2000000) {
+    CHECK(t.longestPlateauFraction() < 0.5);
+    CHECK(t.distinctValues() > t.samples.size() / 10);
+  } else {
+    WARN("search too slow for the shape assertions: " << iterations
+         << " nodes, " << t.distinctValues() << " distinct of " << t.samples.size()
+         << ", longest plateau " << t.longestPlateauFraction());
+  }
 }
 
 /* A solve aborted on the parallel path leaves completedTasks and totalTasks

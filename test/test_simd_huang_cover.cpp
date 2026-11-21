@@ -20,6 +20,7 @@
  */
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_template_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 #include "src/lib/simd_bitset.h"
 
 #include <vector>
@@ -874,4 +875,52 @@ TEST_CASE("SimdHuangCover: donated rests replay the monotonic shape filter",
   CHECK(distinct.size() == 210);
   CHECK(sols.size() == 210);
   CHECK(completed_tasks.load() == total_tasks.load());
+}
+
+/* Progress within a task (subtree_progress.h): the tracker's done share only
+ * grows, a drained walk ends at exactly 1 less what was given away, a wrong
+ * child count cannot push it past that, and a published value never reaches
+ * the units its task still holds. */
+TEST_CASE("subtreeProgress_c conserves the task's weight", "[progress]") {
+  subtreeProgress_c p;
+  p.reset();
+  double last = 0;
+  auto grows = [&] {
+    CHECK(p.doneShare() >= last);
+    last = p.doneShare();
+  };
+
+  // root: 3 children; the first is a leaf, the second a node with 2
+  // children (one given away), the third skipped
+  p.setChildren(3);
+  p.beginSlot(); p.endSlot(); grows();
+  CHECK(p.doneShare() == Catch::Approx(1.0 / 3));
+  p.beginSlot(); p.push();
+  p.setChildren(2);
+  p.beginSlot(); p.push(); p.setChildren(5); p.pop(); grows();
+  const double given = p.takeRemaining(1);
+  CHECK(given == Catch::Approx(1.0 / 6));
+  p.pop(); grows();
+  p.beginSlot(); p.endSlot(); grows();
+  p.pop(); grows();
+  CHECK(p.doneShare() == Catch::Approx(1.0 - given));
+
+  // a child count too small and too large: still exactly 1 at the end
+  for (unsigned int claimed : {1u, 7u}) {
+    p.reset();
+    p.setChildren(claimed);
+    for (int k = 0; k < 4; k++) {
+      p.beginSlot();
+      p.endSlot();
+      CHECK(p.doneShare() <= 1.0 + 1e-12);
+    }
+    p.pop();
+    CHECK(p.doneShare() == Catch::Approx(1.0));
+  }
+
+  // never the task's last unit
+  CHECK(taskProgressUnits(1.0, 100, 100) == 99.0);
+  CHECK(taskProgressUnits(0.5, 100, 100) == 50.0);
+  CHECK(taskProgressUnits(0.9, 100, 40) == 39.0);
+  CHECK(taskProgressUnits(1.0, 1, 1) == 0.0);
 }

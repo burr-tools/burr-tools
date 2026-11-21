@@ -1156,6 +1156,9 @@ void assembler_1_c::search(unsigned int workers) {
   // The solver makes the pre-pool stop check itself (salvaging its
   // seeds), so the hook fires right before it.
   runPoolSeedHook();
+  // one slot per worker for its progress within the task it holds
+  progressSlots.reset(workers > 0 ? workers : 1);
+  solver->setProgressSlots(&progressSlots);
   solver->parallelSolve(
     workers,
     // consumed: done with this solution (delivered, filtered, or nobody
@@ -1228,6 +1231,8 @@ void assembler_1_c::search(unsigned int workers) {
     &huangSalvaged,
     &donations
   );
+  solver->setProgressSlots(nullptr);
+  progressSlots.clear();
 
   /* The stop-after-drain rule (see drainedPoolComplete): a stop that lands after every seeded task was
    * counted with nothing salvaged completes exactly as an unstopped run
@@ -1530,8 +1535,32 @@ float assembler_1_c::getFinished(void) const {
    */
   const size_t n = totalTasks.load(std::memory_order_acquire);
   if (n == 0) return 0;
-  const size_t done = completedTasks.load(std::memory_order_acquire);
-  const double erg = static_cast<double>(done) / static_cast<double>(n);
+
+  /* Plus how far each worker has got into the task it holds (see
+   * subtree_progress.h), read as a snapshot: the completed count, the
+   * slots, the count again. A worker clears its slot before it counts its
+   * task (with release), so a pair whose count did not move cannot hold a
+   * task twice; one whose count moved is retaken. Every pair is a floor
+   * (the count was read before the slots, so a slot still showing a task
+   * counted since is no second copy), so the largest is a safe answer even
+   * when no attempt comes out clean. A slot never reaches its task's units,
+   * so the value reaches 1 only when every task is counted.
+   *
+   * Summed in double: at a completed count near the total a float would
+   * round a tail fraction up to the total and report a finished search.
+   */
+  size_t done = completedTasks.load(std::memory_order_acquire);
+  double best = 0;
+  for (unsigned int attempt = 0; attempt < 4; attempt++) {
+    const double candidate = static_cast<double>(done) + progressSlots.sum();
+    if (candidate > best)
+      best = candidate;
+    const size_t after = completedTasks.load(std::memory_order_acquire);
+    if (after == done)
+      break;
+    done = after;
+  }
+  const double erg = best / static_cast<double>(n);
   return (erg > 1.0) ? 1.0f : static_cast<float>(erg);
 }
 

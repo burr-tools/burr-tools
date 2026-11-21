@@ -37,6 +37,7 @@ struct CellsCover::Donor {
   std::atomic<unsigned long> * count;
   uint64_t nextPoll;
   std::atomic<size_t> * total; // the run's progress units
+  size_t rootUnits;           // the task's units as it started
 };
 
 CellsCover::CellsCover(unsigned int num_columns_, unsigned int num_shapes_,
@@ -225,25 +226,54 @@ void CellsCover::unselect(State & st, uint32_t o) const {
  */
 void CellsCover::discard(State & st, size_t top) const {
   Frame & f = st.frames[top];
-  if (f.closed) {
+  // the frame's unsearched share goes on with the search without the row,
+  // or is done when there is none
+  const double w = f.w;
+  f.w = 0;
+  auto end = [&] {
+    st.done += w;
     st.frames.pop_back();
+  };
+  if (f.closed) {
+    end();
     return;
   }
   if (f.item != NONE) {
     const uint32_t have = st.cnt[f.item], min = items[f.item].min;
     if (have < min && st.size[f.item] < min - have + 1) {
-      st.frames.pop_back();
+      end();
       return;
     }
   }
   // a column short of its minimum without the row: nothing to search
   // (the row stays out until a frame below restores its lists)
   if (!hide(st, f.x)) {
-    st.frames.pop_back();
+    end();
     return;
   }
   f.state = 2;
   st.frames.emplace_back();
+  st.frames.back().w = w;
+}
+
+void CellsCover::startProgress(State & st) {
+  st.done = 0;
+  st.given = 0;
+  if (st.frames.empty())
+    return;
+  size_t open = 0;
+  for (Frame & f : st.frames) {
+    f.w = 0;
+    if (f.state == 1 && !f.closed)
+      open++;
+  }
+  // no better estimate: the node and each open frame's search without its
+  // row alike
+  const double share = 1.0 / static_cast<double>(open + 1);
+  for (Frame & f : st.frames)
+    if (f.state == 1 && !f.closed)
+      f.w = share;
+  st.frames.back().w = share;
 }
 
 /* Rebuild the stack a seed describes on a state with nothing selected.
@@ -315,16 +345,17 @@ void CellsCover::donateFrame(State & st, Donor & donor) const {
     // first, so a lost race costs nothing
     if (!donor.forced && !donor.pool->claim_work())
       return;
-    /* The piece without the row is usually the larger one, and it is the
-     * one handed on again, so a fixed share of the units runs out after a
-     * few hand-overs. Half, and a task down to its last unit gets one more
-     * (the total grows by one in a million, as at a stop: see TaskUnits).
+    /* The piece gets the units of its share of the task (the frame's w, as
+     * the progress within the task estimates it; see TaskUnits::give), so
+     * the bar moves on alike whichever worker searches it. A task down to
+     * its last unit gets one more (the total grows by one in a million, as
+     * at a stop: see TaskUnits).
      */
     if (*donor.units < 2) {
       donor.total->fetch_add(1, std::memory_order_relaxed);
       ++*donor.units;
     }
-    const size_t units = *donor.units / 2;
+    const size_t units = TaskUnits::give(*donor.units, donor.rootUnits, f.w);
     HuangSeed seed;
     for (size_t i = 0; i < k; i++) {
       seed.prefix.push_back(optNode[st.frames[i].x]);
@@ -334,6 +365,8 @@ void CellsCover::donateFrame(State & st, Donor & donor) const {
     seed.pivotShape.push_back(STEP_DISCARD);
     seed.units = units;
     f.closed = true;
+    st.given += f.w;
+    f.w = 0;
     *donor.units -= units;
     if (donor.count != nullptr)
       donor.count->fetch_add(1, std::memory_order_relaxed);
@@ -448,7 +481,7 @@ std::vector<HuangSeed> CellsCover::generateTasks(size_t target) const {
  */
 template <class Counter>
 bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_token & stop,
-                     Counter & iterations, Donor * donor) const {
+                     Counter & iterations, Donor * donor, const Published * published) const {
   uint64_t local = 0, flushed = 0;
   auto flush = [&] {
     iterations.fetch_add(local - flushed, std::memory_order_relaxed);
@@ -464,6 +497,7 @@ bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_tok
 
     if (state == 2) {
       // its row stays out until a frame below restores its lists
+      st.done += st.frames[top].w;
       st.frames.pop_back();
       continue;
     }
@@ -482,6 +516,9 @@ bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_tok
     // at most one shared add per 256 nodes (see SimdHuangCover::search)
     if (local - flushed >= 256)
       flush();
+    if (published != nullptr && (local & 0xFFF) == 0)
+      published->slot->store(taskProgressUnits(st.done, published->rootUnits, *published->units),
+                             std::memory_order_relaxed);
     if (donor != nullptr && local >= donor->nextPoll) {
       donor->nextPoll = local + donor->interval;
       if (donor->forced || donor->pool->wants_work())
@@ -491,6 +528,7 @@ bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_tok
     bool dead = false;
     uint32_t best = choose(st, dead);
     if (dead) {
+      st.done += st.frames[top].w;
       st.frames.pop_back();
       continue;
     }
@@ -519,6 +557,7 @@ bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_tok
         if (!cont)
           halt = true;
       }
+      st.done += st.frames[top].w;
       st.frames.pop_back();
       continue;
     }
@@ -528,12 +567,18 @@ bool CellsCover::run(State & st, ConsumeCallback & callback, const std::stop_tok
     f.x = cellOpt[st.set[itemBase[best]]];
     f.closed = false;
     const uint32_t x = f.x;
+    // the search with x gets the share one of the column's rows would get
+    // in a k-way branching; the rest stays with the frame
+    const uint32_t ways = st.size[best];
     if (fitsRange(st, x)) {
       const uint32_t snap = snapshot(st);
       st.frames[top].snap = snap;
       if (select(st, x)) {
+        const double ws = st.frames[top].w / static_cast<double>(ways > 0 ? ways : 1);
+        st.frames[top].w -= ws;
         st.frames[top].state = 1;
         st.frames.emplace_back();
+        st.frames.back().w = ws;
         continue;
       }
       restore(st, snap);
@@ -635,7 +680,9 @@ void CellsCover::parallelSolve(unsigned int num_workers, ConsumeCallback callbac
   std::mutex exception_mutex;
   std::mutex salvage_mutex;
 
-  auto worker_fn = [&](std::stop_token st = {}) {
+  auto worker_fn = [&](std::stop_token st, unsigned int workerIdx) {
+    // where this worker publishes its progress within a task, if anywhere
+    std::atomic<double> * slot = progressSlots != nullptr ? progressSlots->slot(workerIdx) : nullptr;
     try {
       State state;
       HuangSeed t;
@@ -647,12 +694,20 @@ void CellsCover::parallelSolve(unsigned int num_workers, ConsumeCallback callbac
             bt_te("CellsCover::parallelSolve: seed does not replay");
           size_t units = t.units;
           Donor donor{&pool, &units, donateEvery > 0 ? donateEvery : 256, donateEvery > 0,
-                      donations, 0, &total_tasks};
+                      donations, 0, &total_tasks, t.units};
           donor.nextPoll = donor.interval;
+          startProgress(state);
+          const Published published{slot, &units, t.units};
           const bool done = r == REPLAY_DEAD ||
-                            run(state, callback, stop, iterations, donate ? &donor : nullptr);
+                            run(state, callback, stop, iterations, donate ? &donor : nullptr,
+                                slot != nullptr ? &published : nullptr);
+          // the slot is cleared before the task's units are counted, so a
+          // reader never sees both (see assembler_1_c::getFinished())
+          if (slot != nullptr)
+            slot->store(0.0, std::memory_order_relaxed);
           if (done) {
-            completed_tasks.fetch_add(units, std::memory_order_relaxed);
+            // release: a reader that sees these units also sees the cleared slot
+            completed_tasks.fetch_add(units, std::memory_order_release);
           } else if (salvaged_seeds != nullptr) {
             HuangSeed rest = freeze(state);
             rest.units = units;
@@ -676,9 +731,9 @@ void CellsCover::parallelSolve(unsigned int num_workers, ConsumeCallback callbac
   std::vector<std::jthread> threads;
   threads.reserve(num_workers > 0 ? num_workers - 1 : 0);
   for (unsigned int i = 1; i < num_workers; i++)
-    threads.emplace_back(worker_fn);
+    threads.emplace_back([&worker_fn, i](std::stop_token st) { worker_fn(st, i); });
 
-  worker_fn();
+  worker_fn({}, 0);
 
   for (auto & th : threads)
     if (th.joinable())

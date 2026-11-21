@@ -744,12 +744,18 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   // Salvaged seeds from interrupted in-flight tasks. Shared across workers.
   std::mutex salvage_mutex;
 
-  auto worker_fn = [&](std::stop_token st = {}) {
+  auto worker_fn = [&](std::stop_token st, unsigned int workerIdx) {
+    // where this worker publishes its progress within a task, if anywhere
+    std::atomic<double> *slot = progressSlots != nullptr ? progressSlots->slot(workerIdx) : nullptr;
     try {
       SubtreeTask t;
       while (pool.pop_task(t, stop, st)) {
         try {
           std::atomic<uint64_t> task_iter{0};
+          t.ctx.progress.reset();
+          t.ctx.progressSlot = slot;
+          t.ctx.progressUnits = &t.units;
+          t.ctx.progressRootUnits = t.units;
           // Remainder of this task if the stop interrupts it (see
           // StopTrace): filled only on the stop path while search()
           // unwinds, empty when the task runs to completion.
@@ -789,6 +795,11 @@ void SimdHuangCover<BitsetType>::parallelSolve(
           search(t.depth, t.ctx, flushingCb, stop, task_iter, t.rest_skip);
           t.ctx.trace = nullptr;
           t.ctx.donor = nullptr;
+          t.ctx.progressSlot = nullptr;
+          // the slot is cleared before the task's units are counted, so a
+          // reader never sees both (see assembler_1_c::getFinished())
+          if (slot != nullptr)
+            slot->store(0.0, std::memory_order_relaxed);
 
           flushIterations(t.ctx, task_iter);
           iterations.fetch_add(task_iter.load(std::memory_order_relaxed), std::memory_order_relaxed);
@@ -796,7 +807,8 @@ void SimdHuangCover<BitsetType>::parallelSolve(
             // Fully searched, every solution delivered -- even if a stop
             // landed after the last branch (the trace is exact, unlike
             // re-reading the token).
-            completed_tasks.fetch_add(t.units, std::memory_order_relaxed);
+            // release: a reader that sees these units also sees the cleared slot
+            completed_tasks.fetch_add(t.units, std::memory_order_release);
           } else if (salvaged_seeds != nullptr) {
             // Interrupted: the pieces partition the task's unexplored
             // territory, so the task's units divide among them, at least
@@ -833,10 +845,10 @@ void SimdHuangCover<BitsetType>::parallelSolve(
   std::vector<std::jthread> threads;
   threads.reserve(num_workers - 1);
   for (unsigned int i = 1; i < num_workers; i++) {
-    threads.emplace_back(worker_fn);
+    threads.emplace_back([&worker_fn, i](std::stop_token st) { worker_fn(st, i); });
   }
 
-  worker_fn();
+  worker_fn({}, 0);
 
   for (auto &th : threads) {
     if (th.joinable())
@@ -880,6 +892,10 @@ void SimdHuangCover<BitsetType>::search(
     iterations.fetch_add(256, std::memory_order_relaxed);
     ctx.flushed_iterations += 256;
   }
+  if (ctx.progressSlot != nullptr && (ctx.local_iterations & 0xFFF) == 0)
+    ctx.progressSlot->store(taskProgressUnits(ctx.progress.doneShare(), ctx.progressRootUnits,
+                                              *ctx.progressUnits),
+                            std::memory_order_relaxed);
   if (ctx.donor != nullptr && ctx.local_iterations >= ctx.next_donate_poll) {
     ctx.next_donate_poll = ctx.local_iterations + ctx.donor->interval;
     if (ctx.donor->forced || ctx.donor->pool->wants_work())
@@ -1053,16 +1069,17 @@ void SimdHuangCover<BitsetType>::search(
   // With a donor the frame registers itself, and the loop end lives in ctx
   // so a donation from a deeper node can cut it (see donateFrame).
   size_t end = curr_active.size();
+  // The branching is the pivot's candidate count, col_counts (a weight
+  // sum for the range column, an estimate either way); min_metric weighs
+  // shape pivots by their remaining need, so it is no count. A rest (start > 0, root frame only)
+  // owns only the candidates from start on, and its units stand for
+  // those: count them, once per task.
+  unsigned int owned = ctx.col_counts[best_col];
+  for (size_t j = 0; j < start && owned > 0; j++)
+    if (coversPivot(rows[curr_active[j]], best_col))
+      owned--;
+  ctx.progress.setChildren(owned);
   if (ctx.donor != nullptr) {
-    // The branching is the pivot's candidate count, col_counts (a weight
-    // sum for the range column, an estimate either way); min_metric weighs
-    // shape pivots by their remaining need, so it is no count. A rest (start > 0, root frame only)
-    // owns only the candidates from start on, and its units stand for
-    // those: count them, once per task.
-    unsigned int owned = ctx.col_counts[best_col];
-    for (size_t j = 0; j < start && owned > 0; j++)
-      if (coversPivot(rows[curr_active[j]], best_col))
-        owned--;
     ctx.frame_col[depth] = best_col;
     ctx.frame_count[depth] = owned;
     ctx.frame_next[depth] = start;
@@ -1074,8 +1091,13 @@ void SimdHuangCover<BitsetType>::search(
     const uint32_t r_idx = curr_active[i];
     const auto &cand = rows[r_idx];
 
-    if (!coversPivot(cand, best_col) || !fitsBounds(cand, ctx))
+    if (!coversPivot(cand, best_col))
       continue;
+    ctx.progress.beginSlot();
+    if (!fitsBounds(cand, ctx)) {
+      ctx.progress.endSlot();
+      continue;
+    }
 
     // Place candidate row
     ctx.placed_voxels = ctx.placed_voxels | cand.voxel_mask;
@@ -1096,7 +1118,9 @@ void SimdHuangCover<BitsetType>::search(
 
     if (ctx.donor != nullptr)
       ctx.frame_next[depth] = i + 1;
+    ctx.progress.push();
     search(depth + 1, ctx, callback, stop, iterations);
+    ctx.progress.pop();
     if (ctx.donor != nullptr)
       end = ctx.frame_end[depth];
 
@@ -1193,6 +1217,7 @@ void SimdHuangCover<BitsetType>::donateFrame(unsigned int depth,
         return;
       ctx.frame_end[d] = next;
       ctx.donate_scan_from = d + 1;
+      ctx.progress.takeRemaining(d - ctx.root_depth);
       donor.task->units -= units;
       if (donor.count != nullptr)
         donor.count->fetch_add(1, std::memory_order_relaxed);
