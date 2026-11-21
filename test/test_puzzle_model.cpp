@@ -56,7 +56,7 @@ std::unique_ptr<puzzle_c> loadFreshPuzzle(const char * path) {
   std::unique_ptr<std::istream> str(openGzFile(path));
   REQUIRE(str != nullptr);
   xmlParser_c pars(*str);
-  return std::make_unique<puzzle_c>(pars);
+  return puzzle_c::read(pars);
 }
 
 /* examples/PelikanBurr.xmpuzzle's only problem is fully solved (state "2",

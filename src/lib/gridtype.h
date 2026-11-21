@@ -58,22 +58,22 @@ class gridType_c {
     /// the available grid types
     typedef enum {
       GT_BRICKS,                   ///< cubes
-      GT_TRIANGULAR_PRISM,         ///< triangles stacked in Z-direction
+      GT_TRIANGULAR_PRISM,         ///< triangles stacked in Z-direction: read only, converted to GT_DESCRIBED_TRIANGULAR_PRISM (C3)
       GT_SPHERES,                  ///< tightly packed spheres
       GT_RHOMBIC,                  ///< complicated cut cube to build rhombic dodecahedra
       GT_TETRA_OCTA,               ///< spacegrid for with tetrahedron and octrahera, also a cut cube
 
       /* Described grids: BurrTools NG's grids as data (src/lib/latticegrid,
        * design/2026-11-19-ng-merge-plan.md), one value per grid. Each maps to
-       * NG's storage id in latticeGridInfo_c. The two "described" copies of
-       * native grids exist to cross-check the described grids against the
-       * native ones; the GUIs do not offer them. */
+       * NG's storage id in latticeGridInfo_c. GT_DESCRIBED_BRICKS, a copy
+       * of a native grid, exists to cross-check the described grids against
+       * the native ones; the GUIs do not offer it. */
       GT_HEXAGONAL_PRISM,          ///< hexagons stacked in Z-direction (NG grid 3)
       GT_CAIRO_PRISM,              ///< Cairo pentagons stacked in Z-direction (NG grid 5)
       GT_RHOMBIC_TETRAHEDRA,       ///< NG's rhombic grid, each of our rhombic voxels is two of these (NG grid 1)
       GT_OCTAHEDRAL_TETRAHEDRA,    ///< NG's tetrahedra and octahedra, the cells of GT_TETRA_OCTA (NG grid 2)
       GT_DESCRIBED_BRICKS,         ///< cubes as a described grid, for cross-checks (NG grid 0)
-      GT_DESCRIBED_TRIANGULAR_PRISM, ///< triangular prisms as a described grid, for cross-checks (NG grid 4)
+      GT_DESCRIBED_TRIANGULAR_PRISM, ///< triangular prisms (NG grid 4), the grid of every triangular prism puzzle since C3
 
       GT_NUM_GRIDS                 ///< always the last entry, the number of different grids
     } gridType;

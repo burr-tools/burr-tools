@@ -170,58 +170,6 @@ TEST_CASE("Our cube rotation table is the cube part of NG's transformations", "[
     }
 }
 
-TEST_CASE("Our prism rotation table is the hexagonal part of NG's transformations", "[latticegrid]")
-{
-    initTables();
-
-    static const double ours[24][9] = {
-#include "lib/tabs_1/rotmatrix.inc"
-    };
-
-    // NG keeps the prism axis along (1,1,1); these take it to (0,0,1) and back
-    // (NG: test-symmetry.cpp)
-    const double fwd[9] = {std::sqrt(2.0 / 3), -1 / std::sqrt(6.0), -1 / std::sqrt(6.0),
-                           0,                  1 / (3 * std::sqrt(2.0)) + std::sqrt(2.0) / 3, -1 / (3 * std::sqrt(2.0)) - std::sqrt(2.0) / 3,
-                           1 / std::sqrt(3.0), 1 / std::sqrt(3.0), 1 / std::sqrt(3.0)};
-    const double inv[9] = {2 / std::sqrt(6.0),  0, 1 / std::sqrt(3.0), -1 / std::sqrt(6.0), 1 / std::sqrt(2.0), 1 / std::sqrt(3.0),
-                           -1 / std::sqrt(6.0), -1 / std::sqrt(2.0), 1 / std::sqrt(3.0)};
-
-    std::vector<int> found(24, -1);
-    for (int i = 0; i < 24; i++)
-    {
-        double b[9] = {0};
-        for (int x = 0; x < 3; x++)
-            for (int y = 0; y < 3; y++)
-                for (int z = 0; z < 3; z++) b[y * 3 + x] += fwd[x + z * 3] * ours[i][y * 3 + z];
-        double c[9] = {0};
-        for (int x = 0; x < 3; x++)
-            for (int y = 0; y < 3; y++)
-                for (int z = 0; z < 3; z++) c[y * 3 + x] += b[x + z * 3] * inv[y * 3 + z];
-
-        for (unsigned int j = 0; j < TRotation::NUM_ROTATION_MATRICES; j++)
-        {
-            const TRotation r(j);
-            const auto & m = r.matrix();
-            bool same = true;
-            for (int k = 0; k < 9; k++)
-                if (std::fabs(m.denominator() * c[k] - m[k]) > 1e-4) same = false;
-            if (same)
-            {
-                INFO("our transformation " << i << " matches two of NG's");
-                CHECK(found[i] == -1);
-                found[i] = static_cast<int>(j);
-            }
-        }
-    }
-
-    for (int i = 0; i < 24; i++)
-    {
-        INFO("our transformation " << i);
-        CHECK(found[i] >= 0);
-        if (found[i] >= 0) CHECK((i < 12) == (found[i] < TRotation::ROT_MIRROR));
-    }
-}
-
 TEST_CASE("NG's symmetry groups are closed and the full cube group has 24 rotations", "[latticegrid]")
 {
     initTables();

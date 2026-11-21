@@ -38,13 +38,6 @@ gridTypeGui_0_c::gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * /*gt*/
   end();
 }
 
-gridTypeGui_1_c::gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
-  new LFl_Box("There are no parameters for this space grid!\n"
-      "This space grid also has no disassembler (yet)", x, y, w, h);
-
-  end();
-}
-
 gridTypeGui_2_c::gridTypeGui_2_c(int x, int y, int w, int h, gridType_c * /*gt*/) {
 
   new LFl_Box("There are no parameters for this space grid!\n"

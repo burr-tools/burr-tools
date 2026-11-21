@@ -1000,8 +1000,7 @@ bool addFaces(Polyhedron * poly, const Manifold & m, const std::vector<vec3> & f
 
 bool handles(const voxel_c & v) {
   gridType_c::gridType t = v.getGridType()->getType();
-  return t == gridType_c::GT_TRIANGULAR_PRISM || t == gridType_c::GT_RHOMBIC || t == gridType_c::GT_TETRA_OCTA ||
-         gridType_c::isDescribed(t);
+  return t == gridType_c::GT_RHOMBIC || t == gridType_c::GT_TETRA_OCTA || gridType_c::isDescribed(t);
 }
 
 Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::string & err)
@@ -1072,7 +1071,7 @@ Polyhedron * polyhedron(const voxel_c & v, double g, double r, bool fills, std::
    * rhombic and tetra-octa grids */
   bits_s b;
   const gridType_c::gridType type = v.getGridType()->getType();
-  bool prism = type == gridType_c::GT_TRIANGULAR_PRISM;
+  bool prism = false;
   if (gridType_c::isDescribed(type)) {
     /* every facet on a coordinate axis: a cube, whose bevel must be the
      * same on all three axes; prism bits would take x as the prism axis

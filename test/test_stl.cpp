@@ -582,7 +582,6 @@ TEST_CASE("stl export: the coplanar merge the writer runs changes nothing for th
      if a mesher ever starts emitting mergeable geometry, this goes red and
      someone finds out. */
   gridType_c cube(gridType_c::GT_BRICKS);
-  gridType_c prism(gridType_c::GT_TRIANGULAR_PRISM);
 
   struct Shape { const char * name; int cells; };
   const Shape shapes[] = {
@@ -591,7 +590,7 @@ TEST_CASE("stl export: the coplanar merge the writer runs changes nothing for th
     { "plus",        3 },
   };
 
-  for (const gridType_c * gt : { &cube, &prism })
+  for (const gridType_c * gt : { &cube })
     for (const Shape & sh : shapes) {
       INFO("grid " << gridName(gt->getType()) << ", shape " << sh.name);
 
@@ -680,7 +679,7 @@ TEST_CASE("stl export: the cube exporter takes bevel and offset from a rotation 
 
 TEST_CASE("stl export: only the cube grid's exporter follows a rotation model", "[stl][rotations]") {
   for (gridType_c::gridType t : { gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA,
-                                  gridType_c::GT_TRIANGULAR_PRISM, gridType_c::GT_SPHERES }) {
+                                  gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM, gridType_c::GT_SPHERES }) {
     gridType_c grid(t);
     std::unique_ptr<stlExporter_c> stl(grid.getStlExporter());
     if (!stl)

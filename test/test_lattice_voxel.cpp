@@ -218,7 +218,6 @@ TEST_CASE("described grids: converted puzzles have the assemblies of the native 
     {"examples/DemoMirrorParadox.xmpuzzle", gridType_c::GT_DESCRIBED_BRICKS},
     {"examples/HexSticks.xmpuzzle", gridType_c::GT_RHOMBIC_TETRAHEDRA},
     {"examples/AugmentedSecondStellation.xmpuzzle", gridType_c::GT_RHOMBIC_TETRAHEDRA},
-    {"examples/Prisgon.xmpuzzle", gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM},
     {"examples/FourPieceTetrahedron.xmpuzzle", gridType_c::GT_OCTAHEDRAL_TETRAHEDRA},
   };
 
@@ -233,7 +232,7 @@ TEST_CASE("described grids: converted puzzles have the assemblies of the native 
 
   for (const auto & pz : puzzles) {
     INFO(pz.file);
-    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::nativeAll);
+    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::native);
     REQUIRE(p);
     std::unique_ptr<puzzle_c> c(convertToDescribed(p.get()));
     REQUIRE(c);
@@ -301,14 +300,15 @@ TEST_CASE("described grids: every described grid disassembles", "[lattice][disas
 TEST_CASE("described grids: converted puzzles have the native solutions, and NG's on the tetrahedron grids",
           "[lattice][disasm][solver]") {
   struct P { const char * file; long assemblies, solutions; };
-  /* bricks and prisms: compared with the native grid in the test; rhombic
+  /* bricks: compared with the native grid in the test (prisms have no
+   * native grid any more, C3: test_prism_import.cpp and the regression
+   * test cover them); rhombic
    * and tetra-octa have no disassembler natively, the counts there are
    * BurrTools NG's (bench/ng-crosscheck, fdae7951) */
   const P puzzles[] = {
     {"examples/CubeInCage.xmpuzzle", -1, -1},
     {"examples/PelikanBurr.xmpuzzle", -1, -1},
     {"examples/DemoMirrorParadox.xmpuzzle", -1, -1},
-    {"examples/Prisgon.xmpuzzle", -1, -1},
     {"examples/FourPieceTetrahedron.xmpuzzle", 1, 1},
     {"examples/HexSticks.xmpuzzle", 33, 2},
     {"examples/AugmentedSecondStellation.xmpuzzle", 2, 1},
@@ -316,7 +316,7 @@ TEST_CASE("described grids: converted puzzles have the native solutions, and NG'
 
   for (const auto & pz : puzzles) {
     INFO(pz.file);
-    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::nativeAll);
+    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::native);
     REQUIRE(p);
     std::unique_ptr<puzzle_c> c(convertToDescribed(p.get()));
     REQUIRE(c);

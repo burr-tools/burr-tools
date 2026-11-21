@@ -21,10 +21,10 @@
 
 namespace bttest {
 
-/** every grid type BurrTools supports, for parametrized cases */
+/** every grid type BurrTools supports, for parametrized cases (type 1, the
+ *  native triangular prisms, is only read and converted: C3) */
 inline const gridType_c::gridType ALL_GRIDS[] = {
   gridType_c::GT_BRICKS,
-  gridType_c::GT_TRIANGULAR_PRISM,
   gridType_c::GT_SPHERES,
   gridType_c::GT_RHOMBIC,
   gridType_c::GT_TETRA_OCTA,
@@ -41,7 +41,6 @@ inline const gridType_c::gridType ALL_GRIDS[] = {
  *  general; their voxel spaces are tested in test_lattice_voxel.cpp */
 inline const gridType_c::gridType NATIVE_GRIDS[] = {
   gridType_c::GT_BRICKS,
-  gridType_c::GT_TRIANGULAR_PRISM,
   gridType_c::GT_SPHERES,
   gridType_c::GT_RHOMBIC,
   gridType_c::GT_TETRA_OCTA,

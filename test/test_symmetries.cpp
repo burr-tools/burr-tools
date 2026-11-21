@@ -85,13 +85,11 @@ TEST_CASE("symmetries: transformation 0 is the identity", "[symmetry]") {
        the bounding box is still untouched, so compare with identicalInBB
        rather than ==.
 
-       KNOWN LIMITATION, GT_TRIANGULAR_PRISM and GT_SPHERES only:
-       voxel_1_c::transform() (src/lib/voxel_1.cpp:47) and
-       voxel_2_c::transform() (src/lib/voxel_2.cpp:33) both open with
-       `if (nr == 0) return true;` -- for these two grids transform(0) is a
-       hardcoded no-op that never reaches the rotation math at all. No
-       choice of fixture can turn this REQUIRE into a real check of
-       "transform 0 behaves as the identity" on those two grids: the code
+       KNOWN LIMITATION, GT_SPHERES only: voxel_2_c::transform()
+       (src/lib/voxel_2.cpp) opens with `if (nr == 0) return true;` -- for
+       this grid transform(0) is a hardcoded no-op that never reaches the
+       rotation math at all. No choice of fixture can turn this REQUIRE into
+       a real check of "transform 0 behaves as the identity" on that grid: the code
        guarantees `v` is untouched before this assertion even runs, so the
        assertion below is trivially true there by construction. It stays
        in the loop (rather than being skipped) so the case still documents
@@ -165,14 +163,11 @@ TEST_CASE("symmetries: transAdd composes transformations", "[symmetry]") {
        all identical -- the loop is purely deterministic, no RNG involved)
        before being encoded here. GT_BRICKS, GT_SPHERES, GT_RHOMBIC and
        GT_TETRA_OCTA all measure 576 (n=24, and voxel_0_c::transform, which
-       GT_RHOMBIC/GT_TETRA_OCTA delegate to after padding, never fails);
-       GT_TRIANGULAR_PRISM measures fewer because voxel_1_c::transform can
-       legitimately return false (src/lib/voxel_1.cpp:429). */
+       GT_RHOMBIC/GT_TETRA_OCTA delegate to after padding, never fails). */
     /* Described grids: their transformations are a group (every product
        exists) and voxel_lattice_c::transform never fails, so all n x n. */
     const unsigned int expectedChecked =
-      gt.isDescribed() ? n * n :
-      (t == gridType_c::GT_TRIANGULAR_PRISM) ? 144u : 576u;
+      gt.isDescribed() ? n * n : 576u;
     REQUIRE(checked == expectedChecked);
   }
 }

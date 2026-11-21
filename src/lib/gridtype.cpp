@@ -22,9 +22,7 @@
 
 #include "assembler_1.h"
 #include "movementcache_0.h"
-#include "movementcache_1.h"
 #include "voxel_0.h"
-#include "voxel_1.h"
 #include "voxel_2.h"
 #include "voxel_3.h"
 #include "voxel_4.h"
@@ -33,7 +31,6 @@
 #include "symmetries_lattice.h"
 #include "movementcache_lattice.h"
 #include "symmetries_0.h"
-#include "symmetries_1.h"
 #include "symmetries_2.h"
 #include "stl_0.h"
 #include "stl_2.h"
@@ -129,7 +126,6 @@ std::unique_ptr<movementCache_c> gridType_c::getMovementCache(std::shared_ptr<co
 {
   switch (type) {
     case GT_BRICKS:           return std::make_unique<movementCache_0_c>(puz);
-    case GT_TRIANGULAR_PRISM: return std::make_unique<movementCache_1_c>(puz);
     default:
       if (isDescribed(type) && latticeGridInfo_c::get(type).canDisassemble())
         return std::make_unique<movementCache_lattice_c>(puz, latticeGridInfo_c::get(type));
@@ -141,7 +137,8 @@ voxel_c * gridType_c::getVoxel(unsigned int x, unsigned int y, unsigned int z, v
 {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(x, y, z, this, init);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(x, y, z, this, init);
+    // type 1, the native triangular prisms: only read, to be converted (C3)
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(x, y, z, this, init);
     case GT_SPHERES:          return new voxel_2_c(x, y, z, this, init);
     case GT_RHOMBIC:          return new voxel_3_c(x, y, z, this, init);
     case GT_TETRA_OCTA:       return new voxel_4_c(x, y, z, this, init);
@@ -155,7 +152,7 @@ voxel_c * gridType_c::getVoxel(xmlParser_c & pars) const
 {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(pars, this);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(pars, this);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(pars, this);
     case GT_SPHERES:          return new voxel_2_c(pars, this);
     case GT_RHOMBIC:          return new voxel_3_c(pars, this);
     case GT_TETRA_OCTA:       return new voxel_4_c(pars, this);
@@ -169,7 +166,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c & orig) const
 {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(orig);
     case GT_SPHERES:          return new voxel_2_c(orig);
     case GT_RHOMBIC:          return new voxel_3_c(orig);
     case GT_TETRA_OCTA:       return new voxel_4_c(orig);
@@ -183,7 +180,7 @@ voxel_c * gridType_c::getVoxel(const voxel_c * orig) const
 {
   switch (type) {
     case GT_BRICKS:           return new voxel_0_c(orig);
-    case GT_TRIANGULAR_PRISM: return new voxel_1_c(orig);
+    case GT_TRIANGULAR_PRISM: return new voxel_0_c(orig);
     case GT_SPHERES:          return new voxel_2_c(orig);
     case GT_RHOMBIC:          return new voxel_3_c(orig);
     case GT_TETRA_OCTA:       return new voxel_4_c(orig);
@@ -203,7 +200,9 @@ const symmetries_c * gridType_c::getSymmetries(void) const
         sym = std::make_unique<symmetries_0_c>();
         break;
       case GT_TRIANGULAR_PRISM:
-        sym = std::make_unique<symmetries_1_c>();
+        /* type 1 is only read, to be converted (C3): reading checks a
+         * transformation against the count, which NG's prism grid shares */
+        sym = std::make_unique<symmetries_lattice_c>(latticeGridInfo_c::get(GT_DESCRIBED_TRIANGULAR_PRISM));
         break;
       case GT_SPHERES:
         sym = std::make_unique<symmetries_2_c>();
@@ -227,10 +226,7 @@ unsigned int gridType_c::getCapabilities(void) const
                                    | CAP_STLEXPORT
                                    ;
 
-    case GT_TRIANGULAR_PRISM: return CAP_ASSEMBLE
-                                   | CAP_DISASSEMBLE
-                                   | CAP_STLEXPORT
-                                   ;
+    case GT_TRIANGULAR_PRISM: return 0;  // only read, to be converted (C3)
 
     case GT_SPHERES:          return CAP_ASSEMBLE
                                    | CAP_STLEXPORT
@@ -266,7 +262,6 @@ stlExporter_c * gridType_c::getStlExporter(void) const
 {
   switch (type) {
     case GT_BRICKS:           return new stlExporter_0_c(true);
-    case GT_TRIANGULAR_PRISM: return new stlExporter_0_c();
     case GT_SPHERES:          return new stlExporter_2_c();
     case GT_RHOMBIC:          return new stlExporter_0_c();
     case GT_TETRA_OCTA:       return new stlExporter_0_c();
@@ -294,11 +289,6 @@ static const int kCubeRotMatrices[][9] = {
 };
 constexpr unsigned int kNumCubeTurns = sizeof(kCubeRotMatrices) / sizeof(kCubeRotMatrices[0]);
 
-// Native triangular prism rotation/mirror matrices (GT_TRIANGULAR_PRISM)
-static const double kPrismRotMatrices[][9] = {
-#include "tabs_1/rotmatrix.inc"
-};
-constexpr unsigned int kNumPrismTurns = sizeof(kPrismRotMatrices) / sizeof(kPrismRotMatrices[0]);
 
 // Native sphere rotation/mirror matrices (GT_SPHERES)
 static const double kSphereRotMatrices[][9] = {
@@ -348,24 +338,6 @@ int tetraOctaBaseIndex(int rx, int ry, int rz) {
   return -1;
 }
 
-// Exact native triangular prism voxel point transform (matches voxel_1_c::transformPoint)
-vec3i_t transformPrismVoxel(vec3i_t v, unsigned int turn) {
-  const double xs = 0.5 + 0.5 * v.x;
-  double ys = v.y * std::sqrt(0.75);
-  const double zs = v.z;
-  ys += ((v.x + v.y) & 1) ? std::sqrt(1.0 / 3.0) : std::sqrt(1.0 / 12.0);
-
-  const double * rm = kPrismRotMatrices[turn];
-  double xpn = rm[0] * xs + rm[1] * ys + rm[2] * zs;
-  double ypn = rm[3] * xs + rm[4] * ys + rm[5] * zs;
-  double zpn = rm[6] * xs + rm[7] * ys + rm[8] * zs;
-
-  xpn = (xpn - 0.5) * 2.0;
-  ypn /= std::sqrt(0.75);
-
-  return { roundNear(xpn), static_cast<int>(std::floor(ypn)), roundNear(zpn) };
-}
-
 // Exact voxel-space point transform for periodic grids (not GT_SPHERES).
 // For GT_RHOMBIC and GT_TETRA_OCTA, negating an axis reflects about the
 // cell-period centre (x -> -x - 1), matching voxel_3_c / voxel_4_c's
@@ -392,8 +364,6 @@ vec3i_t transformPeriodicVoxel(const gridType_c & gt, vec3i_t v, unsigned int tu
         rm[6] * v.x + rm[7] * v.y + rm[8] * v.z + sz
       };
     }
-    case gridType_c::GT_TRIANGULAR_PRISM:
-      return transformPrismVoxel(v, turn);
     default: {
       bt_assert(gt.isDescribed());
       int x = v.x, y = v.y, z = v.z;
@@ -469,7 +439,6 @@ const periodicCellTable_s & periodicCellTable(gridType_c::gridType t) {
 unsigned int gridType_c::kindCount(void) const {
   switch (type) {
     case GT_BRICKS:           return 1;
-    case GT_TRIANGULAR_PRISM: return 2;
     case GT_SPHERES:          return 1;
     case GT_RHOMBIC:          return 24;
     case GT_TETRA_OCTA:       return 10;
@@ -487,9 +456,6 @@ vec3i_t gridType_c::cellToVoxel(cellAddr_t c) const {
   switch (type) {
     case GT_BRICKS:
       return c.n;
-
-    case GT_TRIANGULAR_PRISM:
-      return { 2 * c.n.x + c.n.y + static_cast<int>(c.k), c.n.y, c.n.z };
 
     case GT_SPHERES:
       return { 2 * c.n.x + c.n.y + c.n.z, c.n.y, c.n.z };
@@ -529,13 +495,6 @@ std::optional<cellAddr_t> gridType_c::voxelToCell(vec3i_t v) const {
   switch (type) {
     case GT_BRICKS:
       return cellAddr_t{ v, 0 };
-
-    case GT_TRIANGULAR_PRISM: {
-      const uint16_t k = static_cast<uint16_t>((v.x + v.y) & 1);
-      // v.x - v.y - k is always even because (v.x - v.y) has same parity as (v.x + v.y).
-      const int n0 = (v.x - v.y - static_cast<int>(k)) / 2;
-      return cellAddr_t{ { n0, v.y, v.z }, k };
-    }
 
     case GT_SPHERES: {
       if (((v.x + v.y + v.z) & 1) != 0)
@@ -587,8 +546,6 @@ vec3i_t gridType_c::latticeToVoxelDelta(vec3i_t dn) const {
   switch (type) {
     case GT_BRICKS:
       return dn;
-    case GT_TRIANGULAR_PRISM:
-      return { 2 * dn.x + dn.y, dn.y, dn.z };
     case GT_SPHERES:
       return { 2 * dn.x + dn.y + dn.z, dn.y, dn.z };
     case GT_RHOMBIC:
@@ -615,9 +572,6 @@ std::optional<vec3i_t> gridType_c::voxelDeltaToLattice(vec3i_t dv) const {
   switch (type) {
     case GT_BRICKS:
       return dv;
-    case GT_TRIANGULAR_PRISM:
-      if ((dv.x + dv.y) & 1) return std::nullopt;
-      return vec3i_t{ (dv.x - dv.y) / 2, dv.y, dv.z };
     case GT_SPHERES:
       if ((dv.x + dv.y + dv.z) & 1) return std::nullopt;
       return vec3i_t{ (dv.x - dv.y - dv.z) / 2, dv.y, dv.z };
@@ -738,8 +692,6 @@ std::optional<vec3i_t> gridType_c::transformVoxelOffset(vec3i_t p, vec3i_t ref, 
         rm[6] * d.x + rm[7] * d.y + rm[8] * d.z
       };
     }
-    case GT_TRIANGULAR_PRISM:
-      return transformPrismVoxel(p, turn) - transformPrismVoxel(ref, turn);
     case GT_SPHERES: {
       const vec3i_t d = p - ref;
       const double * rm = kSphereRotMatrices[turn];
@@ -772,8 +724,6 @@ mat3d_t gridType_c::physicalTransformMatrix(unsigned int turn) const {
     case GT_TETRA_OCTA:
       for (int i = 0; i < 9; i++) m[i] = static_cast<double>(kCubeRotMatrices[turn][i]);
       return mat3d_t::fromArray(m);
-    case GT_TRIANGULAR_PRISM:
-      return mat3d_t::fromArray(kPrismRotMatrices[turn]);
     case GT_SPHERES:
       return mat3d_t::fromArray(kSphereRotMatrices[turn]);
     default:

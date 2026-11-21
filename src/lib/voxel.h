@@ -384,7 +384,7 @@ public:
    * around the origin
    *
    * NOTE: on grids whose integer (x,y,z) coordinates are not a plain scaled
-   * copy of a Cartesian frame (currently GT_TRIANGULAR_PRISM), this is not
+   * copy of a Cartesian frame, this is not
    * actually linear: a parity-dependent offset is folded in as part of
    * converting to and from the grid's own coordinate representation, so
    * feeding it, say, unit basis vectors does not recover the transformation's

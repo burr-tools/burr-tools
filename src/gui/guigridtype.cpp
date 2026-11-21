@@ -21,7 +21,6 @@
 #include "guigridtype.h"
 
 #include "grideditor_0.h"
-#include "grideditor_1.h"
 #include "grideditor_2.h"
 #include "grideditor_3.h"
 #include "grideditor_4.h"
@@ -35,7 +34,6 @@ guiGridType_c::guiGridType_c(gridType_c * g) : gt(g) { }
 gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c * puzzle) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridEditor_0_c(x, y, w, h, puzzle);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new gridEditor_1_c(x, y, w, h, puzzle);
     case gridType_c::GT_SPHERES: return new gridEditor_2_c(x, y, w, h, puzzle);
     case gridType_c::GT_RHOMBIC: return new gridEditor_3_c(x, y, w, h, puzzle);
     case gridType_c::GT_TETRA_OCTA: return new gridEditor_4_c(x, y, w, h, puzzle);
@@ -50,7 +48,6 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
 gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h) {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new gridTypeGui_0_c(x, y, w, h, gt);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new gridTypeGui_1_c(x, y, w, h, gt);
     case gridType_c::GT_SPHERES: return new gridTypeGui_2_c(x, y, w, h, gt);
     case gridType_c::GT_RHOMBIC: return new gridTypeGui_0_c(x, y, w, h, gt);
     case gridType_c::GT_TETRA_OCTA: return new gridTypeGui_0_c(x, y, w, h, gt);
@@ -62,7 +59,6 @@ gridTypeGui_c * guiGridType_c::getConfigurationDialog(int x, int y, int w, int h
 char * guiGridType_c::getIcon(void) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return 0;
-    case gridType_c::GT_TRIANGULAR_PRISM: return 0;
     case gridType_c::GT_SPHERES: return 0;
     case gridType_c::GT_RHOMBIC: return 0;
     case gridType_c::GT_TETRA_OCTA: return 0;
@@ -90,7 +86,6 @@ const char * guiGridType_c::getName(void) const {
 ToolTab * guiGridType_c::getToolTab(int x, int y, int w, int h) const {
   switch(gt->getType()) {
     case gridType_c::GT_BRICKS: return new ToolTab_0(x, y, w, h);
-    case gridType_c::GT_TRIANGULAR_PRISM: return new ToolTab_1(x, y, w, h);
     case gridType_c::GT_SPHERES: return new ToolTab_2(x, y, w, h);
     case gridType_c::GT_RHOMBIC: return new ToolTab_3(x, y, w, h);
     case gridType_c::GT_TETRA_OCTA: return new ToolTab_4(x, y, w, h);

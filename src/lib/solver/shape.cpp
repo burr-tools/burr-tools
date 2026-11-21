@@ -229,10 +229,6 @@ std::unique_ptr<voxel_c> shape_c::toVoxel(const gridType_c & grid) const {
     case gridType_c::GT_BRICKS:
       vx = mx; vy = my; vz = mz;
       break;
-    case gridType_c::GT_TRIANGULAR_PRISM:
-      vx = mx; vy = my; vz = mz;
-      if ((vx + vy) & 1) vx--;
-      break;
     case gridType_c::GT_SPHERES:
       vx = mx; vy = my; vz = mz;
       if ((vx + vy + vz) & 1) vx--;

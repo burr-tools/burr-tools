@@ -338,7 +338,6 @@ TEST_CASE("voxel: minimizePiece crops away the padding on every grid -- to a spa
 
   const Expect expected[] = {
     { gridType_c::GT_BRICKS,           2, 1, 1 },
-    { gridType_c::GT_TRIANGULAR_PRISM, 2, 1, 1 },
     { gridType_c::GT_SPHERES,          2, 1, 1 },
     { gridType_c::GT_RHOMBIC,          5, 5, 5 },   // rounded up to a multiple of 5
     { gridType_c::GT_TETRA_OCTA,       3, 3, 3 },   // rounded up to a multiple of 3
@@ -498,10 +497,9 @@ TEST_CASE("voxel: the hotspot defaults to the origin and moves when set", "[voxe
    Scaling is not a universal operation. voxel_c::scale() and
    voxel_c::scaleDown() are no-op defaults -- the header says so outright,
    "not all grids have such a possibility (e.g. spheres can't be scaled)".
-   GT_SPHERES overrides neither, so scaling it does nothing;
-   GT_TRIANGULAR_PRISM overrides scale but not scaleDown, so it scales up
-   and never back down. A case asserting "scaling up multiplies the filled
-   count by eight" cannot hold on all five, and loosening it until it does
+   GT_SPHERES overrides neither, so scaling it does nothing. A case
+   asserting "scaling up multiplies the filled count by eight" cannot hold
+   on all of them, and loosening it until it does
    would leave an assertion satisfied by a scale() that did nothing at all.
 
    More fundamentally, an ASCII fixture is not a legal shape on the sparse
@@ -647,9 +645,6 @@ TEST_CASE("voxel: each grid's lattice predicates are the ones its geometry relie
     { gridType_c::GT_BRICKS,
       [](int, int, int)          { return true; },
       [](int, int, int)          { return true; } },
-    { gridType_c::GT_TRIANGULAR_PRISM,
-      [](int, int, int)          { return true; },
-      [](int x, int y, int)      { return ((x + y) & 1) == 0; } },
     { gridType_c::GT_SPHERES,
       [](int x, int y, int z)    { return ((x + y + z) & 1) == 0; },
       [](int x, int y, int z)    { return ((x + y + z) & 1) == 0; } },
@@ -804,7 +799,6 @@ TEST_CASE("voxel: which coordinates hold a cell at all differs by grid", "[voxel
 
   const Expect expected[] = {
     { gridType_c::GT_BRICKS,           27 },   // dense: every coordinate is a cube
-    { gridType_c::GT_TRIANGULAR_PRISM, 27 },   // dense: the subdivision is within a cell
     { gridType_c::GT_SPHERES,          14 },
     { gridType_c::GT_RHOMBIC,           6 },
     { gridType_c::GT_TETRA_OCTA,        5 },
@@ -832,8 +826,7 @@ TEST_CASE("voxel: the origin is a cell on the dense grids and not on the rhombic
   /* The specific fact that makes cube-grid ASCII art meaningless on those
      two, stated on its own so a reader meets it directly rather than having
      to infer it from a count. */
-  for (gridType_c::gridType t : { gridType_c::GT_BRICKS, gridType_c::GT_TRIANGULAR_PRISM,
-                                  gridType_c::GT_SPHERES }) {
+  for (gridType_c::gridType t : { gridType_c::GT_BRICKS, gridType_c::GT_SPHERES }) {
     INFO("grid " << gridName(t));
     gridType_c gt(t);
     REQUIRE(makeVoxel(gt, 6, 6, 6)->validCoordinate(0, 0, 0));
@@ -865,7 +858,6 @@ TEST_CASE("voxel: scaling up is implemented by some grids and is a documented no
 
   const Expect expected[] = {
     { gridType_c::GT_BRICKS,           true,  true  },
-    { gridType_c::GT_TRIANGULAR_PRISM, true,  true  },
     { gridType_c::GT_SPHERES,          false, false },   // overrides neither; cannot be scaled
     { gridType_c::GT_RHOMBIC,          true,  false },
     { gridType_c::GT_TETRA_OCTA,       true,  false },
@@ -912,11 +904,8 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
      recording because "overrides scaleDown" does NOT imply "can scale
      down":
 
-       - GT_TRIANGULAR_PRISM and GT_SPHERES inherit voxel_c::scaleDown
-         (voxel.cpp:339), which returns false unconditionally. The prism is
-         the interesting one: it overrides scale() but not scaleDown(), so
-         it can be scaled up and never back down -- an asymmetry that is
-         invisible from the header's grid list.
+       - GT_SPHERES inherits voxel_c::scaleDown (voxel.cpp), which returns
+         false unconditionally.
        - GT_RHOMBIC and GT_TETRA_OCTA do override scaleDown
          (voxel_3.cpp:449, voxel_4.cpp:302), but both overrides are stubs
          that likewise return false unconditionally.
@@ -931,7 +920,6 @@ TEST_CASE("voxel: scaleDown reports whether the grid supports it before doing an
 
   const Expect expected[] = {
     { gridType_c::GT_BRICKS,           true  },
-    { gridType_c::GT_TRIANGULAR_PRISM, false },   // overrides scale() but not scaleDown()
     { gridType_c::GT_SPHERES,          false },   // inherits the base no-op
     { gridType_c::GT_RHOMBIC,          false },   // overrides scaleDown, but the override is a stub
     { gridType_c::GT_TETRA_OCTA,       false },   // likewise a stub override

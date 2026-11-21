@@ -213,11 +213,12 @@ TEST_CASE("flat style: the outline follows each face's sides, not the fan's diag
   CHECK((a.edge[0] == 1.0f || a.edge[0] == 1.0f + kNoOutline));
 
   // a triangle grid's faces are outlined all round
-  gridType_c tri(gridType_c::GT_TRIANGULAR_PRISM);
-  auto p = bttest::makeVoxel(tri, 2, 2, 1);
-  for (unsigned x = 0; x < 2; x++)
-    for (unsigned y = 0; y < 2; y++)
-      if (p->validCoordinate(x, y, 0)) p->setState(x, y, 0, voxel_c::VX_FILLED);
+  gridType_c tri(gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM);
+  auto p = bttest::makeVoxel(tri, 4, 4, 4);
+  for (unsigned x = 0; x < 4; x++)
+    for (unsigned y = 0; y < 4; y++)
+      for (unsigned z = 0; z < 4; z++)
+        if (p->validCoordinate(x, y, z)) p->setState(x, y, z, voxel_c::VX_FILLED);
   const ShapeMesh pm = buildShapeMesh(*p, blue());
   REQUIRE_FALSE(pm.opaque.empty());
   int full = 0;

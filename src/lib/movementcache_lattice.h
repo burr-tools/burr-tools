@@ -33,7 +33,8 @@ class latticeGridInfo_c;
  * design/2026-11-19-ng-merge-plan.md): the directions are NG's movement
  * vectors, and a voxel may advance one step when the cells NG derived for
  * its kind and the direction (from the voxel polyhedra) are empty, as
- * movementCache_1_c does with its hand-made table for prisms.
+ * the removed native prism cache (movementCache_1_c) did with a hand-made
+ * table.
  */
 class movementCache_lattice_c : public movementCache_c {
 

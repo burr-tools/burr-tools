@@ -17,7 +17,6 @@
 #include "lib/gridtype.h"
 #include "lib/movementcache.h"
 #include "lib/movementcache_0.h"
-#include "lib/movementcache_1.h"
 #include "lib/movementanalysator.h"
 #include "lib/solution.h"
 #include "tools/xml.h"
@@ -980,24 +979,15 @@ problem_c & cubeInCageProblem() {
   return *puzzle->getProblem(0);
 }
 
-/* gridType_c::getMovementCache() returns a movementCache_1_c only for
-   GT_TRIANGULAR_PRISM, a grid CubeInCage does not use (it is GT_BRICKS). So
-   covering movementCache_1_c needs a puzzle on that other grid --
-   examples/Prisgon.xmpuzzle is one such bundled example puzzle (so is
-   examples/Bermuda.xmpuzzle, but Prisgon is the one loaded here). This is a
-   third load overall (a different puzzle entirely), which the CubeInCage
-   helper could never have supplied however it were reshaped.
-
-   The file is opened once, via a function-local static, and both problem 0
-   (used below for movementCache_1_c coverage) and problem 1 (used by
-   prisgonBranchingTree() further down for a branching separation tree) are
-   handed out of this single load. */
+/* examples/Prisgon.xmpuzzle, a triangular prism puzzle, read onto NG's grid
+   as every reader does (C3), with its saved disassemblies converted: problem
+   1 has a branching separation tree (prisgonBranchingTree() below). The
+   file is opened once, via a function-local static. */
 puzzle_c & prisgonPuzzle() {
   static const std::unique_ptr<puzzle_c> puzzle = [] {
-    std::unique_ptr<std::istream> str(openGzFile("examples/Prisgon.xmpuzzle"));
-    REQUIRE(str != nullptr);
-    xmlParser_c pars(*str);
-    return std::make_unique<puzzle_c>(pars);
+    std::unique_ptr<puzzle_c> p = puzzle_c::load("examples/Prisgon.xmpuzzle");
+    REQUIRE(p != nullptr);
+    return p;
   }();
   return *puzzle;
 }
@@ -1271,86 +1261,16 @@ TEST_CASE("movement cache: the table still holds every entry after it has grown"
   REQUIRE(cache.calculations == afterFill + 1);
 }
 
-TEST_CASE("movement cache: the triangular-prism grid yields a movementCache_1_c -- and repeating a query returns the identical value", "[disasm][movementcache]") {
-  // GT_TRIANGULAR_PRISM is the only other grid type gridType_c::getMovementCache()
-  // implements (see src/lib/gridtype.cpp); examples/Prisgon.xmpuzzle is a
-  // bundled example on that grid (examples/Bermuda.xmpuzzle is another).
-  problem_c & problem = prisgonProblem();
-  const gridType_c * gt = problem.getPuzzle().getGridType();
-  REQUIRE(gt->getType() == gridType_c::GT_TRIANGULAR_PRISM);
-
-  std::unique_ptr<movementCache_c> cache(gt->getMovementCache(makeSolverSpec(problem)));
-  REQUIRE(cache != nullptr);
-  REQUIRE(dynamic_cast<movementCache_1_c *>(cache.get()) != nullptr);
-  REQUIRE(cache->numDirections() == 4);
-
-  // piece 6 relative to piece 0, taken from Prisgon's saved solution. As
-  // above, the expected values were established by running this exact query.
-  MoQuery q = queryFromSolution(problem, 0, 6);
-
-  unsigned int first[4];
-  cache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, first);
-  CHECK(first[0] == 1u);
-  CHECK(first[1] == 1u);
-  CHECK(first[2] == 2u);
-  CHECK(first[3] == 0u);
-
-  unsigned int second[4];
-  cache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, second);
-  CHECK(second[0] == first[0]);
-  CHECK(second[1] == first[1]);
-  CHECK(second[2] == first[2]);
-  CHECK(second[3] == first[3]);
-}
-
-TEST_CASE("movement cache: triangular-prism grid queries for a set of piece pairs do not depend on the order they are asked in", "[disasm][movementcache]") {
-  // as with the cube-grid case above: two FRESH cache instances, one
-  // populated forward and one in reverse, so a leak between entries during
-  // insertion would actually have a chance to show up.
-  problem_c & problem = prisgonProblem();
-  const gridType_c * gt = problem.getPuzzle().getGridType();
-
-  struct Expected { unsigned int p1, p2; unsigned int move[4]; };
-  const Expected cases[] = {
-    { 0, 6, { 1, 1, 2, 0 } },
-    { 0, 7, { 1, 1, 1, 0 } },
-    { 5, 7, { 0, 32000, 1, 1 } },
-  };
-
-  std::unique_ptr<movementCache_c> forwardCache(gt->getMovementCache(makeSolverSpec(problem)));
-  REQUIRE(forwardCache != nullptr);
-  unsigned int forward[3][4];
-  for (unsigned int k = 0; k < 3; k++) {
-    MoQuery q = queryFromSolution(problem, cases[k].p1, cases[k].p2);
-    forwardCache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, forward[k]);
-  }
-
-  std::unique_ptr<movementCache_c> backwardCache(gt->getMovementCache(makeSolverSpec(problem)));
-  REQUIRE(backwardCache != nullptr);
-  unsigned int backward[3][4];
-  for (unsigned int k = 3; k-- > 0; ) {
-    MoQuery q = queryFromSolution(problem, cases[k].p1, cases[k].p2);
-    backwardCache->getMoValue(q.dx, q.dy, q.dz, q.t1, q.t2, q.p1, q.p2, backward[k]);
-  }
-
-  for (unsigned int k = 0; k < 3; k++) {
-    INFO("pair (" << cases[k].p1 << "," << cases[k].p2 << ")");
-    for (unsigned int d = 0; d < 4; d++) {
-      CHECK(forward[k][d] == cases[k].move[d]);
-      CHECK(backward[k][d] == cases[k].move[d]);
-    }
-  }
-}
-
 TEST_CASE("movement cache: grid types without an implementation yield no cache at all", "[disasm][movementcache]") {
-  // gridType_c::getMovementCache() only has cases for GT_BRICKS and
-  // GT_TRIANGULAR_PRISM (src/lib/gridtype.cpp); every other grid type falls
-  // through to `default: return 0`. That default branch never touches the
+  // gridType_c::getMovementCache() has a case for GT_BRICKS and builds the
+  // lattice cache for described grids that disassemble (src/lib/gridtype.cpp);
+  // every other grid type falls through to `default: return 0`. That default branch never touches the
   // problem_c argument, so it is safe to probe it with any already-loaded
   // problem, even though these grid types are not the puzzle's own.
   problem_c & problem = cubeInCageProblem();
 
-  for (gridType_c::gridType t : { gridType_c::GT_SPHERES, gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA }) {
+  for (gridType_c::gridType t : { gridType_c::GT_TRIANGULAR_PRISM, gridType_c::GT_SPHERES, gridType_c::GT_RHOMBIC,
+                                  gridType_c::GT_TETRA_OCTA }) {
     INFO("grid type " << t);
     gridType_c gt(t);
     std::unique_ptr<movementCache_c> cache(gt.getMovementCache(makeSolverSpec(problem)));

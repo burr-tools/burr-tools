@@ -49,7 +49,6 @@ struct grid_test_def_s {
 
 TEST_CASE("Minkowski mesher: prism, rhombic and tetra-octa shapes, both variants", "[minkmesh]") {
   const grid_test_def_s grids[] = {
-    { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 5, 5, 5, "tetra-octa" },
   };
@@ -114,7 +113,6 @@ TEST_CASE("Minkowski mesher: dump the test shapes as STL", "[minkmesh][dump]") {
     return;
   }
   const grid_test_def_s grids[] = {
-    { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 5, 5, 5, "tetra-octa" },
   };
@@ -138,7 +136,6 @@ TEST_CASE("Minkowski mesher: random shapes", "[minkmesh][stress]") {
   int count = getenv("MINK_STRESS") ? atoi(getenv("MINK_STRESS")) : 3;
   std::mt19937 rng(12345);
   const grid_test_def_s grids[] = {
-    { gridType_c::GT_TRIANGULAR_PRISM, 6, 4, 3, "prism" },
     { gridType_c::GT_RHOMBIC, 7, 7, 7, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 7, 7, 7, "tetra-octa" },
   };
@@ -185,7 +182,6 @@ TEST_CASE("Minkowski mesher: random shapes", "[minkmesh][stress]") {
 TEST_CASE("the view's STL mesh tags every face with its voxel on every grid", "[minkmesh][view]") {
   const grid_test_def_s grids[] = {
     { gridType_c::GT_BRICKS, 3, 3, 2, "bricks" },
-    { gridType_c::GT_TRIANGULAR_PRISM, 4, 3, 2, "prism" },
     { gridType_c::GT_RHOMBIC, 5, 5, 5, "rhombic" },
     { gridType_c::GT_TETRA_OCTA, 5, 5, 5, "tetra-octa" },
   };

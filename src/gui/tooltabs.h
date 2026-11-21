@@ -78,22 +78,6 @@ public:
   void applyTask(voxel_c * space, long task, TaskPreviewInfo * info = nullptr);
 };
 
-// the class that contains the tool tab
-class ToolTab_1 : public ToolTab {
-
-  ChangeSize * changeSize = nullptr;
-  pixmapList_c pm;
-
-public:
-
-  ToolTab_1(int x, int y, int w, int h);
-
-  void setVoxelSpace(puzzle_c * puz, unsigned int sh);
-
-  void cb_size(void);
-  void cb_transform(long task);
-  void applyTask(voxel_c * space, long task, TaskPreviewInfo * info = nullptr);
-};
 
 // the class that contains the tool tab
 class ToolTab_2 : public ToolTab {

@@ -47,13 +47,6 @@ class gridTypeGui_0_c : public gridTypeGui_c {
     gridTypeGui_0_c(int x, int y, int w, int h, gridType_c * gt);
 };
 
-class gridTypeGui_1_c : public gridTypeGui_c {
-
-  public:
-
-    gridTypeGui_1_c(int x, int y, int w, int h, gridType_c * gt);
-};
-
 class gridTypeGui_2_c : public gridTypeGui_c {
 
   public:

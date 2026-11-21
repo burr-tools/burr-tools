@@ -63,7 +63,7 @@ movementCache_lattice_c::filledCellsOf(const voxel_c * sh) {
  * second, which sits at (dx, dy, dz) relative to it: every filled voxel of the
  * first steps along the direction until one of the cells it must find
  * empty is filled in the second, or until it is past the second's box. The
- * same scheme as movementCache_1_c, with NG's check cells.
+ * same scheme as the native grids' caches, with NG's check cells.
  */
 std::vector<unsigned int> movementCache_lattice_c::moCalcValues(const voxel_c * sh1, const voxel_c * sh2, int dx, int dy, int dz) {
 

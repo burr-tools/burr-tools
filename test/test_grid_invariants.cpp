@@ -325,14 +325,10 @@ TEST_CASE("grid: transformPoint on the coordinate basis does not recover a linea
      transformPoint() is documented as transforming "around the origin", which
      reads like an invitation to recover a transformation's 3x3 linear part by
      feeding it (1,0,0), (0,1,0), (0,0,1). That works on the three cube-derived
-     grids and fails on the other two:
-
-       - GT_SPHERES asserts its input has an even coordinate sum (voxel_2.cpp),
-         which no single basis vector satisfies, so the probe throws.
-       - GT_TRIANGULAR_PRISM's mapping is affine, not linear: a parity-dependent
-         offset is folded in (voxel_1.cpp), so the images of the basis vectors
-         are not the columns of anything orthogonal. The tell is the
-         determinant, which comes out 2 rather than +-1.
+     grids and fails on spheres: GT_SPHERES asserts its input has an even
+     coordinate sum (voxel_2.cpp), which no single basis vector satisfies, so
+     the probe throws. (The removed native triangular prisms failed too: their
+     mapping was affine, with a parity-dependent offset.)
 
      voxelFrame_c's transform-preview hint (via computeTransformGeometry() in
      src/gui/tooltabs.cpp) probes exactly this way, so it guards with both a
@@ -370,18 +366,6 @@ TEST_CASE("grid: transformPoint on the coordinate basis does not recover a linea
     REQUIRE_FALSE(linearPartDeterminant(*v, 9, &det));
   }
 
-  SECTION("the triangular grid answers, but not with an orthogonal matrix") {
-    gridType_c gt(gridType_c::GT_TRIANGULAR_PRISM);
-    std::unique_ptr<voxel_c> v = makeVoxel(gt, BOX, BOX, BOX);
-
-    /* transformation 1 is a clean 60 degree rotation about Z in the grid's own
-       table, so a correctly recovered linear part would have determinant 1. */
-    int det = 0;
-    REQUIRE(linearPartDeterminant(*v, 1, &det));
-    REQUIRE(det != 1);
-    REQUIRE(det != -1);
-  }
-
   SECTION("the cube-derived grids do give an orthogonal matrix") {
     const gridType_c::gridType cubeLike[] = {
       gridType_c::GT_BRICKS, gridType_c::GT_RHOMBIC, gridType_c::GT_TETRA_OCTA,
@@ -406,7 +390,7 @@ TEST_CASE("grid: getTransformMatrix returns an orthogonal matrix for every trans
      an axis-aligned arc or arrow. Probing transformPoint() with synthetic points
      (as an earlier version of that code did) breaks on two grids: GT_SPHERES
      asserts its input has an even coordinate sum, which no unit basis vector
-     satisfies, and GT_TRIANGULAR_PRISM's transformPoint() is affine (see the note
+     satisfies, and the removed native prisms' transformPoint() was affine (see the note
      on voxel_c::transformPoint), so no probe recovers a linear map from it at all.
 
      getTransformMatrix() sidesteps both by reading each grid's own internal
@@ -571,7 +555,8 @@ TEST_CASE("grid: the transform-preview hint resolves to a rotation or mirror for
      ones that happen to avoid a 180 degree rotation - which is why the axis
      extraction falls back to the null space of (M -/+ I) there - and not just
      the ones where transformPoint() happens to be reliable enough to probe
-     (broken on GT_SPHERES and GT_TRIANGULAR_PRISM, see the two cases above,
+     (broken on GT_SPHERES, see the case above, and on the removed native
+     triangular prisms,
      which is why this reads getTransformMatrix() directly instead). */
   struct TabButtons {
     const char * name;
@@ -581,7 +566,6 @@ TEST_CASE("grid: the transform-preview hint resolves to a rotation or mirror for
 
   const TabButtons tabs[] = {
     { "ToolTab_0 (bricks)",       gridType_c::GT_BRICKS,           {3,1,12,4,20,16,24,34,32} },
-    { "ToolTab_1 (triangular)",   gridType_c::GT_TRIANGULAR_PRISM, {9,6,1,5,12,15,18} },
     { "ToolTab_2 (spheres)",      gridType_c::GT_SPHERES,          {9,14,5,16,2,6,120,124,141} },
     { "ToolTab_3 (rhombic)",      gridType_c::GT_RHOMBIC,          {3,1,12,4,20,16,24,34,32} },
     { "ToolTab_4 (tetra-octa)",   gridType_c::GT_TETRA_OCTA,       {3,1,12,4,20,16,24,34,32} },

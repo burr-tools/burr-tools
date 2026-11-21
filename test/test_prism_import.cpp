@@ -19,10 +19,12 @@
 #include "lib/solution.h"
 #include "lib/voxel.h"
 #include "lib/solver/solverspec.h"
+#include "tools/gzstream.h"
 #include "tools/xml.h"
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -44,6 +46,46 @@ cell_t importerCell(const cell_t & c) {
   const int xn = x + 1;
   const int yn = fdiv2(3 * y + 1) - fdiv2(x + ((y % 2) + 2) % 2);
   return { xn + z, yn + z, -xn - yn + z };
+}
+
+/* How the removed native grid turned a cell (voxel_1_c::transform, with its
+ * 24 matrices, tabs_1/rotmatrix.inc): the reference a file's placements
+ * were made in. */
+const double s34 = std::sqrt(0.75);
+const double kPrismTurns[24][9] = {
+  {  1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0,  1.0 }, {  0.5, -s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5, -s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0,  1.0 }, { -1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5,  s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0,  1.0 }, {  0.5,  s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, -1.0 }, { -0.5, -s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5, -s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0, -1.0 }, {  1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5,  s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0, -1.0 }, { -0.5,  s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0,  1.0 }, { -0.5, -s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5, -s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0,  1.0 }, {  1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5,  s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0,  1.0 }, { -0.5,  s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, -1.0 }, {  0.5, -s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5, -s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0, -1.0 }, { -1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5,  s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0, -1.0 }, {  0.5,  s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+};
+
+cell_t nativeTurn(unsigned int t, int x, int y, int z) {
+  const double * m = kPrismTurns[t];
+  const double xp = 0.5 + 0.5 * x;
+  const double yp = y * s34 + (((x + y) & 1) ? std::sqrt(1.0 / 3) : std::sqrt(1.0 / 12));
+  double xpn = m[0] * xp + m[1] * yp + m[2] * z;
+  double ypn = m[3] * xp + m[4] * yp + m[5] * z;
+  const double zpn = m[6] * xp + m[7] * yp + m[8] * z;
+  xpn = (xpn - 0.5) * 2;
+  ypn /= s34;
+  return { (int)(xpn + (xpn < 0 ? -0.5 : 0.5)), (int)std::floor(ypn), (int)(zpn + (zpn < 0 ? -0.5 : 0.5)) };
+}
+
+/* the file as it is: type 1 is kept as plain voxel storage when parsed
+ * without puzzle_c::read() */
+std::unique_ptr<puzzle_c> raw(const char * file) {
+  std::unique_ptr<std::istream> str(openGzFile(file));
+  REQUIRE(str);
+  xmlParser_c pars(*str);
+  return std::make_unique<puzzle_c>(pars);
 }
 
 std::set<cell_t> filledCells(const voxel_c & v) {
@@ -131,10 +173,10 @@ TEST_CASE("prisms: examples load onto NG's grid, saved assemblies and disassembl
           "[lattice][prismimport]") {
   for (const char * file : EXAMPLES) {
     INFO(file);
-    auto nat = puzzle_c::load(file, cutCubeGrids_e::nativeAll);
+    auto nat = raw(file);
     REQUIRE(nat->getGridType()->getType() == gridType_c::GT_TRIANGULAR_PRISM);
     for (cutCubeGrids_e cut : { cutCubeGrids_e::ng, cutCubeGrids_e::native }) {
-      // every reader but burrTxt --native-grids converts prisms, the FLTK GUI's too
+      // every reader converts prisms, the FLTK GUI's too
       auto ng = puzzle_c::load(file, cut);
       REQUIRE(ng->getGridType()->getType() == gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM);
       REQUIRE(ng->getNumberOfShapes() == nat->getNumberOfShapes());
@@ -160,17 +202,23 @@ TEST_CASE("prisms: examples load onto NG's grid, saved assemblies and disassembl
           const solution_c & solg = *pg.getSavedSolution(s);
           CHECK(solg.getAssemblyNumber() == soln.getAssemblyNumber());
           CHECK(solg.getSolutionNumber() == soln.getSolutionNumber());
-          const auto sn = soln.getAssembly()->createPieceSpaces(*makeSolverSpec(pn));
           const auto sg = solg.getAssembly()->createPieceSpaces(*makeSolverSpec(pg));
-          REQUIRE(sg.size() == sn.size());
           std::vector<piece_s> cn, cg;
           const assembly_c & an = *soln.getAssembly();
           const assembly_c & ag = *solg.getAssembly();
           size_t k = 0;
           for (unsigned int i = 0; i < an.placementCount(); i++) {
             if (!an.isPlaced(i)) continue;
-            REQUIRE(k < sn.size());
-            cn.push_back({filledCells(*sn[k]), {an.getX(i), an.getY(i), an.getZ(i)}});
+            REQUIRE(k < sg.size());
+            // the native piece placed: each cell turned, the hotspot on the position
+            const voxel_c & shape = *pn.getPartShape(pn.getPartIdToPieceId(i));
+            const cell_t h = nativeTurn(an.getTransformation(i), shape.getHx(), shape.getHy(), shape.getHz());
+            std::set<cell_t> placed;
+            for (const cell_t & c : filledCells(shape)) {
+              const cell_t t = nativeTurn(an.getTransformation(i), c[0], c[1], c[2]);
+              placed.insert({t[0] - h[0] + an.getX(i), t[1] - h[1] + an.getY(i), t[2] - h[2] + an.getZ(i)});
+            }
+            cn.push_back({placed, {an.getX(i), an.getY(i), an.getZ(i)}});
             cg.push_back({filledCells(*sg[k]), {ag.getX(i), ag.getY(i), ag.getZ(i)}});
             CHECK(mapped(cn.back().cells, shift) == cg.back().cells);
             k++;

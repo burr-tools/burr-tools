@@ -20,7 +20,6 @@ namespace {
 std::vector<gridType_c::gridType> allGridTypes() {
   return {
     gridType_c::GT_BRICKS,
-    gridType_c::GT_TRIANGULAR_PRISM,
     gridType_c::GT_SPHERES,
     gridType_c::GT_RHOMBIC,
     gridType_c::GT_TETRA_OCTA,
