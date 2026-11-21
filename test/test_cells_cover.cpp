@@ -80,9 +80,15 @@ std::string contentOf(const std::string & xml) {
 }
 
 std::string saveState(const assembler_1_c & assm) {
+  auto [ver, st] = assm.saveState();
   std::ostringstream str;
   xmlWriter_c xml(str);
-  assm.save(xml);
+  xml.newTag("assembler");
+  if (!ver.empty())
+    xml.newAttrib("version", ver);
+  if (!st.empty())
+    xml.addContent(st);
+  xml.endTag("assembler");
   return str.str();
 }
 

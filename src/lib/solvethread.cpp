@@ -8,486 +8,121 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "solvethread.h"
 
-#include "disassembly.h"
 #include "problem.h"
-#include "puzzle.h"
 #include "solver/solverspec.h"
-#include "assembly.h"
-#include "disassembler_0.h"
-#include "progressmodel.h"
-#include "solution.h"
 
 #include <chrono>
-#include <cmath>
+#include <vector>
 
 namespace {
 
-  long long steadyNowNs(void) {
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count();
-  }
-
+solverOptions_t makeSessionOptions(int par, const solverSettings_t & s) {
+  solverOptions_t opts;
+  opts.reduce            = (par & solveThread_c::PAR_REDUCE) != 0;
+  opts.disassemble       = (par & solveThread_c::PAR_DISASSM) != 0;
+  opts.keepRotations     = (par & solveThread_c::PAR_KEEP_ROTATIONS) != 0;
+  opts.completeRotations = (par & solveThread_c::PAR_COMPLETE_ROTATIONS) != 0;
+  opts.rotationMoves     = (par & solveThread_c::PAR_ROTATION_MOVES) != 0;
+  // With disassembly the collector does the counting (and keeps single-piece
+  // assemblies as solutions, as before); the session enqueues every result.
+  opts.countOnly         = (par & solveThread_c::PAR_JUST_COUNT) != 0 &&
+                           (par & solveThread_c::PAR_DISASSM) == 0;
+  opts.settings          = s;
+  return opts;
 }
 
-void solveThread_c::run(void){
-
-  try {
-
-    /* Lifecycle enforcement (LIFECYCLE-4): reject unstartable problems here,
-     * at worker entry, so every outcome stays a terminal action for polling
-     * frontends. This sits above both the assembler-reuse branch and the
-     * fresh setAssembler() path.
-     *
-     * Rejection reports ACT_ERROR with ERR_CAN_NOT_START and leaves the
-     * problem untouched for the next attempt; every frontend already
-     * handles the ERROR state.
-     *
-     * TOCTOU note: this check and setAssembler()'s own preconditions below
-     * overlap deliberately, with different failure modes. This gate is the
-     * usage-error path (solved/invalidated problem, no reset yet): it is
-     * non-destructive. setAssembler()'s bt_te() throws are unreachable
-     * defense-in-depth against programming errors -- a state change between
-     * this check and that call -- and end in ACT_ASSERT with a full reset,
-     * which is only acceptable because that interleaving cannot happen
-     * through the GUI (buttons are disabled mid-run) or burrTxt2 (gated on
-     * canStartSolving() before start()). Do not "simplify" one away.
-     */
-    if (!puzzle.canStartSolving()) {
-      errState = assembler_c::ERR_CAN_NOT_START;
-      errParam = static_cast<int>(puzzle.getSolveState());
-      action = solveThread_c::ACT_ERROR;
-      return;
-    }
-
-    /* local pointer for this thread's own use; the shared member `assm` is
-     * only written (published) here and read by the GUI thread
-     */
-    assembler_c * a = 0;
-
-    /* first check, if there is an assembler available with the
-     * problem, if there is one take that
-     */
-    if (puzzle.getAssembler()) {
-      a = puzzle.getAssembler();
-      assm.store(a, std::memory_order_release);
-    }
-
-    else {
-
-      /* otherwise we have to create a new one
-       */
-      action = solveThread_c::ACT_PREPARATION;
-      std::unique_ptr<assembler_c> new_assm = gridType_c::findAssembler(spec, settings);
-      a = new_assm.get();
-      assm.store(a, std::memory_order_release);
-
-      errState = a->createMatrix(parameters & PAR_KEEP_ROTATIONS, parameters & PAR_COMPLETE_ROTATIONS);
-      if (errState != assembler_c::ERR_NONE) {
-
-        errParam = a->getErrorsParam();
-
-        action = solveThread_c::ACT_ERROR;
-
-        assm.store(0, std::memory_order_release);
-        return;
-      }
-
-      if (parameters & PAR_REDUCE) {
-
-        if (!stopPressed)
-          action = solveThread_c::ACT_REDUCE;
-
-        a->reduce();
-      }
-
-      /* set the assembler to the problem as soon as it is finished
-       * with initialisation, NOT EARLIER as the function
-       * also restores the assembler state to a state that might
-       * be saved within the problem
-       */
-      assm.store(0, std::memory_order_release);
-      errState = puzzle.setAssembler(std::move(new_assm));
-      if (errState != assembler_c::ERR_NONE) {
-        action = solveThread_c::ACT_ERROR;
-        return;
-      }
-      a = puzzle.getAssembler();
-      assm.store(a, std::memory_order_release);
-    }
-
-    if (return_after_prep) {
-      action = solveThread_c::ACT_PAUSING;
-      return;
-    }
-
-    // Re-submit assemblies salvaged by an earlier stop (see
-    // disassemblerPool_c::requestStop): found but never disassembled, and
-    // never found again (a resume holds only unexplored territory), so
-    // without this they would be lost on pause/continue. First in, so order stays stable.
-    if (disasm_pool && !stopPressed) {
-      for (auto &stashed : puzzle.takeStashedAssemblies())
-        disasm_pool->submit(std::move(stashed));
-    }
-
-    if (!stopPressed) {
-
-      /* publish the phase's cost basis before announcing the phase, so a GUI
-       * poll that sees ACT_ASSEMBLING can never see a zero thread count.
-       *
-       * getRunThreads(), not getNumThreads(): the latter reports what was
-       * *configured*, where 0 means "decide at run time" -- the default, and
-       * what the GUI leaves it at. A resumed assembler also runs serially
-       * however many threads are configured. Either way the configured number
-       * is not the number of worker-seconds a wall second buys.
-       *
-       * The count is applied first because getRunThreads() answers from the
-       * configured count; a resume can carry a different setting than the
-       * run the assembler was prepared or paused under. Only the count: a
-       * continued search keeps the engines it was created with.
-       */
-      a->setNumThreads(settings.threads);
-      const unsigned int threads = a->getRunThreads();
-      assemblyThreads.store(threads ? threads : 1, std::memory_order_relaxed);
-
-      /* How far the assembler already was when we picked it up -- 0 for a
-       * fresh solve, the carried-over fraction for a resumed one. The seconds
-       * that bought that head start were spent by a previous solveThread_c
-       * and died with it, so the phase's cost has to be projected from this
-       * one; see progressModel_c::projectAssemblyCost().
-       *
-       * Read here, on the worker thread, with nothing else running. It is a
-       * starting estimate rather than the last word: assemble() re-seeds the
-       * progress source for the run it is about to make, so a fraction read
-       * before the call can describe a source the call is about to discard.
-       * getProgress() lowers the base if the run ever reports less than this;
-       * see the note there.
-       */
-      const float base = a->getFinished();
-      assemblyBaseFraction.store((base > 0.0f && base < 1.0f) ? base : 0.0f,
-                                 std::memory_order_relaxed);
-
-      assemblyEndNs.store(0, std::memory_order_relaxed);
-      /* release: this is the store that opens getProgress()'s door to the
-       * assembler, so everything preparation wrote must be visible first
-       */
-      assemblyStartNs.store(steadyNowNs(), std::memory_order_release);
-
-      action = solveThread_c::ACT_ASSEMBLING;
-      a->assemble(this);
-      assemblyPhaseEnded();
-
-      /* freeze the assembly cost: from here on the machine is draining the
-       * disassembly queue, and charging that time to assembly too would make
-       * the blend approach 1 without any of the remaining work being done.
-       *
-       * release: assemble() has returned, so every submit() it made is
-       * complete; getProgress() and workOutstanding() acquire this store and
-       * so read the pool's final submitted count.
-       */
-      assemblyEndNs.store(steadyNowNs(), std::memory_order_release);
-
-      bool assembliesStashed = false;
-
-      if (disasm_pool) {
-        if (!stopPressed)
-          action = solveThread_c::ACT_DISASSEMBLING;
-        disasm_pool->finish();
-        // Move anything the pool salvaged (stop with a full queue, or
-        // submits rejected after stop) to the problem for the next run.
-        // Normally empty; finish() already delivered everything filed.
-        auto salvaged = disasm_pool->takeSalvaged();
-        assembliesStashed = !salvaged.empty();
-        puzzle.stashAssemblies(std::move(salvaged));
-      }
-
-      puzzle.addTime(time(0)-startTime);
-
-      /* A complete search is not a complete solve while stashed assemblies
-       * are still waiting for disassembly: a stop that lands after the
-       * search ends but before the pool drains leaves exactly that. Such a
-       * run pauses, so the next start() re-submits the stash; finishing it
-       * would mark the problem solved with those assemblies uncounted, and
-       * a solved problem is never continued.
-       */
-      if (a->getFinished() >= 1 && !assembliesStashed) {
-        action = solveThread_c::ACT_FINISHED;
-        puzzle.finishedSolving();
-      } else
-        action = solveThread_c::ACT_PAUSING;
-
-    } else {
-      action = solveThread_c::ACT_PAUSING;
-      puzzle.addTime(time(0)-startTime);
-    }
-
-  }
-
-  catch (assert_exception & a) {
-
-    ae = a;
-    action = solveThread_c::ACT_ASSERT;
-    if (disasm_pool)
-      disasm_pool->abort();
-    if (puzzle.getAssembler())
-      puzzle.removeAllSolutions();
-  }
+problemCollectorOptions_t makeCollectorOptions(int par) {
+  problemCollectorOptions_t opts;
+  opts.disassemble       = (par & solveThread_c::PAR_DISASSM) != 0;
+  opts.countOnly         = (par & solveThread_c::PAR_JUST_COUNT) != 0;
+  opts.dropDisassemblies = (par & solveThread_c::PAR_DROP_DISASSEMBLIES) != 0;
+  opts.sortMethod        = problemCollectorOptions_t::SRT_COMPLETE_MOVES;
+  opts.solutionLimit     = 10;
+  opts.solutionDrop      = 1;
+  return opts;
 }
 
-solveThread_c::solveThread_c(problem_c & puz, int par, const solverSettings_t & s) :
-action(ACT_PREPARATION),
-puzzle(puz),
-spec(makeSolverSpec(puz)),
-parameters(par),
-settings(s),
-sortMethod(SRT_COMPLETE_MOVES),
-liveSort(-1),
-solutionLimit(10),
-solutionDrop(1),
-disasm_pool(nullptr),
-assm(0)
-{
+} // namespace
 
-  if (par & PAR_DISASSM) {
-    /* Thread budget architecture (see the concurrency architecture note
-     * in thread_budget.h):
-     * One ThreadBudget shared by the assembly task pool(s) and this pool
-     * caps concurrently *working* solver threads at the pool size; idle
-     * threads on either side hold nothing. Created only for real
-     * (non-inline) pools with budgeting enabled -- otherwise null and all
-     * budget call sites behave exactly as without any cap.
-     */
-    /* The rotation context is shared by all disassemblers; its tables are
-     * built in the background, so the caller (the GUI) does not wait, and
-     * the first worker that needs them does. Without the flag there is no
-     * context and the disassemblers skip rotation moves entirely. */
-    std::shared_ptr<rotationContext_c> rotationContext;
-    if (par & PAR_ROTATION_MOVES)
-      rotationContext = rotationContextFor(spec, settings.rotation, true);
-
-    disasm_pool = std::make_unique<disassemblerPool_c>(
-      spec,
-      settings,
-      [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
-        std::lock_guard<std::mutex> lock(disasmResultMutex);
-        onDisassemblyResult(seqNo, std::move(a), std::move(s));
-      },
-      std::move(rotationContext)
-    );
-    if (settings.threadBudget && !disasm_pool->isInline()) {
-      threadBudget_ = std::make_unique<ThreadBudget>(disasm_pool->threadCount());
-      disasm_pool->setBudget(threadBudget_.get());
-    }
-  }
-}
-
-bool solveThread_c::rotationMoves(void) const {
-  return disasm_pool && disasm_pool->getRotationContext();
-}
-
-unsigned int solveThread_c::rotationsSkipped(void) const {
-  return (disasm_pool && disasm_pool->getRotationContext()) ? disasm_pool->getRotationContext()->getSkipped() : 0;
-}
+solveThread_c::solveThread_c(problem_c & puz, int par, const solverSettings_t & s)
+  : puzzle(puz),
+    spec(makeSolverSpec(puz)),
+    parameters(par),
+    settings(s),
+    session_(std::make_unique<solverSession_c>(spec, makeSessionOptions(par, s))),
+    collector_(puz, makeCollectorOptions(par))
+{}
 
 solveThread_c::~solveThread_c(void) {
-
-  /* signal the worker to stop and wait for it to actually finish before we
-   * free anything it might still be using.
-   */
   stopInternal();
   joinThread();
-
-  disasm_pool.reset();
+  session_.reset();
 }
 
 bool solveThread_c::assembly(std::unique_ptr<assembly_c> a) {
-
-  if (parameters & PAR_DISASSM) {
-    bt_assert(disasm_pool);
-    disasm_pool->submit(std::move(a));
-    return !disasm_pool->isAborted() && !disasm_pool->isStopRequested() && !stopPressed;
-  }
-
-  // Assembly-only mode
-  if (!(parameters & PAR_JUST_COUNT)) {
-    if (puzzle.getNumAssemblies() % (solutionDrop * dropMultiplicator) == 0)
-      puzzle.addSolution(a.release());
-  }
-
-  puzzle.incNumAssemblies();
-
-  // this is the case for assembly only
-  // we need to thin out the list
-  if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
-    unsigned int idx = puzzle.getNumAssemblies() - 1;
-    idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
-
-    if (idx == solutionLimit - 1)
-      dropMultiplicator *= 2;
-
-    puzzle.removeSolution(idx + 1);
-  }
-
-  int ls = liveSort.load(std::memory_order_relaxed);
-  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
-    puzzle.sortSolutions(ls);
-
-  return true;
+  return session_->submitAssemblyForLegacyBridge(std::move(a));
 }
 
-void solveThread_c::onDisassemblyResult(uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
-
-  // when the assembly has only 1 piece, we don't need
-  // to disassemble, the disassembler will return 0 anyway
-  if (a->placementCount() <= 1) {
-    // only one piece, that is always a solution, so increment number
-    // of solutions but save only the assembly
-    puzzle.addSolution(a.release());
-    puzzle.incNumSolutions();
-    puzzle.incNumAssemblies();
-    return;
+unsigned int solveThread_c::currentAction(void) const {
+  if (finalized_.load(std::memory_order_acquire))
+    return terminalAction_.load(std::memory_order_acquire);
+  if (!started_.load(std::memory_order_acquire))
+    return stopPressed_.load(std::memory_order_acquire) ? ACT_WAIT_TO_STOP : ACT_PREPARATION;
+  unsigned int act = session_->currentAction();
+  // Never report a terminal action before run() has finished draining
+  // results and updating problem_c (LIFECYCLE-1/2).
+  if (act == ACT_PAUSING || act == ACT_FINISHED ||
+      act == ACT_ERROR || act == ACT_ASSERT) {
+    return stopPressed_.load(std::memory_order_acquire)
+             ? ACT_WAIT_TO_STOP
+             : ACT_DISASSEMBLING;
   }
+  return act;
+}
 
-  // check if we found a disassembly sequence
-  if (!s) {
-    // no disassembly sequence found
-    puzzle.incNumAssemblies();
-    return;
-  }
+unsigned int solveThread_c::currentActionParameter(void) {
+  if (finalized_.load(std::memory_order_acquire))
+    return 0;
+  return session_->currentActionParameter();
+}
 
-  // if the user wants to save the solution, do it
-  if (!(parameters & PAR_JUST_COUNT)) {
-    // find the place to insert and insert the new solution so that
-    // they are sorted by the complexity of the disassembly
+float solveThread_c::getProgress(void) const {
+  if (finalized_.load(std::memory_order_acquire) &&
+      terminalAction_.load(std::memory_order_acquire) == ACT_FINISHED)
+    return 1.0f;
 
-    bool ins = false;
-
-    {
-      std::unique_lock<std::recursive_mutex> solGuard = puzzle.lockSolutions();
-
-      switch(sortMethod) {
-        case SRT_COMPLETE_MOVES:
-          {
-            unsigned int lev = s->sumMoves();
-
-            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
-
-              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassembly();
-
-              if (s2 && s2->sumMoves() > lev) {
-                if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
-                } else
-                  puzzle.addSolution(a.release(), s.release(), i);
-                ins = true;
-                break;
-              }
-            }
-
-            if (!ins) {
-              if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-              } else
-                puzzle.addSolution(a.release(), s.release());
-            }
-
-            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-              puzzle.removeSolution(0);
-          }
-          break;
-
-        case SRT_LEVEL:
-          {
-            for (unsigned int i = 0; i < puzzle.getNumberOfSavedSolutions(); i++) {
-
-              const disassembly_c * s2 = puzzle.getSavedSolution(i)->getDisassemblyInfo();
-
-              if (s2 && (s2->compare(s.get()) > 0)) {
-                if (parameters & PAR_DROP_DISASSEMBLIES) {
-                  puzzle.addSolution(a.release(), new separationInfo_c(s.get()), i);
-                } else
-                  puzzle.addSolution(a.release(), s.release(), i);
-                ins = true;
-                break;
-              }
-            }
-
-            if (!ins) {
-              if (parameters & PAR_DROP_DISASSEMBLIES) {
-                puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-              } else
-                puzzle.addSolution(a.release(), s.release());
-            }
-
-            if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit))
-              puzzle.removeSolution(0);
-          }
-          break;
-
-        case SRT_UNSORT:
-          if (puzzle.getNumSolutions() % (solutionDrop * dropMultiplicator) == 0) {
-            if (parameters & PAR_DROP_DISASSEMBLIES) {
-              puzzle.addSolution(a.release(), new separationInfo_c(s.get()));
-            } else
-              puzzle.addSolution(a.release(), s.release());
-          }
-          break;
-      }
-    }
-
-    // yes, the puzzle is disassemblable, count solutions
-    puzzle.incNumSolutions();
-  } else {
-    puzzle.incNumSolutions();
-  }
-
-  puzzle.incNumAssemblies();
-
-  if (solutionLimit && (puzzle.getNumberOfSavedSolutions() > solutionLimit)) {
-    unsigned int idx = puzzle.getNumSolutions() - 1;
-
-    idx = (idx % (solutionLimit * solutionDrop * dropMultiplicator)) / (solutionDrop * dropMultiplicator);
-
-    if (idx == solutionLimit - 1)
-      dropMultiplicator *= 2;
-
-    puzzle.removeSolution(idx + 1);
-  }
-
-  int ls = liveSort.load(std::memory_order_relaxed);
-  if (ls >= 0 && puzzle.getNumberOfSavedSolutions() >= 2)
-    puzzle.sortSolutions(ls);
+  float p = session_->getProgress();
+  if (!finalized_.load(std::memory_order_acquire) && p > runningCap)
+    p = runningCap;
+  return p;
 }
 
 void solveThread_c::stopInternal(void) {
-
-  if ((action != ACT_ASSEMBLING) &&
-      (action != ACT_REDUCE) &&
-      (action != ACT_DISASSEMBLING) &&
-      (action != ACT_PREPARATION)
-     )
+  if (finalized_.load(std::memory_order_acquire))
     return;
 
-  action = ACT_WAIT_TO_STOP;
+  unsigned int act = currentAction();
+  if (act != ACT_ASSEMBLING &&
+      act != ACT_REDUCE &&
+      act != ACT_DISASSEMBLING &&
+      act != ACT_PREPARATION)
+    return;
 
-  if (puzzle.getAssembler())
-    puzzle.getAssembler()->stop();
-
-  if (disasm_pool)
-    disasm_pool->requestStop();
-
-  stopPressed = true;
+  stopPressed_.store(true, std::memory_order_release);
+  if (session_)
+    session_->requestPause();
 }
 
 void solveThread_c::stop(void) {
@@ -495,45 +130,17 @@ void solveThread_c::stop(void) {
 }
 
 bool solveThread_c::start(bool stop_after_prep) {
-
-  /* Lifecycle enforcement (LIFECYCLE-4): restarting an already-started
-   * object is a programming error, so it throws via bt_te(). The bool return
-   * stays reserved for thread-creation failure, which the GUI already reports.
-   * Unstartable problems are rejected worker-side at run() entry; see there.
-   */
   if (running.load(std::memory_order_acquire) || worker_thread.joinable())
     bt_te("solveThread_c::start: thread already started, use one object per run");
 
-  stopPressed = false;
+  stopPressed_.store(false, std::memory_order_release);
+  finalized_.store(false, std::memory_order_release);
   return_after_prep = stop_after_prep;
   startTime = time(0);
 
-  // calculate dropMultiplicator
+  collector_.resetDropMultiplicator();
 
-  dropMultiplicator = 1;
-
-  unsigned int a;
-
-  // only when we save count the possible assemblies we use the assembly counter, in all
-  // other cases we use the solution counter
-  if ((parameters & (PAR_JUST_COUNT | PAR_DISASSM)) == 0) {
-
-    if (!puzzle.numAssembliesKnown())
-      a = 0;
-    else
-      a = puzzle.getNumAssemblies();
-  } else {
-    if (!puzzle.numSolutionsKnown())
-      a = 0;
-    else
-      a = puzzle.getNumSolutions();
-  }
-
-  while (a+solutionDrop > 2 * solutionLimit * solutionDrop) {
-    dropMultiplicator *= 2;
-    a = (a+1) / 2;
-  }
-
+  started_.store(true, std::memory_order_release);
   running.store(true, std::memory_order_release);
   worker_thread = std::jthread([this]() {
     run();
@@ -543,196 +150,152 @@ bool solveThread_c::start(bool stop_after_prep) {
   return worker_thread.joinable();
 }
 
-unsigned int solveThread_c::currentActionParameter(void) {
-
-  switch(action.load()) {
-  case ACT_REDUCE:
-  case ACT_PREPARATION:
-    {
-      assembler_c * a = assm.load(std::memory_order_acquire);
-      if (a)
-        return a->getReducePiece();
-      else
-        return 0;
+void solveThread_c::run(void) {
+  try {
+    // LIFECYCLE-4: reject unstartable problems at worker entry, untouched.
+    if (!puzzle.canStartSolving()) {
+      errState = assembler_c::ERR_CAN_NOT_START;
+      errParam = static_cast<int>(puzzle.getSolveState());
+      terminalAction_.store(ACT_ERROR, std::memory_order_release);
+      finalized_.store(true, std::memory_order_release);
+      return;
     }
 
-  default:
-    return 0;
+    session_->setAssemblyInterceptor(this);
+    session_->setAssemblyPhaseEndedHook([this]() { assemblyPhaseEnded(); });
+
+    bool usedSavedResume = false;
+
+    if (puzzle.getAssembler()) {
+      // Path 1: continue an in-memory paused assembler.
+      std::unique_ptr<assembler_c> existing = puzzle.takeAssembler();
+      std::vector<std::unique_ptr<assembly_c>> stashed = puzzle.takeStashedAssemblies();
+      session_->adoptPreparedAssembler(std::move(existing), std::move(stashed));
+    } else if (puzzle.hasResumeData()) {
+      // Path 2: restore from saved resumeData_t (e.g. loaded from XML).
+      usedSavedResume = true;
+      resumeData_t res = puzzle.cloneResumeData();
+      const unsigned int pieces = puzzle.getNumberOfPieces();
+      std::erase_if(res.pending, [pieces](const std::unique_ptr<assembly_c> & a) {
+        return !a || a->placementCount() != pieces;
+      });
+      session_->setResume(std::move(res));
+    } else {
+      // Path 3: fresh solve. Flip SS_UNSOLVED -> SS_SOLVING only after
+      // createMatrix() + reduce() succeed so preparation errors leave the
+      // problem SS_UNSOLVED.
+      session_->setPreparedHook([this]() { puzzle.beginSolving(); });
+    }
+
+    const bool startedOk = session_->start(return_after_prep);
+    // Exceptions other than assertions ended the process before the session
+    // caught them; the FLTK GUI keeps that behaviour (rethrown on this
+    // thread, which std::terminate()s as it always did).
+    if (auto ex = session_->exception())
+      std::rethrow_exception(ex);
+    if (!startedOk) {
+      if (session_->currentAction() == ACT_ASSERT) {
+        ae = session_->getAssertException();
+        terminalAction_.store(ACT_ASSERT, std::memory_order_release);
+        finalized_.store(true, std::memory_order_release);
+        return;
+      }
+
+      auto info = session_->runInfo();
+      errState = info ? info->error : assembler_c::ERR_NONE;
+      errParam = info ? info->errorParam : 0;
+
+      if (usedSavedResume) {
+        if (errState == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
+          puzzle.removeAllSolutions();
+        } else if (errState == assembler_c::ERR_CAN_NOT_RESTORE_VERSION ||
+                   errState == assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX) {
+          puzzle.discardResumeEngineState();
+        }
+      }
+
+      terminalAction_.store(ACT_ERROR, std::memory_order_release);
+      finalized_.store(true, std::memory_order_release);
+      return;
+    }
+
+    if (usedSavedResume)
+      puzzle.clearResumeData();
+
+    // Forward any stop() that arrived while start() was validating resume data.
+    if (stopPressed_.load(std::memory_order_acquire))
+      session_->requestPause();
+
+    if ((parameters & PAR_JUST_COUNT) && !(parameters & PAR_DISASSM)) {
+      // In countOnly mode the session emits no queued items; sync counters
+      // periodically so live observers see progress, then do a final sync.
+      while (session_->sessionState() == solverState_e::Running) {
+        if (puzzle.getSolveState() == SS_SOLVING)
+          collector_.syncCountOnly(session_->assembliesFound(), session_->solutionsFound());
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      }
+      session_->join();
+      if (puzzle.getSolveState() == SS_SOLVING)
+        collector_.syncCountOnly(session_->assembliesFound(), session_->solutionsFound());
+    } else {
+      collector_.consumeAll(*session_);
+      session_->join();
+    }
+
+    const solverState_e st = session_->sessionState();
+    if (auto ex = session_->exception())
+      std::rethrow_exception(ex);
+
+    if (st == solverState_e::Finished) {
+      if (puzzle.getSolveState() == SS_UNSOLVED)
+        puzzle.beginSolving();
+      puzzle.installAssembler(session_->releaseAssembler());
+      puzzle.addTime(time(0) - startTime);
+      puzzle.finishedSolving();
+      terminalAction_.store(ACT_FINISHED, std::memory_order_release);
+      finalized_.store(true, std::memory_order_release);
+    } else if (st == solverState_e::Paused) {
+      if (puzzle.getSolveState() == SS_UNSOLVED)
+        puzzle.beginSolving();
+      resumeData_t snap = session_->state();
+      puzzle.stashAssemblies(std::move(snap.pending));
+      puzzle.installAssembler(session_->releaseAssembler());
+      if (!return_after_prep)
+        puzzle.addTime(time(0) - startTime);
+      terminalAction_.store(ACT_PAUSING, std::memory_order_release);
+      finalized_.store(true, std::memory_order_release);
+    } else if (st == solverState_e::Error) {
+      if (session_->currentAction() == ACT_ASSERT) {
+        ae = session_->getAssertException();
+        if (auto a = session_->releaseAssembler()) {
+          puzzle.installAssembler(std::move(a));
+          puzzle.removeAllSolutions();
+        }
+        terminalAction_.store(ACT_ASSERT, std::memory_order_release);
+        finalized_.store(true, std::memory_order_release);
+      } else {
+        auto info = session_->runInfo();
+        errState = info ? info->error : assembler_c::ERR_NONE;
+        errParam = info ? info->errorParam : 0;
+        terminalAction_.store(ACT_ERROR, std::memory_order_release);
+        finalized_.store(true, std::memory_order_release);
+      }
+    } else {
+      terminalAction_.store(ACT_PAUSING, std::memory_order_release);
+      finalized_.store(true, std::memory_order_release);
+    }
+  } catch (assert_exception & a) {
+    ae = a;
+    if (session_) {
+      session_->abort();
+      if (auto released = session_->releaseAssembler()) {
+        puzzle.installAssembler(std::move(released));
+        puzzle.removeAllSolutions();
+      } else if (puzzle.getAssembler()) {
+        puzzle.removeAllSolutions();
+      }
+    }
+    terminalAction_.store(ACT_ASSERT, std::memory_order_release);
+    finalized_.store(true, std::memory_order_release);
   }
-}
-
-float solveThread_c::getProgress(void) const {
-
-  float f;
-
-  if (action.load(std::memory_order_acquire) == ACT_FINISHED) {
-
-    /* Reported rather than computed. The blend does land on exactly 1.0 here
-     * in the ordinary case, but it is built out of a float fraction and two
-     * measured costs, and the GUI's "finished" state must not depend on those
-     * agreeing to the last bit.
-     */
-    f = 1.0f;
-
-  } else {
-
-    /* Nothing to report before the assembly phase begins, and nothing may be
-     * read off the assembler either: it is published to `assm` before
-     * createMatrix() and reduce() run, and those build the very matrix
-     * getFinished() reads. Acquiring here pairs with the release store the
-     * worker makes in run(), so everything preparation built is visible
-     * before the first getFinished() call.
-     */
-    const long long start = assemblyStartNs.load(std::memory_order_acquire);
-    if (!start)
-      return reportedProgress.load(std::memory_order_relaxed);
-
-    assembler_c * a = assm.load(std::memory_order_acquire);
-    if (!a)
-      return reportedProgress.load(std::memory_order_relaxed);
-
-    /* acquire, pairing with the release store run() makes when assemble()
-     * returns: once assembly reads as ended, the pool's submitted count read
-     * below is final, so a drained pool cannot be mistaken for a finished
-     * solve with a late submit still unseen
-     */
-    const long long end = assemblyEndNs.load(std::memory_order_acquire);
-
-    progressModel_c::Input in;
-    in.assemblyFraction = a->getFinished();
-
-    /* The parallel assemblers sum float terms that approach 1 asymptotically,
-     * so getFinished() can round to exactly 1.0f with workers still live:
-     * `a < 1` does not mean "still running". While assembly has demonstrably
-     * not finished, take the input at its word only up to the largest float
-     * below 1, so downstream arithmetic cannot read it as completion.
-     *
-     * This makes the input honest; on its own it does not change what is
-     * reported. With a drained pool, evaluate() returns 1.0f for a == 1.0f and
-     * 0.99999994f for the clamped value -- both above runningCap, so both are
-     * reported as runningCap. What keeps that from latching the bar for the
-     * whole disassembly tail is the no-evidence branch further down, not this.
-     */
-    if (!end && in.assemblyFraction >= 1.0f)
-      in.assemblyFraction = std::nextafter(1.0f, 0.0f);
-
-    /* Keep the cost basis below the live fraction, lowering it if the run ever
-     * reports less than what was captured before assemble() was called.
-     *
-     * That capture is a guess about a number only assemble() settles: it
-     * re-seeds the progress source for the run it is about to make, and a
-     * paused parallel run leaves behind task counters that describe a run
-     * being abandoned rather than the one about to start. Captured from those,
-     * the base can sit ABOVE everything the new run reports -- and then
-     * `gained` is negative for the whole solve, projectAssemblyCost() returns
-     * 0, evaluate() cannot blend, and the bar silently reverts to reporting
-     * assembly alone with disassembly never weighed. That is the exact case
-     * the projection exists to handle, so it must not be the case that breaks
-     * it.
-     *
-     * Correcting it here rather than by having the assembler expose its reset
-     * keeps the fix inside the one class that has the problem, holds for any
-     * back end whatever its reset ordering, and needs no public mutator on
-     * assembler_c. The run's real starting point is the lowest fraction it has
-     * been seen to report, and getFinished() is monotone within a run, so this
-     * settles on the first poll and never drifts afterwards.
-     */
-    float base = assemblyBaseFraction.load(std::memory_order_relaxed);
-    if (in.assemblyFraction < base) {
-      base = in.assemblyFraction;
-      assemblyBaseFraction.store(base, std::memory_order_relaxed);
-    }
-
-    {
-      const long long upto = end ? end : steadyNowNs();
-      const long long ns = (upto > start) ? (upto - start) : 0;
-
-      /* worker-seconds, the same currency the pool's cost is measured in: it
-       * sums the wall time of completed tasks across all of its workers. A
-       * wall-clock figure here would be the same quantity divided by the
-       * thread count, and weighing one phase against the other with a constant
-       * factor between their units biases the blend by exactly that factor.
-       *
-       * KNOWN LIMITATION, deliberately not modelled here. Matching the units
-       * does not make the two costs accrue at the same rate per wall second.
-       * The assembler and the pool each default to hardware_concurrency(), so
-       * while the phases overlap the pair accrues roughly 2N worker-seconds
-       * per wall second, and in the disassembly tail -- after assemble() has
-       * returned and only the pool is live -- roughly N. The bar therefore
-       * changes speed at that transition, and projectedRemainingSeconds is
-       * biased across it. Correcting it means modelling the phase-dependent
-       * accrual rate, which is a design change rather than part of this fix;
-       * it is recorded here rather than papered over.
-       */
-      const double sessionCost = 1e-9 * static_cast<double>(ns)
-          * static_cast<double>(assemblyThreads.load(std::memory_order_relaxed));
-
-      /* What the model needs is the cost of the whole of assemblyFraction, and
-       * on a resume this run only paid for the tail of it. Project the rest
-       * from the rate this run measured rather than leaving the phase charged
-       * for a fraction it did not buy -- which under-projects the assembly
-       * phase by exactly the ratio of the two, so the blend collapses towards
-       * the disassembly fraction and the monotone guard pins it there while
-       * assembly does the remaining hours of work.
-       */
-      in.assemblyCostSeconds =
-          progressModel_c::projectAssemblyCost(sessionCost, in.assemblyFraction, base);
-    }
-
-    if (disasm_pool) {
-      in.assembliesFound        = disasm_pool->submittedCount();
-      in.disassembled           = disasm_pool->completedCount();
-      in.disassemblyCostSeconds = disasm_pool->accumulatedCostSeconds();
-    }
-
-    f = progressModel_c::evaluate(in).fraction;
-
-    /* Until the pool completes its first task there is no disassembly evidence
-     * to blend with, so evaluate() reports the assembly fraction alone -- and
-     * once assembly is complete with assemblies still outstanding, that is its
-     * "counted but not done" sentinel, std::nextafter(1.0f, 0.0f).
-     *
-     * That value must not reach the monotone guard. It caps to runningCap and
-     * latches there, and every genuine blended value that follows is lower --
-     * the first completion of a long disassembly queue puts the blend far
-     * below 1 and it climbs from there -- so the guard locks all of them out
-     * and the bar sits at 99.9% for the whole tail. Measured on
-     * PelikanBurr.xmpuzzle, whose assembly finishes in ~4 ms against a ~185 ms
-     * tail: two distinct values over 187 samples, 0 then 0.999.
-     *
-     * The trigger is precisely "the assembler finished before the pool
-     * completed its first task", not "disassembly dominates": once anything
-     * has been disassembled, d = completed/submitted and the blend
-     * (A + D)/(A + D/d) rises strictly as d approaches 1, with no latch.
-     *
-     * So while there is no evidence to blend, report the assembly fraction
-     * alone, and when even that has run out -- the fraction has reached the
-     * cap, nothing is disassembled, nothing is yet known about the phase that
-     * is left -- hold the bar where it is. The threshold is the cap rather
-     * than 1.0f deliberately; see noEvidenceProgress(), which is where the
-     * rule lives so that it can be tested without driving a solve.
-     */
-    if (in.disassembled == 0 && in.assembliesFound > 0)
-      f = noEvidenceProgress(in.assemblyFraction,
-                             reportedProgress.load(std::memory_order_relaxed));
-
-    /* The solve is still running, so it is not complete, whatever the inputs
-     * rounded to. Two ways they get there: progressModel_c signals "everything
-     * counted is accounted for but work remains" with a value a hair under 1
-     * that the GUI's %.4f renders as 100.0000%, and getFinished() can round to
-     * exactly 1.0f on the parallel assemblers while their workers are live.
-     * Capping here is also what keeps run()'s `getFinished() >= 1` terminal
-     * check the thing that decides ACT_FINISHED.
-     */
-    if (f > runningCap) f = runningCap;
-  }
-
-  /* monotone: raise the published value, never lower it */
-  float prev = reportedProgress.load(std::memory_order_relaxed);
-  while (f > prev &&
-         !reportedProgress.compare_exchange_weak(prev, f,
-                                                 std::memory_order_relaxed))
-    ;
-
-  return reportedProgress.load(std::memory_order_relaxed);
 }

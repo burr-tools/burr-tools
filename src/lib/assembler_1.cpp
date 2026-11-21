@@ -29,10 +29,9 @@
 #include "assembly.h"
 #include "gridtype.h"
 
-#include "../tools/xml.h"
-
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 
@@ -1726,12 +1725,9 @@ static void vectorToStream(const std::vector<unsigned int> & v, std::ostream & s
     str << v[i] << " ";
 }
 
-void assembler_1_c::save(xmlWriter_c & xml) const
+std::pair<std::string, std::string> assembler_1_c::saveState(void) const
 {
-  xml.newTag("assembler");
-  xml.newAttrib("version", ASSEMBLER_VERSION);
-
-  std::ostream & str = xml.addContent();
+  std::ostringstream str;
 
   /* the state: 0 not started, 1 stopped part way, 2 complete. A stopped
    * search is followed by its remainder: the engine (2 the bit-parallel
@@ -1751,14 +1747,14 @@ void assembler_1_c::save(xmlWriter_c & xml) const
       // setPosition() requires one step kind per step: a seed without them
       // is a bug here, not something to pad.
       if (seed.pivotShape.size() != seed.prefix.size())
-        bt_te("assembler_1_c::save: seed without one step kind per prefix step");
+        bt_te("assembler_1_c::saveState: seed without one step kind per prefix step");
       std::vector<unsigned int> pivots(seed.pivotShape.begin(), seed.pivotShape.end());
       vectorToStream(pivots, str);
       str << seed.restSkip << " ";
     }
   }
 
-  xml.endTag("assembler");
+  return { ASSEMBLER_VERSION, str.str() };
 }
 
 unsigned int assembler_1_c::getPiecePlacement(unsigned int node, int delta, unsigned int piece, unsigned char *tran, int *x, int *y, int *z) const {
@@ -1805,10 +1801,9 @@ unsigned int assembler_1_c::getPiecePlacementCount(unsigned int piece) const {
   return colCount[shape+1];
 }
 
-bool assembler_1_c::canHandle(const solverSpec_t &) {
+bool assembler_1_c::canHandle(const solverSpec_t & spec) {
 
-  // right now there are no limits
-
-  return true;
+  // without a result shape there is nothing to fill (createMatrix asserts it)
+  return spec.resultValid();
 }
 

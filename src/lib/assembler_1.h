@@ -303,7 +303,7 @@ public:
   bool stopped(void) const override { return !running.load(std::memory_order_relaxed); }
   unsigned int getRunThreads(void) const override;
   errState setPosition(const char * string, const char * version) override;
-  void save(xmlWriter_c & xml) const override;
+  std::pair<std::string, std::string> saveState(void) const override;
   void reduce(void) override;
   unsigned int getReducePiece(void) const override { return reducePiece; }
 

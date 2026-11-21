@@ -26,6 +26,7 @@
  */
 #include "assembler.h"
 #include "bt_assert.h"
+#include "solver/resumedata.h"
 
 #include <stdint.h>
 #include <vector>
@@ -109,19 +110,16 @@ private:
   mutable std::recursive_mutex solutionMutex;
 
   /**
-   * Assemblies salvaged by disassemblerPool_c::requestStop(): found, never
-   * disassembled, awaiting re-submission on the next run. Guarded by
-   * solutionMutex. Also serialized in save()/load (see stashedAssemblies
-   * tag), so stop-save-load-continue loses nothing.
+   * Opaque saved search state (engine tag, serialised search position, and
+   * pending/stashed assemblies salvaged by a pause). Guarded by solutionMutex
+   * where accessed concurrently with solving; serialized in save()/load as
+   * <assembler> and <stashedAssemblies>.
    *
-   * The stash is part of the assembler's resume state: only Continue from
-   * that state needs it, and a search from scratch finds these assemblies
-   * again by itself. So everything that discards the resume state
-   * (removeAllSolutions(), makeUnknown()) discards the stash with it, and
-   * edits that keep the state (exchangeParts()) keep the stash's piece
-   * order in step with the solutions'.
+   * Everything that discards the resume state (removeAllSolutions(),
+   * makeUnknown()) clears this; exchangeParts() keeps pending assemblies'
+   * piece order in step with solutions.
    */
-  std::vector<std::unique_ptr<assembly_c>> stashedAssemblies;
+  resumeData_t resumeData_;
 
   /**
    * this set contains the pairs of colours that are allowed when a piece
@@ -135,8 +133,12 @@ private:
    * if we have started to solve this problem this pointer shows us the corresponding assembler
    * if the pointer is 0 we have never started an assembly process within this session
    * statistics can be found in the assembler, too
+   *
+   * assmRaw_ mirrors assm.get() atomically for lock-free polling during the
+   * B4 transition (removed together with assm in B5).
    */
   std::unique_ptr<assembler_c> assm;
+  std::atomic<assembler_c *> assmRaw_{nullptr};
 
   /**
    * the name of the problem, so that the user can easily select one
@@ -164,19 +166,6 @@ private:
    * 0xFFFFFFFF stands for too many to count
    */
   std::atomic<unsigned long> numSolutions{0};
-
-  /**
-   * we only save the information that the assembler needs to reset it's state
-   * and use this information once the user wants to continue solving the problem
-   * otherwise the loading might take quite a while
-   */
-  std::string assemblerState;
-
-  /**
-   * each assembler also saves a version into the node so that it can check, if
-   * the saves state can be restored
-   */
-  std::string assemblerVersion;
 
   /**
    * the time used up to get to the current state in the solving progress (in seconds)
@@ -473,9 +462,26 @@ public:
    */
   assembler_c::errState setAssembler(std::unique_ptr<assembler_c> assm);
   /** get the assembler */
-  assembler_c * getAssembler(void) { return assm.get(); }
+  assembler_c * getAssembler(void) { return assmRaw_.load(std::memory_order_acquire); }
   /** get the assembler */
-  const assembler_c * getAssembler(void) const { return assm.get(); }
+  const assembler_c * getAssembler(void) const { return assmRaw_.load(std::memory_order_acquire); }
+  /** Move ownership of the attached assembler out (used by solverSession_c bridge). */
+  std::unique_ptr<assembler_c> takeAssembler(void);
+  /** Attach an assembler without altering solveState or resumeData_. */
+  void installAssembler(std::unique_ptr<assembler_c> a);
+  /** Transition SS_UNSOLVED -> SS_SOLVING (idempotent if already SS_SOLVING).
+   *  Throws via bt_te if called on SS_SOLVED/SS_UNKNOWN or with nonzero counters. */
+  void beginSolving(void);
+  /** \name Saved opaque resume data (from solverSession_c::state() or XML load) */
+  //@{
+  bool hasResumeData(void) const { return resumeData_.hasEngineState(); }
+  resumeData_t cloneResumeData(void) const;
+  void setResumeData(resumeData_t data);
+  resumeData_t takeResumeData(void);
+  void clearResumeData(void);
+  /** Drop the engine/version bytes while keeping partial results viewable in SS_SOLVING. */
+  void discardResumeEngineState(void);
+  //@}
   /** call this for each found assembly */
   void incNumAssemblies(void) { bt_assert(solveState == SS_SOLVING); numAssemblies++; }
   /** call this for each found solution */
@@ -531,7 +537,7 @@ public:
   bool canStartSolving(void) const {
     solveState_e st = solveState.load();
     return st == SS_UNSOLVED ||
-           (st == SS_SOLVING && (assm != nullptr || assemblerState.length() != 0));
+           (st == SS_SOLVING && (assmRaw_.load(std::memory_order_acquire) != nullptr || resumeData_.hasEngineState()));
   }
   /** find out if we have an idea about the number of assemblies */
   bool numAssembliesKnown(void) const { return solveState.load() != SS_UNSOLVED; }

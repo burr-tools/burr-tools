@@ -32,6 +32,7 @@
 #include "../tools/xml.h"
 
 #include <algorithm>
+#include <cstdlib>
 
 #include <stdio.h>
 
@@ -181,13 +182,24 @@ void problem_c::save(xmlWriter_c & xml) const
   {
     if (assm)
     {
-      assm->save(xml);
+      auto [ver, st] = assm->saveState();
+      xml.newTag("assembler");
+      if (!ver.empty())
+        xml.newAttrib("version", ver);
+      // the next result seq number (resumeData_t::nextSeq), next to the state
+      if (resumeData_.nextSeq)
+        xml.newAttrib("nextSeq", (unsigned long)resumeData_.nextSeq);
+      if (!st.empty())
+        xml.addContent(st);
+      xml.endTag("assembler");
     }
-    else if (assemblerState != "" && assemblerVersion != "")
+    else if (!resumeData_.state.empty() && !resumeData_.engine.empty())
     {
       xml.newTag("assembler");
-      xml.newAttrib("version", assemblerVersion);
-      xml.addContent(assemblerState);
+      xml.newAttrib("version", resumeData_.engine);
+      if (resumeData_.nextSeq)
+        xml.newAttrib("nextSeq", (unsigned long)resumeData_.nextSeq);
+      xml.addContent(resumeData_.state);
       xml.endTag("assembler");
     }
   }
@@ -199,13 +211,13 @@ void problem_c::save(xmlWriter_c & xml) const
     xml.endTag("solutions");
   }
 
-  // Assemblies salvaged by a stop (see stashedAssemblies): found but never
+  // Assemblies salvaged by a stop (see resumeData_.pending): found but never
   // disassembled, so not reflected in the counters above. Without this they
   // would be lost by stop-save-load-continue. Optional: old files lack it.
-  if (stashedAssemblies.size()) {
+  if (resumeData_.pending.size()) {
     xml.newTag("stashedAssemblies");
-    for (unsigned int i = 0; i < stashedAssemblies.size(); i++)
-      stashedAssemblies[i]->save(xml);
+    for (unsigned int i = 0; i < resumeData_.pending.size(); i++)
+      resumeData_.pending[i]->save(xml);
     xml.endTag("stashedAssemblies");
   }
 
@@ -395,7 +407,7 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
         pars.require(xmlParser_c::START_TAG, "");
 
         if (pars.getName() == "assembly")
-          stashedAssemblies.push_back(std::make_unique<assembly_c>(pars, pieces, puzzle.getGridType()));
+          resumeData_.pending.push_back(std::make_unique<assembly_c>(pars, pieces, puzzle.getGridType()));
         else
           pars.skipSubTree();
 
@@ -437,12 +449,14 @@ problem_c::problem_c(puzzle_c & puz, xmlParser_c & pars) : puzzle(puz), result(0
     }
     else if (pars.getName() == "assembler")
     {
+      std::string seqStr = pars.getAttributeValue("nextSeq");
+      resumeData_.nextSeq = seqStr.length() ? std::strtoull(seqStr.c_str(), nullptr, 10) : 0;
       str = pars.getAttributeValue("version");
       if (str.length())
       {
-        assemblerVersion = str;
+        resumeData_.engine = str;
         pars.next();
-        assemblerState = pars.getText();
+        resumeData_.state = pars.getText();
         pars.next();
         pars.require(xmlParser_c::END_TAG, "assembler");
       }
@@ -588,7 +602,7 @@ void problem_c::exchangeParts(unsigned int partId1, unsigned int partId2) {
 
       for (unsigned int s = 0; s < solutions.size(); s++)
         solutions[s]->exchangeShape(p1Start+i, p1Start+j);
-      for (auto & a : stashedAssemblies)
+      for (auto & a : resumeData_.pending)
         a->exchangeShape(p1Start+i, p1Start+j);
 
       pos[j] = pos[i];
@@ -923,10 +937,10 @@ void problem_c::addSolution(assembly_c * assm, separationInfo_c * disasm, unsign
 void problem_c::removeAllSolutions(void) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   solutions.clear();
-  // the stash belongs to the resume state reset below (see stashedAssemblies)
-  stashedAssemblies.clear();
+  // the resume state and pending assemblies belong to the search reset below
+  resumeData_.clear();
+  assmRaw_.store(nullptr, std::memory_order_release);
   assm.reset();
-  assemblerState = "";
   solveState = SS_UNSOLVED;
   numAssemblies = 0;
   numSolutions = 0;
@@ -976,13 +990,13 @@ void problem_c::stashAssemblies(std::vector<std::unique_ptr<assembly_c>> v) {
     return;
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   for (auto &a : v)
-    stashedAssemblies.push_back(std::move(a));
+    resumeData_.pending.push_back(std::move(a));
 }
 
 std::vector<std::unique_ptr<assembly_c>> problem_c::takeStashedAssemblies(void) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   std::vector<std::unique_ptr<assembly_c>> out;
-  out.swap(stashedAssemblies);
+  out.swap(resumeData_.pending);
 
   /* An assembly needs exactly one placement per piece: everything that reads
    * it indexes its placements by piece number without a bounds check. One
@@ -998,8 +1012,58 @@ std::vector<std::unique_ptr<assembly_c>> problem_c::takeStashedAssemblies(void) 
   return out;
 }
 
+std::unique_ptr<assembler_c> problem_c::takeAssembler(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  assmRaw_.store(nullptr, std::memory_order_release);
+  return std::move(assm);
+}
+
+void problem_c::installAssembler(std::unique_ptr<assembler_c> a) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  assm = std::move(a);
+  assmRaw_.store(assm.get(), std::memory_order_release);
+}
+
+void problem_c::beginSolving(void) {
+  if (solveState == SS_SOLVING)
+    return;
+  if (solveState != SS_UNSOLVED)
+    bt_te("problem_c::beginSolving: requires SS_UNSOLVED or SS_SOLVING");
+  if (numAssemblies.load() != 0 || numSolutions.load() != 0)
+    bt_te("problem_c::beginSolving: fresh solve requires zero counters");
+  solveState = SS_SOLVING;
+}
+
+resumeData_t problem_c::cloneResumeData(void) const {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  return resumeData_.clone();
+}
+
+void problem_c::setResumeData(resumeData_t data) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  resumeData_ = std::move(data);
+}
+
+resumeData_t problem_c::takeResumeData(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  resumeData_t out = std::move(resumeData_);
+  resumeData_.clear();
+  return out;
+}
+
+void problem_c::clearResumeData(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  resumeData_.clear();
+}
+
+void problem_c::discardResumeEngineState(void) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  resumeData_.engine.clear();
+  resumeData_.state.clear();
+}
+
 assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
-  if (assemblerState.length()) {
+  if (resumeData_.hasEngineState()) {
     /* Resume path (LIFECYCLE-4): the problem must already be solving.
      * Undecodable state below stays a recoverable error return instead.
      */
@@ -1007,7 +1071,7 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
       bt_te("problem_c::setAssembler: saved assembler state requires SS_SOLVING");
 
     // if we have some assembler position data, try to load that
-    assembler_c::errState err = a->setPosition(assemblerState.c_str(), assemblerVersion.c_str());
+    assembler_c::errState err = a->setPosition(resumeData_.state.c_str(), resumeData_.engine.c_str());
 
     // when we could not load, return with error; see the branches below
     // for what happens to the saved state in each case
@@ -1022,7 +1086,6 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
        */
       if (err == assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED) {
         removeAllSolutions();
-        assemblerVersion = "";
         return err;
       }
 
@@ -1037,13 +1100,12 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
        * setAssembler() path below must reject. The next Start resets via
        * removeAllSolutions() and solves from scratch.
        */
-      assemblerState = "";
-      assemblerVersion = "";
+      discardResumeEngineState();
       return err;
     }
 
     // and remove that data
-    assemblerState = "";
+    discardResumeEngineState();
 
   } else {
 
@@ -1060,7 +1122,7 @@ assembler_c::errState problem_c::setAssembler(std::unique_ptr<assembler_c> a) {
     solveState = SS_SOLVING;
   }
 
-  this->assm = std::move(a);
+  installAssembler(std::move(a));
   return assembler_c::ERR_NONE;
 }
 
@@ -1187,14 +1249,11 @@ void problem_c::makeUnknown(void)
 {
   solveState = SS_UNKNOWN;
 
-  assm.reset();
-  assemblerState = "";
-  assemblerVersion = "";
-
   {
-    // the stash belongs to the resume state dropped above (see stashedAssemblies)
     std::lock_guard<std::recursive_mutex> guard(solutionMutex);
-    stashedAssemblies.clear();
+    assmRaw_.store(nullptr, std::memory_order_release);
+    assm.reset();
+    resumeData_.clear();
   }
 
   numAssemblies = 0;

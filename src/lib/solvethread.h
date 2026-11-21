@@ -8,12 +8,12 @@
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
-
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
-
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
@@ -22,13 +22,9 @@
 #define __SOLVETHREAD_H__
 
 #include "assembler.h"
-#include "disassembler.h"
-
-#include <mutex>
-#include "disassemblerpool.h"
-#include "rotationtables.h"
-#include "thread_budget.h"
 #include "bt_assert.h"
+#include "problemcollector.h"
+#include "solver/solversession.h"
 
 #include <time.h>
 #include <atomic>
@@ -38,445 +34,137 @@
 class problem_c;
 struct solverSpec_t;
 
-/* this class will handle the solving of one problem of the puzzle, it can also
- * be used to continue an already started solution, so that you can save you results
- * and continue later on
- *
- * Pause/resume contract (the one place stating the whole sequence; the
- * per-component pieces live next to the code quoted below).
- *
- * Pause (stop() -> stopInternal()): assembler->stop() fires the run token
- * and wakes parked pool workers; disasm_pool->requestStop() salvages queued
- * (never-started) assemblies while in-flight disassemblies run to
- * completion. The worker unwinds at task boundaries: assemble() returns,
- * disasm_pool->finish() drains filed results, and takeSalvaged() moves the
- * salvage into the problem's stashed assemblies. On the assembly side the
- * pool is drained after the workers join: never-started plus re-queued
- * in-flight tasks land back in parallelTasks (both assemblers re-queue
- * via push_tasks, which stays accepted while stopping) as their
- * unexplored remainder only, with parallelInterrupted marking the
- * position resumable.
- *
- * Continue (start() again): stashed assemblies are re-submitted FIRST, so
- * solution order stays stable; then assemble() continues over the drained
- * remainder (generation is skipped while tasks remain) or regenerates
- * fully when the stop landed during generation. The remainder holds only
- * territory the stopped run had not searched, so nothing is reported
- * twice and nothing is lost. Across sessions, stashed assemblies are serialized
- * with the problem; an interrupted parallel search reloads resumable when
- * task data was persisted, and is refused on load
- * (ERR_CAN_NOT_RESTORE_INTERRUPTED, restarting cleanly) only when the
- * stop left no tasks behind.
- *
- * Load-bearing ordering rules:
- * - takeSalvaged() only after finish(); pool.drain() only after the
- *   workers have joined (draining mid-run steals queued tasks from live
- *   workers and corrupts progress accounting).
- * - No pool-level stop flag may refuse push_tasks: the resume depends on
- *   requeue pushes staying accepted, which is why AssemblyTaskPool has no
- *   requestStop()/abort() -- stop arrives via the run and jthread tokens.
- *
- * Lifecycle invariants (LIFECYCLE-n). These are the canonical definitions;
- * tests and comments cite the IDs, the design doc repeats them with
- * enforcement pointers.
- *
- * - LIFECYCLE-1: ACT_FINISHED implies SS_SOLVED with a complete search
- *   (getFinished() >= 1) and an empty stash. A complete search with salvaged
- *   assemblies outstanding ends ACT_PAUSING instead, so the next start()
- *   re-submits them first.
- * - LIFECYCLE-2: ACT_PAUSING implies SS_SOLVING with the assembler present;
- *   the run is resumable.
- * - LIFECYCLE-3: stop() is total and idempotent: accepted in every action,
- *   effective only while preparing, reducing, assembling or disassembling.
- * - LIFECYCLE-4: start() requires a fresh object (one object per run); a
- *   problem that canStartSolving() denies fails the run with
- *   ACT_ERROR/ERR_CAN_NOT_START, leaving the problem untouched.
- * - LIFECYCLE-5: every found assembly is enqueued, salvaged or delivered,
- *   never lost; the stash is re-submitted first on the next run.
- * - LIFECYCLE-6: takeSalvaged() runs only after finish(); pool drain only
- *   after the workers have joined (see the ordering rules above).
+/**
+ * Transitional B4 wrapper over solverSession_c + problemCollector_c preserving
+ * the legacy solveThread_c API for FLTK, burrTxt2, and existing tests until
+ * B5 migrates those front ends directly onto solverSession_c.
  */
 class solveThread_c : public assembler_cb {
 
   public:
 
     enum {
-      ACT_PREPARATION,
-      ACT_REDUCE,
-      ACT_ASSEMBLING,
-      ACT_DISASSEMBLING,
-      ACT_PAUSING,
-      ACT_FINISHED,
-      ACT_ERROR,
-      ACT_ASSERT,
-      ACT_WAIT_TO_STOP
+      ACT_PREPARATION   = solverSession_c::ACT_PREPARATION,
+      ACT_REDUCE        = solverSession_c::ACT_REDUCE,
+      ACT_ASSEMBLING    = solverSession_c::ACT_ASSEMBLING,
+      ACT_DISASSEMBLING = solverSession_c::ACT_DISASSEMBLING,
+      ACT_PAUSING       = solverSession_c::ACT_PAUSING,
+      ACT_FINISHED      = solverSession_c::ACT_FINISHED,
+      ACT_ERROR         = solverSession_c::ACT_ERROR,
+      ACT_ASSERT        = solverSession_c::ACT_ASSERT,
+      ACT_WAIT_TO_STOP  = solverSession_c::ACT_WAIT_TO_STOP
     };
 
-  private:
-    /* what is currently happening the the assembler thread. This is written by
-     * the worker thread and read (and written, via stop()) by the GUI thread,
-     * so it must be atomic. It also gates access to errState/errParam/ae which
-     * are published before action is set to ACT_ERROR / ACT_ASSERT.
-     */
-    std::atomic<unsigned int> action;
+    static const int PAR_REDUCE             = 0x01;
+    static const int PAR_KEEP_ROTATIONS     = 0x04;
+    static const int PAR_DROP_DISASSEMBLIES = 0x08;
+    static const int PAR_DISASSM            = 0x10;
+    static const int PAR_JUST_COUNT         = 0x20;
+    static const int PAR_COMPLETE_ROTATIONS = 0x40;
+    static const int PAR_ROTATION_MOVES     = 0x80;
 
-  public:
-    /* return the current activity */
-    unsigned int currentAction(void) { return action; }
+    enum {
+      SRT_UNSORT         = problemCollectorOptions_t::SRT_UNSORT,
+      SRT_COMPLETE_MOVES = problemCollectorOptions_t::SRT_COMPLETE_MOVES,
+      SRT_LEVEL          = problemCollectorOptions_t::SRT_LEVEL
+    };
 
-    /* some activities might have a parameter, return that */
+    solveThread_c(problem_c & puz, int par, const solverSettings_t & settings);
+    virtual ~solveThread_c(void);
+
+    const problem_c & getProblem(void) const { return puzzle; }
+
+    unsigned int currentAction(void) const;
     unsigned int currentActionParameter(void);
 
-  private:
-
-    assembler_c::errState errState = assembler_c::ERR_NONE;
-    int errParam = 0;
-
-  public:
-
     assembler_c::errState getErrorState(void) {
-      bt_assert(action == ACT_ERROR);
+      bt_assert(currentAction() == ACT_ERROR);
       return errState;
     }
     int getErrorParam(void) {
-      bt_assert(action == ACT_ERROR);
+      bt_assert(currentAction() == ACT_ERROR);
       return errParam;
     }
 
-  private:
-
-    time_t startTime = 0;
-
-  public:
-
-    /* how much time has passed since calling start */
     unsigned long getTime(void) { return time(0) - startTime; }
 
+    bool rotationMoves(void) const { return session_->rotationMoves(); }
+    unsigned int rotationsSkipped(void) const { return session_->rotationsSkipped(); }
+
+    void setSortMethod(int sort) { collector_.setSortMethod(sort); }
+    void setLiveSort(int method) { collector_.setLiveSort(method); }
+    void setSolutionLimits(unsigned int limit, unsigned int drop = 1) {
+      collector_.setSolutionLimits(limit, drop);
+    }
+
+    const assert_exception & getAssertException(void) { return ae; }
+
+    bool isRunning(void) const { return running.load(std::memory_order_relaxed); }
+
+    void joinThread(void) {
+      if (worker_thread.joinable())
+        worker_thread.join();
+    }
+
+    bool start(bool stop_after_prep = false);
+    void stop(void);
+
+    bool stopped(void) const { return finalized_.load(std::memory_order_acquire); }
+
+    float getProgress(void) const;
+
+    static constexpr float runningCap = solverSession_c::runningCap;
+
+    static float noEvidenceProgress(float assemblyFraction, float held) {
+      return solverSession_c::noEvidenceProgress(assemblyFraction, held);
+    }
+
+    float getAssemblyBaseFraction(void) const {
+      return session_->getAssemblyBaseFraction();
+    }
+
+    bool workOutstanding(void) const {
+      return session_->workOutstanding();
+    }
+
+    void run(void);
+
+  protected:
+
+    bool assembly(std::unique_ptr<assembly_c> a) override;
+    virtual void assemblyPhaseEnded(void) {}
+
   private:
+
+    ThreadBudget * threadBudget(void) override {
+      return session_->threadBudgetForLegacyBridge();
+    }
+
+    void stopInternal(void);
 
     problem_c & puzzle;
-    /* the problem as the solver sees it, built when the thread is made;
-     * a new assembler and the disassembly pool share it */
     std::shared_ptr<const solverSpec_t> spec;
     int parameters;
-    /* threads, engines and toggles of the assembler and the disassembly
-     * pool, rotation settings for PAR_ROTATION_MOVES */
     const solverSettings_t settings;
 
-  public:
+    std::unique_ptr<solverSession_c> session_;
+    problemCollector_c collector_;
 
-    static const int PAR_REDUCE =             0x01;  // do a reduction after preparation
-    static const int PAR_KEEP_ROTATIONS =     0x04;  // keep rotated solutions
-    static const int PAR_DROP_DISASSEMBLIES = 0x08;  // remove disassembly instructions after analysis
-    static const int PAR_DISASSM =            0x10;  // do the disassembly analysis
-    static const int PAR_JUST_COUNT =         0x20;  // just count the solutions, don't save them
-    static const int PAR_COMPLETE_ROTATIONS = 0x40;  // do a thorough rotation check
-    // with PAR_DISASSM: also allow pieces to turn by 90° while disassembling
-    // (cube grids only), in the mode settings.rotation.mode says (fast,
-    // balanced, slow; off is the same as leaving the flag out); builds or
-    // reuses the rotation tables in the constructor, without it no
-    // rotation code runs at all
-    static const int PAR_ROTATION_MOVES =     0x80;
-
-    // create all the necessary data structures to start the thread later on;
-    // settings.threads is the worker count of the assembler and of the
-    // disassembler pool, each, 0 = hardware_concurrency; settings.rotation
-    // is only used with PAR_ROTATION_MOVES
-    solveThread_c(problem_c & puz, int par, const solverSettings_t & settings);
-    const problem_c & getProblem(void) const { return puzzle; }
-
-    /** True if the disassembly considers rotation moves: PAR_ROTATION_MOVES
-     *  was given and the problem has rotation tables (cube grids). */
-    bool rotationMoves(void) const;
-
-    /** Limits that made the disassembly skip rotation moves, a bit set of
-     *  rotationContext_c::skip_e; 0 without rotation moves. */
-    unsigned int rotationsSkipped(void) const;
-
-  private:
-
-    int sortMethod;
-
-  public:
-
-    enum {
-      SRT_UNSORT,
-      SRT_COMPLETE_MOVES,
-      SRT_LEVEL
-    };
-
-    void setSortMethod(int sort) { sortMethod = sort; }
-
-    /* If >= 0, the worker keeps the (limit-bounded) solution list sorted by
-     * this problem_c::sortSolutions method after every solution it adds, so a
-     * sort chosen in the GUI stays applied as new solutions arrive. -1 = off.
-     * Atomic: set from the GUI thread, read by the worker.
-     */
-    void setLiveSort(int method) { liveSort.store(method, std::memory_order_relaxed); }
-
-  private:
-
-    std::atomic<int> liveSort;
-
-    /* don't save more than this number of solutions 0 means no limit */
-    unsigned int solutionLimit;
-
-    /* save only every x-th solution, the others are dropped */
-    unsigned int solutionDrop;
-
-    /* this is used to increase the drop with time, when the limit is reached
-     * and only every 2nd valid solution is taken
-     */
-    unsigned int dropMultiplicator = 1;
-
-  public:
-
-    void setSolutionLimits(unsigned int limit, unsigned int drop = 1) {
-      solutionLimit = limit;
-      solutionDrop = drop;
-    }
-
-  private:
-
+    assembler_c::errState errState = assembler_c::ERR_NONE;
+    int errParam = 0;
     assert_exception ae;
+    time_t startTime = 0;
+    bool return_after_prep = false;
 
-  public:
+    std::atomic<bool> started_{false};
+    std::atomic<bool> stopPressed_{false};
+    std::atomic<bool> finalized_{false};
+    std::atomic<unsigned int> terminalAction_{ACT_PREPARATION};
+    std::atomic<bool> running{false};
+    std::jthread worker_thread;
 
-    const assert_exception & getAssertException(void) {
-      return ae;
-    }
-
-  private:
-
-
-  std::atomic<bool> stopPressed{false};  // set by the GUI thread, read by the worker
-  bool return_after_prep = false;  // sometimes it is useful to only prepare and return,
-                           // if this flag is set, the program will return
-
-
-
-  /* Shared cap on working threads, declared BEFORE disasm_pool so it
-   * outlives the pool (members destroy in reverse order; the pool dtor
-   * touches the budget). Created iff a real (non-inline) pool exists and
-   * budgeting is enabled; otherwise null and every budget call site
-   * behaves exactly as without any cap.
-   */
-  std::unique_ptr<ThreadBudget> threadBudget_;
-
-  std::unique_ptr<disassemblerPool_c> disasm_pool;
-
-  /* The pool's workers deliver results as they finish, concurrently;
-   * onDisassemblyResult() runs under this lock, one result at a time. */
-  std::mutex disasmResultMutex;
-
-  /* the worker publishes the assembler here once it is fully constructed so
-   * that currentActionParameter(), called from the GUI thread, can query its
-   * progress. Atomic with release/acquire so the GUI never sees a
-   * half-constructed object (which would be a vptr race on the virtual call).
-   */
-  std::atomic<assembler_c *> assm;
-
-  std::jthread worker_thread;
-  std::atomic<bool> running{false};
-
-  /* Progress state, all written by the worker and read by the GUI thread.
-   *
-   * The assembly phase has no cost meter of its own, so its cost is derived:
-   * worker-seconds = wall time the phase ran, times the number of threads that
-   * ran it. assemblyEndNs freezes that wall time when assemble() returns --
-   * without it the assembly cost would keep growing throughout the disassembly
-   * tail, when no assembly work is happening at all, and would drag the blend
-   * towards 1 for a reason unrelated to the work left.
-   *
-   * assemblyStartNs doubles as the release/acquire edge that lets the GUI
-   * touch the assembler at all: `assm` is published before createMatrix() and
-   * reduce() build the matrix getFinished() reads, so polling across that is a
-   * genuine data race.
-   *
-   * assemblyBaseFraction is how far the assembler had already got when this
-   * object took it over -- non-zero only on a resume. The seconds that bought
-   * that head start belong to a previous solveThread_c and are not recorded,
-   * so the phase's total cost is projected from it and from what this run has
-   * measured; see progressModel_c::projectAssemblyCost().
-   *
-   * reportedProgress is the monotone guard. It is never reset: the GUI builds
-   * one solveThread_c per solve and destroys it when the solve ends, so the
-   * object's lifetime is exactly the span the bar must not move backwards over.
-   */
-  std::atomic<long long> assemblyStartNs{0};   // 0 = assembly has not started
-  std::atomic<long long> assemblyEndNs{0};     // 0 = assembly still running
-  std::atomic<unsigned int> assemblyThreads{1};
-  mutable std::atomic<float> assemblyBaseFraction{0.0f};
-  mutable std::atomic<float> reportedProgress{0.0f};
-
-public:
-
-  // stop and exit
-  virtual ~solveThread_c(void);
-
-  /** return true, if the thread is running */
-  bool isRunning(void) const { return running.load(std::memory_order_relaxed); }
-
-  void joinThread(void) {
-    if (worker_thread.joinable())
-      worker_thread.join();
-  }
-
-private:
-
-  // helper to stop without virtual dispatch in destructor
-  void stopInternal(void);
-
-protected:
-
-  // the call-back; may be called from several assembler threads at once
-  bool assembly(std::unique_ptr<assembly_c> a) override;
-
-  /* Called on the worker thread once assemble() has returned and before the
-   * disassembly pool is drained. The default does nothing. It exists so a
-   * test can act in that window, which no poll from outside the worker can
-   * hit reliably: a subclass overriding it must join the worker in its own
-   * destructor, before its part of the object is torn down.
-   */
-  virtual void assemblyPhaseEnded(void) {}
-
-private:
-
-  // Shared thread budget for the search (null when uncapped).
-  ThreadBudget *threadBudget() override { return threadBudget_.get(); }
-
-  void onDisassemblyResult(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s);
-
-public:
-
-  // let the thread start
-  // returns true, if everything went well, false on thread-creation failure.
-  // Throws assert_exception (all build modes) when started on an
-  // already-started object: one object per run. An unstartable problem is
-  // rejected worker-side at run() entry instead (run ends in ACT_ERROR with
-  // ERR_CAN_NOT_START, leaving the problem untouched), so polling frontends
-  // keep working.
-  bool start(bool stop_after_prep = false);
-
-  /* Whole-solve progress in [0,1] for the GUI's bar and its time estimate.
-   *
-   * This is the only place that can see both phases, so this is where the
-   * assembler's own fraction and the disassembly pool's are blended, weighted
-   * by each phase's measured cost (see progressModel_c). Cost-weighted rather
-   * than count-weighted so that elapsed/progress - elapsed is a usable estimate
-   * of the time remaining.
-   *
-   * Monotone -- projections revise as evidence accumulates, and a bar that
-   * moves backwards reads as a bug -- and strictly below 1.0 until the solve
-   * actually reaches ACT_FINISHED. Safe to call from the GUI thread at any
-   * time, including before the thread is started and after it has ended.
-   */
-  float getProgress(void) const;
-
-  /* The largest value getProgress() will report while the solve is running.
-   *
-   * It cannot be 1.0, which is reserved for ACT_FINISHED and is what
-   * solvethread.cpp's terminal `getFinished() >= 1` check decides on, and it
-   * cannot be progressModel_c's std::nextafter(1.0f, 0.0f) "counted but not
-   * done" sentinel either: the GUI renders the bar with %.4f, which prints
-   * that sentinel as 100.0000%.
-   *
-   * This is the single definition. solvethread.cpp uses the name unqualified
-   * inside solveThread_c's member functions, where class scope is searched
-   * before namespace scope, so it resolves here; the tests reach it as
-   * solveThread_c::runningCap. A file-local alias in solvethread.cpp would
-   * therefore be dead, and -Wunused-const-variable under the --werror CI
-   * builds rejects it.
-   */
-  static constexpr float runningCap = 0.999f;
-
-  /* What to publish while the disassembly pool has completed nothing at all.
-   *
-   * With no disassembly evidence progressModel_c can only report the assembly
-   * fraction, so that is what is published -- except where doing so would put
-   * runningCap into the monotone guard. Anything at or above the cap clamps TO
-   * the cap, and once the cap is published the guard pins the bar there for
-   * the rest of the solve: every genuine blended value that follows is lower,
-   * because the first completion of a long disassembly queue puts the blend
-   * far below 1. So at that point the honest answer is the one already held --
-   * nothing is known yet about the phase that remains, and any number invented
-   * here is contradicted a moment later.
-   *
-   * The threshold is the cap and not 1.0f. getProgress() clamps a rounded-up
-   * fraction to std::nextafter(1.0f, 0.0f) while assembly is still running, so
-   * a 1.0f threshold is unreachable on that path and every fraction in
-   * [runningCap, 1.0) would pin the bar -- the same freeze with a narrower
-   * trigger, on any puzzle that only starts finding assemblies near the end of
-   * its search.
-   *
-   * Pure, so the rule is checkable without driving a solve.
-   */
-  static float noEvidenceProgress(float assemblyFraction, float held) {
-    return (assemblyFraction >= runningCap)
-             ? held
-             : ((assemblyFraction < 0.0f) ? 0.0f : assemblyFraction);
-  }
-
-  /* The assembly fraction this solve started from: 0 for a fresh solve, the
-   * carried-over fraction for a resumed one. It is the basis the assembly
-   * cost -- and with it the whole blend -- is projected from, and a basis at
-   * or above the live fraction silently degrades getProgress() to
-   * assembly-only reporting, which is not distinguishable from the reported
-   * value alone. Exposed so that property can be asserted directly.
-   *
-   * Valid to read once the assembly phase has opened; before that it reads 0,
-   * the value a fresh solve keeps.
-   */
-  float getAssemblyBaseFraction(void) const {
-    return assemblyBaseFraction.load(std::memory_order_relaxed);
-  }
-
-  /* true while work the solve has counted is still to be done: assembly has
-   * not returned, or the pool holds a submitted disassembly it has not
-   * completed. Once false, the inputs getProgress() blends are final, so its
-   * value stops moving until the thread stops, however long the worker then
-   * spends joining the pool and delivering results; that span is scheduling,
-   * not solve progress. After a complete search the value it holds is
-   * runningCap. A stop can still end the run in ACT_PAUSING instead of
-   * ACT_FINISHED, and a stop before assemble() runs leaves this true for a
-   * thread that will do no more work.
-   *
-   * Never true again once it has gone false within a run, so a caller that
-   * reads it after getProgress() and sees true knows the work was outstanding
-   * when that value was reported. The acquire pairs with the release store
-   * run() makes when assemble() returns, so the submitted count read here is
-   * final. Exposed so tests can tell a bar that reached the cap because the
-   * work is done from one that is pinned there.
-   */
-  bool workOutstanding(void) const {
-    if (!assemblyEndNs.load(std::memory_order_acquire))
-      return true;
-    return disasm_pool &&
-           disasm_pool->completedCount() < disasm_pool->submittedCount();
-  }
-
-  // try to stop the thread at the next possible position
-  void stop(void);
-
-  /* true once the worker has left run() for good. ACT_ASSERT belongs here:
-   * an assert in the worker ends the thread just as surely as the other three,
-   * and a caller polling for the thread to finish would otherwise wait forever.
-   */
-  bool stopped(void) const {
-    return ((action == ACT_PAUSING) ||
-            (action == ACT_FINISHED) ||
-            (action == ACT_ERROR) ||
-            (action == ACT_ASSERT)
-           );
-  }
-
-  void run(void);
-
-private:
-
-  // no copying and assigning
-  solveThread_c(const solveThread_c&);
-  void operator=(const solveThread_c&);
+    solveThread_c(const solveThread_c &) = delete;
+    void operator=(const solveThread_c &) = delete;
 };
 
 #endif

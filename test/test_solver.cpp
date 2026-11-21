@@ -103,6 +103,16 @@ struct SolveResult {
   const problem_c * problem{nullptr};
 };
 
+static void writeAssemblerXml(const assembler_c & assm, xmlWriter_c & xml) {
+  auto [ver, st] = assm.saveState();
+  xml.newTag("assembler");
+  if (!ver.empty())
+    xml.newAttrib("version", ver);
+  if (!st.empty())
+    xml.addContent(st);
+  xml.endTag("assembler");
+}
+
 SolveResult solvePuzzle(const char * path, unsigned int problemIdx = 0, bool disassemble = true) {
   auto p = puzzle_c::load(path);
   REQUIRE(p != nullptr);
@@ -758,7 +768,7 @@ TEST_CASE("Huang-SIMD save, load and continue reproduces the full multiset",
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -824,7 +834,7 @@ static void checkChainedStopsExactOnce(problem_c & problem) {
     finished = assm.getFinished() == 1.0f;
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     return str.str();
   };
 
@@ -946,7 +956,7 @@ TEST_CASE("Serial continue after parallel save does not duplicate",
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -1023,7 +1033,7 @@ TEST_CASE("Symmetry-breaking save, load and continue reproduces the multiset",
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -1073,7 +1083,7 @@ TEST_CASE("Second save in a single-threaded chain resumes exact-once",
   auto saveState = [&](assembler_1_c & assm) {
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     return str.str();
   };
   auto restoreInto = [&](const std::string & state, assembler_1_c & restored) {
@@ -1207,7 +1217,7 @@ TEST_CASE("Dancing Cells save, load and continue reproduces the full multiset",
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -1362,7 +1372,7 @@ TEST_CASE("Parallel assembler 1: an interrupted search restores as resumable",
   {
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -1413,7 +1423,7 @@ TEST_CASE("Parallel assembler 1: the interrupted flag does not break normal rest
   {
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
 
@@ -1565,7 +1575,7 @@ TEST_CASE("SIMD assembler_1: an interrupted single-threaded search restores as r
   {
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     state = str.str();
   }
   CHECK(assemblerVersionOf(state) == "2.2");
@@ -1622,7 +1632,7 @@ TEST_CASE("Saved interrupted search XML size is bounded and independent of solut
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     std::string state = str.str();
     CHECK(assemblerVersionOf(state) == "2.2");
     CHECK(state.size() < 4096);
@@ -1647,7 +1657,7 @@ TEST_CASE("Saved interrupted search XML size is bounded and independent of solut
 
     std::ostringstream str;
     xmlWriter_c xml(str);
-    assm.save(xml);
+    writeAssemblerXml(assm, xml);
     std::string state = str.str();
     CHECK(assemblerVersionOf(state) == "2.2");
     CHECK(state.size() < 4096);
@@ -1754,7 +1764,7 @@ TEST_CASE("a stop before the pool is seeded keeps a resumed remainder",
 
       std::ostringstream str;
       xmlWriter_c xml(str);
-      assm->save(xml);
+      writeAssemblerXml(*assm, xml);
       state = str.str();
     }
 
@@ -1847,7 +1857,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
 
       std::ostringstream str;
       xmlWriter_c xml(str);
-      assm.save(xml);
+      writeAssemblerXml(assm, xml);
       state = str.str();
     }
     CHECK(assemblerVersionOf(state) == "2.2");
@@ -1904,7 +1914,7 @@ TEST_CASE("Interrupted search resumes with pinned engine across environment over
 
       std::ostringstream str;
       xmlWriter_c xml(str);
-      assm.save(xml);
+      writeAssemblerXml(assm, xml);
       state = str.str();
     }
     CHECK(assemblerVersionOf(state) == "2.2");
@@ -2040,7 +2050,7 @@ TEST_CASE("Parallel exact-once search: completed search does not replay on secon
   std::stringstream ss;
   {
     xmlWriter_c writer(ss);
-    assm->save(writer);
+    writeAssemblerXml(*assm, writer);
   }
   xmlParser_c parser(ss);
   parser.nextTag();
@@ -2087,7 +2097,7 @@ TEST_CASE("Single-threaded exact-once search: completed search does not replay o
   std::stringstream ss;
   {
     xmlWriter_c writer(ss);
-    assm->save(writer);
+    writeAssemblerXml(*assm, writer);
   }
   xmlParser_c parser(ss);
   parser.nextTag();
@@ -2132,7 +2142,7 @@ TEST_CASE("Parallel assembler 1 SIMD: completed search does not replay on second
   std::stringstream ss;
   {
     xmlWriter_c writer(ss);
-    assm->save(writer);
+    writeAssemblerXml(*assm, writer);
   }
   xmlParser_c parser(ss);
   parser.nextTag();
@@ -2179,7 +2189,7 @@ TEST_CASE("Single-threaded assembler 1 SIMD: completed search does not replay on
   std::stringstream ss;
   {
     xmlWriter_c writer(ss);
-    assm->save(writer);
+    writeAssemblerXml(*assm, writer);
   }
   xmlParser_c parser(ss);
   parser.nextTag();
@@ -2465,7 +2475,7 @@ TEST_CASE("a stop after the pool drained completes the run",
       CHECK(assm->getFinished() == 1.0f);
       std::ostringstream str;
       xmlWriter_c xml(str);
-      assm->save(xml);
+      writeAssemblerXml(*assm, xml);
       state = str.str();
     }
     CHECK(cb1.fingerprints == baseline);
@@ -2634,7 +2644,7 @@ TEST_CASE("assembler_1 donated work is searched exactly once",
         });
         std::ostringstream str;
         xmlWriter_c xml(str);
-        assm.save(xml);
+        writeAssemblerXml(assm, xml);
         state = str.str();
       }
       {

@@ -26,8 +26,6 @@
 #include "gridtype.h"
 #include "assembly.h"
 
-#include "../tools/xml.h"
-
 #include <algorithm>
 #include <cstdlib>
 #include <thread>
@@ -230,10 +228,9 @@ void assembler_c::stop(void) {
   runStop.request_stop();
 }
 
-void assembler_c::save(xmlWriter_c & xml) const
+std::pair<std::string, std::string> assembler_c::saveState(void) const
 {
-  xml.newTag("assembler");
-  xml.endTag("assembler");
+  return { "", "" };
 }
 
 void assembler_c::assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn)

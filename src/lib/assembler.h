@@ -34,11 +34,12 @@
 #include <memory>
 #include <functional>
 #include <stop_token>
+#include <string>
+#include <utility>
 
 class voxel_c;
 class assembly_c;
 struct solverSpec_t;
-class xmlWriter_c;
 class ThreadBudget;
 
 /* Whether a stopped parallel run with a drained remainder must complete
@@ -287,6 +288,21 @@ public:
   /** stops the assembly process sometimes in the near future. */
   virtual void stop(void);
 
+  /** stop() that also holds for a run that has not begun yet: the next
+   * beginRun() starts already stopped, until clearStickyStop(). For a
+   * driver that decides "run or not" before assemble() refreshes the stop
+   * source (solverSession_c): a stop landing between its check and
+   * beginRun() would otherwise be lost with the replaced source. */
+  void stopSticky(void) {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    stickyStop = true;
+    runStop.request_stop();
+  }
+  void clearStickyStop(void) {
+    std::lock_guard<std::mutex> lock(runStopMutex);
+    stickyStop = false;
+  }
+
   /** returns true, as soon as the process really has stopped */
   virtual bool stopped(void) const { return false; }
 
@@ -316,12 +332,12 @@ public:
   virtual errState setPosition(const char * string, const char * version);
 
   /**
-   * this function saves the current state of the assembler into an xml node to
-   * write it to an file.
-   * this state must be such that the class can restore this state and continue
-   * from there by getting this and the puzzle given to the constructor
+   * Serialise the current state of the assembler as (engine/version tag,
+   * opaque state string) so a later assembler built for the same problem
+   * can continue from here via setPosition(state.c_str(), engine.c_str()).
+   * Must be called only while not assembling.
    */
-  virtual void save(xmlWriter_c & xml) const;
+  virtual std::pair<std::string, std::string> saveState(void) const;
 
   /* some more special information to find out possible piece placements */
 
@@ -408,6 +424,8 @@ public:
    */
   std::stop_source runStop;
   mutable std::mutex runStopMutex;
+  // see stopSticky(); guarded by runStopMutex
+  bool stickyStop = false;
 
   /* Start a new run: refresh the stop source and hand out its token.
    * Call once at assemble() entry, before any worker exists.
@@ -415,6 +433,8 @@ public:
   std::stop_token beginRun() {
     std::lock_guard<std::mutex> lock(runStopMutex);
     runStop = std::stop_source{};
+    if (stickyStop)
+      runStop.request_stop();
     return runStop.get_token();
   }
 
