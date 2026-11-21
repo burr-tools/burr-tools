@@ -48,7 +48,7 @@ namespace btui {
       case gridType_c::GT_RHOMBIC_TETRAHEDRA:         return "Rhombic Tetrahedra";
       case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA:      return "Tetrahedra-Octahedra";
       case gridType_c::GT_DESCRIBED_BRICKS:           return "Brick (described)";
-      case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "Triangular Prism (described)";
+      case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "Triangular Prism";
       case gridType_c::GT_NUM_GRIDS:                  break;
     }
     return "";
@@ -57,7 +57,7 @@ namespace btui {
   std::vector<GridTypeChoice> newPuzzleGridTypes(cutCubeGrids_e cut) {
     static const GridTypeChoice catalog[] = {
       { gridType_c::GT_BRICKS,                "brick",      "Brick",                "Cubes. The classic burr and polycube grid." },
-      { gridType_c::GT_TRIANGULAR_PRISM,      "prism",      "Triangular Prism",     "Triangular prisms stacked along Z." },
+      { gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM, "prism", "Triangular Prism",     "Triangular prisms stacked along Z." },
       { gridType_c::GT_SPHERES,               "spheres",    "Spheres",              "Closely packed spheres; each touches twelve neighbours." },
       { gridType_c::GT_RHOMBIC,               "rhombic",    "Rhombic Tetrahedra",   "Cut cubes that build rhombic dodecahedra." },
       { gridType_c::GT_TETRA_OCTA,            "tetoct",     "Tetrahedra-Octahedra", "Tetrahedra and octahedra, a cut cube grid." },

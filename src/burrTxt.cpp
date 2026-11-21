@@ -202,7 +202,7 @@ void usage(bool full = false) {
   cout << "        disassembled again), the model they are for and with -P the measured play\n";
   cout << "  -D    solve the puzzle converted to the described grid (BurrTools NG's grid as data)\n";
   cout << "        its grid corresponds to: bricks, triangular prisms, rhombic, tetra-octa (cross-checks)\n";
-  cout << "  --native-grids  keep rhombic and tetra-octa puzzles on their native grids, as the FLTK GUI\n";
+  cout << "  --native-grids  keep triangular prism, rhombic and tetra-octa puzzles on their native grids\n";
   cout << "        does; without it they are read onto NG's grids, which -D then leaves as they are\n";
   cout << "  -s    print the assemby\n";
   cout << "  -q    be quiet and only print statistics\n";
@@ -386,7 +386,7 @@ int main(int argv, char* args[]) {
     return 2;
   }
   xmlParser_c pars(*str);
-  std::unique_ptr<puzzle_c> loaded = puzzle_c::read(pars, nativeGrids ? cutCubeGrids_e::native : cutCubeGrids_e::ng);
+  std::unique_ptr<puzzle_c> loaded = puzzle_c::read(pars, nativeGrids ? cutCubeGrids_e::nativeAll : cutCubeGrids_e::ng);
   /* -D: the puzzle on the described grid its grid converts to; one read
    * onto a described grid already stays */
   if (describedGrid && !loaded->getGridType()->isDescribed()) {

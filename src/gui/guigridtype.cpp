@@ -82,7 +82,7 @@ const char * guiGridType_c::getName(void) const {
     case gridType_c::GT_RHOMBIC_TETRAHEDRA: return "Rhombic Tetrahedra (NG)";
     case gridType_c::GT_OCTAHEDRAL_TETRAHEDRA: return "Octahedral Tetrahedra";
     case gridType_c::GT_DESCRIBED_BRICKS: return "Brick (described)";
-    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "Triangular Prism (described)";
+    case gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM: return "Triangular Prism";
     default: return 0;
   }
 }

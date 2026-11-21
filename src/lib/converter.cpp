@@ -27,10 +27,15 @@
 #include "solution.h"
 #include "symmetries.h"
 #include "latticegridinfo.h"
+#include "disassembly.h"
 
 #include <algorithm>
 #include <array>
 #include <climits>
+#include <cmath>
+#include <sstream>
+
+#include "../tools/xml.h"
 #include <memory>
 #include <vector>
 
@@ -199,8 +204,12 @@ void describedCells(gridType_c::gridType src, int x, int y, int z, std::vector<s
       out.push_back({x, y, z});
       break;
     case gridType_c::GT_TRIANGULAR_PRISM: {
+      /* floored, so that cells below 0 (a saved assembly or disassembly
+       * may place pieces there) map like the others */
+      auto fdiv2 = [](int a) { return a >= 0 ? a / 2 : -((-a + 1) / 2); };
+      const int ymod = ((y % 2) + 2) % 2;
       int xn = x + 1;
-      int yn = (3 * y + 1) / 2 - (x + y % 2) / 2;
+      int yn = fdiv2(3 * y + 1) - fdiv2(x + ymod);
       int zn = -xn - yn;
       out.push_back({xn + z, yn + z, zn + z});
       break;
@@ -247,8 +256,73 @@ std::vector<unsigned char> transformationTable(gridType_c::gridType native) {
 
 typedef std::array<int, 3> cell_t;
 
+/* Our triangular prism turns (tabs_1/rotmatrix.inc), and the way voxel_1_c
+ * turns a cell with them: a native prism file's assemblies are given in
+ * these, and the importer needs no other part of the native prism grid. */
+const double s34 = std::sqrt(0.75);
+const double prismMatrices[][9] = {
+  {  1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5, -s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5, -s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5,  s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5,  s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5, -s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5, -s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0, -1.0 },
+  {  1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5,  s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5,  s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5, -s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5, -s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0,  1.0 },
+  {  0.5,  s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0,  1.0 },
+  { -0.5,  s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0,  1.0 },
+  {  1.0,  0.0, 0.0,  0.0,  1.0, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5, -s34, 0.0,  s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5, -s34, 0.0,  s34, -0.5, 0.0, 0.0, 0.0, -1.0 },
+  { -1.0, -0.0, 0.0,  0.0, -1.0, 0.0, 0.0, 0.0, -1.0 },
+  { -0.5,  s34, 0.0, -s34, -0.5, 0.0, 0.0, 0.0, -1.0 },
+  {  0.5,  s34, 0.0, -s34,  0.5, 0.0, 0.0, 0.0, -1.0 },
+};
+constexpr unsigned int numPrismMatrices = sizeof(prismMatrices) / sizeof(prismMatrices[0]);
+
+cell_t prismTurn(unsigned int t, int x, int y, int z) {
+  const double * m = prismMatrices[t];
+  const double xp = 0.5 + 0.5 * x;
+  const double yp = y * s34 + (((x + y) & 1) ? std::sqrt(1.0 / 3) : std::sqrt(1.0 / 12));
+  const double zp = z;
+  double xpn = m[0] * xp + m[1] * yp + m[2] * zp;
+  double ypn = m[3] * xp + m[4] * yp + m[5] * zp;
+  const double zpn = m[6] * xp + m[7] * yp + m[8] * zp;
+  xpn = (xpn - 0.5) * 2;
+  ypn /= s34;
+  return { (int)(xpn + (xpn < 0 ? -0.5 : 0.5)), (int)std::floor(ypn), (int)(zpn + (zpn < 0 ? -0.5 : 0.5)) };
+}
+
+/* the filled cells of a native triangular prism shape placed as
+ * (trans, x, y, z) in an assembly: voxel_1_c's turn, the hotspot on the
+ * position */
+std::vector<cell_t> prismPlacedCells(const voxel_c & shape, unsigned char trans, int x, int y, int z) {
+  if (trans >= numPrismMatrices)
+    bt_te("convertToDescribed: a saved assembly has a transformation its grid does not have");
+  const cell_t h = prismTurn(trans, shape.getHx(), shape.getHy(), shape.getHz());
+  std::vector<cell_t> res;
+  for (unsigned int cz = 0; cz < shape.getZ(); cz++)
+    for (unsigned int cy = 0; cy < shape.getY(); cy++)
+      for (unsigned int cx = 0; cx < shape.getX(); cx++)
+        if (shape.getState(cx, cy, cz) != voxel_c::VX_EMPTY) {
+          const cell_t c = prismTurn(trans, cx, cy, cz);
+          res.push_back({c[0] - h[0] + x, c[1] - h[1] + y, c[2] - h[2] + z});
+        }
+  return res;
+}
+
 /* the filled cells of a shape placed as (trans, x, y, z) in an assembly */
 std::vector<cell_t> placedCells(const voxel_c & shape, unsigned char trans, int x, int y, int z) {
+  if (shape.getGridType()->getType() == gridType_c::GT_TRIANGULAR_PRISM)
+    return prismPlacedCells(shape, trans, x, y, z);
   std::unique_ptr<voxel_c> pc(shape.getGridType()->getVoxel(&shape));
   if (!pc->transform(trans))
     bt_te("convertToDescribed: a saved assembly has a transformation its grid does not have");
@@ -271,38 +345,111 @@ placement_c convertPlacement(gridType_c::gridType src, const voxel_c & nativeSha
                              unsigned char trans, int x, int y, int z, const std::vector<unsigned char> & table,
                              const cell_t & shift) {
 
-  if (trans >= table.size() || table[trans] == TND)
-    bt_te("convertToDescribed: a saved assembly has a transformation the described grid does not have");
-
   std::vector<cell_t> target, cells;
   for (const cell_t & c : placedCells(nativeShape, trans, x, y, z)) {
     describedCells(src, c[0], c[1], c[2], cells);
     for (const cell_t & d : cells)
       target.push_back({d[0] - shift[0], d[1] - shift[1], d[2] - shift[2]});
   }
-
-  const unsigned char t = table[trans];
-  std::unique_ptr<voxel_c> pc(shape.getGridType()->getVoxel(&shape));
-  if (!pc->transform(t))
-    bt_te("convertToDescribed: the transformation table names a transformation the grid does not have");
-  std::vector<cell_t> got = placedCells(shape, t, pc->getHx(), pc->getHy(), pc->getHz());
-
-  if (target.size() != got.size() || target.empty())
+  if (target.empty())
     bt_te("convertToDescribed: a saved assembly's piece does not map onto the described grid");
-
-  // the shift that moves the transformed piece onto the target cells
-  cell_t lo1 = target[0], lo2 = got[0];
-  for (const cell_t & c : target) for (int k = 0; k < 3; k++) lo1[k] = std::min(lo1[k], c[k]);
-  for (const cell_t & c : got)    for (int k = 0; k < 3; k++) lo2[k] = std::min(lo2[k], c[k]);
-  const cell_t d = {lo1[0] - lo2[0], lo1[1] - lo2[1], lo1[2] - lo2[2]};
-  for (cell_t & c : got) for (int k = 0; k < 3; k++) c[k] += d[k];
-
   std::sort(target.begin(), target.end());
-  std::sort(got.begin(), got.end());
-  if (target != got)
-    bt_te("convertToDescribed: a saved assembly's piece does not map onto the described grid");
 
-  return placement_c(t, pc->getHx() + d[0], pc->getHy() + d[1], pc->getHz() + d[2]);
+  /* The transformation through the table where the grids share their
+   * matrices; else (prisms) the first of the described grid's that covers
+   * the same cells. */
+  std::vector<unsigned char> candidates;
+  if (!table.empty()) {
+    if (trans >= table.size() || table[trans] == TND)
+      bt_te("convertToDescribed: a saved assembly has a transformation the described grid does not have");
+    candidates.push_back(table[trans]);
+  } else {
+    const unsigned int n = shape.getGridType()->getSymmetries()->getNumTransformationsMirror();
+    for (unsigned int t = 0; t < n; t++)
+      candidates.push_back(static_cast<unsigned char>(t));
+  }
+
+  for (const unsigned char t : candidates) {
+    std::unique_ptr<voxel_c> pc(shape.getGridType()->getVoxel(&shape));
+    if (!pc->transform(t)) {
+      if (!table.empty())
+        bt_te("convertToDescribed: the transformation table names a transformation the grid does not have");
+      continue;
+    }
+    std::vector<cell_t> got = placedCells(shape, t, pc->getHx(), pc->getHy(), pc->getHz());
+    if (target.size() != got.size())
+      continue;
+
+    // the shift that moves the transformed piece onto the target cells
+    cell_t lo1 = target[0], lo2 = got[0];
+    for (const cell_t & c : target) for (int k = 0; k < 3; k++) lo1[k] = std::min(lo1[k], c[k]);
+    for (const cell_t & c : got)    for (int k = 0; k < 3; k++) lo2[k] = std::min(lo2[k], c[k]);
+    const cell_t d = {lo1[0] - lo2[0], lo1[1] - lo2[1], lo1[2] - lo2[2]};
+    for (cell_t & c : got) for (int k = 0; k < 3; k++) c[k] += d[k];
+    std::sort(got.begin(), got.end());
+    if (target == got)
+      return placement_c(t, pc->getHx() + d[0], pc->getHy() + d[1], pc->getHz() + d[2]);
+  }
+  bt_te("convertToDescribed: a saved assembly's piece does not map onto the described grid");
+}
+
+/* What a separation needs of each placed piece: its native cells and
+ * position as assembled, and its described position. */
+struct placedPiece_s {
+  std::vector<cell_t> cells;
+  cell_t nativePos;
+  cell_t describedPos;
+};
+
+/* A separation's states on the described grid. A state holds each piece's
+ * position (its hotspot, as the assembly does); the move from the assembled
+ * position is a translation of the native grid, and becomes the translation
+ * that moves the piece's described cells where its moved native cells map,
+ * the same for every cell of the piece (or the conversion fails). */
+std::unique_ptr<separation_c> convertSeparation(gridType_c::gridType src, const separation_c & sep,
+                                                const std::vector<placedPiece_s> & cellsOf) {
+  std::unique_ptr<separation_c> removed, left;
+  if (sep.getRemoved()) removed = convertSeparation(src, *sep.getRemoved(), cellsOf);
+  if (sep.getLeft())    left = convertSeparation(src, *sep.getLeft(), cellsOf);
+  auto res = std::make_unique<separation_c>(std::move(removed), std::move(left), sep.getPieces());
+
+  std::vector<cell_t> from, to;
+  // last to first: addstate() puts a state in front of those added before
+  for (unsigned int s = sep.getMoves() + 1; s-- > 0;) {
+    const state_c * st = sep.getState(s);
+    if (st->hasTrans() || st->getRotation())
+      bt_te("convertToDescribed: a disassembly with turns does not convert");
+    auto ns = std::make_unique<state_c>(sep.getPieceNumber());
+    for (unsigned int i = 0; i < sep.getPieceNumber(); i++) {
+      const unsigned int piece = sep.getPieceName(i);
+      if (piece >= cellsOf.size() || cellsOf[piece].cells.empty())
+        bt_te("convertToDescribed: a disassembly names a piece the assembly does not place");
+      const placedPiece_s & pp = cellsOf[piece];
+      const int dx = st->getX(i) - pp.nativePos[0], dy = st->getY(i) - pp.nativePos[1],
+                dz = st->getZ(i) - pp.nativePos[2];
+      bool first = true;
+      cell_t delta{0, 0, 0};
+      for (const cell_t & c : pp.cells) {
+        describedCells(src, c[0], c[1], c[2], from);
+        describedCells(src, c[0] + dx, c[1] + dy, c[2] + dz, to);
+        if (from.size() != to.size())
+          bt_te("convertToDescribed: a disassembly move is no translation of the described grid");
+        for (size_t k = 0; k < from.size(); k++) {
+          const cell_t dd = {to[k][0] - from[k][0], to[k][1] - from[k][1], to[k][2] - from[k][2]};
+          if (first)
+            delta = dd;
+          else if (dd != delta)
+            bt_te("convertToDescribed: a disassembly move is no translation of the described grid");
+          first = false;
+        }
+      }
+      ns->set(i, pp.describedPos[0] + delta[0], pp.describedPos[1] + delta[1], pp.describedPos[2] + delta[2]);
+      if (st->pieceRemoved(i) != ns->pieceRemoved(i))
+        bt_te("convertToDescribed: a removed piece does not stay removed");
+    }
+    res->addstate(std::move(ns));
+  }
+  return res;
 }
 
 } // namespace
@@ -395,12 +542,13 @@ puzzle_c * convertToDescribed(const puzzle_c * p) {
     problem_c * probNew = pNew->getProblem(pNew->addProblem(prob));
     probNew->setName(prob->getName());
 
-    /* The saved assemblies, without disassemblies: the native rhombic and
-     * tetra-octa grids have no disassembler, so their files hold none, and a
-     * brick disassembly (burrTxt -D, cross-checks only) is found again by
-     * solving. Without a transformation table (prisms) or a result, nothing
-     * is kept. */
-    if (table.empty() || !prob->resultValid()) continue;
+    /* The saved assemblies and their disassemblies. The native rhombic and
+     * tetra-octa grids have no disassembler, so their files hold none;
+     * prism and brick disassemblies move pieces by translations, which
+     * convert. A disassembly with turns (rotation moves, cubes only) is
+     * dropped and found again by solving. Without a result nothing is kept.
+     */
+    if (!prob->resultValid()) continue;
 
     const cell_t & resShift = shift[prob->getResultId()];
     std::vector<std::unique_ptr<solution_c>> sols;
@@ -410,6 +558,8 @@ puzzle_c * convertToDescribed(const puzzle_c * p) {
       const assembly_c * a = sol->getAssembly();
       if (!a) continue;
       auto an = std::make_unique<assembly_c>(gt);
+      // per placed piece (the numbering disassemblies use), its native cells
+      std::vector<placedPiece_s> cellsOf;
       for (unsigned int pc = 0; pc < a->placementCount(); pc++) {
         if (!a->isPlaced(pc)) {
           an->addNonPlacement();
@@ -420,8 +570,48 @@ puzzle_c * convertToDescribed(const puzzle_c * p) {
                                                 a->getTransformation(pc), a->getX(pc), a->getY(pc), a->getZ(pc),
                                                 table, resShift);
         an->addPlacement(pl.getTransformation(), pl.getX(), pl.getY(), pl.getZ());
+        cellsOf.push_back({placedCells(*prob->getPartShape(part), a->getTransformation(pc),
+                                       a->getX(pc), a->getY(pc), a->getZ(pc)),
+                           {a->getX(pc), a->getY(pc), a->getZ(pc)},
+                           {pl.getX(), pl.getY(), pl.getZ()}});
       }
-      sols.push_back(std::make_unique<solution_c>(std::move(an), sol->getAssemblyNumber()));
+      std::unique_ptr<separation_c> tree;
+      if (const separation_c * sep = sol->getDisassembly()) {
+        bool turns = false;
+        std::vector<const separation_c *> todo{sep};
+        while (!todo.empty() && !turns) {
+          const separation_c * t = todo.back();
+          todo.pop_back();
+          for (unsigned int k = 0; k <= t->getMoves(); k++)
+            if (t->getState(k)->hasTrans() || t->getState(k)->getRotation())
+              turns = true;
+          if (t->getRemoved()) todo.push_back(t->getRemoved());
+          if (t->getLeft()) todo.push_back(t->getLeft());
+        }
+        if (!turns)
+          tree = convertSeparation(src, *sep, cellsOf);
+      }
+      if (tree) {
+        sols.push_back(std::make_unique<solution_c>(std::move(an), sol->getAssemblyNumber(), std::move(tree),
+                                                    sol->getSolutionNumber()));
+      } else if (!sol->getDisassembly() && sol->getDisassemblyInfo()) {
+        /* only the summary of a disassembly (moves per level): it does not
+         * depend on the grid, so it is kept as it is */
+        const auto * info = dynamic_cast<const separationInfo_c *>(sol->getDisassemblyInfo());
+        bt_assert(info);
+        std::ostringstream os;
+        {
+          xmlWriter_c xml(os);
+          info->save(xml);
+        }
+        std::istringstream is(os.str());
+        xmlParser_c pars(is);
+        pars.nextTag();
+        sols.push_back(std::make_unique<solution_c>(std::move(an), sol->getAssemblyNumber(),
+                                                    std::make_unique<separationInfo_c>(pars),
+                                                    sol->getSolutionNumber()));
+      } else
+        sols.push_back(std::make_unique<solution_c>(std::move(an), sol->getAssemblyNumber()));
     }
     probNew->adoptResults(*prob, std::move(sols));
   }

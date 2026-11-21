@@ -823,6 +823,8 @@ private slots:
     // rhombic and tetra-octa on NG's grids, which this program uses, keep those names
     QCOMPARE(DocumentController::gridTypeDisplayName(7), QStringLiteral("Rhombic Tetrahedra"));
     QCOMPARE(DocumentController::gridTypeDisplayName(8), QStringLiteral("Tetrahedra-Octahedra"));
+    // and triangular prisms on NG's grid, which every program uses now (C3)
+    QCOMPARE(DocumentController::gridTypeDisplayName(10), QStringLiteral("Triangular Prism"));
     QCOMPARE(DocumentController::gridTypeDisplayName(99), QString());
 
     Fixture f;

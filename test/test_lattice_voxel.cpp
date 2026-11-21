@@ -233,7 +233,7 @@ TEST_CASE("described grids: converted puzzles have the assemblies of the native 
 
   for (const auto & pz : puzzles) {
     INFO(pz.file);
-    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::native);
+    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::nativeAll);
     REQUIRE(p);
     std::unique_ptr<puzzle_c> c(convertToDescribed(p.get()));
     REQUIRE(c);
@@ -316,7 +316,7 @@ TEST_CASE("described grids: converted puzzles have the native solutions, and NG'
 
   for (const auto & pz : puzzles) {
     INFO(pz.file);
-    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::native);
+    auto p = puzzle_c::load(pz.file, cutCubeGrids_e::nativeAll);
     REQUIRE(p);
     std::unique_ptr<puzzle_c> c(convertToDescribed(p.get()));
     REQUIRE(c);

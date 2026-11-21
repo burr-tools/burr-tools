@@ -62,14 +62,16 @@ unsigned char describedTransformation(gridType_c::gridType native, unsigned int 
  * A copy of the puzzle on describedCounterpart() of its grid, with the same
  * shapes, colours, comment and problems; null if its grid has none.
  *
- * The problems keep their solve state, counters and saved assemblies: each
+ * The problems keep their solve state, counters and saved solutions: each
  * piece covers the cells the importer's map gives for its native cells,
- * placed with describedTransformation(). Disassemblies and the search
- * state are dropped (see problem_c::adoptResults()). Triangular prisms,
- * converted only for cross-checks, keep no results.
+ * placed with describedTransformation() where the grids share matrices and
+ * else (prisms) with the first described transformation that covers them.
+ * A disassembly's moves become the described grid's translations (one with
+ * turns, cubes only, is dropped); a disassembly's summary is kept. The
+ * search state is dropped (see problem_c::adoptResults()).
  *
- * Reading a file converts rhombic and tetra-octa puzzles with this
- * (puzzle_c::read(), cutCubeGrids_e).
+ * Reading a file converts triangular prism, rhombic and tetra-octa puzzles
+ * with this (puzzle_c::read(), cutCubeGrids_e).
  */
 puzzle_c * convertToDescribed(const puzzle_c * p);
 

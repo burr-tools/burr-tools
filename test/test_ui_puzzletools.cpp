@@ -28,6 +28,7 @@ TEST_CASE("newPuzzleGridTypes follows offeredForNewPuzzles for both NG and nativ
   auto ngList = newPuzzleGridTypes(cutCubeGrids_e::ng);
   REQUIRE(ngList.size() == 7);
   CHECK(ngList[0].type == gridType_c::GT_BRICKS);
+  CHECK(ngList[1].type == gridType_c::GT_DESCRIBED_TRIANGULAR_PRISM);
   CHECK(ngList[3].type == gridType_c::GT_RHOMBIC_TETRAHEDRA);
   CHECK(ngList[4].type == gridType_c::GT_OCTAHEDRAL_TETRAHEDRA);
   CHECK(ngList[5].type == gridType_c::GT_HEXAGONAL_PRISM);
@@ -37,8 +38,9 @@ TEST_CASE("newPuzzleGridTypes follows offeredForNewPuzzles for both NG and nativ
     CHECK(std::string(gridTypeDisplayName(c.type)) == c.name);
   }
 
+  // the FLTK GUI's: no prisms, it has no editor for NG's grids (C3)
   auto natList = newPuzzleGridTypes(cutCubeGrids_e::native);
-  REQUIRE(natList.size() == 5);
+  REQUIRE(natList.size() == 4);
   for (const auto & c : natList)
     CHECK(gridType_c::offeredForNewPuzzles(c.type, cutCubeGrids_e::native));
 }

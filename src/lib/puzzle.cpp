@@ -272,7 +272,12 @@ std::unique_ptr<puzzle_c> puzzle_c::read(xmlParser_c & pars, cutCubeGrids_e cut)
 {
   auto p = std::make_unique<puzzle_c>(pars);
   const gridType_c::gridType type = p->getGridType()->getType();
-  if (cut == cutCubeGrids_e::ng && (type == gridType_c::GT_RHOMBIC || type == gridType_c::GT_TETRA_OCTA)) {
+  /* triangular prisms always (the native prism grid is going, C3), rhombic
+   * and tetra-octa unless the native grids are asked for */
+  const bool convert =
+      (type == gridType_c::GT_TRIANGULAR_PRISM && cut != cutCubeGrids_e::nativeAll) ||
+      (cut == cutCubeGrids_e::ng && (type == gridType_c::GT_RHOMBIC || type == gridType_c::GT_TETRA_OCTA));
+  if (convert) {
     try {
       p.reset(convertToDescribed(p.get()));
     } catch (const std::exception & e) {

@@ -32,8 +32,10 @@
  * native grids, which it keeps with their editors until it retires.
  */
 enum class cutCubeGrids_e {
-  ng,       ///< NG's grids, the default
-  native    ///< GT_RHOMBIC and GT_TETRA_OCTA as they are (the FLTK GUI)
+  ng,        ///< NG's grids, the default
+  native,    ///< GT_RHOMBIC and GT_TETRA_OCTA as they are (the FLTK GUI)
+  nativeAll  ///< triangular prisms too (burrTxt --native-grids, to compare;
+             ///< goes with the native prism grid)
 };
 
 #endif
