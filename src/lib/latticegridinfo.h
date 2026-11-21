@@ -113,6 +113,10 @@ class latticeGridInfo_c {
     /// the linear part of t in physical space, row major
     void physicalMatrix(unsigned int t, double m[9]) const;
 
+    /// the transformation that mirrors in the plane perpendicular to
+    /// physical axis (0 x, 1 y, 2 z); TND when the grid has none
+    unsigned char flip(int axis) const;
+
     /// physical position of the voxel coordinates (x, y, z), linear part only
     void toPhysical(float & x, float & y, float & z) const;
 

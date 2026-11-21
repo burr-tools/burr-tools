@@ -29,17 +29,23 @@
 #include <FL/Fl_Widget.H>
 #pragma GCC diagnostic pop
 
+#include <array>
+#include <vector>
+
 class puzzle_c;
 
 /**
- * this widget allows to edit voxel spaces. It shows one Z-Layer of the space as a grid
- * of spheres and each of these squares can be toggled between the state filled, variable, empty
+ * this widget allows to edit voxel spaces. It shows one layer of the space and
+ * each cell of it can be toggled between the state filled, variable, empty
  *
  * the callback is issued on on the following occasions:
  *  - Mouse moves inside the area of the widget (for the 3d view to show the cursor
  *  - Changes of voxel states
  *
- *  this is by faaaaar the most ugly code in the whole project, this really needs a clean rewrite
+ * This is the part every editor shares: the task, the tools, the layer, the
+ * mouse and what an edit does to one voxel. tileGridEditor_c draws the native
+ * grids as tiles at (x, y) of layer z; layerGridEditor_c draws the described
+ * grids (BurrTools NG's) from btui::LayerModel.
  */
 class gridEditor_c : public Fl_Widget {
 
@@ -57,6 +63,7 @@ public:
 
   /* some editing tools these might change with the inherited classes
    * but right now we keep it in here and have just one set of editing tools
+   * (btui::LayerModel::TOOL_* use the same bits)
    */
   enum {
     TOOL_MIRROR_X = 1,
@@ -96,9 +103,6 @@ protected:
   int mX, mY, mZ;
   int startX, startY;
 
-  // area of the marker
-  int markX1 = 0, markX2 = 0, markY1 = 0, markY2 = 0;
-
   // is the mouse inside the widget?
   bool inside;
 
@@ -111,26 +115,24 @@ protected:
   unsigned char activeTools;
   int editType;
 
-  bool setLayer(unsigned int zv);
-  int handle(int event);
-  void draw();
-
-protected:
-
-  /* tool function to calculate, if the given voxel coordinate x;y is inside
-   * the specified area
-   */
-  bool inRegion(int x, int y);
+  /* does the current task (or, with any but the left mouse button, empties)
+   * on the voxel at x, y, z; nothing for a coordinate outside the space.
+   * Returns whether the voxel changed */
+  bool setVoxel(int x, int y, int z);
 
 public:
 
-  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), state(0), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), startX(0), startY(0), markX1(0), markX2(0), markY1(0), markY2(0), inside(false), callbackReason(0), currentColor(0), task(TSK_SET), activeTools(0), editType(0) {}
+  gridEditor_c(int x, int y, int w, int h, puzzle_c * p) : Fl_Widget(x, y, w, h), puzzle(p), state(0), currentZ(0), piecenumber(0), mX(0xFFFF), mY(0xFFFF), mZ(0xFFFF), startX(0), startY(0), inside(false), callbackReason(0), currentColor(0), task(TSK_SET), activeTools(0), editType(0) {}
 
-  // sets the z layer to edit the value is clamped to valid values
+  // sets the layer to edit the value is clamped to valid values
   void setZ(unsigned int z);
 
-  // get the current Z value
+  // get the current layer
   unsigned int getZ(void) { return currentZ; }
+
+  /* the number of layers of the current shape: its z size on the native
+   * grids */
+  virtual unsigned int layerCount(void);
 
   // sets the colour to use for editing voxels
   void setColor(unsigned int col) { currentColor = col; }
@@ -140,13 +142,27 @@ public:
   void setPuzzle(puzzle_c * p, unsigned int piecenum);
   void clearPuzzle();
 
-  // get the mouse position so that the cursor can be shown in 3d view
-  bool getMouse(void) { return inside; }
+  // get the mouse position so that the cursor can be shown in 3d view:
+  // whether it is on the shape, so that the coordinates below mean something
+  virtual bool getMouse(void) { return inside; }
   int getMouseX1(void) { return (startX < mX)?(startX):(mX); }
   int getMouseY1(void) { return (startY < mY)?(startY):(mY); }
   int getMouseX2(void) { return (startX > mX)?(startX):(mX); }
   int getMouseY2(void) { return (startY > mY)?(startY):(mY); }
   int getMouseZ(void) { return mZ; }
+
+  /* the voxels the cursor marks, tools included, for the 3D view, when they
+   * are no box (getMouseX1() ...): false on the native grids, whose cursor is
+   * the box */
+  virtual bool getMarkedCells(std::vector<std::array<int, 3>> & /*cells*/) { return false; }
+
+  /* whether the mirror tool (TOOL_MIRROR_X or _Y) can act on the current
+   * shape: always on the native grids, which mirror coordinates */
+  virtual bool canMirror(int /*tool*/) { return true; }
+
+  /* how many mirror images of the marked cells are no cell of the space, so
+   * the status line can say why a mirror did nothing (0 on the native grids) */
+  virtual unsigned int getMissingMirrors(void) { return 0; }
 
   /** Current cell under the cursor (not the rubber-band min/max). */
   int getCursorX(void) { return mX; }
@@ -162,6 +178,32 @@ public:
   };
 
   int getReason(void) { return callbackReason; }
+};
+
+/**
+ * the editor of the native grids: one z layer as tiles at (x, y)
+ *
+ *  this is by faaaaar the most ugly code in the whole project, this really needs a clean rewrite
+ */
+class tileGridEditor_c : public gridEditor_c {
+
+protected:
+
+  // area of the marker
+  int markX1 = 0, markX2 = 0, markY1 = 0, markY2 = 0;
+
+  bool setLayer(unsigned int zv);
+  int handle(int event) override;
+  void draw() override;
+
+  /* tool function to calculate, if the given voxel coordinate x;y is inside
+   * the specified area
+   */
+  bool inRegion(int x, int y);
+
+public:
+
+  tileGridEditor_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p) {}
 
   /* each grid editor has to provide this function
    * is calculates the grid position gx and gy inside the voxel

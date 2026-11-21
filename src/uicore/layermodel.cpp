@@ -21,6 +21,7 @@
 #include "layermodel.h"
 
 #include "../lib/latticegridinfo.h"
+#include "../lib/symmetries.h"
 
 #include <algorithm>
 #include <cmath>
@@ -79,6 +80,70 @@ namespace btui {
         }
       }
       return hull(std::move(pts));
+    }
+
+  }
+
+  namespace {
+
+    // the mean of a cell's face corners: moved and mirrored with the cell
+    Vec3 cellCentre(const latticeGridInfo_c & inf, int x, int y, int z) {
+      std::vector<float> c;
+      Vec3 m{0, 0, 0};
+      size_t n = 0;
+      for (unsigned int f = 0; f < inf.faces(x, y, z); f++) {
+        c.clear();
+        inf.faceCorners(x, y, z, f, 0, 0, c);
+        for (size_t i = 0; i + 2 < c.size(); i += 3, n++) {
+          m.x += c[i]; m.y += c[i+1]; m.z += c[i+2];
+        }
+      }
+      if (n) { m.x /= n; m.y /= n; m.z /= n; }
+      return m;
+    }
+
+    /* the grid's mirror planes perpendicular to axis are where its flip
+     * (latticeGridInfo_c::flip) followed by a lattice translation is a true
+     * reflection: v -> R v + s + T with no shift across the axis. s comes
+     * from where the flip takes one cell, T from the lattice measured in
+     * physical space (the cells' centres, as faceCorners() places them);
+     * the plane is at (s + T)[axis] / 2. Of those, the one nearest to want;
+     * NaN when there is none. */
+    double nearestMirrorPlane(const latticeGridInfo_c & inf, int axis, double want) {
+      const unsigned char t = inf.flip(axis);
+      if (t == TND) return std::nan("");
+      const std::array<int, 3> p0 = inf.basePosition(0);
+      int q[3] = {p0[0], p0[1], p0[2]};
+      if (!inf.apply(t, q[0], q[1], q[2])) return std::nan("");
+      const Vec3 a = cellCentre(inf, p0[0], p0[1], p0[2]);
+      const Vec3 b = cellCentre(inf, q[0], q[1], q[2]);
+      double ra[3] = {a.x, a.y, a.z};
+      ra[axis] = -ra[axis];
+      const double s[3] = {b.x - ra[0], b.y - ra[1], b.z - ra[2]};
+      double P[3][3];  // P[j]: lattice column j in physical space
+      for (int j = 0; j < 3; j++) {
+        int lx, ly, lz;
+        inf.latticeColumn(j, lx, ly, lz);
+        const Vec3 c = cellCentre(inf, p0[0] + lx, p0[1] + ly, p0[2] + lz);
+        P[j][0] = c.x - a.x; P[j][1] = c.y - a.y; P[j][2] = c.z - a.z;
+      }
+      double best = std::nan("");
+      const int R = 8;
+      for (int n0 = -R; n0 <= R; n0++)
+        for (int n1 = -R; n1 <= R; n1++)
+          for (int n2 = -R; n2 <= R; n2++) {
+            double v[3];
+            for (int k = 0; k < 3; k++) v[k] = s[k] + n0 * P[0][k] + n1 * P[1][k] + n2 * P[2][k];
+            bool pure = true;
+            for (int k = 0; k < 3; k++)
+              if (k != axis && std::fabs(v[k]) > 1e-4) pure = false;
+            if (!pure) continue;
+            const double c = v[axis] / 2;
+            if (std::isnan(best) || std::fabs(c - want) < std::fabs(best - want) - 1e-9 ||
+                (std::fabs(std::fabs(c - want) - std::fabs(best - want)) <= 1e-9 && c < best))
+              best = c;
+          }
+      return best;
     }
 
   }
@@ -165,6 +230,10 @@ namespace btui {
               static_cast<int>(it - layers.begin());
       }
     }
+
+    // the mirror planes nearest the middle of the drawing (see mirrorPlane())
+    planeX = nearestMirrorPlane(inf, 0, (boxLo.x + boxHi.x) / 2);
+    planeY = nearestMirrorPlane(inf, 1, (boxLo.y + boxHi.y) / 2);
   }
 
   int LayerModel::hit(unsigned int l, Point2 p) const {
@@ -174,6 +243,156 @@ namespace btui {
       if (inConvexPolygon(cs[i].outline, p))
         return static_cast<int>(i);
     return -1;
+  }
+
+  Point2 LayerModel::centre(unsigned int l, unsigned int i) const {
+    if (l >= layers.size() || i >= layers[l].cells.size()) return {};
+    const std::vector<Point2> & poly = layers[l].cells[i].outline;
+    // the area-weighted centroid of the polygon
+    double a = 0, cx = 0, cy = 0;
+    for (size_t k = 0; k < poly.size(); k++) {
+      const Point2 & p = poly[k];
+      const Point2 & q = poly[(k + 1) % poly.size()];
+      const double c = p.x * q.y - q.x * p.y;
+      a += c;
+      cx += (p.x + q.x) * c;
+      cy += (p.y + q.y) * c;
+    }
+    if (std::fabs(a) <= kEps) return poly.empty() ? Point2{} : poly[0];
+    return {cx / (3 * a), cy / (3 * a)};
+  }
+
+  namespace {
+
+    /* whether a convex polygon and the axis-parallel rectangle [lo, hi]
+     * overlap in more than a border (separating axes: the rectangle's two and
+     * the polygon's edge normals) */
+    bool overlapsRect(const std::vector<Point2> & poly, Point2 lo, Point2 hi) {
+      if (poly.size() < 3) return false;
+      double pxl = poly[0].x, pxh = poly[0].x, pyl = poly[0].y, pyh = poly[0].y;
+      for (const Point2 & p : poly) {
+        pxl = std::min(pxl, p.x); pxh = std::max(pxh, p.x);
+        pyl = std::min(pyl, p.y); pyh = std::max(pyh, p.y);
+      }
+      if (pxh <= lo.x + kEps || hi.x <= pxl + kEps) return false;
+      if (pyh <= lo.y + kEps || hi.y <= pyl + kEps) return false;
+      const Point2 rect[4] = {lo, {hi.x, lo.y}, hi, {lo.x, hi.y}};
+      for (size_t i = 0; i < poly.size(); i++) {
+        const Point2 & p = poly[i];
+        const Point2 & q = poly[(i + 1) % poly.size()];
+        // the polygon lies left of its edge p->q (counter-clockwise); the
+        // rectangle is separated when all of it is right of the edge or on it
+        const double len = std::hypot(q.x - p.x, q.y - p.y);
+        if (len <= kEps) continue;
+        double best = std::numeric_limits<double>::lowest();
+        for (const Point2 & r : rect)
+          best = std::max(best, cross(p, q, r) / len);
+        if (best <= kEps) return false;
+      }
+      return true;
+    }
+
+  }
+
+  bool LayerModel::hasMirror(unsigned int tool) const {
+    if (tool != TOOL_MIRROR_X && tool != TOOL_MIRROR_Y) return false;
+    for (unsigned int l = 0; l < layers.size(); l++)
+      for (unsigned int i = 0; i < layers[l].cells.size(); i++) {
+        const Point2 c = centre(l, i);
+        unsigned int missing = 0;
+        if (region(l, c, c, tool, &missing).size() > 1 || missing == 0) return true;
+      }
+    return false;
+  }
+
+  std::vector<CellRef> LayerModel::region(unsigned int l, Point2 a, Point2 b, unsigned int tools,
+                                          unsigned int * missing) const {
+    std::vector<CellRef> out;
+    if (missing) *missing = 0;
+    if (l >= layers.size()) return out;
+
+    const Point2 lo{std::min(a.x, b.x), std::min(a.y, b.y)};
+    const Point2 hi{std::max(a.x, b.x), std::max(a.y, b.y)};
+
+    // the selected cells, as the layer and the outline of where they go, so
+    // the mirrors can move them
+    struct seed_s { unsigned int layer; std::vector<Point2> outline; };
+    std::vector<seed_s> seeds;
+    for (unsigned int i = 0; i < layers[l].cells.size(); i++)
+      if (overlapsRect(layers[l].cells[i].outline, lo, hi))
+        seeds.push_back({l, layers[l].cells[i].outline});
+
+    if ((tools & TOOL_MIRROR_X) && !std::isnan(planeX))
+      for (size_t i = 0, n = seeds.size(); i < n; i++) {
+        seed_s m = seeds[i];
+        for (Point2 & p : m.outline) p.x = 2 * planeX - p.x;
+        seeds.push_back(std::move(m));
+      }
+    if ((tools & TOOL_MIRROR_Y) && !std::isnan(planeY))
+      for (size_t i = 0, n = seeds.size(); i < n; i++) {
+        seed_s m = seeds[i];
+        for (Point2 & p : m.outline) p.y = 2 * planeY - p.y;
+        seeds.push_back(std::move(m));
+      }
+    if (tools & TOOL_MIRROR_Z)
+      for (size_t i = 0, n = seeds.size(); i < n; i++)
+        seeds.push_back({static_cast<unsigned int>(layers.size()) - 1 - seeds[i].layer, seeds[i].outline});
+
+    // the cell of layer m whose outline is the given one (the same corners in
+    // any order), -1 for none: a mirror image counts only when it is a cell
+    auto cellAt = [this](unsigned int m, const std::vector<Point2> & outline) -> int {
+      Point2 c;
+      for (const Point2 & p : outline) { c.x += p.x; c.y += p.y; }
+      c.x /= outline.size();
+      c.y /= outline.size();
+      const int i = hit(m, c);
+      if (i < 0) return -1;
+      const std::vector<Point2> & o = layers[m].cells[i].outline;
+      if (o.size() != outline.size()) return -1;
+      for (const Point2 & p : outline) {
+        bool found = false;
+        for (const Point2 & q : o)
+          found |= std::fabs(p.x - q.x) <= kSameHeight && std::fabs(p.y - q.y) <= kSameHeight;
+        if (!found) return -1;
+      }
+      return i;
+    };
+
+    const bool stack = tools & (TOOL_STACK_X | TOOL_STACK_Y | TOOL_STACK_Z);
+    for (const seed_s & s : seeds) {
+      const int self = cellAt(s.layer, s.outline);
+      if (self < 0) {  // a mirror image that is no cell
+        if (missing) (*missing)++;
+        continue;
+      }
+      if (!stack) {
+        out.push_back({s.layer, static_cast<unsigned int>(self)});
+        continue;
+      }
+      const Point2 c = centre(s.layer, static_cast<unsigned int>(self));
+      const std::vector<LayerCell> & cs = layers[s.layer].cells;
+      for (unsigned int i = 0; i < cs.size(); i++) {
+        double xl = cs[i].outline[0].x, xh = xl, yl = cs[i].outline[0].y, yh = yl;
+        for (const Point2 & p : cs[i].outline) {
+          xl = std::min(xl, p.x); xh = std::max(xh, p.x);
+          yl = std::min(yl, p.y); yh = std::max(yh, p.y);
+        }
+        // a convex outline is crossed by a line iff the line passes strictly
+        // between its extremes
+        if (((tools & TOOL_STACK_X) && yl < c.y - kEps && c.y + kEps < yh) ||
+            ((tools & TOOL_STACK_Y) && xl < c.x - kEps && c.x + kEps < xh))
+          out.push_back({s.layer, i});
+      }
+      if (tools & TOOL_STACK_Z)
+        for (unsigned int m = 0; m < layers.size(); m++) {
+          const int i = hit(m, c);
+          if (i >= 0) out.push_back({m, static_cast<unsigned int>(i)});
+        }
+    }
+
+    std::sort(out.begin(), out.end());
+    out.erase(std::unique(out.begin(), out.end()), out.end());
+    return out;
   }
 
   int LayerModel::layerOf(int x, int y, int z) const {

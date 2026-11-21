@@ -28,7 +28,7 @@ class puzzle_c;
 /**
  * implements grid editor functions to edit the rhombic grid
  */
-class gridEditor_4_c : public gridEditor_c {
+class gridEditor_4_c : public tileGridEditor_c {
 
 private:
 
@@ -46,7 +46,7 @@ private:
 
 public:
 
-  gridEditor_4_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p) {}
+  gridEditor_4_c(int x, int y, int w, int h, puzzle_c * p) : tileGridEditor_c(x, y, w, h, p) {}
 };
 
 #endif

@@ -33,6 +33,7 @@
 
 #include "../lib/rotationgeometry.h"
 
+#include <array>
 #include <optional>
 #include <vector>
 
@@ -125,6 +126,8 @@ class voxelFrame_c : public Fl_Gl_Window {
      * if you don't want the black part make x1 >= x2
      */
     void setMarker(int x1, int y1, int x2, int y2, int z, int markerType);
+    /* the cursor as a set of voxels (the described grids' editor) */
+    void setMarkerCells(const std::vector<std::array<int, 3>> & cells);
     void hideMarker(void);
 
     void useLightning(bool val) {
@@ -307,6 +310,10 @@ class voxelFrame_c : public Fl_Gl_Window {
     /* the marker position */
     int mX1 = 0, mY1 = 0, mZ = 0, mX2 = 0, mY2 = 0;
     int markerType;
+    /* when set (setMarkerCells), the voxels the cursor marks, sorted, in
+     * place of the box above */
+    bool markerByCells = false;
+    std::vector<std::array<int, 3>> markerCells;
 
     rotater_c * rotater;
     int rotMethod;

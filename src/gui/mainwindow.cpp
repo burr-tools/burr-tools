@@ -549,8 +549,12 @@ void mainWindow_c::cb_pieceEdit(VoxelEditGroup_c* o) {
   switch (o->getReason()) {
   case gridEditor_c::RS_MOUSEMOVE:
     if (o->getMouse()) {
-      View3D->getView()->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
-      StatPieceInfo(PcSel->getSelection(), true, o->getCursorX(), o->getCursorY(), o->getCursorZ());
+      std::vector<std::array<int, 3>> cells;
+      if (o->getMarkedCells(cells))
+        View3D->getView()->setMarkerCells(cells);
+      else
+        View3D->getView()->setMarker(o->getMouseX1(), o->getMouseY1(), o->getMouseX2(), o->getMouseY2(), o->getMouseZ(), editSymmetries);
+      StatPieceInfo(PcSel->getSelection(), true, o->getCursorX(), o->getCursorY(), o->getCursorZ(), o->getMissingMirrors());
     } else {
       View3D->getView()->hideMarker();
       StatPieceInfo(PcSel->getSelection());
@@ -2458,15 +2462,26 @@ void mainWindow_c::StatPieceInfo(unsigned int pc) {
   StatPieceInfo(pc, false, 0, 0, 0);
 }
 
-void mainWindow_c::StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z) {
+void mainWindow_c::updateMirrorButtons(void) {
+  if (!mirrorXButton || !mirrorYButton) return;
+  if (pieceEdit->canMirror(gridEditor_c::TOOL_MIRROR_X)) mirrorXButton->activate(); else mirrorXButton->deactivate();
+  if (pieceEdit->canMirror(gridEditor_c::TOOL_MIRROR_Y)) mirrorYButton->activate(); else mirrorYButton->deactivate();
+}
+
+void mainWindow_c::StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z, unsigned int missingMirrors) {
 
   if (pc < puzzle->getNumberOfShapes()) {
-    char txt[160];
+    char txt[220];
 
     unsigned int fx = puzzle->getShape(pc)->countState(voxel_c::VX_FILLED);
     unsigned int vr = puzzle->getShape(pc)->countState(voxel_c::VX_VARIABLE);
 
-    if (withCoords)
+    if (withCoords && missingMirrors)
+      snprintf(txt, sizeof(txt),
+               "Shape S%u has %u voxels (%u fixed, %u variable) (Coordinates X=%i, Y=%i, Z=%i) - "
+               "%u mirror image%s outside the space",
+               pc+1, fx+vr, fx, vr, x, y, z, missingMirrors, missingMirrors == 1 ? " is" : "s are");
+    else if (withCoords)
       snprintf(txt, sizeof(txt),
                "Shape S%u has %u voxels (%u fixed, %u variable) (Coordinates X=%i, Y=%i, Z=%i)",
                pc+1, fx+vr, fx, vr, x, y, z);
@@ -2696,6 +2711,7 @@ void mainWindow_c::ReplacePuzzle(std::unique_ptr<puzzle_c> NewPuzzle) {
   // instances from the guigridtype
   pieceEdit->newGridType(nggt.get(), puzzle.get());
   pieceTools->newGridType(nggt.get());
+  updateMirrorButtons();
 
   // for the pieceEditor we need to reset all the edit mode fields
   pieceEdit->editSymmetries(editSymmetries);
@@ -2743,6 +2759,7 @@ void mainWindow_c::activateShape(unsigned int number) {
     View3D->getView()->showSingleShape(puzzle.get(), number);
     pieceEdit->setPuzzle(puzzle.get(), number);
     pieceTools->setVoxelSpace(puzzle.get(), number);
+    updateMirrorButtons();
 
     PcSel->setSelection(number);
 
@@ -4263,10 +4280,18 @@ void mainWindow_c::CreateShapeTab(void) {
     btn = new LToggleButton_c(4, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_X);
     btn->image(pm.get(TB_Color_Symmetrical_X_xpm));
     btn->tooltip(" Toggle mirroring along the y-z-plane ");
+    mirrorXButton = btn;
+    mirrorXGrey.reset(btn->image()->copy());
+    mirrorXGrey->inactive();
+    btn->deimage(mirrorXGrey.get());
 
     btn = new LToggleButton_c(5, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Y);
     btn->image(pm.get(TB_Color_Symmetrical_Y_xpm));
     btn->tooltip(" Toggle mirroring along the x-z-plane ");
+    mirrorYButton = btn;
+    mirrorYGrey.reset(btn->image()->copy());
+    mirrorYGrey->inactive();
+    btn->deimage(mirrorYGrey.get());
 
     btn = new LToggleButton_c(6, 0, 1, 1, cb_EditSym_stub, this, gridEditor_c::TOOL_MIRROR_Z);
     btn->image(pm.get(TB_Color_Symmetrical_Z_xpm));

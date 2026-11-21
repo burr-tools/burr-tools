@@ -24,6 +24,7 @@
 #include "grideditor_2.h"
 #include "grideditor_3.h"
 #include "grideditor_4.h"
+#include "grideditor_layers.h"
 #include "gridtypegui.h"
 #include "tooltabs.h"
 
@@ -37,7 +38,10 @@ gridEditor_c * guiGridType_c::getGridEditor(int x, int y, int w, int h, puzzle_c
     case gridType_c::GT_SPHERES: return new gridEditor_2_c(x, y, w, h, puzzle);
     case gridType_c::GT_RHOMBIC: return new gridEditor_3_c(x, y, w, h, puzzle);
     case gridType_c::GT_TETRA_OCTA: return new gridEditor_4_c(x, y, w, h, puzzle);
-    default: return 0;
+    default:
+      // the described grids (NG's): one editor for all, from their layers
+      if (gt->isDescribed()) return new layerGridEditor_c(x, y, w, h, puzzle);
+      return 0;
   }
 }
 

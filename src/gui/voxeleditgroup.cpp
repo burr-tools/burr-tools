@@ -183,9 +183,11 @@ void VoxelEditGroup_c::setPuzzle(puzzle_c * puzzle, unsigned int num) {
   if (puzzle && (num < puzzle->getNumberOfShapes())) {
     voxel_c * v = puzzle->getShape(num);
     if (v) {
-      zselect->bounds(0, v->getZ()-1);
+      // the layers: z on the native grids, the described grids' own
+      const unsigned int layers = sqedit->layerCount();
+      zselect->bounds(0, layers > 0 ? layers-1 : 0);
       zselect->value(int(zselect->maximum()-sqedit->getZ()));
-      space->setLines(v->getZ(), true);
+      space->setLines(layers, true);
     }
   }
 }

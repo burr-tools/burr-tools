@@ -163,6 +163,7 @@ gui_src = [
   'src/gui/grideditor_2.cpp',
   'src/gui/grideditor_3.cpp',
   'src/gui/grideditor_4.cpp',
+  'src/gui/grideditor_layers.cpp',
   'src/gui/gridtypegui.cpp',
   'src/gui/groupseditor.cpp',
   'src/gui/guigridtype.cpp',
@@ -202,6 +203,8 @@ gui_src = [
   'src/uicore/puzzlehistory.cpp',
   # the piece colours, which src/gui/piececolor.cpp wraps
   'src/uicore/palette.cpp',
+  # the layers of the described grids' editor (grideditor_layers.cpp)
+  'src/uicore/layermodel.cpp',
 ]
 
 # Vendored third-party C sources, built separately so that their warnings can be
@@ -443,8 +446,9 @@ executable('burrtools', gui_src + httpget_src + ['src/tools/updatecheck.cpp', 's
 # test_burrtools cover it without Qt or FLTK, and what keeps a later toolkit
 # change cheap.
 #
-# The undo history (puzzlehistory) and the piece colours (palette) are
-# shared: the legacy GUI compiles them into burrtools from here too.
+# The undo history (puzzlehistory), the piece colours (palette) and the layer
+# model (layermodel) are shared: the legacy GUI compiles them into burrtools
+# from here too.
 libburr_uicore = static_library('burr_uicore', [
     'src/uicore/assemblyscene.cpp',
     'src/uicore/camera.cpp',

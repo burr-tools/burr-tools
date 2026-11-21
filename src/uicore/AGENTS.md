@@ -3,8 +3,8 @@
 The user interface's logic without a toolkit: everything that decides *what*
 the GUI does, kept free of Qt and FLTK so it is tested in plain C++ and could
 serve another front end. `src/qtgui` (burrtools-qt) turns it into Qt objects
-and pixels; the legacy FLTK GUI shares two parts of it, the undo history
-and the piece colours.
+and pixels; the legacy FLTK GUI shares three parts of it, the undo history,
+the piece colours and the layer model of its editor for NG's grids.
 Namespace `btui`, built as `libburr_uicore` (root `meson.build`).
 
 `src/qtgui` uses it together with the library's classes, not instead of
@@ -33,7 +33,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `palette` | the shape colours, and black or white text on them (WCAG contrast) — the colours **shared with the legacy GUI** |
 | `imagepages`, `vectorexport` | the image export's page layout; vector export (PS, EPS, TeX, PDF, SVG, PGF) |
 | `puzzletools` | the status table's checks, convert, import assemblies |
-| `layermodel` | the layers a 2D editor shows on a described grid (NG's grids): the cells a layer's plane meets, their 2D outlines, hit testing (plan 5.6) |
+| `layermodel` | the layers a 2D editor shows on a described grid (NG's grids): the cells a layer's plane meets, their 2D outlines, hit testing, the cells an edit takes (rubber band, mirror and stack tools) (plan 5.6); the FLTK GUI's `layerGridEditor_c` draws from it |
 | `windowplacement` | where the window opens: the saved place if still on a screen, else centred |
 
 Tests: `../../test/test_ui_<name>.cpp`, tagged `[ui]`, compiled into

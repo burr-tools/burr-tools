@@ -32,7 +32,9 @@ void gridEditor_c::setZ(unsigned int z) {
   if (piecenumber >= puzzle->getNumberOfShapes()) return;
 
   // clamp the value to valid values
-  if (z >= puzzle->getShape(piecenumber)->getZ()) z = puzzle->getShape(piecenumber)->getZ()-1;
+  const unsigned int layers = layerCount();
+  if (layers == 0) return;
+  if (z >= layers) z = layers-1;
 
   if (z != currentZ) {
 
@@ -50,9 +52,10 @@ void gridEditor_c::setPuzzle(puzzle_c * p, unsigned int piecenum) {
   piecenumber = piecenum;
 
   // check if the current z value is in valid regions
-  if ((piecenum < puzzle->getNumberOfShapes()) && (puzzle->getShape(piecenum)->getZ() <= currentZ)) {
-    bt_assert(puzzle->getShape(piecenum)->getZ() >= 1);
-    currentZ = puzzle->getShape(piecenum)->getZ() - 1;
+  if (piecenum < puzzle->getNumberOfShapes()) {
+    const unsigned int layers = layerCount();
+    if (layers <= currentZ)
+      currentZ = (layers > 0) ? layers - 1 : 0;
   }
 
   redraw();
@@ -63,11 +66,60 @@ void gridEditor_c::clearPuzzle() {
   redraw();
 }
 
+unsigned int gridEditor_c::layerCount(void) {
+  if (!puzzle || piecenumber >= puzzle->getNumberOfShapes()) return 0;
+  return puzzle->getShape(piecenumber)->getZ();
+}
+
+bool gridEditor_c::setVoxel(int x, int y, int z) {
+
+  voxel_c * space = puzzle->getShape(piecenumber);
+
+  // first we check, if the current coordinates are valid
+  // if not don't change anything
+  if (!space->validCoordinate(x, y, z))
+    return false;
+
+  bool changed = false;
+  voxel_type v = voxel_c::VX_EMPTY;
+
+  enTask todo = (state == 1) ? (task) : (TSK_RESET);
+
+  switch (todo) {
+    case gridEditor_c::TSK_SET:
+      v = voxel_c::VX_FILLED;
+      break;
+    case gridEditor_c::TSK_VAR:
+      v = voxel_c::VX_VARIABLE;
+      break;
+    default:
+      break;
+  }
+
+  // on all other tasks but the colour changing one, we need to set the state of the voxel
+  if ((todo != gridEditor_c::TSK_COLOR) && (space->getState(x, y, z) != v)) {
+    changed = true;
+    space->setState(x, y, z, v);
+
+    // when emptying a cube, also clear the colour away
+    if (v == voxel_c::VX_EMPTY)
+      space->setColor(x, y, z, 0);
+  }
+
+  // this is for the colour change task
+  if ((space->getState(x, y, z) != voxel_c::VX_EMPTY) && (space->getColor(x, y, z) != currentColor)) {
+    changed = true;
+    space->setColor(x, y, z, currentColor);
+  }
+
+  return changed;
+}
+
 // this function work in the same as the cursor inside function.
 // It sets a (group of) voxels depending in the active tools by recursively
 // calling itself
 // tools contains the active tools, task, what to do with the voxels
-bool gridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
+bool tileGridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
 
   bool changed = false;
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -75,42 +127,7 @@ bool gridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
   if (tools == 0) {
 
     // no further tool is active, so we set the current voxel
-
-    // but first we check, if the current coordinates are valid
-    // if not don't change anything
-    if (space->validCoordinate(x, y, z)) {
-
-      voxel_type v = voxel_c::VX_EMPTY;
-
-      enTask todo = (state == 1) ? (task) : (TSK_RESET);
-
-      switch (todo) {
-        case gridEditor_c::TSK_SET:
-          v = voxel_c::VX_FILLED;
-          break;
-        case gridEditor_c::TSK_VAR:
-          v = voxel_c::VX_VARIABLE;
-          break;
-        default:
-          break;
-      }
-
-      // on all other tasks but the colour changing one, we need to set the state of the voxel
-      if ((todo != gridEditor_c::TSK_COLOR) && (space->getState(x, y, z) != v)) {
-        changed = true;
-        space->setState(x, y, z, v);
-
-        // when emptying a cube, also clear the colour away
-        if (v == voxel_c::VX_EMPTY)
-          space->setColor(x, y, z, 0);
-      }
-
-      // this is for the colour change task
-      if ((space->getState(x, y, z) != voxel_c::VX_EMPTY) && (space->getColor(x, y, z) != currentColor)) {
-        changed = true;
-        space->setColor(x, y, z, currentColor);
-      }
-    }
+    changed = setVoxel(x, y, z);
   } else if (tools & gridEditor_c::TOOL_MIRROR_X) {
     // the mirror tools are active, call recursively with both possible coordinates
     changed |= setRecursive(tools & ~gridEditor_c::TOOL_MIRROR_X, x, y, z);
@@ -142,7 +159,7 @@ bool gridEditor_c::setRecursive(unsigned char tools, int x, int y, int z) {
   return changed;
 }
 
-bool gridEditor_c::setLayer(unsigned int z) {
+bool tileGridEditor_c::setLayer(unsigned int z) {
   int x1, x2, y1, y2;
 
   voxel_c * space = puzzle->getShape(piecenumber);
@@ -185,7 +202,7 @@ bool gridEditor_c::setLayer(unsigned int z) {
   return changed;
 }
 
-int gridEditor_c::handle(int event) {
+int tileGridEditor_c::handle(int event) {
 
   // no valid shape, nothing to do
   if (piecenumber >= puzzle->getNumberOfShapes())
@@ -329,7 +346,7 @@ int gridEditor_c::handle(int event) {
   return 0;
 }
 
-void gridEditor_c::draw() {
+void tileGridEditor_c::draw() {
 
   // draw the background, as we don't cover the whole area
   fl_color(color());
@@ -518,7 +535,7 @@ static bool inRegionRec(int x, int y, int x1, int x2, int y1, int y2, int sx, in
   return false;
 }
 
-bool gridEditor_c::inRegion(int x, int y) {
+bool tileGridEditor_c::inRegion(int x, int y) {
   voxel_c * space = puzzle->getShape(piecenumber);
   return space->validCoordinate(x, y, currentZ) && inRegionRec(x, y, markX1, markX2, markY1, markY2, space->getX(), space->getY(), activeTools);
 }

@@ -42,6 +42,7 @@
 #include "../lib/gridtype.h"
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <vector>
 
@@ -56,8 +57,25 @@ namespace btui {
     std::vector<Point2> outline;
   };
 
+  /* a cell of a layer: the layer and the index into its cells() */
+  struct CellRef {
+    unsigned int layer = 0, index = 0;
+    auto operator<=>(const CellRef &) const = default;
+  };
+
   class LayerModel {
   public:
+    /* the editing tools that widen a selection (region()); the same bits as the
+     * FLTK GUI's gridEditor_c::TOOL_* */
+    enum : unsigned int {
+      TOOL_MIRROR_X = 1,
+      TOOL_MIRROR_Y = 2,
+      TOOL_MIRROR_Z = 4,
+      TOOL_STACK_X = 8,
+      TOOL_STACK_Y = 16,
+      TOOL_STACK_Z = 32,
+    };
+
     /* the layers of a voxel space of size sx x sy x sz on the described grid
      * gt; on another grid (the native ones have their own editors), and for
      * an empty space, no layers */
@@ -83,6 +101,42 @@ namespace btui {
      * voxel is no cell of the space */
     int layerOf(int x, int y, int z) const;
 
+    /* the centre (centroid) of cell i's outline in layer l; (0, 0) for a cell
+     * that does not exist */
+    Point2 centre(unsigned int l, unsigned int i) const;
+
+    /* the cells an edit in layer l acts on, sorted, each once: the cells whose
+     * outlines overlap the rectangle with corners a and b (more than along an
+     * edge or at a corner; a == b inside a cell gives that cell), widened by
+     * the tools, which work as the cube editor's:
+     *  - TOOL_MIRROR_X / _Y: also the cell mirrored in mirrorPlane(0 / 1),
+     *    if its image is a cell (outline included); none where the image is
+     *    outside the space or the grid has no such mirror;
+     *  - TOOL_MIRROR_Z: also the cell at the same point in layer
+     *    layerCount()-1-l;
+     *  - TOOL_STACK_X / _Y: every cell of the layer whose outline the line
+     *    through the selected cell's centre parallel to x / y crosses (the
+     *    row, the column);
+     *  - TOOL_STACK_Z: in every layer, the cell at the selected cell's centre.
+     * Mirrors apply first, then the stacks, each stack to every mirrored cell
+     * (as gridEditor_c::setRecursive). Nothing for a layer that does not
+     * exist. With missing, also counts the mirror images that are no cell of
+     * the space, so a GUI can say why a mirror did nothing. */
+    std::vector<CellRef> region(unsigned int l, Point2 a, Point2 b, unsigned int tools,
+                                unsigned int * missing = nullptr) const;
+
+    /* where the mirror tools mirror, for axis 0 (x) or 1 (y): the plane
+     * x = c (y = c) nearest the middle of bounds() among those the grid
+     * mirrors in (a true mirror of the whole grid, not a glide), so every
+     * image is a cell of the grid; the same plane for every layer. NaN when
+     * the grid has no mirror in that axis or the model has no layers. */
+    double mirrorPlane(int axis) const { return axis == 0 ? planeX : axis == 1 ? planeY : std::nan(""); }
+
+    /* whether the mirror tool (TOOL_MIRROR_X or _Y) has an image for at least
+     * one cell of the space; false for any other tool. On the Cairo grid,
+     * whose mirrors are diagonal, never */
+    bool hasMirror(unsigned int tool) const;
+
   private:
     struct layer_s {
       double height;
@@ -93,6 +147,7 @@ namespace btui {
     std::vector<int> home;  // per voxel index of the space: layerOf, -1 for none
     unsigned int sx, sy, sz;
     Point2 boxLo, boxHi;
+    double planeX = std::nan(""), planeY = std::nan("");
   };
 
   /* the area of a polygon (counter-clockwise: positive) */

@@ -46,6 +46,8 @@ class disasmToMoves_c;
 class gridType_c;
 class guiGridType_c;
 class layouter_c;
+class LToggleButton_c;
+class Fl_Image;
 
 class PieceSelector;
 class ProblemSelector;
@@ -265,7 +267,16 @@ class mainWindow_c : public LFl_Double_Window {
   void Small3DView(void);
 
   void StatPieceInfo(unsigned int pc);
-  void StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z);
+  void StatPieceInfo(unsigned int pc, bool withCoords, int x, int y, int z, unsigned int missingMirrors = 0);
+
+  /* the mirror x and y buttons of the shape editor, greyed out when the
+   * current shape's grid has no such mirror in its space */
+  LToggleButton_c * mirrorXButton = nullptr;
+  LToggleButton_c * mirrorYButton = nullptr;
+  /* their images greyed out, for when they are deactivated (FLTK draws a
+   * button's image unchanged otherwise) */
+  std::unique_ptr<Fl_Image> mirrorXGrey, mirrorYGrey;
+  void updateMirrorButtons(void);
   void StatProblemInfo(unsigned int pr);
 
   void changeShape(unsigned int nr);

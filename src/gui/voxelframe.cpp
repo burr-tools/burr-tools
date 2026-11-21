@@ -827,7 +827,7 @@ void voxelFrame_c::drawVoxelSpace() {
 
       // the marker should be only active, when only one shape is there
       // otherwise it's drawn for every shape
-      if (overlays && (markerType >= 0) && (mX1 <= mX2) && (mY1 <= mY2))
+      if (overlays && (markerType >= 0) && (markerByCells ? !markerCells.empty() : ((mX1 <= mX2) && (mY1 <= mY2))))
       {
         if (_useLightning) glDisable(GL_LIGHTING);
         glDisable(GL_BLEND);
@@ -840,6 +840,12 @@ void voxelFrame_c::drawVoxelSpace() {
 
         std::vector<float> face;
 
+        auto marked = [&](int x, int y, int z) {
+          if (markerByCells)
+            return std::binary_search(markerCells.begin(), markerCells.end(), std::array<int, 3>{x, y, z});
+          return inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType);
+        };
+
         // draw the cursor, this is done by iterating over all
         // voxels and checking for neighbors, when the current
         // voxel is inside the cursor region and the neighbor isn't,
@@ -847,14 +853,14 @@ void voxelFrame_c::drawVoxelSpace() {
         for (unsigned int x = 0; x < sx; x++)
           for (unsigned int y = 0; y < sy; y++)
             for (unsigned int z = 0; z < sz; z++)
-              if (shape->shape->validCoordinate(x, y, z) && inRegion(x, y, z, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType))
+              if (shape->shape->validCoordinate(x, y, z) && marked(x, y, z))
               {
                 int nx, ny, nz;
                 int n = 0;
 
                 while (shape->shape->getNeighbor(n, 0, x, y, z, &nx, &ny, &nz))
                 {
-                  if (!inRegion(nx, ny, nz, mX1, mX2, mY1, mY2, mZ, mZ, sx, sy, sz, markerType))
+                  if (!marked(nx, ny, nz))
                   {
                     face.clear();
                     shape->shape->getConnectionFace(x, y, z, n, 0, 0, face);
@@ -863,8 +869,13 @@ void voxelFrame_c::drawVoxelSpace() {
                       drawGridTriangle(face[0], face[1], face[2], face[3]-face[0], face[4]-face[1], face[5]-face[2], face[6]-face[0], face[7]-face[1], face[8]-face[2], 4);
                     else if (face.size() == 4*3)
                       drawGridRect(face[0], face[1], face[2], face[3]-face[0], face[4]-face[1], face[5]-face[2], face[9]-face[0], face[10]-face[1], face[11]-face[2], 4);
-                    else
-                      printf("oops not implemented face shape for 3D cursor %zu\n", face.size());
+                    else if (face.size() >= 5*3) {
+                      // the pentagons and hexagons of the described grids: the outline
+                      glBegin(GL_LINE_LOOP);
+                      for (size_t i = 0; i + 2 < face.size(); i += 3)
+                        glVertex3f(face[i], face[i+1], face[i+2]);
+                      glEnd();
+                    }
                   }
 
                   n++;
@@ -1267,7 +1278,16 @@ void voxelFrame_c::setColorMode(colorMode color) {
   redraw();
 }
 
+void voxelFrame_c::setMarkerCells(const std::vector<std::array<int, 3>> & cells) {
+  markerType = 0;
+  markerByCells = true;
+  markerCells = cells;
+  std::sort(markerCells.begin(), markerCells.end());
+  redraw();
+}
+
 void voxelFrame_c::setMarker(int x1, int y1, int x2, int y2, int z, int mT) {
+  markerByCells = false;
   markerType = mT;
   mX1 = x1;
   mY1 = y1;

@@ -348,6 +348,19 @@ void latticeGridInfo_c::physicalMatrix(unsigned int t, double m[9]) const {
   for (int k = 0; k < 9; k++) m[k] = trans[t].phys[k];
 }
 
+unsigned char latticeGridInfo_c::flip(int axis) const {
+  for (unsigned int t = 0; t < trans.size(); t++) {
+    bool same = true;
+    for (int r = 0; r < 3 && same; r++)
+      for (int c = 0; c < 3 && same; c++) {
+        const double want = (r != c) ? 0.0 : (r == axis ? -1.0 : 1.0);
+        same = std::fabs(trans[t].phys[3*r+c] - want) < 1e-6;
+      }
+    if (same) return (unsigned char)t;
+  }
+  return TND;
+}
+
 void latticeGridInfo_c::toPhysical(float & x, float & y, float & z) const {
   const float a = x, b = y, c = z;
   x = v2p[0]*a + v2p[1]*b + v2p[2]*c;

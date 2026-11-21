@@ -28,7 +28,7 @@ class puzzle_c;
 /**
  * implements the grid editor functions to edit the shpere grid
  */
-class gridEditor_2_c : public gridEditor_c {
+class gridEditor_2_c : public tileGridEditor_c {
 
 private:
 
@@ -46,7 +46,7 @@ private:
 
 public:
 
-  gridEditor_2_c(int x, int y, int w, int h, puzzle_c * p) : gridEditor_c(x, y, w, h, p) {}
+  gridEditor_2_c(int x, int y, int w, int h, puzzle_c * p) : tileGridEditor_c(x, y, w, h, p) {}
 };
 
 #endif

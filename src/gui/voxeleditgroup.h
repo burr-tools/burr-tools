@@ -71,6 +71,11 @@ public:
   int getMouseY2(void) { return sqedit ? sqedit->getMouseY2() : 0; }
   int getMouseZ(void) { return sqedit ? sqedit->getMouseZ() : 0; }
 
+  bool getMarkedCells(std::vector<std::array<int, 3>> & cells) { return sqedit ? sqedit->getMarkedCells(cells) : false; }
+
+  bool canMirror(int tool) { return sqedit ? sqedit->canMirror(tool) : false; }
+  unsigned int getMissingMirrors(void) { return sqedit ? sqedit->getMissingMirrors() : 0; }
+
   int getCursorX(void) { return sqedit ? sqedit->getCursorX() : 0; }
   int getCursorY(void) { return sqedit ? sqedit->getCursorY() : 0; }
   int getCursorZ(void) { return sqedit ? sqedit->getCursorZ() : 0; }
