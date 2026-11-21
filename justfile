@@ -128,7 +128,7 @@ spec-lint:
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p tmp-tla
-    for m in spec/AssemblyPool spec/DisasmPool spec/Pipeline; do
+    for m in spec/AssemblyPool spec/DisasmPool spec/Pipeline spec/SolverSession; do
       awk '/BEGIN TRANSLATION/{f=1} f{print} /END TRANSLATION/{f=0}' "$m.tla" > tmp-tla/trans.chk
       grep -oE 'process \([A-Za-z_][A-Za-z0-9_]*' "$m.tla" | sed -E 's/.*\(//' | sort -u |
         while read -r p; do
@@ -147,11 +147,14 @@ spec-check: spec-tools
     java -cp "{{tla_jar}}" pcal.trans spec/AssemblyPool.tla && rm -f spec/AssemblyPool.old
     java -cp "{{tla_jar}}" pcal.trans spec/DisasmPool.tla && rm -f spec/DisasmPool.old
     java -cp "{{tla_jar}}" pcal.trans spec/Pipeline.tla && rm -f spec/Pipeline.old
+    java -cp "{{tla_jar}}" pcal.trans spec/SolverSession.tla && rm -f spec/SolverSession.old
     just spec-lint
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPool.cfg spec/AssemblyPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/AssemblyPoolLowBudget.cfg spec/AssemblyPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPool.cfg spec/DisasmPool
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/DisasmPoolTight.cfg spec/DisasmPool
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/SolverSession.cfg spec/SolverSession
+    java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/SolverSessionTight.cfg spec/SolverSession
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/Pipeline.cfg spec/Pipeline
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/PipelineWide.cfg spec/Pipeline
     java -cp "{{tla_jar}}" tlc2.TLC -workers 4 -config spec/PipelineWideND2.cfg spec/Pipeline

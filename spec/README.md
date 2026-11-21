@@ -20,6 +20,9 @@ fetched by `just spec-tools` into `build-tla/` (gitignored).
 | `DisasmPool.tla` | Disassembler-pool protocol: bounded queue, worker pickup, direct delivery by the worker (in any order), gap-free numbering, finish/abort/requestStop lifecycle with salvage. |
 | `DisasmPool.cfg` | TLC config: 2 workers, 4 assemblies, queue 2. |
 | `DisasmPoolTight.cfg` | 3 workers, queue 1: forces the queue-full backpressure path nearly every step. |
+| `SolverSession.tla` | Session protocol (`solverSession_c`): `Idle`/`Running`/`Paused`/`Finished`/`Stopped`/`Error` lifecycle, the end-of-phase decision (read outside the lock, published under it) racing `abort()` from another thread, `start()`'s Idle re-check, a failing phase, bounded token-free pull queue with soft-cap lifting on `requestPause()`/`pause()` (the host may keep popping or block in `join()`), salvage/pending re-submission on `resume()`. |
+| `SolverSession.cfg` | TLC config: 2 producers, budget 2, 3 items, pull-queue cap 1, up to 2 pause/resume cycles. |
+| `SolverSessionTight.cfg` | Same with budget 1: budget contention and soft-cap lifting on nearly every step. |
 | `Pipeline.tla` | Both tiers over one shared `ThreadBudget`: assembly pop/search/submit with token yield, disassembly jobs delivered directly by their workers. The only spec that can state the global N-active-thread bound. |
 | `Pipeline.cfg` | 1 assembler + 1 disassembler over 1 token, 2 tasks. |
 | `PipelineWide.cfg` | 2 assemblers + 1 disassembler over 2 tokens, 3 tasks: genuine contention both ways (~25s). |
@@ -126,6 +129,26 @@ properties. Read in this order:
 | `QueueBounded` | **SPEC-PIPE-4** |
 | `CleanShutdown` | **SPEC-PIPE-5** |
 
+## C++ ↔ spec mapping (`SolverSession.tla`)
+
+| Spec element | C++ counterpart (`src/lib/solver/solversession.cpp`) |
+| :--- | :--- |
+| `producer` + `PTake` | The threads that push results: assembler threads (assembly only) or the pool (assembler submits, budgeted workers disassemble and deliver), collapsed into take + deliver; pending items first (the driver's re-submission). What is abstracted and why: the spec header |
+| `PProduce` salvage vs in-flight | `disassemblerPool_c::requestStop()` salvaging queued work into `pending_` vs in-flight items pushing into `queue_`; the token goes back before delivery (the worker releases before `on_result`) |
+| `PEnqLoop` / `PEnqWait` | `enqueueResult()`: token-free, holds `queueMutex_` across cap check + push, lifts the soft cap on `pauseRequested_` so `pause()` never deadlocks on a full queue |
+| `driver` + `DMaybeFail` | `runPhase()`'s catch blocks: `teardownAfterFailure()` lifts the cap, aborts the pool, ends in `Error` |
+| `driver` + `DWait`/`DPublish` | `runPhase()` step 6 reading `abortRequested_` outside the lock, then `finishPhase()` publishing under `queueMutex_`, turning `Paused`/`Finished` into `Stopped` after an `abort()` |
+| `host` + `HValidate`/`HCommit` | `start()`: resume validation while `Idle`, then the Idle re-check under `queueMutex_` before `Running` |
+| `host` + `HStep`/`HJoin` | `pop()`/`drain()`, `requestPause()` then more pops, `pause()` blocking in `join()` without popping, `state()` + `resume()` |
+| `aborter` + `ABegin`/`AJoin` | `abort()` from any thread at any time: flags and queue under `queueMutex_`, finalising `Idle`/`Paused` itself, then `join()` |
+| `StateMachineOK` | **SPEC-SESS-1**: lifecycle state machine & LIFECYCLE-1/2 invariants |
+| `QueueSoftBounded` | **SPEC-SESS-2**: `queue_` obeys `queueCapacity` while running and bounded `O(P)` overshoot per pause (or failing phase) when cap is lifted |
+| `ItemConservation` | **SPEC-SESS-3**: every item is unsearched, pending, in-flight, queued, popped, or discarded — never lost or duplicated across pause/resume/abort/error |
+| `NoDuplicateDelivery` | **SPEC-SESS-4**: no duplicate `pop()` deliveries; `Finished` + empty queue delivers all `K` items |
+| `BudgetConservation` / `CleanShutdown` | **SPEC-SESS-5**: `ThreadBudget` conservation and clean worker/queue teardown |
+| `AbortTotal` + `AJoin` assert | **SPEC-SESS-6**: after `abort()` never `Paused` again and `Running` only while winding down; `abort()` returns with the session `Stopped` (or `Error`, or already `Finished`). Mutation-checked: publishing the decision unconverted, or `start()` without the Idle re-check, violates it; dropping the cap lift on pause violates `AllTerminate` |
+| `AllTerminate` | Liveness: even when the host pauses on a full queue without popping, the session always ends `Finished` / `Stopped` / `Error` |
+
 ## Verification input from code review (PRs 113–118)
 
 Review findings that shape what the specs must cover:
@@ -157,8 +180,9 @@ result callback body, GUI.
    (`acquire`/`release`, `pop_task`/`finishTask`, `submit`/`finish`/`abort`/`requestStop`);
    internal refactors then don't touch the spec.
 4. Any PR touching `thread_budget.h`, `assembler_pool.h`,
-   `disassemblerpool.h`, `assembler.h` or `solvethread.h` states
-   "spec unaffected" or updates the spec — `just spec-check` must pass.
+   `disassemblerpool.h`, `assembler.h`, `solvethread.h` or
+   `solver/solversession.h` states "spec unaffected" or updates the spec
+   — `just spec-check` must pass.
 5. TLC already caught two model bugs during construction (a TOCTOU on a
    bound counter split across an atomicity label; an unguarded `finishTask`
    after a skipped pop). New labels/interleavings deserve the same
@@ -176,9 +200,9 @@ result callback body, GUI.
    is never exercised yet every invariant holds). After touching an
    await, check that the distinct-state count did not collapse AND that
    a targeted mutant still fails. Current rough counts: AssemblyPool
-   a targeted mutant still fails. Current rough counts: AssemblyPool
-   ~13k/13k, DisasmPool ~69k/60k (normal/tight), Pipeline ~1k/69k/528k states (the
-   last is PipelineWideND2, the only config with two disassembly
+   ~20k/21k, DisasmPool ~69k/60k (normal/tight),
+   SolverSession ~606k/398k (normal/tight), Pipeline ~1k/69k/528k states
+   (the last is PipelineWideND2, the only config with two disassembly
    workers -- the one that exercises D-tier holder identity).
 
 ## Tooling quirks found the hard way
