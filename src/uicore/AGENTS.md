@@ -33,6 +33,7 @@ whose component and acceptance ids (C06, AC-C13-03, …) the comments cite.
 | `palette` | the shape colours, and black or white text on them (WCAG contrast) — the colours **shared with the legacy GUI** |
 | `imagepages`, `vectorexport` | the image export's page layout; vector export (PS, EPS, TeX, PDF, SVG, PGF) |
 | `puzzletools` | the status table's checks, convert, import assemblies |
+| `layermodel` | the layers a 2D editor shows on a described grid (NG's grids): the cells a layer's plane meets, their 2D outlines, hit testing (plan 5.6) |
 | `windowplacement` | where the window opens: the saved place if still on a screen, else centred |
 
 Tests: `../../test/test_ui_<name>.cpp`, tagged `[ui]`, compiled into
