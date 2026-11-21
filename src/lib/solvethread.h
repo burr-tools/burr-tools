@@ -23,6 +23,8 @@
 
 #include "assembler.h"
 #include "disassembler.h"
+
+#include <mutex>
 #include "disassemblerpool.h"
 #include "rotationtables.h"
 #include "thread_budget.h"
@@ -262,6 +264,10 @@ class solveThread_c : public assembler_cb {
   std::unique_ptr<ThreadBudget> threadBudget_;
 
   std::unique_ptr<disassemblerPool_c> disasm_pool;
+
+  /* The pool's workers deliver results as they finish, concurrently;
+   * onDisassemblyResult() runs under this lock, one result at a time. */
+  std::mutex disasmResultMutex;
 
   /* the worker publishes the assembler here once it is fully constructed so
    * that currentActionParameter(), called from the GUI thread, can query its

@@ -280,6 +280,7 @@ assm(0)
       spec,
       settings,
       [this](uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s) {
+        std::lock_guard<std::mutex> lock(disasmResultMutex);
         onDisassemblyResult(seqNo, std::move(a), std::move(s));
       },
       std::move(rotationContext)

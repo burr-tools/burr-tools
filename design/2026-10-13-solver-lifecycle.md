@@ -17,7 +17,7 @@ There is no single "solver state". Three state machines plus a poll loop interac
 | :--- | :--- | :--- | :--- |
 | `solveThread_c::action` (`solvethread.h`) | `PREPARATION REDUCE ASSEMBLING DISASSEMBLING PAUSING FINISHED ERROR ASSERT WAIT_TO_STOP` | One `solveThread_c` per run; destroyed by the GUI after the run ends | worker (plus `stop()` → `WAIT_TO_STOP`) |
 | `problem_c::solveState` (`problem.h`) | `UNSOLVED SOLVING SOLVED UNKNOWN` (+ freestyle via edits) | Persistent across runs, saved to file | worker (`setAssembler`, `finishedSolving`, `removeAllSolutions`, `makeUnknown`); GUI edits |
-| `disassemblerPool_c` (`disassemblerpool.h`) | accepting → stop-requested → finished; aborted | Owned by the `solveThread_c` (`disasm_pool`, null in assembly-only mode) | worker + pool workers/merger |
+| `disassemblerPool_c` (`disassemblerpool.h`) | accepting → stop-requested → finished; aborted | Owned by the `solveThread_c` (`disasm_pool`, null in assembly-only mode) | worker + pool workers |
 | GUI (`mainwindow.cpp`) | `assmThread == 0` vs alive; Start/Cont/Stop enabled flags | Whole session | GUI thread polls `currentAction()` in `update()` (`mainwindow.cpp`) and destroys the thread object on `PAUSING` / `FINISHED` / `ERROR` |
 
 `stopped()` (`solvethread.h`) is `PAUSING | FINISHED | ERROR | ASSERT`.
@@ -81,8 +81,9 @@ stateDiagram-v2
 assembler survived. The run re-submits the stash **first** (`solvethread.cpp`),
 then resumes the drained search, whose remainder holds only territory the
 stopped run had not searched (`design/2026-10-16-divide-at-stop.md`), so
-nothing is re-reported. Order stability comes from submitting the stash first
-and from the pool's ordered merger (`SPEC-DIS-1`).
+nothing is re-reported. Result order is unspecified (2026-11-20: the pool's
+ordered merger went); submitting the stash first keeps the pool's salvage a
+suffix of its numbering, so the discovery indices stay gap-free (`SPEC-DIS-1`).
 
 ## 3. Transition table (worker)
 

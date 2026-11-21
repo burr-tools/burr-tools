@@ -49,8 +49,9 @@
  *   Interrupted runs are resumable in-session and across save files
  *   (the requeued remainder holds only unexplored work).
  * - Tier 2 (disassembly) pulls found assemblies off a bounded queue with
- *   dedicated workers and a merger thread that re-emits results strictly
- *   in submit order. finish() drains and joins; abort() discards.
+ *   dedicated workers, each delivering its result directly as it
+ *   finishes (in no particular order). finish() drains and joins;
+ *   abort() discards.
  * - The shared ThreadBudget below caps working threads: an assembler
  *   holds one token across a whole subtree task, a disassembler one per
  *   job. Submit pacing is deliberately absent -- the bounded queue stays
@@ -61,8 +62,8 @@
  *   designed overlap, and TLC refutes the stronger reading.]
  *
  * Load-bearing deadlock rule: a token is held only across actual
- * searching/disassembling. Every wait (empty/full queues, reorder
- * buffer, budget exhaustion itself) happens token-free -- note in
+ * searching/disassembling. Every wait (empty/full queues, result
+ * delivery, budget exhaustion itself) happens token-free -- note in
  * particular submit's queue-full yield and the checked-out job held in
  * hand (never requeued) across pickup parks. Every such wait's progress
  * condition then depends only on token holders, which always progress,

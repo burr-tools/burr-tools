@@ -7,20 +7,20 @@
 (*   Tier 1 (assembly): workers pop subtree tasks holding one token,      *)
 (*   search, then submit found assemblies to Tier 2, yielding the token   *)
 (*   across queue-space waits exactly like disassemblerpool.cpp submit(). *)
-(*   Tier 2 (disassembly): workers hold one token per job and file        *)
-(*   results into a bounded reorder buffer; a merger re-emits strictly    *)
-(*   in submit order.                                                     *)
+(*   Tier 2 (disassembly): workers hold one token per job and deliver     *)
+(*   each result themselves, token-free, in whatever order jobs finish.   *)
 (*                                                                         *)
 (* This spec exists for the properties neither tier spec can state: the   *)
 (* GLOBAL N-active-thread bound across both tiers, end-to-end no-loss     *)
 (* from task to delivered solution, and stop propagation across the       *)
-(* handoff. Tier-internal protocols (budget park re-check, dropped-skip,  *)
-(* salvage order) are covered by AssemblyPool.tla and DisasmPool.tla and  *)
+(* handoff. Tier-internal protocols (budget park re-check, gap-free       *)
+(* numbering, salvage order) are covered by AssemblyPool.tla and          *)
+(* DisasmPool.tla and                                                     *)
 (* reused here in simplified form.                                        *)
 (*                                                                         *)
 (* NOT MODELED (deliberate gaps): task generation (atomic seed of K       *)
 (* tasks; the stopped-generation class is SPEC-POOL-4), dynamic splits,  *)
-(* abort() (covered in DisasmPool.tla), disassembly payloads, the merger  *)
+(* abort() (covered in DisasmPool.tla), disassembly payloads, the result  *)
 (* callback body, GUI. Submit runs token-free: the C++ hadToken           *)
 (* release/reacquire around the queue-space wait is abstracted to a       *)
 (* release-then-reacquire with the same observable pairing, which is      *)
@@ -29,8 +29,9 @@
 (* INVARIANT IDs:                                                         *)
 (*   SPEC-PIPE-1 ..... global bound: tokens held by both tiers <= total   *)
 (*   SPEC-PIPE-2 ..... end-to-end no-loss: task -> assembly -> delivery   *)
-(*   SPEC-PIPE-3 ..... merger delivers strictly in submit order           *)
-(*   SPEC-PIPE-4 ..... both buffers stay bounded (queue + reorder window) *)
+(*   SPEC-PIPE-3 ..... retired 2026-11-20 (ordered delivery: the merger   *)
+(*                     is gone, result order is unspecified)              *)
+(*   SPEC-PIPE-4 ..... the disassembly work queue stays bounded           *)
 (*   SPEC-PIPE-5 ..... clean shutdown on every stop/drain interleaving    *)
 (***************************************************************************)
 EXTENDS Naturals, Integers, Sequences, FiniteSets, TLC
@@ -40,15 +41,13 @@ CONSTANTS
   ND,           (* disassembly workers (C++: disassemblerPool_c workers)  *)
   BudgetTotal,  (* ONE shared ThreadBudget total (C++: pool size)         *)
   K,            (* assembly tasks seeded (each yields one assembly)       *)
-  MaxQ,         (* disassembly work queue bound (C++: max_queue_size)     *)
-  MaxR          (* reorder window bound (C++: max_reorder_size)           *)
+  MaxQ          (* disassembly work queue bound (C++: max_queue_size)     *)
 
 ASSUME NA \in Nat /\ NA > 0
 ASSUME ND \in Nat /\ ND > 0
 ASSUME BudgetTotal \in Nat /\ BudgetTotal > 0
 ASSUME K \in Nat /\ K > 0
 ASSUME MaxQ \in Nat /\ MaxQ > 0
-ASSUME MaxR \in Nat /\ MaxR > 0
 
 AWorkers == 1..NA
 DWorkers == (NA + 1)..(NA + ND)
@@ -69,19 +68,13 @@ NoJob == -1
     \* Tier 2 state (disassemblerPool_c, simplified: no abort)
     dq = <<>>,                           (* disassembly work queue (seqNos) *)
     nextSubmit = 0,
-    nextMerge = 0,
-    filed = {},
-    dropped = {},
-    skipped = 0,                         (* merger skips over dropped_      *)
     delivered = <<>>,
     salvagedSeq = <<>>,
     busy = [w \in DWorkers |-> NoJob],
     finished = FALSE,
     stopReq = FALSE,
     ddone = [w \in DWorkers |-> FALSE],
-    holdsD = [w \in DWorkers |-> FALSE],
-    mdone = FALSE,
-    lastDelivered = -1;
+    holdsD = [w \in DWorkers |-> FALSE];
 
   \* Tier 1 worker: pop holding a token, search, submit yielding the token
   \* across queue-space waits (the submit() hadToken pattern), finish.
@@ -166,7 +159,7 @@ NoJob == -1
             hasTaskA[self] := FALSE;
           } else {
         ASpace:
-          await (Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR) \/ stopReq;
+          await Len(dq) < MaxQ \/ stopReq;
             if (stopReq) {
               aq := Append(aq, atask);
               activeA := activeA - 1;
@@ -177,7 +170,7 @@ NoJob == -1
               await available > 0;
               available := available - 1;
               holdsA[self] := TRUE;
-              if (Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR) {
+              if (Len(dq) < MaxQ) {
                 dq := Append(dq, nextSubmit);
                 nextSubmit := nextSubmit + 1;
                 completedA := completedA + 1;
@@ -239,62 +232,34 @@ NoJob == -1
             holdsD[self] := TRUE;
           };
         };
-        \* C++ releases the budget token before the reorder wait
-        \* (worker_loop(): release, then lock, then the cv_reorder wait),
-        \* so no wait in this model may hold a token -- the token-free-wait
-        \* rule the spec enforces by construction.
+        \* C++ releases the budget token before delivering (worker_loop():
+        \* release, then on_result, which may block on a host's
+        \* bounded queue), so no wait in this model may hold a token --
+        \* the token-free-wait rule the spec enforces by construction.
         \* Abstract disassembly (token held), then release.
       DRel:
         available := available + 1;
         holdsD[self] := FALSE;
-        \* File under the reorder wait, token already returned (window slot
-        \* guaranteed by WindowBounded, so the await never blocks).
-      DFile:
-        await Cardinality(filed) < MaxR;
-        filed := filed \cup {seq};
+        \* Deliver directly, token already returned, in completion order.
+      DDeliver:
+        delivered := Append(delivered, seq);
         busy[self] := NoJob;
         seq := NoJob;
       };
     };
   }
 
-  fair process (merger = 0)
-  {
-  MLoop:
-    while (~mdone) {
-    MWait:
-      await (nextMerge \in filed) \/ (nextMerge \in dropped)
-         \/ (finished /\ nextMerge = nextSubmit);
-      if (nextMerge \in dropped) {
-        dropped := dropped \ {nextMerge};
-        skipped := skipped + 1;
-        nextMerge := nextMerge + 1;
-      } else if (nextMerge \in filed) {
-        assert nextMerge > lastDelivered;
-        filed := filed \ {nextMerge};
-        delivered := Append(delivered, nextMerge);
-        lastDelivered := nextMerge;
-        nextMerge := nextMerge + 1;
-      } else {
-        assert finished /\ nextMerge = nextSubmit;
-        mdone := TRUE;
-      };
-    };
-  }
-
-  \* requestStop(): salvage the disassembly queue (numbered, for skip);
-  \* assembly tasks stay queued (C++ drain() preserves them for resume).
+  \* requestStop(): salvage the disassembly queue in one step (C++ holds
+  \* queue_mutex across the drain); assembly tasks stay queued (C++
+  \* drain() preserves them for resume).
   process (stopper = -1)
   {
   StopDo:
     either {
       stopReq := TRUE;
-    DSalvLoop:
-      while (Len(dq) > 0) {
-        salvagedSeq := Append(salvagedSeq, Head(dq));
-        dropped := dropped \cup {Head(dq)};
-        dq := Tail(dq);
-      };
+    DSalv:
+      salvagedSeq := salvagedSeq \o dq;
+      dq := <<>>;
     } or {
       skip;
     };
@@ -310,18 +275,16 @@ NoJob == -1
   }
 
 } *)
-\* BEGIN TRANSLATION (chksum(pcal) = "dccc5cf0" /\ chksum(tla) = "e7a690df")
+\* BEGIN TRANSLATION
 VARIABLES aq, activeA, completedA, adone, holdsA, hasTaskA, available, dq, 
-          nextSubmit, nextMerge, filed, dropped, skipped, delivered, 
-          salvagedSeq, busy, finished, stopReq, ddone, holdsD, mdone, 
-          lastDelivered, pc, atask, seq
+          nextSubmit, delivered, salvagedSeq, busy, finished, stopReq, ddone, 
+          holdsD, pc, atask, seq
 
 vars == << aq, activeA, completedA, adone, holdsA, hasTaskA, available, dq, 
-           nextSubmit, nextMerge, filed, dropped, skipped, delivered, 
-           salvagedSeq, busy, finished, stopReq, ddone, holdsD, mdone, 
-           lastDelivered, pc, atask, seq >>
+           nextSubmit, delivered, salvagedSeq, busy, finished, stopReq, ddone, 
+           holdsD, pc, atask, seq >>
 
-ProcSet == (1..NA) \cup ((NA + 1)..(NA + ND)) \cup {0} \cup {-1} \cup {-2}
+ProcSet == (1..NA) \cup ((NA + 1)..(NA + ND)) \cup {-1} \cup {-2}
 
 Init == (* Global variables *)
         /\ aq = [i \in 1..K |-> i]
@@ -333,10 +296,6 @@ Init == (* Global variables *)
         /\ available = BudgetTotal
         /\ dq = <<>>
         /\ nextSubmit = 0
-        /\ nextMerge = 0
-        /\ filed = {}
-        /\ dropped = {}
-        /\ skipped = 0
         /\ delivered = <<>>
         /\ salvagedSeq = <<>>
         /\ busy = [w \in DWorkers |-> NoJob]
@@ -344,15 +303,12 @@ Init == (* Global variables *)
         /\ stopReq = FALSE
         /\ ddone = [w \in DWorkers |-> FALSE]
         /\ holdsD = [w \in DWorkers |-> FALSE]
-        /\ mdone = FALSE
-        /\ lastDelivered = -1
         (* Process aworker *)
         /\ atask = [self \in 1..NA |-> 0]
         (* Process dworker *)
         /\ seq = [self \in (NA + 1)..(NA + ND) |-> NoJob]
         /\ pc = [self \in ProcSet |-> CASE self \in 1..NA -> "ALoop"
                                         [] self \in (NA + 1)..(NA + ND) -> "DLoop"
-                                        [] self = 0 -> "MLoop"
                                         [] self = -1 -> "StopDo"
                                         [] self = -2 -> "FinWait"]
 
@@ -361,10 +317,9 @@ ALoop(self) == /\ pc[self] = "ALoop"
                      THEN /\ pc' = [pc EXCEPT ![self] = "AWait"]
                      ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, available, dq, nextSubmit, nextMerge, 
-                               filed, dropped, skipped, delivered, salvagedSeq, 
-                               busy, finished, stopReq, ddone, holdsD, mdone, 
-                               lastDelivered, atask, seq >>
+                               hasTaskA, available, dq, nextSubmit, delivered, 
+                               salvagedSeq, busy, finished, stopReq, ddone, 
+                               holdsD, atask, seq >>
 
 AWait(self) == /\ pc[self] = "AWait"
                /\ Len(aq) > 0 \/ activeA = 0 \/ stopReq
@@ -374,7 +329,7 @@ AWait(self) == /\ pc[self] = "AWait"
                           /\ UNCHANGED << holdsA, available >>
                      ELSE /\ IF Len(aq) = 0
                                 THEN /\ Assert(activeA = 0, 
-                                               "Failure of assertion at line 100, column 9.")
+                                               "Failure of assertion at line 93, column 9.")
                                      /\ adone' = [adone EXCEPT ![self] = TRUE]
                                      /\ pc' = [pc EXCEPT ![self] = "ALoop"]
                                      /\ UNCHANGED << holdsA, available >>
@@ -391,9 +346,8 @@ AWait(self) == /\ pc[self] = "AWait"
                                                                 available >>
                                      /\ adone' = adone
                /\ UNCHANGED << aq, activeA, completedA, hasTaskA, dq, 
-                               nextSubmit, nextMerge, filed, dropped, skipped, 
-                               delivered, salvagedSeq, busy, finished, stopReq, 
-                               ddone, holdsD, mdone, lastDelivered, atask, seq >>
+                               nextSubmit, delivered, salvagedSeq, busy, 
+                               finished, stopReq, ddone, holdsD, atask, seq >>
 
 APop(self) == /\ pc[self] = "APop"
               /\ IF ~adone[self] /\ holdsA[self] /\ Len(aq) > 0
@@ -405,9 +359,8 @@ APop(self) == /\ pc[self] = "APop"
                          /\ UNCHANGED << aq, activeA, hasTaskA, atask >>
               /\ pc' = [pc EXCEPT ![self] = "ASubmit"]
               /\ UNCHANGED << completedA, adone, holdsA, available, dq, 
-                              nextSubmit, nextMerge, filed, dropped, skipped, 
-                              delivered, salvagedSeq, busy, finished, stopReq, 
-                              ddone, holdsD, mdone, lastDelivered, seq >>
+                              nextSubmit, delivered, salvagedSeq, busy, 
+                              finished, stopReq, ddone, holdsD, seq >>
 
 ASubmit(self) == /\ pc[self] = "ASubmit"
                  /\ IF hasTaskA[self] /\ holdsA[self]
@@ -417,10 +370,8 @@ ASubmit(self) == /\ pc[self] = "ASubmit"
                             /\ UNCHANGED << holdsA, available >>
                  /\ pc' = [pc EXCEPT ![self] = "SubmitLoop"]
                  /\ UNCHANGED << aq, activeA, completedA, adone, hasTaskA, dq, 
-                                 nextSubmit, nextMerge, filed, dropped, 
-                                 skipped, delivered, salvagedSeq, busy, 
-                                 finished, stopReq, ddone, holdsD, mdone, 
-                                 lastDelivered, atask, seq >>
+                                 nextSubmit, delivered, salvagedSeq, busy, 
+                                 finished, stopReq, ddone, holdsD, atask, seq >>
 
 SubmitLoop(self) == /\ pc[self] = "SubmitLoop"
                     /\ IF hasTaskA[self]
@@ -430,10 +381,8 @@ SubmitLoop(self) == /\ pc[self] = "SubmitLoop"
                           ELSE /\ pc' = [pc EXCEPT ![self] = "AFin"]
                     /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
                                     hasTaskA, available, dq, nextSubmit, 
-                                    nextMerge, filed, dropped, skipped, 
                                     delivered, salvagedSeq, busy, finished, 
-                                    stopReq, ddone, holdsD, mdone, 
-                                    lastDelivered, atask, seq >>
+                                    stopReq, ddone, holdsD, atask, seq >>
 
 ARequeue(self) == /\ pc[self] = "ARequeue"
                   /\ aq' = Append(aq, atask[self])
@@ -442,13 +391,11 @@ ARequeue(self) == /\ pc[self] = "ARequeue"
                   /\ hasTaskA' = [hasTaskA EXCEPT ![self] = FALSE]
                   /\ pc' = [pc EXCEPT ![self] = "SubmitLoop"]
                   /\ UNCHANGED << completedA, adone, holdsA, available, dq, 
-                                  nextSubmit, nextMerge, filed, dropped, 
-                                  skipped, delivered, salvagedSeq, busy, 
-                                  finished, stopReq, ddone, holdsD, mdone, 
-                                  lastDelivered, seq >>
+                                  nextSubmit, delivered, salvagedSeq, busy, 
+                                  finished, stopReq, ddone, holdsD, seq >>
 
 ASpace(self) == /\ pc[self] = "ASpace"
-                /\ (Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR) \/ stopReq
+                /\ Len(dq) < MaxQ \/ stopReq
                 /\ IF stopReq
                       THEN /\ aq' = Append(aq, atask[self])
                            /\ activeA' = activeA - 1
@@ -458,16 +405,14 @@ ASpace(self) == /\ pc[self] = "ASpace"
                       ELSE /\ pc' = [pc EXCEPT ![self] = "AReacquire"]
                            /\ UNCHANGED << aq, activeA, hasTaskA, atask >>
                 /\ UNCHANGED << completedA, adone, holdsA, available, dq, 
-                                nextSubmit, nextMerge, filed, dropped, skipped, 
-                                delivered, salvagedSeq, busy, finished, 
-                                stopReq, ddone, holdsD, mdone, lastDelivered, 
-                                seq >>
+                                nextSubmit, delivered, salvagedSeq, busy, 
+                                finished, stopReq, ddone, holdsD, seq >>
 
 AReacquire(self) == /\ pc[self] = "AReacquire"
                     /\ available > 0
                     /\ available' = available - 1
                     /\ holdsA' = [holdsA EXCEPT ![self] = TRUE]
-                    /\ IF Len(dq) < MaxQ /\ nextSubmit - nextMerge < MaxR
+                    /\ IF Len(dq) < MaxQ
                           THEN /\ dq' = Append(dq, nextSubmit)
                                /\ nextSubmit' = nextSubmit + 1
                                /\ completedA' = completedA + 1
@@ -478,20 +423,17 @@ AReacquire(self) == /\ pc[self] = "AReacquire"
                           ELSE /\ pc' = [pc EXCEPT ![self] = "ARetryRel"]
                                /\ UNCHANGED << activeA, completedA, hasTaskA, 
                                                dq, nextSubmit, atask >>
-                    /\ UNCHANGED << aq, adone, nextMerge, filed, dropped, 
-                                    skipped, delivered, salvagedSeq, busy, 
-                                    finished, stopReq, ddone, holdsD, mdone, 
-                                    lastDelivered, seq >>
+                    /\ UNCHANGED << aq, adone, delivered, salvagedSeq, busy, 
+                                    finished, stopReq, ddone, holdsD, seq >>
 
 ARetryRel(self) == /\ pc[self] = "ARetryRel"
                    /\ available' = available + 1
                    /\ holdsA' = [holdsA EXCEPT ![self] = FALSE]
                    /\ pc' = [pc EXCEPT ![self] = "SubmitLoop"]
                    /\ UNCHANGED << aq, activeA, completedA, adone, hasTaskA, 
-                                   dq, nextSubmit, nextMerge, filed, dropped, 
-                                   skipped, delivered, salvagedSeq, busy, 
-                                   finished, stopReq, ddone, holdsD, mdone, 
-                                   lastDelivered, atask, seq >>
+                                   dq, nextSubmit, delivered, salvagedSeq, 
+                                   busy, finished, stopReq, ddone, holdsD, 
+                                   atask, seq >>
 
 AFin(self) == /\ pc[self] = "AFin"
               /\ IF holdsA[self]
@@ -501,9 +443,8 @@ AFin(self) == /\ pc[self] = "AFin"
                          /\ UNCHANGED << holdsA, available >>
               /\ pc' = [pc EXCEPT ![self] = "ALoop"]
               /\ UNCHANGED << aq, activeA, completedA, adone, hasTaskA, dq, 
-                              nextSubmit, nextMerge, filed, dropped, skipped, 
-                              delivered, salvagedSeq, busy, finished, stopReq, 
-                              ddone, holdsD, mdone, lastDelivered, atask, seq >>
+                              nextSubmit, delivered, salvagedSeq, busy, 
+                              finished, stopReq, ddone, holdsD, atask, seq >>
 
 APark(self) == /\ pc[self] = "APark"
                /\ available > 0 \/ stopReq
@@ -518,9 +459,8 @@ APark(self) == /\ pc[self] = "APark"
                                 ELSE /\ pc' = [pc EXCEPT ![self] = "APop"]
                           /\ adone' = adone
                /\ UNCHANGED << aq, activeA, completedA, hasTaskA, dq, 
-                               nextSubmit, nextMerge, filed, dropped, skipped, 
-                               delivered, salvagedSeq, busy, finished, stopReq, 
-                               ddone, holdsD, mdone, lastDelivered, atask, seq >>
+                               nextSubmit, delivered, salvagedSeq, busy, 
+                               finished, stopReq, ddone, holdsD, atask, seq >>
 
 ARecheckRel(self) == /\ pc[self] = "ARecheckRel"
                      /\ available' = available + 1
@@ -533,10 +473,9 @@ ARecheckRel(self) == /\ pc[self] = "ARecheckRel"
                                            /\ adone' = adone
                      /\ pc' = [pc EXCEPT ![self] = "APop"]
                      /\ UNCHANGED << aq, activeA, completedA, hasTaskA, dq, 
-                                     nextSubmit, nextMerge, filed, dropped, 
-                                     skipped, delivered, salvagedSeq, busy, 
-                                     finished, stopReq, ddone, holdsD, mdone, 
-                                     lastDelivered, atask, seq >>
+                                     nextSubmit, delivered, salvagedSeq, busy, 
+                                     finished, stopReq, ddone, holdsD, atask, 
+                                     seq >>
 
 aworker(self) == ALoop(self) \/ AWait(self) \/ APop(self) \/ ASubmit(self)
                     \/ SubmitLoop(self) \/ ARequeue(self) \/ ASpace(self)
@@ -548,10 +487,9 @@ DLoop(self) == /\ pc[self] = "DLoop"
                      THEN /\ pc' = [pc EXCEPT ![self] = "DWait"]
                      ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, available, dq, nextSubmit, nextMerge, 
-                               filed, dropped, skipped, delivered, salvagedSeq, 
-                               busy, finished, stopReq, ddone, holdsD, mdone, 
-                               lastDelivered, atask, seq >>
+                               hasTaskA, available, dq, nextSubmit, delivered, 
+                               salvagedSeq, busy, finished, stopReq, ddone, 
+                               holdsD, atask, seq >>
 
 DWait(self) == /\ pc[self] = "DWait"
                /\ Len(dq) > 0 \/ finished
@@ -577,30 +515,26 @@ DWait(self) == /\ pc[self] = "DWait"
                                      /\ UNCHANGED << available, holdsD >>
                           /\ ddone' = ddone
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, nextSubmit, nextMerge, filed, dropped, 
-                               skipped, delivered, salvagedSeq, finished, 
-                               stopReq, mdone, lastDelivered, atask >>
+                               hasTaskA, nextSubmit, delivered, salvagedSeq, 
+                               finished, stopReq, atask >>
 
 DRel(self) == /\ pc[self] = "DRel"
               /\ available' = available + 1
               /\ holdsD' = [holdsD EXCEPT ![self] = FALSE]
-              /\ pc' = [pc EXCEPT ![self] = "DFile"]
+              /\ pc' = [pc EXCEPT ![self] = "DDeliver"]
               /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                              dq, nextSubmit, nextMerge, filed, dropped, 
-                              skipped, delivered, salvagedSeq, busy, finished, 
-                              stopReq, ddone, mdone, lastDelivered, atask, seq >>
+                              dq, nextSubmit, delivered, salvagedSeq, busy, 
+                              finished, stopReq, ddone, atask, seq >>
 
-DFile(self) == /\ pc[self] = "DFile"
-               /\ Cardinality(filed) < MaxR
-               /\ filed' = (filed \cup {seq[self]})
-               /\ busy' = [busy EXCEPT ![self] = NoJob]
-               /\ seq' = [seq EXCEPT ![self] = NoJob]
-               /\ pc' = [pc EXCEPT ![self] = "DLoop"]
-               /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, available, dq, nextSubmit, nextMerge, 
-                               dropped, skipped, delivered, salvagedSeq, 
-                               finished, stopReq, ddone, holdsD, mdone, 
-                               lastDelivered, atask >>
+DDeliver(self) == /\ pc[self] = "DDeliver"
+                  /\ delivered' = Append(delivered, seq[self])
+                  /\ busy' = [busy EXCEPT ![self] = NoJob]
+                  /\ seq' = [seq EXCEPT ![self] = NoJob]
+                  /\ pc' = [pc EXCEPT ![self] = "DLoop"]
+                  /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
+                                  hasTaskA, available, dq, nextSubmit, 
+                                  salvagedSeq, finished, stopReq, ddone, 
+                                  holdsD, atask >>
 
 DPark(self) == /\ pc[self] = "DPark"
                /\ available > 0
@@ -608,88 +542,40 @@ DPark(self) == /\ pc[self] = "DPark"
                /\ holdsD' = [holdsD EXCEPT ![self] = TRUE]
                /\ pc' = [pc EXCEPT ![self] = "DRel"]
                /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, 
-                               hasTaskA, dq, nextSubmit, nextMerge, filed, 
-                               dropped, skipped, delivered, salvagedSeq, busy, 
-                               finished, stopReq, ddone, mdone, lastDelivered, 
+                               hasTaskA, dq, nextSubmit, delivered, 
+                               salvagedSeq, busy, finished, stopReq, ddone, 
                                atask, seq >>
 
-dworker(self) == DLoop(self) \/ DWait(self) \/ DRel(self) \/ DFile(self)
+dworker(self) == DLoop(self) \/ DWait(self) \/ DRel(self) \/ DDeliver(self)
                     \/ DPark(self)
-
-MLoop == /\ pc[0] = "MLoop"
-         /\ IF ~mdone
-               THEN /\ pc' = [pc EXCEPT ![0] = "MWait"]
-               ELSE /\ pc' = [pc EXCEPT ![0] = "Done"]
-         /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                         available, dq, nextSubmit, nextMerge, filed, dropped, 
-                         skipped, delivered, salvagedSeq, busy, finished, 
-                         stopReq, ddone, holdsD, mdone, lastDelivered, atask, 
-                         seq >>
-
-MWait == /\ pc[0] = "MWait"
-         /\    (nextMerge \in filed) \/ (nextMerge \in dropped)
-            \/ (finished /\ nextMerge = nextSubmit)
-         /\ IF nextMerge \in dropped
-               THEN /\ dropped' = dropped \ {nextMerge}
-                    /\ skipped' = skipped + 1
-                    /\ nextMerge' = nextMerge + 1
-                    /\ UNCHANGED << filed, delivered, mdone, lastDelivered >>
-               ELSE /\ IF nextMerge \in filed
-                          THEN /\ Assert(nextMerge > lastDelivered, 
-                                         "Failure of assertion at line 273, column 9.")
-                               /\ filed' = filed \ {nextMerge}
-                               /\ delivered' = Append(delivered, nextMerge)
-                               /\ lastDelivered' = nextMerge
-                               /\ nextMerge' = nextMerge + 1
-                               /\ mdone' = mdone
-                          ELSE /\ Assert(finished /\ nextMerge = nextSubmit, 
-                                         "Failure of assertion at line 279, column 9.")
-                               /\ mdone' = TRUE
-                               /\ UNCHANGED << nextMerge, filed, delivered, 
-                                               lastDelivered >>
-                    /\ UNCHANGED << dropped, skipped >>
-         /\ pc' = [pc EXCEPT ![0] = "MLoop"]
-         /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                         available, dq, nextSubmit, salvagedSeq, busy, 
-                         finished, stopReq, ddone, holdsD, atask, seq >>
-
-merger == MLoop \/ MWait
 
 StopDo == /\ pc[-1] = "StopDo"
           /\ \/ /\ stopReq' = TRUE
-                /\ pc' = [pc EXCEPT ![-1] = "DSalvLoop"]
+                /\ pc' = [pc EXCEPT ![-1] = "DSalv"]
              \/ /\ TRUE
                 /\ pc' = [pc EXCEPT ![-1] = "Done"]
                 /\ UNCHANGED stopReq
           /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                          available, dq, nextSubmit, nextMerge, filed, dropped, 
-                          skipped, delivered, salvagedSeq, busy, finished, 
-                          ddone, holdsD, mdone, lastDelivered, atask, seq >>
+                          available, dq, nextSubmit, delivered, salvagedSeq, 
+                          busy, finished, ddone, holdsD, atask, seq >>
 
-DSalvLoop == /\ pc[-1] = "DSalvLoop"
-             /\ IF Len(dq) > 0
-                   THEN /\ salvagedSeq' = Append(salvagedSeq, Head(dq))
-                        /\ dropped' = (dropped \cup {Head(dq)})
-                        /\ dq' = Tail(dq)
-                        /\ pc' = [pc EXCEPT ![-1] = "DSalvLoop"]
-                   ELSE /\ pc' = [pc EXCEPT ![-1] = "Done"]
-                        /\ UNCHANGED << dq, dropped, salvagedSeq >>
-             /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                             available, nextSubmit, nextMerge, filed, skipped, 
-                             delivered, busy, finished, stopReq, ddone, holdsD, 
-                             mdone, lastDelivered, atask, seq >>
+DSalv == /\ pc[-1] = "DSalv"
+         /\ salvagedSeq' = salvagedSeq \o dq
+         /\ dq' = <<>>
+         /\ pc' = [pc EXCEPT ![-1] = "Done"]
+         /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
+                         available, nextSubmit, delivered, busy, finished, 
+                         stopReq, ddone, holdsD, atask, seq >>
 
-stopper == StopDo \/ DSalvLoop
+stopper == StopDo \/ DSalv
 
 FinWait == /\ pc[-2] = "FinWait"
            /\ completedA = K \/ (stopReq /\ (\A w \in AWorkers : adone[w]))
            /\ finished' = TRUE
            /\ pc' = [pc EXCEPT ![-2] = "Done"]
            /\ UNCHANGED << aq, activeA, completedA, adone, holdsA, hasTaskA, 
-                           available, dq, nextSubmit, nextMerge, filed, 
-                           dropped, skipped, delivered, salvagedSeq, busy, 
-                           stopReq, ddone, holdsD, mdone, lastDelivered, atask, 
-                           seq >>
+                           available, dq, nextSubmit, delivered, salvagedSeq, 
+                           busy, stopReq, ddone, holdsD, atask, seq >>
 
 finisher == FinWait
 
@@ -697,7 +583,7 @@ finisher == FinWait
 Terminating == /\ \A self \in ProcSet: pc[self] = "Done"
                /\ UNCHANGED vars
 
-Next == merger \/ stopper \/ finisher
+Next == stopper \/ finisher
            \/ (\E self \in 1..NA: aworker(self))
            \/ (\E self \in (NA + 1)..(NA + ND): dworker(self))
            \/ Terminating
@@ -705,12 +591,11 @@ Next == merger \/ stopper \/ finisher
 Spec == /\ Init /\ [][Next]_vars
         /\ \A self \in 1..NA : WF_vars(aworker(self))
         /\ \A self \in (NA + 1)..(NA + ND) : WF_vars(dworker(self))
-        /\ WF_vars(merger)
         /\ WF_vars(finisher)
 
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
-\* END TRANSLATION 
+\* END TRANSLATION
 
 (***************************************************************************)
 (* Checkable properties.                                                   *)
@@ -725,12 +610,10 @@ TypeOK ==
   /\ activeA \in Nat /\ completedA \in Nat
   /\ available \in 0..BudgetTotal
   /\ dq \in Seq(Nat)
-  /\ nextSubmit \in Nat /\ nextMerge \in Nat /\ skipped \in Nat
-  /\ filed \subseteq Nat /\ dropped \subseteq Nat
+  /\ nextSubmit \in Nat
   /\ \A i \in 1..Len(delivered) : delivered[i] \in Nat
   /\ \A i \in 1..Len(salvagedSeq) : salvagedSeq[i] \in Nat
   /\ \A w \in DWorkers : busy[w] = NoJob \/ busy[w] \in Nat
-  /\ lastDelivered \in Int
   /\ finished \in BOOLEAN /\ stopReq \in BOOLEAN
 
 (* SPEC-PIPE-1: one shared budget across both tiers. Takes/returns pair
@@ -751,7 +634,7 @@ BudgetConservation ==
  * by APop and released only inside this step -- is still held.
  * D tier: at DRel the job is owned and the token -- acquired in DWait or
  * DPark -- is released only inside this step (release precedes the DFile
- * reorder wait, mirroring worker_loop()). *)
+ * delivery, mirroring worker_loop()). *)
 WorkersHoldTokens ==
   /\ \A w \in AWorkers : (pc[w] = "ASubmit" /\ hasTaskA[w]) => holdsA[w]
   /\ \A w \in DWorkers : pc[w] = "DRel" => holdsD[w]
@@ -766,28 +649,25 @@ SubmittedEqualsCompleted == nextSubmit = completedA
 
 (* Tier 2 inventory (cf. SPEC-DIS-5, simplified: no abort/refuse paths). *)
 DisasmConservation ==
-  nextSubmit = Len(delivered) + Len(dq) + InflightD
-             + Cardinality(filed) + Cardinality(dropped) + skipped
+  nextSubmit = Len(delivered) + Len(dq) + InflightD + Len(salvagedSeq)
 
-(* SPEC-PIPE-3: ordered delivery. *)
-OrderedDelivery ==
+(* SPEC-PIPE-2, no duplicates: each seqNo is delivered at most once. The
+   delivery order is unspecified (SPEC-PIPE-3 retired). *)
+NoDuplicateDelivery ==
   \A i \in 1..Len(delivered) :
     \A j \in 1..Len(delivered) :
-      i < j => delivered[i] < delivered[j]
+      i /= j => delivered[i] /= delivered[j]
 
-(* SPEC-PIPE-4: both buffers stay bounded. *)
+(* SPEC-PIPE-4: the disassembly work queue stays bounded. *)
 QueueBounded == Len(dq) <= MaxQ
-ReorderBounded == Cardinality(filed) <= MaxR
-WindowBounded == nextSubmit - nextMerge <= MaxR
 
 (* SPEC-PIPE-5: clean shutdown. *)
 CleanShutdown ==
   /\ \A w \in AWorkers : adone[w] => (~hasTaskA[w] /\ ~holdsA[w])
   /\ \A w \in DWorkers : ddone[w] => busy[w] = NoJob
-  /\ mdone => filed = {} /\ dropped = {}
 
 (* Liveness: every run ends -- full submission and drain, or stop with
-   salvaged queue drained through skips and in-flight completion. *)
+   the queue salvaged and in-flight jobs completed. *)
 AllTerminate ==
-  <>((\A w \in AWorkers : adone[w]) /\ (\A w \in DWorkers : ddone[w]) /\ mdone)
+  <>((\A w \in AWorkers : adone[w]) /\ (\A w \in DWorkers : ddone[w]))
 =============================================================================

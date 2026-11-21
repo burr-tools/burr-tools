@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <atomic>
 #include <mutex>
+#include <algorithm>
 
 namespace {
 
@@ -136,7 +137,7 @@ TEST_CASE("disassembler pool: equivalence with sequential disassembly", "[disasm
   }
 }
 
-TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering", "[disasm][pool][unit]") {
+TEST_CASE("disassembler pool: unit test with backpressure and unique sequence numbers", "[disasm][pool][unit]") {
   auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
   problem_c * problem = p->getProblem(0);
@@ -161,7 +162,8 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
       }
     );
 
-    // Submit 100 assemblies (greater than max_reorder_size = 64) to exercise permit throttling, reorder-window backpressure, and sequence ordering
+    // Submit 100 assemblies (more than the queue's 64) to exercise queue
+    // backpressure and the sequence numbering
     const unsigned int SUBMIT_COUNT = 100;
     for (unsigned int i = 0; i < SUBMIT_COUNT; i++) {
       auto assm = std::make_unique<assembly_c>(gt);
@@ -171,18 +173,21 @@ TEST_CASE("disassembler pool: unit test with backpressure and sequence ordering"
     pool.finish();
   }
 
+  // Delivered in any order, but each number 0..99 exactly once.
   REQUIRE(receivedSeqs.size() == 100);
+  std::sort(receivedSeqs.begin(), receivedSeqs.end());
   for (size_t i = 0; i < receivedSeqs.size(); i++) {
     CHECK(receivedSeqs[i] == i);
   }
 }
 
 TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[disasm][pool][salvage]") {
-  /* Gated merger => deterministic backpressure: with the callback blocked,
-   * the reorder buffer fills, workers park, the queue fills, and the
-   * submitter blocks. requestStop() must then salvage the queued assemblies
-   * (merger skips their sequence numbers via dropped_) so that
-   * delivered + salvaged == submitted exactly: nothing lost, nothing twice.
+  /* Gated callback => deterministic backpressure: with the callback
+   * blocked, every worker sits in it, the queue fills, and the submitter
+   * blocks. requestStop() must then salvage the queued assemblies so that
+   * delivered + salvaged == submitted exactly: nothing lost, nothing twice,
+   * and the delivered sequence numbers stay gap-free (the salvage is a
+   * suffix of the submit order).
    */
   auto p = loadPuzzle("examples/PelikanBurr.xmpuzzle");
   REQUIRE(p != nullptr);
@@ -220,7 +225,7 @@ TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[
   });
 
   // The submitter outruns 2 workers by orders of magnitude (at most
-  // 64 filed + 64 queued + 2 in flight fit with the merger gated), so it
+  // 64 queued + 2 in flight fit with the callback gated), so it
   // is blocked on backpressure long before this sleep ends.
   std::this_thread::sleep_for(std::chrono::milliseconds(200));
   pool.requestStop();
@@ -232,10 +237,11 @@ TEST_CASE("disassembler pool: requestStop salvages the backlog without loss", "[
   // Exact accounting: every submitted assembly was either delivered or
   // salvaged (submit rejections land in the salvage, never dropped).
   REQUIRE(receivedSeqs.size() + salvaged.size() == attempted.load());
-  // Delivered sequence numbers are strictly increasing and unique (the
-  // merger still emits in submit order, skipping dropped sequences).
-  for (size_t i = 1; i < receivedSeqs.size(); i++) {
-    CHECK(receivedSeqs[i] > receivedSeqs[i - 1]);
+  // Delivered sequence numbers are unique and gap-free: exactly
+  // 0 .. delivered - 1, in any order.
+  std::sort(receivedSeqs.begin(), receivedSeqs.end());
+  for (size_t i = 0; i < receivedSeqs.size(); i++) {
+    CHECK(receivedSeqs[i] == i);
   }
   // The submitter provably hit backpressure, so there was backlog to salvage.
   CHECK(!salvaged.empty());
@@ -734,7 +740,7 @@ TEST_CASE("solveThread_c: explicit thread count reaches the assembler", "[solvet
 
 /* The progress model weights disassembly against assembly by measured seconds,
  * so the pool has to report how much it has done and what it cost -- on both
- * of its internal code paths: the multi-threaded worker/merger pipeline, and
+ * of its internal code paths: the multi-threaded worker pipeline, and
  * the single-threaded "inline" path submit() takes when the pool collapses to
  * one thread (num_threads <= 1, or BURRTOOLS_DISASM_POOL=0). Both
  * paths run real disassemble() work, so both must advance the counters and

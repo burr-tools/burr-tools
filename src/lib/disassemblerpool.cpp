@@ -66,7 +66,6 @@ disassemblerPool_c::disassemblerPool_c(
   // Sanity cap on worker threads to avoid resource exhaustion
   num_threads = std::min(num_threads, 256u);
   max_queue_size = std::max<size_t>(64, num_threads);
-  max_reorder_size = std::max<size_t>(64, num_threads * 2);
 
   // Throttling: submitters pace via the bounded queue, workers via shared
   // budget tokens (see the concurrency architecture note in thread_budget.h).
@@ -82,9 +81,6 @@ disassemblerPool_c::disassemblerPool_c(
   for (unsigned int i = 0; i < num_threads; ++i) {
     workers.emplace_back([this](std::stop_token st) { worker_loop(st); });
   }
-
-  // Start merger thread
-  merger = std::jthread([this](std::stop_token st) { merger_loop(st); });
 }
 
 disassemblerPool_c::~disassemblerPool_c() {
@@ -102,8 +98,8 @@ void disassemblerPool_c::check_exception() {
 
 // Salvage helper: the assembly was not enqueued (terminal state), so keep
 // it for re-submission on the next run instead of losing it. The caller
-// must hold queue_mutex. No sequence number is assigned, so the merger
-// never expects this assembly and no dropped_ entry is needed.
+// must hold queue_mutex. No sequence number is assigned, so the numbers
+// handed out stay gap-free.
 static void salvageAssembly(std::vector<std::unique_ptr<assembly_c>> &salvaged,
                             std::unique_ptr<assembly_c> a) {
   if (a)
@@ -148,10 +144,7 @@ bool disassemblerPool_c::submit(std::unique_ptr<assembly_c> a) {
     salvageAssembly(salvaged_, std::move(a));
     return false;
   }
-  auto hasSpace = [this]() {
-    return (work_queue.size() < max_queue_size &&
-            (next_submit_seq.load(std::memory_order_relaxed) - next_merge_seq.load(std::memory_order_relaxed)) < max_reorder_size);
-  };
+  auto hasSpace = [this]() { return work_queue.size() < max_queue_size; };
 
   // Wait for queue space WITHOUT holding our search token: the drain we wait
   // for runs on tokens, so waiting while holding one could deadlock (all
@@ -253,25 +246,14 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
       completed_count.fetch_add(1, std::memory_order_relaxed);
 
       // Job done: return the budget token (potentially waking a parked
-      // assembler or disassembler) before filing the result for the merger.
+      // assembler or disassembler) before delivering the result, so the
+      // callback may block (a host's bounded result queue) without holding
+      // one.
       if (budget_ != nullptr)
         budget_->release();
 
-      {
-        std::unique_lock<std::mutex> lock(result_mutex);
-        bool ok = cv_reorder.wait(lock, st, [this]() {
-          return reorder_buffer.size() < max_reorder_size || aborted.load(std::memory_order_relaxed);
-        });
-
-        if (!ok || st.stop_requested() || aborted.load(std::memory_order_relaxed)) {
-          // Token was already returned above; release() here would be a
-          // no-op via the per-thread holdings flag. Do not re-release (a
-          // counting release would inflate available_ beyond total_).
-          return;
-        }
-
-        reorder_buffer.emplace(task.seqNo, Result{std::move(task.assembly), std::move(sep)});
-        cv_merger.notify_one();
+      if (!st.stop_requested() && !aborted.load(std::memory_order_relaxed) && on_result) {
+        on_result(task.seqNo, std::move(task.assembly), std::move(sep));
       }
     }
   } catch (...) {
@@ -290,84 +272,6 @@ void disassemblerPool_c::worker_loop(std::stop_token st) {
       std::lock_guard<std::mutex> qlock(queue_mutex);
       cv_worker.notify_all();
       cv_producer.notify_all();
-    }
-    {
-      std::lock_guard<std::mutex> rlock(result_mutex);
-      cv_merger.notify_all();
-      cv_reorder.notify_all();
-    }
-    return;
-  }
-}
-
-void disassemblerPool_c::merger_loop(std::stop_token st) {
-  try {
-    while (!st.stop_requested()) {
-      Result res;
-      uint64_t seq = 0;
-      {
-        std::unique_lock<std::mutex> lock(result_mutex);
-        bool ok = cv_merger.wait(lock, st, [this]() {
-          return reorder_buffer.find(next_merge_seq.load(std::memory_order_relaxed)) != reorder_buffer.end() ||
-                 dropped_.count(next_merge_seq.load(std::memory_order_relaxed)) > 0 ||
-                 aborted.load(std::memory_order_relaxed) ||
-                 (finished.load(std::memory_order_relaxed) && next_merge_seq.load(std::memory_order_relaxed) == next_submit_seq.load(std::memory_order_relaxed));
-        });
-
-        if (!ok || st.stop_requested() || aborted.load(std::memory_order_relaxed))
-          return;
-
-        // A sequence discarded by requestStop(): salvaged for the next run,
-        // so no result will ever arrive. Skip it without a callback.
-        if (dropped_.count(next_merge_seq.load(std::memory_order_relaxed)) > 0) {
-          dropped_.erase(next_merge_seq.load(std::memory_order_relaxed));
-          next_merge_seq.fetch_add(1, std::memory_order_release);
-          lock.unlock();
-          cv_producer.notify_one();
-          continue;
-        }
-
-        auto it = reorder_buffer.find(next_merge_seq.load(std::memory_order_relaxed));
-        if (it != reorder_buffer.end()) {
-          seq = it->first;
-          res = std::move(it->second);
-          reorder_buffer.erase(it);
-          next_merge_seq.fetch_add(1, std::memory_order_release);
-          cv_reorder.notify_one();
-        } else if (finished.load(std::memory_order_relaxed) && next_merge_seq.load(std::memory_order_relaxed) == next_submit_seq.load(std::memory_order_relaxed)) {
-          return;
-        } else {
-          continue;
-        }
-      }
-
-      cv_producer.notify_one();
-
-      if (on_result) {
-        on_result(seq, std::move(res.assembly), std::move(res.separation));
-      }
-    }
-  } catch (...) {
-    {
-      std::lock_guard<std::mutex> lock(exception_mutex);
-      if (!worker_exception) {
-        worker_exception = std::current_exception();
-      }
-    }
-    aborted.store(true, std::memory_order_release);
-    if (budget_ != nullptr) {
-      budget_->release(); // drop any token held across the throwing job
-      budget_->shutdown();
-    }
-    {
-      std::lock_guard<std::mutex> qlock(queue_mutex);
-      cv_worker.notify_all();
-      cv_producer.notify_all();
-    }
-    {
-      std::lock_guard<std::mutex> rlock(result_mutex);
-      cv_merger.notify_all();
-      cv_reorder.notify_all();
     }
     return;
   }
@@ -389,8 +293,6 @@ void disassemblerPool_c::finish() {
         w.join();
     }
     workers.clear();
-    if (merger.joinable() && merger.get_id() != std::this_thread::get_id())
-      merger.join();
     check_exception();
     return;
   }
@@ -407,13 +309,6 @@ void disassemblerPool_c::finish() {
   }
   workers.clear();
 
-  {
-    std::lock_guard<std::mutex> rlock(result_mutex);
-    cv_merger.notify_all();
-  }
-  if (merger.joinable())
-    merger.join();
-
   check_exception();
 }
 
@@ -425,19 +320,16 @@ void disassemblerPool_c::requestStop() {
   // Stop means stop: queued (never-started) assemblies are moved to the
   // salvage store instead of being disassembled, so stop returns promptly
   // instead of draining the backlog. In-flight jobs run to completion and
-  // already-filed results are still delivered by the merger. The caller
+  // their results are still delivered. The queue is FIFO, so the salvage
+  // is a suffix of the submit numbering and the delivered numbers stay
+  // gap-free [SPEC-DIS-1]. The caller
   // moves the salvage to the problem after finish(), which re-submits it on
   // the next run -- without that the dropped assemblies would be lost on
   // pause/continue: the assembler's resume never re-walks the territory
   // they were found in.
-  // Collect the discarded sequence numbers first: they were assigned at
-  // submit time, so the merger would wait for their results forever unless
-  // told to skip them (see dropped_).
-  std::vector<uint64_t> discardedSeqs;
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
     while (!work_queue.empty()) {
-      discardedSeqs.push_back(work_queue.front().seqNo);
       salvaged_.push_back(std::move(work_queue.front().assembly));
       work_queue.pop();
     }
@@ -446,12 +338,6 @@ void disassemblerPool_c::requestStop() {
     // Harmless: with an empty queue and no terminal flag they re-wait.
     cv_worker.notify_all();
     cv_producer.notify_all();
-  }
-  if (!discardedSeqs.empty()) {
-    std::lock_guard<std::mutex> rlock(result_mutex);
-    for (uint64_t seq : discardedSeqs)
-      dropped_.insert(seq);
-    cv_merger.notify_all();
   }
   if (budget_ != nullptr)
     budget_->notify();
@@ -474,7 +360,6 @@ void disassemblerPool_c::abort() {
   for (auto &w : workers) {
     w.request_stop();
   }
-  merger.request_stop();
 
   {
     std::lock_guard<std::mutex> qlock(queue_mutex);
@@ -486,20 +371,9 @@ void disassemblerPool_c::abort() {
   if (budget_ != nullptr)
     budget_->shutdown();
 
-  {
-    std::lock_guard<std::mutex> rlock(result_mutex);
-    reorder_buffer.clear();
-    dropped_.clear();
-    cv_merger.notify_all();
-    cv_reorder.notify_all();
-  }
-
   for (auto &w : workers) {
     if (w.joinable() && w.get_id() != std::this_thread::get_id())
       w.join();
   }
   workers.clear();
-
-  if (merger.joinable() && merger.get_id() != std::this_thread::get_id())
-    merger.join();
 }

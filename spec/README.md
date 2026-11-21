@@ -17,10 +17,10 @@ fetched by `just spec-tools` into `build-tla/` (gitignored).
 | `AssemblyPool.tla` | PlusCal source (`--algorithm`, human-edited) **plus** the generated TLA+ translation. Commit both; the translator preserves everything outside its markers. |
 | `AssemblyPool.cfg` | TLC config: 2 workers, budget 2 (= uncapped), 3 seed tasks, ≤2 splits. |
 | `AssemblyPoolLowBudget.cfg` | Same, but budget 1: forces the `acquire`-park + re-check path on (almost) every task. Run with `-config`. |
-| `DisasmPool.tla` | Disassembler-pool protocol: bounded queue, worker pickup, bounded reorder buffer, ordered merger, finish/abort/requestStop lifecycle with salvage + dropped-skip. |
-| `DisasmPool.cfg` | TLC config: 2 workers, 4 assemblies, queue 2, reorder window 2. |
-| `DisasmPoolTight.cfg` | Same with queue 1 / window 1: forces every backpressure path nearly every step. |
-| `Pipeline.tla` | Both tiers over one shared `ThreadBudget`: assembly pop/search/submit with token yield, disassembly jobs, ordered merger. The only spec that can state the global N-active-thread bound. |
+| `DisasmPool.tla` | Disassembler-pool protocol: bounded queue, worker pickup, direct delivery by the worker (in any order), gap-free numbering, finish/abort/requestStop lifecycle with salvage. |
+| `DisasmPool.cfg` | TLC config: 2 workers, 4 assemblies, queue 2. |
+| `DisasmPoolTight.cfg` | 3 workers, queue 1: forces the queue-full backpressure path nearly every step. |
+| `Pipeline.tla` | Both tiers over one shared `ThreadBudget`: assembly pop/search/submit with token yield, disassembly jobs delivered directly by their workers. The only spec that can state the global N-active-thread bound. |
 | `Pipeline.cfg` | 1 assembler + 1 disassembler over 1 token, 2 tasks. |
 | `PipelineWide.cfg` | 2 assemblers + 1 disassembler over 2 tokens, 3 tasks: genuine contention both ways (~25s). |
 
@@ -96,19 +96,18 @@ properties. Read in this order:
 
 | Spec element | C++ counterpart (`disassemblerpool.cpp`) |
 | :--- | :--- |
-| `submitter` + `SSpace` await | `submit()`: terminal check, then `hasSpace()` wait (queue + reorder window), seqNo on enqueue, salvage + `false` when terminal |
+| `submitter` + `SSpace` await | `submit()`: terminal check, then `hasSpace()` wait (queue room), seqNo on enqueue, salvage + `false` (no seqNo) when terminal |
 | `worker` + `WWait` await | `worker_loop()`: pop under `queue_mutex`; predicate deliberately omits `stop_requested` (requestStop re-wake is harmless) |
-| `WFile` await | `cv_reorder` wait. TLC proves it never blocks: `WindowBounded` guarantees a free slot whenever a job is in flight |
-| `merger` + `MWait` await | `merger_loop()`: next-seq filed, dropped-skip, or finished-and-drained |
-| `stopper` + `SalvLoop`/`DropMove` | `requestStop()`: salvage queued assemblies, then publish `dropped_` in a second step (`pendingDrop` models the queue_mutex/result_mutex window between the two; the merger just waits it out). Fair with a skip branch: skipping covers never-stop, fairness guarantees a started salvage reaches `dropped` |
-| `aborter` | `abort()`: discard queue, reorder buffer, drops; workers/merger exit on the flag (also covers the worker-exception path's observable protocol) |
-| `finisher` | `finish()`: set `finished` once every offer resolved; workers join, merger drains |
-| `OrderedDelivery` | **SPEC-DIS-1**: monotonic `seqNo` merge |
-| `QueueBounded` / `ReorderBounded` | **SPEC-DIS-2** / **SPEC-DIS-3** |
-| `WindowBounded` | **SPEC-DIS-4**: submit window bounds outstanding work |
+| `WDeliver` | `worker_loop()` calling `on_result` itself after returning its token; jobs finish, and are delivered, in any order |
+| `stopper` + `Salv` | `requestStop()`: set the flag, then salvage the whole queue in one step (C++ holds `queue_mutex` across the drain). The atomic salvage is load-bearing for `GapFree`: an item-by-item salvage interleaved with worker pops violates it (mutation-checked). Fair with a skip branch: skipping covers never-stop |
+| `aborter` | `abort()`: discard queue and in-flight jobs; workers exit on the flag (also covers the worker-exception path's observable protocol) |
+| `finisher` | `finish()`: set `finished` once every offer resolved; workers drain and join |
+| `NoDuplicateDelivery` / `SalvageSuffix` / `GapFree` | **SPEC-DIS-1**: delivered `seqNo`s are unique and gap-free (the salvage is a suffix of the numbering); delivery order is unspecified |
+| `QueueBounded` | **SPEC-DIS-2** |
+| — | **SPEC-DIS-3** / **SPEC-DIS-4** retired 2026-11-20 with the ordered merger (reorder buffer bound, submit window) |
 | `OfferConservation` / `SeqConservation` | **SPEC-DIS-5**: enqueued ∨ salvaged ∨ delivered ∨ discarded, never lost |
 | `SalvageOrdered` | **SPEC-DIS-6**: salvage keeps submit order for re-submission |
-| `CleanShutdown` | **SPEC-DIS-7**: no stranded jobs/results |
+| `CleanShutdown` | **SPEC-DIS-7**: no stranded jobs |
 | `AllTerminate` | Liveness over all four stop/abort combinations |
 
 ## C++ ↔ spec mapping (`Pipeline.tla`)
@@ -119,11 +118,12 @@ properties. Read in this order:
 | `SubmitLoop` + `ARetryRel` | `submit()`'s `while (!hasSpace())`: the slot is re-verified after every lock-free budget wait (removing the recheck overflows the queue — mutation-checked) |
 | `ARequeue` | Terminal submit salvages the task back (assembler retry / disassembler salvage paths) |
 | `dworker` + `DPark` | `worker_loop()` pickup plus the per-job budget gate |
+| `DRel` / `DDeliver` | `worker_loop()` returning the token, then calling `on_result` directly |
 | `BudgetConservation` | **SPEC-PIPE-1**: takes/returns pair up globally |
 | `WorkersHoldTokens` | **SPEC-PIPE-1** (bound half): every working thread holds a token. Deliberately NOT open-tasks-plus-jobs: TLC refuted that reading — an assembler yielded in submit-wait while a disassembler works is designed overlap |
-| `AssemblyConservation` / `DisasmConservation` / `SubmittedEqualsCompleted` | **SPEC-PIPE-2**: end-to-end no-loss, task → assembly → delivery |
-| `OrderedDelivery` | **SPEC-PIPE-3** |
-| `QueueBounded` / `ReorderBounded` / `WindowBounded` | **SPEC-PIPE-4** |
+| `AssemblyConservation` / `DisasmConservation` / `SubmittedEqualsCompleted` / `NoDuplicateDelivery` | **SPEC-PIPE-2**: end-to-end no-loss, task → assembly → delivery, nothing delivered twice |
+| — | **SPEC-PIPE-3** retired 2026-11-20 (ordered delivery; result order is unspecified) |
+| `QueueBounded` | **SPEC-PIPE-4** |
 | `CleanShutdown` | **SPEC-PIPE-5** |
 
 ## Verification input from code review (PRs 113–118)
@@ -132,7 +132,7 @@ Review findings that shape what the specs must cover:
 
 - **Stop during generation must discard partial state** (`assembler_1.cpp:3035`): a stop inside `generateTasksAtDepth` left a partial `parallelTasks` list with `interrupted=0`, silently losing assemblies across save/load. The same shape recurred for Huang entry-stop seeds (`simd_huang_cover.cpp:687`; #116). Covered by `NoPartialResume` (SPEC-POOL-4); the C++ side is PRs #116-#118.
 - **Salvage-before-return** (#118, #116): every terminal path must preserve requeueable state (seeds, queued assemblies). Covered for the disassembler pool by `SeqConservation`; the assembly-side `drain()` is the wired stop path (not an abstraction), while the stop-time retry re-queue stays deliberately unmodeled — SPEC-POOL-2 is really about that path, so it is listed as a gap, not a claim.
-- **Tests must fail without the fix** (#116 `test_solver.cpp:854`, #114 verified-by-revert): the same standard applies here — every spec is mutation-checked (removing the submit window violates `WindowBounded`; dropping token releases violates `CleanExit`).
+- **Tests must fail without the fix** (#116 `test_solver.cpp:854`, #114 verified-by-revert): the same standard applies here — every spec is mutation-checked (salvaging item by item instead of atomically violates `GapFree`; dropping token releases violates `CleanExit`).
 - **NDEBUG-vanishing checks gate nothing** (#113): CI gates must throw via `bt_te()`, never `bt_assert`. Applies to the planned debug accounting asserts: they stay debug-only tripwires inside `#ifndef NDEBUG` tests, never release gates.
 
 ## Deliberate gaps (not modeled)
@@ -145,7 +145,7 @@ would refuse the requeue pushes the `drain()`-based resume depends on;
 `drain()` itself is live and covered implicitly by task conservation),
 the null-budget path (budget = N ≈ uncapped), task bodies (exact cover
 search, mid-task requeue), voxel caches, disassembly payloads, the
-merger callback body, GUI.
+result callback body, GUI.
 
 ## Editing rules (anti-divergence)
 
@@ -177,7 +177,7 @@ merger callback body, GUI.
    await, check that the distinct-state count did not collapse AND that
    a targeted mutant still fails. Current rough counts: AssemblyPool
    a targeted mutant still fails. Current rough counts: AssemblyPool
-   ~13k/13k, DisasmPool ~233k/89k, Pipeline ~3k/335k/1.3M states (the
+   ~13k/13k, DisasmPool ~69k/60k (normal/tight), Pipeline ~1k/69k/528k states (the
    last is PipelineWideND2, the only config with two disassembly
    workers -- the one that exercises D-tier holder identity).
 

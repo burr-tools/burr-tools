@@ -19,12 +19,11 @@ class disassembler_c;
 /* Streaming, unordered, one-shot solver for the Python bindings.
  *
  * This deliberately does NOT reuse solveThread_c: that orchestrator is
- * built around ordered delivery (the disassembler pool holds fast results
- * behind slow earlier sequence numbers), problem-side solution storage,
- * and the pause/resume state machine -- all of which this iterator
- * rejects in favor of first-result-as-fast-as-possible streaming.
- * Forcing one through the other would mean unordered/streaming modes on
- * solveThread_c and the pool, i.e. complicating both for no gain.
+ * built around problem-side solution storage and the pause/resume state
+ * machine -- both of which this iterator rejects in favor of
+ * first-result-as-fast-as-possible streaming. Forcing one through the
+ * other would mean a streaming mode on solveThread_c, complicating it for
+ * no gain.
  *
  * Consequences of the split, stated so nobody has to rediscover them:
  * - Delivery order is unspecified (arrival order, varies between runs).

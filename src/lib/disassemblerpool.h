@@ -37,22 +37,21 @@ class rotationContext_c;
 #include <mutex>
 #include <condition_variable>
 #include <queue>
-#include <map>
-#include <set>
 #include <memory>
 #include <functional>
 #include <atomic>
 #include <exception>
 
 /**
- * Thread pool for concurrent disassembly of independent puzzle assemblies
- * with ordered merging.
+ * Thread pool for concurrent disassembly of independent puzzle assemblies.
  *
  * Assemblies found by the assembler are independent. This pool distributes
  * disassembly jobs across N worker threads, each owning a private disassembler_0_c
- * instance. A dedicated merger thread orders completed results by sequence number
- * before invoking the user callback, preserving strict deterministic solution ordering.
- * [SPEC-DIS-1, model-checked in spec/DisasmPool.tla]
+ * instance. Each worker hands its result to the callback directly as it
+ * finishes, so results arrive in no particular order. Every submitted
+ * assembly gets a unique sequence number, assigned in submit order; a stop
+ * salvages a suffix of that order (the never-started queue), so the numbers
+ * delivered are gap-free. [SPEC-DIS-1, model-checked in spec/DisasmPool.tla]
  */
 class disassemblerPool_c {
 public:
@@ -61,7 +60,9 @@ public:
   /** settings: the workers (threads, 0 = the hardware concurrency),
    *  inline disassembly (disassemblerPool) and the workers' kernels.
    *  rotationContext: rotation moves are considered iff given; every
-   *  worker's disassembler shares it. */
+   *  worker's disassembler shares it.
+   *  on_result runs on the worker threads as they finish (in no particular
+   *  order), so it must be thread-safe. */
   disassemblerPool_c(
     std::shared_ptr<const solverSpec_t> puzzle,
     const solverSettings_t & settings,
@@ -89,7 +90,7 @@ public:
   bool isInline() const { return is_inline; }
   unsigned int threadCount() const { return num_threads; }
 
-  /** Wait for all pending assemblies to be disassembled and merged. */
+  /** Wait for all pending assemblies to be disassembled and delivered. */
   void finish();
 
   /** Immediately cancel and discard any pending work. */
@@ -97,7 +98,7 @@ public:
 
   /** Signal pool to stop accepting work and wake any blocked submitters
    * and idle-parked workers. Unlike abort(), in-flight jobs run to
-   * completion and already-filed results are still delivered. But queued
+   * completion and their results are still delivered. But queued
    * (never-started) assemblies are moved to the salvage store instead of
    * being disassembled, so stop returns promptly instead of draining the
    * backlog. The caller moves the salvage to the problem after finish(),
@@ -136,11 +137,6 @@ private:
     std::unique_ptr<assembly_c> assembly;
   };
 
-  struct Result {
-    std::unique_ptr<assembly_c> assembly;
-    std::unique_ptr<separation_c> separation;
-  };
-
   std::shared_ptr<const solverSpec_t> puzzle;
   const solverSettings_t settings;
   unsigned int num_threads;
@@ -156,7 +152,6 @@ private:
   std::unique_ptr<disassembler_0_c> inline_dis;
 
   std::atomic<uint64_t> next_submit_seq{0};
-  std::atomic<uint64_t> next_merge_seq{0};
 
   std::atomic<uint64_t> completed_count{0};
   std::atomic<double> cost_seconds{0.0};
@@ -171,34 +166,20 @@ private:
   // in submit order. Guarded by queue_mutex. Moved to the problem after
   // finish() and re-submitted on the next run (see requestStop()).
   std::vector<std::unique_ptr<assembly_c>> salvaged_;
-  // Bounded buffers (SPEC-DIS-2/3/4, model-checked in spec/DisasmPool.tla):
-  // the submit window (queue + reorder) is what guarantees a filing
-  // worker always finds a reorder slot.
+  // Bounded work queue: submit() blocks while it is full (SPEC-DIS-2,
+  // model-checked in spec/DisasmPool.tla).
   size_t max_queue_size{64};
-  size_t max_reorder_size{64};
   // Shared cap on working threads (see the concurrency architecture note
   // in thread_budget.h); null = uncapped.
   // Set once before workers need it; workers only ever read it.
   ThreadBudget *budget_{nullptr};
 
-  std::mutex result_mutex;
-  std::condition_variable_any cv_merger;
-  std::condition_variable_any cv_reorder;
-  std::map<uint64_t, Result> reorder_buffer;
-  // Submit sequence numbers discarded by requestStop(): assigned, queued,
-  // then salvaged before any worker filed them. The merger skips these
-  // instead of waiting for results that will never arrive. Guarded by
-  // result_mutex.
-  std::set<uint64_t> dropped_;
-
   std::mutex exception_mutex;
   std::exception_ptr worker_exception;
 
   std::vector<std::jthread> workers;
-  std::jthread merger;
 
   void worker_loop(std::stop_token st);
-  void merger_loop(std::stop_token st);
   void check_exception();
 };
 

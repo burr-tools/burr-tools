@@ -49,6 +49,7 @@
 #include <fstream>
 #include <iostream>
 #include <atomic>
+#include <mutex>
 
 using namespace std;
 
@@ -162,6 +163,8 @@ public:
   problem_c * puzzle;
   std::shared_ptr<const solverSpec_t> spec;
   std::unique_ptr<disassemblerPool_c> pool;
+  /* the pool's workers deliver concurrently: one result at a time */
+  std::mutex resultMutex;
 
   asm_cb(problem_c * p, std::shared_ptr<const solverSpec_t> s) : pn(p->getNumberOfPieces()), puzzle(p), spec(std::move(s)) {
     if (disassemble) {
@@ -169,6 +172,7 @@ public:
         spec,
         settings,
         [this](uint64_t /*seqNo*/, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> da) {
+          std::lock_guard<std::mutex> lock(resultMutex);
           if (da) {
             Solutions++;
             const std::optional<turnPlay_t> play = measurePlay(da.get(), a.get(), *spec, !quiet || allProblems || writeFile);
