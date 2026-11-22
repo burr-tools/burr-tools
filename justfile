@@ -286,10 +286,30 @@ heap-qt: build-qt
 bench-ui *args: build-release
     ./build-rel/test_burrtools "[bench]" {{args}}
 
-# Build with AddressSanitizer and UndefinedBehaviorSanitizer
+# Build with AddressSanitizer and UndefinedBehaviorSanitizer (test-asan-qt adds the Qt GUI)
 build-asan:
-    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi
+    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined -Db_lundef=false -Dqt_gui=disabled -Dpython=disabled; fi
     ninja -C build-asan
+
+# The unit tests under ASan + UBSan, leaks included (CI: master only, so a PR's author runs it; llm_docs/verification.md)
+# MINK_STRESS=1: one random shape per grid and setting in "Minkowski mesher:
+# random shapes", not three -- a memory error shows on any of them, and under
+# ASan the case took over 3 minutes.
+test-asan: build-asan
+    MINK_STRESS=1 \
+    ASAN_OPTIONS="halt_on_error=1:detect_leaks=1:strict_string_checks=1" \
+    UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1" \
+    ./build-asan/test_burrtools --reporter compact
+
+# The Qt GUI's suites under ASan + UBSan (needs Qt >= 6.8). Leaks are not
+# checked: Qt and the Mesa driver are not instrumented and keep memory to the end.
+test-asan-qt:
+    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined -Db_lundef=false -Dpython=disabled; fi
+    meson configure build-asan -Dqt_gui=enabled
+    ninja -C build-asan
+    ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
+    UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1" \
+    meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
 # Build with ThreadSanitizer (detect concurrency data races)
 build-tsan:
