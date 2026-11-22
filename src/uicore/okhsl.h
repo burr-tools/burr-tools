@@ -30,6 +30,11 @@ namespace btui {
    * degrees, saturation and lightness in [0, 1]. The result is sRGB, each
    * channel in [0, 1]. */
   Rgb okhslToSrgb(float hueDegrees, float saturation, float lightness);
+
+  /* How far apart two sRGB colours look: their distance in Oklab, about
+   * 0.02 where a difference starts to show and about 0.3 from black to a
+   * mid grey. */
+  float oklabDistance(const Rgb & a, const Rgb & b);
 }
 
 #endif

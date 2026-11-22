@@ -59,6 +59,15 @@ namespace {
              std::uint8_t(std::clamp(c.alphaF() * alpha, 0.0f, 1.0f) * 255.0f + 0.5f) };
   }
 
+  btui::Rgb rgb(const QColor & c) { return { float(c.redF()), float(c.greenF()), float(c.blueF()) }; }
+
+  /* a ghost's outline over `fill`: the accent, or the text colour where
+   * the accent would vanish into fill (btui::outlineColourOn) */
+  btui::Rgba8 ghostOutline(const Theme & t, const QColor & fill) {
+    const btui::Rgb c = btui::outlineColourOn(rgb(fill), rgb(t.accent()), rgb(t.text()));
+    return rgba(QColor::fromRgbF(c.r, c.g, c.b));
+  }
+
   QString word(std::string_view w) { return QString::fromLatin1(w.data(), qsizetype(w.size())); }
 }
 
@@ -464,7 +473,7 @@ void ViewportController::addTransformPreview(SceneFrame & f) const {
   const QColor piece = QColor::fromRgbF(pc.r, pc.g, pc.b);
   guarded([&] {
     btui::addResultGhost(f.ghostFaces, f.ghostLines, *m_shape, p.result.get(),
-                         { rgba(piece, 0.5f), rgba(t->accent()), 1.5f });
+                         { rgba(piece, 0.5f), ghostOutline(*t, piece), 1.5f });
   });
   if (!p.hint)
     return;
@@ -503,6 +512,7 @@ void ViewportController::addGhosts(SceneFrame & f) const {
     draw = QColor::fromRgbF(pc.r, pc.g, pc.b);
   }
   const bool variable = m_editor->toolInEffect() == EditorController::Variable;
+  const btui::Rgba8 outline = ghostOutline(*t, draw);
 
   for (const btui::GhostKind kind : { btui::GhostKind::Place, btui::GhostKind::Replace, btui::GhostKind::Erase,
                                       btui::GhostKind::Paint }) {
@@ -515,16 +525,16 @@ void ViewportController::addGhosts(SceneFrame & f) const {
     btui::GhostStyle s;
     switch (kind) {
       case btui::GhostKind::Place:
-        s = { rgba(draw, 0.55f), rgba(t->accent()), 2.0f, variable ? 5.0f : 0.0f, variable ? 4.0f : 0.0f };
+        s = { rgba(draw, 0.55f), outline, 2.0f, variable ? 5.0f : 0.0f, variable ? 4.0f : 0.0f };
         break;
       case btui::GhostKind::Replace:
-        s = { rgba(draw, 0.22f), rgba(t->accent()), 1.5f, 5.0f, 4.0f };
+        s = { rgba(draw, 0.22f), outline, 1.5f, 5.0f, 4.0f };
         break;
       case btui::GhostKind::Erase:
         s = { rgba(t->danger(), 0.5f), rgba(t->danger()), 2.0f };
         break;
       case btui::GhostKind::Paint:
-        s = { rgba(draw, 0.5f), rgba(t->accent()), 2.0f };
+        s = { rgba(draw, 0.5f), outline, 2.0f };
         break;
     }
     guarded([&] { btui::addGhost(f.ghostFaces, f.ghostLines, *m_shape, cells, s); });

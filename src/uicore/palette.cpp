@@ -197,4 +197,8 @@ namespace btui {
   bool prefersWhiteText(int /*shape*/) {
     return !darkBackground;
   }
+
+  Rgb outlineColourOn(const Rgb & fill, const Rgb & accent, const Rgb & fallback) {
+    return oklabDistance(fill, accent) >= 0.12f ? accent : fallback;
+  }
 }

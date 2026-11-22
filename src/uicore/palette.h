@@ -102,6 +102,12 @@ namespace btui {
    * at least 4.5:1 on the dark-background ones. One rule for every chip,
    * list and the 3D view's tag. */
   bool prefersWhiteText(int shape);
+
+  /* The line drawn around something in `fill` (the edit ghosts' outline,
+   * C06): `accent` where it stands apart from fill, an Oklab distance of
+   * at least 0.12, and `fallback` (the theme's text colour) where it does
+   * not -- the blue piece colours lie close to either theme's accent. */
+  Rgb outlineColourOn(const Rgb & fill, const Rgb & accent, const Rgb & fallback);
 }
 
 #endif

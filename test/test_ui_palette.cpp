@@ -6,6 +6,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "../src/uicore/palette.h"
+#include "../src/uicore/okhsl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -168,4 +169,37 @@ TEST_CASE("the 8-bit colours are the floats cut off, as the FLTK GUI reads them"
   }
   CHECK(darkShade(0.7f) == 0.629999995f);
   CHECK(lightShade(0.7f) == 0.730000019f);
+}
+
+TEST_CASE("the Oklab distance is zero for one colour, symmetric, and grows with the difference", "[ui][palette]") {
+  const Rgb blue{ 0x30 / 255.f, 0x64 / 255.f, 0xff / 255.f }, accent{ 0x2f / 255.f, 0x6d / 255.f, 0xf6 / 255.f };
+  const Rgb green{ 0, 0x8e / 255.f, 0x50 / 255.f };
+  CHECK_THAT(oklabDistance(blue, blue), WithinAbs(0.0, 1e-6));
+  CHECK_THAT(oklabDistance(blue, green), WithinAbs(oklabDistance(green, blue), 1e-6));
+  CHECK(oklabDistance(blue, accent) < 0.05f);          // two blues a step apart
+  CHECK(oklabDistance(blue, green) > 0.2f);
+  CHECK_THAT(oklabDistance({ 0, 0, 0 }, { 1, 1, 1 }), WithinAbs(1.0, 1e-3));   // Oklab's L runs 0 to 1
+}
+
+TEST_CASE("a ghost's outline is the accent unless the accent would vanish into its fill", "[ui][palette]") {
+  const struct { bool dark; Rgb accent, text; } themes[] = {
+    { false, { 0x2f / 255.f, 0x6d / 255.f, 0xf6 / 255.f }, { 0x1a / 255.f, 0x1f / 255.f, 0x29 / 255.f } },
+    { true, { 0x5b / 255.f, 0x9b / 255.f, 0xff / 255.f }, { 0xe7 / 255.f, 0xea / 255.f, 0xf0 / 255.f } },
+  };
+  for (const auto & th : themes) {
+    INFO((th.dark ? "dark" : "light"));
+    setPieceColorsForDarkBackground(th.dark);
+    // the first shape is blue, as the accent is: the text colour instead
+    const Rgb first = outlineColourOn(pieceColor(0), th.accent, th.text);
+    CHECK(first.r == th.text.r);
+    // red and green keep the accent
+    for (int shape : { 1, 2 }) {
+      const Rgb o = outlineColourOn(pieceColor(shape), th.accent, th.text);
+      CHECK(o.b == th.accent.b);
+    }
+    // whichever it picks stands apart from every one of the first 64 shapes
+    for (int shape = 0; shape < 64; shape++)
+      CHECK(oklabDistance(outlineColourOn(pieceColor(shape), th.accent, th.text), pieceColor(shape)) >= 0.12f);
+  }
+  setPieceColorsForDarkBackground(false);
 }

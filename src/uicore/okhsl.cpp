@@ -74,6 +74,26 @@ namespace btui {
       };
     }
 
+    Lab linearSrgbToOklab(Rgb c) {
+      const float l = 0.4122214708f * c.r + 0.5363325363f * c.g + 0.0514459929f * c.b;
+      const float m = 0.2119034982f * c.r + 0.6806995451f * c.g + 0.1073969566f * c.b;
+      const float s = 0.0883024619f * c.r + 0.2817188376f * c.g + 0.6299787005f * c.b;
+
+      const float l_ = std::cbrt(l);
+      const float m_ = std::cbrt(m);
+      const float s_ = std::cbrt(s);
+
+      return {
+        0.2104542553f * l_ + 0.7936177850f * m_ - 0.0040720468f * s_,
+        1.9779984951f * l_ - 2.4285922050f * m_ + 0.4505937099f * s_,
+        0.0259040371f * l_ + 0.7827717662f * m_ - 0.8086757660f * s_,
+      };
+    }
+
+    float srgbTransferInv(float a) {
+      return 0.04045f < a ? std::pow((a + 0.055f) / 1.055f, 2.4f) : a / 12.92f;
+    }
+
     float srgbTransfer(float a) {
       return 0.0031308f >= a ? 12.92f * a : 1.055f * std::pow(a, 0.4166666666666667f) - 0.055f;
     }
@@ -315,5 +335,11 @@ namespace btui {
       clamp01(srgbTransfer(rgb.g)),
       clamp01(srgbTransfer(rgb.b)),
     };
+  }
+
+  float oklabDistance(const Rgb & x, const Rgb & y) {
+    const Lab a = linearSrgbToOklab({ srgbTransferInv(x.r), srgbTransferInv(x.g), srgbTransferInv(x.b) });
+    const Lab b = linearSrgbToOklab({ srgbTransferInv(y.r), srgbTransferInv(y.g), srgbTransferInv(y.b) });
+    return std::sqrt((a.L - b.L) * (a.L - b.L) + (a.a - b.a) * (a.a - b.a) + (a.b - b.b) * (a.b - b.b));
   }
 }
