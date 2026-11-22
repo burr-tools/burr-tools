@@ -149,7 +149,7 @@ namespace btui {
        * voxel also faces a variable neighbour, every side a full line. */
       void addFlatVoxels(void) {
         struct Side { std::vector<Vec3> corners; int nx = 0, ny = 0, nz = 0; };
-        struct Exposed { std::vector<Vec3> corners; Vec3 normal; Rgba8 col; Vec3 cell; bool variable; };
+        struct Exposed { std::vector<Vec3> corners; Vec3 normal; Rgba8 col; Vec3 cell; bool variable = false; };
         std::vector<Exposed> faces;
         std::vector<Side> sides;
         std::vector<float> fc;
