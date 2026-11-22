@@ -30,8 +30,10 @@
 #include "tools/envvars.h"
 #include "tools/cliargs.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -44,28 +46,49 @@
 
 using namespace std;
 
+/* Where the messages go: stdout, unless the puzzle came through stdin. Its
+ * result then goes to stdout, for a redirection or the next program in the
+ * pipe, and every message to stderr, as not one may land in the result.
+ * solve() picks it, main()'s report of an internal error follows it.
+ */
+static std::ostream * messageStream = &cout;
+
 /* The usage; with full (-h, --help) the environment variables too, which
  * a wrong command line would only scroll the usage away with. */
-void usage(bool full = false) {
+void usage(std::ostream & out, bool full = false) {
 
-  cout << "burrTxt2 [options] file [options]\n\n";
-  cout << "  file: puzzle file with the puzzle definition to solve\n\n";
-  cout << "  -h, --help  this help, with the environment variables\n";
-  cout << "  -R    restart and throw away all found solutions, otherwise continue\n";
-  cout << "  -d    try to disassemble and only keep solutions that do disassemble\n";
-  cout << "  -c    just count solutions\n";
-  cout << "  -m    keep mirror solutions\n";
-  cout << "  -r    keep rotated solutions\n";
-  cout << "  -p    drop disassemblies and replace by information about disassembly\n";
-  cout << "  -b    selecte problem, else 0\n";
-  cout << "  -t n  set number of worker threads for solver (0 = auto)\n";
+  out << "burrTxt2 [options] [file] [options]\n\n";
+  out << "  file: puzzle file with the puzzle definition to solve, compressed or\n";
+  out << "        not; \"-\" or no file at all reads it from standard input\n";
+  out << "        The result goes into the file's name with \"ttt\" added and input on\n";
+  out << "        standard input stops the solver. For a puzzle read from standard\n";
+  out << "        input the result goes to standard output, or nothing does when the\n";
+  out << "        run fails; everything else goes to standard error, and only killing\n";
+  out << "        the program stops it.\n\n";
+  out << "  -h, --help  this help, with the environment variables\n";
+  out << "  -R    restart and throw away all found solutions, otherwise continue\n";
+  out << "  -d    try to disassemble and only keep solutions that do disassemble\n";
+  out << "  -c    just count solutions\n";
+  out << "  -m    keep mirror solutions\n";
+  out << "  -r    keep rotated solutions\n";
+  out << "  -p    drop disassemblies and replace by information about disassembly\n";
+  out << "  -b    selecte problem, else 0\n";
+  out << "  -t n  set number of worker threads for solver (0 = auto)\n";
   if (full)
-    btenv::print(cout, { btenv::Scope::Solver });
+    btenv::print(out, { btenv::Scope::Solver });
 }
 
 
-bool checkInput(void)
+/* Waits a second for the solver, and says whether the user asked to stop it by
+ * giving input. A stdin the puzzle came through can not say that: it stays at
+ * its end, which reads as ready for ever. */
+bool checkInput(bool fromStdin)
 {
+  if (fromStdin) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    return false;
+  }
+
   /* Initialize the file descriptor set. */
   fd_set set;
   FD_ZERO (&set);
@@ -84,12 +107,12 @@ bool checkInput(void)
 static int solve(int argv, char* args[]) {
 
   if (argv < 1) {
-    usage();
+    usage(cout);
     return 2;
   }
 
   if (btcli::wantsHelp(argv, args)) {
-    usage(true);
+    usage(cout, true);
     return 0;
   }
 
@@ -99,6 +122,9 @@ static int solve(int argv, char* args[]) {
   int firstProblem = 0;
   int lastProblem = 1;
   unsigned int threads = 0;
+
+  /* only told once the file is known, and with it where messages go */
+  const char * argError = nullptr;
 
   for(int i = 1; i < argv; i++) {
 
@@ -126,37 +152,75 @@ static int solve(int argv, char* args[]) {
        * unsigned thread count
        */
       if (i+1 >= argv) {
-        cout << "-t requires a numeric argument\n";
-        return 1;
+        if (!argError)
+          argError = "-t requires a numeric argument\n";
+        continue;
       }
       char * end = 0;
       long t = strtol(args[i+1], &end, 10);
       if ((end == args[i+1]) || (*end != '\0') || (t < 0)) {
-        cout << "-t requires a non-negative number\n";
-        return 1;
+        if (!argError)
+          argError = "-t requires a non-negative number\n";
       }
-      threads = (unsigned int)t;
+      else
+        threads = (unsigned int)t;
       i++;
     }
     else
       filenumber = i;
   }
 
-  if (filenumber == 0) {
-    usage();
+  const char * file = filenumber ? args[filenumber] : nullptr;
+  const bool fromStdin = btcli::solverReadsStdin(file);
+
+  if (fromStdin)
+    messageStream = &cerr;
+
+  std::ostream & log = *messageStream;
+
+  if (argError) {
+    log << argError;
     return 1;
   }
 
-  auto str = openGzFile(args[filenumber]);
+  if (!file && !fromStdin) {
+    usage(log);
+    return 1;
+  }
+
+  std::string stdinError;
+  bool damaged = false;
+  auto str = fromStdin ? btcli::openStdin(stdinError, damaged) : openGzFile(file);
+
   if (!str) {
-    cout << "could not open input file \"" << args[filenumber] << "\"\n";
+    if (damaged) {
+      log << "could not load the puzzle: " << stdinError << "\n";
+      return 2;
+    }
+    if (fromStdin) {
+      log << stdinError << "\n\n";
+      usage(log);
+      return 1;
+    }
+    log << "could not open input file \"" << file << "\"\n";
     return 2;
   }
-  xmlParser_c pars(*str);
-  puzzle_c p(pars);
+
+  std::unique_ptr<puzzle_c> loaded;
+
+  try {
+    xmlParser_c pars(*str);
+    loaded = std::make_unique<puzzle_c>(pars);
+  }
+  catch (const xmlParserException_c & e) {
+    log << "could not load the puzzle: " << e.what() << "\n";
+    return 2;
+  }
+
+  puzzle_c & p = *loaded;
 
   if (firstProblem < 0 || (unsigned int)firstProblem >= p.getNumberOfProblems()) {
-    cout << "the file has " << p.getNumberOfProblems() << " problem(s), there is no problem "
+    log << "the file has " << p.getNumberOfProblems() << " problem(s), there is no problem "
          << firstProblem << "\n";
     return 2;
   }
@@ -169,25 +233,28 @@ static int solve(int argv, char* args[]) {
   const unsigned int caps = p.getGridType()->getCapabilities();
 
   if (!(caps & gridType_c::CAP_ASSEMBLE)) {
-    cout << "Sorry, this space grid doesn't have an assembler (yet)\n";
+    log << "Sorry, this space grid doesn't have an assembler (yet)\n";
     return 2;
   }
 
   if ((par & solveThread_c::PAR_DISASSM) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
-    cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
-    cout << "drop -d to just assemble the puzzle\n";
+    log << "Sorry, this space grid doesn't have a disassembler (yet)\n";
+    log << "drop -d to just assemble the puzzle\n";
     return 2;
   }
 
-  std::string outname = args[filenumber];
-  outname += "ttt";
-  cout << "outputting into " << outname << std::endl;
+  ofstream ostr;
 
-  ofstream ostr(outname.c_str());
-  if (!ostr)
-  {
-    cout << "Can not open output file, aborting\n";
-    return 2;
+  if (!fromStdin) {
+    const std::string outname = std::string(file) + "ttt";
+    log << "outputting into " << outname << std::endl;
+
+    ostr.open(outname.c_str());
+    if (!ostr)
+    {
+      log << "Can not open output file, aborting\n";
+      return 2;
+    }
   }
 
   for (unsigned int i = 0; i < p.getNumberOfShapes(); i++)
@@ -208,27 +275,27 @@ static int solve(int argv, char* args[]) {
      * nothing to continue from, and setAssembler's precondition rejects one.
      */
     if (!problem->canStartSolving()) {
-      cout << "problem " << pr << " (" << problem->getName() << ") ";
+      log << "problem " << pr << " (" << problem->getName() << ") ";
       if (problem->getSolveState() == SS_SOLVED)
-        cout << "is already solved: " << problem->getNumAssemblies() << " assemblies, "
+        log << "is already solved: " << problem->getNumAssemblies() << " assemblies, "
              << problem->getNumSolutions() << " solutions\n";
       else
-        cout << "has no state to continue from\n";
-      cout << "use -R to solve it again\n";
+        log << "has no state to continue from\n";
+      log << "use -R to solve it again\n";
       continue;
     }
 
     solveThread_c assmThread(*problem, par, threads);
 
     if (!assmThread.start(false)) {
-      cout << "Could not start Solver\n";
+      log << "Could not start Solver\n";
       continue;
     }
 
     while (!assmThread.stopped()) {
 
-      if (checkInput()) {
-        cout << "abborting \n";
+      if (checkInput(fromStdin)) {
+        log << "abborting \n";
         assmThread.stop();
 
         while (!assmThread.stopped())
@@ -247,23 +314,23 @@ static int solve(int argv, char* args[]) {
 
       switch (assmThread.currentAction()) {
         case solveThread_c::ACT_PREPARATION:
-          cout << "\rpreparing piece " << assmThread.currentActionParameter()+1;
+          log << "\rpreparing piece " << assmThread.currentActionParameter()+1;
           break;
         case solveThread_c::ACT_REDUCE:
-          cout << "\rreducing piece " << assmThread.currentActionParameter()+1;
+          log << "\rreducing piece " << assmThread.currentActionParameter()+1;
           break;
         case solveThread_c::ACT_ASSEMBLING:
-          cout << "\rassembling " << finished*100 << "% done";
+          log << "\rassembling " << finished*100 << "% done";
           break;
         case solveThread_c::ACT_DISASSEMBLING:
-          cout << "\rdisassembling " << finished*100 << "% done";
+          log << "\rdisassembling " << finished*100 << "% done";
           break;
         case solveThread_c::ACT_WAIT_TO_STOP:
-          cout << "\rwaiting for solver to stop";
+          log << "\rwaiting for solver to stop";
           break;
       }
 
-      cout.flush();
+      log.flush();
 
     }
 
@@ -273,63 +340,78 @@ static int solve(int argv, char* args[]) {
      */
     switch (assmThread.currentAction()) {
       case solveThread_c::ACT_FINISHED:
-        cout << "\rdone\n";
+        log << "\rdone\n";
         break;
       case solveThread_c::ACT_PAUSING:
-        cout << "\rstopped, the puzzle is not completely solved\n";
+        log << "\rstopped, the puzzle is not completely solved\n";
         break;
       case solveThread_c::ACT_ASSERT:
-        cout << "\rException in Solver\n";
-        cout << " file      : " << assmThread.getAssertException().file << "\n";
-        cout << " function  : " << assmThread.getAssertException().function << "\n";
-        cout << " line      : " << assmThread.getAssertException().line << "\n";
-        cout << " expression: " << assmThread.getAssertException().expr << "\n";
+        log << "\rException in Solver\n";
+        log << " file      : " << assmThread.getAssertException().file << "\n";
+        log << " function  : " << assmThread.getAssertException().function << "\n";
+        log << " line      : " << assmThread.getAssertException().line << "\n";
+        log << " expression: " << assmThread.getAssertException().expr << "\n";
         exitCode = 1;
         break;
       case solveThread_c::ACT_ERROR:
-        cout << "\rerror: ";
+        log << "\rerror: ";
         switch (assmThread.getErrorState()) {
           case assembler_c::ERR_TOO_MANY_UNITS:
-            cout << "Pieces contain " << assmThread.getErrorParam() << " units too many\n";
+            log << "Pieces contain " << assmThread.getErrorParam() << " units too many\n";
             break;
           case assembler_c::ERR_TOO_FEW_UNITS:
-            cout << "Pieces contain " << assmThread.getErrorParam() << " units less than required\n";
+            log << "Pieces contain " << assmThread.getErrorParam() << " units less than required\n";
             break;
           case assembler_c::ERR_CAN_NOT_PLACE:
-            cout << "Piece " << assmThread.getErrorParam()+1 << " can be placed nowhere within the result\n";
+            log << "Piece " << assmThread.getErrorParam()+1 << " can be placed nowhere within the result\n";
             break;
           case assembler_c::ERR_CAN_NOT_RESTORE_VERSION:
-            cout << "Impossible to restore the saved state because the internal format changed.\n";
-            cout << "You either have to start from the beginning or finish with the old version of BurrTools, sorry\n";
+            log << "Impossible to restore the saved state because the internal format changed.\n";
+            log << "You either have to start from the beginning or finish with the old version of BurrTools, sorry\n";
             break;
           case assembler_c::ERR_CAN_NOT_RESTORE_SYNTAX:
-            cout << "Impossible to restore the saved state because something with the data is wrong.\n";
-            cout << "You have to start from the beginning, sorry\n";
+            log << "Impossible to restore the saved state because something with the data is wrong.\n";
+            log << "You have to start from the beginning, sorry\n";
             break;
           case assembler_c::ERR_CAN_NOT_RESTORE_INTERRUPTED:
-            cout << "The saved search was stopped before it had any search state to save.\n";
-            cout << "That can not be continued, so it has been reset -- please start it again\n";
+            log << "The saved search was stopped before it had any search state to save.\n";
+            log << "That can not be continued, so it has been reset -- please start it again\n";
             break;
           case assembler_c::ERR_PUZZLE_UNHANDABLE:
-            cout << "Something went wrong the program can not solve your puzzle definitions.\n";
-            cout << "You should send the puzzle file to the programmer!\n";
+            log << "Something went wrong the program can not solve your puzzle definitions.\n";
+            log << "You should send the puzzle file to the programmer!\n";
             break;
           case assembler_c::ERR_CAN_NOT_START:
-            cout << "The problem can not be started in its current state, use -R to solve it again\n";
+            log << "The problem can not be started in its current state, use -R to solve it again\n";
             break;
           case assembler_c::ERR_NONE:
-            cout << "unknown\n";
+            log << "unknown\n";
             break;
         }
         exitCode = 1;
         break;
     }
 
-    cout.flush();
+    log.flush();
   }
 
-  xmlWriter_c xml(ostr);
-  p.save(xml);
+  /* what a pipe gets is a complete puzzle or nothing, so a run that failed
+   * leaves stdout empty; one on a named file still writes its file */
+  if (fromStdin && exitCode != 0)
+    return exitCode;
+
+  std::ostream & result = fromStdin ? cout : ostr;
+
+  {
+    xmlWriter_c xml(result);
+    p.save(xml);
+  }
+
+  // a full disk or a closed pipe shows only here
+  if (!result.flush()) {
+    log << "could not write the result\n";
+    return 2;
+  }
 
   return exitCode;
 }
@@ -346,12 +428,13 @@ int main(int argv, char* args[]) {
   }
 
   catch (const assert_exception & e) {
-    cout << "\nInternal error in BurrTools\n";
-    cout << " file      : " << (e.file ? e.file : "?") << "\n";
-    cout << " function  : " << (e.function ? e.function : "?") << "\n";
-    cout << " line      : " << e.line << "\n";
-    cout << " expression: " << (e.expr ? e.expr : "?") << "\n";
-    cout << "You should send the puzzle file to the programmer!\n";
+    std::ostream & log = *messageStream;
+    log << "\nInternal error in BurrTools\n";
+    log << " file      : " << (e.file ? e.file : "?") << "\n";
+    log << " function  : " << (e.function ? e.function : "?") << "\n";
+    log << " line      : " << e.line << "\n";
+    log << " expression: " << (e.expr ? e.expr : "?") << "\n";
+    log << "You should send the puzzle file to the programmer!\n";
     return 1;
   }
 }

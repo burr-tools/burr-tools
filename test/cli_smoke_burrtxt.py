@@ -8,6 +8,7 @@ start. A run that cannot do useful work has to say so and exit, not crash.
 
 import subprocess
 import sys
+from pathlib import Path
 
 TIMEOUT = 120
 
@@ -37,6 +38,9 @@ def main():
         return 2
 
     binary, source_root = sys.argv[1], sys.argv[2]
+    # meson passes the program relative to the build's parent (build/burrTxt.exe);
+    # Windows' CreateProcess cannot start a relative path with forward slashes
+    binary = str(Path(binary).resolve())
     sticks = f"{source_root}/examples/BrokenSticks.xmpuzzle"
 
     # A grid without a disassembler must be refused up front: the

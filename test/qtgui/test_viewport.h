@@ -54,12 +54,16 @@ private slots:
   void darkThemeUsesTheDarkCanvas();
   void darkThemeRebuildsTheMeshInTheDarkPieceColours();
   void theSlabTintsItsLayer();
+  void dimmingFadesTheOtherLayersInEveryStyle();
+  void dimmingLeavesTheActiveLayerAsItIs();
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();
   void theStlPreviewDrawsTheMeshAndItsInsides();
   void theFlatStyleOutlinesTheShapesEdges();
   void translucencyBlendsInLinearLight();
   void variableVoxelsAreOneBodyShowingTheirNearestSurface();
+  void variableVoxelEdgesAreEvenDashes();
+  void hoveringTheGridDrawsTheGhost();
   void theTargetsOutgrowTheViewInSteps();
   void theTargetsMemoryStaysInBudget();
   void framesDoNotAllocatePerTriangle();
@@ -74,6 +78,10 @@ class TestViewportItem : public QObject {
 private slots:
   void redrawsAtTheFinalSizeAfterTheCardGrows();
   void drawsWithTheBestMultisamplingTheDeviceHas();
+  void dimmingShowsInTheViewInEveryStyle();
+  void theCardShowsItsCanvas();
+  void hoverPicksAtMostOnceAFrame();
+  void theFramesRepeatedHoverAsksTheKeyboard();
 };
 
 /* The pipeline caches of the main window and the offscreen renderer. */

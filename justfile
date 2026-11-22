@@ -164,8 +164,12 @@ setup-cov:
 # recipes can never silently drift and report different numbers. Excluding
 # build-cov/subprojects skips walking vendored coverage data the filters would
 # discard anyway (~44s saved); it must not change the reported TOTAL.
+# The assembler's worker threads race on gcov's counters, which newer gcc
+# (15) can report as negative hits (gcc bug 68080); gcovr counts those lines
+# as not run and warns, rather than failing the whole report.
 gcovr_base := "--root . " + \
     "--exclude 'src/lua/' " + \
+    "--gcov-ignore-parse-errors=negative_hits.warn_once_per_file " + \
     "--exclude-directories 'build-cov/subprojects' " + \
     ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
 
@@ -317,8 +321,8 @@ build-release:
 # Run the test suites against the release binary (the configuration CI
 # ships and gates on): the dev build neither treats warnings as errors nor
 # disables assertions. CI's build-linux job runs the same, so this is for
-# reproducing a failure there, not a step before every push (AGENTS.md,
-# rule 7).
+# reproducing a failure there, not a step before every push
+# (llm_docs/verification.md, "Leave the rest to CI").
 test-release:
     meson test -C build-rel --suite fast --suite slow --print-errorlogs
 

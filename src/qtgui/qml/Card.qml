@@ -24,6 +24,8 @@ Rectangle {
 
     Item {
         id: header
+        // C01's "entities.shapes.header", and the like for every card
+        objectName: root.objectName.length > 0 ? root.objectName + ".header" : ""
         visible: root.showHeader
         anchors { left: parent.left; right: parent.right; top: parent.top }
         height: visible ? Theme.cardHeader : 0

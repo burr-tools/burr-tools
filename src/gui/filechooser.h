@@ -40,7 +40,8 @@
 const char * fileChooser(const char * title, const char * filterName, const char * pattern, const char * fname, bool save);
 
 /* returns true when name is the file the user most recently picked in a
- * native save dialog. That dialog already asked whether to replace the
+ * native save dialog (the same path, whichever separators it is written
+ * with). That dialog already asked whether to replace the
  * file, so asking again before writing would be redundant. Always false
  * on platforms where the FLTK dialog (which doesn't ask) is used
  */

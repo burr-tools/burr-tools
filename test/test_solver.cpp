@@ -27,6 +27,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <set>
 #include <string>
@@ -3578,7 +3579,12 @@ TEST_CASE("chunked splitting bounds the remainder and resumes exact-once",
  * cursor rest; several
  * stop points, 4 workers each, so stops land at many different depths.
  * Thread races rule out exact remainder pins; the union holds under every
- * schedule, and over all stop points rests must have occurred.
+ * schedule. Each stop point runs twice: as scheduled, and with a donation
+ * forced every few nodes (BURRTOOLS_DONATE_EVERY), whose queued cursor
+ * pieces make the rests certain -- the forced runs must leave some.
+ * Unforced, the rests are a scheduling accident: on a desktop 0 to 3 over
+ * the four stops, on the Windows CI runners (MSYS2 and wine) at times none.
+ * (A single thread cannot stand in: a serial DLX run has no task pool.)
  */
 TEST_CASE("divided DLX remainders resume exact-once",
           "[assembler][resume][save]") {
@@ -3600,12 +3606,16 @@ TEST_CASE("divided DLX remainders resume exact-once",
   }
   REQUIRE(baseline.size() > 70);
 
-  unsigned int cursors = 0;
+  unsigned int forcedCursors = 0;
+  for (bool forced : {false, true})
   for (unsigned int stopAfter : {5u, 20u, 40u, 70u}) {
-    INFO("stop after " << stopAfter);
+    INFO((forced ? "forced donations" : "as scheduled") << ", stop after " << stopAfter);
     RecordingAssemblerCallback cb1;
     std::string state;
     {
+      std::optional<ScopedEnv> donate;
+      if (forced)
+        donate.emplace("BURRTOOLS_DONATE_EVERY", "5");
       assembler_0_c assm(*problem);
       assm.setNumThreads(4);
       REQUIRE(assm.createMatrix(false, false, false) == assembler_c::ERR_NONE);
@@ -3620,7 +3630,8 @@ TEST_CASE("divided DLX remainders resume exact-once",
       assm.save(xml);
       state = str.str();
     }
-    cursors += a0RemainderOf(state).cursors;
+    if (forced)
+      forcedCursors += a0RemainderOf(state).cursors;
 
     RecordingAssemblerCallback cb2;
     {
@@ -3638,8 +3649,8 @@ TEST_CASE("divided DLX remainders resume exact-once",
     CHECK(resumed == baseline);
   }
   // The cap of 1 makes divided levels leave cursor rests, so the rest
-  // resume path ran.
-  CHECK(cursors > 0);
+  // resume path ran: certainly in the forced runs (dozens per stop).
+  CHECK(forcedCursors > 0);
 }
 
 /* Split on demand: a running task hands its shallowest open level to the

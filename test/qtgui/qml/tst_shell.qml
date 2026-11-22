@@ -150,14 +150,19 @@ TestCase {
     function test_tabGoesOnFromTheButtonLastClicked() {
         // a mouse click makes the button the keyboard's starting point (no ring)
         activate(win)
-        const orbit = item("entities.viewport.toolbar.orbit")
-        const pan = item("entities.viewport.toolbar.pan")
-        mouseClick(orbit)
-        verify(orbit.activeFocus)
-        verify(!orbit.visualFocus)
+        const entities = item("rail-entities")
+        const puzzle = item("rail-puzzle")
+        mouseClick(entities)
+        verify(entities.activeFocus)
+        verify(!entities.visualFocus)
         keyClick(Qt.Key_Tab)
-        verify(pan.activeFocus)
-        verify(pan.visualFocus)
+        verify(puzzle.activeFocus)
+        verify(puzzle.visualFocus)
+        // the 3D toolbar is one roving stop whose buttons take no focus on a
+        // click (C20 sticky focus): the keyboard stays where it was
+        mouseClick(item("entities.viewport.toolbar.pan"))
+        verify(puzzle.activeFocus)
+        App.viewport.navMode = "orbit"
     }
 
     function test_theVoxelTypeChipIsNoTabStop() {
@@ -204,6 +209,54 @@ TestCase {
         verify(!list.visible)
     }
 
+    function test_theShellFollowsTheDensity_data() {
+        // density.md section 1 and 2, outside the cards
+        return [
+            { tag: "standard", density: "standard", button: 28, status: 11.5, toolbar: 44 },
+            { tag: "minimal", density: "minimal", button: 26, status: 11, toolbar: 32 },
+        ]
+    }
+    function test_theShellFollowsTheDensity(data) {
+        App.settings.density = data.density
+        const minimal = data.density === "minimal"
+        waitForRendering(win.contentItem)
+
+        // the workspace rail: Minimal turns the caption, reading top to bottom,
+        // and the button is as tall as it, inside the 44 dp rail
+        for (const n of ["rail-entities", "rail-puzzle", "rail-solver"]) {
+            const b = item(n)
+            const caption = findChild(b, "caption")
+            verify(caption.visible, n)
+            compare(caption.rotation, minimal ? 90 : 0, n)
+            verify(b.width <= Theme.workspaceRail, n)
+            if (minimal)
+                verify(b.height >= caption.implicitWidth + 22, n + " holds its caption")
+        }
+        // the menu button (the menu bar hidden): Minimal shows its icon alone
+        App.settings.showMenuBar = false
+        const menu = item("rail-menu")
+        if (menu.visible) {
+            compare(findChild(menu, "caption").visible, !minimal)
+            compare(menu.Accessible.name, "Menu")
+            compare(menu.tip, "All menus")
+        }
+
+        // Shapes' New: "+" alone in Minimal, square; named for assistive tech either way
+        const add = item("entities.shapes.new")
+        compare(add.text, minimal ? "+" : "+ New")
+        if (minimal)
+            compare(add.width, add.height)
+        compare(add.Accessible.name, "New shape")
+
+        // buttons, the status bar's text, the 3D toolbar
+        compare(item("entities.shapes.new").height, 26)              // small in both
+        compare(Theme.button, data.button)
+        // a font's pixel size is whole: 11.5 is drawn at 12
+        compare(item("status.text").font.pixelSize, Math.round(data.status))
+        compare(item("status.cursor").font.pixelSize, Math.round(data.status))
+        compare(item("entities.viewport.toolbar.orbit").height, data.toolbar)
+    }
+
     function test_columnWidthsAtTheReferenceSize() {
         // T-DEN-2 at Standard density, 1600 dp wide
         tryCompare(item("workspace.left"), "width", 320, 1000)
@@ -221,7 +274,10 @@ TestCase {
 
         mouseClick(item("entities.editor.focus2d"))
         compare(App.layout.focus, LayoutController.Focus2d)
-        tryVerify(() => Math.abs(item("entities.viewport").width - 360) < 1, 1000)
+        // the editor takes 80 % of what the 3D view's 360 dp leave, the view the rest (2026-10-28)
+        const share = win.contentItem.width - 60 - 2 * 4 - 2 * 4 - 48 - 360
+        tryVerify(() => Math.abs(item("entities.viewport").width - (360 + 0.2 * share)) < 1, 1000)
+        tryVerify(() => Math.abs(item("workspace.right").width - 0.8 * share) < 1, 1000)
         App.layout.escape()
     }
 
@@ -246,6 +302,89 @@ TestCase {
         mouseClick(row)
         compare(App.shapes.selected, 1)
         verify(item("status.text").text.indexOf("S2") >= 0)
+    }
+
+    // Tab from the window's start round to it again: every stop, in order
+    function tabStops() {
+        win.requestActivate()
+        tryVerify(() => win.active, 3000)
+        win.contentItem.forceActiveFocus()
+        const stops = []
+        for (let i = 0; i < 80; i++) {
+            keyClick(Qt.Key_Tab)
+            const f = win.activeFocusItem
+            verify(f !== null, "Tab left the focus nowhere after " + stops.map(s => s.name).join(", "))
+            // not yet in the chain: the root, or (Qt before 6.12) the focus
+            // scope that forceActiveFocus left the focus on (the workspace's
+            // Loader), which takes none from Tab
+            if (f === win.contentItem || (stops.length === 0 && !f.activeFocusOnTab))
+                continue
+            if (stops.length > 0 && f === stops[0].item)
+                break
+            stops.push({ item: f, name: f.objectName })
+        }
+        return stops
+    }
+
+    function test_tabStopsOnlyOnControlsInReadingOrder_data() {
+        return [
+            { tag: "cards", rails: false, order: [
+                "rail-entities", "rail-puzzle", "rail-solver",
+                "entities.shapes.new", "entities.shapes.collapse", "entities.shapes.row.0",
+                // the inspector: Transform open, its buttons one stop (RovingFocus:
+                // the arrows move between them), the others closed
+                "entities.inspector.transform.header", "entities.transform.flip.x",
+                "entities.inspector.fit.header", "entities.inspector.repair.header",
+                "entities.viewport.toolbar", "entities.viewport.surface",
+                "entities.editor.focus2d", "entities.editor.collapse",
+                // the tool strip and the planes are one stop each; Area a toggle of its own
+                "entities.editor.tools.group", "entities.editor.tool.area",
+                // Mirror and Span one stop each (← / → between X, Y, Z), then the
+                // layer strip, on its current layer's chip (the top one here)
+                "entities.editor.mirror.x", "entities.editor.span.x", "entities.editor.layer.8",
+                // the planes below the grid (user decision 2026-10-28)
+                "entities.editor.grid", "entities.editor.plane.group",
+                "entities.editor.size.applyAll",
+                "entities.editor.size.x.input", "entities.editor.size.y.input", "entities.editor.size.z.input",
+                "entities.editor.colour.info", "entities.editor.colour.add", "entities.editor.colour.more",
+                "entities.editor.colour.palette" ] },
+            { tag: "rails", rails: true, order: [
+                "rail-entities", "rail-puzzle", "rail-solver",
+                "workspace.left.rail.expand", "entities.shapes.rail.row.0", "entities.shapes.rail.new",
+                "entities.viewport.toolbar", "entities.viewport.surface",
+                "workspace.right.rail.expand" ] },
+        ]
+    }
+    function test_tabStopsOnlyOnControlsInReadingOrder(data) {
+        // WCAG 2.4.3 / 2.1.1: Tab reaches every control once, in the order the
+        // eye reads the window (rail, left card, 3D toolbar, right card), and
+        // stops on nothing that does nothing -- no chip, label, read-only voxel
+        // type, row action (the list is one stop; its keys and menu have
+        // those) or disabled button. The 3D canvas is one (its keys, P5), after
+        // the toolbar. A phase that adds a control adds it here, where it belongs.
+        App.document.openFile(Qt.resolvedUrl("../../../examples/PelikanBurr.xmpuzzle"))
+        // the puzzle's comment comes up in a message: out of the way
+        for (let i = 0; i < 5; i++) {
+            wait(50)
+            const m = findChild(win, "shell.message")
+            if (m === null || !m.visible)
+                break
+            m.close()
+        }
+        App.shapes.select(0)
+        // the sections' open state persists: set here, whatever ran before
+        App.inspector.transformOpen = true
+        App.inspector.fitOpen = false
+        App.inspector.repairOpen = false
+        App.layout.leftCollapsed = data.rails
+        App.layout.rightCollapsed = data.rails
+        wait(400)                                          // the columns' animation
+        const stops = tabStops()
+        compare(stops.map(s => s.name), data.order)
+        for (const s of stops) {
+            verify(s.item.visible && s.item.enabled, s.name + " is a stop but hidden or disabled")
+            verify(s.item.Accessible.name.length > 0, s.name + " has no accessible name")
+        }
     }
 
     function test_themeSwitchRecolours() {
@@ -571,7 +710,13 @@ TestCase {
         const view = rectOf(item("entities.viewport"))
         const windowRect = { x: 0, y: 0, w: win.contentItem.width, h: win.contentItem.height }
 
-        // the toolbar inside the view, its buttons whole and apart
+        // the toolbar inside the view, its buttons whole and apart -- shown:
+        // Minimal hides it until the pointer comes near (density.md section 3)
+        if (Theme.minimal) {
+            const vp = item("entities.viewport")
+            mouseMove(vp, vp.width / 2, 20)
+            tryCompare(item("entities.viewport.toolbar"), "opacity", 1, 2000)
+        }
         const bar = rectOf(item("entities.viewport.toolbar"))
         verify(within(bar, view), "toolbar inside the viewport")
         const buttons = ["orbit", "pan", "edit", "display", "focus"].map(n => item("entities.viewport.toolbar." + n))
@@ -716,6 +861,22 @@ TestCase {
         compare(App.document.gridTypeName, "Spheres")
         verify(!App.document.flowPending)
         App.document.newDocument(0)
+    }
+
+    function test_anInternalErrorIsShownAndHoldsTheWindow() {
+        // App::handleInternalError's report: the message (where the rescue
+        // file went) in front of everything, the window's commands held
+        // until it is closed, which ends the program -- so not closed here
+        App.internalError("A check failed.
+
+The puzzle was saved as X.")
+        const d = dialog("shell.internalError")
+        tryVerify(() => d.visible, 2000)
+        compare(d.text, "A check failed.
+
+The puzzle was saved as X.")
+        verify(win.modalOpen)
+        verify(App.commands.blocked)                    // the window's shortcuts are off behind it
     }
 
     function test_commentDialogWritesOnlyOnOk() {

@@ -50,13 +50,27 @@ namespace btui {
     ExportImage, ExportVector, ExportStl,
     // Help
     HelpGuide, HelpShortcuts, CheckForUpdates, About,
-    // not in a menu: the 3D view (every workspace) and the active layer (Entities)
-    ViewOrbit, ViewPan, ViewHome, ViewFit,
+    // not in a menu: the 3D view (every workspace); the voxel editor's tools and layer (Entities)
+    ViewOrbit, ViewPan, ViewHome, ViewFit, Edit3d,
     LayerUp, LayerDown,
+    ToolFixed, ToolVariable, ToolErase, ToolPaint,
+    // the focused Shapes list (C01 Keyboard), also its rows' context menu
+    ShapeRename, ShapeDuplicate, ShapeDelete, ShapeMoveEarlier, ShapeMoveLater,
+    // the focused 3D view (WCAG 2.1.1): orbit, pan, zoom, the view cube's turns and faces
+    ViewOrbitLeft, ViewOrbitRight, ViewOrbitUp, ViewOrbitDown,
+    ViewPanLeft, ViewPanRight, ViewPanUp, ViewPanDown, ViewZoomIn, ViewZoomOut,
+    ViewTurnLeft, ViewTurnRight, ViewTurnUp, ViewTurnDown, ViewRollLeft, ViewRollRight,
+    ViewFront, ViewBack, ViewLeft, ViewRight, ViewTop, ViewBottom,
   };
 
   /* Where a command appears. Menu::None means keyboard / buttons only. */
   enum class Menu { None, File, Edit, View, Export, Help };
+
+  /* Where a command's shortcuts work: anywhere in the window, or only while
+   * one part of it has the keyboard (spec C01 Keyboard: the Shapes list's
+   * keys work with the list focused). A key may mean one thing in the
+   * window and another in a scope; the scope wins while it has focus. */
+  enum class Scope { Window, ShapesList, Viewport };
 
   /* The menus differ a little per platform, each following its own
    * conventions (labels, places, shortcuts). */
@@ -90,12 +104,20 @@ namespace btui {
     /* the menu on macOS when it differs (Status, Close: File); Menu::None
      * means the same menu as elsewhere */
     Menu macMenu = Menu::None;
+    Scope scope = Scope::Window;
   };
 
   /* The menu, label and shortcuts of a command on a platform. */
   Menu menuOn(const CommandInfo & c, Platform p);
   std::string_view labelOn(const CommandInfo & c, Platform p);
   std::span<const std::string_view> shortcutsOn(const CommandInfo & c, Platform p);
+
+  /* The shortcuts that clash on a platform, one message each: a key used
+   * twice in one scope, or a window-wide key used again anywhere (it would
+   * fire first). The Shapes list and the 3D view never have the focus at
+   * once, so they may share a key (macOS: Option+arrows turn the cube,
+   * Alt+arrows move a shape). */
+  std::vector<std::string> shortcutClashes(Platform p);
 
   /* One menu's items on a platform, in order. A divider belonging to an
    * item the platform leaves out moves to the next item shown. */
@@ -107,6 +129,12 @@ namespace btui {
 
   /* Every command, in menu order. */
   std::span<const CommandInfo> commandTable(void);
+
+  /* A shortcut that is one character key without a modifier ("O", "1"):
+   * WCAG 2.1.4 asks that the window-wide ones can be turned off (Settings ▸
+   * General ▸ Single-key shortcuts). Home, PgUp and the like are no
+   * characters. */
+  bool isSingleCharacter(std::string_view shortcut);
 
   /* Lookup by id; never fails for a valid enumerator. */
   const CommandInfo & commandInfo(Command c);

@@ -12,10 +12,13 @@
 #ifndef __PUZZLE_HISTORY_H__
 #define __PUZZLE_HISTORY_H__
 
+#include "../lib/problem.h"
+
 #include <deque>
 #include <memory>
 #include <set>
 #include <stdint.h>
+#include <utility>
 #include <vector>
 
 class puzzle_c;
@@ -28,7 +31,10 @@ class voxel_c;
  * Each snapshot captures: shape voxel data, colour palette, and per-problem
  * structure (piece counts, result, groups, colour constraints, name). Solutions
  * and disassemblies are intentionally excluded — those are large and are already
- * guarded by confirmation dialogs.
+ * guarded by confirmation dialogs. The exception is what an edit itself
+ * discarded (keepDiscarded): the problems' solve records, moved into that
+ * step, not copied, so that undoing it puts them back. Only the redesigned
+ * GUI hands any over; for the legacy GUI nothing changes.
  *
  * Thread safety: record(), undo(), and redo() must only be called from the
  * main (GUI) thread. Callers are responsible for disabling undo/redo while a
@@ -94,6 +100,17 @@ public:
   /** Re-apply the next snapshot. Returns shape selection + tab. */
   undoResult_t redo(puzzle_c * puzzle);
 
+  /** Solve records an edit discarded: the problem's index and what it held. */
+  typedef std::vector<std::pair<unsigned int, problem_c::solveRecord_t>> discarded_t;
+
+  /** Keep what the step just recorded discarded (a voxel edit drops the
+   *  solutions of the problems using that shape): undoing the step swaps
+   *  the records back into their problems, redoing it swaps them out again.
+   *  A step that already holds a record for a problem (a coalesced paint)
+   *  keeps its own, the state before the whole step. False, and d left as
+   *  it was, when there is no step to keep them in (step 0). */
+  bool keepDiscarded(discarded_t && d);
+
   /** Set the runtime undo stack limit (clamped to [1, MAX_UNDO]). A lower
    *  limit drops the oldest undo steps at once, then the redo steps furthest
    *  ahead, down to the depth plus the current state, as record() keeps. */
@@ -140,6 +157,9 @@ private:
     std::vector<problemSnap_t> problems;
     unsigned int selectedShape;
     actionKind_e kind;
+    /* What this step discarded while in the state after it, what undoing it
+     * put back while in the state before it: swapped at each undo / redo. */
+    discarded_t discarded;
 
     snapshot_t(void) : selectedShape(NO_SHAPE), kind(AK_NONE) {}
     ~snapshot_t(void) = default;
@@ -169,7 +189,16 @@ private:
                                       unsigned int selectedShape,
                                       actionKind_e kind,
                                       const snapshot_t * prevSnap) const;
-  void restore(puzzle_c * puzzle, const snapshot_t * snap) const;
+  /* Returns the shapes whose voxels it changed. A problem the snapshot
+   * leaves as it is keeps its solutions. */
+  std::vector<unsigned int> restore(puzzle_c * puzzle, const snapshot_t * snap) const;
+  static problemSnap_t snapProblem(const problem_c * pr);
+  /* the same parts, result, groups and colour constraints (the name aside) */
+  static bool sameStructure(const problemSnap_t & a, const problemSnap_t & b);
+  /* after a restore: the step's kept solve records swapped in or out, and
+   * the solutions of the other problems using a changed shape dropped */
+  static void settleSolutions(puzzle_c * puzzle, const std::vector<unsigned int> & changedShapes,
+                              snapshot_t & step);
 
   bool canCoalesce(actionKind_e kind, unsigned int selectedShape) const;
   void pushOrReplace(puzzle_c * puzzle, actionKind_e kind,

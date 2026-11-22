@@ -422,6 +422,43 @@ public:
    */
   void removeAllSolutions(void);                                             // resetToUnsolved
 
+  /**
+   * Everything removeAllSolutions() discards, held whole outside the
+   * problem: the kept solutions, the search's resume state (the assembler
+   * or its saved position, the stashed assemblies), the counters and the
+   * time. An edit that invalidates a problem's solutions can keep this
+   * record instead of losing it, so that an undo puts it back (the redesigned
+   * GUI's undo history). An empty record is a problem as removeAllSolutions()
+   * leaves it.
+   */
+  struct solveRecord_t {
+    std::vector<std::unique_ptr<solution_c>> solutions;
+    std::vector<std::unique_ptr<assembly_c>> stashedAssemblies;
+    std::unique_ptr<assembler_c> assm;
+    std::string assemblerState;
+    std::string assemblerVersion;
+    solveState_e solveState = SS_UNSOLVED;
+    unsigned long numAssemblies = 0;
+    unsigned long numSolutions = 0;
+    unsigned long usedTime = 0;
+
+    solveRecord_t(void);
+    ~solveRecord_t(void);
+    solveRecord_t(solveRecord_t &&) noexcept;
+    solveRecord_t & operator=(solveRecord_t &&) noexcept;
+
+    /** nothing to put back: no solution, no search state, no counts */
+    bool empty(void) const;
+  };
+
+  /**
+   * Swap this problem's solve record with r: r takes what the problem held,
+   * the problem what r held. With an empty r this is removeAllSolutions()
+   * that keeps what it removed; swapping the same record back restores it.
+   * As removeAllSolutions(), not while a solver works on the problem.
+   */
+  void swapSolveRecord(solveRecord_t & r);
+
   /** \name  functions used while solving the puzzle.
    * the assembler engine can be put into the problem to save it together
    * with the problem and later on resume, or even to just pause solving

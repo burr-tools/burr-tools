@@ -18,6 +18,11 @@ ToolTip {
     visible: shown && text.length > 0 && App.settings.tooltips
     delay: Theme.tooltipDelay
     width: Math.min(implicitWidth, maxWidth)
+    /* centred over its control by the width it has: the Basic style's
+     * centres by implicitWidth, which for a text that wraps is the whole of
+     * it on one line -- the tooltip landed far to the left */
+    x: parent ? (parent.width - width) / 2 : 0
+    y: -height - 3
     topPadding: 4
     bottomPadding: 4
     leftPadding: 8

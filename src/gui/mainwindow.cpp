@@ -78,6 +78,7 @@
 #include "../lib/voxeltable.h"
 #include "../lib/solution.h"
 
+#include "../tools/cliargs.h"
 #include "../tools/gzstream.h"
 #include "../tools/xml.h"
 
@@ -930,7 +931,7 @@ void mainWindow_c::cb_ExportSolutionSTL(void) {
   if (sol >= puzzle->getProblem(prob)->getNumberOfSavedSolutions())
     return;
 
-  stlExportSolution_c w(puzzle.get(), prob, sol);
+  stlExportSolution_c w(puzzle.get(), fname, prob, sol);
   w.show();
   while (w.visible())
     Fl::wait();
@@ -2226,7 +2227,26 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
   // calls) or a gzopen() allocation failure. Match the fileExists() early
   // return above rather than dereferencing a null stream.
   if (!str) return false;
-  xmlParser_c pars(*str);
+
+  return loadPuzzle(*str, f, reportedError);
+}
+
+bool mainWindow_c::tryToLoadStdin(void) {
+
+  std::string error;
+  auto str = btcli::openStdin(error);
+
+  if (!str) {
+    fl_message("%s", error.c_str());
+    return false;
+  }
+
+  return loadPuzzle(*str, nullptr, nullptr);
+}
+
+bool mainWindow_c::loadPuzzle(std::istream & str, const char * name, bool * reportedError) {
+
+  xmlParser_c pars(str);
 
   std::unique_ptr<puzzle_c> newPuzzle;
 
@@ -2241,7 +2261,7 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
     return false;
   }
 
-  fname = f;
+  fname = name ? name : "";
 
   copy_label(platform::windowTitle(fname.c_str()).c_str());
 
@@ -2254,6 +2274,9 @@ bool mainWindow_c::tryToLoad(const char * f, bool * reportedError) {
   View3D->getView()->showColors(puzzle.get(), StatusLine->getColorMode());
 
   puzzleHistory->reset(puzzle.get());
+
+  if (!name)
+    puzzleHistory->markModified();
 
   // check for a started assemblies, and warn user about it
   bool containsStarted = false;
@@ -2380,7 +2403,7 @@ void mainWindow_c::show(int argn, char ** argv) {
   // try all command line switches, until either they are
   // all tried or one got loaded successfully
   while (arg < argn)
-    if (tryToLoad(argv[arg]))
+    if (btcli::namesStdin(argv[arg]) ? tryToLoadStdin() : tryToLoad(argv[arg]))
       break;
     else
       arg++;
@@ -4409,7 +4432,7 @@ void mainWindow_c::CreateSolveTab(void) {
     o = new layouter_c(0, 11);
 
     BtnExportSolutionSTL = new LFlatButton_c(0, 0, 1, 1, "Export Solution to STL",
-        " Export every piece type of the currently selected solution to individual STL files ",
+        " Export the pieces of the currently selected solution to STL: each piece type to its own file, or all pieces assembled in one file ",
         cb_ExportSolutionSTL_stub, this);
     static_cast<LFlatButton_c*>(BtnExportSolutionSTL)->weight(1, 0);
 

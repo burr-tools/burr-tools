@@ -59,6 +59,9 @@ namespace {
   constexpr float kTranslucentBias = 2e-6f;
 
   constexpr float kLinearOverlayScale = 0.4f;
+  /* a ghost where voxels hide it: this much of its strength, so a cell
+   * inside the shape still shows where it is */
+  constexpr float kGhostHidden = 0.35f;
 
   /* The scene targets grow in steps of this many pixels and are kept while
    * the view still fits in them, so resizing the window does not make the
@@ -95,6 +98,37 @@ namespace {
   static_assert(sizeof(LineVertex) == 52);
 
   constexpr int kMeshStride = sizeof(btui::MeshVertex);
+
+  /* The key each triangle is sorted by, back to front: the centre of its
+   * face -- the run of triangles of one voxel facing one way, a fan and the
+   * Classic style's variable marker over it -- so a face's triangles stay
+   * together in the mesh's order, the marker after its face. Each
+   * triangle's own centre would put one of a face's triangles in front of
+   * the marker as often as not, and hide half of it. */
+  void faceCentres(const std::vector<btui::MeshVertex> & t, std::vector<btui::Vec3> & out) {
+    auto centre = [&](size_t i) {
+      return btui::Vec3{ t[i].pos[0] + t[i + 1].pos[0] + t[i + 2].pos[0], t[i].pos[1] + t[i + 1].pos[1] + t[i + 2].pos[1],
+                         t[i].pos[2] + t[i + 1].pos[2] + t[i + 2].pos[2] } * (1.0f / 3.0f);
+    };
+    auto sameFace = [&](size_t a, size_t b) {
+      for (int k = 0; k < 3; k++)
+        if (t[a].cell[k] != t[b].cell[k] || t[a].normal[k] != t[b].normal[k])
+          return false;
+      return true;
+    };
+    for (size_t i = 0; i + 2 < t.size();) {
+      size_t end = i + 3;
+      while (end + 2 < t.size() && sameFace(i, end))
+        end += 3;
+      btui::Vec3 c{ 0, 0, 0 };
+      for (size_t j = i; j < end; j += 3)
+        c = c + centre(j);
+      c = c * (3.0f / float(end - i));
+      for (size_t j = i; j < end; j += 3)
+        out.push_back(c);
+      i = end;
+    }
+  }
 
   // the spec's light direction, in view space (C13; the mock uses it for the scene too)
   constexpr const float (&kLight)[3] = btui::kSceneLight;
@@ -145,14 +179,16 @@ struct SceneRenderer::Impl {
   std::unique_ptr<QRhiTextureRenderTarget> sceneRt;
   std::unique_ptr<QRhiRenderPassDescriptor> sceneRp;
 
-  std::unique_ptr<QRhiBuffer> meshUbo, translucentUbo, overlayUbo, lineUbo, compositeUbo;
-  std::unique_ptr<QRhiShaderResourceBindings> meshSrb, translucentSrb, overlaySrb, lineSrb, compositeSrb;
+  std::unique_ptr<QRhiBuffer> meshUbo, translucentUbo, overlayUbo, ghostUbo, ghostHiddenUbo, lineUbo, lineCoreUbo,
+                              compositeUbo;
+  std::unique_ptr<QRhiShaderResourceBindings> meshSrb, translucentSrb, overlaySrb, ghostSrb, ghostHiddenSrb, lineSrb,
+                                              lineCoreSrb, compositeSrb;
   std::unique_ptr<QRhiSampler> sampler;
   std::unique_ptr<QRhiBuffer> triangle;          // the composite pass's one big triangle
   bool triangleUploaded = false;
 
   std::unique_ptr<QRhiGraphicsPipeline> opaque, opaqueBothSides, depthOnly, translucent, layered, xray, overlay, lines,
-                                        linesFirst, composite;
+                                        linesFirst, composite, layeredBothSides, ghost, ghostHidden, linesHidden;
   QRhiRenderPassDescriptor * compositeRp = nullptr;   // what `composite` was made for
 
   // the mesh, uploaded once per mesh object and revision: revisions alone
@@ -167,6 +203,11 @@ struct SceneRenderer::Impl {
    * The sorter and the index list keep their storage, so an orbit -- a sort
    * per frame -- allocates nothing. */
   std::vector<btui::Vec3> translucentCentres;
+  /* While Dim other layers is on, every triangle is drawn that way (the
+   * dimmed ones are see-through): the opaque triangles' centres, then the
+   * translucent ones', in the mesh's order. */
+  std::vector<btui::Vec3> allCentres;
+  bool sortedAll = false;                        // layeredIdx holds every triangle
   btui::DepthSorter sorter;
   std::vector<quint32> layeredIdx;
   GrowBuffer layeredIndex;
@@ -175,6 +216,14 @@ struct SceneRenderer::Impl {
 
   GrowBuffer overlayVbuf, lineVbuf;
   std::vector<LineVertex> lineVertices;          // rebuilt every frame, its storage kept
+  /* the mesh's own lines (the variable voxels' dashed edges), uploaded only
+   * when the mesh, the screen's ratio or the light model changes: thousands
+   * of them, a copy every frame would cost megabytes */
+  std::unique_ptr<QRhiBuffer> edgeVbuf;
+  quint32 edgeCount = 0;
+  bool edgesStale = true;
+  float edgeDpr = 0;
+  bool edgeLinear = false;
 
   void createShared(void);
   bool ensureSceneTarget(QSize size);
@@ -236,10 +285,14 @@ void SceneRenderer::Impl::releaseScene(void) {
   depthOnly.reset();
   translucent.reset();
   layered.reset();
+  layeredBothSides.reset();
   xray.reset();
   overlay.reset();
+  ghost.reset();
+  ghostHidden.reset();
   lines.reset();
   linesFirst.reset();
+  linesHidden.reset();
   composite.reset();
   compositeSrb.reset();
   sceneRt.reset();
@@ -261,7 +314,10 @@ void SceneRenderer::Impl::createShared(void) {
   meshUbo = ubo(sizeof(MeshUniforms));
   translucentUbo = ubo(sizeof(MeshUniforms));
   overlayUbo = ubo(sizeof(MeshUniforms));
+  ghostUbo = ubo(sizeof(MeshUniforms));
+  ghostHiddenUbo = ubo(sizeof(MeshUniforms));
   lineUbo = ubo(sizeof(LineUniforms));
+  lineCoreUbo = ubo(sizeof(LineUniforms));
   compositeUbo = ubo(sizeof(CompositeUniforms));
 
   const auto stages = QRhiShaderResourceBinding::VertexStage | QRhiShaderResourceBinding::FragmentStage;
@@ -274,7 +330,10 @@ void SceneRenderer::Impl::createShared(void) {
   meshSrb = srb(meshUbo.get());
   translucentSrb = srb(translucentUbo.get());
   overlaySrb = srb(overlayUbo.get());
+  ghostSrb = srb(ghostUbo.get());
+  ghostHiddenSrb = srb(ghostHiddenUbo.get());
   lineSrb = srb(lineUbo.get());
+  lineCoreSrb = srb(lineCoreUbo.get());
 
   sampler.reset(rhi->newSampler(QRhiSampler::Nearest, QRhiSampler::Nearest, QRhiSampler::None,
                                 QRhiSampler::ClampToEdge, QRhiSampler::ClampToEdge));
@@ -426,12 +485,21 @@ void SceneRenderer::Impl::createScenePipelines(void) {
   translucent = make(meshVs, meshFs, meshLayout, translucentSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
   // every layer, back to front, in front of the opaque voxels
   layered = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
+  layeredBothSides = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, false, GP::LessOrEqual, &blend);
   xray = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, false, GP::Always, &blend);
   overlay = make(meshVs, meshFs, meshLayout, overlaySrb.get(), GP::None, false, GP::LessOrEqual, &blend);
   lines = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, false, GP::LessOrEqual, &blend);
-  // before every translucent layer: a line inside a translucent block is
-  // seen through the voxels in front of it, one in front stays on top
-  linesFirst = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, true, GP::LessOrEqual, &blend);
+  /* the ghosts: their front faces where nothing is in front of them, and
+   * faint where something is (the depth test reversed) */
+  ghost = make(meshVs, meshFs, meshLayout, ghostSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
+  ghostHidden = make(meshVs, meshFs, meshLayout, ghostHiddenSrb.get(), GP::Back, false, GP::Greater, &blend);
+  linesHidden = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, false, GP::Greater, &blend);
+  /* before every translucent layer: a line inside a translucent block is
+   * seen through the voxels in front of it, one in front stays on top. Its
+   * depth only, and only its solid core's (cover >= 0.5): the fading fringe
+   * writing depth would cut a hole into a voxel behind it, the background
+   * showing through as a halo. The colour goes first, with `lines`. */
+  linesFirst = make(lineVs, lineFs, lineLayout, lineCoreSrb.get(), GP::None, true, GP::LessOrEqual, &noColor);
 }
 
 /* The copy into the caller's target, made for its render pass layout. */
@@ -469,6 +537,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   if (f.meshRevision != d->meshRev || f.mesh != d->meshUploaded) {
     d->meshRev = f.meshRevision;
     d->meshUploaded = f.mesh;
+    d->edgesStale = true;
     d->opaqueCount = d->translucentCount = 0;
     d->meshVbuf.reset();
     if (f.mesh && !f.mesh->empty()) {
@@ -485,22 +554,34 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
       d->translucentCount = quint32(t.size());
     }
     d->translucentCentres.clear();
+    d->allCentres.clear();
     d->sorted = false;
     if (f.mesh) {
-      const auto & t = f.mesh->translucent;
-      d->translucentCentres.reserve(t.size() / 3);
-      for (size_t i = 0; i + 2 < t.size(); i += 3)
-        d->translucentCentres.push_back(btui::Vec3{ t[i].pos[0] + t[i + 1].pos[0] + t[i + 2].pos[0],
-                                                    t[i].pos[1] + t[i + 1].pos[1] + t[i + 2].pos[1],
-                                                    t[i].pos[2] + t[i + 1].pos[2] + t[i + 2].pos[2] } * (1.0f / 3.0f));
+      d->translucentCentres.reserve(f.mesh->translucent.size() / 3);
+      faceCentres(f.mesh->translucent, d->translucentCentres);
     }
   }
 
   // --- every translucent layer: the triangles farthest first, re-sorted
   // when the view turns -- panning and zooming keep the order ---
-  const bool layers = f.translucentLayers && !f.xray && d->translucentCount;
-  if (layers && (!d->sorted || !btui::sameRotation(f.view, d->sortedView))) {
-    d->sorter.sort(d->translucentCentres, f.view, d->opaqueCount, d->layeredIdx);
+  /* Dim other layers draws the dimmed voxels see-through (C06: at 28 %):
+   * every triangle goes the translucent layers' way, farthest first and
+   * blended, so a dimmed voxel shows what is behind it -- the active layer
+   * among them -- in every voxel style. Written into an opaque pass, its
+   * alpha would only reach the destination, which the window ignores. */
+  const bool dimming = f.dimAxis >= 0 && !f.xray && d->opaqueCount + d->translucentCount > 0;
+  const bool layers = !f.xray && ((f.translucentLayers && d->translucentCount) || dimming);
+  if (dimming && d->allCentres.empty() && f.mesh) {
+    d->allCentres.reserve((d->opaqueCount + d->translucentCount) / 3);
+    for (const auto * part : { &f.mesh->opaque, &f.mesh->translucent })
+      faceCentres(*part, d->allCentres);
+  }
+  if (layers && (!d->sorted || d->sortedAll != dimming || !btui::sameRotation(f.view, d->sortedView))) {
+    if (dimming)
+      d->sorter.sort(d->allCentres, f.view, 0, d->layeredIdx);
+    else
+      d->sorter.sort(d->translucentCentres, f.view, d->opaqueCount, d->layeredIdx);
+    d->sortedAll = dimming;
     const quint32 bytes = quint32(d->layeredIdx.size() * sizeof(quint32));
     d->layeredIndex.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::IndexBuffer);
     u->updateDynamicBuffer(d->layeredIndex.buf.get(), 0, bytes, d->layeredIdx.data());
@@ -545,12 +626,22 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   ou.dim[3] = d->linear ? kLinearOverlayScale : 1.0f;
   u->updateDynamicBuffer(d->overlayUbo.get(), 0, sizeof(ou), &ou);
 
+  // the ghosts at the strength C06 gives them, and faint behind voxels
+  MeshUniforms gu = ou;
+  gu.dim[3] = 1.0f;
+  u->updateDynamicBuffer(d->ghostUbo.get(), 0, sizeof(gu), &gu);
+  gu.dim[3] = kGhostHidden;
+  u->updateDynamicBuffer(d->ghostHiddenUbo.get(), 0, sizeof(gu), &gu);
+
   LineUniforms lu{};
   copyMat(lu.mvp, mvp);
   lu.viewport[0] = float(px.width());
   lu.viewport[1] = float(px.height());
   lu.viewport[2] = lin;
   u->updateDynamicBuffer(d->lineUbo.get(), 0, sizeof(lu), &lu);
+  // the depth of the lines' solid core alone (linesFirst)
+  lu.viewport[3] = 0.5f;
+  u->updateDynamicBuffer(d->lineCoreUbo.get(), 0, sizeof(lu), &lu);
 
   CompositeUniforms cu{};
   cu.target[0] = float(d->sceneSize.width());     // the scene texture, which the view may not fill
@@ -558,17 +649,19 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   cu.target[2] = lin;
   u->updateDynamicBuffer(d->compositeUbo.get(), 0, sizeof(cu), &cu);
 
-  // --- overlay geometry (rebuilt every frame; a few dozen vertices) ---
+  // --- overlay geometry (rebuilt every frame; a few dozen vertices): the slab, then the ghosts ---
   const quint32 overlayCount = quint32(f.overlayFaces.size());
-  if (overlayCount) {
-    d->overlayVbuf.ensure(rhi, overlayCount * kMeshStride, QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer);
-    u->updateDynamicBuffer(d->overlayVbuf.buf.get(), 0, overlayCount * kMeshStride, f.overlayFaces.data());
+  const quint32 ghostCount = quint32(f.ghostFaces.size());
+  if (overlayCount + ghostCount) {
+    d->overlayVbuf.ensure(rhi, (overlayCount + ghostCount) * kMeshStride, QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer);
+    if (overlayCount)
+      u->updateDynamicBuffer(d->overlayVbuf.buf.get(), 0, overlayCount * kMeshStride, f.overlayFaces.data());
+    if (ghostCount)
+      u->updateDynamicBuffer(d->overlayVbuf.buf.get(), overlayCount * kMeshStride, ghostCount * kMeshStride,
+                             f.ghostFaces.data());
   }
 
-  std::vector<LineVertex> & lv = d->lineVertices;
-  lv.clear();
-  lv.reserve(f.lines.size() * 6);
-  for (const btui::LineSeg & s : f.lines) {
+  auto addLine = [&](std::vector<LineVertex> & to, const btui::LineSeg & s, std::uint8_t alpha) {
     const float corners[6][2] = { { 0, -1 }, { 1, -1 }, { 1, 1 }, { 0, -1 }, { 1, 1 }, { 0, 1 } };
     for (const auto & c : corners) {
       LineVertex v;
@@ -576,17 +669,62 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
       v.p1[0] = s.b.x; v.p1[1] = s.b.y; v.p1[2] = s.b.z;
       v.corner[0] = c[0]; v.corner[1] = c[1];
       v.color = s.color;
+      v.color.a = alpha;
       v.style[0] = s.widthDp * f.devicePixelRatio;
       v.style[1] = s.dashDp * f.devicePixelRatio;
       v.style[2] = s.gapDp * f.devicePixelRatio;
       v.style[3] = 0;
-      lv.push_back(v);
+      to.push_back(v);
+    }
+  };
+
+  /* the mesh's own lines (the variable voxels' dashed edges), whose black
+   * was chosen for blending in sRGB: in linear light the same darkening
+   * takes more of it, as the face outline's strength */
+  if (d->edgesStale || d->edgeDpr != float(f.devicePixelRatio) || d->edgeLinear != d->linear) {
+    d->edgesStale = false;
+    d->edgeDpr = float(f.devicePixelRatio);
+    d->edgeLinear = d->linear;
+    d->edgeVbuf.reset();
+    d->edgeCount = 0;
+    if (f.mesh && !f.mesh->edges.empty()) {
+      std::vector<LineVertex> ev;
+      ev.reserve(f.mesh->edges.size() * 6);
+      for (const btui::LineSeg & s : f.mesh->edges) {
+        const float a = s.color.a / 255.0f;
+        addLine(ev, s, std::uint8_t(std::lround(255.0f * (d->linear ? 1.0f - std::pow(1.0f - a, 2.2f) : a))));
+      }
+      const quint32 bytes = quint32(ev.size() * sizeof(LineVertex));
+      d->edgeVbuf.reset(rhi->newBuffer(QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer, bytes));
+      d->edgeVbuf->create();
+      u->uploadStaticBuffer(d->edgeVbuf.get(), 0, bytes, ev.data());
+      d->edgeCount = quint32(ev.size());
     }
   }
-  const quint32 lineCount = quint32(lv.size());
-  if (lineCount) {
-    d->lineVbuf.ensure(rhi, lineCount * sizeof(LineVertex), QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer);
-    u->updateDynamicBuffer(d->lineVbuf.buf.get(), 0, lineCount * sizeof(LineVertex), lv.data());
+  const quint32 edgeLineCount = f.xray ? 0 : d->edgeCount;
+
+  // the frame's lines
+  std::vector<LineVertex> & lv = d->lineVertices;
+  lv.clear();
+  lv.reserve((f.lines.size() + 2 * (f.ghostLines.size() + f.hintLines.size())) * 6);
+  for (const btui::LineSeg & s : f.lines)
+    addLine(lv, s, s.color.a);
+  const quint32 frameLineCount = quint32(lv.size());
+  const quint32 lineCount = frameLineCount;
+  /* the ghosts' outlines and the hint, then the same for where voxels hide
+   * them: the outlines faint, the hint as strong */
+  for (const auto * list : { &f.ghostLines, &f.hintLines })
+    for (const btui::LineSeg & s : *list)
+      addLine(lv, s, s.color.a);
+  for (const btui::LineSeg & s : f.ghostLines)
+    addLine(lv, s, std::uint8_t(std::lround(s.color.a * kGhostHidden)));
+  for (const btui::LineSeg & s : f.hintLines)
+    addLine(lv, s, s.color.a);
+  const quint32 ghostLineCount = quint32((f.ghostLines.size() + f.hintLines.size()) * 6);
+  if (!lv.empty()) {
+    const quint32 bytes = quint32(lv.size() * sizeof(LineVertex));
+    d->lineVbuf.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::VertexBuffer);
+    u->updateDynamicBuffer(d->lineVbuf.buf.get(), 0, bytes, lv.data());
   }
 
   // --- the scene, into its own (linear, multisampled) target ---
@@ -604,7 +742,7 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   const float sceneY = rhi->isYUpInFramebuffer() ? 0.0f : float(d->sceneSize.height() - px.height());
   const QRhiViewport vp(0, sceneY, float(px.width()), float(px.height()));
 
-  if (d->meshVbuf && d->opaqueCount) {
+  if (d->meshVbuf && d->opaqueCount && !dimming) {
     cb->setGraphicsPipeline(f.cullBackFaces ? d->opaque.get() : d->opaqueBothSides.get());
     cb->setViewport(vp);
     cb->setShaderResources();
@@ -614,21 +752,29 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
   }
 
   if (lineCount && layers) {
+    // the colour first, hidden only by the opaque voxels: lines on one
+    // another (an axis on the slab's edge) then overlap in their order, as
+    // when drawn last, not each pixel to whichever depth is nearer
+    const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), 0);
+    cb->setGraphicsPipeline(d->lines.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &vi);
+    cb->draw(lineCount);
     cb->setGraphicsPipeline(d->linesFirst.get());
     cb->setViewport(vp);
     cb->setShaderResources();
-    const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), 0);
     cb->setVertexInput(0, 1, &vi);
     cb->draw(lineCount);
   }
 
   if (d->meshVbuf && layers) {
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), 0);
-    cb->setGraphicsPipeline(d->layered.get());
+    cb->setGraphicsPipeline(f.cullBackFaces ? d->layered.get() : d->layeredBothSides.get());
     cb->setViewport(vp);
     cb->setShaderResources();
     cb->setVertexInput(0, 1, &vi, d->layeredIndex.buf.get(), 0, QRhiCommandBuffer::IndexUInt32);
-    cb->drawIndexed(d->translucentCount);
+    cb->drawIndexed(quint32(d->layeredIdx.size()));
   } else if (d->meshVbuf && d->translucentCount && f.xray) {
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), d->opaqueCount * kMeshStride);
     cb->setGraphicsPipeline(d->xray.get());
@@ -652,6 +798,18 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     cb->draw(d->translucentCount);
   }
 
+  /* the variable voxels' dashed edges over every face, translucent ones
+   * included -- drawn before them, the faces would veil their own outline --
+   * and behind the opaque voxels, whose depth hides them */
+  if (edgeLineCount) {
+    cb->setGraphicsPipeline(d->lines.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    const QRhiCommandBuffer::VertexInput vi(d->edgeVbuf.get(), 0);
+    cb->setVertexInput(0, 1, &vi);
+    cb->draw(edgeLineCount);
+  }
+
   if (overlayCount) {
     cb->setGraphicsPipeline(d->overlay.get());
     cb->setViewport(vp);
@@ -668,6 +826,37 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     const QRhiCommandBuffer::VertexInput vi(d->lineVbuf.buf.get(), 0);
     cb->setVertexInput(0, 1, &vi);
     cb->draw(lineCount);
+  }
+
+  /* the hover preview's ghosts last, over everything: faint where voxels
+   * hide them, then at full strength where nothing does */
+  if (ghostCount) {
+    const QRhiCommandBuffer::VertexInput vi(d->overlayVbuf.buf.get(), overlayCount * kMeshStride);
+    cb->setGraphicsPipeline(d->ghostHidden.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &vi);
+    cb->draw(ghostCount);
+    cb->setGraphicsPipeline(d->ghost.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &vi);
+    cb->draw(ghostCount);
+  }
+  if (ghostLineCount) {
+    const quint32 first = frameLineCount * quint32(sizeof(LineVertex));
+    const QRhiCommandBuffer::VertexInput visible(d->lineVbuf.buf.get(), first);
+    const QRhiCommandBuffer::VertexInput hidden(d->lineVbuf.buf.get(), first + ghostLineCount * quint32(sizeof(LineVertex)));
+    cb->setGraphicsPipeline(d->linesHidden.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &hidden);
+    cb->draw(ghostLineCount);
+    cb->setGraphicsPipeline(d->lines.get());
+    cb->setViewport(vp);
+    cb->setShaderResources();
+    cb->setVertexInput(0, 1, &visible);
+    cb->draw(ghostLineCount);
   }
   cb->endPass();
 
