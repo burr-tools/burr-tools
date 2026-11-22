@@ -21,9 +21,22 @@
 #ifndef BT_TOOLS_CLIARGS_H
 #define BT_TOOLS_CLIARGS_H
 
-#include <cstring>
+#include "gzstream.h"
 
-/* Command-line helpers shared by burrTxt and burrTxt2. */
+#include <cstdio>
+#include <cstring>
+#include <istream>
+#include <memory>
+#include <string>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+/* Command-line helpers shared by the programs: the solvers burrTxt and
+ * burrTxt2, and for standard input the GUIs. */
 namespace btcli {
 
   /* Whether the command line asks for the help: -h or --help, anywhere in
@@ -33,6 +46,88 @@ namespace btcli {
       if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0)
         return true;
     return false;
+  }
+
+  /* The file name "-" stands for standard input. */
+  inline bool namesStdin(const char * file) {
+    return file && std::strcmp(file, "-") == 0;
+  }
+
+  inline int stdinDescriptor(void) {
+#ifdef _WIN32
+    return _fileno(stdin);
+#else
+    return fileno(stdin);
+#endif
+  }
+
+  /* A negative fd is no descriptor at all (Windows gives a GUI program
+   * started without a stdin -2), and no terminal either. It is never handed
+   * to _isatty(): the Windows CRT fails fast on an invalid parameter. */
+  inline bool isTerminal(int fd) {
+    if (fd < 0)
+      return false;
+#ifdef _WIN32
+    return _isatty(fd);
+#else
+    return isatty(fd);
+#endif
+  }
+
+  /* Whether a solver reads its puzzle from standard input: asked for with
+   * "-", or with no file (a null pointer) when something is piped or
+   * redirected in. A program started without any stdin has nothing piped in
+   * and gets the usage, as for a terminal. The GUIs only go by namesStdin():
+   * the stdin a desktop starts them with is no terminal either, and holds no
+   * puzzle.
+   */
+  inline bool solverReadsStdin(const char * file) {
+    if (file)
+      return namesStdin(file);
+    const int fd = stdinDescriptor();
+    return fd >= 0 && !isTerminal(fd);
+  }
+
+  /* A puzzle, compressed or plain, from an open descriptor: the stream, or
+   * nullptr and in error why there is none. A terminal is refused, as nobody
+   * types a puzzle file in and a program would just sit there waiting for it.
+   * damaged tells compressed data that can not be read from the start apart
+   * from input that holds no puzzle at all: the one is a bad puzzle, the
+   * other a command line without one.
+   */
+  inline std::unique_ptr<std::istream> openPuzzleInput(int fd, std::string & error, bool & damaged) {
+
+    damaged = false;
+
+    if (isTerminal(fd)) {
+      error = "standard input is a terminal, pipe or redirect a puzzle into it";
+      return nullptr;
+    }
+
+    auto str = openGzDescriptor(fd);
+
+    if (!str)
+      error = "could not read standard input";
+    else if (str->peek() == EOF) {
+      damaged = str->rdbuf()->readFailed();
+      error = damaged ? "damaged compressed data on standard input" : "no puzzle on standard input";
+      str.reset();
+    }
+
+    return str;
+  }
+
+  inline std::unique_ptr<std::istream> openPuzzleInput(int fd, std::string & error) {
+    bool damaged;
+    return openPuzzleInput(fd, error, damaged);
+  }
+
+  inline std::unique_ptr<std::istream> openStdin(std::string & error, bool & damaged) {
+    return openPuzzleInput(stdinDescriptor(), error, damaged);
+  }
+
+  inline std::unique_ptr<std::istream> openStdin(std::string & error) {
+    return openPuzzleInput(stdinDescriptor(), error);
   }
 }
 

@@ -40,6 +40,7 @@
 #include "../../src/lib/stl_2.h"
 #include "../../src/lib/voxel.h"
 #include "../../src/lib/bt_assert.h"
+#include "../../src/tools/cliargs.h"
 
 #include <QDesktopServices>
 #include <QDir>
@@ -63,6 +64,7 @@
 #include <QSet>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QTemporaryFile>
 #include <QTest>
 #include <QTimer>
 
@@ -81,7 +83,34 @@
 #include <commctrl.h>
 #endif
 
+#include "../fdcompat.h"
+
 namespace {
+
+  /* A file in standard input's place, for as long as this lives. */
+  class StdinFrom {
+
+    public:
+
+      explicit StdinFrom(const char * file) : saved(btfd::dup(btcli::stdinDescriptor())) {
+        const int fd = btfd::openRead(file);
+        if (saved < 0 || fd < 0 || btfd::dup2(fd, btcli::stdinDescriptor()) < 0)
+          qFatal("could not put %s on standard input", file);
+        btfd::close(fd);
+      }
+
+      ~StdinFrom() {
+        btfd::dup2(saved, btcli::stdinDescriptor());
+        btfd::close(saved);
+      }
+
+      StdinFrom(const StdinFrom &) = delete;
+      StdinFrom & operator=(const StdinFrom &) = delete;
+
+    private:
+
+      int saved;
+  };
 
   /* An App on scratch settings files: settings.rc (new GUI) and legacy.rc
    * (what it may seed from), both in a temporary directory.
@@ -1332,6 +1361,36 @@ private slots:
     d->loadStartupFiles();
     QCOMPARE(done.count(), 1);
     QVERIFY(!d->startupFileLoaded());
+  }
+
+  void aDashOnTheCommandLineReadsThePuzzleFromStandardInput() {
+    StdinFrom in("examples/PelikanBurr.xmpuzzle");
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    d->setStartupFiles({ QStringLiteral("-"), QStringLiteral("examples/BrokenSticks.xmpuzzle") });
+    d->loadStartupFiles();
+    QVERIFY(d->startupFileLoaded());
+    QVERIFY(d->fileName().isEmpty());                  // no file behind it, and not the next one
+    QVERIFY(d->modified());                            // only here: closing has to ask
+    QVERIFY(d->windowTitle().contains(QStringLiteral("Untitled")));
+  }
+
+  void aDashWithNothingOnStandardInputSaysSoAndTheNextFileLoads() {
+    QTemporaryFile empty;
+    QVERIFY(empty.open());
+    empty.close();
+    StdinFrom in(empty.fileName().toLocal8Bit().constData());
+    Fixture f;
+    f.make();
+    DocumentController * d = f.app->document();
+    d->setStartupFiles({ QStringLiteral("-"), QStringLiteral("examples/PelikanBurr.xmpuzzle") });
+    QSignalSpy msg(d, &DocumentController::messageRequested);
+    d->loadStartupFiles();
+    QVERIFY(msg.count() >= 1);                         // the puzzle's comment may follow
+    QCOMPARE(msg.first().at(1).toString(), QStringLiteral("no puzzle on standard input"));
+    QVERIFY(d->startupFileLoaded());
+    QCOMPARE(d->fileName(), QStringLiteral("PelikanBurr.xmpuzzle"));
   }
 
   /* where it does not apply -- a platform other than "windows", here the
