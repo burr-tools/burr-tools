@@ -241,7 +241,7 @@ void DocumentController::loadStartupFiles(void) {
   guarded([&] {
     const QStringList files = std::exchange(m_startupFiles, {});
     for (const QString & f : files)
-      if ((m_startupLoaded = loadPath(f)))
+      if ((m_startupLoaded = f == QLatin1String("-") ? loadStdin() : loadPath(f)))
         break;
   });
   emit startupFilesLoaded();
@@ -256,6 +256,18 @@ bool DocumentController::loadPath(const QString & path) {
     r.error = e.what();
   }
   finishLoad(r, path);
+  return r.ok;
+}
+
+bool DocumentController::loadStdin(void) {
+  btui::DocumentSession::LoadResult r;
+  try {
+    r = m_session.loadStdin();
+  } catch (const std::exception & e) {
+    r.ok = false;
+    r.error = e.what();
+  }
+  finishLoad(r, tr("standard input"));
   return r.ok;
 }
 
