@@ -74,7 +74,11 @@ const ShapesModel::Counts & ShapesModel::countsOf(int row) const {
 
 QColor ShapesModel::chipColor(int i) {
   btui::Rgb c = btui::pieceColor(i);
-  return QColor::fromRgbF(c.r, c.g, c.b);
+  /* the 8-bit colour every view draws: QColor keeps a colour made from
+   * floats at 16 bits a channel and compares all of them, so it would never
+   * equal the colour read back from a drawn pixel or a mesh vertex */
+  const QColor f = QColor::fromRgbF(c.r, c.g, c.b);
+  return QColor(f.red(), f.green(), f.blue());
 }
 
 QVariant ShapesModel::data(const QModelIndex & index, int role) const {
