@@ -26,12 +26,12 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cmath>
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
-#include <unordered_map>
 
 namespace btui {
 
@@ -134,8 +134,9 @@ namespace btui {
           return;
         const bool variable = shape.getState(f->_fb_index) == voxel_c::VX_VARIABLE;
         const std::vector<Vec3> corners = cornersOf(f);
-        addFlatPolygon(corners, toVec(f->normal()), flatColor(f->_color, variable), cellOf(f->_fb_index),
-                       variable, std::vector<float>(corners.size(), kNoOutline));
+        std::vector<float> outline(corners.size(), kNoOutline);
+        addFlatPolygon(corners.data(), corners.size(), toVec(f->normal()), flatColor(f->_color, variable),
+                       cellOf(f->_fb_index), variable, outline.data());
       }
 
       /* Every voxel's faces in the flat style. A face is drawn where the
@@ -148,10 +149,14 @@ namespace btui {
        * filled and draws no face between them). With cellsApart a variable
        * voxel also faces a variable neighbour, every side a full line. */
       void addFlatVoxels(void) {
-        struct Side { std::vector<Vec3> corners; int nx = 0, ny = 0, nz = 0; };
-        struct Exposed { std::vector<Vec3> corners; Vec3 normal; Rgba8 col; Vec3 cell; bool variable = false; };
+        /* one voxel's sides, their corners in sidePts; the exposed faces,
+         * theirs in pts -- flat lists, so a face costs no allocation */
+        struct Side { std::uint32_t first = 0, count = 0; int nx = 0, ny = 0, nz = 0; };
+        struct Exposed { std::uint32_t first = 0, count = 0; Vec3 normal; Rgba8 col; Vec3 cell; bool variable = false; };
         std::vector<Exposed> faces;
+        std::vector<Vec3> pts;
         std::vector<Side> sides;
+        std::vector<Vec3> sidePts;
         std::vector<float> fc;
         for (unsigned int z = 0; z < shape.getZ(); z++)
           for (unsigned int y = 0; y < shape.getY(); y++)
@@ -159,6 +164,7 @@ namespace btui {
               if (shape.isEmpty(x, y, z))
                 continue;
               sides.clear();
+              sidePts.clear();
               Vec3 centre{ 0, 0, 0 };
               int nx, ny, nz;
               for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
@@ -166,14 +172,15 @@ namespace btui {
                 shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, fc);
                 if (fc.size() < 9)
                   continue;
-                Side s{ {}, nx, ny, nz };
+                Side s{ std::uint32_t(sidePts.size()), 0, nx, ny, nz };
                 Vec3 mid{ 0, 0, 0 };
                 for (size_t i = 0; i + 2 < fc.size(); i += 3) {
-                  s.corners.push_back({ fc[i], fc[i + 1], fc[i + 2] });
-                  mid = mid + s.corners.back();
+                  sidePts.push_back({ fc[i], fc[i + 1], fc[i + 2] });
+                  mid = mid + sidePts.back();
                 }
-                centre = centre + mid * (1.0f / float(s.corners.size()));
-                sides.push_back(std::move(s));
+                s.count = std::uint32_t(sidePts.size()) - s.first;
+                centre = centre + mid * (1.0f / float(s.count));
+                sides.push_back(s);
               }
               if (sides.empty())
                 continue;
@@ -182,19 +189,21 @@ namespace btui {
               const bool variable = shape.isVariable(x, y, z);
               const Rgba8 col = flatColor(shape.getColor(x, y, z), variable);
               const Vec3 cell{ float(x), float(y), float(z) };
-              for (Side & s : sides) {
+              for (const Side & s : sides) {
                 const int other = shape.getState2(s.nx, s.ny, s.nz);
                 if (!(other == voxel_c::VX_EMPTY || (other == voxel_c::VX_VARIABLE && (!variable || cellsApart))))
                   continue;
+                const Vec3 * c = sidePts.data() + s.first;
                 // outward: away from the voxel's centre
-                Vec3 nrm = cross(s.corners[1] - s.corners[0], s.corners[2] - s.corners[0]);
+                Vec3 nrm = cross(c[1] - c[0], c[2] - c[0]);
                 const float len = length(nrm);
                 if (len <= 1e-9f)
                   continue;
                 nrm = nrm * (1.0f / len);
-                if (dot(nrm, s.corners[0] - centre) < 0)
+                if (dot(nrm, c[0] - centre) < 0)
                   nrm = nrm * -1.0f;
-                faces.push_back({ std::move(s.corners), nrm, col, cell, variable });
+                faces.push_back({ std::uint32_t(pts.size()), s.count, nrm, col, cell, variable });
+                pts.insert(pts.end(), c, c + s.count);
               }
             }
 
@@ -203,38 +212,54 @@ namespace btui {
          * side in the same plane and colour: the boundary between two voxels
          * across a flat region (the FLTK GUI's edge-line style draws the
          * same two kinds). Faces are matched on their sides' endpoints,
-         * rounded, which works on every grid alike. */
-        std::unordered_map<std::uint64_t, std::vector<size_t>> bySide;
+         * rounded, which works on every grid alike: every side once in one
+         * hash table by its ends, the faces sharing a side chained in one
+         * slot (no allocation per side and no sort; this runs on every edit). */
         auto quantise = [](const Vec3 & p) -> std::uint64_t {
           auto q = [](float v) { return std::uint64_t(std::int64_t(std::lround(v * 1024.0f)) & 0x1fffff); };
           return (q(p.x) << 42) | (q(p.y) << 21) | q(p.z);
         };
-        auto sideKey = [&](const Vec3 & a, const Vec3 & b) -> std::uint64_t {
-          const std::uint64_t ka = quantise(a), kb = quantise(b);
-          // the same key from either end
-          return (ka < kb ? ka : kb) * 0x9E3779B97F4A7C15ull ^ (ka < kb ? kb : ka);
-        };
-        for (size_t f = 0; f < faces.size(); f++) {
-          const std::vector<Vec3> & c = faces[f].corners;
-          for (size_t i = 0; i < c.size(); i++)
-            bySide[sideKey(c[i], c[(i + 1) % c.size()])].push_back(f);
-        }
-        std::vector<float> outline;
-        for (size_t f = 0; f < faces.size(); f++) {
-          const Exposed & e = faces[f];
-          const size_t k = e.corners.size();
-          outline.assign(k, 0.0f);
-          for (size_t i = 0; i < k; i++)
-            for (size_t g : bySide[sideKey(e.corners[i], e.corners[(i + 1) % k])]) {
-              if (g == f)
-                continue;
-              const Exposed & o = faces[g];
-              const bool sameColour = o.col.r == e.col.r && o.col.g == e.col.g && o.col.b == e.col.b && o.col.a == e.col.a;
-              if (!cellsApart && sameColour && dot(o.normal, e.normal) > 0.999f)
-                outline[i] = kThinOutline;
+        struct SideRef { std::uint64_t lo, hi; std::uint32_t face, side; std::int32_t next; };
+        // face f's side i is outlines[faces[f].first + i], as its corners are in pts
+        std::vector<float> outlines(pts.size(), 0.0f);
+        if (!cellsApart && !pts.empty()) {
+          std::vector<std::uint64_t> keys(pts.size());
+          for (size_t i = 0; i < pts.size(); i++)
+            keys[i] = quantise(pts[i]);
+          std::vector<SideRef> refs;
+          refs.reserve(pts.size());
+          const size_t tableSize = std::bit_ceil(2 * pts.size());   // at most half full
+          std::vector<std::int32_t> head(tableSize, -1);        // a slot's chain: refs[head], refs[refs[head].next], ...
+          for (size_t f = 0; f < faces.size(); f++) {
+            const std::uint64_t * c = keys.data() + faces[f].first;
+            const size_t k = faces[f].count;
+            for (size_t i = 0; i < k; i++) {
+              const std::uint64_t lo = std::min(c[i], c[(i + 1) % k]), hi = std::max(c[i], c[(i + 1) % k]);
+              // splitmix64's finaliser: grid-aligned ends differ in few bits
+              std::uint64_t m = lo * 0x9E3779B97F4A7C15ull ^ hi;
+              m = (m ^ (m >> 30)) * 0xBF58476D1CE4E5B9ull;
+              m = (m ^ (m >> 27)) * 0x94D049BB133111EBull;
+              size_t h = size_t(m ^ (m >> 31)) & (tableSize - 1);
+              while (head[h] >= 0 && !(refs[size_t(head[h])].lo == lo && refs[size_t(head[h])].hi == hi))
+                h = (h + 1) & (tableSize - 1);
+              refs.push_back({ lo, hi, std::uint32_t(f), std::uint32_t(i), head[h] });
+              head[h] = std::int32_t(refs.size() - 1);
             }
-          addFlatPolygon(e.corners, e.normal, e.col, e.cell, e.variable, outline);
+          }
+          for (std::int32_t first : head)
+            for (std::int32_t a = first; a >= 0; a = refs[size_t(a)].next)
+              for (std::int32_t b = refs[size_t(a)].next; b >= 0; b = refs[size_t(b)].next) {
+                const SideRef & ra = refs[size_t(a)], & rb = refs[size_t(b)];
+                const Exposed & e = faces[ra.face], & o = faces[rb.face];
+                const bool sameColour = o.col.r == e.col.r && o.col.g == e.col.g && o.col.b == e.col.b && o.col.a == e.col.a;
+                if (ra.face != rb.face && sameColour && dot(o.normal, e.normal) > 0.999f) {
+                  outlines[e.first + ra.side] = kThinOutline;
+                  outlines[o.first + rb.side] = kThinOutline;
+                }
+              }
         }
+        for (const Exposed & e : faces)
+          addFlatPolygon(pts.data() + e.first, e.count, e.normal, e.col, e.cell, e.variable, outlines.data() + e.first);
       }
 
       /* A flat-style polygon, fanned into triangles. `outline` gives for
@@ -245,11 +270,11 @@ namespace btui {
        * one opposite corner i is the last side, only in the last triangle,
        * the one opposite corner i+1 is side 0, only in the first. A
        * variable voxel's full lines are dashed lines (ShapeMesh::edges)
-       * instead of the face shader's outline; its thin ones stay. */
-      void addFlatPolygon(const std::vector<Vec3> & corners, Vec3 n, Rgba8 col, Vec3 cell, bool variable,
-                          std::vector<float> outline) {
+       * instead of the face shader's outline (`outline` is changed to say
+       * so); its thin ones stay. */
+      void addFlatPolygon(const Vec3 * corners, size_t k, Vec3 n, Rgba8 col, Vec3 cell, bool variable,
+                          float * outline) {
         std::vector<MeshVertex> & dst = variable && col.a < 255 ? out.translucent : out.opaque;
-        const size_t k = corners.size();
         if (variable)
           for (size_t i = 0; i < k; i++)
             if (outline[i] == 0.0f) {

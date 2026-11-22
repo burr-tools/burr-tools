@@ -49,6 +49,15 @@ TEST_CASE("building a shape's mesh", "[.][bench][scenemesh]") {
   BENCHMARK("20^3 solid") { return buildShapeMesh(*solid20, blue()).opaque.size(); };
   BENCHMARK("20^3 shell round a variable core") { return buildShapeMesh(*shell20, blue()).opaque.size(); };
   BENCHMARK("50^3 solid") { return buildShapeMesh(*solid50, blue()).opaque.size(); };
+  // the editor's stroke budget scene (theViewIsReadyInTimeAfterAStrokeSegment):
+  // every other voxel of 16^3, a fifth of them variable, every face exposed
+  auto chequer = bttest::makeVoxel(gt, 16, 16, 16);
+  for (unsigned x = 0; x < 16; x++)
+    for (unsigned y = 0; y < 16; y++)
+      for (unsigned z = 0; z < 16; z++)
+        if ((x + y + z) % 2 == 0)
+          chequer->setState(x, y, z, (x + y) % 5 == 0 ? voxel_c::VX_VARIABLE : voxel_c::VX_FILLED);
+  BENCHMARK("16^3 chequerboard, every face exposed") { return buildShapeMesh(*chequer, blue()).opaque.size(); };
 }
 
 TEST_CASE("the 3D view's depth sort", "[.][bench][depthsort]") {
