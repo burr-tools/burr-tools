@@ -6,12 +6,9 @@ on:
       - master
     tags:
       - 'v*.*.*'
-  # edited: for a change of the PR's base (the changes job decides). A
-  # retarget changes what the gates below decide -- a PR that moves to
-  # master must run the sanitizers -- and without it the PR would keep the
-  # checks of its old base, its skipped jobs counting as passed.
+  # No gate depends on a PR's base, so a retarget needs no run of its own.
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
@@ -30,13 +27,8 @@ permissions:
 # result matters. What is lost is which of those merges broke master, if one
 # did. A manual run of master is in the same group. Tags have a group each
 # (the ref), so a release run is never cancelled by a push.
-#
-# An edit of a PR's title or description starts a run too (`edited` covers
-# title, body and base, and the trigger cannot tell them apart). That run
-# gets a group of its own, so it cancels nothing; every job then skips, as
-# they all need the changes job, which runs only for a changed base.
 concurrency:
-  group: ${{ github.workflow }}-${{ (github.event.action == 'edited' && !github.event.changes.base) && github.run_id || github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -66,7 +58,7 @@ jobs:
     # 95% with its own previous push. The repository's caches are capped
     # at 10 GB and evicted least recently used first, so ccache-prune keeps
     # one entry per pull request and job, and cache-cleanup.yml deletes a
-    # pull request's entries when it is closed. Exception: sanitizers.
+    # pull request's entries when it is closed.
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
@@ -228,14 +220,15 @@ jobs:
   # the Qt GUI's suites (renders included, on lavapipe as in qt-linux). Qt
   # and the Mesa driver are not instrumented and keep memory to the end, so
   # leaks are checked in test_burrtools only.
+  #
+  # Not for pull requests: 15-33 minutes on every PR of a stack, for memory
+  # errors that are rare. Master, tags and manual runs run it (a manual run
+  # of a PR's branch checks it before merging); for a pull request the
+  # author runs `just test-asan` when the change calls for it -- see
+  # llm_docs/verification.md.
   sanitizers:
     name: Sanitizers (ASan + UBSan)
-    needs: changes
-    # Not in the middle of a stack: 15-33 minutes on each of its PRs, for
-    # memory errors that are rare and still caught before the stack merges,
-    # when its bottom PR targets master (into_default, see changes; a PR
-    # retargeted to master runs again), or on master itself.
-    if: needs.changes.outputs.into_default == 'true' && (needs.changes.outputs.core == 'true' || needs.changes.outputs.qt == 'true')
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -254,9 +247,10 @@ jobs:
           libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
         pip install --user "meson>=1.7"
 
-    # The Qt GUI only where the changes job builds it (see there)
+    - name: Install just
+      uses: extractions/setup-just@v2
+
     - name: Install Qt
-      if: needs.changes.outputs.qt == 'true'
       uses: jurplel/install-qt-action@v4
       with:
         version: '6.8.*'
@@ -268,46 +262,22 @@ jobs:
         icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1)
         echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
 
-    # Saved from master only, unlike every other job's (see build-linux):
-    # its cache and coverage-qt's are the largest, and this one (about 270 MB
-    # compressed) is half of what a pull request building the Qt GUI would
-    # save per push. A pull request restores master's, and loses little by
-    # it: this job runs only for pull requests into master (see its if),
-    # which differ little from master.
-    - name: Set up ccache
+    - name: Set up ccache   # see build-linux
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         key: ${{ github.job }}
-        save: ${{ github.event_name != 'pull_request' }}
         max-size: 1G   # debug objects with the Qt GUI
 
-    - name: Build with ASan and UBSan
-      run: |
-        meson setup build-asan --buildtype=debug -Db_sanitize=address,undefined -Db_lundef=false \
-          -Dqt_gui=${{ needs.changes.outputs.qt == 'true' && 'enabled' || 'disabled' }} -Dpython=disabled
-        ninja -C build-asan
-
-    # MINK_STRESS=1: one random shape per grid and setting in "Minkowski
-    # mesher: random shapes", not three -- a memory error in the mesher shows
-    # on any of them, and the jobs without sanitizers build all three. Under
-    # ASan the case took over 3 minutes.
+    # The same recipes as a local check (justfile)
     - name: Unit tests, leaks included
-      if: needs.changes.outputs.core == 'true'
-      env:
-        MINK_STRESS: '1'
-        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:strict_string_checks=1"
-        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
-      run: ./build-asan/test_burrtools --reporter compact
+      run: just test-asan
 
     - name: Qt GUI suites
-      if: needs.changes.outputs.qt == 'true'
       env:
-        ASAN_OPTIONS: "halt_on_error=1:detect_leaks=0"
-        UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
         BURRTOOLS_TEST_QPA: xcb
         BURRTOOLS_OFFSCREEN_RHI: vulkan
         BURRTOOLS_REQUIRE_GPU_TESTS: '1'
-      run: xvfb-run -a meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
+      run: xvfb-run -a just test-asan-qt
 
     - name: Upload the test log
       if: failure()
@@ -329,36 +299,32 @@ jobs:
   # Qt suites it runs notice a library change that breaks the Qt GUI.
   # macOS is the one Clang build of the Qt GUI, with its own frameworks and
   # arm64, where a library change can break what Linux and Windows (both
-  # GCC, x86-64) do not see. The rest -- qt-linux, qt-windows, coverage-qt
-  # and the Qt suites in sanitizers -- run for pushes, tags and manual runs,
+  # GCC, x86-64) do not see. The rest -- qt-linux, qt-windows and
+  # coverage-qt -- run for pushes, tags and manual runs,
   # and for a pull request only when it touches the Qt GUI or what it is
   # built from besides the library (src/qtgui, src/uicore, test/qtgui, the
   # build files). A Linux- or Windows-only break from anything else (the
   # lavapipe renders, say, which macOS may skip without Metal) is thus
   # caught on master itself.
   #
-  # The jobs that only run test_burrtools -- tsan-parallel, the unit tests
-  # in sanitizers, coverage -- run when a pull request touches what that
-  # binary is built from or loads (core), whatever its base: unlike the Qt
-  # GUI's, those inputs can be listed exactly. (test_envvars also scans
-  # src/gui, src/qtgui, scripts and bench; the build jobs, which always run,
-  # run it too.)
+  # The jobs that only run test_burrtools -- tsan-parallel, coverage -- run
+  # when a pull request touches what that binary is built from or loads
+  # (core): unlike the Qt GUI's, those inputs can be listed exactly.
+  # (test_envvars also scans src/gui, src/qtgui, scripts and bench; the
+  # build jobs, which always run, run it too.)
   #
-  # Every job needs this one, which skips for an edit that leaves the base
-  # alone (see the trigger and the concurrency group at the top), so such
-  # an edit runs nothing.
+  # No gate reads the PR's base: a PR's checks are the same wherever it
+  # sits in a stack.
   changes:
     name: Detect changed areas
-    if: github.event.action != 'edited' || github.event.changes.base
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read   # the PR's own base, below
+      pull-requests: read   # dorny/paths-filter lists the PR's files
     outputs:
       spec: ${{ steps.filter.outputs.spec }}
       qt: ${{ steps.qt.outputs.build }}
       core: ${{ steps.core.outputs.test }}
-      into_default: ${{ steps.qt.outputs.into_default }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -404,26 +370,12 @@ jobs:
             - 'scripts/package-qt.sh'
             - 'justfile'
             - '.github/workflows/build-and-release.yml'
-    # The PR's base from the API: for a PR in a GitHub stack, base_ref names
-    # the stack's base (master), not the PR below it (seen on #189).
-    - name: Decide what the Qt GUI's jobs and the sanitizers do
+    - name: Decide whether the Qt GUI's other jobs run
       id: qt
       env:
         EVENT: ${{ github.event_name }}
-        PR: ${{ github.event.pull_request.number }}
-        DEFAULT: ${{ github.event.repository.default_branch }}
         CHANGED: ${{ steps.filter.outputs.qt }}
-        GH_TOKEN: ${{ github.token }}
       run: |
-        BASE=
-        if [ "$EVENT" = pull_request ]; then
-          BASE=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq .base.ref)
-        fi
-        if [ "$EVENT" != pull_request ] || [ "$BASE" = "$DEFAULT" ]; then
-          echo "into_default=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "into_default=false" >> "$GITHUB_OUTPUT"
-        fi
         if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "build=true" >> "$GITHUB_OUTPUT"
         else
@@ -441,7 +393,7 @@ jobs:
         if [ "$EVENT" != pull_request ] || [ "$CHANGED" = true ]; then
           echo "test=true" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::tsan-parallel, coverage and the sanitizers' unit tests skipped: no library, test or build input changed"
+          echo "::notice::tsan-parallel and coverage skipped: no library, test or build input changed"
           echo "test=false" >> "$GITHUB_OUTPUT"
         fi
 
