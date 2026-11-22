@@ -1289,16 +1289,18 @@ void TestRender::dimmingLeavesTheActiveLayerAsItIs() {
     const QImage dimmed = t.render(v->frame(1));
     saveForInspection(plain, qPrintable(QStringLiteral("dim-none-%1").arg(QLatin1String(style))));
     saveForInspection(dimmed, qPrintable(QStringLiteral("dim-active-%1").arg(QLatin1String(style))));
-    // inside the voxels (blue faces, dark markers; lines over them blue
-    // too): the same picture. A lost marker half is navy against blue, a
-    // halo the light canvas; a line's anti-aliased edge may differ a little.
+    // inside the voxels (blue faces, the variable ones' light see-through
+    // blue, dark markers; lines over them blue too): the same picture. A
+    // lost marker half is navy against blue, a halo the light canvas, a
+    // variable voxel seen through another a darker blue; a line's
+    // anti-aliased edge may differ a little.
     // (Lines elsewhere differ by design: in this mode the slab's tint is
     // drawn over them.)
     int voxel = 0, differing = 0;
     for (int y = 0; y < plain.height(); y++)
       for (int x = 0; x < plain.width(); x++) {
         const QColor p = plain.pixelColor(x, y);
-        if (p.blue() < p.red() + 80 || p.lightness() > 150)
+        if (p.blue() < p.red() + 40 || p.lightness() > 235)
           continue;
         voxel++;
         differing += !near(p, dimmed.pixelColor(x, y), 60);
