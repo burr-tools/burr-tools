@@ -29,6 +29,8 @@ class ThreadBudget;
 
 class rotationContext_c;
 
+#include "solver_config.h"
+
 #include <vector>
 #include <thread>
 #include <stop_token>
@@ -56,11 +58,13 @@ class disassemblerPool_c {
 public:
   using ResultCallback = std::function<void(uint64_t seqNo, std::unique_ptr<assembly_c> a, std::unique_ptr<separation_c> s)>;
 
-  /** rotationContext: rotation moves are considered iff given; every
+  /** settings: the workers (threads, 0 = the hardware concurrency),
+   *  inline disassembly (disassemblerPool) and the workers' kernels.
+   *  rotationContext: rotation moves are considered iff given; every
    *  worker's disassembler shares it. */
   disassemblerPool_c(
     const problem_c & puzzle,
-    unsigned int num_threads,
+    const solverSettings_t & settings,
     ResultCallback on_result,
     std::shared_ptr<rotationContext_c> rotationContext = nullptr
   );
@@ -138,6 +142,7 @@ private:
   };
 
   const problem_c & puzzle;
+  const solverSettings_t settings;
   unsigned int num_threads;
   ResultCallback on_result;
   /* shared by all workers; thread-safe */

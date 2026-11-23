@@ -25,6 +25,7 @@
 #include "../halfedge/polyhedron.h"
 
 #include <math.h>
+#include <numbers>
 
 /* this file contains the mesh generation part of voxel_2. This is so big for the spheres
  * that I didn't want to put it into the normal file
@@ -378,9 +379,9 @@ static void shiftToHoleBorder(int nr, float *x, float *y, float *z)
 
   // what the heck, I don't understand any more what I did in here... bahh next time
   // I will need to comment it as soon as it works
-  float b = 105*M_PI/180 - a;
+  float b = 105*std::numbers::pi/180 - a;
 
-  float xl = sin(75*M_PI/180) / sin(b);
+  float xl = sin(75*std::numbers::pi/180) / sin(b);
 
   *x *= xl/l;
   *y *= xl/l;
@@ -392,9 +393,9 @@ static void shiftToHoleBorder(int nr, float *x, float *y, float *z)
 
   normalize(x, y, z);
 
-  *x *= sin(30*M_PI/180)/sin(75*M_PI/180);
-  *y *= sin(30*M_PI/180)/sin(75*M_PI/180);
-  *z *= sin(30*M_PI/180)/sin(75*M_PI/180);
+  *x *= sin(30*std::numbers::pi/180)/sin(75*std::numbers::pi/180);
+  *y *= sin(30*std::numbers::pi/180)/sin(75*std::numbers::pi/180);
+  *z *= sin(30*std::numbers::pi/180)/sin(75*std::numbers::pi/180);
 
   *x += connectionPoints[nr][0]/sqrt(2);
   *y += connectionPoints[nr][1]/sqrt(2);
@@ -502,7 +503,7 @@ static float radius(float a, genPar & par)
    *   and calculate the distance...
    */
 
-  float m = tan(90*M_PI/180-a);
+  float m = tan(90*std::numbers::pi/180-a);
 
   float linex = par.connection_rad*(par.sphere_rad-par.offset)/2;
   float liney = m*linex;
@@ -680,8 +681,8 @@ static void drawHole(
       drawHolePiece(i, par.lineEnd, par.curvEnd, x1, y1, z1, x2, y2, z2, rec2, par);
 
     // Innermost, transition to the connector
-    if (par.curvEnd < 30*M_PI/180)
-      drawHolePiece(i, par.curvEnd, 30*M_PI/180, x1, y1, z1, x2, y2, z2, rec2, par);
+    if (par.curvEnd < 30*std::numbers::pi/180)
+      drawHolePiece(i, par.curvEnd, 30*std::numbers::pi/180, x1, y1, z1, x2, y2, z2, rec2, par);
   }
 }
 
@@ -1021,7 +1022,7 @@ static bool curvOk(float curvrad, float cnrad, float sprad, float offset)
   float curvy = sqrt((sprad-offset+curvrad)*(sprad-offset+curvrad)-curvx*curvx);
 
   if (curvy > sprad) return false;
-  if (curvy/curvx < tan(60*M_PI/180)) return false;
+  if (curvy/curvx < tan(60*std::numbers::pi/180)) return false;
 
   return true;
 }
@@ -1064,8 +1065,8 @@ Polyhedron * voxel_2_c::getMeshInternal(float sphere_rad, float connection_rad, 
   par.curvY = sqrt((sphere_rad-offset+par.curvRad)*(sphere_rad-offset+par.curvRad)-par.curvX*par.curvX);
   par.vl = &vl;
   par.holeStart = atan((par.connection_rad*(par.sphere_rad-par.offset)/2)/par.sphere_rad);
-  par.lineEnd = M_PI/2-atan2(par.curvY, par.curvX-par.curvRad);
-  par.curvEnd = M_PI/2-atan2(par.curvY, par.curvX);
+  par.lineEnd = std::numbers::pi/2-atan2(par.curvY, par.curvX-par.curvRad);
+  par.curvEnd = std::numbers::pi/2-atan2(par.curvY, par.curvX);
 
   if (par.lineEnd < par.holeStart) par.lineEnd = par.holeStart;
   if (par.curvEnd < par.lineEnd) par.curvEnd = par.lineEnd;

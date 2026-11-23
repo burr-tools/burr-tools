@@ -23,6 +23,7 @@
 
 #include "types.h"
 #include "bt_assert.h"
+#include "solver_config.h"
 
 #include <memory>
 
@@ -140,7 +141,7 @@ class gridType_c {
      * because we are not dependent on the gridtype this function is static
      * but it needs to know the puzzle
      */
-    static std::unique_ptr<assembler_c> findAssembler(const problem_c & p);
+    static std::unique_ptr<assembler_c> findAssembler(const problem_c & p, const solverSettings_t & settings);
 
   public:
 

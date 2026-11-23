@@ -21,7 +21,6 @@
 #include "assembler_0.h"
 #include "assembler_pool.h"
 #include "simd_exact_cover.h"
-#include "simd_config.h"
 
 #include "bt_assert.h"
 #include "problem.h"
@@ -375,8 +374,8 @@ void assembler_0_c::AddVoxelNode(unsigned int col, unsigned int piecenode) {
   colCount[col]++;
 }
 
-assembler_0_c::assembler_0_c(const problem_c & prob) :
-  assembler_c(),
+assembler_0_c::assembler_0_c(const problem_c & prob, const solverSettings_t & s) :
+  assembler_c(s),
   problem(prob),
   pos(0),
   reducePiece(0),
@@ -2458,10 +2457,10 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   std::stop_token runTok = currentRunToken();
   running.store(true, std::memory_order_relaxed);
   // Fan-out for splits and stop-time divides, fixed for the whole run.
-  splitFanout = SplitFanout::fromEnv();
-  splitBreadthFirst = SplitFanout::breadthFirstFromEnv();
-  donate = !SplitFanout::noDonateFromEnv();
-  donateEvery = SplitFanout::donateEveryFromEnv();
+  splitFanout = settings.splitFanout;
+  splitBreadthFirst = settings.splitBreadthFirst;
+  donate = settings.donate;
+  donateEvery = settings.donateEvery;
 
   /* Workers call smallerRotationExists() outside callbackMutex, which reaches
    * the lazy mutable caches on the result shape AND on every part shape.
@@ -2562,7 +2561,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
   // Cursors always split: they have no whole to search. Beyond that, by
   // default nothing splits at pop -- running tasks split themselves when
   // siblings starve (donation, see assemblerWorker_c::donate). Only with
-  // BURRTOOLS_NO_DONATE do the eager heuristics below decide, with two
+  // donation off (BURRTOOLS_DONATE=0) do the eager heuristics below decide, with two
   // independent triggers, either of which suffices:
   // - Shallow prefix (depth < 3): such a task can hold an enormous subtree,
   //   and splitting it is always worth it -- by the time siblings starve on
@@ -2974,7 +2973,7 @@ void assembler_0_c::parallelMultiSearch(unsigned int workers) {
 bool assembler_0_c::canUseSimd(void) const {
   if (pos != 0)
     return false;
-  if (!SimdConfig::isBitParallelSolverEnabled())
+  if (!settings.bitParallel)
     return false;
   if (debug)
     return false;
@@ -3017,21 +3016,21 @@ std::unique_ptr<ISimdExactCover> assembler_0_c::createSimdSolver(void) const {
 
   std::unique_ptr<ISimdExactCover> solver;
   if (num_columns <= 256) {
-    solver = std::make_unique<SimdExactCover256>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover256>(num_columns, piecenumber, settings);
   } else if (num_columns <= 512) {
-    solver = std::make_unique<SimdExactCover512>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover512>(num_columns, piecenumber, settings);
   } else if (num_columns <= 1024) {
-    solver = std::make_unique<SimdExactCover1024>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover1024>(num_columns, piecenumber, settings);
   } else if (num_columns <= 2048) {
-    solver = std::make_unique<SimdExactCover2048>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover2048>(num_columns, piecenumber, settings);
   } else if (num_columns <= 4096) {
-    solver = std::make_unique<SimdExactCover4096>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover4096>(num_columns, piecenumber, settings);
   } else if (num_columns <= 8192) {
-    solver = std::make_unique<SimdExactCover8192>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover8192>(num_columns, piecenumber, settings);
   } else if (num_columns <= 16384) {
-    solver = std::make_unique<SimdExactCover16384>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover16384>(num_columns, piecenumber, settings);
   } else {
-    solver = std::make_unique<SimdExactCover32768>(num_columns, piecenumber);
+    solver = std::make_unique<SimdExactCover32768>(num_columns, piecenumber, settings);
   }
 
   for (unsigned int c = right[0]; c != 0; c = right[c]) {

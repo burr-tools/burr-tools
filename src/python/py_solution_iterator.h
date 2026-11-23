@@ -1,6 +1,7 @@
 #pragma once
 
 #include "py_solution.h"
+#include "lib/solver_config.h"
 
 #include <memory>
 #include <deque>
@@ -63,7 +64,7 @@ private:
   bool reduce;
   bool keep_rotations;
   bool keep_mirror;
-  unsigned int threads;
+  solverSettings_t settings;
 
   std::unique_ptr<assembler_c> assm;
   std::unique_ptr<disassembler_c> disasm;
