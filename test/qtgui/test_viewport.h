@@ -52,15 +52,16 @@ private slots:
   void rendersTheShapeOnTheCanvas();
   void lightingChangesTheShading();
   void darkThemeUsesTheDarkCanvas();
+  void darkThemeRebuildsTheMeshInTheDarkPieceColours();
   void theSlabTintsItsLayer();
   void dimmingFadesTheOtherLayersInEveryStyle();
   void dimmingLeavesTheActiveLayerAsItIs();
   void everyGridTypeRenders();
   void orthographicDiffersFromPerspective();
   void theStlPreviewDrawsTheMeshAndItsInsides();
-  void theFlatStyleOutlinesEveryVoxelFace();
+  void theFlatStyleOutlinesTheShapesEdges();
   void translucencyBlendsInLinearLight();
-  void innerVariableVoxelsShowThroughTheOuterOnes();
+  void variableVoxelsAreOneBodyShowingTheirNearestSurface();
   void variableVoxelEdgesAreEvenDashes();
   void hoveringTheGridDrawsTheGhost();
   void theTargetsOutgrowTheViewInSteps();

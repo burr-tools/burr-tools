@@ -26,9 +26,10 @@ it as part of the UI. WCAG 2.1 AA is the yardstick.
   themselves in `openPopups`); Enter presses a dialog's default button;
   arrows move within lists and menus. New single-letter shortcuts need care
   (WCAG 2.1.4): prefer them scoped to the view they act on.
-- **Contrast and colour:** text ≥ 4.5:1, borders, focus rings and state
-  indicators ≥ 3:1 against what they sit on, in both themes; never colour or
-  hue alone for a state (add text, a mark, a weight or a bar).
+- **Contrast and colour:** text ≥ 4.5:1 (the label on a shape's colour
+  ≥ 3:1: one text colour for all of a theme's shape colours), borders, focus
+  rings and state indicators ≥ 3:1 against what they sit on, in both themes;
+  never colour or hue alone for a state (add text, a mark, a weight or a bar).
   `tst_quality.qml` computes contrast — extend its pairs when you add a
   surface.
 - **Status changes are announced:** a message to the user goes through

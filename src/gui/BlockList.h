@@ -183,6 +183,10 @@ public:
   /* return the colour for the block */
   virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b) = 0;
 
+  /* whether the blocks' colours are piece colours, which all take white
+   * text, rather than colours of any lightness */
+  virtual bool pieceColours(void) const { return true; }
+
   /* return the text for the block (not more than 20 characters */
   virtual void getText(unsigned int block, char * text) = 0;
   virtual void blockDraw(unsigned int block, int x, int y);
@@ -230,6 +234,9 @@ public:
 
   /* return the colour for the block */
   virtual void getColor(unsigned int block, unsigned char *r,  unsigned char *g, unsigned char *b);
+
+  /* the user's colours can be as light or dark as they like */
+  virtual bool pieceColours(void) const { return false; }
 
   /* return the text for the block (not more than 20 characters */
   virtual void getText(unsigned int block, char * text);

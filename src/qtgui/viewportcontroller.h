@@ -183,6 +183,7 @@ private:
   std::shared_ptr<const btui::ShapeMesh> m_mesh;
   quint64 m_meshRevision = 0;
   btui::VoxelStyle m_meshStyle = btui::VoxelStyle::Flat;   ///< the voxel style m_mesh was built in
+  bool m_meshDark = false;         ///< m_mesh was built with the dark-background piece colours
   bool m_meshDirty = false;        ///< m_mesh is not the selected shape's as it is now
   bool m_meshQueued = false;       ///< a buildMesh() is posted
   /* the layer slab of the shape as m_mesh shows it, the editor's plane and

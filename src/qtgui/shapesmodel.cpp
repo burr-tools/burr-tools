@@ -19,6 +19,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "shapesmodel.h"
+#include "theme.h"
 #include "documentcontroller.h"
 #include "guarded.h"
 
@@ -47,6 +48,12 @@ ShapesModel::ShapesModel(DocumentController * doc, QObject * parent) :
   // the change names the shape to select: one selectedChanged, for the end state
   connect(doc, &DocumentController::historyApplied, this, [this](int, int shape) { refresh(false, shape); });
   connect(doc, &DocumentController::puzzleEdited, this, &ShapesModel::edited);
+  // the piece colours follow the theme's background (Theme::updateDark)
+  if (Theme * t = Theme::instance())
+    connect(t, &Theme::changed, this, [this] {
+      if (m_rows > 0)
+        emit dataChanged(index(0), index(m_rows - 1), { ColorRole, TextColorRole });
+    });
   refresh(true);
   select(0);
 }
@@ -67,7 +74,11 @@ const ShapesModel::Counts & ShapesModel::countsOf(int row) const {
 
 QColor ShapesModel::chipColor(int i) {
   btui::Rgb c = btui::pieceColor(i);
-  return QColor::fromRgbF(c.r, c.g, c.b);
+  /* the 8-bit colour every view draws: QColor keeps a colour made from
+   * floats at 16 bits a channel and compares all of them, so it would never
+   * equal the colour read back from a drawn pixel or a mesh vertex */
+  const QColor f = QColor::fromRgbF(c.r, c.g, c.b);
+  return QColor(f.red(), f.green(), f.blue());
 }
 
 QVariant ShapesModel::data(const QModelIndex & index, int role) const {

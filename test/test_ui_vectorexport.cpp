@@ -31,6 +31,8 @@ namespace {
         v->setState(1, 1, 1, voxel_c::VX_VARIABLE);
       MeshOptions o;
       o.piece = { 0, 0, 1 };
+      if (variable)
+        o.variableAlpha = 0.6f;   // the see-through look, whose transparency the export keeps
       mesh = buildShapeMesh(*v, o);
       cam.setViewport(320, 240);
       cam.setScene((mesh.boundsMin + mesh.boundsMax) * 0.5f, length(mesh.boundsMax - mesh.boundsMin) * 0.5f);

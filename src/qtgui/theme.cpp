@@ -20,6 +20,8 @@
  */
 #include "theme.h"
 
+#include "../uicore/palette.h"
+
 #include <QtGlobal>
 #if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
 #include <QAccessibilityHints>
@@ -198,6 +200,9 @@ bool Theme::updateDark(void) {
   if (d == m_dark)
     return false;
   m_dark = d;
+  // the piece colours come in a set for each background; whoever shows
+  // them redraws on changed()
+  btui::setPieceColorsForDarkBackground(d);
   emit changed();
   return true;
 }

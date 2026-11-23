@@ -18,7 +18,8 @@ For `src/qtgui/qml/`. Accessibility rules are in `llm_docs/qt_gui_accessibility.
   concatenation of sentence parts.
 - **Colours, sizes, radii, durations from `Theme`**, never literals. Text on
   a shape's colour uses the model's `chipTextColor` / `App.viewport.shapeTextColor`
-  (`btui::prefersWhiteText`, a WCAG rule), never a local formula.
+  (`btui::prefersWhiteText`: white in the light theme, black in the dark
+  one), never a local formula.
 - **Only characters the app font has** in string literals: `›` not `▸`, no
   emoji or symbol glyphs (draw them, or use `Icon`). Windows otherwise reads
   every installed font for a fallback (hundreds of ms), and

@@ -188,7 +188,8 @@ struct SceneRenderer::Impl {
   bool triangleUploaded = false;
 
   std::unique_ptr<QRhiGraphicsPipeline> opaque, opaqueBothSides, depthOnly, translucent, layered, xray, overlay, lines,
-                                        linesFirst, composite, layeredBothSides, ghost, ghostHidden, linesHidden;
+                                        linesFirst, composite, layeredBothSides, ghost, ghostHidden, linesHidden,
+                                        layeredDepth, layeredDepthBothSides;
   QRhiRenderPassDescriptor * compositeRp = nullptr;   // what `composite` was made for
 
   // the mesh, uploaded once per mesh object and revision: revisions alone
@@ -205,9 +206,13 @@ struct SceneRenderer::Impl {
   std::vector<btui::Vec3> translucentCentres;
   /* While Dim other layers is on, every triangle is drawn that way (the
    * dimmed ones are see-through): the opaque triangles' centres, then the
-   * translucent ones', in the mesh's order. */
+   * translucent ones', in the mesh's order. Where the translucent voxels
+   * show only their nearest surface (SceneFrame::translucentLayers off),
+   * only the opaque triangles go that way, and allCentres holds theirs. */
   std::vector<btui::Vec3> allCentres;
-  bool sortedAll = false;                        // layeredIdx holds every triangle
+  bool allCentresOpaqueOnly = false;
+  enum class Sorted { Translucent, All, Opaque };
+  Sorted sortedSet = Sorted::Translucent;        // which triangles layeredIdx holds
   btui::DepthSorter sorter;
   std::vector<quint32> layeredIdx;
   GrowBuffer layeredIndex;
@@ -286,6 +291,8 @@ void SceneRenderer::Impl::releaseScene(void) {
   translucent.reset();
   layered.reset();
   layeredBothSides.reset();
+  layeredDepth.reset();
+  layeredDepthBothSides.reset();
   xray.reset();
   overlay.reset();
   ghost.reset();
@@ -486,6 +493,9 @@ void SceneRenderer::Impl::createScenePipelines(void) {
   // every layer, back to front, in front of the opaque voxels
   layered = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::Back, false, GP::LessOrEqual, &blend);
   layeredBothSides = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, false, GP::LessOrEqual, &blend);
+  // the same, writing depth: the opaque voxels while dimming, before the nearest translucent surface
+  layeredDepth = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::Back, true, GP::LessOrEqual, &blend);
+  layeredDepthBothSides = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, true, GP::LessOrEqual, &blend);
   xray = make(meshVs, meshFs, meshLayout, meshSrb.get(), GP::None, false, GP::Always, &blend);
   overlay = make(meshVs, meshFs, meshLayout, overlaySrb.get(), GP::None, false, GP::LessOrEqual, &blend);
   lines = make(lineVs, lineFs, lineLayout, lineSrb.get(), GP::None, false, GP::LessOrEqual, &blend);
@@ -571,20 +581,31 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
    * alpha would only reach the destination, which the window ignores. */
   const bool dimming = f.dimAxis >= 0 && !f.xray && d->opaqueCount + d->translucentCount > 0;
   const bool layers = !f.xray && ((f.translucentLayers && d->translucentCount) || dimming);
-  if (dimming && d->allCentres.empty() && f.mesh) {
+  /* dimming where the translucent voxels show their nearest surface only:
+   * the opaque triangles back to front, writing depth, then the translucent
+   * ones as without dimming, so dimming the active layer changes nothing */
+  const bool dimNearest = dimming && !f.translucentLayers;
+  if (dimming && f.mesh && (d->allCentres.empty() || d->allCentresOpaqueOnly != dimNearest)) {
+    d->allCentres.clear();
     d->allCentres.reserve((d->opaqueCount + d->translucentCount) / 3);
-    for (const auto * part : { &f.mesh->opaque, &f.mesh->translucent })
-      faceCentres(*part, d->allCentres);
+    faceCentres(f.mesh->opaque, d->allCentres);
+    if (!dimNearest)
+      faceCentres(f.mesh->translucent, d->allCentres);
+    d->allCentresOpaqueOnly = dimNearest;
   }
-  if (layers && (!d->sorted || d->sortedAll != dimming || !btui::sameRotation(f.view, d->sortedView))) {
+  const Impl::Sorted want =
+    !dimming ? Impl::Sorted::Translucent : dimNearest ? Impl::Sorted::Opaque : Impl::Sorted::All;
+  if (layers && (!d->sorted || d->sortedSet != want || !btui::sameRotation(f.view, d->sortedView))) {
     if (dimming)
       d->sorter.sort(d->allCentres, f.view, 0, d->layeredIdx);
     else
       d->sorter.sort(d->translucentCentres, f.view, d->opaqueCount, d->layeredIdx);
-    d->sortedAll = dimming;
+    d->sortedSet = want;
     const quint32 bytes = quint32(d->layeredIdx.size() * sizeof(quint32));
-    d->layeredIndex.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::IndexBuffer);
-    u->updateDynamicBuffer(d->layeredIndex.buf.get(), 0, bytes, d->layeredIdx.data());
+    if (bytes) {
+      d->layeredIndex.ensure(rhi, bytes, QRhiBuffer::Dynamic, QRhiBuffer::IndexBuffer);
+      u->updateDynamicBuffer(d->layeredIndex.buf.get(), 0, bytes, d->layeredIdx.data());
+    }
     d->sortedView = f.view;
     d->sorted = true;
   }
@@ -768,21 +789,28 @@ bool SceneRenderer::render(QRhiCommandBuffer * cb, QRhiRenderTarget * rt, const 
     cb->draw(lineCount);
   }
 
-  if (d->meshVbuf && layers) {
+  if (d->meshVbuf && layers && !d->layeredIdx.empty()) {
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), 0);
-    cb->setGraphicsPipeline(f.cullBackFaces ? d->layered.get() : d->layeredBothSides.get());
+    if (dimNearest)
+      cb->setGraphicsPipeline(f.cullBackFaces ? d->layeredDepth.get() : d->layeredDepthBothSides.get());
+    else
+      cb->setGraphicsPipeline(f.cullBackFaces ? d->layered.get() : d->layeredBothSides.get());
     cb->setViewport(vp);
     cb->setShaderResources();
     cb->setVertexInput(0, 1, &vi, d->layeredIndex.buf.get(), 0, QRhiCommandBuffer::IndexUInt32);
     cb->drawIndexed(quint32(d->layeredIdx.size()));
-  } else if (d->meshVbuf && d->translucentCount && f.xray) {
+  }
+  // the translucent triangles, unless the layers above held them: a
+  // translucent voxel behind a dimmed one is hidden by its depth then
+  const bool translucentInLayers = layers && !dimNearest;
+  if (!translucentInLayers && d->meshVbuf && d->translucentCount && f.xray) {
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), d->opaqueCount * kMeshStride);
     cb->setGraphicsPipeline(d->xray.get());
     cb->setViewport(vp);
     cb->setShaderResources();
     cb->setVertexInput(0, 1, &vi);
     cb->draw(d->translucentCount);
-  } else if (d->meshVbuf && d->translucentCount) {
+  } else if (!translucentInLayers && d->meshVbuf && d->translucentCount) {
     const QRhiCommandBuffer::VertexInput vi(d->meshVbuf.get(), d->opaqueCount * kMeshStride);
     // depth first, then colour on that depth: only the nearest translucent
     // surface is blended (legacy voxelframe.cpp, run 1)

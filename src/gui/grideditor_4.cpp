@@ -116,15 +116,6 @@ void gridEditor_4_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
     fl_polygon(x1, y1, x2, y2, x3, y3, x4, y4);
 }
 
-void gridEditor_4_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
-
-  if (getPolygon(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, &x4, &y4, 3) == 3)
-    fl_polygon(x1, y1, x2, y2, x3, y3);
-  else
-    fl_polygon(x1, y1, x2, y2, x3, y3, x4, y4);
-}
-
 void gridEditor_4_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
   int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0, x4 = 0, y4 = 0;
 
