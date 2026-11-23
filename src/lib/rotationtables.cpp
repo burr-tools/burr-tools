@@ -614,8 +614,9 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
   rotationSettings_t settings = given;
   settings.decide.stop = control.stop;
 
+  auto stopped = [&]() { return control.stop && control.stop->load(std::memory_order_relaxed); };
   auto each = [&](turnScene_t & t) {
-    if (control.stop && control.stop->load(std::memory_order_relaxed)) {
+    if (stopped()) {
       result.stopped = true;
       return false;
     }
@@ -631,10 +632,18 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
     const rotationGeometry::playBound_t pb =
       rotationGeometry::requiredPlay(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.decide,
                                      0.0005, 0.4, recorded);
+    if (stopped()) {
+      result.stopped = true;
+      return false;
+    }
     /* and the bevel it needs at the model's play */
     const rotationGeometry::playBound_t bb =
       rotationGeometry::requiredBevel(moving, stat, r->axis, hx, hy, hz, sense, settings.model, settings.decide,
                                       0.0005, recorded);
+    if (stopped()) {
+      result.stopped = true;
+      return false;
+    }
     if (bb.found)
       result.bevelUpper = std::max(result.bevelUpper, bb.upper);
     else
@@ -653,6 +662,10 @@ turnPlay_t optimizeTurns(separation_c * s, const assembly_c * a, const problem_c
     /* the path with the most room at the model's play */
     const rotationGeometry::planarScene_c scene(moving, stat, r->axis, hx, hy, hz, settings.model);
     const rotationGeometry::turnPlan_t best = rotationGeometry::widestTurn(scene, sense, settings.decide);
+    if (stopped()) {
+      result.stopped = true;
+      return false;
+    }
     if (control.done)
       control.done->fetch_add(1, std::memory_order_relaxed);
     /* otherwise the recorded path stays, the model's play is where it was found */

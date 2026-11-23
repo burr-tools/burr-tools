@@ -570,10 +570,10 @@ double planarScene_c::segmentMinimum(const pose_t & a, const pose_t & b, double 
     if (best < stopBelow)
       return best;
     const interval_t i = todo.top();
-    if (i.lower >= best - eps || (i.s1 - i.s0) * lipschitz < MIN_DISPLACEMENT)
+    const double sm = 0.5 * (i.s0 + i.s1);
+    if (i.lower >= best - eps || (i.s1 - i.s0) * lipschitz < MIN_DISPLACEMENT || sm == i.s0 || sm == i.s1)
       return std::min(i.lower, best);
     todo.pop();
-    const double sm = 0.5 * (i.s0 + i.s1);
     push(i.s0, sm);
     push(sm, i.s1);
   }
@@ -581,7 +581,13 @@ double planarScene_c::segmentMinimum(const pose_t & a, const pose_t & b, double 
 
 double planarScene_c::minClearance(const std::vector<pose_t> & waypoints, double eps) const {
 
-  bt_assert(!waypoints.empty());
+  if (waypoints.empty())
+    bt_te("minClearance: empty path");
+  if (!std::isfinite(eps) || !(eps > 0))
+    bt_te("minClearance: eps must be positive and finite");
+  for (const pose_t & p : waypoints)
+    if (!std::isfinite(p.theta) || !std::isfinite(p.du) || !std::isfinite(p.dv))
+      bt_te("minClearance: non-finite pose");
   if (waypoints.size() == 1)
     return clearance(waypoints[0]);
 
@@ -593,7 +599,13 @@ double planarScene_c::minClearance(const std::vector<pose_t> & waypoints, double
 
 bool planarScene_c::clearanceAtLeast(const std::vector<pose_t> & waypoints, double threshold) const {
 
-  bt_assert(!waypoints.empty());
+  if (waypoints.empty())
+    bt_te("clearanceAtLeast: empty path");
+  if (!std::isfinite(threshold))
+    bt_te("clearanceAtLeast: threshold must be finite");
+  for (const pose_t & p : waypoints)
+    if (!std::isfinite(p.theta) || !std::isfinite(p.du) || !std::isfinite(p.dv))
+      bt_te("clearanceAtLeast: non-finite pose");
   if (clearance(waypoints[0]) < threshold)
     return false;
 
@@ -608,13 +620,19 @@ bool planarScene_c::clearanceAtLeast(const std::vector<pose_t> & waypoints, doub
       todo.pop_back();
       const double sm = 0.5 * (s0 + s1);
       const double c = clearance(lerp(a, b, sm));
-      if (c < threshold || (s1 - s0) * lipschitz < MIN_DISPLACEMENT)
+      if (c < threshold)
         return false;
       /* the sample proves sm ± (c - threshold) / lipschitz */
       const double w = (lipschitz > 0) ? (c - threshold) / lipschitz : 1;
-      if (sm - w > s0)
+      const bool left = sm - w > s0;
+      const bool right = sm + w < s1;
+      if (!left && !right)
+        continue;
+      if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT || sm == s0 || sm == s1)
+        return false;
+      if (left)
         todo.push_back({ s0, sm - w });
-      if (sm + w < s1)
+      if (right)
         todo.push_back({ sm + w, s1 });
     }
   }
@@ -626,7 +644,8 @@ bool validModel(const model_t & model) {
 }
 
 path_t reversePath(const path_t & path) {
-  bt_assert(!path.empty());
+  if (path.empty())
+    bt_te("reversePath: empty path");
   const double end = path.back().theta;
   path_t r;
   for (auto it = path.rbegin(); it != path.rend(); ++it)
@@ -637,6 +656,8 @@ path_t reversePath(const path_t & path) {
 /* The polyline with fewer waypoints: from each kept waypoint jump to the
  * farthest one the straight segment reaches with at least `keep` clearance. */
 path_t shortcutPath(const planarScene_c & scene, const path_t & full, double keep) {
+  if (full.empty())
+    bt_te("shortcutPath: empty path");
   path_t path = { full[0] };
   size_t i = 0;
   while (i + 1 < full.size()) {

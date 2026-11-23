@@ -266,6 +266,7 @@ class rotationContext_c {
      *  statBuilder() -> const std::vector<cell_t> & invoked only when the
      *  planner actually runs, avoiding per-candidate stat/occupancy copies. */
     template<typename OccupiedFn, typename StatFn>
+    requires std::invocable<const OccupiedFn &, int, int, int>
     int turnPath(const std::vector<rotationGeometry::cell_t> & moving, const OccupiedFn & isStatic,
                  StatFn && statBuilder,
                  unsigned int axis, int hx, int hy, int hz, unsigned int sense) {

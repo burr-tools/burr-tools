@@ -282,6 +282,20 @@ TEST_CASE("decideTurn rejects settings it cannot search with", "[rotations]") {
   s = decideSettings_t();
   s.margin = -1e-3;
   CHECK_THROWS(decideTurn(scene, 0, s));
+  CHECK_THROWS(widestTurn(scene, 0, decideSettings_t(), 0));
+  CHECK_THROWS(requiredPlay(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense, SHARP_MODEL, decideSettings_t(), 0));
+  CHECK_THROWS(requiredBevel(t.moving, t.stat, t.axis, t.hx, t.hy, t.hz, t.sense, SHARP_MODEL, decideSettings_t(), -1));
+  CHECK_THROWS(scene.minClearance({}));
+  CHECK_THROWS(scene.clearanceAtLeast({}, 0));
+  CHECK_THROWS(reversePath({}));
+  CHECK_THROWS(shortcutPath(scene, {}, 0));
+}
+
+TEST_CASE("clearanceAtLeast accepts zero-length and sub-MIN_DISPLACEMENT segments with room", "[rotations]") {
+  const planarScene_c scene({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, SHARP_MODEL);
+  CHECK(scene.clearanceAtLeast({ { 0, 0, 0 }, { 0, 0, 0 } }, 0.05));
+  CHECK(scene.clearanceAtLeast({ { 0, 0, 0 }, { 1e-8, 0, 0 } }, 0.05));
+  CHECK_FALSE(scene.clearanceAtLeast({ { 0, 0, 0 }, { 0, 0, 0 } }, 0.2));
 }
 
 TEST_CASE("decideTurn never contradicts a certified path", "[rotations]") {

@@ -557,7 +557,8 @@ public:
       while (!queue.empty()) {
         const auto [d, id] = queue.top();
         queue.pop();
-        if (id < -1) {
+        if (id < 0) {
+          bt_assert(id <= -2);
           hit = -2 - id;
           hitDist = d;
           break;
@@ -805,6 +806,9 @@ verdict_e certifyRemoval(const std::vector<cell_t> & moving, const std::vector<c
 
 turnPlan_t widestTurn(const planarScene_c & scene, unsigned int sense, const decideSettings_t & settings, double tolerance) {
 
+  if (!std::isfinite(tolerance) || !(tolerance > 0))
+    bt_te("widestTurn: tolerance must be positive and finite");
+
   turnPlan_t plan;
   turnDecision_t best = decideTurn(scene, sense, settings);
   if (best.answer != TURN_POSSIBLE) {
@@ -823,6 +827,10 @@ turnPlan_t widestTurn(const planarScene_c & scene, unsigned int sense, const dec
   decideSettings_t wider = settings;
   wider.resolution = std::max(settings.resolution, 0.25 * tolerance);
   while (hi - lo > tolerance) {
+    if (settings.stop && settings.stop->load(std::memory_order_relaxed)) {
+      plan.undecided = true;
+      return plan;
+    }
     wider.margin = 0.5 * (lo + hi);
     turnDecision_t d = poseBoxes_c(scene, sense, wider, wider.margin).run();
     if (d.answer == TURN_POSSIBLE) {
@@ -831,6 +839,10 @@ turnPlan_t widestTurn(const planarScene_c & scene, unsigned int sense, const dec
     }
     else
       hi = wider.margin;
+  }
+  if (settings.stop && settings.stop->load(std::memory_order_relaxed)) {
+    plan.undecided = true;
+    return plan;
   }
 
   plan.found = true;
@@ -853,12 +865,18 @@ playBound_t bisectModel(const std::vector<cell_t> & moving, const std::vector<ce
                         const decideSettings_t & settings, double tolerance, double start, double lowest, double highest,
                         double minStep, bool tryLowest, const std::vector<knownPath_t> & known, ModelAt modelAt) {
 
+  if (!std::isfinite(tolerance) || !(tolerance > 0))
+    bt_te("bisectModel: tolerance must be positive and finite");
+
   playBound_t result;
+  auto stopped = [&]() { return settings.stop && settings.stop->load(std::memory_order_relaxed); };
 
   /* is the turn possible at x: answerTurn says so. The largest value
    * proven impossible is kept on the way. */
   double impossible = 0;
   auto tryAt = [&](double x) {
+    if (stopped())
+      return false;
     turnVerdict_t v = answerTurn(moving, stat, axis, pivotHx, pivotHy, pivotHz, sense, modelAt(x), settings, known);
     if (v.answer == TURN_IMPOSSIBLE)
       impossible = std::max(impossible, x);
@@ -873,7 +891,7 @@ playBound_t bisectModel(const std::vector<cell_t> & moving, const std::vector<ce
   double lo = lowest, hi = start;
   if (!tryAt(start)) {
     bool found = false;
-    while (!found && hi < highest) {
+    while (!found && hi < highest && !stopped()) {
       lo = hi;
       hi = std::min(highest, std::max(1.5 * hi, hi + minStep));
       found = tryAt(hi);
@@ -883,15 +901,19 @@ playBound_t bisectModel(const std::vector<cell_t> & moving, const std::vector<ce
       return result;
     }
   }
-  else if (tryLowest && start > lowest && tryAt(lowest))
+  else if (tryLowest && start > lowest && !stopped() && tryAt(lowest))
     hi = lo;
 
-  while (hi - lo > tolerance) {
+  while (hi - lo > tolerance && !stopped()) {
     const double mid = 0.5 * (lo + hi);
     if (tryAt(mid))
       hi = mid;
     else
       lo = mid;
+  }
+  if (stopped()) {
+    result.lower = impossible;
+    return result;
   }
   result.found = true;
   result.upper = hi;
@@ -899,7 +921,7 @@ playBound_t bisectModel(const std::vector<cell_t> & moving, const std::vector<ce
   /* the lower end: the largest value proven impossible. Impossible stays
    * impossible below, so this is a bisection too, between the two proofs. */
   double below = impossible, above = hi;
-  while (above - below > tolerance) {
+  while (above - below > tolerance && !stopped()) {
     const double mid = 0.5 * (below + above);
     const planarScene_c scene(moving, stat, axis, pivotHx, pivotHy, pivotHz, modelAt(mid));
     if (decideTurn(scene, sense, settings).answer == TURN_IMPOSSIBLE)
