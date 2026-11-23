@@ -452,6 +452,8 @@ TEST_CASE("invalid axes, senses and kinds throw, in release builds too", "[rotat
   CHECK_THROWS_AS(makePath({ PATH_PURE, 2, 0, 0, 0 }), assert_exception);
   CHECK_THROWS_AS(makePath({ (pathKind_e)3, 0, 1, 0, 0.1 }), assert_exception);
   CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, 1, 0, inf }), assert_exception);
+  CHECK_THROWS_AS(poseAt({}, 0.5), assert_exception);
+  CHECK_THROWS_AS(poseAt({ { 0, 0, 0 }, { QUARTER, 0, 0 } }, nan), assert_exception);
   CHECK_THROWS_AS(pathTable_c(model, 1, { PATH_SLIDE, 2, 1, 0, 0.1 }), assert_exception);
   CHECK_THROWS_AS(rotationTables_c(model, 1, { nan }), assert_exception);
 

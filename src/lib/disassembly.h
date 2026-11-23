@@ -30,7 +30,6 @@
 
 #include <deque>
 #include <memory>
-#include <optional>
 #include <vector>
 #include <string>
 
@@ -106,17 +105,22 @@ struct stateRotation_t {
  */
 class state_c {
 
+  struct rotData_t {
+    /** orientations of all pieces, only in disassemblies made with rotation
+     *  moves; empty means every piece keeps its orientation from the assembly */
+    std::vector<unsigned char> dt;
+    /** the rotation move leading into this state, if it is one */
+    std::unique_ptr<stateRotation_t> rotation;
+  };
+
   /** contains the x positions of all the pieces that are handled */
   std::vector<int> dx;
   /** contains the y positions of all the pieces that are handled */
   std::vector<int> dy;
   /** contains the z positions of all the pieces that are handled */
   std::vector<int> dz;
-  /** orientations of all pieces, only in disassemblies made with rotation
-   *  moves; empty means every piece keeps its orientation from the assembly */
-  std::vector<unsigned char> dt;
-  /** the rotation move leading into this state, if it is one */
-  std::optional<stateRotation_t> rotation;
+  /** orientations and rotation move; null for translation-only states */
+  std::unique_ptr<rotData_t> rot;
 
 public:
 
@@ -157,18 +161,18 @@ public:
   }
 
   /** true if the state records piece orientations (rotation moves) */
-  bool hasTrans(void) const { return !dt.empty(); }
+  bool hasTrans(void) const { return rot && !rot->dt.empty(); }
   /** the orientation of piece i, only valid when hasTrans() */
   unsigned int getTrans(unsigned int i) const {
-    bt_assert(i < dt.size());
-    return dt[i];
+    bt_assert(rot && i < rot->dt.size());
+    return rot->dt[i];
   }
   /** record the orientation of piece i; the first call sizes the table */
   void setTrans(unsigned int piece, unsigned int trans);
 
   /** the rotation move leading into this state, nullptr for translations */
-  const stateRotation_t * getRotation(void) const { return rotation ? &*rotation : nullptr; }
-  void setRotation(const stateRotation_t & r) { rotation = r; }
+  const stateRotation_t * getRotation(void) const { return (rot && rot->rotation) ? rot->rotation.get() : nullptr; }
+  void setRotation(const stateRotation_t & r);
 
   /** check, if the piece is removed in this state */
   bool pieceRemoved(unsigned int i) const;
