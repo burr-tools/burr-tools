@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <numbers>
 #include <random>
@@ -332,7 +333,7 @@ TEST_CASE("the rotation tables decide every path like the path checker", "[rotat
       planarScene_c scene(moving, stat, axis, phx, phy, phz, setup.model);
       int firstClear = -1;
       for (unsigned int i = 0; i < tables.size(); i++) {
-        const pathTable_c & t = tables.table(sense, i);
+        const pathTableView_c t = tables.table(sense, i);
         REQUIRE(t.getSpec().sense == sense);
         bool expected = scene.certifyPath(makePath(t.getSpec())) != PATH_CLEAR;
         INFO("iteration " << it << " path " << i << " play " << setup.model.play);
@@ -358,16 +359,18 @@ TEST_CASE("turned and mirrored path tables equal directly computed ones", "[rota
   rotationTables_c tables(model, 3, { 0.3 });
 
   for (unsigned int sense = 0; sense < 2; sense++)
-    for (unsigned int i = 1; i < tables.size(); i += 3) {
-      const pathTable_c & derived = tables.table(sense, i);
+    for (unsigned int i = 0; i < tables.size(); i++) {
+      const pathTableView_c derived = tables.table(sense, i);
       pathTable_c direct(model, 3, derived.getSpec());
       INFO("sense " << sense << " path " << i);
       for (int du = -6; du <= 6; du++)
         for (int dv = -6; dv <= 6; dv++) {
           if ((du ^ dv) & 1)
             continue;
-          std::set<std::pair<int, int>> a(derived.blockers(du, dv).begin(), derived.blockers(du, dv).end());
-          std::set<std::pair<int, int>> b(direct.blockers(du, dv).begin(), direct.blockers(du, dv).end());
+          const auto dr = derived.blockers(du, dv);
+          const auto br = direct.blockers(du, dv);
+          std::set<std::pair<int, int>> a(dr.begin(), dr.end());
+          std::set<std::pair<int, int>> b(br.begin(), br.end());
           CHECK(a == b);
         }
     }
@@ -397,7 +400,8 @@ TEST_CASE("path tables find blockers of far-out cubes", "[rotations]") {
             expected.insert({ su, sv });
         }
       INFO("offset " << du << "," << dv << " kind " << spec.kind);
-      std::set<std::pair<int, int>> got(table.blockers(du, dv).begin(), table.blockers(du, dv).end());
+      const auto br = table.blockers(du, dv);
+      std::set<std::pair<int, int>> got(br.begin(), br.end());
       CHECK(got == expected);
     }
   }
@@ -428,14 +432,25 @@ TEST_CASE("invalid axes, senses and kinds throw, in release builds too", "[rotat
   CHECK_THROWS_AS(quarterTurnTrans(0, 2), assert_exception);
 
   const model_t model = { 0.081 };
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0, model), assert_exception);
+  const planarScene_c scene({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, model);
+  CHECK_THROWS_AS(scene.certifyPath({}), assert_exception);
+  CHECK_THROWS_AS(scene.certifyPath({ { nan, 0, 0 } }), assert_exception);
+  CHECK_THROWS_AS(scene.certifyPath({ { 0, 0, 0 }, { QUARTER, inf, 0 } }), assert_exception);
   CHECK_THROWS_AS(makePath({ PATH_PURE, 2, 0, 0, 0 }), assert_exception);
   CHECK_THROWS_AS(makePath({ (pathKind_e)3, 0, 1, 0, 0.1 }), assert_exception);
+  CHECK_THROWS_AS(makePath({ PATH_SLIDE, 0, 1, 0, inf }), assert_exception);
   CHECK_THROWS_AS(pathTable_c(model, 1, { PATH_SLIDE, 2, 1, 0, 0.1 }), assert_exception);
+  CHECK_THROWS_AS(rotationTables_c(model, 1, { nan }), assert_exception);
 
   rotationTables_c tables(model, 2, {});
   CHECK_THROWS_AS(tables.firstClear({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0, 0), assert_exception);
   CHECK_THROWS_AS(tables.table(0, 0).blocked({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 3, 0, 0, 0), assert_exception);
+  /* an out-of-radius cube throws even when an earlier cube is already blocked */
+  CHECK_THROWS_AS(tables.table(0, 0).blocked({ { 1, 0, 0 }, { 3, 0, 0 } }, { { 1, 1, 0 } }, 2, 0, 0, 0), assert_exception);
+  CHECK_THROWS_AS(tables.firstClear({ { 1, 0, 0 }, { 3, 0, 0 } }, { { 1, 1, 0 } }, 2, 0, 0, 0, 0), assert_exception);
 }
 
 TEST_CASE("the tables need the whole moving group within their radius", "[rotations]") {

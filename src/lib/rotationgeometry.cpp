@@ -237,7 +237,7 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
     }
     if (cl >= 0.5 * (s1 - s0) * lipschitz)
       continue;
-    if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT) {
+    if ((s1 - s0) * lipschitz < MIN_DISPLACEMENT || sm == s0 || sm == s1) {
       *v = PATH_UNDECIDED;
       return false;
     }
@@ -250,7 +250,11 @@ bool planarScene_c::certifySegment(const pose_t & a, const pose_t & b, verdict_e
 
 verdict_e planarScene_c::certifyPath(const std::vector<pose_t> & waypoints) const {
 
-  bt_assert(!waypoints.empty());
+  if (waypoints.empty())
+    bt_te("certifyPath: empty path");
+  for (const pose_t & p : waypoints)
+    if (!std::isfinite(p.theta) || !std::isfinite(p.du) || !std::isfinite(p.dv))
+      bt_te("certifyPath: non-finite pose");
 
   verdict_e v = PATH_CLEAR;
 
@@ -278,8 +282,9 @@ path_t makePath(const pathSpec_t & spec) {
   if (spec.kind == PATH_PURE)
     return { { 0, 0, 0 }, { end, 0, 0 } };
 
-  if ((spec.dirU == 0 && spec.dirV == 0) || std::abs(spec.dirU) > 1 || std::abs(spec.dirV) > 1 || !(spec.amount > 0))
-    bt_te("makePath: shifts need a compass direction and a positive amount");
+  if ((spec.dirU == 0 && spec.dirV == 0) || std::abs(spec.dirU) > 1 || std::abs(spec.dirV) > 1 ||
+      !std::isfinite(spec.amount) || !(spec.amount > 0))
+    bt_te("makePath: shifts need a compass direction and a positive finite amount");
 
   const double len = std::hypot((double)spec.dirU, (double)spec.dirV);
   const double su = spec.amount * spec.dirU / len;
@@ -354,8 +359,11 @@ void sceneOffsets(const std::vector<cell_t> & moving, const std::vector<cell_t> 
   }
 }
 
-bool tableBlocked(const pathTable_c & t, const std::vector<std::tuple<int, int, int>> & moving,
+bool tableBlocked(const pathTableView_c & t, const std::vector<std::tuple<int, int, int>> & moving,
                   const occupancy_t & occupied) {
+  for (const auto & [layer, u, v] : moving)
+    if (!t.covers(u, v) || ((u ^ v) & 1))
+      bt_te("pathTable_c::blocked: offset outside the table or on an edge pivot");
   for (const auto & [layer, u, v] : moving)
     for (const auto & [su, sv] : t.blockers(u, v))
       if (occupied.count({ layer, su, sv }))
@@ -363,21 +371,25 @@ bool tableBlocked(const pathTable_c & t, const std::vector<std::tuple<int, int, 
   return false;
 }
 
+pathSpec_t transformSpec(const pathSpec_t & base, unsigned char xform) {
+  pathSpec_t s = base;
+  if (xform & 4)
+    s.sense = 1 - base.sense;
+  auto [du, dv] = applyOffsetTransform(xform, base.dirU, base.dirV);
+  s.dirU = du;
+  s.dirV = dv;
+  return s;
 }
 
-pathTable_c::pathTable_c(int r, const pathSpec_t & s) :
-  radius(r),
-  width(4 * r + 1),
-  spec(s),
-  table(width * width)
-{
-  if (r < 1)
-    bt_te("pathTable_c: radius must be at least 1");
 }
 
 pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
-  pathTable_c(r, s)
+  radius(r),
+  spec(s)
 {
+  if (r < 1)
+    bt_te("pathTable_c: radius must be at least 1");
+
   const path_t path = makePath(spec);
   const double angle = path.back().theta;
   const double shift = (spec.kind == PATH_PURE) ? 0 : spec.amount;
@@ -389,86 +401,102 @@ pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
   const double hitRange = std::sqrt(2.0) * (1 - model.play) + shift + 1e-6;
   /* the arcs stay within radius·√2 of the pivot along each axis */
   const int reach = 2 * ((int)std::ceil(r * std::sqrt(2.0) + hitRange) + 1);
+  if (reach > std::numeric_limits<int16_t>::max())
+    bt_te("pathTable_c: radius too large");
 
-  for (int du = -2 * r; du <= 2 * r; du++)
-    for (int dv = -2 * r; dv <= 2 * r; dv++) {
-      int parity = du & 1;
-      if ((dv & 1) != parity)
-        continue;
+  const int evenW = 2 * r + 1;
+  const int oddW = 2 * r;
+  const size_t numSlots = (size_t)evenW * evenW + (size_t)oddW * oddW;
+  offsets.resize(numSlots + 1);
 
-      /* place the pivot at the origin's centre or corner in the Z frame,
-       * where (u, v) = (x, y); the cells follow from the doubled offsets */
-      const cell_t moving = { (du + parity) / 2, (dv + parity) / 2, 0 };
-      std::vector<std::pair<int, int>> & entry = table[index(du, dv)];
+  auto fillSlot = [&](size_t idx, int du, int dv, int parity) {
+    offsets[idx] = (uint32_t)entries.size();
+    /* place the pivot at the origin's centre or corner in the Z frame,
+     * where (u, v) = (x, y); the cells follow from the doubled offsets */
+    const cell_t moving = { (du + parity) / 2, (dv + parity) / 2, 0 };
 
-      for (int su = -reach + parity; su <= reach; su += 2)
-        for (int sv = -reach + parity; sv <= reach; sv += 2) {
-          if (su == du && sv == dv)
-            continue;
-          if (arcDistance(0.5 * su, 0.5 * sv, 0.5 * du, 0.5 * dv, angle) > hitRange)
-            continue;
-          const cell_t stat = { (su + parity) / 2, (sv + parity) / 2, 0 };
-          planarScene_c scene({ moving }, { stat }, 2, parity, parity, 0, model);
-          if (scene.certifyPath(path) != PATH_CLEAR)
-            entry.push_back({ su, sv });
-        }
-    }
+    for (int su = -reach + parity; su <= reach; su += 2)
+      for (int sv = -reach + parity; sv <= reach; sv += 2) {
+        if (su == du && sv == dv)
+          continue;
+        if (arcDistance(0.5 * su, 0.5 * sv, 0.5 * du, 0.5 * dv, angle) > hitRange)
+          continue;
+        const cell_t stat = { (su + parity) / 2, (sv + parity) / 2, 0 };
+        planarScene_c scene({ moving }, { stat }, 2, parity, parity, 0, model);
+        if (scene.certifyPath(path) != PATH_CLEAR)
+          entries.push_back({ (int16_t)su, (int16_t)sv });
+      }
+  };
+
+  size_t idx = 0;
+  for (int eu = 0; eu < evenW; eu++)
+    for (int ev = 0; ev < evenW; ev++)
+      fillSlot(idx++, 2 * eu - 2 * r, 2 * ev - 2 * r, 0);
+  for (int ou = 0; ou < oddW; ou++)
+    for (int ov = 0; ov < oddW; ov++)
+      fillSlot(idx++, 2 * ou - 2 * r + 1, 2 * ov - 2 * r + 1, 1);
+  offsets[numSlots] = (uint32_t)entries.size();
+  entries.shrink_to_fit();
 }
 
-unsigned int pathTable_c::index(int du, int dv) const {
-  return (unsigned int)((du + 2 * radius) * width + dv + 2 * radius);
+unsigned int pathTable_c::slot(int du, int dv) const {
+  const int evenW = 2 * radius + 1;
+  if ((du & 1) == 0) {
+    int eu = (du + 2 * radius) >> 1;
+    int ev = (dv + 2 * radius) >> 1;
+    return (unsigned int)(eu * evenW + ev);
+  }
+  const int oddW = 2 * radius;
+  int ou = (du + 2 * radius - 1) >> 1;
+  int ov = (dv + 2 * radius - 1) >> 1;
+  return (unsigned int)(evenW * evenW + ou * oddW + ov);
 }
 
 bool pathTable_c::covers(int du, int dv) const {
   return du >= -2 * radius && du <= 2 * radius && dv >= -2 * radius && dv <= 2 * radius;
 }
 
-const std::vector<std::pair<int, int>> & pathTable_c::blockers(int du, int dv) const {
+blockerRange_c pathTable_c::blockersTransformed(int du, int dv, unsigned char xform) const {
+  const unsigned int s = slot(du, dv);
+  const auto * data = entries.data();
+  return blockerRange_c(data + offsets[s], data + offsets[s + 1], xform);
+}
+
+blockerRange_c pathTable_c::blockers(int du, int dv) const {
   if (!covers(du, dv) || ((du ^ dv) & 1))
     bt_te("pathTable_c::blockers: offset outside the table or on an edge pivot");
-  return table[index(du, dv)];
+  return blockersTransformed(du, dv, 0);
 }
 
 bool pathTable_c::blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                           unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const {
+  return pathTableView_c(*this).blocked(moving, stat, axis, pivotHx, pivotHy, pivotHz);
+}
+
+blockerRange_c pathTableView_c::blockers(int du, int dv) const {
+  if (!base->covers(du, dv) || ((du ^ dv) & 1))
+    bt_te("pathTable_c::blockers: offset outside the table or on an edge pivot");
+  auto [bu, bv] = applyOffsetTransform(inverseOffsetTransform(xform), du, dv);
+  return base->blockersTransformed(bu, bv, xform);
+}
+
+bool pathTableView_c::blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                              unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const {
   std::vector<std::tuple<int, int, int>> mv;
   occupancy_t occupied;
   sceneOffsets(moving, stat, axis, pivotHx, pivotHy, pivotHz, &mv, &occupied);
   return tableBlocked(*this, mv, occupied);
 }
 
-pathTable_c pathTable_c::turned(void) const {
-
-  pathSpec_t s = spec;
-  s.dirU = -spec.dirV;
-  s.dirV = spec.dirU;
-
-  pathTable_c t(radius, s);
-  for (int du = -2 * radius; du <= 2 * radius; du++)
-    for (int dv = -2 * radius; dv <= 2 * radius; dv++)
-      for (const auto & [su, sv] : table[index(du, dv)])
-        t.table[t.index(-dv, du)].push_back({ -sv, su });
-  return t;
-}
-
-pathTable_c pathTable_c::mirrored(void) const {
-
-  pathSpec_t s = spec;
-  s.sense = 1 - spec.sense;
-  s.dirV = -spec.dirV;
-
-  pathTable_c t(radius, s);
-  for (int du = -2 * radius; du <= 2 * radius; du++)
-    for (int dv = -2 * radius; dv <= 2 * radius; dv++)
-      for (const auto & [su, sv] : table[index(du, dv)])
-        t.table[t.index(du, -dv)].push_back({ su, -sv });
-  return t;
-}
-
 rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vector<double> & amounts) :
   radius(r)
 {
-  tables[0].push_back(pathTable_c(model, r, { PATH_PURE, 0, 0, 0, 0 }));
+  baseTables.emplace_back(model, r, pathSpec_t{ PATH_PURE, 0, 0, 0, 0 });
+  paths[0].push_back({ 0, 0, baseTables[0].getSpec() });
+
+  for (double a : amounts)
+    if (!std::isfinite(a) || !(a > 0))
+      bt_te("rotationTables_c: shift amounts must be positive and finite");
 
   std::vector<double> ascending = amounts;
   std::sort(ascending.begin(), ascending.end());
@@ -477,27 +505,29 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
   for (double amount : ascending)
     for (pathKind_e kind : { PATH_WIGGLE, PATH_SLIDE }) {
       /* the 8 compass directions counter-clockwise from (1,0) alternate
-       * between turned copies of (1,0) and of (1,1) */
-      pathTable_c axisDir(model, r, { kind, 0, 1, 0, amount });
-      pathTable_c diagonal(model, r, { kind, 0, 1, 1, amount });
-      for (int k = 0; k < 4; k++) {
-        if (k > 0) {
-          axisDir = axisDir.turned();
-          diagonal = diagonal.turned();
-        }
-        tables[0].push_back(axisDir);
-        tables[0].push_back(diagonal);
+       * between turned views of (1,0) and of (1,1) */
+      const uint16_t axisIdx = (uint16_t)baseTables.size();
+      baseTables.emplace_back(model, r, pathSpec_t{ kind, 0, 1, 0, amount });
+      const uint16_t diagIdx = (uint16_t)baseTables.size();
+      baseTables.emplace_back(model, r, pathSpec_t{ kind, 0, 1, 1, amount });
+      for (unsigned char k = 0; k < 4; k++) {
+        paths[0].push_back({ axisIdx, k, transformSpec(baseTables[axisIdx].getSpec(), k) });
+        paths[0].push_back({ diagIdx, k, transformSpec(baseTables[diagIdx].getSpec(), k) });
       }
     }
 
-  for (const pathTable_c & t : tables[0])
-    tables[1].push_back(t.mirrored());
+  paths[1].reserve(paths[0].size());
+  for (const pathEntry_t & e : paths[0]) {
+    unsigned char xf = e.xform | 4;
+    paths[1].push_back({ e.baseIdx, xf, transformSpec(baseTables[e.baseIdx].getSpec(), xf) });
+  }
 }
 
-const pathTable_c & rotationTables_c::table(unsigned int sense, unsigned int idx) const {
-  if (sense > 1 || idx >= tables[sense].size())
+pathTableView_c rotationTables_c::table(unsigned int sense, unsigned int idx) const {
+  if (sense > 1 || idx >= paths[sense].size())
     bt_te("rotationTables_c::table: no such path");
-  return tables[sense][idx];
+  const pathEntry_t & e = paths[sense][idx];
+  return pathTableView_c(&baseTables[e.baseIdx], &e.spec, e.xform);
 }
 
 int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
@@ -510,8 +540,8 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const std::
   occupancy_t occupied;
   sceneOffsets(moving, stat, axis, pivotHx, pivotHy, pivotHz, &mv, &occupied);
 
-  for (size_t i = 0; i < tables[sense].size(); i++)
-    if (!tableBlocked(tables[sense][i], mv, occupied))
+  for (size_t i = 0; i < paths[sense].size(); i++)
+    if (!tableBlocked(table(sense, (unsigned int)i), mv, occupied))
       return (int)i;
   return -1;
 }

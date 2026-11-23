@@ -21,6 +21,10 @@
 #ifndef __ROTATION_GEOMETRY_H__
 #define __ROTATION_GEOMETRY_H__
 
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -142,6 +146,83 @@ namespace rotationGeometry {
 
   constexpr int WIGGLE_SEGMENTS = 16;
 
+  /** Apply one of the 8 dihedral symmetries of the square (low 2 bits: +90°
+   *  quarter turns; bit 2: mirror across the u axis after turning). */
+  inline std::pair<int, int> applyOffsetTransform(unsigned char xform, int u, int v) {
+    switch (xform) {
+      case 0: return {  u,  v };
+      case 1: return { -v,  u };
+      case 2: return { -u, -v };
+      case 3: return {  v, -u };
+      case 4: return {  u, -v };
+      case 5: return { -v, -u };
+      case 6: return { -u,  v };
+      case 7: return {  v,  u };
+      default: return { u, v };
+    }
+  }
+
+  inline unsigned char inverseOffsetTransform(unsigned char xform) {
+    static constexpr unsigned char inv[8] = { 0, 3, 2, 1, 4, 5, 6, 7 };
+    return inv[xform & 7];
+  }
+
+  /** Read-only range of static blocker offsets, transforming flat base-table
+   *  entries on the fly without copying or allocating. */
+  class blockerRange_c {
+
+    public:
+
+      class iterator {
+        public:
+          using iterator_category = std::random_access_iterator_tag;
+          using value_type = std::pair<int, int>;
+          using difference_type = std::ptrdiff_t;
+          using pointer = void;
+          using reference = std::pair<int, int>;
+
+          iterator() = default;
+          iterator(const std::pair<int16_t, int16_t> * p, unsigned char xf) : ptr(p), xform(xf) {}
+
+          std::pair<int, int> operator*() const { return applyOffsetTransform(xform, ptr->first, ptr->second); }
+          std::pair<int, int> operator[](difference_type n) const { return *(*this + n); }
+
+          iterator & operator++() { ++ptr; return *this; }
+          iterator operator++(int) { iterator tmp = *this; ++ptr; return tmp; }
+          iterator & operator--() { --ptr; return *this; }
+          iterator operator--(int) { iterator tmp = *this; --ptr; return tmp; }
+          iterator & operator+=(difference_type n) { ptr += n; return *this; }
+          iterator & operator-=(difference_type n) { ptr -= n; return *this; }
+          iterator operator+(difference_type n) const { return { ptr + n, xform }; }
+          iterator operator-(difference_type n) const { return { ptr - n, xform }; }
+          difference_type operator-(const iterator & o) const { return ptr - o.ptr; }
+
+          bool operator==(const iterator & o) const { return ptr == o.ptr; }
+          auto operator<=>(const iterator & o) const { return ptr <=> o.ptr; }
+
+        private:
+          const std::pair<int16_t, int16_t> * ptr = nullptr;
+          unsigned char xform = 0;
+      };
+
+      blockerRange_c() = default;
+      blockerRange_c(const std::pair<int16_t, int16_t> * b, const std::pair<int16_t, int16_t> * e,
+                     unsigned char xf) :
+        first(b), last(e), xform(xf) {}
+
+      iterator begin(void) const { return { first, xform }; }
+      iterator end(void) const { return { last, xform }; }
+      size_t size(void) const { return (size_t)(last - first); }
+      bool empty(void) const { return first == last; }
+
+    private:
+      const std::pair<int16_t, int16_t> * first = nullptr;
+      const std::pair<int16_t, int16_t> * last = nullptr;
+      unsigned char xform = 0;
+  };
+
+  class pathTableView_c;
+
   /**
    * Lookup table for one fixed path, filled by the certified checker.
    *
@@ -156,6 +237,9 @@ namespace rotationGeometry {
    * the frames of planarScene_c: both even for a pivot at a cube centre,
    * both odd for one at a cube corner. Mixed parity (pivot on an edge
    * midpoint) cannot map the lattice onto itself by a quarter turn.
+   *
+   * Only same-parity slots are indexed, and their blocker lists are stored
+   * flat (CSR-style) to avoid per-slot vector overhead.
    */
   class pathTable_c {
 
@@ -171,7 +255,7 @@ namespace rotationGeometry {
       bool covers(int du, int dv) const;
 
       /** Offsets of the static cubes that block the moving cube at (du, dv). */
-      const std::vector<std::pair<int, int>> & blockers(int du, int dv) const;
+      blockerRange_c blockers(int du, int dv) const;
 
       /** The path of `moving` about the pivot (doubled cell-index units)
        *  among `stat`, decided by table lookups. Throws if a moving cube is
@@ -180,38 +264,61 @@ namespace rotationGeometry {
       bool blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
                    unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const;
 
-      /** The table of this path turned by +90° about the pivot, i.e. with its
-       *  shift direction turned. Turning the whole scene commutes with the
-       *  motion, so no checker calls are needed. */
-      pathTable_c turned(void) const;
-
-      /** The table of this path mirrored at the u axis: the other sense, with
-       *  the shift direction mirrored. */
-      pathTable_c mirrored(void) const;
-
     private:
 
-      pathTable_c(int radius, const pathSpec_t & spec);
-
       int radius;
-      int width;   // 4 * radius + 1 doubled offsets per in-plane axis
       pathSpec_t spec;
 
-      /* [(du + 2 radius) * width + dv + 2 radius] */
-      std::vector<std::vector<std::pair<int, int>>> table;
+      /* Same-parity CSR layout:
+       * even slots (2r+1)^2, then odd slots (2r)^2; offsets has numSlots + 1 entries. */
+      std::vector<uint32_t> offsets;
+      std::vector<std::pair<int16_t, int16_t>> entries;
 
-      unsigned int index(int du, int dv) const;
+      unsigned int slot(int du, int dv) const;
+      blockerRange_c blockersTransformed(int du, int dv, unsigned char xform) const;
 
+      friend class pathTableView_c;
       friend class rotationTables_c;
   };
 
   /**
-   * The family of fixed rotation paths a rotation move may use, one
-   * pathTable_c each, ordered by how much the move disturbs: the pure turn
-   * first, then per amount (ascending) the 8 wiggles and the 8 slides.
+   * Lightweight view of a pathTable_c under a dihedral symmetry (quarter turns
+   * and optional mirror). Turning or mirroring the whole scene commutes with
+   * the motion, so rotationTables_c stores only the base tables it computes
+   * with the checker and serves every turned/mirrored path through a view.
+   */
+  class pathTableView_c {
+
+    public:
+
+      pathTableView_c(const pathTable_c & t) : base(&t), spec(&t.getSpec()), xform(0) {}
+      pathTableView_c(const pathTable_c * b, const pathSpec_t * s, unsigned char xf) :
+        base(b), spec(s), xform(xf) {}
+
+      int getRadius(void) const { return base->getRadius(); }
+      const pathSpec_t & getSpec(void) const { return *spec; }
+      bool covers(int du, int dv) const { return base->covers(du, dv); }
+
+      blockerRange_c blockers(int du, int dv) const;
+
+      bool blocked(const std::vector<cell_t> & moving, const std::vector<cell_t> & stat,
+                   unsigned int axis, int pivotHx, int pivotHy, int pivotHz) const;
+
+    private:
+
+      const pathTable_c * base;
+      const pathSpec_t * spec;
+      unsigned char xform;
+  };
+
+  /**
+   * The family of fixed rotation paths a rotation move may use, ordered by
+   * how much the move disturbs: the pure turn first, then per amount
+   * (ascending) the 8 wiggles and the 8 slides.
    *
-   * Only the +90° tables for the directions (1,0) and (1,1) are computed
-   * with the checker, all others are turned and mirrored copies.
+   * Only the +90° tables for the pure turn and directions (1,0) and (1,1)
+   * are computed and stored; all other directions and the -90° sense are
+   * served as turned and mirrored views of those base tables.
    */
   class rotationTables_c {
 
@@ -223,9 +330,9 @@ namespace rotationGeometry {
       int getRadius(void) const { return radius; }
 
       /** Number of paths per sense. */
-      unsigned int size(void) const { return (unsigned int)tables[0].size(); }
+      unsigned int size(void) const { return (unsigned int)paths[0].size(); }
 
-      const pathTable_c & table(unsigned int sense, unsigned int idx) const;
+      pathTableView_c table(unsigned int sense, unsigned int idx) const;
 
       /** Index of the first clear path of this sense, -1 if all are
        *  blocked. Throws like pathTable_c::blocked if a moving cube lies
@@ -235,8 +342,15 @@ namespace rotationGeometry {
 
     private:
 
+      struct pathEntry_t {
+        uint16_t baseIdx;
+        unsigned char xform;
+        pathSpec_t spec;
+      };
+
       int radius;
-      std::vector<pathTable_c> tables[2];
+      std::vector<pathTable_c> baseTables;
+      std::vector<pathEntry_t> paths[2];
   };
 }
 
