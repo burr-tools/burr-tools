@@ -49,7 +49,8 @@ struct rotationSettings_t {
 
 /** The settings used when the caller has no others: PR #50's implicit
  *  model (play 0.081, sharp edges) until physical calibration provides
- *  better defaults, and shift amounts 0.1 to 0.4. */
+ *  better defaults, and shift amounts every 0.05 from 0.05 to 0.45 (145
+ *  paths per sense; see the TIC results in design/2026-10-19-rotation-moves.md). */
 rotationSettings_t defaultRotationSettings(void);
 
 /** Table radius for a problem: the largest filled extent of its result and
