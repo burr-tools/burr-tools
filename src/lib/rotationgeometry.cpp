@@ -306,7 +306,10 @@ path_t makePath(const pathSpec_t & spec) {
 
 pose_t poseAt(const path_t & path, double t) {
 
-  bt_assert(!path.empty());
+  if (path.empty())
+    bt_te("poseAt: empty path");
+  if (!std::isfinite(t))
+    bt_te("poseAt: non-finite parameter");
   if (path.size() == 1 || t <= 0)
     return path.front();
   if (t >= 1)

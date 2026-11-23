@@ -145,35 +145,36 @@ void state_c::save(xmlWriter_c & xml, unsigned int piecenumber) const
   }
   xml.endTag("dz");
 
-  if (!dt.empty())
+  if (rot && !rot->dt.empty())
   {
     xml.newTag("dt");
     std::ostream & str = xml.addContent();
     for (unsigned int ii = 0; ii < piecenumber; ii++)
     {
-      str << (unsigned int)dt[ii];
+      str << (unsigned int)rot->dt[ii];
       if (ii < piecenumber-1)
         str << " ";
     }
     xml.endTag("dt");
   }
 
-  if (rotation)
+  if (rot && rot->rotation)
   {
+    const stateRotation_t & r = *rot->rotation;
     static const char * kinds[] = { "pure", "wiggle", "slide" };
     static const char * axes[] = { "x", "y", "z" };
     xml.newTag("rotation");
-    xml.newAttrib("axis", std::string(axes[rotation->axis]));
-    xml.newAttrib("pu", rotation->pivotU);
-    xml.newAttrib("pv", rotation->pivotV);
-    xml.newAttrib("path", kinds[rotation->path.kind]);
-    xml.newAttrib("angle", std::string(rotation->path.sense == 0 ? "90" : "-90"));
-    if (rotation->path.kind != rotationGeometry::PATH_PURE)
+    xml.newAttrib("axis", std::string(axes[r.axis]));
+    xml.newAttrib("pu", r.pivotU);
+    xml.newAttrib("pv", r.pivotV);
+    xml.newAttrib("path", kinds[r.path.kind]);
+    xml.newAttrib("angle", std::string(r.path.sense == 0 ? "90" : "-90"));
+    if (r.path.kind != rotationGeometry::PATH_PURE)
     {
-      xml.newAttrib("du", rotation->path.dirU);
-      xml.newAttrib("dv", rotation->path.dirV);
+      xml.newAttrib("du", r.path.dirU);
+      xml.newAttrib("dv", r.path.dirV);
       std::ostringstream amount;
-      amount << rotation->path.amount;
+      amount << r.path.amount;
       xml.newAttrib("amount", amount.str());
     }
     xml.endTag("rotation");
@@ -275,11 +276,13 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
       getNumbers(pars.getText(), t.begin(), t.end(), false);
       pars.next();
       pars.require(xmlParser_c::END_TAG, "dt");
-      dt.assign(t.begin(), t.end());
+      if (!rot)
+        rot = std::make_unique<rotData_t>();
+      rot->dt.assign(t.begin(), t.end());
     }
     else if (pars.getName() == "rotation")
     {
-      rotation = loadRotation(pars);
+      setRotation(loadRotation(pars));
       pars.skipSubTree();
     }
     else
@@ -293,10 +296,17 @@ state_c::state_c(xmlParser_c & pars, unsigned int pn)
 }
 
 state_c::state_c(const state_c * cpy, unsigned int pn)
-  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz), dt(cpy->dt), rotation(cpy->rotation)
+  : dx(cpy->dx), dy(cpy->dy), dz(cpy->dz)
 {
   (void)pn;
   bt_assert(dx.size() == pn && dy.size() == pn && dz.size() == pn);
+  if (cpy->rot)
+  {
+    rot = std::make_unique<rotData_t>();
+    rot->dt = cpy->rot->dt;
+    if (cpy->rot->rotation)
+      rot->rotation = std::make_unique<stateRotation_t>(*cpy->rot->rotation);
+  }
 }
 
 state_c::state_c(unsigned int pn)
@@ -315,9 +325,17 @@ void state_c::set(unsigned int piece, int x, int y, int z) {
 
 void state_c::setTrans(unsigned int piece, unsigned int trans) {
   bt_assert(piece < dx.size() && trans < 256);
-  if (dt.empty())
-    dt.resize(dx.size(), 0);
-  dt[piece] = (unsigned char)trans;
+  if (!rot)
+    rot = std::make_unique<rotData_t>();
+  if (rot->dt.empty())
+    rot->dt.resize(dx.size(), 0);
+  rot->dt[piece] = (unsigned char)trans;
+}
+
+void state_c::setRotation(const stateRotation_t & r) {
+  if (!rot)
+    rot = std::make_unique<rotData_t>();
+  rot->rotation = std::make_unique<stateRotation_t>(r);
 }
 
 bool state_c::pieceRemoved(unsigned int i) const {

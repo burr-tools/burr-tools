@@ -367,6 +367,9 @@ TEST_CASE("the animation of every rotation starts and ends on the recorded state
 
 TEST_CASE("disassemblies without rotation moves record no orientations", "[rotations][disasm]") {
 
+  /* rotation data stays behind one pointer so translation-only states don't pay for it */
+  STATIC_REQUIRE(sizeof(state_c) <= 3 * sizeof(std::vector<int>) + sizeof(void *));
+
   /* the default solver output, and its saved files, do not change */
   auto puzzle = puzzle_c::load("examples/PelikanBurr.xmpuzzle");
   REQUIRE(puzzle != nullptr);

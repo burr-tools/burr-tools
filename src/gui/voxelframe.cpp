@@ -38,6 +38,7 @@
 
 #include <math.h>
 #include <algorithm>
+#include <numbers>
 #include <vector>
 
 #pragma GCC diagnostic push
@@ -2355,12 +2356,26 @@ void voxelFrame_c::entryBounds(const shapeInfo & s, double centre[3], double off
         centre[k] = s.scale*mid[k] - mid[k] + pos[k];
       break;
     case CenterTranslateRoateScale:
-      // R T(pos - hot) T(-center) S: no centring, the hotspot and the frame's
-      // centre place it
+      // R T(-center) [T(pivot + shift) R(turn) T(-pivot)] T(pos - hot) S:
+      // no centring, the hotspot, any active turn, and the frame's centre place it
       {
+        double p[3];
+        for (int k = 0; k < 3; k++)
+          p[k] = s.scale*mid[k] + pos[k] - s.hot[k];
+        if (s.turning && s.turnAxis < 3) {
+          static constexpr int uAxis[3] = { 1, 2, 0 };
+          static constexpr int vAxis[3] = { 2, 0, 1 };
+          const int u = uAxis[s.turnAxis], v = vAxis[s.turnAxis];
+          const double a = s.turnAngle * std::numbers::pi / 180.0;
+          const double ca = cos(a), sa = sin(a);
+          const double du = p[u] - s.turnPivot[u], dv = p[v] - s.turnPivot[v];
+          p[u] = s.turnPivot[u] + du * ca - dv * sa + s.turnShift[u];
+          p[v] = s.turnPivot[v] + du * sa + dv * ca + s.turnShift[v];
+          p[s.turnAxis] += s.turnShift[s.turnAxis];
+        }
         const double center[3] = { centerX, centerY, centerZ };
         for (int k = 0; k < 3; k++)
-          centre[k] = s.scale*mid[k] + pos[k] - s.hot[k] - center[k];
+          centre[k] = p[k] - center[k];
       }
       break;
   }
