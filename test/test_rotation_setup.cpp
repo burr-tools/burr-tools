@@ -128,6 +128,28 @@ TEST_CASE("the shared pair cache keeps the first set stored for a key", "[rotati
   CHECK(context.getSkipped() == 0);
   context.noteSkipped(rotationContext_c::SKIP_RADIUS);
   CHECK(context.getSkipped() == rotationContext_c::SKIP_RADIUS);
+  CHECK(context.cacheBytes() > 0);
+}
+
+TEST_CASE("the shared pair cache respects its byte budget", "[rotations]") {
+
+  const size_t budget = 256;
+  rotationContext_c context(pelikan(), std::async(std::launch::deferred, [] { return pelikanTables(); }).share(), budget);
+
+  auto big = std::make_unique<rotationPivotSet_t>();
+  big->bits.assign(64, 0);   // 512 B bitmap alone exceeds budget
+  const rotationPivotSet_t * raw = big.get();
+  CHECK(context.store({ 10, 20 }, big) == raw);
+  CHECK(big != nullptr);     // refused: caller retains ownership
+  CHECK(context.cacheBytes() == 0);
+
+  auto small = std::make_unique<rotationPivotSet_t>();
+  small->bits.assign(1, 1);
+  const rotationPivotSet_t * smallRaw = small.get();
+  CHECK(context.store({ 10, 21 }, small) == smallRaw);
+  CHECK(small == nullptr);   // accepted into cache
+  CHECK(context.cacheBytes() > 0);
+  CHECK(context.cacheBytes() <= budget);
 }
 
 TEST_CASE("rotation contexts reach the disassemblers only when requested", "[rotations]") {

@@ -77,10 +77,11 @@ sharedRotationTables(const rotationSettings_t & settings, int radius);
 
 /**
  * The pivots, relative to a piece's hotspot in doubled in-plane units, at
- * which another piece blocks it on every path; a bitmap over a box.
+ * which another piece blocks it on every path; a bitmap over the tight
+ * bounding box of the blocking pivots.
  */
 struct rotationPivotSet_t {
-  int u0 = 0, v0 = 0, width = 0, height = 0;
+  int16_t u0 = 0, v0 = 0, width = 0, height = 0;
   std::vector<uint64_t> bits;
   bool test(int u, int v) const {
     u -= u0;
@@ -90,6 +91,7 @@ struct rotationPivotSet_t {
     const size_t b = (size_t)u * height + v;
     return (bits[b >> 6] >> (b & 63)) & 1;
   }
+  size_t bytes(void) const { return sizeof(*this) + bits.capacity() * sizeof(uint64_t); }
 };
 
 /** What a rotationPivotSet_t depends on: both parts, their orientations,
@@ -114,8 +116,11 @@ class rotationContext_c {
 
   public:
 
+    static constexpr size_t MAX_CACHE_BYTES = size_t(64) << 20;
+
     rotationContext_c(const problem_c & problem,
-                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables);
+                      std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tables,
+                      size_t maxCacheBytes = MAX_CACHE_BYTES);
 
     /** Does not wait for tables still being built in the background. */
     ~rotationContext_c();
@@ -153,6 +158,9 @@ class rotationContext_c {
      *  `pieces` names the node's pieces. True if something changed. */
     bool canonicalize(disassemblerNode_c * node, const std::vector<unsigned int> & pieces) const;
 
+    /** Approximate bytes currently held by the shared pair cache. */
+    size_t cacheBytes(void) const { return usedBytes.load(std::memory_order_relaxed); }
+
     /** Limits that made the search skip turns, a bit set of skip_e. */
     enum skip_e {
       SKIP_RADIUS = 1,   ///< a group reached beyond the tables' radius
@@ -176,13 +184,14 @@ class rotationContext_c {
     std::vector<unsigned int> piecePart;
 
     static constexpr size_t SHARDS = 64;
-    static constexpr size_t MAX_ENTRIES = size_t(1) << 22;
+    static constexpr size_t MAP_NODE_BYTES = 64;
     struct shard_t {
       std::mutex mutex;
       std::unordered_map<rotationPairKey_t, std::unique_ptr<rotationPivotSet_t>, rotationPairKeyHash_t> sets;
     };
     shard_t shards[SHARDS];
-    std::atomic<size_t> entries{0};
+    size_t maxCacheBytes;
+    std::atomic<size_t> usedBytes{0};
     std::atomic<unsigned int> skipped{0};
 };
 

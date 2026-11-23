@@ -309,6 +309,8 @@ TEST_CASE("inversePose undoes a pose", "[rotations]") {
 TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(planarScene_c({ { 0, 0, 0 } }, { { 1, 0, 0 } }, 2, 0, 0, 0, { 0 }), assert_exception);
   CHECK_THROWS_AS(pathTable_c({ 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
+  /* parallel table build propagates worker-thread exceptions instead of terminating */
+  CHECK_THROWS_AS(rotationTables_c({ 0 }, 2, { 0.1, 0.2, 0.3, 0.4 }), assert_exception);
 }
 
 TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice pose", "[rotations]") {

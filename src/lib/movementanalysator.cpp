@@ -1132,13 +1132,18 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
     return found->second;
 
   const rotationPivotSet_t * shared;
-  if (rotation->lookup(key, &shared))
+  if (rotation->lookup(key, &shared)) {
+    localPairBytes += LOCAL_NODE_BYTES;
     return localPairs[key] = shared;
+  }
 
   std::unique_ptr<rotationPivotSet_t> set = computeBlockingPivots(i, j, axis, sense);
   const rotationPivotSet_t * stored = rotation->store(key, set);
-  if (set)
+  if (set) {
+    localPairBytes += set->bytes();
     ownPairs.push_back(std::move(set));   // the shared cache was full
+  }
+  localPairBytes += LOCAL_NODE_BYTES;
   return localPairs[key] = stored;
 }
 
@@ -1169,7 +1174,8 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
   if (qu0 > qu1 || qv0 > qv1)
     return nullptr;
 
-  std::unique_ptr<rotationPivotSet_t> set;
+  pivotScratch.clear();
+  int minU = INT_MAX, maxU = INT_MIN, minV = INT_MAX, maxV = INT_MIN;
 
   /* pair up the cubes layer by layer; both lists are sorted by layer */
   auto mi = pi.cubes.begin(), mj = pj.cubes.begin();
@@ -1188,22 +1194,28 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
           const int qu = m->u - ou, qv = m->v - ov;
           if (qu < qu0 || qu > qu1 || qv < qv0 || qv > qv1)
             continue;
-          if (!set) {
-            set = std::make_unique<rotationPivotSet_t>();
-            set->u0 = qu0;
-            set->v0 = qv0;
-            set->width = qu1 - qu0 + 1;
-            set->height = qv1 - qv0 + 1;
-            set->bits.assign(((size_t)set->width * set->height + 63) / 64, 0);
-          }
-          const size_t b = (size_t)(qu - qu0) * set->height + (qv - qv0);
-          set->bits[b >> 6] |= uint64_t(1) << (b & 63);
+          minU = std::min(minU, qu); maxU = std::max(maxU, qu);
+          minV = std::min(minV, qv); maxV = std::max(maxV, qv);
+          pivotScratch.push_back({ (int16_t)qu, (int16_t)qv });
         }
 
     mi = ei;
     mj = ej;
   }
 
+  if (pivotScratch.empty())
+    return nullptr;
+
+  auto set = std::make_unique<rotationPivotSet_t>();
+  set->u0 = (int16_t)minU;
+  set->v0 = (int16_t)minV;
+  set->width = (int16_t)(maxU - minU + 1);
+  set->height = (int16_t)(maxV - minV + 1);
+  set->bits.assign(((size_t)set->width * set->height + 63) / 64, 0);
+  for (const auto & [qu, qv] : pivotScratch) {
+    const size_t b = (size_t)(qu - minU) * set->height + (qv - minV);
+    set->bits[b >> 6] |= uint64_t(1) << (b & 63);
+  }
   return set;
 }
 
@@ -1380,8 +1392,7 @@ void movementAnalysator_c::listRotations(void) {
       world[i].push_back({ searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z });
   const ownerMap_c ownerAt(world);
 
-  std::vector<cell_t> moving, stat;
-  std::vector<unsigned int> owners;
+  std::vector<cell_t> moving;
   std::vector<uint32_t> blockers(pn);
   std::vector<const rotationPivotSet_t *> pairs(pn * pn);
 
@@ -1408,9 +1419,10 @@ void movementAnalysator_c::listRotations(void) {
 
       /* make room before filling pairs, never while: clearing frees the
        * sets of ownPairs that pairs may already point to */
-      if (localPairs.size() + pn * pn > MAX_LOCAL_PAIRS) {
+      if (localPairBytes > MAX_LOCAL_BYTES) {
         localPairs.clear();
         ownPairs.clear();
+        localPairBytes = 0;
       }
       for (unsigned int i = 0; i < pn; i++)
         for (unsigned int j = 0; j < pn; j++)
@@ -1429,8 +1441,21 @@ void movementAnalysator_c::listRotations(void) {
           for (unsigned int i = 0; i < pn; i++)
             if (umax[i] - pu <= reach && pu - umin[i] <= reach && vmax[i] - pv <= reach && pv - vmin[i] <= reach)
               covered |= 1u << i;
-          if (!covered)
+          if (!covered) {
+            for (unsigned int excl = 0; excl < pn; excl++) {
+              int eu0 = INT_MAX, eu1 = INT_MIN, ev0 = INT_MAX, ev1 = INT_MIN;
+              for (unsigned int i = 0; i < pn; i++)
+                if (i != excl) {
+                  eu0 = std::min(eu0, umin[i]); eu1 = std::max(eu1, umax[i]);
+                  ev0 = std::min(ev0, vmin[i]); ev1 = std::max(ev1, vmax[i]);
+                }
+              if (pu >= eu0 - 1 && pu <= eu1 + 1 && pv >= ev0 - 1 && pv <= ev1 + 1) {
+                rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
+                break;
+              }
+            }
             continue;
+          }
 
           for (unsigned int i = 0; i < pn; i++) {
             blockers[i] = 0;
@@ -1455,36 +1480,41 @@ void movementAnalysator_c::listRotations(void) {
 
             /* the pivot lies in the group's footprint */
             int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
-            for (unsigned int i = 0; i < pn; i++)
-              if (group & (1u << i)) {
-                gumin = std::min(gumin, umin[i]); gumax = std::max(gumax, umax[i]);
-                gvmin = std::min(gvmin, vmin[i]); gvmax = std::max(gvmax, vmax[i]);
-              }
+            for (uint32_t m = group; m; m &= m - 1) {
+              const unsigned int i = std::countr_zero(m);
+              gumin = std::min(gumin, umin[i]); gumax = std::max(gumax, umax[i]);
+              gvmin = std::min(gvmin, vmin[i]); gvmax = std::max(gvmax, vmax[i]);
+            }
             if (pu < gumin - 1 || pu > gumax + 1 || pv < gvmin - 1 || pv > gvmax + 1)
               continue;
 
-            moving.clear();
-            owners.clear();
-            stat.clear();
-            for (unsigned int i = 0; i < pn; i++)
-              for (const cell_t & c : world[i])
-                if (group & (1u << i)) {
-                  moving.push_back(c);
-                  owners.push_back(i);
-                } else
-                  stat.push_back(c);
-
             /* the end pose is free by closure; it must change something */
             bool unchanged = true;
-            for (size_t m = 0; m < moving.size() && unchanged; m++) {
-              cell_t e = moving[m];
-              rotationGeometry::turnAbout(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
-              unchanged = ownerAt(e.x, e.y, e.z) == (int)owners[m];
+            for (uint32_t m = group; m && unchanged; m &= m - 1) {
+              const unsigned int i = std::countr_zero(m);
+              for (const cell_t & c : world[i]) {
+                cell_t e = c;
+                rotationGeometry::turnAbout(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
+                if (ownerAt(e.x, e.y, e.z) != (int)i) {
+                  unchanged = false;
+                  break;
+                }
+              }
             }
             if (unchanged)
               continue;
 
-            int path = tables.firstClear(moving, rotationGeometry::occupancy_c(stat), axis, hx, hy, hz, sense);
+            moving.clear();
+            for (uint32_t m = group; m; m &= m - 1) {
+              const auto & cells = world[std::countr_zero(m)];
+              moving.insert(moving.end(), cells.begin(), cells.end());
+            }
+
+            auto isStatic = [&](int x, int y, int z) {
+              const int o = ownerAt(x, y, z);
+              return o >= 0 && !((group >> o) & 1u);
+            };
+            int path = tables.firstClear(moving, isStatic, axis, hx, hy, hz, sense);
             if (path < 0)
               continue;
 

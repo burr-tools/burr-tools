@@ -23,12 +23,14 @@
 #include "bt_assert.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <exception>
 #include <iterator>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <numbers>
-#include <atomic>
 #include <optional>
 #include <thread>
 
@@ -532,11 +534,22 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
     }
 
   std::vector<std::optional<pathTable_c>> built(specs.size());
+  std::exception_ptr firstError;
   {
     std::atomic<size_t> next{0};
+    std::atomic<bool> failed{false};
+    std::mutex errorMutex;
     auto work = [&]() {
-      for (size_t i; (i = next++) < specs.size(); )
-        built[i].emplace(model, r, specs[i]);
+      try {
+        for (size_t i; !failed.load(std::memory_order_relaxed) &&
+                       (i = next.fetch_add(1, std::memory_order_relaxed)) < specs.size(); )
+          built[i].emplace(model, r, specs[i]);
+      } catch (...) {
+        failed.store(true, std::memory_order_relaxed);
+        std::lock_guard<std::mutex> lock(errorMutex);
+        if (!firstError)
+          firstError = std::current_exception();
+      }
     };
     const unsigned int threads = std::max(1u, std::min<unsigned int>(std::thread::hardware_concurrency(), specs.size()));
     std::vector<std::jthread> pool;
@@ -544,6 +557,8 @@ rotationTables_c::rotationTables_c(const model_t & model, int r, const std::vect
       pool.emplace_back(work);
     work();
   }
+  if (firstError)
+    std::rethrow_exception(firstError);
 
   baseTables.reserve(built.size());
   for (auto & b : built)
@@ -703,61 +718,6 @@ int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const std::
                                  unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
                                  unsigned int sense) const {
   return firstClear(moving, occupancy_c(stat), axis, pivotHx, pivotHy, pivotHz, sense);
-}
-
-int rotationTables_c::firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
-                                 unsigned int axis, int pivotHx, int pivotHy, int pivotHz,
-                                 unsigned int sense) const {
-  if (sense > 1 || axis > 2)
-    bt_te("rotationTables_c::firstClear: sense must be 0 or 1, axis 0 to 2");
-
-  const pathTable_c & first = baseTables[0];
-
-  /* in-plane doubled pivot and each moving cube's offset */
-  int pu, pv;
-  doubledOffset({ 0, 0, 0 }, axis, -pivotHx, -pivotHy, -pivotHz, &pu, &pv);
-
-  struct movingCube_t { int layer, u, v; };
-  std::vector<movingCube_t> cubes;
-  cubes.reserve(moving.size());
-  for (const cell_t & c : moving) {
-    int u, v;
-    doubledOffset(c, axis, pivotHx, pivotHy, pivotHz, &u, &v);
-    if (!first.covers(u, v) || ((u ^ v) & 1))
-      bt_te("rotationTables_c::firstClear: cube outside the tables or edge pivot");
-    cubes.push_back({ (int)axial(c, axis), u, v });
-  }
-
-  /* static cube at doubled offset (su, sv) from the pivot, in the layer */
-  auto occupied = [&](int layer, int su, int sv) { return occupiedAt(stat, axis, layer, pu + su, pv + sv); };
-
-  const unsigned char mirrorXf = sense ? 4 : 0;
-  for (const movingCube_t & m : cubes) {
-    const unsigned int slot = first.slot(m.u, sense ? -m.v : m.v);
-    const auto * data = blockedByAllEntries.data();
-    for (const auto & [su, sv] : blockerRange_c(data + blockedByAllOffsets[slot],
-                                                data + blockedByAllOffsets[slot + 1], mirrorXf))
-      if (occupied(m.layer, su, sv))
-        return -1;
-  }
-
-  for (size_t i = 0; i < paths[sense].size(); i++) {
-    const pathEntry_t & e = paths[sense][i];
-    const pathTable_c & base = baseTables[e.baseIdx];
-    const unsigned char inv = inverseOffsetTransform(e.xform);
-    bool blocked = false;
-    for (size_t k = 0; k < cubes.size() && !blocked; k++) {
-      auto [bu, bv] = applyOffsetTransform(inv, cubes[k].u, cubes[k].v);
-      for (const auto & [su, sv] : base.blockersTransformed(bu, bv, e.xform))
-        if (occupied(cubes[k].layer, su, sv)) {
-          blocked = true;
-          break;
-        }
-    }
-    if (!blocked)
-      return (int)i;
-  }
-  return -1;
 }
 
 }
