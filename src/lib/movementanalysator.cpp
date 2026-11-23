@@ -29,6 +29,13 @@
 #include "voxel.h"
 #include "disassemblerhashes.h"
 #include "gridtype.h"
+#include "symmetries.h"
+
+#include <algorithm>
+#include <climits>
+#include <memory>
+#include <set>
+#include <tuple>
 
 #include <string.h>
 #include <bit>
@@ -534,7 +541,8 @@ bool movementAnalysator_c::checkmovement(unsigned int maxPieces, unsigned int ne
   return true;
 }
 
-movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
+movementAnalysator_c::movementAnalysator_c(const problem_c & problem,
+                                           std::shared_ptr<const rotationGeometry::rotationTables_c> rotationTables) :
   cache(problem.getPuzzle().getGridType()->getMovementCache(problem)),
   matrix(cache ? cache->numDirections() * problem.getNumberOfPieces() * problem.getNumberOfPieces() : 0, 0),
   movement(problem.getNumberOfPieces()),
@@ -545,7 +553,8 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
   prevFill(matrix.size(), 0),
   nodes(std::make_unique<countingNodeHash>()),
   nextstate(-1),
-  maxstep((unsigned int) -1) {
+  maxstep((unsigned int) -1),
+  rotations(std::move(rotationTables)) {
 
   /* we assert that there must be a cache, otherwise no disassembly
    * analysis is possible anyway and this should not
@@ -559,9 +568,18 @@ movementAnalysator_c::movementAnalysator_c(const problem_c & problem) :
     for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
       weights[pc++] = problem.getPartShape(i)->getWeight();
   }
+
+  if (rotations) {
+    rotationProblem = &problem;
+    for (unsigned int i = 0; i < problem.getNumberOfParts(); i++)
+      for (unsigned int j = 0; j < problem.getPartMaximum(i); j++)
+        pieceVoxels.push_back(problem.getPartShape(i));
+    hotspotCells.resize(pieceVoxels.size());
+  }
 }
 
 movementAnalysator_c::~movementAnalysator_c() {
+  clearRotations();
   if (prevSearch && prevSearch->decRefCount())
     delete prevSearch;
 }
@@ -734,6 +752,8 @@ void movementAnalysator_c::init_find(disassemblerNode_c * nd, const std::vector<
   searchnode = nd;
   pieces = &pcs;
 
+  clearRotations();
+
   /* when a new search has been started we need to first calculate
    * the movement matrices, this is a table that contains one 2 dimensional
    * matrix for each of the 6 directions where movement is possible
@@ -866,6 +886,25 @@ disassemblerNode_c * movementAnalysator_c::find(void) {
 
         break;
 
+      case 3:
+        // rotation moves, only when rotation tables were given; without
+        // them this is the end of the search as it always was
+        if (!rotations)
+          return 0;
+
+        if (!rotationsListed) {
+          listRotations();
+          rotationsListed = true;
+        }
+
+        if (nextRotation < rotationNodes.size()) {
+          n = rotationNodes[nextRotation];
+          rotationNodes[nextRotation++] = nullptr;
+        } else
+          nextstate++;
+
+        break;
+
       default:
         // endstate, do nothing
         return 0;
@@ -983,3 +1022,192 @@ void movementAnalysator_c::completeFind(disassemblerNode_c * searchnode, const s
     delete toremove[i];
 }
 
+
+/* ---------------------------------------------------------------------------
+ * Rotation moves (design/2026-10-19-rotation-moves.md)
+ * ------------------------------------------------------------------------ */
+
+const std::vector<rotationGeometry::cell_t> &
+movementAnalysator_c::cellsAroundHotspot(unsigned int piece, unsigned int trans) {
+
+  bt_assert(piece < hotspotCells.size());
+
+  std::vector<std::vector<rotationGeometry::cell_t>> & byTrans = hotspotCells[piece];
+  if (byTrans.size() <= trans)
+    byTrans.resize(trans + 1);
+
+  /* a piece has at least one cube, so empty means not computed yet */
+  std::vector<rotationGeometry::cell_t> & cells = byTrans[trans];
+  if (cells.empty()) {
+    std::unique_ptr<voxel_c> v(rotationProblem->getPuzzle().getGridType()->getVoxel(*pieceVoxels[piece]));
+    bt_assert2(v->transform(trans));
+    for (unsigned int z = 0; z < v->getZ(); z++)
+      for (unsigned int y = 0; y < v->getY(); y++)
+        for (unsigned int x = 0; x < v->getX(); x++)
+          if (v->isFilled(x, y, z))
+            cells.push_back({ (int)x - v->getHx(), (int)y - v->getHy(), (int)z - v->getHz() });
+  }
+
+  return cells;
+}
+
+void movementAnalysator_c::clearRotations(void) {
+  for (disassemblerNode_c * n : rotationNodes)
+    if (n && n->decRefCount())
+      delete n;
+  rotationNodes.clear();
+  nextRotation = 0;
+  rotationsListed = false;
+}
+
+namespace {
+
+typedef std::tuple<int, int, int> cellKey_t;
+
+cellKey_t key(const rotationGeometry::cell_t & c) { return { c.x, c.y, c.z }; }
+
+/* doubled 3D pivot for an in-plane doubled pivot (u, v); the axial
+ * coordinate does not matter for a turn about that axis */
+void pivot3D(unsigned int axis, int u, int v, int * hx, int * hy, int * hz) {
+  if (axis == 0)      { *hx = 0; *hy = u; *hz = v; }
+  else if (axis == 1) { *hx = v; *hy = 0; *hz = u; }
+  else                { *hx = u; *hy = v; *hz = 0; }
+}
+
+/* in-plane doubled coordinates of a cell centre, frames as rotationGeometry */
+void inPlane2(const rotationGeometry::cell_t & c, unsigned int axis, int * u, int * v) {
+  if (axis == 0)      { *u = 2 * c.y; *v = 2 * c.z; }
+  else if (axis == 1) { *u = 2 * c.z; *v = 2 * c.x; }
+  else                { *u = 2 * c.x; *v = 2 * c.y; }
+}
+
+/* turn a point given by integer coordinates by a quarter turn about a doubled pivot */
+void turnPoint(int * x, int * y, int * z, int hx, int hy, int hz, unsigned int axis, unsigned int sense) {
+  int dx = 2 * *x - hx, dy = 2 * *y - hy, dz = 2 * *z - hz;
+  rotationGeometry::quarterTurn(&dx, &dy, &dz, axis, sense);
+  /* centre and corner pivots map the lattice onto itself */
+  bt_assert(!((hx + dx) & 1) && !((hy + dy) & 1) && !((hz + dz) & 1));
+  *x = (hx + dx) / 2;
+  *y = (hy + dy) / 2;
+  *z = (hz + dz) / 2;
+}
+
+}
+
+/* Generate every rotation move of the search node: each group of pieces
+ * without piece 0 (turning a group with it is the same as turning the rest
+ * the other way, and keeping piece 0 fixed keeps the states canonical),
+ * about every cube centre and cube corner within the group's footprint,
+ * both senses about all three axes, along the first clear path of the
+ * rotation tables' family. */
+void movementAnalysator_c::listRotations(void) {
+
+  using rotationGeometry::cell_t;
+
+  const unsigned int pn = pieces->size();
+
+  /* groups are enumerated as bitmasks over all pieces but piece 0 */
+  if (pn < 2 || pn > MAX_ROTATION_PIECES)
+    return;
+
+  const symmetries_c * sym = rotationProblem->getPuzzle().getGridType()->getSymmetries();
+  const int reach = 2 * rotations->getRadius();
+
+  std::vector<std::vector<cell_t>> world(pn);
+  std::vector<std::set<cellKey_t>> pieceCells(pn);
+  for (unsigned int i = 0; i < pn; i++)
+    for (const cell_t & c : cellsAroundHotspot((*pieces)[i], searchnode->getTrans(i))) {
+      cell_t w = { searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z };
+      world[i].push_back(w);
+      pieceCells[i].insert(key(w));
+    }
+
+  std::vector<cell_t> moving, stat, end;
+  std::vector<unsigned int> owner;
+  std::set<cellKey_t> occupied;
+
+  for (uint32_t mask = 2; mask < (1u << pn); mask += 2) {
+
+    moving.clear();
+    owner.clear();
+    stat.clear();
+    occupied.clear();
+    for (unsigned int i = 0; i < pn; i++)
+      for (const cell_t & c : world[i])
+        if (mask & (1u << i)) {
+          moving.push_back(c);
+          owner.push_back(i);
+        } else {
+          stat.push_back(c);
+          occupied.insert(key(c));
+        }
+
+    for (unsigned int axis = 0; axis < 3; axis++) {
+
+      int umin = INT_MAX, umax = INT_MIN, vmin = INT_MAX, vmax = INT_MIN;
+      for (const cell_t & c : moving) {
+        int u, v;
+        inPlane2(c, axis, &u, &v);
+        umin = std::min(umin, u); umax = std::max(umax, u);
+        vmin = std::min(vmin, v); vmax = std::max(vmax, v);
+      }
+
+      for (int pu = umin - 1; pu <= umax + 1; pu++)
+        for (int pv = vmin - 1; pv <= vmax + 1; pv++) {
+
+          /* edge-midpoint pivots cannot map the lattice onto itself */
+          if ((pu ^ pv) & 1)
+            continue;
+
+          /* cubes beyond the tables' radius: skip, never guess */
+          if (umax - pu > reach || pu - umin > reach || vmax - pv > reach || pv - vmin > reach)
+            continue;
+
+          int hx, hy, hz;
+          pivot3D(axis, pu, pv, &hx, &hy, &hz);
+
+          for (unsigned int sense = 0; sense < 2; sense++) {
+
+            /* the end pose must be free and must change something */
+            end.clear();
+            bool blocked = false, unchanged = true;
+            for (size_t k = 0; k < moving.size() && !blocked; k++) {
+              cell_t e = moving[k];
+              turnPoint(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
+              blocked = occupied.count(key(e)) > 0;
+              unchanged = unchanged && pieceCells[owner[k]].count(key(e)) > 0;
+              end.push_back(e);
+            }
+            if (blocked || unchanged)
+              continue;
+
+            int path = rotations->firstClear(moving, stat, axis, hx, hy, hz, sense);
+            if (path < 0)
+              continue;
+
+            disassemblerNode_c * n = new disassemblerNode_c(pn, searchnode,
+                disassemblerNode_c::ROTATION_DIR_BASE + 2 * axis + sense, path);
+            bool ok = true;
+            for (unsigned int i = 0; i < pn && ok; i++) {
+              int x = searchnode->getX(i), y = searchnode->getY(i), z = searchnode->getZ(i);
+              unsigned int t = searchnode->getTrans(i);
+              if (mask & (1u << i)) {
+                turnPoint(&x, &y, &z, hx, hy, hz, axis, sense);
+                unsigned char t2 = sym->transAdd((unsigned char)t, rotationGeometry::quarterTurnTrans(axis, sense));
+                ok = (t2 != TND);
+                t = t2;
+              }
+              n->set(i, x, y, z, t);
+            }
+            if (!ok) {
+              if (n->decRefCount())
+                delete n;
+              continue;
+            }
+            n->setRotationPivot(pu, pv);
+            rotationNodes.push_back(n);
+          }
+        }
+    }
+  }
+}

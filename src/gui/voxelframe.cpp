@@ -38,6 +38,7 @@
 
 #include <math.h>
 #include <algorithm>
+#include <numbers>
 #include <vector>
 
 #pragma GCC diagnostic push
@@ -767,8 +768,17 @@ void voxelFrame_c::drawVoxelSpace() {
         break;
       case CenterTranslateRoateScale:
         rotater->addTransform();
-        glTranslatef(shape->x - shape->hot[0], shape->y - shape->hot[1], shape->z - shape->hot[2]);
         glTranslatef(-centerX, -centerY, -centerZ);
+        if (shape->turning) {
+          /* mid rotation move: turn the placed piece about the pivot, then
+           * shift it, as the recorded path prescribes */
+          glTranslatef(shape->turnPivot[0] + shape->turnShift[0],
+                       shape->turnPivot[1] + shape->turnShift[1],
+                       shape->turnPivot[2] + shape->turnShift[2]);
+          glRotatef(shape->turnAngle, shape->turnAxis == 0, shape->turnAxis == 1, shape->turnAxis == 2);
+          glTranslatef(-shape->turnPivot[0], -shape->turnPivot[1], -shape->turnPivot[2]);
+        }
+        glTranslatef(shape->x - shape->hot[0], shape->y - shape->hot[1], shape->z - shape->hot[2]);
         glScalef(shape->scale, shape->scale, shape->scale);
         break;
       default:
@@ -1142,6 +1152,10 @@ void voxelFrame_c::clearSpaces(void) {
 
   shapes.clear();
   previewShapeIndex = -1;
+
+  entryGrid = nullptr;
+  entryBase.clear();
+  entryOrient.clear();
 }
 
 void voxelFrame_c::setSpaceColor(unsigned int nr, float r, float g, float b, float a) {
@@ -1545,6 +1559,13 @@ void voxelFrame_c::showAssembly(const problem_c * puz, unsigned int solNum) {
 
           num = addSpace(vx);
 
+          /* remember how to re-orient the piece for rotation moves */
+          entryGrid = puz->getPuzzle().getGridType();
+          entryBase.resize(num + 1, nullptr);
+          entryOrient.resize(num + 1, -1);
+          entryBase[num] = puz->getPartShape(p);
+          entryOrient[num] = assm->getTransformation(piece);
+
           setSpacePosition(num, assm->getX(piece), assm->getY(piece), assm->getZ(piece), 1);
 
           setSpaceColor(num,
@@ -1732,6 +1753,38 @@ void voxelFrame_c::showPlacement(const problem_c * puz, unsigned int piece, unsi
 void voxelFrame_c::updatePositions(piecePositions_c *shifting) {
 
   for (unsigned int p = 0; p < shapes.size()-1; p++) {
+
+    /* disassemblies with rotation moves change piece orientations: swap in
+     * the mesh for the orientation of this step */
+    int t = shifting->getTrans(p);
+    if (t >= 0 && p < entryBase.size() && entryBase[p] && entryOrient[p] != t) {
+      voxel_c * vx = entryGrid->getVoxel(entryBase[p]);
+      bt_assert2(vx->transform(t));
+      shapeInfo & s = shapes[p];
+      if (s.list) {
+        glDeleteLists(s.list, 1);
+        s.list = 0;
+      }
+      delete s.shape;
+      delete s.poly;
+      s.poly = 0;
+      delete s.pickPoly;
+      s.pickPoly = 0;
+      setEntryShape(s, vx);
+      entryOrient[p] = t;
+    }
+
+    piecePositions_c::turn_t turn;
+    shapes[p].turning = shifting->getTurn(p, &turn);
+    if (shapes[p].turning) {
+      shapes[p].turnAngle = turn.angle;
+      shapes[p].turnAxis = turn.axis;
+      for (int k = 0; k < 3; k++) {
+        shapes[p].turnPivot[k] = turn.pivot[k];
+        shapes[p].turnShift[k] = turn.shift[k];
+      }
+    }
+
     setSpacePosition(p, shifting->getX(p), shifting->getY(p), shifting->getZ(p), 1);
     setSpaceColor(p, shifting->getA(p));
     setSpaceLayer(p, shifting->fadingOut(p) ? 1 : 0);
@@ -2303,12 +2356,26 @@ void voxelFrame_c::entryBounds(const shapeInfo & s, double centre[3], double off
         centre[k] = s.scale*mid[k] - mid[k] + pos[k];
       break;
     case CenterTranslateRoateScale:
-      // R T(pos - hot) T(-center) S: no centring, the hotspot and the frame's
-      // centre place it
+      // R T(-center) [T(pivot + shift) R(turn) T(-pivot)] T(pos - hot) S:
+      // no centring, the hotspot, any active turn, and the frame's centre place it
       {
+        double p[3];
+        for (int k = 0; k < 3; k++)
+          p[k] = s.scale*mid[k] + pos[k] - s.hot[k];
+        if (s.turning && s.turnAxis < 3) {
+          static constexpr int uAxis[3] = { 1, 2, 0 };
+          static constexpr int vAxis[3] = { 2, 0, 1 };
+          const int u = uAxis[s.turnAxis], v = vAxis[s.turnAxis];
+          const double a = s.turnAngle * std::numbers::pi / 180.0;
+          const double ca = cos(a), sa = sin(a);
+          const double du = p[u] - s.turnPivot[u], dv = p[v] - s.turnPivot[v];
+          p[u] = s.turnPivot[u] + du * ca - dv * sa + s.turnShift[u];
+          p[v] = s.turnPivot[v] + du * sa + dv * ca + s.turnShift[v];
+          p[s.turnAxis] += s.turnShift[s.turnAxis];
+        }
         const double center[3] = { centerX, centerY, centerZ };
         for (int k = 0; k < 3; k++)
-          centre[k] = s.scale*mid[k] + pos[k] - s.hot[k] - center[k];
+          centre[k] = p[k] - center[k];
       }
       break;
   }
