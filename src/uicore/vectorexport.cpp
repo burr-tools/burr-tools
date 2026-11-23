@@ -124,8 +124,9 @@ namespace btui {
       if (std::fabs(v) < 0.0005f)
         v = 0;
       char buf[64];
-      std::string_view t(buf, std::to_chars(buf, buf + sizeof(buf), double(v),
-                                            std::chars_format::fixed, 3).ptr);
+      const auto res = std::to_chars(buf, buf + sizeof(buf), double(v),
+                                     std::chars_format::fixed, 3);
+      std::string_view t(buf, res.ptr);
       // trim trailing zeros: 12.500 -> 12.5, 3.000 -> 3
       while (!t.empty() && t.back() == '0') t.remove_suffix(1);
       if (!t.empty() && t.back() == '.') t.remove_suffix(1);

@@ -548,7 +548,8 @@ int main(int argv, char* args[]) {
 
       if (writeFile) {
         /* the file says which pieces its disassemblies are for */
-        if (rotationMoves)
+        if (rotationMoves && disassemble && settings.rotation.mode != ROTATION_OFF &&
+            p.getGridType()->getType() == gridType_c::GT_BRICKS)
           storeSolveRotationModel(p, settings.rotation);
         problem->removeAllSolutions();
       }
@@ -619,12 +620,12 @@ int main(int argv, char* args[]) {
     for (unsigned int pr = firstProblem ; pr < lastProblem; pr ++) {
 
       problem_c * problem = p.getProblem(pr);
+      auto context = rotationContext(*problem);
       /* as when assembling: with -w the file says which pieces its
        * disassemblies are for */
-      if (rotationMoves && writeFile)
+      if (context && writeFile)
         storeSolveRotationModel(p, settings.rotation);
 
-      auto context = rotationContext(*problem);
       d = std::make_unique<disassembler_0_c>(*problem, settings, context);
 
       for (unsigned int sol = 0; sol < problem->getNumberOfSavedSolutions(); sol++) {
