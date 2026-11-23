@@ -14,7 +14,7 @@ where they were used: `SimdConfig::` predicates in the cover constructors
 and the disassembler's kernel choice, `SplitFanout::*FromEnv()` at the start
 of each parallel run, `getenv` in the disassembly pool, the assembler's
 thread count, the Huang memory budget, the thread budget (a function-local
-static). Eleven variables, each with its own
+static) and the rotation planner. Eleven variables, each with its own
 parsing (`atoi`, `strtol`, presence only), its own idea of what an invalid
 value means (mostly: silently the default), and `NO_` names whose value
 was ignored. A front end could not choose a setting except through the
@@ -23,7 +23,8 @@ environment, and tests changed process-wide state to pick an engine.
 ## Design
 
 * `solverConfig_t` holds what a front end chooses, as `std::optional`
-  fields. `resolve()` turns it into a `solverSettings_t` of plain values: each
+  fields, plus a `rotationConfig_t` for the rotation settings.
+  `resolve()` turns it into a `solverSettings_t` of plain values: each
   field the caller set, else its environment variable, else the default.
   It is the only code that reads the solver's environment, and only front
   ends call it (burrTxt, burrTxt2, the GUI's `mainWindow_c::solverSettings`,
@@ -58,6 +59,7 @@ environment, and tests changed process-wide state to pick an engine.
 | `NO_DONATE=1` | `DONATE=0` |
 | `SPLIT_BREADTH_FIRST=1` | `SPLIT_ORDER=breadth` |
 | `NO_BUDGET=1` | `THREAD_BUDGET=0` |
+| `NO_ROT_PLANNER=1` | `ROT_PLANNER=0` |
 | `THREADS`, `HUANG_MEM_MB`, `SPLIT_FANOUT`, `DONATE_EVERY` | unchanged |
 
 * Errors: an unparsable value, and any of the old names, throw
@@ -80,13 +82,17 @@ environment, and tests changed process-wide state to pick an engine.
   kernels) are now fixed when the solver is created. Changing the
   environment between two runs of one assembler no longer has an effect;
   a test that needs two settings creates two assemblers.
+* `BURRTOOLS_ROT_PLANNER` is below `-Q`; the old `NO_ROT_PLANNER` overrode
+  it. (2026-11-13: both, `-Q` and `BURRTOOLS_ROT_FAMILY` / `_SLACK` gave
+  way to the rotation modes, `BURRTOOLS_ROT_MODE`; the old names are
+  errors that name it.)
 
 ## Tests
 
 `test/test_solver_config.cpp` is the only test that touches the
 environment: defaults, environment below explicit choices, malformed
-values and old names rejected with the variable named, the vector cap.
-Every other test creates solvers with
+values and old names rejected with the variable named, the vector cap, the
+rotation settings. Every other test creates solvers with
 `bttest::settings()`, `solverSettings_t{}` unless a `bttest::ScopedSettings`
 in scope changes it (`ScopedSettings dlx; dlx->bitParallel = false;`), so a
 `BURRTOOLS_` variable in the developer's shell cannot change what a test

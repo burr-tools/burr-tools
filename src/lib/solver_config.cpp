@@ -114,6 +114,22 @@ bool solverSettings_t::neon(void) const {
 #endif
 }
 
+rotationSettings_t rotationConfig_t::resolve(void) const {
+
+  /* the defaults are the initializers; choices and the environment on top */
+  rotationSettings_t s;
+  if (mode)
+    s.mode = *mode;
+  else if (auto v = readEnv("BURRTOOLS_ROT_MODE")) {
+    const std::optional<rotationMode_e> m = rotationModeFromName(*v);
+    if (!m)
+      bad("BURRTOOLS_ROT_MODE", "off, fast, balanced or slow");
+    s.mode = *m;
+  }
+  s.stats = flag("BURRTOOLS_ROT_STATS", stats, s.stats);
+  return s;
+}
+
 /* Names the toggles had before 2026-10-28: setting one is an error rather
  * than silently measuring the default. */
 static void rejectRenamed(void) {
@@ -169,5 +185,6 @@ solverSettings_t solverConfig_t::resolve(void) const {
   s.donate = flag("BURRTOOLS_DONATE", donate, s.donate);
   s.donateEvery = (unsigned long)number("BURRTOOLS_DONATE_EVERY", widen(donateEvery), s.donateEvery, 0, ~0ul);
   s.threadBudget = flag("BURRTOOLS_THREAD_BUDGET", threadBudget, s.threadBudget);
+  s.rotation = rotation.resolve();
   return s;
 }

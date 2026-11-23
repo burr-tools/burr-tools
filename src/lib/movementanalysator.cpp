@@ -1142,7 +1142,8 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
   const int dx = searchnode->getX(j) - searchnode->getX(i);
   const int dy = searchnode->getY(j) - searchnode->getY(i);
   const int dz = searchnode->getZ(j) - searchnode->getZ(i);
-  const rotationGeometry::rotationTables_c & tables = rotation->tables();
+  const rotationGeometry::rotationTables_c & tables = rotation->closureTables();
+  const bool endPose = rotation->endPoseClosure();
 
   const planeCells_t & pi = planeCells(partI, transI, axis);
   const planeCells_t & pj = planeCells(partJ, transJ, axis);
@@ -1174,16 +1175,26 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
     while (ei != pi.cubes.end() && ei->layer == layer) ++ei;
     while (ej != pj.cubes.end() && ej->layer + da == layer) ++ej;
 
+    auto block = [&](int qu, int qv) {
+      if (qu < qu0 || qu > qu1 || qv < qv0 || qv > qv1)
+        return;
+      minU = std::min(minU, qu); maxU = std::max(maxU, qu);
+      minV = std::min(minV, qv); maxV = std::max(maxV, qv);
+      pivotScratch.push_back({ (int16_t)qu, (int16_t)qv });
+    };
+
     for (auto m = mi; m != ei; ++m)
-      for (auto c = mj; c != ej; ++c)
-        for (const auto & [ou, ov] : tables.pivotsBlockedAt(sense, c->u + du - m->u, c->v + dv - m->v)) {
-          const int qu = m->u - ou, qv = m->v - ov;
-          if (qu < qu0 || qu > qu1 || qv < qv0 || qv > qv1)
-            continue;
-          minU = std::min(minU, qu); maxU = std::max(maxU, qu);
-          minV = std::min(minV, qv); maxV = std::max(maxV, qv);
-          pivotScratch.push_back({ (int16_t)qu, (int16_t)qv });
-        }
+      for (auto c = mj; c != ej; ++c) {
+        const int su = c->u + du - m->u, sv = c->v + dv - m->v;
+        if (endPose) {
+          /* slow: only where i's cube turns onto j's */
+          int ou, ov;
+          if (rotationGeometry::endPosePivot(sense, su, sv, &ou, &ov))
+            block(m->u - ou, m->v - ov);
+        } else
+          for (const auto & [ou, ov] : tables.pivotsBlockedAt(sense, su, sv))
+            block(m->u - ou, m->v - ov);
+      }
 
     mi = ei;
     mj = ej;
@@ -1353,6 +1364,17 @@ void movementAnalysator_c::addRotationNode(uint32_t group, unsigned int axis, un
  * Except with more than 16 distinct closures, where only the closures
  * themselves are tried, not their unions (SKIP_GROUPS reports it).
  *
+ * Modes (rotationMode_e): fast takes the relation from the model's tables.
+ * Balanced from its gate tables, the model's with more play
+ * (rotationContext_c::closureTables), which block less, so more groups are
+ * checked; a turn no family path clears at the model's play but one clears
+ * at the gate's is handed to the planner, which looks for any motion at
+ * the model's play (rotationContext_c::plannedPath). Slow needs no second
+ * tables: its relation is only "a cube of i turns onto a cube of j"
+ * (rotationGeometry::endPosePivot), which no motion can avoid, so the
+ * groups are exactly those with a free end pose, and every turn of them no
+ * family path clears goes to the planner.
+ *
  * Pivots: cube centres and cube corners within the turning group's
  * footprint; edge midpoints cannot map the lattice onto itself. */
 void movementAnalysator_c::listRotations(void) {
@@ -1369,7 +1391,13 @@ void movementAnalysator_c::listRotations(void) {
   }
 
   const rotationGeometry::rotationTables_c & tables = rotation->tables();
-  const int reach = 2 * tables.getRadius();
+  /* balanced takes the groups from its gate tables, see above */
+  const rotationGeometry::rotationTables_c & closure = rotation->closureTables();
+  /* both are asked for with the problem's radius, but either may come from
+   * the cache with a larger one: only cubes both cover can be looked up, and
+   * only within the problem's radius, so that the turns found do not depend
+   * on which tables earlier solves left in the cache */
+  const int reach = 2 * std::min({ rotation->radius(), tables.getRadius(), closure.getRadius() });
   const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
 
   std::vector<std::vector<cell_t>> world(pn);
@@ -1378,7 +1406,7 @@ void movementAnalysator_c::listRotations(void) {
       world[i].push_back({ searchnode->getX(i) + c.x, searchnode->getY(i) + c.y, searchnode->getZ(i) + c.z });
   const ownerMap_c ownerAt(world);
 
-  std::vector<cell_t> moving;
+  std::vector<cell_t> moving, stat;
   std::vector<uint32_t> blockers(pn);
   std::vector<const rotationPivotSet_t *> pairs(pn * pn);
 
@@ -1500,13 +1528,21 @@ void movementAnalysator_c::listRotations(void) {
               const int o = ownerAt(x, y, z);
               return o >= 0 && !((group >> o) & 1u);
             };
-            int path = tables.firstClear(moving, isStatic, axis, hx, hy, hz, sense);
+            auto buildStat = [&]() -> const std::vector<cell_t> & {
+              stat.clear();
+              for (uint32_t m = all & ~group; m; m &= m - 1) {
+                const auto & cells = world[std::countr_zero(m)];
+                stat.insert(stat.end(), cells.begin(), cells.end());
+              }
+              return stat;
+            };
+            const int path = rotation->turnPath(moving, isStatic, buildStat, axis, hx, hy, hz, sense);
             if (path < 0)
               continue;
 
             if (!(group & 1u))
               addRotationNode(group, axis, sense, pu, pv, path, false);
-            else if (tables.table(sense, path).getSpec().kind == rotationGeometry::PATH_PURE) {
+            else if ((unsigned int)path < tables.size() && tables.table(sense, path).getSpec().kind == rotationGeometry::PATH_PURE) {
               /* the inverse of a pure turn is the pure turn the other way */
               bt_assert(tables.table(sense ^ 1, 0).getSpec().kind == rotationGeometry::PATH_PURE);
               addRotationNode(all & ~group, axis, sense ^ 1, pu, pv, 0, false);

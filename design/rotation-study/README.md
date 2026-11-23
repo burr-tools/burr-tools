@@ -21,6 +21,14 @@ brings them back.
 and how a path is certified, with live demos running a JavaScript port of
 the geometry. Open it in a browser (it loads only Google Fonts).
 
+## Results by date
+
+* [`results/2026-11-03-test-tics.md`](results/2026-11-03-test-tics.md):
+  off-centre axes, the test TICs at the printed model, and the family only
+  at play 0.03 / bevel 0.04. The scripts and scenes behind it (`famtest`,
+  `need`, the `diag` and `xcheck` extensions) are not in the repository;
+  they are on the local branch `rotation-study-data`.
+
 ## Puzzles
 
 The puzzles are not in the repository (`puzzles/` is gitignored). The

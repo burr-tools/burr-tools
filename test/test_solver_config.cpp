@@ -12,13 +12,14 @@ namespace {
 
 /* every variable resolve() reads, unset for the scope */
 struct CleanEnv {
-  ScopedEnv vars[11] = {
+  ScopedEnv vars[13] = {
     { "BURRTOOLS_THREADS", nullptr }, { "BURRTOOLS_BITPARALLEL", nullptr },
     { "BURRTOOLS_VECTOR", nullptr }, { "BURRTOOLS_DISASM_VECTOR", nullptr },
     { "BURRTOOLS_DISASM_POOL", nullptr }, { "BURRTOOLS_HUANG_MEM_MB", nullptr },
     { "BURRTOOLS_SPLIT_FANOUT", nullptr }, { "BURRTOOLS_SPLIT_ORDER", nullptr },
     { "BURRTOOLS_DONATE", nullptr }, { "BURRTOOLS_DONATE_EVERY", nullptr },
-    { "BURRTOOLS_THREAD_BUDGET", nullptr },
+    { "BURRTOOLS_THREAD_BUDGET", nullptr }, { "BURRTOOLS_ROT_MODE", nullptr },
+    { "BURRTOOLS_ROT_STATS", nullptr },
   };
 };
 
@@ -49,6 +50,7 @@ TEST_CASE("solver settings: defaults without a choice or an environment", "[conf
   CHECK(s.donateEvery == 0);
   CHECK(s.threadBudget);
   CHECK(s.rotation.amounts.size() == 9);
+  CHECK(s.rotation.mode == ROTATION_BALANCED);
 }
 
 TEST_CASE("solver settings: the environment fills what the caller leaves unset", "[config]") {
@@ -58,7 +60,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
             pool("BURRTOOLS_DISASM_POOL", "0"), mem("BURRTOOLS_HUANG_MEM_MB", "7"),
             fan("BURRTOOLS_SPLIT_FANOUT", "2"), order("BURRTOOLS_SPLIT_ORDER", "breadth"),
             donate("BURRTOOLS_DONATE", "0"), every("BURRTOOLS_DONATE_EVERY", "5"),
-            budget("BURRTOOLS_THREAD_BUDGET", "0");
+            budget("BURRTOOLS_THREAD_BUDGET", "0"), mode("BURRTOOLS_ROT_MODE", "slow");
 
   const solverSettings_t s = solverConfig_t{}.resolve();
   CHECK(s.threads == 3);
@@ -75,6 +77,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   CHECK_FALSE(s.donate);
   CHECK(s.donateEvery == 5);
   CHECK_FALSE(s.threadBudget);
+  CHECK(s.rotation.mode == ROTATION_SLOW);
 
   /* and the caller's choice wins over it */
   solverConfig_t chosen;
@@ -85,6 +88,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   chosen.huangMemoryMB = 0;
   chosen.splitFanout = 16;
   chosen.donate = true;
+  chosen.rotation.mode = ROTATION_FAST;
   const solverSettings_t c = chosen.resolve();
   CHECK(c.threads == 1);
   CHECK(c.bitParallel);
@@ -93,6 +97,7 @@ TEST_CASE("solver settings: the environment fills what the caller leaves unset",
   CHECK(c.huangMemoryBytes == 0);
   CHECK(c.splitFanout == 16);
   CHECK(c.donate);
+  CHECK(c.rotation.mode == ROTATION_FAST);
   /* unchosen fields still come from the environment */
   CHECK_FALSE(c.disassemblerVector);
   CHECK(c.donateEvery == 5);
@@ -140,5 +145,59 @@ TEST_CASE("solver settings: the vector setting caps the kernels", "[config]") {
     CHECK((!s.avx2() || a.avx2()));
     CHECK((!s.avx512() || a.avx512()));
     CHECK((!s.neon() || a.neon()));
+  }
+}
+
+TEST_CASE("rotation settings: caller, then environment, then defaults", "[config]") {
+  CleanEnv clean;
+
+  /* the defaults are rotationSettings_t's initializers: the wide family,
+   * balanced */
+  rotationSettings_t s = rotationConfig_t{}.resolve();
+  const rotationSettings_t d;
+  CHECK(s.model.play == d.model.play);
+  CHECK(s.amounts == d.amounts);
+  CHECK(s.wideAmounts == WIDE_AMOUNTS);
+  CHECK(s.mode == ROTATION_BALANCED);
+  CHECK(rotationFamily(s).size() == 881);
+
+  /* the environment where the caller leaves the mode unset */
+  for (rotationMode_e m : { ROTATION_OFF, ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW }) {
+    ScopedEnv mode("BURRTOOLS_ROT_MODE", rotationModeName(m));
+    INFO(rotationModeName(m));
+    CHECK(rotationConfig_t{}.resolve().mode == m);
+
+    /* the caller wins */
+    rotationConfig_t chosen;
+    chosen.mode = (m == ROTATION_FAST) ? ROTATION_SLOW : ROTATION_FAST;
+    CHECK(chosen.resolve().mode == *chosen.mode);
+  }
+}
+
+TEST_CASE("rotation settings: the names of the modes", "[config]") {
+  for (rotationMode_e m : { ROTATION_OFF, ROTATION_FAST, ROTATION_BALANCED, ROTATION_SLOW })
+    CHECK(rotationModeFromName(rotationModeName(m)) == m);
+  for (const char * name : { "", "Fast", "on", "1", "balanced " })
+    CHECK_FALSE(rotationModeFromName(name));
+}
+
+TEST_CASE("rotation settings: balanced gates at play + max(play, 0.04)", "[config]") {
+  using rotationGeometry::model_t;
+  CHECK(rotationGatePlay(model_t{ 0.002, 0.03 }) == 0.002 + 0.04);
+  CHECK(rotationGatePlay(model_t{ 0.04, 0 }) == 0.08);
+  CHECK(rotationGatePlay(model_t{ 0.081, 0.032 }) == 0.081 + 0.081);
+  /* never so much play that no cube is left inside the bevel */
+  CHECK(rotationGatePlay(model_t{ 0.3, 0.3 }) < 1 - 2 * 0.3);
+  CHECK(rotationGatePlay(model_t{ 0.3, 0.3 }) >= 0.3);
+}
+
+TEST_CASE("rotation settings: a malformed mode is an error", "[config]") {
+  CleanEnv clean;
+  for (const char * value : { "Balanced", "on", "1", "" }) {
+    if (!*value)
+      continue;   // empty is unset
+    ScopedEnv bad("BURRTOOLS_ROT_MODE", value);
+    INFO(value);
+    CHECK(errorOf(solverConfig_t{}).find("BURRTOOLS_ROT_MODE") != std::string::npos);
   }
 }
