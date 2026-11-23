@@ -21,8 +21,11 @@
 #ifndef __ROTATION_GEOMETRY_H__
 #define __ROTATION_GEOMETRY_H__
 
+#include "bt_assert.h"
+
 #include <cmath>
 #include <compare>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
@@ -413,10 +416,79 @@ namespace rotationGeometry {
        *  Lets a caller find all such pivots of a cube pair at once. */
       blockerRange_c pivotsBlockedAt(unsigned int sense, int du, int dv) const;
 
-      /** Same against a prepared occupancy, for callers that try many
-       *  pivots, axes and senses against the same static cubes. */
-      int firstClear(const std::vector<cell_t> & moving, const occupancy_c & stat,
-                     unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const;
+      /** Same against a prepared occupancy or any isStatic(x, y, z) -> bool
+       *  predicate, avoiding building a separate occupancy_c per candidate. */
+      template<typename OccupiedFn>
+      requires std::invocable<const OccupiedFn &, int, int, int>
+      int firstClear(const std::vector<cell_t> & moving, const OccupiedFn & isStatic,
+                     unsigned int axis, int pivotHx, int pivotHy, int pivotHz, unsigned int sense) const {
+        if (sense > 1 || axis > 2)
+          bt_te("rotationTables_c::firstClear: sense must be 0 or 1, axis 0 to 2");
+
+        const pathTable_c & first = baseTables[0];
+
+        /* in-plane doubled pivot */
+        int pu, pv;
+        if (axis == 0)      { pu = pivotHy; pv = pivotHz; }
+        else if (axis == 1) { pu = pivotHz; pv = pivotHx; }
+        else                { pu = pivotHx; pv = pivotHy; }
+
+        struct movingCube_t { int layer, u, v; };
+        movingCube_t stackCubes[64];
+        std::vector<movingCube_t> heapCubes;
+        movingCube_t * cubes = stackCubes;
+        const size_t n = moving.size();
+        if (n > 64) {
+          heapCubes.resize(n);
+          cubes = heapCubes.data();
+        }
+
+        for (size_t k = 0; k < n; k++) {
+          const cell_t & c = moving[k];
+          int u, v;
+          if (axis == 0)      { u = 2 * c.y - pivotHy; v = 2 * c.z - pivotHz; }
+          else if (axis == 1) { u = 2 * c.z - pivotHz; v = 2 * c.x - pivotHx; }
+          else                { u = 2 * c.x - pivotHx; v = 2 * c.y - pivotHy; }
+          if (!first.covers(u, v) || ((u ^ v) & 1))
+            bt_te("rotationTables_c::firstClear: cube outside the tables or edge pivot");
+          cubes[k] = { axialCoordinate(c.x, c.y, c.z, axis), u, v };
+        }
+
+        auto occupied = [&](int layer, int su, int sv) {
+          const int u = (pu + su) / 2, v = (pv + sv) / 2;
+          if (axis == 0)      return static_cast<bool>(isStatic(layer, u, v));
+          else if (axis == 1) return static_cast<bool>(isStatic(v, layer, u));
+          else                return static_cast<bool>(isStatic(u, v, layer));
+        };
+
+        const unsigned char mirrorXf = sense ? 4 : 0;
+        const auto * commonData = blockedByAllEntries.data();
+        for (size_t k = 0; k < n; k++) {
+          const unsigned int s = first.slot(cubes[k].u, sense ? -cubes[k].v : cubes[k].v);
+          for (const auto & [su, sv] : blockerRange_c(commonData + blockedByAllOffsets[s],
+                                                      commonData + blockedByAllOffsets[s + 1], mirrorXf))
+            if (occupied(cubes[k].layer, su, sv))
+              return -1;
+        }
+
+        for (size_t i = 0; i < paths[sense].size(); i++) {
+          const pathEntry_t & e = paths[sense][i];
+          const pathTable_c & base = baseTables[e.baseIdx];
+          const unsigned char inv = inverseOffsetTransform(e.xform);
+          bool blocked = false;
+          for (size_t k = 0; k < n && !blocked; k++) {
+            auto [bu, bv] = applyOffsetTransform(inv, cubes[k].u, cubes[k].v);
+            for (const auto & [su, sv] : base.blockersTransformed(bu, bv, e.xform))
+              if (occupied(cubes[k].layer, su, sv)) {
+                blocked = true;
+                break;
+              }
+          }
+          if (!blocked)
+            return (int)i;
+        }
+        return -1;
+      }
 
     private:
 

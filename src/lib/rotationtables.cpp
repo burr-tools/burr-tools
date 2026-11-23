@@ -76,6 +76,7 @@ struct shared_t {
   std::vector<cacheEntry_t> cache;
   std::mutex parkedMutex;
   std::vector<tableFuture_t> parked;
+  std::atomic<size_t> parkedCount{0};
 };
 
 shared_t & shared(void) {
@@ -83,13 +84,25 @@ shared_t & shared(void) {
   return s;
 }
 
-void park(tableFuture_t f) {
-  if (!f.valid() || f.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+void pruneParked(void) {
+  shared_t & s = shared();
+  if (s.parkedCount.load(std::memory_order_relaxed) == 0)
     return;
+  std::lock_guard<std::mutex> lock(s.parkedMutex);
+  std::erase_if(s.parked, [](const tableFuture_t & p) { return p.wait_for(std::chrono::seconds(0)) == std::future_status::ready; });
+  s.parkedCount.store(s.parked.size(), std::memory_order_relaxed);
+}
+
+void park(tableFuture_t f) {
+  if (!f.valid() || f.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+    pruneParked();
+    return;
+  }
   shared_t & s = shared();
   std::lock_guard<std::mutex> lock(s.parkedMutex);
   std::erase_if(s.parked, [](const tableFuture_t & p) { return p.wait_for(std::chrono::seconds(0)) == std::future_status::ready; });
   s.parked.push_back(std::move(f));
+  s.parkedCount.store(s.parked.size(), std::memory_order_relaxed);
 }
 
 }
@@ -97,6 +110,7 @@ void park(tableFuture_t f) {
 std::shared_ptr<const rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius) {
 
+  pruneParked();
   std::vector<cacheEntry_t> & cache = shared().cache;
 
   /* Building under the lock keeps two solvers from building the same
@@ -125,10 +139,14 @@ rotationTablesFor(const problem_c & problem, const rotationSettings_t & settings
 }
 
 rotationContext_c::rotationContext_c(const problem_c & p,
-                                     std::shared_future<std::shared_ptr<const rotationTables_c>> tables) :
+                                     std::shared_future<std::shared_ptr<const rotationTables_c>> tables,
+                                     size_t maxBytes) :
   problem(p),
-  tableFuture(std::move(tables))
+  tableFuture(std::move(tables)),
+  maxCacheBytes(maxBytes)
 {
+  /* ensure shared_t is constructed before any context so it outlives ~rotationContext_c() */
+  (void)shared();
   const gridType_c * gt = problem.getPuzzle().getGridType();
   const unsigned int orientations = gt->getSymmetries()->getNumTransformations();
 
@@ -215,9 +233,14 @@ const rotationPivotSet_t * rotationContext_c::store(const rotationPairKey_t & ke
   auto it = sh.sets.find(key);
   if (it != sh.sets.end())
     return it->second.get();
-  if (entries.load(std::memory_order_relaxed) >= MAX_ENTRIES)
-    return set.get();
-  entries.fetch_add(1, std::memory_order_relaxed);
+  const size_t entryBytes = MAP_NODE_BYTES + (set ? set->bytes() : 0);
+  size_t cur = usedBytes.load(std::memory_order_relaxed);
+  while (true) {
+    if (cur + entryBytes > maxCacheBytes)
+      return set.get();
+    if (usedBytes.compare_exchange_weak(cur, cur + entryBytes, std::memory_order_relaxed))
+      break;
+  }
   return (sh.sets[key] = std::move(set)).get();
 }
 

@@ -159,10 +159,14 @@ class movementAnalysator_c {
     /* The pivots at which piece j blocks piece i on every path (see
      * blockingPivots) live in the context's cache, shared by all workers;
      * this is the worker's own lock-free first level in front of it, with
-     * the sets the full shared cache refused. Cleared when it grows large. */
-    static constexpr size_t MAX_LOCAL_PAIRS = size_t(1) << 20;
+     * the sets the full shared cache refused. Cleared by byte budget so a
+     * worker cannot accumulate unbounded local copies. */
+    static constexpr size_t MAX_LOCAL_BYTES = size_t(8) << 20;
+    static constexpr size_t LOCAL_NODE_BYTES = 48;
     std::unordered_map<rotationPairKey_t, const rotationPivotSet_t *, rotationPairKeyHash_t> localPairs;
     std::vector<std::unique_ptr<rotationPivotSet_t>> ownPairs;
+    size_t localPairBytes = 0;
+    std::vector<std::pair<int16_t, int16_t>> pivotScratch;
 
     /* the cubes of a part in an orientation in the in-plane frame of an
      * axis, relative to the hotspot and sorted by layer, with their
