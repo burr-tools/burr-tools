@@ -104,6 +104,13 @@ public:
   /** Re-apply the next snapshot. Returns shape selection + tab. */
   undoResult_t redo(puzzle_c * puzzle);
 
+  /** How many disassemblies undo() / redo() would drop: those that turn
+   *  pieces, when the step brings back less play or bevel. Solutions are
+   *  not snapshotted, so the opposite step does not bring them back: front
+   *  ends ask first, as for a direct edit (puzzle_c::droppedByRotationModel). */
+  unsigned int droppedByUndo(const puzzle_c & puzzle) const;
+  unsigned int droppedByRedo(const puzzle_c & puzzle) const;
+
   /** Solve records an edit discarded: the problem's index and what it held. */
   typedef std::vector<std::pair<unsigned int, problem_c::solveRecord_t>> discarded_t;
 
@@ -197,6 +204,8 @@ private:
   /* Returns the shapes whose voxels it changed. A problem the snapshot
    * leaves as it is keeps its solutions. */
   std::vector<unsigned int> restore(puzzle_c * puzzle, const snapshot_t * snap) const;
+  /** the disassemblies restoring snap's rotation model drops */
+  static unsigned int droppedByRestore(const puzzle_c & puzzle, const snapshot_t & snap);
   static problemSnap_t snapProblem(const problem_c * pr);
   /* the same parts, result, groups and colour constraints (the name aside) */
   static bool sameStructure(const problemSnap_t & a, const problemSnap_t & b);

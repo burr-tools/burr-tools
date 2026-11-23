@@ -157,6 +157,22 @@ def main():
                 check(label, "<separation" not in xml and "playUpper=" not in xml,
                       "the old disassembly was kept")
 
+        # -R off or -R without -d does not run rotation moves and must not
+        # stamp a rotation model onto a v2 puzzle
+        for extra, label in (
+            (["-d", "-R", "off", "-q"], "burrTxt -d -R off -w keeps v2"),
+            (["-R", "-q"], "burrTxt -R -w without -d keeps v2"),
+        ):
+            out_path = os.path.join(tmp, f"{abs(hash(label))}.xmpuzzle")
+            rc, out = run(binary, extra + ["-w", out_path], aaa, label)
+            if rc is not None:
+                check(label, rc == 0 and os.path.exists(out_path), f"exited {rc}\n{out}")
+            if os.path.exists(out_path):
+                with gzip.open(out_path, "rt") as f:
+                    xml = f.read()
+                check(label, "rotationPlay=" not in xml and '<puzzle version="2"' in xml,
+                      "unexpectedly stored a rotation model")
+
     for f in failures:
         print(f"FAILED  {f}")
 

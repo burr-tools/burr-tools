@@ -20,6 +20,7 @@
 #include "lib/solution.h"
 #include "lib/voxel.h"
 #include "tools/xml.h"
+#include "../src/uicore/puzzlehistory.h"
 
 #include <algorithm>
 #include <array>
@@ -553,6 +554,25 @@ TEST_CASE("a rotation model change resets the problems, and a tighter one drops 
   /* back to the default from more play: tighter again */
   puzzle->clearRotationModel();
   CHECK(problem.getSavedSolution(0)->getDisassembly() == nullptr);
+
+  /* undo and redo restore models too: a front end asks first for them as
+   * well, so they say what restoring drops */
+  {
+    auto p = solvedWithTurns();
+    puzzleHistory_c history;
+    history.reset(p.get());
+    const rotationGeometry::model_t looser = { model.play * 2, model.chamfer };
+    p->setRotationModel(looser);
+    history.record(p.get(), puzzleHistory_c::AK_PROBLEM_STRUCTURAL);
+    CHECK(history.droppedByRedo(*p) == 0);
+    /* undo goes back to the tighter model: the disassembly that turns is dropped */
+    CHECK(history.droppedByUndo(*p) == 1);
+    history.undo(p.get());
+    CHECK(p->getProblem(0)->getSavedSolution(0)->getDisassembly() == nullptr);
+    CHECK(history.droppedByUndo(*p) == 0);
+    /* redo, to more play, drops nothing (and brings nothing back) */
+    CHECK(history.droppedByRedo(*p) == 0);
+  }
 }
 
 TEST_CASE("round trip: a puzzle comes apart again at the play and the bevel its disassembly needs",

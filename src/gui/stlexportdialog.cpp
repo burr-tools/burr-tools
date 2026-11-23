@@ -173,9 +173,9 @@ void stlExportDialog_c::addParameterFrame(int row)
   }
 
   modelNote = new LFl_Box(0, stl->numParameters(), 3, 1);
-  modelNote->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+  modelNote->align(FL_ALIGN_TOP_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
   modelNote->labelsize(12);
-  modelNote->setMinimumSize(220, 32);
+  modelNote->setMinimumSize(220, 50);
 
   fr->end();
 }

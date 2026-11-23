@@ -1232,7 +1232,8 @@ void mainWindow_c::cb_BtnCont(bool prep_only) {
   /* a fresh solve with turns stores the model it uses, so the file says
    * which pieces its disassemblies are for */
   problem_c * solved = puzzle->getProblem(prob);
-  if (par & solveThread_c::PAR_ROTATION_MOVES)
+  if (!prep_only && (par & solveThread_c::PAR_DISASSM) && (par & solveThread_c::PAR_ROTATION_MOVES) &&
+      ggt->getGridType()->getType() == gridType_c::GT_BRICKS)
     storeSolveRotationModel(*puzzle, settings.rotation);
   /* which mode the results come from, so that the tab can say when the
    * choice differs (in memory only, like the choice); Prepare disassembles
@@ -1535,14 +1536,19 @@ void mainWindow_c::cb_AddDisasm(void) {
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
+  auto ctx = rotationContextForGui(*pr, settings);
+  if (ctx)
+    storeSolveRotationModel(*puzzle, settings.rotation);
+  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, std::move(ctx));
 
   auto d = dis->disassemble(pr->getSavedSolution(sol)->getAssembly());
 
   puzzleHistory->markModified();
 
-  if (d)
+  if (d) {
+    disassemble.reset();
     pr->getSavedSolution(sol)->setDisassembly(std::move(d));
+  }
 
   activateSolution(prob, (int)SolutionSel->value()-1);
   updateInterface();
@@ -1568,7 +1574,11 @@ void mainWindow_c::cb_AddAllDisasm(bool all) {
   solverSettings_t settings;
   if (!solverSettings(settings))
     return;
-  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, rotationContextForGui(*pr, settings));
+  auto ctx = rotationContextForGui(*pr, settings);
+  if (ctx)
+    storeSolveRotationModel(*puzzle, settings.rotation);
+  auto dis = std::make_unique<disassembler_0_c>(*pr, settings, std::move(ctx));
+  disassemble.reset();
 
   auto w = std::make_unique<Fl_Double_Window>(20, 20, 300, 30);
   Fl_Box * b = new Fl_Box(0, 0, 300, 30);
@@ -1729,6 +1739,10 @@ void mainWindow_c::cb_3dClick(void) {
 void cb_Undo_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_Undo(); }
 void mainWindow_c::cb_Undo(void) {
   if (!puzzleHistory->canUndo() || assmThread) return;
+  if (!confirmHistoryDrop(puzzleHistory->droppedByUndo(*puzzle), "Undo", "Redo")) return;
+  /* restoring a tighter rotation model drops turning disassemblies that the
+   * animation may still point into */
+  disassemble.reset();
   auto res = puzzleHistory->undo(puzzle.get());
   applyHistoryRestore((unsigned int)res.tab, res.selectedShape);
 }
@@ -1736,8 +1750,24 @@ void mainWindow_c::cb_Undo(void) {
 void cb_Redo_stub(Fl_Widget* /*o*/, void* v) { static_cast<mainWindow_c*>(v)->cb_Redo(); }
 void mainWindow_c::cb_Redo(void) {
   if (!puzzleHistory->canRedo() || assmThread) return;
+  if (!confirmHistoryDrop(puzzleHistory->droppedByRedo(*puzzle), "Redo", "Undo")) return;
+  disassemble.reset();
   auto res = puzzleHistory->redo(puzzle.get());
   applyHistoryRestore((unsigned int)res.tab, res.selectedShape);
+}
+
+/* an undo or redo back to less play or bevel drops the disassemblies that
+ * turn pieces, as the direct edit does (cb_RotationModel): ask as it asks */
+bool mainWindow_c::confirmHistoryDrop(unsigned int dropped, const char * step, const char * other) {
+  if (dropped == 0)
+    return true;
+  if (!fl_choice("%s brings back less play or bevel: the %u disassemblies that turn pieces\n"
+                 "are dropped, they may no longer work. %s does not bring them back.",
+                 "Cancel", "Drop them", 0, step, dropped, other))
+    return false;
+  /* what is dropped is not snapshotted: never back to saved */
+  puzzleHistory->markModified();
+  return true;
 }
 
 void mainWindow_c::applyHistoryRestore(unsigned int tab, unsigned int selectedShape) {

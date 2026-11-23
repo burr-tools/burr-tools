@@ -296,6 +296,7 @@ class mainWindow_c : public LFl_Double_Window {
   void updateUndoRedoMenu(void);
   // restores tab (0=Entities, 1=Puzzle, 2=Solver) and shape selection after undo/redo
   void applyHistoryRestore(unsigned int tab, unsigned int selectedShape);
+  bool confirmHistoryDrop(unsigned int dropped, const char * step, const char * other);
 
   updateChecker_c * updateChecker;
 

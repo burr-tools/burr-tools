@@ -14,6 +14,7 @@
 #include "../lib/gridtype.h"
 #include "../lib/problem.h"
 #include "../lib/puzzle.h"
+#include "../lib/rotationtables.h"
 #include "../lib/voxel.h"
 
 #include <algorithm>
@@ -178,6 +179,7 @@ std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snap
 
   // --- the pieces' play and bevel --- an edit like any other: what a
   // tighter model drops stays dropped, as solutions are not snapshotted
+  // (front ends ask first, droppedByUndo / droppedByRedo)
   if (snap->rotationModel)
     puzzle->setRotationModel(*snap->rotationModel);
   else
@@ -370,6 +372,18 @@ puzzleHistory_c::undoResult_t puzzleHistory_c::redo(puzzle_c * puzzle) {
   settleSolutions(puzzle, restore(puzzle, snapshots[cursor].get()), *snapshots[cursor]);
   return { snapshots[cursor]->selectedShape,
            tabForAction(snapshots[cursor]->kind) };
+}
+
+unsigned int puzzleHistory_c::droppedByRestore(const puzzle_c & puzzle, const snapshot_t & snap) {
+  return puzzle.droppedByRotationModel(snap.rotationModel.value_or(rotationSettings_t{}.model));
+}
+
+unsigned int puzzleHistory_c::droppedByUndo(const puzzle_c & puzzle) const {
+  return canUndo() ? droppedByRestore(puzzle, *snapshots[cursor - 1]) : 0;
+}
+
+unsigned int puzzleHistory_c::droppedByRedo(const puzzle_c & puzzle) const {
+  return canRedo() ? droppedByRestore(puzzle, *snapshots[cursor + 1]) : 0;
 }
 
 bool puzzleHistory_c::keepDiscarded(discarded_t && d) {
