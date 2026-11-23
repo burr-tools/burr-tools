@@ -28,8 +28,7 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
     disassemble(disassemble),
     reduce(reduce),
     keep_rotations(keep_rotations),
-    keep_mirror(keep_mirror),
-    threads(threads)
+    keep_mirror(keep_mirror)
 {
   if (!puzzle) {
     throw std::invalid_argument("Puzzle pointer is null");
@@ -37,6 +36,16 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
   if (problem_idx >= puzzle->getNumberOfProblems()) {
     throw std::out_of_range("Problem index out of range");
   }
+
+  // Resolve on the calling thread before spawning the worker so invalid or
+  // renamed BURRTOOLS_* variables and out-of-range threads raise ValueError
+  // immediately from solve() and std::getenv runs under the GIL.
+  // threads=0 (the default) leaves the count to BURRTOOLS_THREADS, else every core.
+  solverConfig_t config;
+  if (threads > 0) {
+    config.threads = threads;
+  }
+  settings = config.resolve();
 
   worker_thread = std::jthread([this](std::stop_token st) { worker_run(st); });
 }
@@ -144,14 +153,6 @@ void SolutionIterator::worker_run(std::stop_token st) {
     for (unsigned int i = 0; i < puzzle->getNumberOfShapes(); i++) {
       puzzle->getShape(i)->initHotspot();
     }
-
-    // threads=0 (the default) leaves the count to BURRTOOLS_THREADS, else
-    // every core; everything else from the environment, then the defaults
-    solverConfig_t config;
-    if (threads > 0) {
-      config.threads = threads;
-    }
-    const solverSettings_t settings = config.resolve();
 
     assm = gt->findAssembler(*problem, settings);
     if (!assm) {

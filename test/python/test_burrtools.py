@@ -185,6 +185,22 @@ class TestBurrTools(unittest.TestCase):
         asms_multi = list(prob.solve(disassemble=False, threads=4))
         self.assertEqual(len(asms_multi), 12)
 
+    def test_solve_invalid_config_raises_value_error(self):
+        from unittest import mock
+        puzzle = burrtools.load(self.puzzle_path)
+        prob = puzzle.problems[0]
+
+        with self.assertRaises(ValueError):
+            prob.solve(disassemble=False, threads=5000)
+
+        with mock.patch.dict(os.environ, {"BURRTOOLS_THREADS": "not_a_number"}):
+            with self.assertRaises(ValueError):
+                prob.solve(disassemble=False)
+
+        with mock.patch.dict(os.environ, {"BURRTOOLS_NO_SIMD": "1"}):
+            with self.assertRaises(ValueError):
+                prob.solve(disassemble=False)
+
 if __name__ == "__main__":
     unittest.main()
 
