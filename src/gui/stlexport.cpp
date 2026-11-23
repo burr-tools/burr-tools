@@ -25,6 +25,7 @@
 
 #include "../lib/puzzle.h"
 #include "../lib/voxel.h"
+#include "../lib/rotationtables.h"
 
 #include "../halfedge/polyhedron.h"
 #include "../halfedge/volume.h"
@@ -37,6 +38,9 @@
 static void cb_ShapeSelect_stub(Fl_Widget* /*o*/, void* v) { ((stlExport_c*)(v))->cb_NewPreviewSubject(); }
 
 stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : stlExportDialog_c(p, puzzleFile, "Export STL") {
+
+  /* the pieces rotation moves are checked for */
+  stl->followModel(rotationModelOf(*p));
 
   addOutputFrame(0, "test");
   addParameterFrame(1);
@@ -57,6 +61,11 @@ stlExport_c::stlExport_c(puzzle_c * p, const std::string & puzzleFile) : stlExpo
   addStatusAndPreview(4);
 
   set_modal();
+}
+
+rotationGeometry::model_t stlExport_c::expectedModel(void) const
+{
+  return rotationModelOf(*puzzle);
 }
 
 std::unique_ptr<Polyhedron> stlExport_c::previewMesh(std::string & text)

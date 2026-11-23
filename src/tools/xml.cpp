@@ -22,6 +22,9 @@
 
 #include <string.h>
 
+#include <charconv>
+#include <cmath>
+#include <locale>
 #include <sstream>
 
 static const int RESIZE_BUFFER = 16;
@@ -1182,3 +1185,25 @@ void xmlParser_c::skipSubTree()
 
 
 
+
+std::string xmlDouble(double value) {
+  /* the shortest text that reads back as exactly this value, independent
+   * of the C locale */
+  char buf[32];   // the longest shortest double, "-2.2250738585072014e-308", is 24
+  return std::string(buf, std::to_chars(buf, buf + sizeof(buf), value).ptr);
+}
+
+bool xmlParseDouble(const std::string & text, double * value) {
+  /* the whole text one finite number: from_chars takes "inf" and "nan",
+   * which no attribute written with xmlDouble holds */
+  /* std::from_chars for double needs macOS 26, so read with a stream pinned
+   * to the classic locale */
+  if (text.empty() || std::isspace(static_cast<unsigned char>(text[0]))) return false;
+  std::istringstream in(text);
+  in.imbue(std::locale::classic());
+  double v;
+  in >> v;
+  if (in.fail() || in.peek() != std::char_traits<char>::eof() || !std::isfinite(v)) return false;
+  *value = v;
+  return true;
+}

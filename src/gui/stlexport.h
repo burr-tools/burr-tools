@@ -49,6 +49,9 @@ class stlExport_c : public stlExportDialog_c {
 
     std::unique_ptr<Polyhedron> previewMesh(std::string & text) override;
 
+    /* the pieces the puzzle's rotation moves are checked for */
+    rotationGeometry::model_t expectedModel(void) const override;
+
   public:
 
     /* puzzleFile is the path the current puzzle was loaded from, or empty

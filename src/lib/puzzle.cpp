@@ -22,6 +22,7 @@
 
 #include "disassembly.h"
 #include "problem.h"
+#include "rotationtables.h"
 #include "solution.h"
 #include "voxel.h"
 
@@ -94,6 +95,7 @@
 
 puzzle_c::puzzle_c(const puzzle_c * orig)
   : gt(std::make_unique<gridType_c>(*orig->gt)),
+    rotationModel(orig->rotationModel),
     comment(orig->comment),
     commentPopup(orig->commentPopup) {
 
@@ -204,8 +206,11 @@ bool hasRotationData(const separation_c * s)
 bool hasRotationData(const problem_c & pr)
 {
   for (unsigned int i = 0; i < pr.getNumberOfSavedSolutions(); i++)
-    if (hasRotationData(pr.getSavedSolution(i)->getDisassembly()))
+  {
+    const solution_c * s = pr.getSavedSolution(i);
+    if (s->getPlay() || hasRotationData(s->getDisassembly()))
       return true;
+  }
   return false;
 }
 
@@ -213,12 +218,16 @@ bool hasRotationData(const problem_c & pr)
 
 void puzzle_c::save(xmlWriter_c & xml) const
 {
-  bool v3 = false;
+  bool v3 = rotationModel.has_value();
   for (const auto & pr : problems)
     v3 = v3 || hasRotationData(*pr);
 
   xml.newTag("puzzle");
   xml.newAttrib("version", v3 ? "3" : "2");
+  if (rotationModel) {
+    xml.newAttrib("rotationPlay", xmlDouble(rotationModel->play));
+    xml.newAttrib("rotationBevel", xmlDouble(rotationModel->chamfer));
+  }
 
   gt->save(xml);
 
@@ -291,6 +300,19 @@ puzzle_c::puzzle_c(xmlParser_c & pars)
 
   if ((version < 1) || (version > 3))
     pars.exception("can only load files of version 1 to 3");
+
+  {
+    const std::string play = pars.getAttributeValue("rotationPlay");
+    const std::string bevel = pars.getAttributeValue("rotationBevel");
+    if (play.length() || bevel.length()) {
+      rotationGeometry::model_t model;
+      if (!xmlParseDouble(play, &model.play) || !xmlParseDouble(bevel, &model.chamfer) ||
+          !validRotationModel(model))
+        pars.exception("rotationPlay and rotationBevel must both be given, with 0 < play < 1 "
+                       "and 0 <= bevel < half a cube");
+      rotationModel = model;
+    }
+  }
 
   gt.reset();
   commentPopup = false;
@@ -468,3 +490,47 @@ void puzzle_c::exchangeProblems(unsigned int p1, unsigned int p2) {
   std::swap(problems[p1], problems[p2]);
 }
 
+
+bool puzzle_c::validRotationModel(const rotationGeometry::model_t & model)
+{
+  return rotationGeometry::validModel(model);
+}
+
+void puzzle_c::setRotationModel(const rotationGeometry::model_t & model)
+{
+  if (!validRotationModel(model))
+    bt_te("puzzle_c::setRotationModel: needs 0 < play < 1 and 0 <= bevel < half a cube");
+  const rotationGeometry::model_t now = rotationModelOf(*this);
+  rotationModel = model;
+  if (model.play == now.play && model.chamfer == now.chamfer)
+    return;
+  /* more play and more bevel only remove material, so turns stay clear */
+  const bool tighter = model.play < now.play || model.chamfer < now.chamfer;
+  for (auto & p : problems)
+    p->piecesChanged(tighter);
+}
+
+unsigned int puzzle_c::droppedByRotationModel(const rotationGeometry::model_t & model) const
+{
+  const rotationGeometry::model_t now = rotationModelOf(*this);
+  if (!(model.play < now.play || model.chamfer < now.chamfer))
+    return 0;
+  unsigned int n = 0;
+  for (const auto & p : problems) {
+    auto guard = p->lockSolutions();
+    for (unsigned int s = 0; s < p->getNumberOfSavedSolutions(); s++) {
+      const separation_c * d = p->getSavedSolution(s)->getDisassembly();
+      if (d && d->sumRotations() > 0)
+        n++;
+    }
+  }
+  return n;
+}
+
+void puzzle_c::clearRotationModel(void)
+{
+  if (!rotationModel)
+    return;
+  setRotationModel(rotationSettings_t{}.model);
+  rotationModel.reset();
+}

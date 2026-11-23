@@ -1,6 +1,7 @@
 #pragma once
 
 #include "py_solution.h"
+#include "lib/rotationtables.h"
 #include "lib/solver_config.h"
 
 #include <memory>
@@ -41,7 +42,8 @@ public:
                    bool reduce = false,
                    bool keep_rotations = false,
                    bool keep_mirror = false,
-                   unsigned int threads = 0);
+                   unsigned int threads = 0,
+                   rotationMode_e rotation_mode = ROTATION_OFF);
   ~SolutionIterator();
 
   SolutionIterator* iter() { return this; }

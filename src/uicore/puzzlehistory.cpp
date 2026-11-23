@@ -127,6 +127,8 @@ puzzleHistory_c::capture(const puzzle_c * puzzle,
     snap->colors.push_back((uint32_t)r | (uint32_t)g << 8 | (uint32_t)b << 16);
   }
 
+  snap->rotationModel = puzzle->getRotationModel();
+
   for (unsigned int p = 0; p < puzzle->getNumberOfProblems(); p++)
     snap->problems.push_back(snapProblem(puzzle->getProblem(p)));
 
@@ -173,6 +175,13 @@ std::vector<unsigned int> puzzleHistory_c::restore(puzzle_c * puzzle, const snap
 
   // --- colour palette ---
   puzzle->adoptColors(snap->colors);
+
+  // --- the pieces' play and bevel --- an edit like any other: what a
+  // tighter model drops stays dropped, as solutions are not snapshotted
+  if (snap->rotationModel)
+    puzzle->setRotationModel(*snap->rotationModel);
+  else
+    puzzle->clearRotationModel();
 
   // --- problems --- adjust count first so the restore loop always sees the right size ---
   while (puzzle->getNumberOfProblems() > snap->problems.size())

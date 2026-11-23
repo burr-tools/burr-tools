@@ -24,8 +24,11 @@
 #include "palette.h"
 #include "vecmath.h"
 
+#include "../lib/rotationgeometry.h"
+
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 class voxel_c;
@@ -83,8 +86,9 @@ namespace btui {
    *           (variableAlpha) with a dashed outline (C06, the mock)
    *   Legacy  legacy BurrTools': bevelled voxels in alternating light and
    *           dark shades, variable voxels opaque with a black marker
-   *   Stl     the shape as Export ▸ STL makes it (voxel_c::getSTLMesh, the
-   *           view's bevel and gap): chamfered edges, no outlines, the shape's
+   *   Stl     the shape as Export ▸ STL makes it (voxel_c::getSTLMeshFor with
+   *           MeshOptions::stlModel, else getSTLMesh and the view's bevel
+   *           and gap): chamfered edges, no outlines, the shape's
    *           colour; only the fixed voxels -- an exported piece is solid,
    *           and variable voxels are not drawn */
   enum class VoxelStyle { Flat, Legacy, Stl };
@@ -98,6 +102,10 @@ namespace btui {
      * inside show through the outer ones, layer over layer (C06 and the mock
      * say 50 %; user decision). 1 draws them opaque. */
     float variableAlpha = 0.6f;
+    /* the Stl style's pieces: the play and bevel rotation moves are checked
+     * for, when the puzzle stores them (puzzle_c::getRotationModel); unset,
+     * the view's own */
+    std::optional<rotationGeometry::model_t> stlModel;
   };
 
   /* A line for the overlay pass: drawn as a screen-space quad of widthDp,
