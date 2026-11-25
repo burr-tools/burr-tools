@@ -52,8 +52,8 @@ inline bool threadBudgetEnabled() {
  *   out of tasks wait instead of dying, and only all-idle + empty-queue
  *   (global quiescence) ends the search. A popping worker splits its task
  *   one level deeper when the prefix is shallow or siblings starve.
- *   Interrupted runs are resumable in-session (requeued tasks +
- *   emittedSignatures dedup) but never across save files.
+ *   Interrupted runs are resumable in-session and across save files
+ *   (the requeued remainder holds only unexplored work).
  * - Tier 2 (disassembly) pulls found assemblies off a bounded queue with
  *   dedicated workers and a merger thread that re-emits results strictly
  *   in submit order. finish() drains and joins; abort() discards.

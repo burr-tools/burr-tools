@@ -10,7 +10,8 @@ layout(location = 0) out vec4 fragColor;
 
 layout(std140, binding = 0) uniform Buf {
     mat4 mvp;
-    vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light
+    vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light,
+                     // w: the least coverage drawn (0.5: the solid core's depth alone)
 } ubuf;
 
 vec3 toLinear(vec3 c)
@@ -28,7 +29,7 @@ void main()
         float d = mod(vDist, vDash.x + vDash.y);
         cover *= clamp(min(d + 0.5, vDash.x - d + 0.5), 0.0, 1.0);
     }
-    if (cover <= 0.0)
+    if (cover <= 0.0 || cover < ubuf.viewport.w)
         discard;
     float a = vColor.a * cover;
     vec3 c = ubuf.viewport.z > 0.5 ? toLinear(vColor.rgb) : vColor.rgb;

@@ -2,15 +2,16 @@ import QtQuick
 import QtQuick.Controls.Basic
 import BurrTools.Ui
 
-// PR-04 Button: h30 (small 26), padding 0x12, radius 8; secondary (panel fill,
-// line2 border) or primary (accent fill, white text).
+// PR-04 Button: h28, Minimal 26 (density.md section 1 over PR-04's 30; small
+// 26), padding 0x12, radius 8; secondary (panel fill, line2 border) or
+// primary (accent fill, white text).
 AbstractButton {
     id: root
     property bool primary: false
     property bool danger: false
     property bool small: false
 
-    implicitHeight: small ? 26 : 30
+    implicitHeight: small ? 26 : Theme.button
     implicitWidth: Math.max(64, label.implicitWidth + 24)
     hoverEnabled: true
     focusPolicy: Qt.StrongFocus

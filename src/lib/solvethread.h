@@ -49,16 +49,16 @@ class problem_c;
  * salvage into the problem's stashed assemblies. On the assembly side the
  * pool is drained after the workers join: never-started plus re-queued
  * in-flight tasks land back in parallelTasks (both assemblers re-queue
- * via push_tasks, which stays accepted while stopping), with
- * emittedSignatures suppressing repeats and parallelInterrupted marking
- * the position resumable.
+ * via push_tasks, which stays accepted while stopping) as their
+ * unexplored remainder only, with parallelInterrupted marking the
+ * position resumable.
  *
  * Continue (start() again): stashed assemblies are re-submitted FIRST, so
  * solution order stays stable; then assemble() continues over the drained
  * remainder (generation is skipped while tasks remain) or regenerates
- * fully when the stop landed during generation. Re-searched overlap is
- * suppressed by the emittedSignatures dedup, so nothing is reported twice
- * and nothing is lost. Across sessions, stashed assemblies are serialized
+ * fully when the stop landed during generation. The remainder holds only
+ * territory the stopped run had not searched, so nothing is reported
+ * twice and nothing is lost. Across sessions, stashed assemblies are serialized
  * with the problem; an interrupted parallel search reloads resumable when
  * task data was persisted, and is refused on load
  * (ERR_CAN_NOT_RESTORE_INTERRUPTED, restarting cleanly) only when the

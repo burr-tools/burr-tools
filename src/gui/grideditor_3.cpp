@@ -155,14 +155,6 @@ void gridEditor_3_c::drawNormalTile(int x, int y, int z, int tx, int ty, int sx,
   fl_polygon(x1, y1, x2, y2, x3, y3);
 }
 
-void gridEditor_3_c::drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy) {
-  int x1, y1, x2, y2, x3, y3;
-
-  getTriangle(x, y, z, tx, ty, sx, sy, &x1, &y1, &x2, &y2, &x3, &y3, 3);
-
-  fl_polygon(x1, y1, x2, y2, x3, y3);
-}
-
 void gridEditor_3_c::drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy) {
   int x1, y1, x2, y2, x3, y3;
 

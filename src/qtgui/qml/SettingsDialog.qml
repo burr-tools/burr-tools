@@ -58,6 +58,8 @@ BtDialog {
               opts: [25, 50, 100, 200, 500] },
             { key: "tooltips", prop: "tooltips", type: "switch", title: qsTr("Show tooltips"),
               desc: qsTr("Show short help text when the mouse rests on buttons and other controls.") },
+            { key: "singleKeyShortcuts", prop: "singleKeyShortcuts", type: "switch", title: qsTr("Single-key shortcuts"),
+              desc: qsTr("Letter and number keys without Ctrl or Alt: O and P for orbit and pan, F to fit, E for 3D edit mode, 1–4 for the tools. Turn them off if you type by voice or one key at a time and they get in the way; the buttons and menus do the same.") },
             { key: "checkForUpdates", prop: "checkForUpdates", type: "switch", title: qsTr("Check for updates at launch"),
               desc: qsTr("At most once a day, ask GitHub whether a newer BurrTools release exists and offer its release notes. Help › Check for updates asks at any time.") }
         ] },

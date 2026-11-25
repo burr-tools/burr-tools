@@ -164,8 +164,12 @@ setup-cov:
 # recipes can never silently drift and report different numbers. Excluding
 # build-cov/subprojects skips walking vendored coverage data the filters would
 # discard anyway (~44s saved); it must not change the reported TOTAL.
+# The assembler's worker threads race on gcov's counters, which newer gcc
+# (15) can report as negative hits (gcc bug 68080); gcovr counts those lines
+# as not run and warns, rather than failing the whole report.
 gcovr_base := "--root . " + \
     "--exclude 'src/lua/' " + \
+    "--gcov-ignore-parse-errors=negative_hits.warn_once_per_file " + \
     "--exclude-directories 'build-cov/subprojects' " + \
     ( if os() == "macos" { '--gcov-executable "xcrun llvm-cov gcov"' } else { "" } )
 
@@ -183,16 +187,29 @@ gcovr_qtgui := "--filter 'src/qtgui/'"
 # (the library and, as its [ui] cases, src/uicore), then the Qt GUI's suites
 # when the coverage build has the Qt GUI (Qt >= 6.8 found). Headless Linux
 # needs the render tests' platform set up as the qt-linux CI job does.
-_coverage-tests: setup-cov
+# areas="qtgui" runs the Qt GUI's suites alone: CI's coverage-qt job reports
+# only that figure, the coverage job measures the other two.
+# The library's cases run one process each, each pinned to a CPU
+# (scripts/test-cases-pinned.sh): the coverage build's atomic counters are
+# slow when a case's threads run on different CPUs. Cases tagged
+# [nocoverage] are too slow instrumented for what they add.
+_coverage-tests areas="all": setup-cov
     #!/usr/bin/env bash
     set -euo pipefail
     ninja -C build-cov
     # counters add up across runs: start from zero, so the library's figure
     # below holds the library's tests only, not an earlier run's GUI suites
     find build-cov -name '*.gcda' -delete
-    ./build-cov/test_burrtools '~[ui]'
-    gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
-    ./build-cov/test_burrtools '[ui]'
+    if [ "{{ areas }}" = qtgui ]; then
+        if [ ! -d build-cov/test/qtgui ]; then
+            echo "error: build-cov has no Qt GUI (Qt >= 6.8 not found)" >&2
+            exit 1
+        fi
+    else
+        ./scripts/test-cases-pinned.sh ./build-cov/test_burrtools '~[ui]~[nocoverage]' --reporter compact
+        gcovr {{ gcovr_base }} {{ gcovr_lib }} --json build-cov/coverage-lib.json build-cov
+        ./build-cov/test_burrtools '[ui]'
+    fi
     if [ -d build-cov/test/qtgui ]; then
         meson test -C build-cov --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
     fi
@@ -201,7 +218,8 @@ _coverage-tests: setup-cov
 # html names its index file), then a summary per area read back from it --
 # the library's from the tracefile _coverage-tests took after its own tests.
 # (The HTML report shows every suite's hits, the library's files included.)
-_coverage-summary html="":
+# areas="qtgui" reports, and puts in the HTML, the Qt GUI's area only.
+_coverage-summary html="" areas="all":
     #!/usr/bin/env bash
     set -euo pipefail
     html_args=()
@@ -209,7 +227,12 @@ _coverage-summary html="":
         mkdir -p "$(dirname "{{ html }}")"
         html_args=(--html-details "{{ html }}")
     fi
-    gcovr {{ gcovr_base }} {{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }} \
+    if [ "{{ areas }}" = qtgui ]; then
+        filters=({{ gcovr_qtgui }})
+    else
+        filters=({{ gcovr_lib }} {{ gcovr_uicore }} {{ gcovr_qtgui }})
+    fi
+    gcovr {{ gcovr_base }} "${filters[@]}" \
         --json build-cov/coverage.json ${html_args[@]+"${html_args[@]}"} build-cov
     area() {
         echo "== $1"     # the CI report picks these lines out of the build's output
@@ -219,8 +242,10 @@ _coverage-summary html="":
         # (gcovr refuses /dev/null as an output)
         gcovr --root . --add-tracefile "$tracefile" "$@" --print-summary --output build-cov/coverage-area.txt
     }
-    area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
-    area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    if [ "{{ areas }}" != qtgui ]; then
+        area "library: src/lib, src/tools, src/halfedge -- compared across pull requests" build-cov/coverage-lib.json {{ gcovr_lib }}
+        area "UI core: src/uicore" build-cov/coverage.json {{ gcovr_uicore }}
+    fi
     if [ -d build-cov/test/qtgui ]; then
         area "Qt GUI: src/qtgui, C++ only" build-cov/coverage.json {{ gcovr_qtgui }}
     fi
@@ -228,8 +253,8 @@ _coverage-summary html="":
 # Report test coverage per area (library, UI core, Qt GUI)
 coverage: _coverage-tests _coverage-summary
 
-# Per-area coverage summary plus an HTML report of every area in coverage-html/
-coverage-html: _coverage-tests (_coverage-summary "coverage-html/index.html")
+# Per-area coverage summary plus an HTML report in coverage-html/ (areas="qtgui": the Qt GUI's alone)
+coverage-html areas="all": (_coverage-tests areas) (_coverage-summary "coverage-html/index.html" areas)
 
 # Run the single-commit snapshot benchmark over the fixed puzzle corpus
 # (bench/run_snapshot.sh); extra args are forwarded, e.g. `just bench --runs 5`
@@ -261,10 +286,30 @@ heap-qt: build-qt
 bench-ui *args: build-release
     ./build-rel/test_burrtools "[bench]" {{args}}
 
-# Build with AddressSanitizer and UndefinedBehaviorSanitizer
+# Build with AddressSanitizer and UndefinedBehaviorSanitizer (test-asan-qt adds the Qt GUI)
 build-asan:
-    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined; fi
+    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined -Db_lundef=false -Dqt_gui=disabled -Dpython=disabled; fi
     ninja -C build-asan
+
+# The unit tests under ASan + UBSan, leaks included (CI: master only, so a PR's author runs it; llm_docs/verification.md)
+# MINK_STRESS=1: one random shape per grid and setting in "Minkowski mesher:
+# random shapes", not three -- a memory error shows on any of them, and under
+# ASan the case took over 3 minutes.
+test-asan: build-asan
+    MINK_STRESS=1 \
+    ASAN_OPTIONS="halt_on_error=1:detect_leaks=1:strict_string_checks=1" \
+    UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1" \
+    ./build-asan/test_burrtools --reporter compact
+
+# The Qt GUI's suites under ASan + UBSan (needs Qt >= 6.8). Leaks are not
+# checked: Qt and the Mesa driver are not instrumented and keep memory to the end.
+test-asan-qt:
+    @if [ ! -d "build-asan" ]; then meson setup build-asan -Db_sanitize=address,undefined -Db_lundef=false -Dpython=disabled; fi
+    meson configure build-asan -Dqt_gui=enabled
+    ninja -C build-asan
+    ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
+    UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1" \
+    meson test -C build-asan --print-errorlogs qtgui qtgui_qml qtgui_gallery_150 qtgui_gallery_200 qtgui_smoke
 
 # Build with ThreadSanitizer (detect concurrency data races)
 build-tsan:
@@ -294,9 +339,10 @@ build-release:
     ninja -C build-rel
 
 # Run the test suites against the release binary (the configuration CI
-# ships and gates on). Required before pushing: the dev build neither
-# treats warnings as errors nor disables assertions, so `just test-all`
-# alone cannot catch what CI will fail on.
+# ships and gates on): the dev build neither treats warnings as errors nor
+# disables assertions. CI's build-linux job runs the same, so this is for
+# reproducing a failure there, not a step before every push
+# (llm_docs/verification.md, "Leave the rest to CI").
 test-release:
     meson test -C build-rel --suite fast --suite slow --print-errorlogs
 

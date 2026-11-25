@@ -25,7 +25,13 @@
 #include "../halfedge/polyhedron.h"
 
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <cmath>
+#include <cstdint>
+#include <map>
 #include <memory>
+#include <set>
 
 namespace btui {
 
@@ -66,6 +72,12 @@ namespace btui {
       const voxel_c & shape;
       const MeshOptions & opt;
       ShapeMesh & out;
+      /* each variable voxel a cell of its own, every face and every edge
+       * drawn (a ghost), rather than the variable region as one body */
+      bool cellsApart = false;
+      /* the variable voxels' edges drawn so far, by their ends rounded to
+       * 1/1024: an edge two faces or two voxels share is one line */
+      std::set<std::array<std::int64_t, 6>> edgesSeen{};
 
       Vec3 cellOf(std::uint32_t voxel) const {
         unsigned int x, y, z;
@@ -101,13 +113,15 @@ namespace btui {
       }
 
       /* the flat style's colour: the voxel's colour or the shape's, as is --
-       * no light and dark alternation */
+       * no light and dark alternation; a variable voxel's the lighter tint,
+       * see-through */
       Rgba8 flatColor(unsigned int color, bool variable) const {
-        Rgba8 c = rgba(opt.piece.r, opt.piece.g, opt.piece.b);
-        if (opt.colors == ColorMode::Voxel && color > 0 && color <= opt.palette.size()) {
-          const Rgb & p = opt.palette[color - 1];
-          c = rgba(p.r, p.g, p.b);
-        }
+        Rgb base = opt.piece;
+        if (opt.colors == ColorMode::Voxel && color > 0 && color <= opt.palette.size())
+          base = opt.palette[color - 1];
+        if (variable)
+          base = variableTint(base, kVariableTint3D);
+        Rgba8 c = rgba(base.r, base.g, base.b);
         if (variable)
           c.a = channel(opt.variableAlpha);
         return c;
@@ -119,21 +133,30 @@ namespace btui {
         if (f->hole() || (f->_flags & FF_INSIDE_FACE))
           return;
         const bool variable = shape.getState(f->_fb_index) == voxel_c::VX_VARIABLE;
-        addFlatPolygon(cornersOf(f), toVec(f->normal()), flatColor(f->_color, variable), cellOf(f->_fb_index),
-                       variable, false);
+        const std::vector<Vec3> corners = cornersOf(f);
+        std::vector<float> outline(corners.size(), kNoOutline);
+        addFlatPolygon(corners.data(), corners.size(), toVec(f->normal()), flatColor(f->_color, variable),
+                       cellOf(f->_fb_index), variable, outline.data());
       }
 
       /* Every voxel's faces in the flat style. A face is drawn where the
-       * neighbour is empty; a fixed voxel also faces a variable neighbour,
-       * so it stays a closed solid seen through it; and a variable voxel
-       * faces a variable neighbour, so the inner variable voxels show
-       * through the outer ones, every boundary outlined (the library's flat
-       * mesh treats both kinds as filled and draws neither). Two variable
-       * neighbours give two faces in one place, facing away from each
-       * other: from any side one of them is culled. */
+       * neighbour is empty. The fixed and the variable voxels are two
+       * solids: a fixed voxel also faces a variable neighbour, so the fixed
+       * solid stays closed and shows through the see-through variable
+       * region; a variable voxel faces neither kind of neighbour, so the
+       * variable region is one body whose nearest surface is what the
+       * renderer blends (the library's flat mesh treats both kinds as
+       * filled and draws no face between them). With cellsApart a variable
+       * voxel also faces a variable neighbour, every side a full line. */
       void addFlatVoxels(void) {
-        struct Side { std::vector<Vec3> corners; int nx = 0, ny = 0, nz = 0; };
+        /* one voxel's sides, their corners in sidePts; the exposed faces,
+         * theirs in pts -- flat lists, so a face costs no allocation */
+        struct Side { std::uint32_t first = 0, count = 0; int nx = 0, ny = 0, nz = 0; };
+        struct Exposed { std::uint32_t first = 0, count = 0; Vec3 normal; Rgba8 col; Vec3 cell; bool variable = false; };
+        std::vector<Exposed> faces;
+        std::vector<Vec3> pts;
         std::vector<Side> sides;
+        std::vector<Vec3> sidePts;
         std::vector<float> fc;
         for (unsigned int z = 0; z < shape.getZ(); z++)
           for (unsigned int y = 0; y < shape.getY(); y++)
@@ -141,6 +164,7 @@ namespace btui {
               if (shape.isEmpty(x, y, z))
                 continue;
               sides.clear();
+              sidePts.clear();
               Vec3 centre{ 0, 0, 0 };
               int nx, ny, nz;
               for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
@@ -148,14 +172,15 @@ namespace btui {
                 shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, fc);
                 if (fc.size() < 9)
                   continue;
-                Side s{ {}, nx, ny, nz };
+                Side s{ std::uint32_t(sidePts.size()), 0, nx, ny, nz };
                 Vec3 mid{ 0, 0, 0 };
                 for (size_t i = 0; i + 2 < fc.size(); i += 3) {
-                  s.corners.push_back({ fc[i], fc[i + 1], fc[i + 2] });
-                  mid = mid + s.corners.back();
+                  sidePts.push_back({ fc[i], fc[i + 1], fc[i + 2] });
+                  mid = mid + sidePts.back();
                 }
-                centre = centre + mid * (1.0f / float(s.corners.size()));
-                sides.push_back(std::move(s));
+                s.count = std::uint32_t(sidePts.size()) - s.first;
+                centre = centre + mid * (1.0f / float(s.count));
+                sides.push_back(s);
               }
               if (sides.empty())
                 continue;
@@ -166,39 +191,120 @@ namespace btui {
               const Vec3 cell{ float(x), float(y), float(z) };
               for (const Side & s : sides) {
                 const int other = shape.getState2(s.nx, s.ny, s.nz);
-                if (!(other == voxel_c::VX_EMPTY || other == voxel_c::VX_VARIABLE))
+                if (!(other == voxel_c::VX_EMPTY || (other == voxel_c::VX_VARIABLE && (!variable || cellsApart))))
                   continue;
+                const Vec3 * c = sidePts.data() + s.first;
                 // outward: away from the voxel's centre
-                Vec3 nrm = cross(s.corners[1] - s.corners[0], s.corners[2] - s.corners[0]);
+                Vec3 nrm = cross(c[1] - c[0], c[2] - c[0]);
                 const float len = length(nrm);
                 if (len <= 1e-9f)
                   continue;
                 nrm = nrm * (1.0f / len);
-                if (dot(nrm, s.corners[0] - centre) < 0)
+                if (dot(nrm, c[0] - centre) < 0)
                   nrm = nrm * -1.0f;
-                addFlatPolygon(s.corners, nrm, col, cell, variable, true);
+                faces.push_back({ std::uint32_t(pts.size()), s.count, nrm, col, cell, variable });
+                pts.insert(pts.end(), c, c + s.count);
               }
             }
+
+        /* A side of a face gets a full line where the shape has an edge
+         * there, and a thin, faint one where another exposed face shares the
+         * side in the same plane and colour: the boundary between two voxels
+         * across a flat region (the FLTK GUI's edge-line style draws the
+         * same two kinds). Faces are matched on their sides' endpoints,
+         * rounded, which works on every grid alike: every side once in one
+         * hash table by its ends, the faces sharing a side chained in one
+         * slot (no allocation per side and no sort; this runs on every edit). */
+        auto quantise = [](const Vec3 & p) -> std::uint64_t {
+          auto q = [](float v) { return std::uint64_t(std::int64_t(std::lround(v * 1024.0f)) & 0x1fffff); };
+          return (q(p.x) << 42) | (q(p.y) << 21) | q(p.z);
+        };
+        struct SideRef { std::uint64_t lo, hi; std::uint32_t face, side; std::int32_t next; };
+        // face f's side i is outlines[faces[f].first + i], as its corners are in pts
+        std::vector<float> outlines(pts.size(), 0.0f);
+        if (!cellsApart && !pts.empty()) {
+          std::vector<std::uint64_t> keys(pts.size());
+          for (size_t i = 0; i < pts.size(); i++)
+            keys[i] = quantise(pts[i]);
+          std::vector<SideRef> refs;
+          refs.reserve(pts.size());
+          const size_t tableSize = std::bit_ceil(2 * pts.size());   // at most half full
+          std::vector<std::int32_t> head(tableSize, -1);        // a slot's chain: refs[head], refs[refs[head].next], ...
+          for (size_t f = 0; f < faces.size(); f++) {
+            const std::uint64_t * c = keys.data() + faces[f].first;
+            const size_t k = faces[f].count;
+            for (size_t i = 0; i < k; i++) {
+              const std::uint64_t lo = std::min(c[i], c[(i + 1) % k]), hi = std::max(c[i], c[(i + 1) % k]);
+              // splitmix64's finaliser: grid-aligned ends differ in few bits
+              std::uint64_t m = lo * 0x9E3779B97F4A7C15ull ^ hi;
+              m = (m ^ (m >> 30)) * 0xBF58476D1CE4E5B9ull;
+              m = (m ^ (m >> 27)) * 0x94D049BB133111EBull;
+              size_t h = size_t(m ^ (m >> 31)) & (tableSize - 1);
+              while (head[h] >= 0 && !(refs[size_t(head[h])].lo == lo && refs[size_t(head[h])].hi == hi))
+                h = (h + 1) & (tableSize - 1);
+              refs.push_back({ lo, hi, std::uint32_t(f), std::uint32_t(i), head[h] });
+              head[h] = std::int32_t(refs.size() - 1);
+            }
+          }
+          for (std::int32_t first : head)
+            for (std::int32_t a = first; a >= 0; a = refs[size_t(a)].next)
+              for (std::int32_t b = refs[size_t(a)].next; b >= 0; b = refs[size_t(b)].next) {
+                const SideRef & ra = refs[size_t(a)], & rb = refs[size_t(b)];
+                const Exposed & e = faces[ra.face], & o = faces[rb.face];
+                const bool sameColour = o.col.r == e.col.r && o.col.g == e.col.g && o.col.b == e.col.b && o.col.a == e.col.a;
+                if (ra.face != rb.face && sameColour && dot(o.normal, e.normal) > 0.999f) {
+                  outlines[e.first + ra.side] = kThinOutline;
+                  outlines[o.first + rb.side] = kThinOutline;
+                }
+              }
+        }
+        for (const Exposed & e : faces)
+          addFlatPolygon(pts.data() + e.first, e.count, e.normal, e.col, e.cell, e.variable, outlines.data() + e.first);
       }
 
-      /* A flat-style polygon, fanned into triangles. With `outline` the
-       * polygon's own sides are outlined (dashed on variable voxels) but not
-       * the fan's diagonals: in each triangle (0, i, i+1) the side opposite
-       * corner 0 is always a side of the polygon, the one opposite corner i
-       * only in the last triangle, the one opposite corner i+1 only in the
-       * first. */
-      void addFlatPolygon(const std::vector<Vec3> & corners, Vec3 n, Rgba8 col, Vec3 cell, bool variable, bool outline) {
+      /* A flat-style polygon, fanned into triangles. `outline` gives for
+       * each of the polygon's sides (side i runs from corner i to corner
+       * i+1) the edge offset it is drawn with: 0 a full line, kThinOutline a
+       * thin one; the fan's diagonals get kNoOutline: in each triangle
+       * (0, i, i+1) the side opposite corner 0 is side i of the polygon, the
+       * one opposite corner i is the last side, only in the last triangle,
+       * the one opposite corner i+1 is side 0, only in the first. A
+       * variable voxel's full lines are dashed lines (ShapeMesh::edges)
+       * instead of the face shader's outline (`outline` is changed to say
+       * so); its thin ones stay. */
+      void addFlatPolygon(const Vec3 * corners, size_t k, Vec3 n, Rgba8 col, Vec3 cell, bool variable,
+                          float * outline) {
         std::vector<MeshVertex> & dst = variable && col.a < 255 ? out.translucent : out.opaque;
-        const float dashed = variable ? 1.0f : 0.0f;
-        const size_t k = corners.size();
+        if (variable)
+          for (size_t i = 0; i < k; i++)
+            if (outline[i] == 0.0f) {
+              addEdge(corners[i], corners[(i + 1) % k]);
+              outline[i] = kNoOutline;
+            }
+        const float dashed = 0.0f;
         for (size_t i = 1; i + 1 < k; i++) {
-          const float o0 = outline ? 0.0f : kNoOutline;
-          const float o1 = outline && i + 1 == k - 1 ? 0.0f : kNoOutline;
-          const float o2 = outline && i == 1 ? 0.0f : kNoOutline;
+          const float o0 = outline[i];
+          const float o1 = i + 1 == k - 1 ? outline[k - 1] : kNoOutline;
+          const float o2 = i == 1 ? outline[0] : kNoOutline;
           push(dst, corners[0], n, col, cell, 1 + o0, o1, o2, dashed);
           push(dst, corners[i], n, col, cell, o0, 1 + o1, o2, dashed);
           push(dst, corners[i + 1], n, col, cell, o0, o1, 1 + o2, dashed);
         }
+      }
+
+      void addEdge(Vec3 a, Vec3 b) {
+        auto q = [](float v) { return std::int64_t(std::llround(double(v) * 1024.0)); };
+        std::array<std::int64_t, 6> key{ q(a.x), q(a.y), q(a.z), q(b.x), q(b.y), q(b.z) };
+        // the same edge either way round
+        if (std::lexicographical_compare(key.begin() + 3, key.end(), key.begin(), key.begin() + 3)) {
+          std::swap_ranges(key.begin(), key.begin() + 3, key.begin() + 3);
+          std::swap(a, b);
+        }
+        if (!edgesSeen.insert(key).second)
+          return;
+        // the face outline's look (C06, the mock's render3d): black at 32 %,
+        // 1.2 dp, dashes of 3 dp
+        out.edges.push_back({ a, b, Rgba8{ 0, 0, 0, 82 }, 1.2f, 3.0f, 3.0f });
       }
 
       /* the colour legacy drawShape() gives a face in the voxel style */
@@ -265,23 +371,256 @@ namespace btui {
       return v;
     }
 
-    /* The STL style's faces: the library's STL-look mesh of `fixed` (no
-     * variable voxels) -- the export's meshers at the view's defaults, in
-     * the shape's own units, each face tagged with its voxel
+    /* `shape`'s variable voxels alone, as filled ones: the meshers take the
+     * filled voxels, so this is the variable region as a solid of its own */
+    std::unique_ptr<voxel_c> variableVoxels(const voxel_c & shape) {
+      std::unique_ptr<voxel_c> v(shape.getGridType()->getVoxel(shape));
+      for (unsigned int i = 0; i < v->getXYZ(); i++)
+        switch (v->getState(i)) {
+          case voxel_c::VX_FILLED:   v->setState(i, voxel_c::VX_EMPTY);  break;
+          case voxel_c::VX_VARIABLE: v->setState(i, voxel_c::VX_FILLED); break;
+          default: break;
+        }
+      return v;
+    }
+
+    /* Bricks' STL faces are merged across voxels -- a column's side is one
+     * face -- so a face would dim as a whole under Dim other layers. Cut at
+     * every cell boundary it crosses (bricks: whole units of the grid), each
+     * piece takes the cell it lies in: its centre, nudged inward from the
+     * face, rounded down. */
+    void splitAtCells(std::vector<MeshVertex> & tris, const voxel_c & shape) {
+      const int dims[3] = { int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+      using Poly = std::vector<MeshVertex>;
+      auto lerp = [](const MeshVertex & a, const MeshVertex & b, float t) {
+        MeshVertex m = a;
+        for (int k = 0; k < 3; k++)
+          m.pos[k] = a.pos[k] + (b.pos[k] - a.pos[k]) * t;
+        return m;
+      };
+      // the part of a convex polygon on one side of pos[axis] = at
+      auto clip = [&](const Poly & poly, int axis, float at, bool below) {
+        Poly out;
+        for (size_t i = 0; i < poly.size(); i++) {
+          const MeshVertex & a = poly[i], & b = poly[(i + 1) % poly.size()];
+          const float da = a.pos[axis] - at, db = b.pos[axis] - at;
+          const bool ina = below ? da <= 0 : da >= 0, inb = below ? db <= 0 : db >= 0;
+          if (ina)
+            out.push_back(a);
+          if (ina != inb && std::fabs(da - db) > 1e-9f)
+            out.push_back(lerp(a, b, da / (da - db)));
+        }
+        return out;
+      };
+      std::vector<Poly> polys;
+      for (size_t i = 0; i + 2 < tris.size(); i += 3)
+        polys.push_back({ tris[i], tris[i + 1], tris[i + 2] });
+      for (int axis = 0; axis < 3; axis++) {
+        std::vector<Poly> next;
+        for (Poly & poly : polys) {
+          float lo = 1e30f, hi = -1e30f;
+          for (const MeshVertex & v : poly) {
+            lo = std::min(lo, v.pos[axis]);
+            hi = std::max(hi, v.pos[axis]);
+          }
+          Poly rest = std::move(poly);
+          for (int k = int(std::floor(lo + 1e-4f)) + 1; float(k) < hi - 1e-4f; k++) {
+            Poly part = clip(rest, axis, float(k), true);
+            if (part.size() >= 3)
+              next.push_back(std::move(part));
+            rest = clip(rest, axis, float(k), false);
+          }
+          if (rest.size() >= 3)
+            next.push_back(std::move(rest));
+        }
+        polys = std::move(next);
+      }
+      tris.clear();
+      for (const Poly & poly : polys) {
+        Vec3 c{ 0, 0, 0 };
+        for (const MeshVertex & v : poly)
+          c += Vec3(v.pos[0], v.pos[1], v.pos[2]);
+        c = c * (1.0f / float(poly.size()));
+        const Vec3 n{ poly[0].normal[0], poly[0].normal[1], poly[0].normal[2] };
+        float cell[3];
+        for (int k = 0; k < 3; k++)
+          cell[k] = float(std::clamp(int(std::floor(c[k] - n[k] * 1e-3f)), 0, dims[k] - 1));
+        for (size_t i = 1; i + 1 < poly.size(); i++)
+          for (const MeshVertex * v : { &poly[0], &poly[i], &poly[i + 1] }) {
+            MeshVertex m = *v;
+            m.cell[0] = cell[0]; m.cell[1] = cell[1]; m.cell[2] = cell[2];
+            tris.push_back(m);
+          }
+      }
+    }
+
+    /* The prism, rhombic and tetra-octa grids' STL faces are merged across
+     * cells too, and their cells are no whole units of the drawing: each
+     * face is cut by the walls of the filled cells it crosses -- a cell is
+     * the convex polyhedron of its connection faces, as the flat mesh draws
+     * it -- and each piece takes its cell. The mesher's surface lies inside
+     * the filled cells (its gap); a face they do not cover, to rounding,
+     * stays whole with the voxel the mesher gave it. */
+    void splitAtCellWalls(std::vector<MeshVertex> & tris, const voxel_c & shape) {
+      using Poly = std::vector<MeshVertex>;
+      struct Plane { Vec3 n; float d = 0; };                 // inside: dot(n, p) <= d
+      struct Cell { float at[3]{}; Vec3 lo, hi; std::vector<Plane> walls; };
+      std::vector<Cell> cells;
+      std::vector<float> corners;
+      for (unsigned int z = 0; z < shape.getZ(); z++)
+        for (unsigned int y = 0; y < shape.getY(); y++)
+          for (unsigned int x = 0; x < shape.getX(); x++) {
+            if (shape.getState(x, y, z) != voxel_c::VX_FILLED)
+              continue;
+            std::vector<std::vector<Vec3>> faces;
+            int nx, ny, nz;
+            for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
+              corners.clear();
+              shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, corners);
+              std::vector<Vec3> f;
+              for (size_t k = 0; k + 2 < corners.size(); k += 3)
+                f.push_back({ corners[k], corners[k + 1], corners[k + 2] });
+              if (f.size() >= 3)
+                faces.push_back(std::move(f));
+            }
+            if (faces.size() < 4)                         // no closed cell: leave the faces whole
+              return;
+            Cell c{ { float(x), float(y), float(z) }, { 1e30f, 1e30f, 1e30f }, { -1e30f, -1e30f, -1e30f }, {} };
+            Vec3 mid{ 0, 0, 0 };
+            int count = 0;
+            for (const auto & f : faces)
+              for (const Vec3 & v : f) {
+                mid += v;
+                count++;
+                c.lo = { std::min(c.lo.x, v.x), std::min(c.lo.y, v.y), std::min(c.lo.z, v.z) };
+                c.hi = { std::max(c.hi.x, v.x), std::max(c.hi.y, v.y), std::max(c.hi.z, v.z) };
+              }
+            mid = mid * (1.0f / float(count));
+            for (const auto & f : faces) {
+              Vec3 n = normalize(cross(f[1] - f[0], f[2] - f[0]));
+              if (length(n) < 0.5f)
+                continue;
+              if (dot(n, mid - f[0]) > 0)                 // outward
+                n = -n;
+              c.walls.push_back({ n, dot(n, f[0]) });
+            }
+            cells.push_back(std::move(c));
+          }
+      if (cells.empty())
+        return;
+
+      auto lerp = [](const MeshVertex & a, const MeshVertex & b, float t) {
+        MeshVertex m = a;
+        for (int k = 0; k < 3; k++)
+          m.pos[k] = a.pos[k] + (b.pos[k] - a.pos[k]) * t;
+        return m;
+      };
+      auto posOf = [](const MeshVertex & v) { return Vec3(v.pos[0], v.pos[1], v.pos[2]); };
+      // the part of a convex polygon inside a wall
+      auto clip = [&](const Poly & poly, const Plane & w) {
+        Poly out;
+        for (size_t i = 0; i < poly.size(); i++) {
+          const MeshVertex & a = poly[i], & b = poly[(i + 1) % poly.size()];
+          const float da = dot(w.n, posOf(a)) - w.d, db = dot(w.n, posOf(b)) - w.d;
+          if (da <= 1e-6f)
+            out.push_back(a);
+          if ((da <= 1e-6f) != (db <= 1e-6f) && std::fabs(da - db) > 1e-12f)
+            out.push_back(lerp(a, b, da / (da - db)));
+        }
+        return out;
+      };
+      auto area = [&](const Poly & poly) {
+        Vec3 sum{ 0, 0, 0 };
+        for (size_t i = 1; i + 1 < poly.size(); i++)
+          sum += cross(posOf(poly[i]) - posOf(poly[0]), posOf(poly[i + 1]) - posOf(poly[0]));
+        return 0.5f * length(sum);
+      };
+
+      std::vector<MeshVertex> out;
+      out.reserve(tris.size() * 4);
+      std::vector<std::pair<Poly, const Cell *>> pieces;
+      for (size_t i = 0; i + 2 < tris.size(); i += 3) {
+        const Poly tri{ tris[i], tris[i + 1], tris[i + 2] };
+        const Vec3 a = posOf(tri[0]), b = posOf(tri[1]), c = posOf(tri[2]);
+        const Vec3 lo{ std::min({ a.x, b.x, c.x }), std::min({ a.y, b.y, c.y }), std::min({ a.z, b.z, c.z }) };
+        const Vec3 hi{ std::max({ a.x, b.x, c.x }), std::max({ a.y, b.y, c.y }), std::max({ a.z, b.z, c.z }) };
+        const Vec3 n = normalize(cross(b - a, c - a));
+        const float whole = area(tri);
+        pieces.clear();
+        float covered = 0;
+        for (const Cell & cell : cells) {
+          if (cell.hi.x < lo.x || cell.lo.x > hi.x || cell.hi.y < lo.y || cell.lo.y > hi.y ||
+              cell.hi.z < lo.z || cell.lo.z > hi.z)
+            continue;
+          // the face's plane through the cell's box
+          const Vec3 centre = (cell.lo + cell.hi) * 0.5f, half = (cell.hi - cell.lo) * 0.5f;
+          if (std::fabs(dot(n, centre - a)) > std::fabs(n.x) * half.x + std::fabs(n.y) * half.y + std::fabs(n.z) * half.z)
+            continue;
+          Poly piece = tri;
+          for (const Plane & w : cell.walls) {
+            piece = clip(piece, w);
+            if (piece.size() < 3)
+              break;
+          }
+          const float part = piece.size() >= 3 ? area(piece) : 0.0f;
+          if (part <= whole * 1e-6f)
+            continue;
+          covered += part;
+          pieces.emplace_back(std::move(piece), &cell);
+        }
+        if (whole <= 0 || covered < whole * 0.98f) {
+          out.insert(out.end(), tri.begin(), tri.end());
+          continue;
+        }
+        for (const auto & [poly, cell] : pieces)
+          for (size_t k = 1; k + 1 < poly.size(); k++)
+            for (const MeshVertex * v : { &poly[0], &poly[k], &poly[k + 1] }) {
+              MeshVertex m = *v;
+              m.cell[0] = cell->at[0]; m.cell[1] = cell->at[1]; m.cell[2] = cell->at[2];
+              out.push_back(m);
+            }
+      }
+      tris = std::move(out);
+    }
+
+    /* The STL style's faces of one solid, `part`, in `colour`: the library's
+     * STL-look mesh -- the export's meshers at the view's defaults, in the
+     * shape's own units, each face tagged with its voxel
      * (voxel_c::getSTLMesh; it falls back to the flat mesh itself when a
-     * mesher fails). False when even that is not to be had, and the caller
-     * draws the voxels flat instead. */
-    bool addStlFaces(const voxel_c & fixed, const MeshOptions & opt, ShapeMesh & out) {
+     * mesher fails), appended to `out`. False when even that is not to be
+     * had, and the caller draws the voxels flat instead. */
+    bool addStlFaces(const voxel_c & part, const Rgb & colour, float alpha, ShapeMesh & out) {
       bool filled = false;
-      for (unsigned int i = 0; i < fixed.getXYZ() && !filled; i++)
-        filled = fixed.getState(i) == voxel_c::VX_FILLED;
+      for (unsigned int i = 0; i < part.getXYZ() && !filled; i++)
+        filled = part.getState(i) == voxel_c::VX_FILLED;
       if (!filled)
         return true;                                  // nothing to draw
 
-      const std::unique_ptr<Polyhedron> poly(fixed.getSTLMesh());
+      const std::unique_ptr<Polyhedron> poly(part.getSTLMesh());
       if (!poly || poly->vBegin() == poly->vEnd())
         return false;
-      out.opaque = std::move(buildPolyhedronMesh(*poly, false, &opt.piece, &fixed).opaque);
+      ShapeMesh m = buildPolyhedronMesh(*poly, false, &colour, &part);
+      switch (part.getGridType()->getType()) {
+        case gridType_c::GT_BRICKS:
+          splitAtCells(m.opaque, part);
+          break;
+        case gridType_c::GT_TRIANGULAR_PRISM:
+        case gridType_c::GT_RHOMBIC:
+        case gridType_c::GT_TETRA_OCTA:
+          splitAtCellWalls(m.opaque, part);
+          break;
+        case gridType_c::GT_SPHERES:                    // a ball's faces are its own already
+        case gridType_c::GT_NUM_GRIDS:
+          break;
+      }
+      if (alpha >= 1.0f) {
+        out.opaque.insert(out.opaque.end(), m.opaque.begin(), m.opaque.end());
+      } else {
+        const std::uint8_t a = std::uint8_t(std::clamp(alpha, 0.0f, 1.0f) * 255.0f + 0.5f);
+        for (MeshVertex & v : m.opaque)
+          v.color.a = a;
+        out.translucent.insert(out.translucent.end(), m.opaque.begin(), m.opaque.end());
+      }
       return true;
     }
   }
@@ -294,9 +633,18 @@ namespace btui {
     out.boundsMax = { cx, cy, cz };
 
     if (opt.style == VoxelStyle::Stl) {
+      /* two solids, the fixed and the variable voxels, so the boundary
+       * between them gets the export's gap like any other surface and the
+       * variable region is occluded like any other solid */
       const std::unique_ptr<voxel_c> fixed = fixedVoxels(shape);
-      if (!addStlFaces(*fixed, opt, out)) {
-        Builder f{ *fixed, opt, out };
+      const std::unique_ptr<voxel_c> variable = variableVoxels(shape);
+      const Rgb tint = variableTint(opt.piece, kVariableTint3D);
+      if (!addStlFaces(*fixed, opt.piece, 1.0f, out) || !addStlFaces(*variable, tint, opt.variableAlpha, out)) {
+        out.opaque.clear();
+        out.translucent.clear();
+        MeshOptions flat = opt;
+        flat.style = VoxelStyle::Flat;
+        Builder f{ shape, flat, out };
         f.addFlatVoxels();
       }
       return out;
@@ -383,6 +731,35 @@ namespace btui {
   }
 
   std::vector<PickTriangle> buildPickMesh(const voxel_c & shape) {
+    if (shape.getGridType()->getType() == gridType_c::GT_SPHERES)
+      return buildPickMeshFromFlatMesh(shape);
+    std::vector<PickTriangle> out;
+    std::vector<float> fc;
+    std::vector<Vec3> c;
+    for (unsigned int z = 0; z < shape.getZ(); z++)
+      for (unsigned int y = 0; y < shape.getY(); y++)
+        for (unsigned int x = 0; x < shape.getX(); x++) {
+          if (shape.isEmpty(x, y, z))
+            continue;
+          const std::uint32_t index = shape.getIndex(x, y, z);
+          int nx, ny, nz;
+          for (unsigned int n = 0; shape.getNeighbor(n, 0, int(x), int(y), int(z), &nx, &ny, &nz); n++) {
+            // a face shows where the neighbour is empty or outside the grid
+            if (shape.getState2(nx, ny, nz) != voxel_c::VX_EMPTY)
+              continue;
+            fc.clear();
+            shape.getConnectionFace(int(x), int(y), int(z), int(n), 0, 0, fc);
+            c.clear();
+            for (size_t i = 0; i + 2 < fc.size(); i += 3)
+              c.push_back({ fc[i], fc[i + 1], fc[i + 2] });
+            for (size_t i = 1; i + 1 < c.size(); i++)
+              out.push_back({ c[0], c[i], c[i + 1], index, std::int32_t(n) });
+          }
+        }
+    return out;
+  }
+
+  std::vector<PickTriangle> buildPickMeshFromFlatMesh(const voxel_c & shape) {
     std::vector<PickTriangle> out;
     std::unique_ptr<Polyhedron> poly(shape.getFlatMesh());
     if (!poly)
@@ -462,33 +839,56 @@ namespace btui {
 
   Box layerSlab(const voxel_c & shape, Plane p, int layer) {
     const int axis = layerAxis(p);
-    const float size[3] = { float(shape.getX()), float(shape.getY()), float(shape.getZ()) };
-    float lo[3] = { 0, 0, 0 }, hi[3] = { size[0], size[1], size[2] };
-    lo[axis] = float(layer);
-    hi[axis] = float(layer + 1);
 
-    // map the grid box's corners to drawing space and take their extent;
-    // for cubes the mapping is the identity
-    Box b{ { 1e30f, 1e30f, 1e30f }, { -1e30f, -1e30f, -1e30f } };
-    for (int i = 0; i < 8; i++) {
-      float x = (i & 1) ? hi[0] : lo[0];
-      float y = (i & 2) ? hi[1] : lo[1];
-      float z = (i & 4) ? hi[2] : lo[2];
-      shape.recalcSpaceCoordinates(&x, &y, &z);
-      b.min = { std::min(b.min.x, x), std::min(b.min.y, y), std::min(b.min.z, z) };
-      b.max = { std::max(b.max.x, x), std::max(b.max.y, y), std::max(b.max.z, z) };
+    /* Along the layer axis: the layer's cells as they are drawn, which is
+     * more than one layer step where cells reach into the next layer
+     * (spheres, rhombic and tetra-octa cells). A cell is the faces round it
+     * as the flat style draws them (getConnectionFace); a sphere is a ball
+     * of radius 0.5 round its centre (the drawing mesh's). Every voxel type
+     * repeats within 10 cells, so a window of the plane that size will do. */
+    const int dims[3] = { int(shape.getX()), int(shape.getY()), int(shape.getZ()) };
+    const bool spheres = shape.getGridType()->getType() == gridType_c::GT_SPHERES;
+    float lo = 1e30f, hi = -1e30f;
+    auto take = [&](float v) { lo = std::min(lo, v); hi = std::max(hi, v); };
+    int c[3];
+    std::vector<float> fc;
+    const int a1 = (axis + 1) % 3, a2 = (axis + 2) % 3;
+    c[axis] = layer;
+    for (c[a1] = 0; c[a1] < std::min(dims[a1], 10); c[a1]++)
+      for (c[a2] = 0; c[a2] < std::min(dims[a2], 10); c[a2]++) {
+        if (!shape.validCoordinate(c[0], c[1], c[2]))
+          continue;
+        if (spheres) {
+          float m[3] = { float(c[0]), float(c[1]), float(c[2]) };
+          shape.recalcSpaceCoordinates(&m[0], &m[1], &m[2]);
+          // the centre is half a unit in from the mapped coordinate
+          take(m[axis]);
+          take(m[axis] + 1.0f);
+          continue;
+        }
+        int nx, ny, nz;
+        for (unsigned int n = 0; shape.getNeighbor(n, 0, c[0], c[1], c[2], &nx, &ny, &nz); n++) {
+          fc.clear();
+          shape.getConnectionFace(c[0], c[1], c[2], int(n), 0, 0, fc);
+          for (size_t i = 0; i + 2 < fc.size(); i += 3)
+            take(fc[i + size_t(axis)]);
+        }
+      }
+    if (lo > hi) {
+      // no cell of the type in the layer: its step, mapped to drawing space
+      float s[3] = { 0, 0, 0 }, e[3] = { 0, 0, 0 };
+      s[axis] = float(layer);
+      e[axis] = float(layer + 1);
+      shape.recalcSpaceCoordinates(&s[0], &s[1], &s[2]);
+      shape.recalcSpaceCoordinates(&e[0], &e[1], &e[2]);
+      lo = s[axis];
+      hi = e[axis];
     }
 
     // the in-plane extent is the whole grid as drawn
-    const Box g = gridBounds(shape);
-    for (int i = 0; i < 3; i++) {
-      if (i == axis)
-        continue;
-      float * mn = i == 0 ? &b.min.x : (i == 1 ? &b.min.y : &b.min.z);
-      float * mx = i == 0 ? &b.max.x : (i == 1 ? &b.max.y : &b.max.z);
-      *mn = g.min[i];
-      *mx = g.max[i];
-    }
+    Box b = gridBounds(shape);
+    (axis == 0 ? b.min.x : axis == 1 ? b.min.y : b.min.z) = lo;
+    (axis == 0 ? b.max.x : axis == 1 ? b.max.y : b.max.z) = hi;
     return b;
   }
 
@@ -531,11 +931,143 @@ namespace btui {
     }
   }
 
+  void addGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                const std::vector<std::array<int, 3>> & cells, const GhostStyle & style, Vec3 offset) {
+    if (cells.empty())
+      return;
+    /* the cells alone, as variable voxels kept apart: the flat builder
+     * draws every face of each (a variable neighbour hides none) and its
+     * edges */
+    std::unique_ptr<voxel_c> g(shape.getGridType()->getVoxel(shape.getX(), shape.getY(), shape.getZ(), voxel_c::VX_EMPTY));
+    for (const auto & c : cells)
+      if (c[0] >= 0 && c[1] >= 0 && c[2] >= 0 && unsigned(c[0]) < g->getX() && unsigned(c[1]) < g->getY() &&
+          unsigned(c[2]) < g->getZ() && g->validCoordinate(c[0], c[1], c[2]))
+        g->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_VARIABLE);
+    MeshOptions opt;
+    opt.style = VoxelStyle::Flat;
+    opt.variableAlpha = 1;
+    ShapeMesh m;
+    if (g->getGridType()->getType() == gridType_c::GT_SPHERES) {
+      m = buildShapeMesh(*g, opt);                   // balls: their round drawing mesh
+    } else {
+      Builder b{ *g, opt, m };
+      b.cellsApart = true;
+      b.addFlatVoxels();
+    }
+    for (const auto * list : { &m.opaque, &m.translucent })
+      for (MeshVertex v : *list) {
+        v.color = style.fill;
+        v.edge[0] = v.edge[1] = v.edge[2] = kNoOutline;
+        v.cell[0] = v.cell[1] = v.cell[2] = -1e4f;
+        v.pos[0] += offset.x;
+        v.pos[1] += offset.y;
+        v.pos[2] += offset.z;
+        faces.push_back(v);
+      }
+    for (LineSeg e : m.edges) {
+      e.a += offset;
+      e.b += offset;
+      e.color = style.outline;
+      e.widthDp = style.widthDp;
+      e.dashDp = style.dashDp;
+      e.gapDp = style.gapDp;
+      lines.push_back(e);
+    }
+  }
+
+  void addFaceOutline(std::vector<LineSeg> & lines, const std::vector<PickTriangle> & pick, std::uint32_t voxel,
+                      std::int32_t face, const GhostStyle & style) {
+    auto q = [](float v) { return std::int64_t(std::llround(double(v) * 1024.0)); };
+    // each side by its ends rounded to 1/1024, either way round, and how often it occurs
+    std::map<std::array<std::int64_t, 6>, std::pair<std::pair<Vec3, Vec3>, int>> sides;
+    for (const PickTriangle & t : pick) {
+      if (t.voxel != voxel || t.face != face)
+        continue;
+      const Vec3 p[3] = { t.a, t.b, t.c };
+      for (int i = 0; i < 3; i++) {
+        Vec3 a = p[i], b = p[(i + 1) % 3];
+        std::array<std::int64_t, 6> k{ q(a.x), q(a.y), q(a.z), q(b.x), q(b.y), q(b.z) };
+        if (std::lexicographical_compare(k.begin() + 3, k.end(), k.begin(), k.begin() + 3)) {
+          std::swap_ranges(k.begin(), k.begin() + 3, k.begin() + 3);
+          std::swap(a, b);
+        }
+        auto & e = sides[k];
+        e.first = { a, b };
+        e.second++;
+      }
+    }
+    for (const auto & [k, e] : sides)
+      if (e.second == 1)
+        lines.push_back({ e.first.first, e.first.second, style.outline, style.widthDp, style.dashDp, style.gapDp });
+  }
+
   void addAxes(std::vector<LineSeg> & out, const voxel_c & shape, Rgba8 x, Rgba8 y, Rgba8 z, float widthDp) {
     const Box g = gridBounds(shape);
     const float extra = 0.7f;
     out.push_back({ { 0, 0, 0 }, { g.max.x + extra, 0, 0 }, x, widthDp });
     out.push_back({ { 0, 0, 0 }, { 0, g.max.y + extra, 0 }, y, widthDp });
     out.push_back({ { 0, 0, 0 }, { 0, 0, g.max.z + extra }, z, widthDp });
+  }
+
+  namespace {
+    Vec3 centreOf(const Box & b) { return (b.min + b.max) * 0.5f; }
+
+    /* a unit vector at right angles to a unit axis (legacy's choice of it) */
+    Vec3 sideOf(Vec3 axis) {
+      const Vec3 ref = std::fabs(axis.z) > 0.9f ? Vec3(1, 0, 0) : Vec3(0, 0, 1);
+      const Vec3 s = normalize(cross(ref, axis));
+      return length(s) > 0.5f ? s : Vec3(1, 0, 0);
+    }
+
+    /* an arrowhead as two strokes back from the tip */
+    void arrowHead(std::vector<LineSeg> & out, Vec3 tip, Vec3 dir, Vec3 side, float size, Rgba8 color, float widthDp) {
+      const Vec3 back = tip - dir * size;
+      out.push_back({ tip, back + side * (size * 0.5f), color, widthDp });
+      out.push_back({ tip, back - side * (size * 0.5f), color, widthDp });
+    }
+  }
+
+  void addResultGhost(std::vector<MeshVertex> & faces, std::vector<LineSeg> & lines, const voxel_c & shape,
+                      const voxel_c * result, const GhostStyle & style) {
+    if (!result)
+      return;
+    std::vector<std::array<int, 3>> cells;
+    for (unsigned int z = 0; z < result->getZ(); z++)
+      for (unsigned int y = 0; y < result->getY(); y++)
+        for (unsigned int x = 0; x < result->getX(); x++)
+          if (result->getState(x, y, z) != voxel_c::VX_EMPTY)
+            cells.push_back({ int(x), int(y), int(z) });
+    addGhost(faces, lines, *result, cells, style, centreOf(gridBounds(shape)) - centreOf(gridBounds(*result)));
+  }
+
+  float transformHintRadius(const voxel_c & shape) {
+    const Box g = gridBounds(shape);
+    return std::min(0.4f * length(g.max - g.min) * 0.5f + 0.5f, 2.0f);
+  }
+
+  void addTransformHint(std::vector<LineSeg> & out, Vec3 centre, float radius, TransformHint kind, Vec3 axis,
+                        float angleDeg, Rgba8 color, float widthDp) {
+    axis = normalize(axis);
+    if (length(axis) < 0.5f)
+      return;
+    const Vec3 u = sideOf(axis);
+    if (kind == TransformHint::Rotate) {
+      const Vec3 v = cross(axis, u);
+      const float sweep = radians(std::clamp(angleDeg, 60.0f, 300.0f));
+      constexpr int segs = 32;
+      auto at = [&](float a) { return centre + (u * std::cos(a) + v * std::sin(a)) * radius; };
+      for (int i = 0; i < segs; i++)
+        out.push_back({ at(sweep * float(i) / segs), at(sweep * float(i + 1) / segs), color, widthDp });
+      // the head at the arc's leading end, along the sweep
+      const Vec3 radial = u * std::cos(sweep) + v * std::sin(sweep);
+      const Vec3 tangent = v * std::cos(sweep) - u * std::sin(sweep);
+      arrowHead(out, at(sweep), tangent, radial, radius * 0.22f, color, widthDp);
+      return;
+    }
+    const Vec3 a = centre - axis * radius, b = centre + axis * radius;
+    out.push_back({ a, b, color, widthDp });
+    arrowHead(out, b, axis, u, radius * 0.3f, color, widthDp);
+    if (kind == TransformHint::Mirror)
+      arrowHead(out, a, -axis, u, radius * 0.3f, color, widthDp);
   }
 }

@@ -28,12 +28,15 @@
 #include "scenerenderer.h"
 #include "theme.h"
 #include "viewcubeitem.h"
+#include "editorcontroller.h"
+#include "iconprovider.h"
 #include "viewportcontroller.h"
 #include "voxelviewport.h"
 
 #include "../../src/lib/gridtype.h"
 #include "../../src/lib/puzzle.h"
 #include "../../src/lib/voxel.h"
+#include "../../src/uicore/commands.h"
 #include "../alloccount.h"
 
 #include <QCoreApplication>
@@ -46,6 +49,8 @@
 #include <QMouseEvent>
 #include <QQuickGraphicsConfiguration>
 #include <QQuickGraphicsDevice>
+#include <QQmlComponent>
+#include <QQmlEngine>
 #include <QQuickRenderControl>
 #include <QQuickRenderTarget>
 #include <QQuickWindow>
@@ -120,7 +125,7 @@ void TestViewportController::framesFollowTheDisplayOptions() {
   QCOMPARE(int(fr.lines.size()), 12);
 
   v->setDisplayDimOtherLayers(true);
-  v->setPlane(1);   // XZ: layers run along Y
+  f.app->editor()->setPlane(EditorController::XZ);   // XZ: layers run along Y
   QCOMPARE(v->frame(1).dimAxis, 1);
 }
 
@@ -297,17 +302,17 @@ void TestViewportController::layerStepsClampAndFollowThePlane() {
   f.app->document()->editStructure(-1, [](puzzle_c & p) { p.addShape(4, 3, 5); return true; });
   f.app->shapes()->refresh();
   f.app->shapes()->select(0);
-  ViewportController * v = f.app->viewport();
+  EditorController * v = f.app->editor();
   QCOMPARE(v->layerCount(), 5);
   v->setLayer(4);
-  v->setPlane(1);
+  v->setPlane(EditorController::XZ);
   QCOMPARE(v->layerCount(), 3);
   QCOMPARE(v->layer(), 2);           // clamped
   v->layerStep(+5);
   QCOMPARE(v->layer(), 2);
   v->layerStep(-1);
   QCOMPARE(v->layer(), 1);
-  v->setPlane(2);
+  v->setPlane(EditorController::YZ);
   QCOMPARE(v->layerCount(), 4);
 }
 
@@ -715,6 +720,151 @@ void TestRender::rendersTheShapeOnTheCanvas() {
   QVERIFY(mid.blue() > mid.red() + 60);
 }
 
+void TestRender::hoveringTheGridDrawsTheGhost() {
+  // AC-C08-10 / AC-C06-11: the 2D grid's hover shows in 3D -- a placed cube,
+  // an erased voxel in danger, a cell inside the shape faint through the
+  // voxels in front of it -- and leaves nothing behind
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  f.app->document()->editStructure(-1, [](puzzle_c & p) {
+    p.addShape(3, 3, 3);
+    for (unsigned x = 0; x < 3; x++)
+      for (unsigned y = 0; y < 3; y++)
+        for (unsigned z = 0; z < 2; z++)
+          p.getShape(0)->setState(x, y, z, voxel_c::VX_FILLED);
+    return true;
+  });
+  f.app->shapes()->refresh();
+  f.app->shapes()->select(0);
+  ViewportController * v = f.app->viewport();
+  EditorController * e = f.app->editor();
+  v->setDisplayLayerSlab(false);
+  v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+  const QPoint c(160, 120);                   // the middle cell, (1, 1)
+  const QImage plainImage = t.render(v->frame(1));
+  const QColor plain = plainImage.pixelColor(c);
+  auto changed = [&](const QImage & img) {
+    int n = 0;
+    for (int y = 0; y < img.height(); y++)
+      for (int x = 0; x < img.width(); x++)
+        n += !near(img.pixelColor(x, y), plainImage.pixelColor(x, y), 20);
+    return n;
+  };
+
+  // Fixed on the empty top layer: a cube in front of the voxels, in the
+  // drawing colour -- Default, the shape's own -- outlined in accent
+  e->setLayer(2);
+  e->hover(1, 1);
+  QVERIFY(!v->frame(1).ghostFaces.empty());
+  const QImage placed = t.render(v->frame(1));
+  saveForInspection(placed, "ghost-place");
+  QVERIFY2(changed(placed) > 200, "the placed cube's outline shows");
+  QVERIFY(near(placed.pixelColor(c), plain, 20));
+
+  // Ctrl: Erase on the voxel below, in the danger colour
+  e->setLayer(1);
+  e->hover(1, 1);
+  // the Erase quick tool: Ctrl, Option on macOS (Qt's Alt; its Control is Command)
+  e->setModifiers(btui::currentPlatform() == btui::Platform::Mac ? Qt::AltModifier : Qt::ControlModifier);
+  const QImage erased = t.render(v->frame(1));
+  saveForInspection(erased, "ghost-erase");
+  const QColor r = erased.pixelColor(c);
+  QVERIFY2(r.red() > plain.red() + 80, qPrintable(r.name()));        // danger at 50 % over the voxel
+
+  // the bottom layer, behind the voxels in front: still shows, fainter
+  e->setLayer(0);
+  e->hover(1, 1);
+  const QImage hidden = t.render(v->frame(1));
+  saveForInspection(hidden, "ghost-hidden");
+  const QColor h = hidden.pixelColor(c);
+  QVERIFY2(!near(h, plain, 8), qPrintable(h.name()));
+  QVERIFY2(h.red() < r.red(), "fainter than in front");
+
+  // off the grid: no ghost
+  e->hover(-1, -1);
+  QVERIFY(v->frame(1).ghostFaces.empty());
+  QCOMPARE(changed(t.render(v->frame(1))), 0);
+}
+
+void TestRender::variableVoxelEdgesAreEvenDashes() {
+  // C06: a variable voxel's outline is dashed. Seen close up along an edge
+  // the dashes come and go at a steady pitch -- the line pipeline's 3 dp
+  // dashes, the same from both faces the edge joins.
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  AppFixture f;
+  f.app->document()->editStructure(-1, [](puzzle_c & p) {
+    p.addShape(1, 1, 1);
+    p.getShape(0)->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+    return true;
+  });
+  f.app->shapes()->refresh();
+  f.app->shapes()->select(0);
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  // straight at the +Z face: its four edges are the square's sides
+  v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+  const SceneFrame fr = v->frame(1);
+  QVERIFY(fr.mesh && fr.mesh->edges.size() == 12);
+  const QImage img = t.render(fr);
+  saveForInspection(img, "variable-edges");
+
+  // the square's top side: find its row, then walk it
+  int top = -1;
+  for (int y = 0; y < img.height() && top < 0; y++)
+    if (img.pixelColor(img.width() / 2, y) != img.pixelColor(img.width() / 2, 0))
+      top = y;
+  QVERIFY(top > 0);
+  int left = -1, right = -1;
+  for (int x = 0; x < img.width(); x++)
+    if (img.pixelColor(x, top + 2) != img.pixelColor(0, top + 2)) {
+      if (left < 0)
+        left = x;
+      right = x;
+    }
+  QVERIFY(right - left > 100);
+  // dark runs (dashes) and light runs (gaps) along the side, inside its
+  // corners: the darkest of the side's first rows, which the 1.2 dp line spans
+  std::vector<int> runs;
+  bool dark = false;
+  int len = 0;
+  const QColor face = img.pixelColor((left + right) / 2, img.height() / 2);
+  for (int x = left + 8; x < right - 8; x++) {
+    int l = 255;
+    for (int y = top; y < top + 3; y++)
+      l = std::min(l, img.pixelColor(x, y).lightness());
+    const bool d = l < face.lightness() - 15;
+    if (d != dark && len > 0) {
+      runs.push_back(len);
+      len = 0;
+    }
+    dark = d;
+    len++;
+  }
+  QVERIFY2(runs.size() >= 10, qPrintable(QString::number(runs.size())));
+  // every whole dash and gap (not the cut ones at the ends) within 2 px of the median
+  std::vector<int> inner(runs.begin() + 1, runs.end() - 1);
+  std::vector<int> sorted = inner;
+  std::sort(sorted.begin(), sorted.end());
+  const int median = sorted[sorted.size() / 2];
+  for (int r : inner)
+    QVERIFY2(std::abs(r - median) <= 2, qPrintable(QStringLiteral("run %1, median %2").arg(r).arg(median)));
+
+  // and at an angle, a block of them, for a look
+  f.app->document()->editStructure(0, [](puzzle_c & p) {
+    voxel_c * s = p.getShape(0);
+    s->resize(2, 2, 2, 0);
+    s->setAll(voxel_c::VX_VARIABLE);
+    s->setState(0, 0, 0, voxel_c::VX_FILLED);
+    return true;
+  });
+  v->camera().setOrientation(btui::Camera::lookFrom({ 1.0f, 0.7f, 1.4f }, 0));
+  saveForInspection(t.render(v->frame(1)), "variable-edges-angled");
+}
+
 void TestRender::theTargetsOutgrowTheViewInSteps() {
   // the scene's (multisampled, half-float) targets are made in 64 px steps
   // and kept while the view fits, so a window resize does not make them anew
@@ -783,8 +933,9 @@ void TestRender::framesDoNotAllocatePerTriangle() {
   // orbiting a translucent shape sorts its triangles again every frame; the
   // sort and the line list keep their storage, so what a frame allocates (in
   // our code -- Qt keeps its own) is small and does not grow with the mesh.
-  // Sorting into new lists, a 12^3 shape of variable voxels (~20k
-  // triangles) took some 400 KB a frame.
+  // Sorting into new lists, a 16^3 chequerboard of variable voxels (~25k
+  // triangles: every other voxel, each a body of its own) took some 400 KB
+  // a frame.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(96, 72)));
   AppFixture f;
@@ -795,8 +946,11 @@ void TestRender::framesDoNotAllocatePerTriangle() {
     for (unsigned z = 0; z < edge; z++)
       for (unsigned y = 0; y < edge; y++)
         for (unsigned x = 0; x < edge; x++)
-          v->setState(x, y, z, voxel_c::VX_VARIABLE);
-    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, btui::MeshOptions{}));
+          if ((x + y + z) % 2 == 0)
+            v->setState(x, y, z, voxel_c::VX_VARIABLE);
+    btui::MeshOptions seeThrough;
+    seeThrough.variableAlpha = 0.6f;
+    return std::make_shared<const btui::ShapeMesh>(btui::buildShapeMesh(*v, seeThrough));
   };
   auto perFrame = [&](const std::shared_ptr<const btui::ShapeMesh> & mesh, quint64 revision) {
     btui::Camera cam;
@@ -827,10 +981,10 @@ void TestRender::framesDoNotAllocatePerTriangle() {
   };
   // the counter does see this program's allocations
   QCOMPARE(btui::test::probeAllocation(4000), std::size_t(4000));
-  const auto small = variableCube(2), big = variableCube(12);
+  const auto small = variableCube(2), big = variableCube(16);
   QVERIFY(big->translucent.size() / 3 > 20000);
   const std::size_t smallBytes = perFrame(small, 1), bigBytes = perFrame(big, 2);
-  const QString got = QStringLiteral("per frame: %1 B for 2^3, %2 B for 12^3").arg(smallBytes).arg(bigBytes);
+  const QString got = QStringLiteral("per frame: %1 B for 2^3, %2 B for 16^3").arg(smallBytes).arg(bigBytes);
   qInfo().noquote() << got;
   QVERIFY2(bigBytes < 8192, qPrintable(got));
   QVERIFY2(bigBytes <= smallBytes + 1024, qPrintable(got));
@@ -927,12 +1081,12 @@ void TestRender::translucencyBlendsInLinearLight() {
            qPrintable(QStringLiteral("%1, expected %2").arg(px.red()).arg(expected)));
 }
 
-void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
+void TestRender::variableVoxelsAreOneBodyShowingTheirNearestSurface() {
   // The flat style: two variable voxels one behind the other, red and green.
-  // Every translucent layer is blended, farthest first: the pixel takes
-  // both (alpha 1 - (1 - a)^2) and the near voxel's colour leads -- from
-  // either side, so the sorting follows the view. Legacy's rule (nearest
-  // surface only) gives one layer.
+  // They are one see-through body with no face between them, and the
+  // renderer blends its nearest surface only: from the front the pixel is
+  // the red voxel's at the variable alpha, from the back the green one's,
+  // in both compositing modes -- never both colours piled up.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(64, 64)));
   AppFixture f;
@@ -954,6 +1108,8 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
   }
   auto mesh = std::make_shared<btui::ShapeMesh>(btui::buildShapeMesh(*v, opt));
   QVERIFY(!mesh->translucent.empty());
+  QVERIFY(mesh->opaque.empty());
+  QCOMPARE(mesh->translucent.size(), std::size_t(10 * 2 * 3));   // the outer faces of the pair
 
   auto look = [&](btui::Vec3 from, bool layers) {
     btui::Camera cam;
@@ -971,22 +1127,22 @@ void TestRender::innerVariableVoxelsShowThroughTheOuterOnes() {
     return t.render(fr).pixelColor(32, 32);
   };
   const double a = opt.variableAlpha;
-  const QColor front = look({ 0, 0, 1 }, true);
-  QVERIFY2(std::abs(front.alphaF() - (1 - (1 - a) * (1 - a))) < 0.03, qPrintable(QString::number(front.alphaF())));
-  QVERIFY2(front.red() > front.green() && front.green() > 0,
-           qPrintable(QStringLiteral("red %1 green %2").arg(front.red()).arg(front.green())));
-  const QColor back = look({ 0, 0, -1 }, true);
-  QVERIFY2(back.green() > back.red() && back.red() > 0,
-           qPrintable(QStringLiteral("red %1 green %2").arg(back.red()).arg(back.green())));
-  const QColor nearest = look({ 0, 0, 1 }, false);
-  QVERIFY2(std::abs(nearest.alphaF() - a) < 0.03, qPrintable(QString::number(nearest.alphaF())));
-  QCOMPARE(nearest.green(), 0);
+  for (bool layers : { false, true }) {
+    const QColor front = look({ 0, 0, 1 }, layers);
+    QVERIFY2(std::abs(front.alphaF() - a) < 0.03, qPrintable(QString::number(front.alphaF())));
+    QVERIFY2(front.red() > front.green(), qPrintable(QStringLiteral("red %1 green %2").arg(front.red()).arg(front.green())));
+    const QColor back = look({ 0, 0, -1 }, layers);
+    QVERIFY2(std::abs(back.alphaF() - a) < 0.03, qPrintable(QString::number(back.alphaF())));
+    QVERIFY2(back.green() > back.red(), qPrintable(QStringLiteral("red %1 green %2").arg(back.red()).arg(back.green())));
+  }
 }
 
-void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
-  // C06 / the mock: each voxel face stroked darker; Classic (legacy's
-  // bevels and checker) has no such lines. Rendered with and without the
-  // outline, only the outline pixels change -- and they get darker.
+void TestRender::theFlatStyleOutlinesTheShapesEdges() {
+  // the flat style strokes the shape's edges darker -- a full line where
+  // faces meet at an angle or the colour changes, a thin faint one between
+  // the voxels of a flat region; Classic (legacy's bevels and checker) has
+  // no such lines. Rendered with and without the outline, only the outline
+  // pixels change -- and they get darker.
   OffscreenTarget t;
   GPU_OR_SKIP(t.create(QSize(320, 240)));
   AppFixture f;
@@ -997,6 +1153,7 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
   v->setDisplayBounds(false);
   QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
 
+  int strong = 0;   // the full lines: much darker
   auto compareOutline = [&](int * darker, int * lighter) {
     SceneFrame fr = v->frame(1);
     fr.lines.clear();
@@ -1004,12 +1161,13 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
     const QImage with = t.render(fr);
     fr.outlineStrength = 0;
     const QImage without = t.render(fr);
-    *darker = *lighter = 0;
+    *darker = *lighter = strong = 0;
     for (int y = 0; y < with.height(); y++)
       for (int x = 0; x < with.width(); x++) {
         const QColor a = with.pixelColor(x, y), b = without.pixelColor(x, y);
         const int d = (a.red() + a.green() + a.blue()) - (b.red() + b.green() + b.blue());
         if (d < -12) (*darker)++;
+        if (d < -70) strong++;
         if (d > 12) (*lighter)++;
       }
     return with;
@@ -1018,8 +1176,13 @@ void TestRender::theFlatStyleOutlinesEveryVoxelFace() {
   int darker = 0, lighter = 0;
   const QImage flat = compareOutline(&darker, &lighter);
   saveForInspection(flat, "pelikan-flat");
-  // an 8x8x8 cube shows three faces of 64 voxel faces each: many lines
-  QVERIFY2(darker > 1500, qPrintable(QStringLiteral("%1 outline pixels").arg(darker)));
+  // an 8x8x8 cube shows three faces with nine edges between them, drawn in
+  // full: a few hundred strong pixels, nothing like the 1500 and more that
+  // 64 full-stroked voxel faces per face would give; and the voxel grid
+  // across the faces in thin faint lines: many more pixels, none strong
+  QVERIFY2(strong > 300, qPrintable(QStringLiteral("%1 strong outline pixels").arg(strong)));
+  QVERIFY2(strong < 1500, qPrintable(QStringLiteral("%1 strong outline pixels").arg(strong)));
+  QVERIFY2(darker > strong + 1500, qPrintable(QStringLiteral("%1 outline pixels, %2 strong").arg(darker).arg(strong)));
   QCOMPARE(lighter, 0);
 
   f.app->settings()->setVoxelStyle(QStringLiteral("legacy"));
@@ -1040,6 +1203,32 @@ void TestRender::darkThemeUsesTheDarkCanvas() {
   Theme::instance()->setMode(QStringLiteral("light"));
 }
 
+void TestRender::darkThemeRebuildsTheMeshInTheDarkPieceColours() {
+  // the piece colour is baked into the mesh; a theme switch rebuilds it
+  // with the other set, so the drawn shape changes colour with the chips
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(160, 120)));
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  ViewportController * v = f.app->viewport();
+  v->setDisplayAxes(false);
+  v->setDisplayBounds(false);
+  v->setDisplayLayerSlab(false);
+  Theme::instance()->setMode(QStringLiteral("light"));
+  auto restore = qScopeGuard([] { Theme::instance()->setMode(QStringLiteral("light")); });
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor light = t.render(v->frame(1)).pixelColor(80, 60);
+
+  Theme::instance()->setMode(QStringLiteral("dark"));
+  QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+  const QColor dark = t.render(v->frame(1)).pixelColor(80, 60);
+  QVERIFY(dark != light);
+  // both are the blue of shape 1, the dark set's lighter
+  QVERIFY(light.blue() > light.red() && light.blue() > light.green());
+  QVERIFY(dark.blue() > dark.red() && dark.blue() > dark.green());
+  QVERIFY(dark.lightnessF() > light.lightnessF());
+}
+
 void TestRender::theSlabTintsItsLayer() {
   // a flat 6x6x1 plate seen from the front: the slab of its only layer
   // covers it, and with the slab off the pixels differ
@@ -1056,7 +1245,7 @@ void TestRender::theSlabTintsItsLayer() {
   f.app->shapes()->refresh();
   f.app->shapes()->select(0);
   ViewportController * v = f.app->viewport();
-  v->setLayer(1);                 // the empty upper layer: the slab sits in front of the plate
+  f.app->editor()->setLayer(1);   // the empty upper layer: the slab sits in front of the plate
   v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
   const QImage with = t.render(v->frame(1));
   v->setDisplayLayerSlab(false);
@@ -1064,8 +1253,100 @@ void TestRender::theSlabTintsItsLayer() {
   saveForInspection(with, "slab-on");
   const QColor a = with.pixelColor(160, 120), b = without.pixelColor(160, 120);
   QVERIFY(a != b);
-  // the tint pulls toward the accent (blue)
-  QVERIFY(a.blue() >= b.blue());
+  // a tint, not a repaint: the plate's hue (blue) still dominates under it.
+  // (The earlier check that the blue channel rose sampled a voxel grid line,
+  // which the flat style no longer draws across a flat face.)
+  QVERIFY(a.blue() > a.red() && a.blue() > a.green());
+}
+
+void TestRender::dimmingLeavesTheActiveLayerAsItIs() {
+  // With only the active layer holding voxels, Dim other layers dims
+  // nothing: the picture is the one without it, though it is drawn back to
+  // front -- the Classic variable voxels' markers whole (a face's triangles
+  // sorted as one), the slab's edges in front of them without a halo (only
+  // a line's solid core writing depth)
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  for (const char * style : { "legacy", "flat" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    f.app->document()->editStructure(-1, [](puzzle_c & p) {
+      // inside the grid, off its edges: the bounds' and the slab's edges
+      // pass in front of the voxels without lying on theirs
+      p.addShape(5, 5, 2);
+      for (unsigned i = 1; i < 4; i++)
+        p.getShape(0)->setState(i, i, 0, voxel_c::VX_VARIABLE);
+      p.getShape(0)->setState(1, 3, 0, voxel_c::VX_FILLED);
+      return true;
+    });
+    f.app->shapes()->refresh();
+    f.app->shapes()->select(0);
+    ViewportController * v = f.app->viewport();
+    f.app->editor()->setLayer(0);
+    v->camera().setOrientation(btui::Camera::lookFrom({ 0.8f, -0.5f, 1.0f }, 0));
+    const QImage plain = t.render(v->frame(1));
+    v->setDisplayDimOtherLayers(true);
+    const QImage dimmed = t.render(v->frame(1));
+    saveForInspection(plain, qPrintable(QStringLiteral("dim-none-%1").arg(QLatin1String(style))));
+    saveForInspection(dimmed, qPrintable(QStringLiteral("dim-active-%1").arg(QLatin1String(style))));
+    // inside the voxels (blue faces, the variable ones' light see-through
+    // blue, dark markers; lines over them blue too): the same picture. A
+    // lost marker half is navy against blue, a halo the light canvas, a
+    // variable voxel seen through another a darker blue; a line's
+    // anti-aliased edge may differ a little.
+    // (Lines elsewhere differ by design: in this mode the slab's tint is
+    // drawn over them.)
+    int voxel = 0, differing = 0;
+    for (int y = 0; y < plain.height(); y++)
+      for (int x = 0; x < plain.width(); x++) {
+        const QColor p = plain.pixelColor(x, y);
+        if (p.blue() < p.red() + 40 || p.lightness() > 235)
+          continue;
+        voxel++;
+        differing += !near(p, dimmed.pixelColor(x, y), 60);
+      }
+    QVERIFY2(voxel > 2000, style);
+    QVERIFY2(differing < 20, qPrintable(QStringLiteral("%1: %2 of %3 voxel pixels differ")
+                                            .arg(QLatin1String(style)).arg(differing).arg(voxel)));
+  }
+}
+
+void TestRender::dimmingFadesTheOtherLayersInEveryStyle() {
+  // AC-C06-05 / AC-C11-08: a 6x6x2 block seen from +Z shows its layer 1;
+  // dimming around layer 0 fades it, around layer 1 leaves it as it is
+  OffscreenTarget t;
+  GPU_OR_SKIP(t.create(QSize(320, 240)));
+  for (const char * style : { "flat", "legacy", "stl" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    f.app->document()->editStructure(-1, [](puzzle_c & p) {
+      p.addShape(6, 6, 2);
+      p.getShape(0)->setAll(voxel_c::VX_FILLED);
+      return true;
+    });
+    f.app->shapes()->refresh();
+    f.app->shapes()->select(0);
+    ViewportController * v = f.app->viewport();
+    v->setDisplayLayerSlab(false);
+    v->camera().setOrientation(btui::Camera::lookFrom({ 0, 0, 1 }, 0));
+    const QImage plain = t.render(v->frame(1));
+    v->setDisplayDimOtherLayers(true);
+    f.app->editor()->setLayer(1);
+    const QImage own = t.render(v->frame(1));
+    f.app->editor()->setLayer(0);
+    const QImage other = t.render(v->frame(1));
+    saveForInspection(other, qPrintable(QStringLiteral("dim-%1").arg(QLatin1String(style))));
+    // a cell's middle, off its outline: a dimmed voxel is drawn see-through
+    // (C06: at 28 %) over what is behind it -- the canvas, or in the classic
+    // style the active layer's far faces; its own layer is drawn as it is.
+    // The picture stays opaque: the window shows no alpha.
+    const QPoint c(147, 107);
+    QVERIFY2(near(own.pixelColor(c), plain.pixelColor(c), 3), style);
+    QCOMPARE(other.pixelColor(c).alpha(), 255);
+    QVERIFY2(!near(other.pixelColor(c), plain.pixelColor(c), 30),
+             qPrintable(QStringLiteral("%1: %2 -> %3").arg(QLatin1String(style), plain.pixelColor(c).name(),
+                                                           other.pixelColor(c).name())));
+  }
 }
 
 void TestRender::everyGridTypeRenders() {
@@ -1286,6 +1567,135 @@ void TestViewportItem::redrawsAtTheFinalSizeAfterTheCardGrows() {
            qPrintable(QStringLiteral("%1 pixels differ from a fresh render").arg(differing)));
   // the shape really is there, centred in the wider view
   QVERIFY(!near(after.pixelColor(360, 150), Theme::instance()->canvas(), 20));
+}
+
+void TestViewportItem::dimmingShowsInTheViewInEveryStyle() {
+  // AC-C06-05 / AC-C11-08 as the window shows it: voxels outside the active
+  // layer fade toward the canvas, in every voxel style
+  for (const char * style : { "flat", "legacy", "stl" }) {
+    AppFixture f;
+    f.app->settings()->setVoxelStyle(QString::fromLatin1(style));
+    QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+    Theme::instance()->setMode(QStringLiteral("light"));
+    ViewportController * v = f.app->viewport();
+    QTRY_VERIFY_WITH_TIMEOUT(!v->animating(), 3000);
+    QuickTarget t;
+    GPU_OR_SKIP(t.create(QSize(320, 240)));
+    auto * view = new VoxelViewport(t.window->contentItem());
+    view->setController(v);
+    view->setSize(QSizeF(320, 240));
+    // the front of the shell, low left: layer 0 is at the back
+    const QPoint at(95, 165);
+    const QColor plain = t.frame().pixelColor(at);
+    v->setDisplayDimOtherLayers(true);
+    const QImage dimmed = t.frame();
+    saveForInspection(dimmed, qPrintable(QStringLiteral("item-dim-%1").arg(QLatin1String(style))));
+    const QColor c = dimmed.pixelColor(at);
+    // see-through, never the window behind the view
+    QVERIFY2(!isMagenta(c) && c.alpha() == 255, style);
+    QVERIFY2(!near(c, plain, 30), qPrintable(QStringLiteral("%1: %2 -> %3")
+                                                    .arg(QLatin1String(style), plain.name(), c.name())));
+  }
+}
+
+void TestViewportItem::theCardShowsItsCanvas() {
+  // The real ViewportCard, drawn by Qt Quick: the shape shows in the middle
+  // of the card. (Its canvas sits at z -1, after the toolbar in Tab order --
+  // behind the card's own fill, had the card one.) The QML tests have no 3D
+  // device and the render tests draw the scene alone: neither sees this.
+  AppFixture f;
+  QVERIFY(f.load("examples/PelikanBurr.xmpuzzle"));
+  Theme::instance()->setMode(QStringLiteral("light"));
+  QTRY_VERIFY_WITH_TIMEOUT(!f.app->viewport()->animating(), 3000);
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(480, 360)));
+  QQmlEngine engine;
+  engine.addImageProvider(QStringLiteral("icon"), new IconProvider);
+  engine.addImageProvider(QStringLiteral("editglyph"), new EditGlyphProvider);
+  QQmlComponent c(&engine);
+  c.setData("import BurrTools.Ui\nViewportCard { width: 480; height: 360 }", QUrl());
+  std::unique_ptr<QObject> o(c.create());
+  QVERIFY2(o, qPrintable(c.errorString()));
+  auto * card = qobject_cast<QQuickItem *>(o.get());
+  card->setParentItem(t.window->contentItem());
+  t.frame();
+  QTRY_VERIFY_WITH_TIMEOUT(!f.app->viewport()->animating(), 3000);
+  const QImage img = t.frame();
+  saveForInspection(img, "item-card");
+  // the shape's blue (S1) fills the middle; never the canvas or the window behind
+  const QColor mid = img.pixelColor(240, 200);
+  QVERIFY2(mid.blue() > mid.red() + 80 && mid.blue() > mid.green() + 80, qPrintable(mid.name()));
+}
+
+namespace {
+  /* a scene that counts the hovers it is asked to pick */
+  struct CountingScene : SceneController {
+    using SceneController::SceneController;
+    int hovers = 0;
+    float lastX = -1;
+    Qt::KeyboardModifiers lastMods;
+    void pointerHover(float x, float, Qt::KeyboardModifiers m) override {
+      hovers++;
+      lastX = x;
+      lastMods = m;
+    }
+  };
+}
+
+void TestViewportItem::hoverPicksAtMostOnceAFrame() {
+  // the Qt Quick guide, section 7: the hover pick throttled to the frame
+  // -- ten pointer moves between two frames, one pick, at the last point
+  AppFixture f;
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(200, 150)));
+  CountingScene scene(f.app->settings());
+  auto * view = new VoxelViewport(t.window->contentItem());
+  view->setController(&scene);
+  view->setSize(QSizeF(200, 150));
+  t.frame();
+  QHoverEvent enter(QEvent::HoverEnter, QPointF(10, 10), QPointF(10, 10), QPointF(10, 10));
+  QCoreApplication::sendEvent(view, &enter);
+  for (int i = 1; i <= 10; i++) {
+    QHoverEvent move(QEvent::HoverMove, QPointF(10 + i, 10), QPointF(10 + i, 10), QPointF(9 + i, 10));
+    QCoreApplication::sendEvent(view, &move);
+  }
+  QCOMPARE(scene.hovers, 0);                         // none yet: the frame picks
+  t.frame();
+  QCOMPARE(scene.hovers, 1);
+  QCOMPARE(scene.lastX, 20.0f);
+  t.frame();
+  QCOMPARE(scene.hovers, 1);                         // nothing new, no pick
+  view->setController(nullptr);
+}
+
+void TestViewportItem::theFramesRepeatedHoverAsksTheKeyboard() {
+  // Qt Quick repeats the hover at a still pointer after a frame that changed
+  // items, with QGuiApplication::keyboardModifiers(); on Windows that still
+  // holds a modifier the user just let go of, and the repeat put the quick
+  // tool back on: the Edit button stayed lit until the pointer moved. A
+  // hover where the last one was picks with the keyboard's state.
+  if (QGuiApplication::queryKeyboardModifiers() != Qt::NoModifier)
+    QSKIP("a modifier is held on this keyboard");
+  AppFixture f;
+  QuickTarget t;
+  GPU_OR_SKIP(t.create(QSize(200, 150)));
+  CountingScene scene(f.app->settings());
+  auto * view = new VoxelViewport(t.window->contentItem());
+  view->setController(&scene);
+  view->setSize(QSizeF(200, 150));
+  t.frame();
+  const QPointF p(40, 40);
+  QHoverEvent enter(QEvent::HoverEnter, p, p, p);
+  QCoreApplication::sendEvent(view, &enter);
+  QHoverEvent held(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p, Qt::ShiftModifier);
+  QCoreApplication::sendEvent(view, &held);          // a move: the event's keys
+  t.frame();
+  QCOMPARE(scene.lastMods, Qt::KeyboardModifiers(Qt::ShiftModifier));
+  QHoverEvent repeat(QEvent::HoverMove, p + QPointF(1, 0), p + QPointF(1, 0), p + QPointF(1, 0), Qt::ShiftModifier);
+  QCoreApplication::sendEvent(view, &repeat);        // the frame's repeat, Shift let go
+  t.frame();
+  QCOMPARE(scene.lastMods, Qt::KeyboardModifiers(Qt::NoModifier));
+  view->setController(nullptr);
 }
 
 void TestViewportItem::drawsWithTheBestMultisamplingTheDeviceHas() {

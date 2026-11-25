@@ -19,7 +19,8 @@ layout(location = 4) out float vHalf;     // half the line's width in pixels
 
 layout(std140, binding = 0) uniform Buf {
     mat4 mvp;
-    vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light
+    vec4 viewport;   // xy: target size in pixels, z: 1 when drawing in linear light,
+                     // w: the least coverage drawn (line.frag)
 } ubuf;
 
 void main()

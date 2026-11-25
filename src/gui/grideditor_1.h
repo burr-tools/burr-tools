@@ -39,7 +39,6 @@ private:
   bool calcGridPosition(int x, int y, int z, int *gx, int *gy);
 
   void drawNormalTile(int x, int y, int z, int tx, int ty, int sx, int sy);
-  void drawVariableTile(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawTileFrame(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawTileColor(int x, int y, int z, int tx, int ty, int sx, int sy);
   void drawTileCursor(int x, int y, int z, int tx, int ty, int sx, int sy);

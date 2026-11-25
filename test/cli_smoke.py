@@ -89,9 +89,12 @@ def main():
             failures.append(f"{label}: did not terminate within {TIMEOUT}s")
             continue
         check(label, (proc.returncode == 0) == ok, f"exit status {proc.returncode}\n{proc.stdout}")
-        check(label, "-h, --help" in proc.stdout, f"no usage\n{proc.stdout}")
-        check(label, ("Environment variables" in proc.stdout) == listed,
-              f"environment variables {'missing' if listed else 'printed'}\n{proc.stdout}")
+        # stderr too: where stdin is no terminal, as /dev/null is not, the
+        # run without a file counts as reading a puzzle from it
+        out = proc.stdout + proc.stderr
+        check(label, "-h, --help" in out, f"no usage\n{out}")
+        check(label, ("Environment variables" in out) == listed,
+              f"environment variables {'missing' if listed else 'printed'}\n{out}")
 
     # A grid without a disassembler must be refused up front, before anything
     # builds one: the disassembler asserts on the movement cache such a grid

@@ -1,0 +1,34 @@
+name: Cache cleanup
+
+# Deletes a pull request's caches when it is closed, merged or not: they are
+# scoped to its merge ref, which nothing restores from afterwards, and would
+# otherwise hold their part of the repository's 10 GB until they are evicted.
+# build-and-release.yml's ccache-prune keeps them to one per job while the
+# pull request is open. A pull request from a fork gets a read-only token
+# here; its caches are left to GitHub's own eviction.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - name: Delete the pull request's caches
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        REF: refs/pull/${{ github.event.pull_request.number }}/merge
+      run: |
+        # listed in full first: deleting while paging would shift the pages
+        caches=$(gh api --paginate "repos/$REPO/actions/caches?ref=$REF&per_page=100" \
+            --jq '.actions_caches[] | "\(.id) \(.key)"')
+        printf '%s\n' "$caches" | while read -r id key; do
+          [ -n "$id" ] || continue
+          echo "deleting $key"
+          gh api -X DELETE "repos/$REPO/actions/caches/$id"
+        done

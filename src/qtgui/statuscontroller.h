@@ -59,6 +59,9 @@ public:
   void setCursorText(const QString & t);
 
   Q_INVOKABLE void flash(const QString & text);
+  /* back to the live text now: a flash about a document that was just
+   * replaced says nothing about the new one */
+  void endFlash(void);
 
   /* how long a flash shows; flashMs unless a test shortens it */
   void setFlashDuration(int ms) { m_timer.setInterval(ms); }

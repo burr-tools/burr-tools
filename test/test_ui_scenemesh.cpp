@@ -6,6 +6,7 @@
 
 #include "../src/uicore/camera.h"
 #include "../src/uicore/scenemesh.h"
+#include "../src/uicore/voxeledit.h"
 
 #include "test_helpers.h"
 
@@ -15,6 +16,9 @@
 #include "../src/tools/xml.h"
 
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <map>
 #include <set>
 #include <string>
 
@@ -28,6 +32,9 @@ namespace {
     o.piece = { 0, 0, 1 };
     return o;
   }
+
+  // a channel as the mesh stores it (scenemesh.cpp's rgba)
+  std::uint8_t channel8(float v) { return std::uint8_t(std::clamp(v, 0.0f, 1.0f) * 255.0f + 0.5f); }
 
   std::unique_ptr<puzzle_c> loadPuzzle(const char * file) {
     auto str = openGzFile(file);
@@ -164,6 +171,7 @@ namespace {
 
   /* the sides of triangle i of a vertex list that carry an outline: a side's
    * coordinate stays below kNoOutline at all three corners */
+  // the sides of a triangle drawn with a full line (edge offset 0)
   int outlinedSides(const std::vector<MeshVertex> & v, size_t tri) {
     int n = 0;
     for (int side = 0; side < 3; side++) {
@@ -172,6 +180,19 @@ namespace {
         if (v[3 * tri + k].edge[side] >= 1.5f)
           outlined = false;
       n += outlined ? 1 : 0;
+    }
+    return n;
+  }
+
+  // the sides drawn with a thin line (edge offset kThinOutline)
+  int thinSides(const std::vector<MeshVertex> & v, size_t tri) {
+    int n = 0;
+    for (int side = 0; side < 3; side++) {
+      bool thin = true;
+      for (size_t k = 0; k < 3; k++)
+        if (v[3 * tri + k].edge[side] < kThinOutline - 0.5f)
+          thin = false;
+      n += thin ? 1 : 0;
     }
     return n;
   }
@@ -212,51 +233,120 @@ TEST_CASE("flat style: the outline follows each face's sides, not the fan's diag
   const MeshVertex & a = m.opaque[0];
   CHECK((a.edge[0] == 1.0f || a.edge[0] == 1.0f + kNoOutline));
 
-  // a triangle grid's faces are outlined all round
+  // a lone triangular prism: its triangular end faces are outlined all round
   gridType_c tri(gridType_c::GT_TRIANGULAR_PRISM);
-  auto p = bttest::makeVoxel(tri, 2, 2, 1);
-  for (unsigned x = 0; x < 2; x++)
-    for (unsigned y = 0; y < 2; y++)
-      if (p->validCoordinate(x, y, 0)) p->setState(x, y, 0, voxel_c::VX_FILLED);
+  auto p = bttest::makeVoxel(tri, 1, 1, 1);
+  p->setState(0, 0, 0, voxel_c::VX_FILLED);
   const ShapeMesh pm = buildShapeMesh(*p, blue());
   REQUIRE_FALSE(pm.opaque.empty());
   int full = 0;
   for (size_t t = 0; t < pm.opaque.size() / 3; t++)
     full += outlinedSides(pm.opaque, t) == 3 ? 1 : 0;
-  CHECK(full > 0);                                   // the triangular end faces
+  CHECK(full == 2);
 }
 
-TEST_CASE("flat style: variable voxels are slightly see-through with a dashed outline, no marker", "[ui][scenemesh]") {
+TEST_CASE("flat style: a thin line where a face continues in the same plane and colour", "[ui][scenemesh]") {
+  // two cubes side by side: the sides the two top faces (front, back,
+  // bottom) share lie inside one flat region and get a thin line; the
+  // box's own edges a full one. The box has 12 edges, the four along x
+  // split in two where the cubes meet: 16 edge segments, each on two
+  // faces; and 4 shared sides, each on two faces.
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 2, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  const ShapeMesh m = buildShapeMesh(*v, blue());
+  int outlined = 0, thin = 0;
+  for (size_t t = 0; t < m.opaque.size() / 3; t++) {
+    outlined += outlinedSides(m.opaque, t);
+    thin += thinSides(m.opaque, t);
+  }
+  CHECK(outlined == 32);
+  CHECK(thin == 8);
+
+  // a fixed voxel next to a variable one: the colour changes at the
+  // boundary, so the boundary is outlined like an edge (the fixed cube
+  // keeps all six faces, seen through the variable one; the variable one
+  // has five, none against the fixed one, its full lines drawn as dashed
+  // lines rather than by the face shader)
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  const ShapeMesh b = buildShapeMesh(*v, blue());
+  outlined = 0; thin = 0;
+  for (const auto * list : { &b.opaque, &b.translucent })
+    for (size_t t = 0; t < list->size() / 3; t++) {
+      outlined += outlinedSides(*list, t);
+      thin += thinSides(*list, t);
+    }
+  CHECK(outlined == 6 * 4);
+  CHECK(b.edges.size() == 12);
+  CHECK(thin == 0);
+
+  // a concave corner is an edge too: an L of three cubes
+  auto l = bttest::makeVoxel(gt, 2, 2, 1);
+  l->setState(0, 0, 0, voxel_c::VX_FILLED);
+  l->setState(1, 0, 0, voxel_c::VX_FILLED);
+  l->setState(0, 1, 0, voxel_c::VX_FILLED);
+  const ShapeMesh lm = buildShapeMesh(*l, blue());
+  // the inner corner's two faces meet at a right angle: both their sides there are outlined
+  bool innerOutlined = false;
+  for (size_t t = 0; t < lm.opaque.size() / 3; t++) {
+    const MeshVertex * tv = &lm.opaque[3 * t];
+    // a face of cube (1,0,0) facing +y, or of cube (0,1,0) facing +x
+    const bool inner = (tv->cell[0] == 1.0f && tv->normal[1] > 0.9f) || (tv->cell[1] == 1.0f && tv->normal[0] > 0.9f);
+    if (inner && outlinedSides(lm.opaque, t) == 2)
+      innerOutlined = true;
+  }
+  CHECK(innerOutlined);
+}
+
+TEST_CASE("flat style: variable voxels are a lighter tint of the hue, see-through, one solid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_FILLED);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   REQUIRE_FALSE(m.translucent.empty());
+  const Rgb tint = variableTint({ 0, 0, 1 }, kVariableTint3D);
+  CHECK(tint.r > 0.2f);                              // towards white
+  CHECK(tint.b == 1.0f);                             // still blue
+  CHECK(m.edges.size() == 12);                       // the dashed outline: lines, one per edge
   for (const auto & vert : m.translucent) {
     CHECK(vert.cell[0] == 1.0f);
-    CHECK(vert.edge[3] == 1.0f);                     // dashed
-    CHECK(vert.color.a == 153);                      // 60 %
-    CHECK(vert.color.b == 255);                      // its colour, not legacy's black marker
+    CHECK(vert.edge[3] == 0.0f);                     // no dashes: the tint and the alpha mark it
+    CHECK(vert.color.a == channel8(kVariableAlpha));
+    CHECK(vert.color.r == channel8(tint.r));
+    CHECK(vert.color.g == channel8(tint.g));
+    CHECK(vert.color.b == 255);
   }
-  for (const auto & vert : m.opaque)
-    CHECK(vert.edge[3] == 0.0f);
+  for (const auto & vert : m.opaque) {
+    CHECK(vert.color.a == 255);
+    CHECK(vert.color.b == 255);
+    CHECK(vert.color.r == 0);
+  }
   // the fixed voxel stays a closed cube, seen through its variable
   // neighbour; the variable one has no face against it
   CHECK(m.opaque.size() == 6 * 2 * 3);
   CHECK(m.translucent.size() == 5 * 2 * 3);
+
+  // variableAlpha 1: the variable voxels an opaque solid of the tint
+  MeshOptions o = blue();
+  o.variableAlpha = 1.0f;
+  const ShapeMesh solid = buildShapeMesh(*v, o);
+  CHECK(solid.translucent.empty());
+  CHECK(solid.opaque.size() == (6 + 5) * 2 * 3);
 }
 
-TEST_CASE("flat style: variable neighbours keep the face between them", "[ui][scenemesh]") {
-  // so the inner variable voxels show through the outer ones; each voxel
-  // has its own face there, facing away from the other
+TEST_CASE("flat style: variable neighbours are one body, no face between them", "[ui][scenemesh]") {
+  // the renderer blends the body's nearest surface only (the layer rule),
+  // so a face inside it would never show; legacy's classic style draws
+  // its own surface
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   const ShapeMesh m = buildShapeMesh(*v, blue());
   CHECK(m.opaque.empty());
-  CHECK(m.translucent.size() == 2 * 6 * 2 * 3);      // every face of both voxels
+  CHECK(m.translucent.size() == 10 * 2 * 3);         // the outer faces only
 
   // the classic style keeps legacy's surface only
   MeshOptions classic = blue();
@@ -287,44 +377,149 @@ TEST_CASE("flat style: spheres stay round and draw no facet lines", "[ui][scenem
   }
 }
 
-TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones not drawn", "[ui][scenemesh]") {
+TEST_CASE("STL style: the fixed voxels chamfered in the shape's colour, the variable ones a see-through tinted solid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 2, 1, 1);
   v->setState(0, 0, 0, voxel_c::VX_FILLED);
   v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
   MeshOptions o = blue();
   o.style = VoxelStyle::Stl;
-  const ShapeMesh m = buildShapeMesh(*v, o);
-  CHECK(m.translucent.empty());
+  ShapeMesh m = buildShapeMesh(*v, o);
   REQUIRE_FALSE(m.opaque.empty());
+  REQUIRE_FALSE(m.translucent.empty());
   CHECK(m.opaque.size() > 6 * 2 * 3);              // the chamfers: more than a plain cube's faces
-  float lo[3] = { 1e9f, 1e9f, 1e9f }, hi[3] = { -1e9f, -1e9f, -1e9f };
+  for (const auto & vert : m.translucent)
+    CHECK(vert.color.a == channel8(kVariableAlpha));
+  // the two solids looked at together below
+  m.opaque.insert(m.opaque.end(), m.translucent.begin(), m.translucent.end());
+  const std::uint8_t shadeB = 255, tintR = channel8(variableTint({ 0, 0, 1 }, kVariableTint3D).r);
+  float lo[2][3] = { { 1e9f, 1e9f, 1e9f }, { 1e9f, 1e9f, 1e9f } }, hi[2][3] = { { -1e9f, -1e9f, -1e9f }, { -1e9f, -1e9f, -1e9f } };
+  size_t count[2] = { 0, 0 };
   for (const auto & vert : m.opaque) {
-    CHECK(vert.color.b == 255);
-    CHECK(vert.color.a == 255);
     CHECK(vert.edge[0] == kNoOutline);              // no outlines
-    CHECK(vert.cell[0] == 0.0f);                    // the fixed voxel's, for Dim other layers
-    CHECK(vert.cell[1] == 0.0f);
+    CHECK(vert.cell[1] == 0.0f);                    // each face on its own voxel, for Dim other layers
     CHECK(vert.cell[2] == 0.0f);
+    const int part = vert.cell[0] == 0.0f ? 0 : 1;   // the fixed voxel's solid or the variable one's
+    CHECK(vert.cell[0] == float(part));
+    CHECK(vert.color.b == shadeB);
+    CHECK(vert.color.r == (part == 0 ? 0 : tintR));
+    CHECK(vert.color.a == (part == 0 ? 255 : channel8(kVariableAlpha)));
     CHECK_THAT(std::hypot(vert.normal[0], vert.normal[1], vert.normal[2]), WithinAbs(1.0, 1e-3));
+    count[part]++;
     for (int k = 0; k < 3; k++) {
-      lo[k] = std::min(lo[k], vert.pos[k]);
-      hi[k] = std::max(hi[k], vert.pos[k]);
+      lo[part][k] = std::min(lo[part][k], vert.pos[k]);
+      hi[part][k] = std::max(hi[part][k], vert.pos[k]);
     }
   }
-  // on the voxel grid, in the shape's own units: the fixed cube only
-  // (each side inset by the view's gap, 0.02)
+  // two solids on the voxel grid, in the shape's own units, each inset by
+  // the view's gap (0.02): the fixed cube and, next to it, the variable one
+  CHECK(count[0] > 0);
+  CHECK(count[1] > 0);
   for (int k = 0; k < 3; k++) {
-    CHECK_THAT(lo[k], WithinAbs(0.0, 0.03));
-    CHECK_THAT(hi[k], WithinAbs(1.0, 0.03));
+    CHECK_THAT(lo[0][k], WithinAbs(0.0, 0.03));
+    CHECK_THAT(hi[0][k], WithinAbs(1.0, 0.03));
+    CHECK_THAT(lo[1][k], WithinAbs(k == 0 ? 1.0 : 0.0, 0.03));
+    CHECK_THAT(hi[1][k], WithinAbs(k == 0 ? 2.0 : 1.0, 0.03));
   }
   // the view's bounds stay the whole shape's, so switching styles keeps the camera
   CHECK_THAT(m.boundsMax.x, WithinAbs(2.0, 1e-6));
 
-  // only variable voxels: nothing to draw
+  // only variable voxels: the tinted solid alone
   auto w = bttest::makeVoxel(gt, 1, 1, 1);
   w->setState(0, 0, 0, voxel_c::VX_VARIABLE);
-  CHECK(buildShapeMesh(*w, o).empty());
+  const ShapeMesh onlyVariable = buildShapeMesh(*w, o);
+  CHECK(onlyVariable.opaque.empty());
+  REQUIRE_FALSE(onlyVariable.translucent.empty());
+  CHECK(onlyVariable.translucent.front().color.r == tintR);
+}
+
+TEST_CASE("STL style: a face across several layers is cut at them, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the exporter merges a column's sides into one face; each layer gets its own pieces
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 1, 1, 3);
+  v->setAll(voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  const ShapeMesh m = buildShapeMesh(*v, o);
+  REQUIRE(m.opaque.size() % 3 == 0);
+  std::set<int> layers;
+  for (size_t i = 0; i < m.opaque.size(); i += 3) {
+    const float cz = m.opaque[i].cell[2];
+    layers.insert(int(cz));
+    for (size_t k = 0; k < 3; k++) {
+      const MeshVertex & mv = m.opaque[i + k];
+      CHECK(mv.cell[2] == cz);                              // one cell a triangle
+      CHECK(mv.pos[2] >= cz - 1e-3f);                       // and within its layer
+      CHECK(mv.pos[2] <= cz + 1.0f + 1e-3f);
+    }
+  }
+  CHECK(layers == std::set<int>{ 0, 1, 2 });
+}
+
+TEST_CASE("STL style: every voxel type's faces are cut at its cells' walls, so Dim other layers dims only theirs", "[ui][scenemesh]") {
+  // the prism, rhombic and tetra-octa meshers merge faces across cells as
+  // the brick exporter does; spheres' faces are each ball's own. Every
+  // triangle lies in the one cell it names -- the cell's extent from a
+  // shape holding that voxel alone; a cell the surface only grazes at a
+  // corner may hold a piece of the chamfer -- and every layer with a cell
+  // on the surface has pieces of its own
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Stl;
+  for (auto t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    INFO(bttest::gridName(t));
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 4;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (unsigned x = 0; x < n; x++)
+      for (unsigned y = 0; y < n; y++)
+        for (unsigned z = 0; z < n; z++)
+          if (v->validCoordinate(x, y, z))
+            v->setState(x, y, z, voxel_c::VX_FILLED);
+
+    // the layers with a cell on the surface, and a cell's extent
+    MeshOptions flat = blue();
+    flat.style = VoxelStyle::Flat;
+    std::set<int> surfaceLayers;
+    for (const MeshVertex & mv : buildShapeMesh(*v, flat).opaque)
+      surfaceLayers.insert(int(mv.cell[2]));
+    std::map<std::array<int, 3>, std::array<float, 6>> extent;
+    auto extentOf = [&](const std::array<int, 3> & c) {
+      auto it = extent.find(c);
+      if (it != extent.end())
+        return it->second;
+      auto one = bttest::makeVoxel(gt, n, n, n);
+      one->setState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2]), voxel_c::VX_FILLED);
+      std::array<float, 6> box{ 1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f };
+      for (const MeshVertex & w : buildShapeMesh(*one, flat).opaque)
+        for (int k = 0; k < 3; k++) {
+          box[size_t(k)] = std::min(box[size_t(k)], w.pos[k]);
+          box[size_t(k) + 3] = std::max(box[size_t(k) + 3], w.pos[k]);
+        }
+      extent[c] = box;
+      return box;
+    };
+
+    const ShapeMesh m = buildShapeMesh(*v, o);
+    REQUIRE(m.opaque.size() % 3 == 0);
+    std::set<int> layers;
+    int outside = 0;
+    for (size_t i = 0; i < m.opaque.size(); i += 3) {
+      const MeshVertex * tri = &m.opaque[i];
+      const std::array<int, 3> c{ int(tri[0].cell[0]), int(tri[0].cell[1]), int(tri[0].cell[2]) };
+      layers.insert(c[2]);
+      for (int k = 0; k < 3; k++)
+        REQUIRE((tri[k].cell[0] == tri[0].cell[0] && tri[k].cell[1] == tri[0].cell[1] && tri[k].cell[2] == tri[0].cell[2]));
+      REQUIRE(v->getState(unsigned(c[0]), unsigned(c[1]), unsigned(c[2])) == voxel_c::VX_FILLED);
+      const std::array<float, 6> box = extentOf(c);
+      for (int k = 0; k < 3; k++)
+        for (int a = 0; a < 3; a++)
+          if (tri[k].pos[a] < box[size_t(a)] - 1e-3f || tri[k].pos[a] > box[size_t(a) + 3] + 1e-3f)
+            outside++;
+    }
+    CHECK(outside == 0);
+    for (const int l : surfaceLayers)
+      CHECK(layers.count(l) == 1);
+  }
 }
 
 TEST_CASE("STL style: every grid builds its mesh inside the bounds, each face on its voxel", "[ui][scenemesh]") {
@@ -401,6 +596,49 @@ TEST_CASE("picking a cube from outside finds the voxel and face under the ray", 
   CHECK_FALSE(pick(pm, { 1.5f, 0.5f, 10 }, { 0, 0, -1 }).hit);
 }
 
+TEST_CASE("the fast pick mesh picks what the library's flat mesh does, for every voxel type", "[ui][scenemesh]") {
+  // rays from every side through a scattered shape (variable voxels among
+  // the fixed ones) meet the same voxel and face in both
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int x = 0; x < 6; x++)
+      for (int y = 0; y < 6; y++)
+        for (int z = 0; z < 6; z++)
+          if (v->validCoordinate(x, y, z) && (x * 7 + y * 3 + z * 5) % 4 != 0)
+            v->setState(unsigned(x), unsigned(y), unsigned(z),
+                        (x + y + z) % 5 == 0 ? voxel_c::VX_VARIABLE : voxel_c::VX_FILLED);
+    const auto fast = buildPickMesh(*v);
+    const auto slow = buildPickMeshFromFlatMesh(*v);
+    REQUIRE(!fast.empty());
+    float cx, cy, cz;
+    v->calculateSize(&cx, &cy, &cz);
+    int compared = 0, hits = 0;
+    const Vec3 dirs[6] = { { 0, 0, -1 }, { 0, 0, 1 }, { 0, -1, 0 }, { 0, 1, 0 }, { -1, 0, 0 }, { 1, 0, 0 } };
+    for (const Vec3 & d : dirs)
+      for (int i = 0; i < 12; i++)
+        for (int j = 0; j < 12; j++) {
+          // a grid of rays across the box, off the cells' edges
+          const float u = (i + 0.37f) / 12.0f, w = (j + 0.61f) / 12.0f;
+          Vec3 o{ u * cx, w * cy, w * cz };
+          if (d.z != 0) o = { u * cx, w * cy, d.z < 0 ? cz + 5 : -5 };
+          if (d.y != 0) o = { u * cx, d.y < 0 ? cy + 5 : -5, w * cz };
+          if (d.x != 0) o = { d.x < 0 ? cx + 5 : -5, u * cy, w * cz };
+          const PickHit a = pick(fast, o, d), b = pick(slow, o, d);
+          compared++;
+          CHECK(a.hit == b.hit);
+          if (a.hit && b.hit) {
+            hits++;
+            CHECK(std::abs(a.t - b.t) < 1e-3f);
+            CHECK(a.voxel == b.voxel);
+            CHECK(a.face == b.face);
+          }
+        }
+    CHECK(hits > compared / 4);
+  }
+}
+
 TEST_CASE("picking works through the camera on an example of every grid", "[ui][scenemesh]") {
   // one example per grid type from examples/; a ray through the centre of the
   // view of a framed, non-empty shape always meets it
@@ -456,6 +694,39 @@ TEST_CASE("the layer slab is one layer thick and spans the grid", "[ui][scenemes
   CHECK(layerCount(*v, Plane::YZ) == 4);
 }
 
+TEST_CASE("the layer slab holds every voxel of its layer as drawn, of every voxel type", "[ui][scenemesh]") {
+  // the spheres of one layer reach into the next (centres sqrt(0.5) apart,
+  // radius 0.5): the slab is as thick as they are, not as the layer step
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    auto v = bttest::makeVoxel(gt, 6, 6, 6);
+    for (int layer = 0; layer < 6; layer++) {
+      INFO(bttest::gridName(t) << ", layer " << layer);
+      auto only = bttest::makeVoxel(gt, 6, 6, 6);
+      for (int x = 0; x < 6; x++)
+        for (int y = 0; y < 6; y++)
+          if (only->validCoordinate(x, y, layer))
+            only->setState(unsigned(x), unsigned(y), unsigned(layer), voxel_c::VX_FILLED);
+      MeshOptions o;
+      o.style = VoxelStyle::Flat;
+      const ShapeMesh m = buildShapeMesh(*only, o);
+      if (m.opaque.empty())
+        continue;
+      float lo = 1e30f, hi = -1e30f;
+      for (const MeshVertex & mv : m.opaque) {
+        lo = std::min(lo, mv.pos[2]);
+        hi = std::max(hi, mv.pos[2]);
+      }
+      const Box s = layerSlab(*v, Plane::XY, layer);
+      CHECK(s.min.z <= lo + 1e-3f);
+      CHECK(s.max.z >= hi - 1e-3f);
+      // and no thicker than they are
+      CHECK(s.min.z >= lo - 0.02f);
+      CHECK(s.max.z <= hi + 0.02f);
+    }
+  }
+}
+
 TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the grid", "[ui][scenemesh]") {
   gridType_c gt(gridType_c::GT_BRICKS);
   auto v = bttest::makeVoxel(gt, 4, 3, 5);
@@ -473,4 +744,206 @@ TEST_CASE("box overlays have 12 edges and 36 face vertices; axes reach past the 
   REQUIRE(axes.size() == 3);
   CHECK_THAT(axes[0].b.x, WithinAbs(4.7, 1e-5));
   CHECK_THAT(axes[2].b.z, WithinAbs(5.7, 1e-5));
+}
+
+TEST_CASE("a ghost is its cells' every face and edge, in its style, never dimmed", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 3, 3);
+  v->setAll(voxel_c::VX_FILLED);              // the shape's voxels hide no face of a ghost
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 140 }, Rgba8{ 1, 2, 3, 255 }, 2.0f, 5.0f, 4.0f };
+  addGhost(faces, lines, *v, { { 1, 1, 1 } }, s);
+  CHECK(faces.size() == 36);                  // 6 faces, 2 triangles each
+  REQUIRE(lines.size() == 12);
+  for (const MeshVertex & m : faces) {
+    CHECK(m.color == s.fill);
+    CHECK(m.cell[0] < -1000);
+    CHECK(m.pos[0] >= 1.0f - 1e-5f);
+    CHECK(m.pos[0] <= 2.0f + 1e-5f);
+  }
+  for (const LineSeg & l : lines) {
+    CHECK(l.color == s.outline);
+    CHECK(l.widthDp == 2.0f);
+    CHECK(l.dashDp == 5.0f);
+  }
+  // two neighbours: both cubes whole, their shared edges once
+  faces.clear();
+  lines.clear();
+  addGhost(faces, lines, *v, { { 0, 0, 0 }, { 1, 0, 0 } }, s);
+  CHECK(faces.size() == 72);
+  CHECK(lines.size() == 20);
+  // every voxel type has a ghost; none for no cells, nor for a coordinate
+  // that is no cell of the type
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    INFO(bttest::gridName(t));
+    gridType_c g(t);
+    auto w = bttest::makeVoxel(g, 3, 3, 3);
+    std::array<int, 3> cell{ -1, -1, -1 }, notCell{ -1, -1, -1 };
+    for (int i = 0; i < 27; i++)
+      (w->validCoordinate(i % 3, i / 3 % 3, i / 9) ? cell : notCell) = std::array<int, 3>{ i % 3, i / 3 % 3, i / 9 };
+    faces.clear();
+    lines.clear();
+    addGhost(faces, lines, *w, { cell }, s);
+    CHECK(faces.size() >= 12);
+    const size_t n = faces.size();
+    addGhost(faces, lines, *w, {}, s);
+    addGhost(faces, lines, *w, { notCell, { 7, 0, 0 } }, s);
+    CHECK(faces.size() == n);
+  }
+}
+
+TEST_CASE("a transform's preview: the result centred on the shape, and legacy's hint", "[ui][scenemesh]") {
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 4, 2, 2);
+  auto r = bttest::makeVoxel(gt, 2, 4, 2);    // as a turn about Z leaves it
+  r->setState(0, 0, 0, voxel_c::VX_FILLED);
+  r->setState(1, 3, 1, voxel_c::VX_VARIABLE);
+  std::vector<MeshVertex> faces;
+  std::vector<LineSeg> lines;
+  const GhostStyle s{ Rgba8{ 10, 20, 30, 128 }, Rgba8{ 1, 2, 3, 255 } };
+  addResultGhost(faces, lines, *v, r.get(), s);
+  CHECK(faces.size() == 72);                  // both voxels, fixed and variable
+  // the result's box (2 x 4 x 2) centred on the shape's (4 x 2 x 2): x from 1, y from -1
+  float lo[3] = { 1e9f, 1e9f, 1e9f };
+  for (const MeshVertex & m : faces)
+    for (int k = 0; k < 3; k++)
+      lo[k] = std::min(lo[k], m.pos[k]);
+  CHECK_THAT(lo[0], WithinAbs(1.0, 1e-4));
+  CHECK_THAT(lo[1], WithinAbs(-1.0, 1e-4));
+  CHECK_THAT(lo[2], WithinAbs(0.0, 1e-4));
+  faces.clear();
+  addResultGhost(faces, lines, *v, nullptr, s);   // blocked: no ghost
+  CHECK(faces.empty());
+
+  // legacy's radius: min(0.4 * the box's half diagonal + 0.5, 2)
+  CHECK_THAT(transformHintRadius(*v), WithinAbs(0.4 * std::sqrt(24.0) / 2 + 0.5, 1e-4));
+  CHECK(transformHintRadius(*bttest::makeVoxel(gt, 20, 20, 20)) == 2.0f);
+
+  const Vec3 c{ 2, 1, 1 };
+  const float rad = 1.5f;
+  const Rgba8 col{ 255, 0, 0, 255 };
+  auto within = [&](const std::vector<LineSeg> & ls) {
+    for (const LineSeg & l : ls)
+      for (Vec3 p : { l.a, l.b })
+        if (length(p - c) > rad + 1e-4f)
+          return false;
+    return true;
+  };
+  // a rotation: an arc of 32 strokes about the axis, in its plane, and a head of 2
+  std::vector<LineSeg> h;
+  addTransformHint(h, c, rad, TransformHint::Rotate, { 0, 0, 1 }, 90, col, 3);
+  REQUIRE(h.size() == 34);
+  for (int i = 0; i < 32; i++) {
+    CHECK_THAT(h[size_t(i)].a.z, WithinAbs(1.0, 1e-5));
+    CHECK_THAT(length(h[size_t(i)].a - c), WithinAbs(rad, 1e-4));
+  }
+  CHECK(h[0].color == col);
+  CHECK(h[0].widthDp == 3.0f);
+  // a mirror: the shaft along the normal and a head at each end; a nudge one head
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Mirror, { 2, 0, 0 }, 0, col, 3);
+  REQUIRE(h.size() == 5);
+  CHECK_THAT(h[0].a.x, WithinAbs(c.x - rad, 1e-5));
+  CHECK_THAT(h[0].b.x, WithinAbs(c.x + rad, 1e-5));
+  CHECK(within(h));
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 1, 0 }, 0, col, 3);
+  CHECK(h.size() == 3);
+  h.clear();
+  addTransformHint(h, c, rad, TransformHint::Nudge, { 0, 0, 0 }, 0, col, 3);   // no direction: nothing
+  CHECK(h.empty());
+}
+
+TEST_CASE("the slab holds its layer in every plane the voxel type has", "[ui][scenemesh]") {
+  // C06 / C08: XZ and YZ for all types but the prism (2026-10-28) -- the
+  // slab along Y or X holds that layer's cells as drawn, as the XY one does
+  for (gridType_c::gridType t : bttest::ALL_GRIDS) {
+    gridType_c gt(t);
+    const unsigned n = t == gridType_c::GT_RHOMBIC ? 15 : t == gridType_c::GT_TETRA_OCTA ? 12 : 5;
+    auto v = bttest::makeVoxel(gt, n, n, n);
+    for (const Plane plane : { Plane::XY, Plane::XZ, Plane::YZ }) {
+      if (!planeAvailable(t, plane))
+        continue;
+      const int axis = layerAxis(plane);
+      int seen = 0;
+      for (int layer = 0; layer < layerCount(*v, plane); layer++) {
+        INFO(bttest::gridName(t) << ", plane " << int(plane) << ", layer " << layer);
+        const auto only = layerCells(*v, plane, layer);
+        MeshOptions o;
+        o.style = VoxelStyle::Flat;
+        const ShapeMesh m = buildShapeMesh(*only, o);
+        if (m.opaque.empty())
+          continue;
+        seen++;
+        float lo = 1e30f, hi = -1e30f;
+        for (const MeshVertex & mv : m.opaque) {
+          lo = std::min(lo, mv.pos[axis]);
+          hi = std::max(hi, mv.pos[axis]);
+        }
+        const Box s = layerSlab(*v, plane, layer);
+        CHECK(s.min[axis] <= lo + 1e-3f);
+        CHECK(s.max[axis] >= hi - 1e-3f);
+        // across the layer it spans the grid
+        const Box g = gridBounds(*v);
+        for (int k = 0; k < 3; k++)
+          if (k != axis) {
+            CHECK(s.min[k] <= g.min[k] + 1e-3f);
+            CHECK(s.max[k] >= g.max[k] - 1e-3f);
+          }
+      }
+      INFO(bttest::gridName(t) << ", plane " << int(plane));
+      CHECK(seen >= 2);
+    }
+  }
+}
+
+TEST_CASE("flat style: a variable voxel's edges are dashed lines, each edge once", "[ui][scenemesh]") {
+  // the outline dashes run along an edge as one line, the same seen from
+  // both faces that meet there, not restarting in every triangle
+  gridType_c gt(gridType_c::GT_BRICKS);
+  auto v = bttest::makeVoxel(gt, 3, 1, 1);
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(1, 0, 0, voxel_c::VX_VARIABLE);
+  v->setState(2, 0, 0, voxel_c::VX_FILLED);
+  MeshOptions o = blue();
+  o.style = VoxelStyle::Flat;
+  ShapeMesh m = buildShapeMesh(*v, o);
+  // two unit cubes side by side, one body: 8 edges along X, 4 across at
+  // each of x = 0 and 2; the boundary at x = 1 is the thin line between
+  // two voxels, drawn by the face shader
+  REQUIRE(m.edges.size() == 16);
+  for (const LineSeg & e : m.edges)
+    CHECK(!(std::abs(e.a.x - 1.0f) < 1e-4f && std::abs(e.b.x - 1.0f) < 1e-4f));
+  int thin = 0;
+  for (size_t t = 0; t < m.translucent.size() / 3; t++)
+    thin += thinSides(m.translucent, t);
+  CHECK(thin == 8);
+  std::set<std::array<float, 6>> seen;
+  for (const LineSeg & e : m.edges) {
+    CHECK(e.dashDp > 0);
+    CHECK(e.gapDp > 0);
+    CHECK(e.color.a < 255);
+    CHECK(std::abs(length(e.b - e.a) - 1.0f) < 1e-4f);
+    std::array<float, 6> k{ e.a.x, e.a.y, e.a.z, e.b.x, e.b.y, e.b.z };
+    std::array<float, 6> r{ e.b.x, e.b.y, e.b.z, e.a.x, e.a.y, e.a.z };
+    CHECK(seen.count(r) == 0);
+    CHECK(seen.insert(k).second);
+  }
+  // their faces carry no outline of their own; the fixed voxel's still do
+  for (const auto & vert : m.translucent)
+    for (int i = 0; i < 3; i++)
+      CHECK(vert.edge[i] > 0.5f);
+  bool fixedOutlined = false;
+  for (const auto & vert : m.opaque)
+    fixedOutlined |= vert.edge[0] < 1.5f;     // the side opposite corner 0 is a polygon side
+  CHECK(fixedOutlined);
+
+  // no variable voxel, no lines; the other styles draw none either
+  v->setState(0, 0, 0, voxel_c::VX_FILLED);
+  v->setState(1, 0, 0, voxel_c::VX_FILLED);
+  CHECK(buildShapeMesh(*v, o).edges.empty());
+  v->setState(0, 0, 0, voxel_c::VX_VARIABLE);
+  o.style = VoxelStyle::Legacy;
+  CHECK(buildShapeMesh(*v, o).edges.empty());
 }

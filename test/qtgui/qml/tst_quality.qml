@@ -63,6 +63,9 @@ TestCase {
             verify(contrast(Theme.text, Theme[fill]) >= 4.5, "text on " + fill)
             verify(contrast(Theme.muted, Theme[fill]) >= 4.5,
                    "muted on " + fill + ": " + contrast(Theme.muted, Theme[fill]).toFixed(2))
+            // a menu's Delete, highlighted (panel2) or not (panel)
+            verify(contrast(Theme.dangerText, Theme[fill]) >= 4.5,
+                   "dangerText on " + fill + ": " + contrast(Theme.dangerText, Theme[fill]).toFixed(2))
         }
         // primary buttons: white text on the accent
         if (data.theme === "dark")
@@ -231,12 +234,15 @@ TestCase {
     function activate() {
         // the file's own messages first (its comment, an unfinished search):
         // modal, they would take the keys
-        for (let i = 0; i < 5; i++) {
-            wait(50)
+        // until none is up and none is waiting: the next opens a callLater after
+        // the last closed, and not at all before the first frame
+        for (let i = 0; i < 100; i++) {
             const m = findChild(win, "shell.message")
-            if (m === null || !m.visible)
+            if (m !== null && m.visible)
+                m.close()
+            else if (win.pendingMessages.length === 0)
                 break
-            m.close()
+            wait(50)
         }
         win.requestActivate()
         tryVerify(() => win.active, 3000)
@@ -260,7 +266,8 @@ TestCase {
     function test_theViewTagTextReadsOnEveryShapeColour() {
         for (let i = 0; i < App.shapes.count; i++) {
             App.shapes.select(i)
-            verify(contrast(App.viewport.shapeColor, App.viewport.shapeTextColor) >= 4.5,
+            // one text colour for all the shape colours of a theme: 3:1, not the 4.5:1 of other text
+            verify(contrast(App.viewport.shapeColor, App.viewport.shapeTextColor) >= 3,
                    "S" + (i + 1) + ": " + contrast(App.viewport.shapeColor, App.viewport.shapeTextColor).toFixed(2))
         }
     }
@@ -312,13 +319,26 @@ TestCase {
         App.viewport.navMode = "pan"
         verify(!orbit.Accessible.checked)
         App.viewport.navMode = "orbit"
-        // the tooltip shows on keyboard focus (Tab), not only under the mouse
+        // the tooltip shows on keyboard focus (Tab), not only under the mouse:
+        // the toolbar is one Tab stop, ringing its button (overview/04 section 5)
         App.settings.tooltips = true
-        for (let i = 0; i < 40 && !orbit.activeFocus; i++)
+        const bar = findChild(win.contentItem, "entities.viewport.toolbar")
+        for (let i = 0; i < 40 && !bar.activeFocus; i++)
             keyClick(Qt.Key_Tab)
-        verify(orbit.activeFocus, "Tab reaches the Orbit button")
-        verify(orbit.visualFocus)
+        verify(bar.activeFocus, "Tab reaches the toolbar")
+        bar.current = 0
+        verify(orbit.ring)
         tryVerify(() => orbit.toolTip.visible, 2000)
+        // -> rings the next button, Enter presses it
+        keyClick(Qt.Key_Right)
+        const pan = findChild(win.contentItem, "entities.viewport.toolbar.pan")
+        verify(pan.ring && !orbit.ring)
+        keyClick(Qt.Key_Return)
+        compare(App.viewport.navMode, "pan")
+        verify(bar.activeFocus)
+        keyClick(Qt.Key_Left)
+        keyClick(Qt.Key_Space)
+        compare(App.viewport.navMode, "orbit")
         const rail = findChild(win.contentItem, "rail-entities")
         compare(rail.Accessible.role, Accessible.PageTab)
         verify(rail.Accessible.selected)

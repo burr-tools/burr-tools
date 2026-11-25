@@ -51,6 +51,11 @@ namespace btui {
     double focus2dCentre;
   };
 
+  /* Focus 2D's voxel editor takes this share of what the 3D view's minimum
+   * (focus2dCentre) leaves; the rest widens the 3D view (user decision
+   * 2026-10-28: the editor 20 % narrower than all of it) */
+  inline constexpr double kFocus2dEditorShare = 0.8;
+
   const DensityMetrics & densityMetrics(Density d);
 
   /* The horizontal split of the window body, in dp. */

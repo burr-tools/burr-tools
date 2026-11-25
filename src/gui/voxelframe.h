@@ -245,8 +245,15 @@ class voxelFrame_c : public Fl_Gl_Window {
       bool dim = false;
       bool useChecker = false;
       Polyhedron * poly = nullptr;
+      /* the edge-line and STL styles mesh the shape's variable voxels as a
+       * solid of their own, drawn in the variable tint as a translucent
+       * layer (see drawVoxelSpace): `poly` then holds only the fixed voxels.
+       * The voxel style and the gridline mode put everything in `poly` and
+       * leave this null. */
+      Polyhedron * polyVar = nullptr;
       Polyhedron * pickPoly = nullptr;  // the flat mesh of the edge-line style, used to pick in the other styles
-      GLuint list = 0;  // the display list for this shape 0 means no list defined
+      GLuint list = 0;     // the display list for this shape's `poly`, 0 means no list defined
+      GLuint listVar = 0;  // and for its `polyVar`
 
       /* The entry's own geometry bounds, in its local drawing units, before the
        * position, scale and centring transforms drawVoxelSpace() applies: a voxel
@@ -271,7 +278,27 @@ class voxelFrame_c : public Fl_Gl_Window {
 
     std::vector<colorInfo> palette;
 
-    void drawShape(shapeInfo * shape);
+    /* the two parts of a shape entry: its fixed voxels (everything, in the
+     * styles that have no separate variable mesh) and its variable voxels */
+    enum shapePart { partFixed, partVariable };
+    void drawShape(shapeInfo * shape, shapePart part);
+
+    /* whether the entry's variable voxels are drawn as their own layer in
+     * the current style: the edge-line and STL styles, for a shape with
+     * variable voxels */
+    bool hasVariableLayer(const shapeInfo & s) const;
+
+    /* the translucent layer the variable voxels of every entry are composited
+     * in, above the pieces' own layers */
+    static constexpr unsigned int variableLayer = 0xffffffffu;
+
+    /* the meshes of a shape entry in the current style: `poly`, and `polyVar`
+     * for the styles that mesh the variable voxels separately */
+    void buildShapeMeshes(shapeInfo * shape);
+
+    /* drop an entry's meshes (not the pick mesh) and display list, so the next
+     * draw rebuilds them */
+    static void dropMeshes(shapeInfo & s);
 
     /* give an entry a voxel shape, recording its bounds and hotspot; the only
      * way `shape` is ever set */

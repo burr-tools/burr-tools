@@ -133,8 +133,161 @@ Three details make write-back exact:
   popped below its root exhausted the task -- also when the stop landed
   after the last pop.
 
-`baseDepth` bumps the assembler_1 format to 2.2; 2.1 (0.8.0) still loads.
+`baseDepth` bumps the assembler_1 format to 2.2; 2.1 (0.8.0) still loads
+here (until §9).
 
 Test: "assembler_1 pool write-back resumes exact-once" (a synthetic 1-D
 range puzzle A0 refuses, DLX pool, stop after 5, save/restore/continue,
 multiset union). Fails 6/6 with the resume floor at the live size.
+
+## 5. assembler_1, Huang: divide while unwinding
+
+The Huang engine (`SimdHuangCover`) is a recursive bit-parallel search, so
+there is no explicit stack to divide. None is needed: every frame's
+candidate list (`scratch_active_rows[depth]`) is still intact when the stop
+unwinds the recursion (deeper frames only write deeper levels), and every
+frame returns through a stop check. Frames record their own remainder on
+the way out (`StopTrace`), in code that only runs once a stop is requested
+-- nothing per node:
+
+- entry check: the node was never explored -> one piece over the full path
+  (at the task root: the task itself, including its rest position);
+- post-backtrack check at depth d: the current branch is done (the child
+  returned), later branches untouched -> one seed per remaining branch
+  (same `coversPivot`/`fitsBounds` filters as the loop), up to
+  `kRestFanout` (16), then one *rest* seed (`restSkip` = index into the
+  frame's active list) for the remainder; rests resume through
+  `search(depth, ..., start)`, which re-derives the same pivot and list
+  from the replayed state;
+- a solution declined by the stop (`consumed == false`) -> one leaf piece.
+
+An empty trace means the task was fully searched: completion is decided by
+the trace, not by re-reading the token. The pieces partition the task, so
+its unit in `total_tasks` transfers to them (`+= n - 1`).
+
+**Seeds must replay exactly.** `search()` and `generateTasks()` apply a
+monotonic shape-row filter below a step chosen on a shape pivot (identical
+pieces are enumerated in increasing row order only). Seeds used to hold
+only node ids, and `replayPrefix` replayed every step without that filter,
+so a replayed seed searched a superset: permutations of identical pieces
+reappeared in a sibling seed's territory. The signature set absorbed this;
+once it is gone (§7) it would re-report. Seeds therefore carry one
+`pivotShape` bit per step; `replayPrefix` applies the filter exactly as the
+search did, and `generateTasks` records the bits along its expansion path.
+Empty-prefix seeds (the whole search) are no longer dropped.
+
+Format 2.2 Huang seeds: prefix, pivot bits (a vector, one 0/1 per step),
+rest start. 2.1 seeds (prefix only) still load here, replayed as before
+(until §9).
+
+Tests: "SimdHuangCover: salvaged seeds replay the monotonic shape filter"
+(engine level, no dedup: one shape needed twice, 20 placements in optional
+voxels; resuming from the 20 salvaged seeds must report C(20,2) = 190 --
+380 without the bits), "Huang divided remainders resume exact-once across
+chained stops" (PiecesOfEight, CubeInCage, DemoPieceGenerator,
+SolidSixPieceBurrs at fan-out 1; stop/save/restore twice, then finish;
+every save contains rests).
+
+## 6. assembler_0, SIMD: divide while unwinding
+
+Same scheme as §5 inside `SimdExactCover::search()`
+(`ISimdExactCover::SubtreeRemainder`): entry check -> continue piece,
+post-backtrack check -> remaining branches (16 singletons + one rest),
+declined solution -> leaf piece (added by the A0 worker, which knows about
+delivery). No pivot bits: this engine's filter depends only on the chosen
+row's mask. An empty remainder means the task is complete.
+
+The A0 worker converts pieces back to ordinary `SubtreeTask`s: steps inside
+the task's own prefix are copied verbatim, deeper steps become
+`{colCount[node], node}` (a node's DLX column), so divided pieces are normal
+splittable tasks. SIMD rests carry `restSkip` (an index into the SIMD
+frame's own candidate order): never split (`shouldSplit`), resumed through
+`solveSubtree(..., start = restSkip)`.
+
+Rests are only valid for the engine that made them, so the remainder now
+pins its engine (`remainderEngine`, saved after the interrupted flag): a
+resumed run keeps it regardless of `BURRTOOLS_NO_SIMD` and friends. Parse
+rejects a rest under a non-SIMD remainder or combined with a DLX cursor.
+Format 1.7 per task: prefix, share, cursor column/skip, rest start.
+
+Tests: "SimdExactCover: stop remainders with rests resume exact-once"
+(engine level: 40 branches at the root, stop after every delivery, rests of
+rests), "A0-SIMD divided remainders resume exact-once across chained stops"
+(PelikanBurr, DraculasDentalDesaster), "A0-SIMD remainders with SIMD rests resume
+exact-once" (the synthetic line puzzle at fan-out 1, four stop points;
+SIMD rests occur).
+
+## 7. Removing the signature set
+
+With every engine dividing (§3-§6), nothing re-walks searched territory,
+so the signature set goes: `emittedSignatures`, `resumeDedup`,
+`assemblySignature()`, and the signature lists in both formats. Three
+things depended on it and change with it:
+
+- **Single-threaded continue stays on the pool.** A restored remainder used
+  to resume single-threaded through the serial search from the root, with
+  the signatures suppressing the repeats. `willRunParallel()` now returns
+  true whenever a remainder exists, so the pool runs it with one worker.
+- **assembler_1 pins its engine too.** A DLX remainder (ptype 1) resumes on
+  DLX and Huang seeds (ptype 2) on Huang, regardless of the benchmark
+  toggles; a run on the other engine used to regenerate and dedup.
+- **Interrupted 0.8.0 saves (1.6 / 2.1) are refused** with
+  `ERR_CAN_NOT_RESTORE_INTERRUPTED`: their remainder re-searches in-flight
+  tasks whole and relied on the signature list. Uninterrupted ones still
+  load. Neither 1.7 nor 2.2 is in a tagged release yet, so both are final
+  here.
+  (Superseded by §9: other versions do not resume at all.)
+
+The disassembly stash (`problem_c::stashAssemblies`) stays required, for a
+new reason: assemblies found but never disassembled are not found again,
+because resume never re-walks the territory they came from.
+
+Spec (`spec/`): unaffected. Divide and write-back change what a stopped
+worker hands back, not the pool protocol: an interrupted DLX/A0-SIMD task
+still re-enters the pool (now as one or more pieces) before `finishTask`,
+Huang still appends to its salvage list, and the drain/finish pairing is
+unchanged.
+
+Tests (now exact in both directions -- duplicates are no longer masked):
+the union tests of §3-§6, plus "Saved interrupted search XML size is
+bounded and independent of solution count", "Legacy interrupted search
+saves are refused on restore", "Interrupted search resumes with pinned
+engine across environment overrides", "single-threaded DLX continue reuses
+the pool remainder".
+
+## 8. Validation
+
+On the final tree (dev and release `--werror -Db_ndebug=true` builds):
+fast and slow suites, `test_examples_regression.py` 20/20 against 0.7.1,
+cppcheck clean, `just spec-check` (all seven model configurations, no
+errors). The fast suite takes about 26 s on a 4-core laptop; no test needs
+Burr-Glar's minutes any more. Mutation checks per engine, each applied
+alone: no continue piece,
+missed solutions not recorded, rests dropped, rest start ignored on
+resume, pivot bits ignored, resume floor at the live size -- every one is
+caught by at least one of the tests above.
+
+Performance (indicative, shared dev machine; a full A/B is still to be run
+on a quieter machine): identical results everywhere; LominoSquare 3/4
+(Huang) at 1.00, :5 at 1.05; Krijnen TheCube/JiminyJack/Tipperary at
+1.08-1.14 on one or two samples; a 10x interleaved single-thread check on
+CondorsPeeper:1 at +1.3% (noise level). Command:
+`bench/bench_solve.py --ab <before> <after> --no-disassemble --runs 3`.
+
+## 9. No resume across versions
+
+Policy: a paused search resumes only with the BurrTools version that saved
+it (README, "Pausing a search and continuing later"). The assemblers
+therefore read only their current format -- A0 1.7, A1 2.2 -- and refuse
+everything else with `ERR_CAN_NOT_RESTORE_VERSION`: the saved search state
+is dropped, the found assemblies stay viewable, and the next Start resets
+them and begins from scratch (lifecycle T2c). This removes the 0.8.0 readers (A0 1.6, A1 2.1)
+and the 0.7.1 one (A1 2.0, no leading flag); A1's task-type field is
+required now that `save()` always writes it. Only paused searches are
+affected: the assembler state is written and read only while a problem is
+`SS_SOLVING`, so completed searches and plain puzzle files load as before.
+
+Test: "Search state saved by another version is refused on restore"
+(minimal 1.6, 2.0, 2.1 payloads, interrupted or not, refused; current ones
+load).
+

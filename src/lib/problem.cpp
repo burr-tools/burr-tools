@@ -894,6 +894,29 @@ void problem_c::removeAllSolutions(void) {
   usedTime = 0;
 }
 
+problem_c::solveRecord_t::solveRecord_t(void) = default;
+problem_c::solveRecord_t::~solveRecord_t(void) = default;
+problem_c::solveRecord_t::solveRecord_t(solveRecord_t &&) noexcept = default;
+problem_c::solveRecord_t & problem_c::solveRecord_t::operator=(solveRecord_t &&) noexcept = default;
+
+bool problem_c::solveRecord_t::empty(void) const {
+  return solutions.empty() && stashedAssemblies.empty() && !assm && assemblerState.empty() &&
+         solveState == SS_UNSOLVED && numAssemblies == 0 && numSolutions == 0 && usedTime == 0;
+}
+
+void problem_c::swapSolveRecord(solveRecord_t & r) {
+  std::lock_guard<std::recursive_mutex> guard(solutionMutex);
+  solutions.swap(r.solutions);
+  stashedAssemblies.swap(r.stashedAssemblies);
+  assm.swap(r.assm);
+  assemblerState.swap(r.assemblerState);
+  assemblerVersion.swap(r.assemblerVersion);
+  r.solveState = solveState.exchange(r.solveState);
+  r.numAssemblies = numAssemblies.exchange(r.numAssemblies);
+  r.numSolutions = numSolutions.exchange(r.numSolutions);
+  r.usedTime = usedTime.exchange(r.usedTime);
+}
+
 void problem_c::removeSolution(unsigned int sol) {
   std::lock_guard<std::recursive_mutex> guard(solutionMutex);
   bt_assert(sol < solutions.size());

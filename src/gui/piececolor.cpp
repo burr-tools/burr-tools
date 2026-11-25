@@ -44,10 +44,19 @@ unsigned int pieceColorBi(int x, int sub) { return btui::pieceColor8(x, sub).b; 
 
 float darkPieceColor(float f) { return btui::darkShade(f); }
 float lightPieceColor(float f) { return btui::lightShade(f); }
+float editorDarkPieceColor(float f) { return btui::editorDarkShade(f); }
+float editorLightPieceColor(float f) { return btui::editorLightShade(f); }
+
+void variableCellColor(float * r, float * g, float * b) {
+  const btui::Rgb v = btui::variableTint({ *r, *g, *b }, btui::kVariableTintEditor);
+  *r = v.r; *g = v.g; *b = v.b;
+}
+
+void variablePieceColor(float * r, float * g, float * b) {
+  const btui::Rgb v = btui::variableTint({ *r, *g, *b }, btui::kVariableTint3D);
+  *r = v.r; *g = v.g; *b = v.b;
+}
 
 Fl_Color contrastPieceColor(int x) {
-  if (3*pieceColorRi(x) + 6*pieceColorGi(x) + pieceColorBi(x) < 1275)
-    return fl_rgb_color(255, 255, 255);
-  else
-    return fl_rgb_color(0, 0, 0);
+  return btui::prefersWhiteText(x) ? fl_rgb_color(255, 255, 255) : fl_rgb_color(0, 0, 0);
 }

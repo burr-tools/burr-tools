@@ -79,8 +79,9 @@ stateDiagram-v2
 
 `Continue` is not a transition: it is `start()` again on a `SOLVING` problem whose
 assembler survived. The run re-submits the stash **first** (`solvethread.cpp`),
-then resumes the drained search; overlap is suppressed by the assembler's
-`emittedSignatures` dedup. Order stability comes from submitting the stash first
+then resumes the drained search, whose remainder holds only territory the
+stopped run had not searched (`design/2026-10-16-divide-at-stop.md`), so
+nothing is re-reported. Order stability comes from submitting the stash first
 and from the pool's ordered merger (`SPEC-DIS-1`).
 
 ## 3. Transition table (worker)
@@ -127,7 +128,7 @@ Defined canonically as `LIFECYCLE-n` in the `solveThread_c` contract comment
 | LIFECYCLE-2 | `PAUSING ⇒ SS_SOLVING ∧ assembler present` (resume state survived) | all `PAUSING` assignments keep `assm`; the pause branches of the `interactive solve thread lifecycle…` tests check `SS_SOLVING` after a pause |
 | LIFECYCLE-3 | `stop()` is total and idempotent: legal in every action, mutating only T4 | `stopInternal` guard (`solvethread.cpp`); guard test (stop-after-finish no-op) |
 | LIFECYCLE-4 | `start()` requires no live thread; unstartable problems fail the run to `ACT_ERROR` with `ERR_CAN_NOT_START`, problem untouched | `start()` throws on reuse; `run()` entry rejects worker-side (all build modes); `canStartSolving()` gates (`burrTxt2.cpp`, GUI Start-resets flow) |
-| LIFECYCLE-5 | Every assembly is enqueued ∨ salvaged ∨ delivered, never lost (pool half) | `SPEC-DIS-5`; stash re-submit-first (`solvethread.cpp`) + dedup |
+| LIFECYCLE-5 | Every assembly is enqueued ∨ salvaged ∨ delivered, never lost (pool half) | `SPEC-DIS-5`; stash re-submit-first (`solvethread.cpp`) + exact remainder (divide at stop) |
 | LIFECYCLE-6 | `takeSalvaged()` runs only after `finish()`; pool drain only after workers join | header contract (`solvethread.h`); `run()` ordering (`solvethread.cpp`) |
 
 ## 5. Edge-case catalog

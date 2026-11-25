@@ -289,6 +289,14 @@ public:
    */
   void setPoolDrainedHook(std::function<void()> hook) { poolDrainedHook = std::move(hook); }
 
+  /** Test hook: called on the assembling thread once a parallel run has its
+   * task list (generated or restored), right before its last stop check
+   * ahead of seeding the pool. Lets a test land a stop in the window a
+   * Stop pressed right after Continue hits only by timing. Null (the
+   * default) does nothing.
+   */
+  void setPoolSeedHook(std::function<void()> hook) { poolSeedHook = std::move(hook); }
+
   /**
    * sets the position of the assembly process, so that it continues exactly
    * where it stood, when getPosition was called
@@ -378,6 +386,13 @@ public:
   void runPoolDrainedHook() {
     if (poolDrainedHook)
       poolDrainedHook();
+  }
+
+  // see setPoolSeedHook()
+  std::function<void()> poolSeedHook;
+  void runPoolSeedHook() {
+    if (poolSeedHook)
+      poolSeedHook();
   }
 
   /* One cancellation contract for all engines.

@@ -49,22 +49,13 @@ gridType_c::gridType_c(xmlParser_c & pars)
   if (!typeStr.length())
     pars.exception("grid type needs a valid 'type' attribute");
 
-  // set to the correct size
-  type = (gridType)atoi(typeStr.c_str());
-
-  switch (type) {
-
-    case GT_BRICKS:
-    case GT_TRIANGULAR_PRISM:
-    case GT_SPHERES:
-    case GT_RHOMBIC:
-    case GT_TETRA_OCTA:
-      break;
-
-    default:
-      pars.exception("puzzle with unknown grid type");
-      break;
-  }
+  /* checked as a number before it becomes a gridType: a value outside the
+   * enumeration is undefined behaviour already when stored (UBSan:
+   * "load of value 42, which is not a valid value for type 'gridType'") */
+  const int number = atoi(typeStr.c_str());
+  if (number < GT_BRICKS || number >= GT_NUM_GRIDS)
+    pars.exception("puzzle with unknown grid type");
+  type = gridType(number);
 
   pars.skipSubTree();
 }

@@ -108,8 +108,9 @@ public:
  * a wrong command line would only scroll the usage away with. */
 void usage(bool full = false) {
 
-  cout << "burrTxt [options] file [options]\n\n";
-  cout << "  file: puzzle file with the puzzle definition to solve\n\n";
+  cout << "burrTxt [options] [file] [options]\n\n";
+  cout << "  file: puzzle file with the puzzle definition to solve, compressed or\n";
+  cout << "        not; \"-\" or no file at all reads it from standard input\n\n";
   cout << "  -h, --help  this help, with the environment variables\n";
   cout << "  -d    try to disassemble and only print solutions that do disassemble\n";
   cout << "  -p    print the disassembly plan\n";
@@ -235,18 +236,44 @@ int main(int argv, char* args[]) {
     }
   }
 
-  if (filenumber == 0) {
+  const char * file = filenumber ? args[filenumber] : nullptr;
+  const bool fromStdin = btcli::solverReadsStdin(file);
+
+  if (!file && !fromStdin) {
     usage();
     return 1;
   }
 
-  auto str = openGzFile(args[filenumber]);
+  std::string stdinError;
+  bool damaged = false;
+  auto str = fromStdin ? btcli::openStdin(stdinError, damaged) : openGzFile(file);
+
   if (!str) {
-    printf("could not open input file \"%s\"\n", args[filenumber]);
+    if (damaged) {
+      cout << "could not load the puzzle: " << stdinError << "\n";
+      return 2;
+    }
+    if (fromStdin) {
+      cout << stdinError << "\n\n";
+      usage();
+      return 1;
+    }
+    printf("could not open input file \"%s\"\n", file);
     return 2;
   }
-  xmlParser_c pars(*str);
-  puzzle_c p(pars);
+
+  std::unique_ptr<puzzle_c> loaded;
+
+  try {
+    xmlParser_c pars(*str);
+    loaded = std::make_unique<puzzle_c>(pars);
+  }
+  catch (const xmlParserException_c & e) {
+    cout << "could not load the puzzle: " << e.what() << "\n";
+    return 2;
+  }
+
+  puzzle_c & p = *loaded;
 
   if (ask) {
 
@@ -290,6 +317,23 @@ int main(int argv, char* args[]) {
     }
 
     return 0;
+  }
+
+  /* not every space grid has a solver, and fewer still have a disassembler:
+   * building one for such a grid fails on the missing movement cache inside
+   * a worker, where nothing catches it */
+  const unsigned int caps = p.getGridType()->getCapabilities();
+
+  if (assemble && !(caps & gridType_c::CAP_ASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have an assembler (yet)\n";
+    return 2;
+  }
+
+  if ((disassemble || !assemble) && !(caps & gridType_c::CAP_DISASSEMBLE)) {
+    cout << "Sorry, this space grid doesn't have a disassembler (yet)\n";
+    if (assemble)
+      cout << "drop -d to just assemble the puzzle\n";
+    return 2;
   }
 
   if (allProblems)

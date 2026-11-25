@@ -61,12 +61,15 @@ TestCase {
     // a file's messages (its comment, an unfinished search) come up one by
     // one and are modal too; a user answers them before anything else
     function dismissMessages() {
-        for (let i = 0; i < 5; i++) {
-            wait(50)                        // the next opens once the last closed
+        // until none is up and none is waiting: the next opens a callLater after
+        // the last closed, and not at all before the first frame
+        for (let i = 0; i < 100; i++) {
             const m = findChild(win, "shell.message")
-            if (m === null || !m.visible)
-                return
-            m.close()
+            if (m !== null && m.visible)
+                m.close()
+            else if (win.pendingMessages.length === 0)
+                break
+            wait(50)
         }
     }
 

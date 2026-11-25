@@ -21,6 +21,15 @@ this note — prefer the `.dmg` unless you know you want only the app.
 Linux and Windows archives; the macOS builds publish them as separate
 downloads.
 
+All the programs can take the puzzle from a pipe instead of a file, compressed
+or plain, with the file name `-`: `gunzip -c puzzle.xmpuzzle | burrtools -`.
+The command-line solvers also read a pipe when given no file at all. `burrTxt2`
+then writes the solved puzzle to standard output instead of a file, and its
+messages to standard error: `gunzip -c puzzle.xmpuzzle | burrTxt2 -d > solved.xml`.
+As its standard input is taken, input there no longer stops it: killing it does,
+and loses the result. In the GUIs the puzzle has no file behind it, so it opens
+as Untitled and unsaved.
+
 ### Preview: the redesigned GUI
 
 A redesigned interface, `burrtools-qt` (Qt 6 Quick), is being built next to
@@ -51,6 +60,22 @@ section, and click **Open Anyway** next to the message about BurrTools.
 Note that Control-clicking the app and choosing **Open** — the usual advice
 for unsigned apps — does not get past this particular message, and no longer
 bypasses Gatekeeper at all as of macOS 15 Sequoia.
+
+## Pausing a search and continuing later
+
+You can stop a running search and save the puzzle; opening the file again
+and pressing Continue picks the search up where it stopped, without
+repeating anything it already reported.
+
+This only works with the same BurrTools version that paused the search.
+A paused search saved by a different (for example an older) version cannot
+be continued: BurrTools reports that the saved search state cannot be
+restored. The assemblies found so far stay visible, but the search has to
+be started again from the beginning, which discards them and finds them
+again. Finish long searches with the version that
+started them, or plan to restart them after an upgrade. Puzzle files
+themselves, and completed searches with their solutions, load in every
+version as before.
 
 BurrTools was written by Andreas Röver, small patches provided by
 several authors. Original README below.

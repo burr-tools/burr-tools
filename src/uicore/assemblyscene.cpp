@@ -89,6 +89,14 @@ namespace btui {
           (fromTranslucent || alpha < 1.0f ? dst.translucent : dst.opaque).push_back(v);
         }
       }
+      // the variable voxels' dashed edges move and fade with their piece
+      for (LineSeg e : src.edges) {
+        e.a = e.a + offset;
+        e.b = e.b + offset;
+        if (alpha < 1.0f)
+          e.color.a = std::uint8_t(std::clamp(e.color.a * alpha + 0.5f, 0.0f, 255.0f));
+        dst.edges.push_back(e);
+      }
     }
   }
 

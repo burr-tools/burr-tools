@@ -49,6 +49,13 @@ struct SceneFrame {
 
   std::vector<btui::LineSeg> lines;       // overlay lines
   std::vector<btui::MeshVertex> overlayFaces;    // translucent overlay triangles (the layer slab)
+  /* the hover preview's ghosts (C06), drawn over everything else: at full
+   * strength where they are in front, faint where voxels hide them */
+  std::vector<btui::MeshVertex> ghostFaces;
+  std::vector<btui::LineSeg> ghostLines;
+  /* a Transform button's hint (C04; legacy previewTransform): over
+   * everything at full strength, voxels in front or not */
+  std::vector<btui::LineSeg> hintLines;
 
   float devicePixelRatio = 1;
   bool lighting = true;
