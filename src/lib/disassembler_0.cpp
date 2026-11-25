@@ -141,6 +141,14 @@ separation_c * disassembler_0_c::disassemble_rec(const std::vector<unsigned int>
 
       /* when we get here the new found node is a solution */
 
+      /* the search of this level is over: free its fronts before the
+       * subproblems search, otherwise every recursion level keeps its whole
+       * search alive while the deeper ones run. The path to st survives,
+       * st holds a reference to its comefrom chain. The open lists only
+       * point into the fronts, empty them too, so nothing dangles */
+      for (auto & c : closed) c.clear();
+      for (auto & o : openlist) o = {};
+
       /* check the possible sub problems, this function call disassemble_rec recursively */
       separation_c * res = checkSubproblems(st, pieces);
 
