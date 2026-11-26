@@ -54,7 +54,7 @@ Polyhedron * stlExporter_0_c::getCubeMesh(const voxel_c & v, double scale_y, dou
 Polyhedron * stlExporter_0_c::getMinkowskiMesh(const voxel_c & v, double scale_y, double scale_z) const
 {
   static std::string why;
-  Polyhedron * poly = minkMesh::polyhedron(v, shrink / cube_scale, bevel / cube_scale, interiorChamfers, why);
+  Polyhedron * poly = minkMesh::polyhedron(v, shrink / cube_scale, bevel / cube_scale, interiorChamfers, false, why);
   if (!poly) throw stlException_c(why.c_str());
   scalePolyhedron(*poly, cube_scale, scale_y, scale_z);
   return poly;

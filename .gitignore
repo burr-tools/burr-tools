@@ -16,6 +16,7 @@ GTAGS
 # Meson subprojects (keep only .wrap files in git)
 subprojects/*
 !subprojects/*.wrap
+!subprojects/packagefiles/
 
 # macOS build artifacts
 *.dmg
