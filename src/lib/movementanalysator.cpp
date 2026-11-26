@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <cstdint>
 #include <memory>
 
 #include <string.h>
@@ -1139,9 +1140,12 @@ movementAnalysator_c::blockingPivots(unsigned int i, unsigned int j, unsigned in
 
   std::unique_ptr<rotationPivotSet_t> set = computeBlockingPivots(i, j, axis, sense);
   const rotationPivotSet_t * stored = rotation->store(key, set);
-  if (set) {
+  /* store() hands the set back when the shared cache is full (and returns
+   * it), or when another worker stored this key first (and returns that
+   * one's); only the first case needs keeping, the duplicate goes */
+  if (set && stored == set.get()) {
     localPairBytes += set->bytes();
-    ownPairs.push_back(std::move(set));   // the shared cache was full
+    ownPairs.push_back(std::move(set));
   }
   localPairBytes += LOCAL_NODE_BYTES;
   return localPairs[key] = stored;
@@ -1196,7 +1200,7 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
             continue;
           minU = std::min(minU, qu); maxU = std::max(maxU, qu);
           minV = std::min(minV, qv); maxV = std::max(maxV, qv);
-          pivotScratch.push_back({ (int16_t)qu, (int16_t)qv });
+          pivotScratch.push_back({ qu, qv });
         }
 
     mi = ei;
@@ -1205,6 +1209,12 @@ movementAnalysator_c::computeBlockingPivots(unsigned int i, unsigned int j, unsi
 
   if (pivotScratch.empty())
     return nullptr;
+
+  /* the set stores its box in 16 bits; a hotspot far from the shape (an
+   * unchecked one from a file) could put it outside */
+  if (minU < INT16_MIN || minV < INT16_MIN || maxU - minU >= INT16_MAX || maxV - minV >= INT16_MAX ||
+      maxU > INT16_MAX || maxV > INT16_MAX)
+    bt_te("blockingPivots: pivot offsets beyond the 16-bit range");
 
   auto set = std::make_unique<rotationPivotSet_t>();
   set->u0 = (int16_t)minU;
@@ -1247,12 +1257,13 @@ namespace {
 
 /* The groups that may turn, given for every piece the pieces that block it
  * on every path: unions of the closures of single pieces under "blocked
- * by", leaving out every closure that needs a piece outside covered, and
- * the group of all pieces (nothing moves relative to anything). With very
- * many distinct closures the pieces are loose and only the single closures
- * are returned; tooManyClosures says so, as unions may have turned. */
+ * by", leaving out every closure that needs a piece outside covered (see
+ * outOfReachMayTurn), and the group of all pieces (nothing moves relative
+ * to anything). With very many distinct closures the pieces are loose and
+ * only the single closures are returned; tooManyClosures says so, as
+ * unions may have turned. */
 std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint32_t covered, unsigned int pn,
-                                   bool * needsUncovered, bool * tooManyClosures) {
+                                   bool * tooManyClosures) {
 
   const uint32_t forbidden = ~covered;
   const uint32_t all = (pn == 32) ? ~0u : (1u << pn) - 1;
@@ -1268,23 +1279,8 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
       c |= add;
       todo |= add;
     }
-    if (!(c & forbidden)) {
-      if (c != all)
-        seeds.push_back(c);
-      continue;
-    }
-    /* Stopped at a piece beyond the tables' reach: if the closure does not
-     * need every piece either, the radius may have cost a turn. (The pieces
-     * out of reach contribute no blockers, so this can over-report.) */
-    while (todo && c != all) {
-      unsigned int j = std::countr_zero(todo);
-      todo &= todo - 1;
-      uint32_t add = blockers[j] & ~c;
-      c |= add;
-      todo |= add;
-    }
-    if (c != all)
-      *needsUncovered = true;
+    if (!(c & forbidden) && c != all)
+      seeds.push_back(c);
   }
   std::sort(seeds.begin(), seeds.end());
   seeds.erase(std::unique(seeds.begin(), seeds.end()), seeds.end());
@@ -1306,6 +1302,36 @@ std::vector<uint32_t> closedGroups(const std::vector<uint32_t> & blockers, uint3
   std::sort(groups.begin(), groups.end());
   groups.erase(std::unique(groups.begin(), groups.end()), groups.end());
   return groups;
+}
+
+/* Whether a proper group holding a piece out of the tables' reach may turn
+ * at this pivot, which the search then skipped. relation: for every piece
+ * the pieces it cannot turn without, a necessary condition for a turn (the
+ * tables' "blocks on every path" where they reach, and for every piece "a
+ * cube of it turns onto a cube of the other", which no motion avoids).
+ * Every proper group closed under it leaves out some piece e and every
+ * piece that needs e, so it lies within all but those; it is enough to ask
+ * these largest ones whether they hold a piece out of reach and have the
+ * pivot in their footprint (inFootprint). The relation knows less than
+ * the full tables would, so this can over-report, never miss. */
+template <class footprint_t>
+bool outOfReachMayTurn(const std::vector<uint32_t> & relation, uint32_t uncovered, uint32_t all, unsigned int pn,
+                       const footprint_t & inFootprint) {
+  for (unsigned int e = 0; e < pn; e++) {
+    uint32_t needE = 1u << e;
+    for (bool grown = true; grown; ) {
+      grown = false;
+      for (unsigned int k = 0; k < pn; k++)
+        if (!(needE & (1u << k)) && (relation[k] & needE)) {
+          needE |= 1u << k;
+          grown = true;
+        }
+    }
+    const uint32_t group = all & ~needE;
+    if ((group & uncovered) && inFootprint(group))
+      return true;
+  }
+  return false;
 }
 
 }
@@ -1393,7 +1419,7 @@ void movementAnalysator_c::listRotations(void) {
   const ownerMap_c ownerAt(world);
 
   std::vector<cell_t> moving;
-  std::vector<uint32_t> blockers(pn);
+  std::vector<uint32_t> blockers(pn), relation(pn);
   std::vector<const rotationPivotSet_t *> pairs(pn * pn);
 
   for (unsigned int axis = 0; axis < 3; axis++) {
@@ -1414,6 +1440,16 @@ void movementAnalysator_c::listRotations(void) {
     const int pumax = *std::max_element(umax.begin(), umax.end()) + 1;
     const int pvmin = *std::min_element(vmin.begin(), vmin.end()) - 1;
     const int pvmax = *std::max_element(vmax.begin(), vmax.end()) + 1;
+    /* the pivot (pu, pv) lies in the group's footprint, or next to it */
+    auto inFootprintOf = [&](uint32_t group, int pu, int pv) {
+      int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
+      for (uint32_t m = group; m; m &= m - 1) {
+        const unsigned int i = std::countr_zero(m);
+        gumin = std::min(gumin, umin[i]); gumax = std::max(gumax, umax[i]);
+        gvmin = std::min(gvmin, vmin[i]); gvmax = std::max(gvmax, vmax[i]);
+      }
+      return pu >= gumin - 1 && pu <= gumax + 1 && pv >= gvmin - 1 && pv <= gvmax + 1;
+    };
 
     for (unsigned int sense = 0; sense < 2; sense++) {
 
@@ -1441,22 +1477,6 @@ void movementAnalysator_c::listRotations(void) {
           for (unsigned int i = 0; i < pn; i++)
             if (umax[i] - pu <= reach && pu - umin[i] <= reach && vmax[i] - pv <= reach && pv - vmin[i] <= reach)
               covered |= 1u << i;
-          if (!covered) {
-            for (unsigned int excl = 0; excl < pn; excl++) {
-              int eu0 = INT_MAX, eu1 = INT_MIN, ev0 = INT_MAX, ev1 = INT_MIN;
-              for (unsigned int i = 0; i < pn; i++)
-                if (i != excl) {
-                  eu0 = std::min(eu0, umin[i]); eu1 = std::max(eu1, umax[i]);
-                  ev0 = std::min(ev0, vmin[i]); ev1 = std::max(ev1, vmax[i]);
-                }
-              if (pu >= eu0 - 1 && pu <= eu1 + 1 && pv >= ev0 - 1 && pv <= ev1 + 1) {
-                rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
-                break;
-              }
-            }
-            continue;
-          }
-
           for (unsigned int i = 0; i < pn; i++) {
             blockers[i] = 0;
             for (unsigned int j = 0; j < pn; j++)
@@ -1464,28 +1484,41 @@ void movementAnalysator_c::listRotations(void) {
                 blockers[i] |= 1u << j;
           }
 
-          bool needsUncovered = false, tooManyClosures = false;
-          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn, &needsUncovered, &tooManyClosures);
-          if (needsUncovered)
-            rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
-          if (tooManyClosures)
-            rotation->noteSkipped(rotationContext_c::SKIP_GROUPS);
-          if (groups.empty())
-            continue;
-
           int hx, hy, hz;
           rotationGeometry::pivotOf(axis, pu, pv, &hx, &hy, &hz);
 
+          /* The groups with a piece out of reach are skipped (closedGroups
+           * starts only from covered pieces). Reported only if one may
+           * turn: what the tables cannot say about those pieces, the end
+           * pose does. Once a piece has slid out, it is out of reach from
+           * the far side's pivots, where its turned cubes mostly land on
+           * other pieces. */
+          if (const uint32_t uncovered = all & ~covered) {
+            for (unsigned int i = 0; i < pn; i++) {
+              relation[i] = blockers[i];
+              for (const cell_t & c : world[i]) {
+                cell_t e = c;
+                rotationGeometry::turnAbout(&e.x, &e.y, &e.z, hx, hy, hz, axis, sense);
+                const int o = ownerAt(e.x, e.y, e.z);
+                if (o >= 0 && o != (int)i)
+                  relation[i] |= 1u << o;
+              }
+            }
+            if (outOfReachMayTurn(relation, uncovered, all, pn,
+                                  [&](uint32_t group) { return inFootprintOf(group, pu, pv); }))
+              rotation->noteSkipped(rotationContext_c::SKIP_RADIUS);
+          }
+          if (!covered)
+            continue;
+
+          bool tooManyClosures = false;
+          const std::vector<uint32_t> groups = closedGroups(blockers, covered, pn, &tooManyClosures);
+          if (tooManyClosures)
+            rotation->noteSkipped(rotationContext_c::SKIP_GROUPS);
+
           for (uint32_t group : groups) {
 
-            /* the pivot lies in the group's footprint */
-            int gumin = INT_MAX, gumax = INT_MIN, gvmin = INT_MAX, gvmax = INT_MIN;
-            for (uint32_t m = group; m; m &= m - 1) {
-              const unsigned int i = std::countr_zero(m);
-              gumin = std::min(gumin, umin[i]); gumax = std::max(gumax, umax[i]);
-              gvmin = std::min(gvmin, vmin[i]); gvmax = std::max(gvmax, vmax[i]);
-            }
-            if (pu < gumin - 1 || pu > gumax + 1 || pv < gvmin - 1 || pv > gvmax + 1)
+            if (!inFootprintOf(group, pu, pv))
               continue;
 
             /* the end pose is free by closure; it must change something */

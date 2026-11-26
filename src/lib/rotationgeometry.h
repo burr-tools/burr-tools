@@ -354,18 +354,11 @@ namespace rotationGeometry {
       unsigned char xform;
   };
 
-  /**
-   * The family of fixed rotation paths a rotation move may use, ordered by
-   * how much the move disturbs: the pure turn first, then per amount
-   * (ascending) the 8 wiggles and the 8 slides.
-   *
-   * Only the +90° tables for the pure turn and directions (1,0) and (1,1)
-   * are computed and stored; all other directions and the -90° sense are
-   * served as turned and mirrored views of those base tables.
-   */
   /** The cells occupied by static cubes, as a dense bitmap over their
-   *  bounding box: built once per group of turning pieces and then queried
-   *  for every pivot, axis, sense and path. */
+   *  bounding box: an isStatic predicate for rotationTables_c::firstClear
+   *  and pathTable_c::blocked when the caller has only a list of static
+   *  cells (the overloads taking vectors build one; listRotations asks its
+   *  owner map instead). */
   class occupancy_c {
 
     public:
@@ -384,6 +377,15 @@ namespace rotationGeometry {
       std::vector<bool> bits;
   };
 
+  /**
+   * The family of fixed rotation paths a rotation move may use, ordered by
+   * how much the move disturbs: the pure turn first, then per amount
+   * (ascending) the 8 wiggles and the 8 slides.
+   *
+   * Only the +90° tables for the pure turn and directions (1,0) and (1,1)
+   * are computed and stored; all other directions and the -90° sense are
+   * served as turned and mirrored views of those base tables.
+   */
   class rotationTables_c {
 
     public:

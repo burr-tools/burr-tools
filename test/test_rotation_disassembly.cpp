@@ -654,6 +654,73 @@ TEST_CASE("the closure-based rotation search finds exactly the moves of an exhau
   checkAgainstBruteForce(*aaa().puzzle->getProblem(0), aaa().assemblies[0].get(), 15, true);
 }
 
+TEST_CASE("turns skipped for pieces beyond the radius are reported when other pieces are in reach",
+          "[rotations][disasm]") {
+  /* three unit cubes in a row of three: radius 4, so the tables reach 4
+   * cells from a pivot. Seven cells apart, every pivot between them has
+   * one cube in reach, so no pivot has none; but at the middle cube's
+   * pivots the outer two, a proper group with the pivot in its footprint,
+   * are out of reach and never tried. */
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const unsigned int result = puzzle->addShape(3, 1, 1);
+  const unsigned int cube = puzzle->addShape(1, 1, 1);
+  for (unsigned int x = 0; x < 3; x++)
+    puzzle->getShape(result)->set(x, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(cube)->set(0, 0, 0, voxel_c::VX_FILLED);
+  problem_c & problem = *puzzle->getProblem(puzzle->addProblem());
+  problem.setResultId(result);
+  problem.setShapeMaximum(cube, 3);
+  REQUIRE(rotationRadiusFor(problem) == 4);
+
+  auto context = rotationContextFor(problem, defaultRotationSettings());
+  REQUIRE(context != nullptr);
+  movementAnalysator_c analysator(problem, context);
+
+  disassemblerNode_c * node = new disassemblerNode_c(3);
+  node->set(0, 0, 0, 0, 0);
+  node->set(1, 7, 0, 0, 0);
+  node->set(2, -7, 0, 0, 0);
+  std::vector<disassemblerNode_c *> found;
+  analysator.completeFind(node, { 0, 1, 2 }, &found);
+  for (disassemblerNode_c * n : found)
+    if (n->decRefCount())
+      delete n;
+  if (node->decRefCount())
+    delete node;
+
+  CHECK((context->getSkipped() & rotationContext_c::SKIP_RADIUS) != 0);
+}
+
+TEST_CASE("a hotspot far outside its shape is refused, not written out of bounds", "[rotations][disasm]") {
+  /* hotspots come from files unchecked; doubled offsets from this one do
+   * not fit the 16 bits of a pivot set */
+  auto puzzle = std::make_unique<puzzle_c>(std::make_unique<gridType_c>(gridType_c::GT_BRICKS));
+  const unsigned int result = puzzle->addShape(2, 1, 1);
+  const unsigned int cube = puzzle->addShape(1, 1, 1);
+  puzzle->getShape(result)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(result)->set(1, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(cube)->set(0, 0, 0, voxel_c::VX_FILLED);
+  puzzle->getShape(cube)->setHotspot(20000, 0, 0);
+  problem_c & problem = *puzzle->getProblem(puzzle->addProblem());
+  problem.setResultId(result);
+  problem.setShapeMaximum(cube, 2);
+
+  auto context = rotationContextFor(problem, defaultRotationSettings());
+  REQUIRE(context != nullptr);
+  movementAnalysator_c analysator(problem, context);
+
+  disassemblerNode_c * node = new disassemblerNode_c(2);
+  node->set(0, 20000, 0, 0, 0);
+  node->set(1, 20001, 0, 0, 0);
+  std::vector<disassemblerNode_c *> found;
+  CHECK_THROWS_AS(analysator.completeFind(node, { 0, 1 }, &found), assert_exception);
+  for (disassemblerNode_c * n : found)
+    if (n->decRefCount())
+      delete n;
+  if (node->decRefCount())
+    delete node;
+}
+
 /* the bar's pieces are symmetric: most turns end in an orientation that the
  * search replaces by its canonical one, with its own hotspot */
 TEST_CASE("the closure-based rotation search agrees on symmetric pieces", "[rotations][disasm]") {

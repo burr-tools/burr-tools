@@ -217,7 +217,20 @@ exactly as precise as the checker, with no geometry at search time.
   449 paths went from 5.2× to 3.2× the 65-path time). A precomputed
   blocked-on-every-path set rejects most candidates without a walk.
 * The radius is the largest filled extent of result and pieces, plus one;
-  only cube grids with a valid result get tables.
+  only cube grids with a valid result get tables. It grows with the
+  puzzle, but not with how far the pieces slide during a disassembly:
+  turns about a pivot farther than the radius from a turning cube are not
+  checked. Those are reported (`SKIP_RADIUS`) only when a group may turn
+  there: closed under the tables' relation where they reach, and under
+  "a cube turns onto a cube of another piece" (which needs no tables)
+  for the pieces out of reach. That still leaves a slid-out piece
+  swinging about a far pivot, whose end pose is free; only its sweep
+  rules it out. On 71 of Andrew Crowell's 4×4×4 TICs (`-x -d -R fast -m
+  0.0075,0.04`, 2026-11-27) the note shows on 52 (55 before the end-pose
+  relation). Radius 9 instead of 5 removed it on 55 TICs and changed no
+  result (grssam, 2026-11-27), but builds the tables in about 7 s
+  instead of 1.6 s (radius 11: 13 s; the search itself is not slower).
+  See "Open".
 * **Kept between solves** (2026-10-28): tables are cached by settings in
   `weak_ptr`s (concurrent solves share one build, a larger radius serves a
   smaller request), and the two most recently used sets stay alive after
@@ -659,6 +672,13 @@ like-for-like comparison.
   add-disassembly buttons run on the UI thread); the Qt GUI's Solver
   workspace (rotation moves, model fields, Optimize Turns); its drawing of
   turned pieces waits for PR #181 (local branch `rotations-qtgui-draw`).
+* **An adaptive radius**: tables that reach as far as the pieces slide
+  (about twice the largest piece plus one, for a piece to come apart),
+  without paying that build for every solve, e.g. growing the tables
+  only when a search reaches a state beyond them. Deferred: on the TICs
+  measured the far turns never mattered, and larger puzzles (6×6×6)
+  have not been measured. Until then the radius note says what was not
+  checked.
 * `--verify-rotations` (re-certify every turn of a file's solutions) was
   planned, not built; `-x -R` re-disassembles instead.
 * Half turns as single moves; rotations in solution rankings (with turns,

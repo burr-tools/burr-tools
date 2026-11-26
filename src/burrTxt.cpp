@@ -77,8 +77,9 @@ static void reportSkippedRotations(const rotationContext_c * context) {
   if (!context)
     return;
   if (context->getSkipped() & rotationContext_c::SKIP_RADIUS)
-    cerr << "note: rotation moves of groups wider than the rotation tables (radius "
-         << context->tables().getRadius() << ") may have been missed\n";
+    cerr << "note: turns about pivots more than " << context->tables().getRadius()
+         << " cells from a turning cube were not checked (the reach of the rotation tables),\n"
+            "      so turns of pieces that have slid far out may have been missed\n";
   if (context->getSkipped() & rotationContext_c::SKIP_PIECES)
     cerr << "note: rotation moves were not considered in (sub)problems of more than 32 pieces\n";
   if (context->getSkipped() & rotationContext_c::SKIP_GROUPS)

@@ -166,7 +166,7 @@ class movementAnalysator_c {
     std::unordered_map<rotationPairKey_t, const rotationPivotSet_t *, rotationPairKeyHash_t> localPairs;
     std::vector<std::unique_ptr<rotationPivotSet_t>> ownPairs;
     size_t localPairBytes = 0;
-    std::vector<std::pair<int16_t, int16_t>> pivotScratch;
+    std::vector<std::pair<int, int>> pivotScratch;
 
     /* the cubes of a part in an orientation in the in-plane frame of an
      * axis, relative to the hotspot and sorted by layer, with their
