@@ -968,6 +968,34 @@ TEST_CASE("fast, balanced and slow find nested sets of turns", "[rotations][disa
   CHECK(apart[1]);
 }
 
+/* A solve torn down while it runs stops its context: the turns handed to
+ * the planner are skipped without a run, and none is reported as skipped
+ * for a limit. */
+TEST_CASE("a stopped context runs the planner no more", "[rotations][disasm]") {
+  const problem_c & problem = *aaa().puzzle->getProblem(0);
+  const assembly_c * assembly = aaa().assemblies[0].get();
+  std::shared_ptr<rotationContext_c> context = rotationContextFor(problem, inMode(ROTATION_SLOW));
+  context->stop();
+
+  std::vector<unsigned int> pieces;
+  for (unsigned int i = 0; i < assembly->placementCount(); i++)
+    pieces.push_back(i);
+  movementAnalysator_c analysator(problem, bttest::settings(), context);
+  disassemblerNode_c * start = new disassemblerNode_c(assembly);
+  std::vector<disassemblerNode_c *> next;
+  analysator.completeFind(start, pieces, &next);
+  for (disassemblerNode_c * n : next)
+    if (n->decRefCount())
+      delete n;
+  if (start->decRefCount())
+    delete start;
+
+  const rotationContext_c::stats_t stats = context->getStats();
+  CHECK(stats.gate > 0);
+  CHECK(stats.planned == 0);
+  CHECK((context->getSkipped() & rotationContext_c::SKIP_PLANNER) == 0);
+}
+
 /* the bar's pieces are symmetric: most turns end in an orientation that the
  * search replaces by its canonical one, with its own hotspot */
 TEST_CASE("the closure-based rotation search agrees on symmetric pieces", "[rotations][disasm]") {

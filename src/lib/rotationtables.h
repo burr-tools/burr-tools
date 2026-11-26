@@ -356,6 +356,14 @@ class rotationContext_c {
     void noteSkipped(skip_e s) { skipped.fetch_or(s, std::memory_order_relaxed); }
     unsigned int getSkipped(void) const { return skipped.load(std::memory_order_relaxed); }
 
+    /** Cut the planner runs short, those in progress and all later ones,
+     *  from any thread: for a solve whose results are discarded (a solve
+     *  torn down while it runs, Python's iterator stopped). A turn left
+     *  undecided this way is skipped, so a disassembly running at the time
+     *  can come out wrong; a pause must not call this. The context's own
+     *  flag is its settings' decide.stop, replacing any given. */
+    void stop(void) { stopFlag.store(true, std::memory_order_relaxed); }
+
     // no copying and assigning
     rotationContext_c(const rotationContext_c &) = delete;
     rotationContext_c & operator=(const rotationContext_c &) = delete;
@@ -364,7 +372,8 @@ class rotationContext_c {
 
     const problem_c & problem;
     const int problemRadius;
-    const rotationSettings_t settings;
+    std::atomic<bool> stopFlag{false};
+    const rotationSettings_t settings;   // decide.stop points at stopFlag
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> tableFuture;
     std::shared_future<std::shared_ptr<const rotationGeometry::rotationTables_c>> relaxedFuture;
 

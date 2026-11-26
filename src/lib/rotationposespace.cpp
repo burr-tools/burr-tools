@@ -671,6 +671,12 @@ size_t setPlannerBoxBudget(size_t boxes) {
 turnDecision_t decideTurn(const planarScene_c & scene, unsigned int sense, const decideSettings_t & settings) {
   if (sense > 1 || !(settings.maxShift > 0) || !(settings.resolution > 0) || !(settings.margin >= 0))
     bt_te("decideTurn: needs sense 0 or 1, maxShift > 0, resolution > 0, margin >= 0");
+  /* setting up the boxes alone takes a while */
+  if (settings.stop && settings.stop->load(std::memory_order_relaxed)) {
+    turnDecision_t d;
+    d.gaveUp = true;
+    return d;
+  }
   return poseBoxes_c(scene, sense, settings).run();
 }
 

@@ -293,7 +293,7 @@ rotationContext_c::rotationContext_c(const problem_c & p, const rotationSettings
                                      size_t maxBytes) :
   problem(p),
   problemRadius(rotationRadiusFor(p)),
-  settings(s),
+  settings([&]() { rotationSettings_t own = s; own.decide.stop = &stopFlag; return own; }()),
   tableFuture(std::move(tables)),
   relaxedFuture(std::move(relaxed)),
   maxCacheBytes(maxBytes)
@@ -438,6 +438,12 @@ int rotationContext_c::plannedPath(const std::vector<rotationGeometry::cell_t> &
   using rotationGeometry::cell_t;
   bt_assert(planner());
 
+  /* told to stop (stop()): skip the turn at once; setting up a planner run
+   * alone takes a while */
+  auto stopped = [this]() { return stopFlag.load(std::memory_order_relaxed); };
+  if (stopped())
+    return -1;
+
   /* the static cubes that can matter: in a layer of a moving cube and
    * within reach of its sweep, shifts and cube size included */
   const std::vector<std::array<int, 3>> mo = pivotOffsets(moving, axis, hx, hy, hz);
@@ -501,6 +507,9 @@ int rotationContext_c::plannedPath(const std::vector<rotationGeometry::cell_t> &
    : verdict.answer == rotationGeometry::TURN_IMPOSSIBLE ? nImpossible : nUndecided).fetch_add(1, std::memory_order_relaxed);
   const bool found = verdict.answer == rotationGeometry::TURN_POSSIBLE;
   const rotationGeometry::path_t & path = verdict.path;
+  /* a run cut short decides nothing: neither cached nor reported */
+  if (!found && stopped())
+    return -1;
   /* neither proven: the turn may be possible, and the search skips it */
   if (verdict.answer == rotationGeometry::TURN_UNDECIDED)
     noteSkipped(SKIP_PLANNER);

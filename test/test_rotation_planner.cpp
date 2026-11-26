@@ -161,6 +161,17 @@ TEST_CASE("a turn with almost no room is decided", "[rotations]") {
   CHECK(decideTurn(sceneOf(t, { 0.06, 0 }), t.sense, decideSettings_t()).answer == TURN_IMPOSSIBLE);
 }
 
+TEST_CASE("a planner told to stop gives up before setting up its boxes", "[rotations]") {
+  /* the solver's stop: a run cut short is undecided, not impossible */
+  const crowellTurn_t t = mysTic();
+  std::atomic<bool> stop{ true };
+  decideSettings_t s;
+  s.stop = &stop;
+  const turnDecision_t d = decideTurn(sceneOf(t, SHARP_MODEL), t.sense, s);
+  CHECK(d.gaveUp);
+  CHECK(d.answer == TURN_UNDECIDED);
+}
+
 TEST_CASE("a wide passage is found before the crevices are followed to their ends", "[rotations]") {
   /* GalacTIC at its printed play, four pieces turning off the fifth: there
    * is a motion with a few thousandths to spare. Cutting boxes down to the
