@@ -11,6 +11,7 @@
 #include "lib/solvethread.h"
 #include "test_helpers.h"
 
+#include <chrono>
 #include <future>
 #include <memory>
 
@@ -104,6 +105,55 @@ TEST_CASE("the most recently used rotation tables are kept for the next solve", 
 
   releaseRotationTables();
   CHECK(watch.expired());
+}
+
+namespace {
+
+/* holds a table build at its start until the test lets it go */
+std::promise<void> buildStarted, buildMayGo;
+std::shared_future<void> buildMayGoFuture;
+
+void holdBuild(void) {
+  buildStarted.set_value();
+  buildMayGoFuture.wait();
+}
+
+}
+
+TEST_CASE("a table build in progress blocks neither other requests nor releasing the kept tables", "[rotations]") {
+
+  const rotationSettings_t slow = { { 0.074, 0 }, {}, {} }, other = { { 0.075, 0 }, {}, {} };
+  releaseRotationTables();
+
+  buildStarted = {};
+  buildMayGo = {};
+  buildMayGoFuture = buildMayGo.get_future().share();
+  std::future<void> started = buildStarted.get_future();
+  auto before = setRotationTableBuildHook(holdBuild);
+
+  /* an abandoned solve's build, say */
+  auto building = std::async(std::launch::async, [&] { return sharedRotationTables(slow, 2); });
+  REQUIRE(started.wait_for(std::chrono::seconds(30)) == std::future_status::ready);
+  setRotationTableBuildHook(before);
+
+  /* opening a puzzle releases the kept tables, and other tables can be
+   * built, while that build waits */
+  auto release = std::async(std::launch::async, [] { releaseRotationTables(); });
+  CHECK(release.wait_for(std::chrono::seconds(30)) == std::future_status::ready);
+  auto others = std::async(std::launch::async, [&] { return sharedRotationTables(other, 2); });
+  CHECK(others.wait_for(std::chrono::seconds(60)) == std::future_status::ready);
+  CHECK(building.wait_for(std::chrono::seconds(0)) != std::future_status::ready);
+
+  buildMayGo.set_value();
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watch = building.get();
+
+  /* the build began before the release, so its tables are not kept */
+  CHECK(watch.expired());
+  /* the other request began after it, so its are */
+  std::weak_ptr<const rotationGeometry::rotationTables_c> watchOther = others.get();
+  CHECK_FALSE(watchOther.expired());
+  releaseRotationTables();
+  CHECK(watchOther.expired());
 }
 
 TEST_CASE("rotation tables exist only for cube grids", "[rotations]") {

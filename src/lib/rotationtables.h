@@ -158,6 +158,11 @@ sharedRotationTables(const rotationSettings_t & settings, int radius,
  *  stay until their last user drops them. */
 void releaseRotationTables(void);
 
+/** Called by every table build of sharedRotationTables before it starts,
+ *  outside every lock; returns the one before. For tests, which hold a
+ *  build in progress with it. */
+void (*setRotationTableBuildHook(void (*hook)(void)))(void);
+
 /**
  * The pivots, relative to a piece's hotspot in doubled in-plane units, at
  * which another piece blocks it on every path; a bitmap over the tight

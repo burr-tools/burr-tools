@@ -86,10 +86,15 @@ int rotationRadiusFor(const problem_c & problem) {
 
 namespace {
 
+typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_t;
+
 struct cacheEntry_t {
   rotationSettings_t settings = {};
   int radius = 0;
   std::weak_ptr<const rotationTables_c> tables;
+  /* valid while the tables are being built: requests for them wait on it */
+  tableFuture_t building;
+  uint64_t id = 0;
 };
 
 bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
@@ -102,8 +107,6 @@ bool sameSettings(const rotationSettings_t & a, const rotationSettings_t & b) {
  * Two, so that a balanced solve keeps both of its sets. */
 constexpr size_t KEPT_TABLES = 2;
 
-typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_t;
-
 /* The tables shared between solvers, and the background builds no context
  * waits for any more. Dropping the last reference to a std::async future
  * blocks until its build is done, which could be the GUI thread stopping a
@@ -111,9 +114,17 @@ typedef std::shared_future<std::shared_ptr<const rotationTables_c>> tableFuture_
  * are declared after the cache, so at exit they are destroyed first and a
  * build still running finishes while the cache it writes to exists. */
 struct shared_t {
+  /* guards cache; never held while building */
   std::mutex mutex;
   std::vector<cacheEntry_t> cache;
+  uint64_t nextId = 0;
+  /* guards kept and generation, taken after mutex when both are needed:
+   * releaseRotationTables takes only this one */
+  std::mutex keptMutex;
   std::vector<std::shared_ptr<const rotationTables_c>> kept;
+  /* bumped by releaseRotationTables, so that a request that began before
+   * it does not keep its tables after it */
+  uint64_t generation = 0;
   std::mutex parkedMutex;
   std::vector<tableFuture_t> parked;
   std::atomic<size_t> parkedCount{0};
@@ -145,8 +156,19 @@ void park(tableFuture_t f) {
   s.parkedCount.store(s.parked.size(), std::memory_order_relaxed);
 }
 
-/* with shared().mutex held */
-void keep(const std::shared_ptr<const rotationTables_c> & tables) {
+std::atomic<void (*)(void)> buildHook{nullptr};
+
+uint64_t keptGeneration(void) {
+  std::lock_guard<std::mutex> lock(shared().keptMutex);
+  return shared().generation;
+}
+
+/* Keep tables alive as the most recently used, unless the kept tables were
+ * released after the request for them began. */
+void keep(const std::shared_ptr<const rotationTables_c> & tables, uint64_t generation) {
+  std::lock_guard<std::mutex> lock(shared().keptMutex);
+  if (shared().generation != generation)
+    return;
   std::vector<std::shared_ptr<const rotationTables_c>> & kept = shared().kept;
   std::erase(kept, tables);
   kept.insert(kept.begin(), tables);
@@ -165,44 +187,95 @@ std::shared_ptr<const rotationTables_c>
 sharedRotationTables(const rotationSettings_t & settings, int radius, const std::shared_ptr<const rotationTables_c> & tighter) {
 
   pruneParked();
-  std::vector<cacheEntry_t> & cache = shared().cache;
-  std::vector<std::shared_ptr<const rotationTables_c>> & kept = shared().kept;
+  shared_t & s = shared();
+  const uint64_t generation = keptGeneration();
 
-  /* Building under the lock keeps two solvers from building the same
-   * tables twice; requests for other settings wait, which is rare. */
-  std::lock_guard<std::mutex> lock(shared().mutex);
+  /* Tables are built outside the lock, so that nobody waits for a build
+   * of other tables (opening a puzzle releases the kept tables while an
+   * abandoned solve may still build its own). A request for tables being
+   * built waits for that build instead of building them twice. */
+  std::promise<std::shared_ptr<const rotationTables_c>> promise;
+  uint64_t id;
+  {
+    std::unique_lock<std::mutex> lock(s.mutex);
 
-  std::erase_if(cache, [](const cacheEntry_t & e) { return e.tables.expired(); });
+    std::erase_if(s.cache, [](const cacheEntry_t & e) { return !e.building.valid() && e.tables.expired(); });
 
-  for (const cacheEntry_t & e : cache)
-    if (e.radius >= radius && sameSettings(e.settings, settings))
-      if (auto tables = e.tables.lock()) {
-        keep(tables);
-        return tables;
+    for (const cacheEntry_t & e : s.cache)
+      if (e.radius >= radius && sameSettings(e.settings, settings)) {
+        if (auto tables = e.tables.lock()) {
+          lock.unlock();
+          keep(tables, generation);
+          return tables;
+        }
+        if (e.building.valid()) {
+          tableFuture_t pending = e.building;
+          lock.unlock();
+          std::shared_ptr<const rotationTables_c> tables = pending.get();
+          keep(tables, generation);
+          return tables;
+        }
       }
 
+    if (tighter && tighter->getRadius() >= radius)
+      radius = tighter->getRadius();
+    id = ++s.nextId;
+    s.cache.push_back({ settings, radius, {}, promise.get_future().share(), id });
+  }
+
+  auto entry = [&s, id]() {
+    return std::find_if(s.cache.begin(), s.cache.end(), [id](const cacheEntry_t & e) { return e.id == id; });
+  };
+
   std::shared_ptr<const rotationTables_c> tables;
-  if (tighter && tighter->getRadius() >= radius) {
-    radius = tighter->getRadius();
-    tables = std::make_shared<const rotationTables_c>(settings.model, *tighter);
-  } else
-    tables = std::make_shared<const rotationTables_c>(settings.model, radius, rotationFamily(settings));
+  try {
+    if (void (*hook)(void) = buildHook.load())
+      hook();
+    if (tighter && tighter->getRadius() >= radius)
+      tables = std::make_shared<const rotationTables_c>(settings.model, *tighter);
+    else
+      tables = std::make_shared<const rotationTables_c>(settings.model, radius, rotationFamily(settings));
+  } catch (...) {
+    /* the waiting requests get the exception too; a later one tries again */
+    promise.set_exception(std::current_exception());
+    std::lock_guard<std::mutex> lock(s.mutex);
+    if (auto it = entry(); it != s.cache.end())
+      s.cache.erase(it);
+    throw;
+  }
 
-  /* the new tables serve every request smaller ones of the same settings
-   * did, so those need not be kept */
-  for (const cacheEntry_t & e : cache)
-    if (sameSettings(e.settings, settings))
-      if (auto smaller = e.tables.lock())
-        std::erase(kept, smaller);
+  {
+    std::lock_guard<std::mutex> lock(s.mutex);
+    if (auto it = entry(); it != s.cache.end()) {
+      it->tables = tables;
+      it->building = {};
+    }
 
-  cache.push_back({ settings, radius, tables });
-  keep(tables);
+    /* the new tables serve every request smaller ones of the same settings
+     * did, so those need not be kept */
+    std::lock_guard<std::mutex> keptLock(s.keptMutex);
+    for (const cacheEntry_t & e : s.cache)
+      if (e.id != id && sameSettings(e.settings, settings))
+        if (auto smaller = e.tables.lock())
+          std::erase(s.kept, smaller);
+  }
+  promise.set_value(tables);
+  keep(tables, generation);
   return tables;
 }
 
+void (*setRotationTableBuildHook(void (*hook)(void)))(void) {
+  return buildHook.exchange(hook);
+}
+
 void releaseRotationTables(void) {
-  std::lock_guard<std::mutex> lock(shared().mutex);
-  shared().kept.clear();
+  std::vector<std::shared_ptr<const rotationTables_c>> released;
+  {
+    std::lock_guard<std::mutex> lock(shared().keptMutex);
+    released.swap(shared().kept);
+    shared().generation++;
+  }
+  /* released goes here, outside the lock: freeing large tables takes a while */
 }
 
 std::shared_ptr<const rotationTables_c>

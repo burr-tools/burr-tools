@@ -729,7 +729,8 @@ namespace rotationGeometry {
    * clear one, which a move records).
    *
    * Only the +90° tables for directions 0 to 3 (sixteenths) are computed
-   * with the checker, all others are turned and mirrored copies.
+   * with the checker and stored; all others are pathTableView_c views of
+   * them, turned and mirrored on lookup.
    */
   class rotationTables_c {
 
