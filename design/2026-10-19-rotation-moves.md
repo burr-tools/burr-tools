@@ -202,10 +202,13 @@ exactly as precise as the checker, with no geometry at search time.
   the square of moving offsets (`r·√2` for offset `(r, r)`; a first
   version stopped at `r + 2` and missed blockers for `r ≥ 5`; a test
   compares a radius-8 table with brute force).
-* Only a few directions per profile and amount are computed; the rest are
-  `turned()` copies (turning the scene commutes with the motion), and
-  every −90° table is a `mirrored()` copy. Tests compare derived tables
-  with computed ones.
+* Only a few directions per profile and amount are computed and stored;
+  turning the scene commutes with the motion, so every other direction and
+  every −90° path is served by a `pathTableView_c`, which maps the lookup
+  offset and the blockers it returns through the quarter turn or mirror on
+  the fly. The stored tables index only same-parity offsets and keep their
+  blockers flat (CSR-style). Tests compare the views with tables computed
+  from scratch.
 * `firstClear` returns the first clear path in family order (least
   disturbance first), which is what a move records. Each blocker is stored
   once with a bitset of the paths it blocks; the check ORs the bitsets of

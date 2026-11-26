@@ -292,6 +292,16 @@ TEST_CASE("a model without play is rejected", "[rotations]") {
   CHECK_THROWS_AS(pathTable_c({ 0 }, 2, { PATH_PURE, 0, 0, 0, 0 }), assert_exception);
 }
 
+TEST_CASE("a path table whose reach overflows is rejected", "[rotations]") {
+  /* the reach is bounded before the cast to int, which a radius this large
+   * (or an amount like 1e10) would overflow */
+  model_t model{};
+  model.play = 0.05;
+  pathSpec_t pure{};
+  pure.kind = PATH_PURE;
+  CHECK_THROWS_AS(pathTable_c(model, 1 << 30, pure), assert_exception);
+}
+
 TEST_CASE("rotation paths start at rest and end on the quarter-turned lattice pose", "[rotations]") {
   for (pathKind_e kind : { PATH_PURE, PATH_WIGGLE, PATH_SLIDE })
     for (unsigned int sense = 0; sense < 2; sense++) {

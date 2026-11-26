@@ -400,9 +400,11 @@ pathTable_c::pathTable_c(const model_t & model, int r, const pathSpec_t & s) :
    * shifts, all at most `shift` long). */
   const double hitRange = std::sqrt(2.0) * (1 - model.play) + shift + 1e-6;
   /* the arcs stay within radius·√2 of the pivot along each axis */
-  const int reach = 2 * ((int)std::ceil(r * std::sqrt(2.0) + hitRange) + 1);
-  if (reach > std::numeric_limits<int16_t>::max())
-    bt_te("pathTable_c: radius too large");
+  /* compared as a double first: a huge radius or amount would overflow the cast */
+  const double reachD = 2 * (std::ceil(r * std::sqrt(2.0) + hitRange) + 1);
+  if (!(reachD <= std::numeric_limits<int16_t>::max()))
+    bt_te("pathTable_c: radius or shift amount too large");
+  const int reach = (int)reachD;
 
   const int evenW = 2 * r + 1;
   const int oddW = 2 * r;
