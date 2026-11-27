@@ -121,7 +121,7 @@ class disasmToMoves_c : public piecePositions_c {
   /** what doRecursive learns about a piece besides its position */
   struct pieceInfo_t {
     int trans = -1;
-    const stateRotation_t * rotation = nullptr;  ///< rotation leading into the placed state
+    const stateRotation_t * rotation = nullptr;  ///< rotation leading into the placed state, if the piece turns in it
     int cx = 0, cy = 0, cz = 0;                    ///< display offset of the piece's subtree
   };
 

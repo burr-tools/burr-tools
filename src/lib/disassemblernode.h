@@ -140,6 +140,14 @@ private:
    */
   unsigned int waylength;
 
+  /**
+   * The pieces (bits by index) that turn in the rotation move leading to
+   * this node; only meaningful when isRotation(). Fills what was alignment
+   * padding at the end, so the node does not grow; groups are limited to 32
+   * pieces anyway.
+   */
+  uint32_t rotGroup = 0;
+
 public:
 
   /**
@@ -324,23 +332,36 @@ public:
   }
 
   /**
-   * Rotation moves reuse dir and amount: dir = ROTATION_DIR_BASE + 2·axis +
-   * sense (no translation direction gets anywhere near it) and amount is
-   * the index of the path in the rotationGeometry::rotationTables_c family.
+   * Rotation moves reuse dir and amount: dir = ROTATION_DIR_BASE + 4·axis +
+   * 2·inverse + path sense (no translation direction gets anywhere near
+   * it) and amount is the index of the path in the
+   * rotationGeometry::rotationTables_c family of that sense.
+   *
+   * The turning group (getRotationGroup) turns by a quarter in
+   * getRotationSense. Normally it follows the path. When inverse, the other
+   * pieces follow the path relative to it: the move turned a group with
+   * piece 0, and the node keeps piece 0 in place by turning the rest the
+   * other way instead.
    */
   static const unsigned int ROTATION_DIR_BASE = 0x100;
 
   bool isRotation(void) const { return dir >= ROTATION_DIR_BASE; }
-  unsigned int getRotationAxis(void) const { return (dir - ROTATION_DIR_BASE) >> 1; }
-  unsigned int getRotationSense(void) const { return (dir - ROTATION_DIR_BASE) & 1; }
+  unsigned int getRotationAxis(void) const { return (dir - ROTATION_DIR_BASE) >> 2; }
+  unsigned int getRotationPathSense(void) const { return (dir - ROTATION_DIR_BASE) & 1; }
+  bool isRotationInverse(void) const { return ((dir - ROTATION_DIR_BASE) >> 1) & 1; }
+  unsigned int getRotationSense(void) const { return getRotationPathSense() ^ (isRotationInverse() ? 1 : 0); }
   unsigned int getRotationPath(void) const { return (unsigned int)amount; }
   int getRotationPivotU(void) const { return rotPivotU; }
   int getRotationPivotV(void) const { return rotPivotV; }
 
-  void setRotationPivot(int u, int v) {
+  uint32_t getRotationGroup(void) const { return rotGroup; }
+
+  /** the in-plane pivot and the turning pieces of the rotation move */
+  void setRotation(int u, int v, uint32_t group) {
     bt_assert(abs(u) <= maxMove && abs(v) <= maxMove);
     rotPivotU = (int16_t)u;
     rotPivotV = (int16_t)v;
+    rotGroup = group;
   }
 
  private:
