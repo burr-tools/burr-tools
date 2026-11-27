@@ -301,7 +301,14 @@ solveThread_c::~solveThread_c(void) {
 
   /* signal the worker to stop and wait for it to actually finish before we
    * free anything it might still be using.
+   *
+   * A pause lets the disassemblies in progress finish, which with the
+   * planner (balanced, slow) can take tens of seconds. Torn down while it
+   * runs (a front end closing), the solve's results go nowhere, so its
+   * planner runs are cut short too: what they leave undecided is skipped.
    */
+  if (disasm_pool && disasm_pool->getRotationContext())
+    disasm_pool->getRotationContext()->stop();
   stopInternal();
   joinThread();
 

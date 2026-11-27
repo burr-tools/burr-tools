@@ -180,7 +180,7 @@ separation_c * disassembler_a_c::checkSubproblems(const disassemblerNode_c * st,
       if (st2->isRotation()) {
         bt_assert(rotation);
         stateRotation_t r = { st2->getRotationAxis(), st2->getRotationPivotU(), st2->getRotationPivotV(),
-                              rotation->tables().table(st2->getRotationPathSense(), st2->getRotationPath()).getSpec(),
+                              rotation->pathSpec(st2->getRotationPathSense(), st2->getRotationPath()),
                               {}, st2->isRotationInverse() };
         for (unsigned int i = 0; i < pieces.size(); i++)
           if (st2->getRotationGroup() & (1u << i))

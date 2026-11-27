@@ -1,0 +1,842 @@
+<title>BurrTools Turn Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column of prose, with full-width "bench" panels where the
+   real planner output runs on squared paper; moving cubes in ink blue, static in slate.
+   Same tokens as design/rotation-study/rotation-moves.html, so the two pages read as a pair. */
+:root {
+  --paper: #f3f5f2;
+  --sheet: #ffffff;
+  --ink: #1b2227;
+  --ink-2: #4d5a62;
+  --rule: #d5dcd7;
+  --grid: #e3e8e4;
+  --static: #5d6a70;
+  --static-fill: #c9d1cd;
+  --moving: #2047c8;
+  --moving-fill: #b9c8f7;
+  --ghost: #8aa0e8;
+  --ok: #1f8a5b;
+  --ok-soft: #cfeadb;
+  --hit: #c8322b;
+  --hit-soft: #f6d3d0;
+  --split: #b7791f;
+  --split-soft: #f3e2c1;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #121619; --sheet: #1a1f23; --ink: #e4e9e6; --ink-2: #9ba8ae; --rule: #2f383d; --grid: #232a2e;
+    --static: #9aa7ac; --static-fill: #3c464b; --moving: #8ea6ff; --moving-fill: #2a3b78; --ghost: #5d72bd;
+    --ok: #4cc28c; --ok-soft: #173a2a; --hit: #ff6d63; --hit-soft: #4a1f1c; --split: #e0a64a; --split-soft: #43341a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #121619; --sheet: #1a1f23; --ink: #e4e9e6; --ink-2: #9ba8ae; --rule: #2f383d; --grid: #232a2e;
+  --static: #9aa7ac; --static-fill: #3c464b; --moving: #8ea6ff; --moving-fill: #2a3b78; --ghost: #5d72bd;
+  --ok: #4cc28c; --ok-soft: #173a2a; --hit: #ff6d63; --hit-soft: #4a1f1c; --split: #e0a64a; --split-soft: #43341a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.12; margin: 0; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 800; font-stretch: 112%; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.45rem, 3vw, 1.9rem); font-weight: 700; font-stretch: 108%; margin-top: 64px; margin-bottom: 12px; }
+h3 { font-size: 1.08rem; font-weight: 700; }
+p { margin: 0 0 14px; }
+ul { margin: 0 0 14px; padding-left: 22px; }
+li { margin-bottom: 6px; }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 14px; }
+.lede { font-size: 1.15rem; color: var(--ink-2); max-width: 62ch; margin-top: 18px; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+code { background: var(--grid); padding: 1px 5px; border-radius: 3px; }
+pre { font-family: var(--mono); font-size: 0.84rem; line-height: 1.5; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; overflow-x: auto; margin: 0 0 14px; }
+a { color: var(--moving); }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 22px; font-family: var(--mono); font-size: 0.8rem; color: var(--ink-2); }
+.meta b { color: var(--ink); font-weight: 500; }
+.small { font-size: 0.88rem; color: var(--ink-2); }
+
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0; margin-top: 30px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.nums div { padding: 14px 16px 14px 0; min-width: 0; }
+.nums b { display: block; font-family: var(--display); font-stretch: 112%; font-size: 1.9rem; font-weight: 750; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.nums span { font-size: 0.88rem; color: var(--ink-2); }
+
+/* bench */
+.bench { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 18px; margin-top: 20px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 0.84rem var(--body); background: transparent; color: var(--ink-2); border: 0; border-right: 1px solid var(--rule); padding: 6px 11px; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.seg button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--moving); outline-offset: 2px; }
+.btn { font: 500 0.84rem var(--body); background: var(--grid); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.lbl { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.slider { display: flex; align-items: center; gap: 10px; flex: 1 1 260px; min-width: 0; }
+.slider input { flex: 1; min-width: 0; accent-color: var(--moving); }
+.slider output { font-family: var(--mono); font-size: 0.86rem; font-variant-numeric: tabular-nums; min-width: 4.5em; }
+.layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+.layer { min-width: 0; }
+.layer canvas { width: 100%; aspect-ratio: 1 / 1; display: block; max-width: 100%; border: 1px solid var(--rule); border-radius: 4px; }
+.layer .cap { font-family: var(--mono); font-size: 0.74rem; color: var(--ink-2); margin-top: 4px; display: flex; justify-content: space-between; gap: 6px; }
+.layer.crit canvas { border-color: var(--hit); }
+.layer.crit .cap b { color: var(--hit); font-weight: 500; }
+.split2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; margin-top: 18px; }
+.split2 > div { min-width: 0; }
+.chart canvas, .slice canvas { width: 100%; display: block; max-width: 100%; }
+.slice canvas { aspect-ratio: 1 / 1; border: 1px solid var(--rule); border-radius: 4px; }
+.readout { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+.readout div { background: var(--paper); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+.readout b { display: block; font-family: var(--mono); font-weight: 500; font-size: 1.02rem; font-variant-numeric: tabular-nums; }
+.readout span { font-size: 0.78rem; color: var(--ink-2); }
+.pill { display: inline-block; font-family: var(--mono); font-size: 0.74rem; padding: 1px 8px; border-radius: 99px; vertical-align: 1px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.hit { background: var(--hit-soft); color: var(--hit); }
+.pill.split { background: var(--split-soft); color: var(--split); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--ink-2); margin-top: 8px; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: 3px; margin-right: 6px; border-radius: 2px; }
+.note { font-size: 0.9rem; color: var(--ink-2); margin-top: 12px; max-width: 80ch; }
+
+/* step chart */
+.steps svg { display: block; width: 100%; height: auto; }
+.steps .scroll { overflow-x: auto; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--paper); font-size: 0.8rem; padding: 6px 9px; border-radius: 5px; max-width: 280px; line-height: 1.4; }
+
+/* pipeline */
+.flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-top: 18px; }
+.flow .st { flex: 1 1 180px; min-width: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; position: relative; }
+.flow .st h3 { font-size: 0.98rem; margin-bottom: 6px; }
+.flow .st p { font-size: 0.88rem; color: var(--ink-2); margin: 0; }
+.flow .st .k { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-2); letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 4px; }
+.flow .st.hot { border-color: var(--moving); }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.tablewrap { overflow-x: auto; margin-top: 14px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--mono); font-weight: 500; font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-2); }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar { display: inline-block; height: 8px; background: var(--moving-fill); border: 1px solid var(--moving); border-radius: 2px; vertical-align: 0; }
+
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 14px; }
+.cols > div { min-width: 0; }
+
+@media (max-width: 760px) { .split2 { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">BurrTools · branch rotations · 25 Oct 2026</div>
+    <h1>The turn planner</h1>
+    <p class="lede">The rotation solver used to try a fixed family of 145 motions per quarter turn. The two newest commits add a planner that searches for the motion with the most room, and turn the yes/no question "can this piece turn?" into a number a designer can use: how much play the turn needs.</p>
+    <div class="meta">
+      <span><b>41d54568</b> cross-check against Crowell's solution files</span>
+      <span><b>23d21280</b> clearance-optimal turn planner and the play a puzzle needs</span>
+      <span>design doc <b>design/2026-10-25-rotation-planner.md</b></span>
+    </div>
+    <div class="nums">
+      <div><b>17</b><span>steps in Crowell's solution files that no fixed path could make at play 0.081</span></div>
+      <div><b>10 / 17</b><span>of those puzzles now come apart at play 0.081 with <code>-Q</code></span></div>
+      <div><b>0.084–0.092</b><span>the play the other 7 need</span></div>
+      <div><b>5–200×</b><span>solve time with the planner on, so it is opt-in</span></div>
+    </div>
+  </header>
+
+  <section class="prose">
+    <h2>What the cross-check found</h2>
+    <p>Andrew Crowell's collection ships solution files: one assembly snapshot per step, every piece's position and orientation. Consecutive snapshots pin down every step of his disassembly, turns included. The first commit adds <code>xcheck.cpp</code>, which compares such a file with BurrTools' own disassembly, state by state, modulo rigid motions of the whole puzzle.</p>
+    <p>Over all 150 solution files, most snapshots are exactly states of our disassembly, and 17 files match every snapshot. But 18 puzzles did not come apart from Crowell's assembly at all. Running the disassembler from every snapshot found the single step we could not make in 17 of them (QuarTIC's file stops after five snapshots). <code>diag.cpp</code> then dissected each of those steps:</p>
+    <ul>
+      <li>Every one is a single quarter turn with the pivot inside the group's footprint, no axial shift, within the tables' radius. No limit of the move generator is involved.</li>
+      <li>The fixed family blocks all 17 at the default play 0.081, and clears 15 of them at 0.100.</li>
+      <li>The motions that do get through are asymmetric (most of the shift early, a slow return), point in non-compass directions, and some hold a shift through most of the turn. The family's wiggles are symmetric about 45° and only go in 8 directions.</li>
+    </ul>
+    <p>So the family is too coarse near the threshold, and these turns sit right at the play. Whether a physical copy comes apart depends on its actual play, which the solver does not know. "This puzzle needs at least play 0.085" is something a designer can act on.</p>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>The bench: two real turns</h2>
+      <p>Both scenes are the blocked Crowell steps embedded in <code>test/test_rotation_planner.cpp</code>. The planner paths below were produced by the library itself (<code>planTurn</code> and <code>requiredPlay</code>, default grid of 0.01 cells and 0.5°). The clearances you see while you drag are recomputed in your browser with a port of the same geometry, sampled along the path.</p>
+    </div>
+    <div class="bench" id="bench">
+      <div class="controls">
+        <span class="lbl">Scene</span>
+        <div class="seg" id="sceneSeg"></div>
+        <span class="lbl">Motion</span>
+        <div class="seg" id="pathSeg"></div>
+      </div>
+      <p class="note" id="sceneBlurb" style="margin-top:10px"></p>
+      <div class="controls" style="margin-top:12px">
+        <div class="slider"><label class="lbl" for="playIn">Play</label><input id="playIn" type="range" min="0.030" max="0.130" step="0.001" value="0.081"><output id="playOut">0.081</output></div>
+        <button class="btn" id="needsBtn" type="button">Set to the play it needs</button>
+        <button class="btn" id="resetBtn" type="button">Default 0.081</button>
+      </div>
+      <div class="controls" style="margin-top:8px">
+        <button class="btn" id="playBtn" type="button" aria-label="Play or pause the turn">Pause</button>
+        <div class="slider"><label class="lbl" for="tIn">Along the path</label><input id="tIn" type="range" min="0" max="1000" step="1" value="0"><output id="tOut">0°</output></div>
+      </div>
+      <div class="layers" id="layers"></div>
+      <div class="readout" id="readout"></div>
+      <div class="split2">
+        <div class="chart">
+          <div class="lbl" style="margin-bottom:6px">Clearance along the motion (cells)</div>
+          <canvas id="profile" height="260"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--moving)"></i>selected motion</span>
+            <span><i style="background:var(--static)"></i>best path of the fixed family</span>
+            <span><i style="background:var(--hit)"></i>contact (clearance 0)</span>
+          </div>
+        </div>
+        <div class="slice">
+          <div class="lbl" style="margin-bottom:6px" id="sliceLbl">Configuration-space slice</div>
+          <canvas id="slice" width="320" height="320"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--ok)"></i>clear</span>
+            <span><i style="background:var(--hit)"></i>overlap</span>
+            <span><i style="background:var(--moving)"></i>where the motion is now</span>
+          </div>
+        </div>
+      </div>
+      <p class="note">The slice shows every in-plane shift (du, dv) up to half a cell, at the angle the motion has reached. The planner searches this 3D space of (angle, du, dv) for a route from the start pose to the quarter turn that stays as far into the clear region as possible. If one slice has no clear point at all, no continuous motion exists: that is the planner's impossibility proof. Try the boxed-in cube.</p>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>How the planner works</h2>
+    <p><code>rotationGeometry::planTurn</code> takes one planar scene (moving and static cubes per axial layer, axis, pivot, physical model) and searches the grid of poses (θ, du, dv) with shifts up to 0.5 cells.</p>
+  </section>
+  <div class="flow">
+    <div class="st"><span class="k">1 · prove impossible</span><h3>Slice proofs first</h3><p>Every continuous path passes every angle. If at some angle no shift reaches the floor, nothing does. First the pure turn with a Lipschitz bound, then a quadtree over the shift box per angle, worst angles first.</p></div>
+    <div class="st"><span class="k">2 · search</span><h3>Widest path</h3><p>Max-heap Dijkstra over grid cells, valued by the clearance at the cell centre: the route whose smallest value is largest. Fast mode instead goes for any route above the floor, capped at 60,000 cells.</p></div>
+    <div class="st"><span class="k">3 · tidy</span><h3>Shortcut</h3><p>The cell path is shortened to a polyline with few waypoints. That polyline is what gets recorded, saved and animated.</p></div>
+    <div class="st hot"><span class="k">4 · certify</span><h3>Exact minimum</h3><p><code>minClearance</code> bounds the clearance on the continuous polyline by Lipschitz branch and bound, to within 10⁻⁴. The number certifies the motion that is actually stored.</p></div>
+  </div>
+  <section class="prose">
+    <p style="margin-top:16px">Two extra outputs make it useful beyond yes/no. With <code>upper</code>, a second search over optimistic cell values (centre plus the largest displacement within a cell) gives a bound no motion in the box can beat. And <code>reversePath</code> gives the same motion seen from the end, which the search needs so a turn and its reverse exist together or not at all.</p>
+
+    <h2>Clearance converts to play, in one direction</h2>
+    <p>For sharp cubes, adding play Δ takes Δ/2 off every face. Two convex shapes each shrunk by Δ/2 move apart by at least Δ, so along any fixed path:</p>
+    <pre>clearance at play p + Δ  ≥  clearance at play p  +  Δ</pre>
+    <p>A path whose smallest clearance is c &lt; 0 at play p is therefore clear at play p − c. You can watch this on the bench: drag the play up by 0.01 and the selected motion's minimum rises by at least 0.01.</p>
+    <p>It does not work backwards. Taking play away can cost more than Δ, because a grown square's corners stick out past the offset shape. The first version used the conversion both ways and reported that TriumviraTIC needs play 0.004; the path was blocked there. So a positive clearance only says "possible at this play", and <code>requiredPlay</code> finds the play a turn needs by bisection:</p>
+    <ul>
+      <li>The best path at the model's play gives a bracket. If it is blocked by c &lt; 0, it is clear at play − c.</li>
+      <li>Fast-mode feasibility checks halve the bracket down to 0.0005.</li>
+      <li>The lower end comes from the optimistic bound u at the play found: nothing gets through below <i>needs − u</i>. This is loose (about 0.03 on the default grid), but it is a proof.</li>
+    </ul>
+  </section>
+
+  <section class="steps">
+    <div class="prose">
+      <h2>The 17 blocked steps</h2>
+      <p>For each step: where the fixed family starts to clear it, the play the planner proves sufficient, and the proven lower bound where one was computed. Steps left of the dashed line come apart at the default play once the planner is on. Hover a row for details.</p>
+    </div>
+    <div class="bench">
+      <div class="scroll" style="position:relative"><svg id="stepChart" role="img" aria-label="Play needed per blocked Crowell step"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--moving);height:9px;width:9px;border-radius:50%"></i>planner: proven possible</span>
+        <span><i style="background:var(--moving-fill)"></i>between proven bounds</span>
+        <span><i style="background:var(--static);height:9px;width:9px"></i>fixed family clears from</span>
+        <span><i style="background:var(--hit)"></i>default play 0.081</span>
+      </div>
+      <p class="note">Play needed is on the default planner grid (0.01 cells, 0.5°). MysTIC needs 0.0766 on a 0.004 grid. CagedCubeJr_1 and TemplarCross come apart in a normal run anyway, from another assembly than Crowell's.</p>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>Using it in the search: <code>burrTxt -Q</code></h2>
+    <p>Planning every candidate turn is out of reach. With shifts up to 0.7 cells, "blocked on every motion" blocks almost nothing beyond the end cell, so nearly every union of pieces would become a candidate: tens of thousands per search node in a six-piece puzzle. <code>movementAnalysator_c::listRotations</code> therefore keeps the family as the fast path and adds a narrow fallback.</p>
+  </section>
+  <div class="flow">
+    <div class="st"><span class="k">fast path</span><h3>Family at the play</h3><p>The lookup tables decide the 145 fixed paths, as before. A clear path is used directly.</p></div>
+    <div class="st"><span class="k">filter</span><h3>Family at play + slack</h3><p>Only turns the family clears with 0.02 more play are handed to the planner. Groups come from these relaxed tables, so no family turn is lost.</p></div>
+    <div class="st hot"><span class="k">plan</span><h3>Fast-mode planner</h3><p>Any certified route with clearance ≥ 0. A turn that exceeds the budget is skipped and reported as a burrTxt note.</p></div>
+    <div class="st"><span class="k">cache</span><h3>Keyed by scene</h3><p>Sense, moving cubes and nearby static cubes as offsets from the pivot. A turn and its reverse share the smaller key and are planned once, from the same side. Shared across workers under a mutex.</p></div>
+  </div>
+  <section class="prose">
+    <p style="margin-top:16px">The slack is a heuristic: a turn the family cannot do even with 0.02 more play is never planned. All 10 Crowell misses that are possible at 0.081 are cleared by the family at 0.100, which is why 0.02 is the default. A slack of 0.04 also finds the turn that saves AAA_most_rotations a move, at about twice the cost.</p>
+    <p>Planned turns are stored as a new path kind, <code>PATH_PLANNED</code>, whose waypoints are saved with 17 significant digits, so the loaded polyline is bit for bit the certified one. <code>poseAt</code>, the animation, <code>-p</code> and the replay tests work on it unchanged.</p>
+    <pre>&lt;rotation axis="0" pu="4" pv="2" path="planned" sense="1" pieces="1"
+          waypoints="0 0 0 -0.0873 0.12 0.03 ... -1.5707963267948966 0 0"/&gt;</pre>
+    <p class="small">No format version bump: rotation moves are not in a release yet.</p>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>Results on the 17 puzzles</h2>
+      <p><code>burrTxt -d -R</code> against <code>-d -R -Q</code>, release build, 8 threads, idle machine.</p>
+    </div>
+    <div class="tablewrap"><table id="runs"><thead><tr><th>Puzzle</th><th>Without planner</th><th>With <code>-Q</code></th><th>Time with <code>-Q</code></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="prose">
+    <h2>The play a puzzle needs: <code>-P</code> and <code>-M</code></h2>
+  </section>
+  <div class="cols">
+    <div>
+      <h3>Per disassembly, <code>-P</code></h3>
+      <p><code>optimizeTurns</code> runs <code>requiredPlay</code> on every turn of a found disassembly, rebuilding the scene from the state before the turn. It replaces each turn's recorded path with the widest path at the model's play: the motion with the most room, and the most realistic one to animate. The level line gets the largest turn's play:</p>
+      <pre>level: 10.3.1.2, 3 rotations, needs play 0.0801 (not below 0.0489)</pre>
+      <p>Every turn is proven possible at the printed play and translations need none, so this is a proven upper bound on the play the puzzle needs. "Not below" bounds only that disassembly's hardest turn, not the puzzle. It takes seconds per turn, so only reported disassemblies are optimized.</p>
+    </div>
+    <div>
+      <h3>Per puzzle, <code>-M lo,hi</code></h3>
+      <p>Bisects the model's play to a tolerance of 0.001 over whole quiet solves, then solves and prints at the play found. More play only adds turns (up to the planner's resolution, budget and slack), so the bisection is meaningful, and its result is an upper bound.</p>
+      <p>Combined with <code>-P</code> it tightens. HypnoTIC with <code>-M 0.02,0.15</code> finds 0.0896, but the disassembly found there needs only 0.0823: the fast planner misses some of its turns below 0.089, and <code>-P</code> proves them all at 0.0823.</p>
+      <pre>burrTxt -d -R -Q -P puzzle.xmpuzzle
+burrTxt -d -R -P -M 0.02,0.15 puzzle.xmpuzzle</pre>
+    </div>
+  </div>
+  <section class="prose">
+    <p class="small" style="margin-top:6px">Not modelled, and worth stating next to any of these numbers: flexing and wear, friction, imperfect alignment, axial wobble during a turn. The numbers are the play of ideal rigid cubes.</p>
+
+    <h2>Cost, and why it is off by default</h2>
+    <p>On the whole Crowell collection (319 files, slack 0.04, single thread) the planner takes 302 files apart against 280, losing none. But it multiplies solve time. Single thread, slack 0.04, idle machine:</p>
+  </section>
+  <div class="tablewrap"><table id="cost"><thead><tr><th>Puzzle</th><th>Family only</th><th>With planner</th><th>Factor</th></tr></thead><tbody></tbody></table></div>
+  <section class="prose">
+    <p style="margin-top:14px">With slack 0.02 it is less: MagellanTIC 29 s, 3KingsTIC 11 s, NervousTIC 4.6 s. A profile of AAA_most_rotations spends half its time computing cell clearances and a quarter in the grid search; the rest goes to budgeted searches of turns that are impossible, but not at any single angle, so no slice proof catches them.</p>
+
+    <h2>Validation</h2>
+    <p><code>test/test_rotation_planner.cpp</code> runs in the fast suite (about 1 s in the dev build):</p>
+    <ul>
+      <li>PackTIC_3: the family is blocked; widest path and fast mode find certified paths; the certified value lies below every sampled clearance; the reversed path certifies on the reversed scene with the same value.</li>
+      <li>MysTIC: fast mode on the default grid finds the path with less than 0.01 to spare.</li>
+      <li>A cube boxed in by a ring of cubes: no path, with a proof (<code>upper &lt; 0</code>).</li>
+      <li><code>requiredPlay</code> on PackTIC_3 lands in range, its lower bound below it, and the path certifies at the play found.</li>
+      <li>More play adds at least as much clearance, on 30 random scenes and paths.</li>
+      <li>A planned path survives save and load bit for bit.</li>
+    </ul>
+    <p><code>test_rotation_disassembly.cpp</code> now builds AAA_most_rotations with the planner (slack 0.04), expects level 2.3 and at least one planned turn, and its replay and animation tests cover a planned path. All gates passed: build, test-all, check, release build and tests, and the 20/20 regression run.</p>
+
+    <h2>Open</h2>
+    <ul>
+      <li><b>Cost</b>, to make the planner the default: fewer candidates (a sound filter would also remove the slack heuristic), a cheaper impossibility proof for turns blocked by connectivity rather than at one angle, incremental clearance along the angle axis.</li>
+      <li><b>Lower bounds</b> are loose. Refining only the cells whose interval straddles the answer would tighten them cheaply.</li>
+      <li><b>GUI</b>: a "plan turns" option next to Rotation Moves (needs the background solver first) and showing <code>-P</code>'s play per solution.</li>
+      <li><b>Printed TICs</b>: do the decoded TICs' printed plays agree with <code>-M -P</code>?</li>
+      <li><code>-M</code> re-solves from scratch per step, and the planner cache lives for one solve.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const SQ2 = Math.SQRT2, HALF_PI = Math.PI / 2;
+
+  /* ---------- geometry (port of src/lib/rotationgeometry.cpp, sharp cubes) ---------- */
+  const LOC = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  function segPt2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const qx = ax + t * dx - px, qy = ay + t * dy - py;
+    return qx * qx + qy * qy;
+  }
+  function sqSD(su, sv, mu, mv, c, s, h) {
+    const sp = LOC.map(([a, b]) => [su + a * h, sv + b * h]);
+    const mp = LOC.map(([a, b]) => [mu + (a * c - b * s) * h, mv + (a * s + b * c) * h]);
+    const normals = [[1, 0], [0, 1], [c, s], [-s, c]];
+    let depth = Infinity;
+    for (const [nx, ny] of normals) {
+      let smin = Infinity, smax = -Infinity, mmin = Infinity, mmax = -Infinity;
+      for (let i = 0; i < 4; i++) {
+        const ds = sp[i][0] * nx + sp[i][1] * ny, dm = mp[i][0] * nx + mp[i][1] * ny;
+        if (ds < smin) smin = ds; if (ds > smax) smax = ds;
+        if (dm < mmin) mmin = dm; if (dm > mmax) mmax = dm;
+      }
+      const ov = Math.min(smax, mmax) - Math.max(smin, mmin);
+      if (ov <= 0) { depth = null; break; }
+      depth = Math.min(depth, ov);
+    }
+    if (depth !== null) return -depth;
+    let d2 = Infinity;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      const j2 = (j + 1) % 4;
+      d2 = Math.min(d2, segPt2(sp[i][0], sp[i][1], mp[j][0], mp[j][1], mp[j2][0], mp[j2][1]),
+                        segPt2(mp[i][0], mp[i][1], sp[j][0], sp[j][1], sp[j2][0], sp[j2][1]));
+    }
+    return Math.sqrt(d2);
+  }
+  function inPlane(x, y, z, axis) { return axis === 0 ? [y, z] : axis === 1 ? [z, x] : [x, y]; }
+  function axial(c, axis) { return c[axis]; }
+
+  /* scene in pivot-relative in-plane coordinates, one entry per axial layer with moving cubes */
+  function buildScene(def, play) {
+    const half = 0.5 * (1 - play);
+    const [pu, pv] = inPlane(def.h[0] / 2, def.h[1] / 2, def.h[2] / 2, def.axis);
+    const by = new Map();
+    let rho = 0;
+    for (const c of def.moving) {
+      const [u, v] = inPlane(...c, def.axis), k = axial(c, def.axis);
+      if (!by.has(k)) by.set(k, { k, m: [], st: [] });
+      by.get(k).m.push([u - pu, v - pv]);
+      rho = Math.max(rho, Math.hypot(u - pu, v - pv) + half * SQ2);
+    }
+    for (const c of def.stat) {
+      const L = by.get(axial(c, def.axis));
+      if (!L) continue;
+      const [u, v] = inPlane(...c, def.axis);
+      L.st.push([u - pu, v - pv]);
+    }
+    const layers = [...by.values()].sort((a, b) => a.k - b.k);
+    return { layers, half, rho, pivot: [pu, pv] };
+  }
+  /* smallest clearance over all layers; stops early below `stopBelow` */
+  function clearance(sc, p, stopBelow = -Infinity) {
+    const c = Math.cos(p.theta), s = Math.sin(p.theta), reach = 2 * SQ2 * sc.half;
+    let best = Infinity, li = -1, mi = -1, si = -1;
+    for (let l = 0; l < sc.layers.length; l++) {
+      const L = sc.layers[l];
+      for (let a = 0; a < L.m.length; a++) {
+        const [u, v] = L.m[a], mu = u * c - v * s + p.du, mv = u * s + v * c + p.dv;
+        for (let b = 0; b < L.st.length; b++) {
+          const [su, sv] = L.st[b], dx = mu - su, dy = mv - sv;
+          if (dx * dx + dy * dy > (reach + best) * (reach + best)) continue;
+          const d = sqSD(su, sv, mu, mv, c, s, sc.half);
+          if (d < best) { best = d; li = l; mi = a; si = b; if (best < stopBelow) return { cl: best, li, mi, si }; }
+        }
+      }
+    }
+    return { cl: best, li, mi, si };
+  }
+
+  /* path helpers: arc-length parameter with angle weighted by the scene radius */
+  function prepPath(pts, rho) {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      cum.push(cum[i - 1] + Math.hypot(b.du - a.du, b.dv - a.dv) + rho * Math.abs(b.theta - a.theta));
+    }
+    return { pts, cum, len: cum[cum.length - 1] };
+  }
+  function poseAt(P, t) {
+    const x = Math.max(0, Math.min(1, t)) * P.len;
+    let i = 1;
+    while (i < P.cum.length - 1 && P.cum[i] < x) i++;
+    const a = P.pts[i - 1], b = P.pts[i], seg = P.cum[i] - P.cum[i - 1];
+    const l = seg > 0 ? (x - P.cum[i - 1]) / seg : 1;
+    return { theta: a.theta + l * (b.theta - a.theta), du: a.du + l * (b.du - a.du), dv: a.dv + l * (b.dv - a.dv) };
+  }
+  function minAlong(sc, P, n, stopBelow = -Infinity) {
+    let m = Infinity;
+    for (let k = 0; k <= n; k++) {
+      const c = clearance(sc, poseAt(P, k / n), Math.max(stopBelow, -Infinity)).cl;
+      if (c < m) m = c;
+      if (m < stopBelow) return m;
+    }
+    return m;
+  }
+
+  /* the fixed family: pure turn, then per amount 8 wiggles and 8 slides */
+  const DIRS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  const AMOUNTS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45];
+  function familyPaths(sense) {
+    const end = sense === 0 ? HALF_PI : -HALF_PI, out = [{ name: 'pure turn', pts: [{ theta: 0, du: 0, dv: 0 }, { theta: end, du: 0, dv: 0 }] }];
+    for (const amt of AMOUNTS) for (const kind of ['wiggle', 'slide']) for (const d0 of DIRS) {
+      const d = sense === 0 ? d0 : [d0[0], -d0[1]], len = Math.hypot(d[0], d[1]);
+      const su = amt * d[0] / len, sv = amt * d[1] / len, pts = [];
+      if (kind === 'slide') pts.push({ theta: 0, du: 0, dv: 0 }, { theta: 0, du: su, dv: sv }, { theta: end, du: su, dv: sv }, { theta: end, du: 0, dv: 0 });
+      else {
+        for (let k = 0; k <= 16; k++) {
+          const t = k / 16, th = HALF_PI * t, w = (Math.cos(th) + Math.sin(th) - 1) / (SQ2 - 1);
+          pts.push({ theta: end * t, du: w * su, dv: w * sv });
+        }
+        pts[16] = { theta: end, du: 0, dv: 0 };
+      }
+      out.push({ name: `${kind} ${amt.toFixed(2)} toward (${d[0]}, ${d[1]})`, pts });
+    }
+    return out;
+  }
+
+  /* ---------- data: scenes and the library's planner output ---------- */
+  const P = a => a.map(([theta, du, dv]) => ({ theta, du, dv }));
+  const SCENES = {
+    pack: {
+      label: 'PackTIC_3, step 21',
+      blurb: 'Piece d turns −90° about X out of piece a. No path of the fixed family gets through at play 0.081; the planner finds an asymmetric motion: shift up and left early, slip across late, and settle.',
+      moving: [[1,1,1],[1,2,1],[2,2,0],[2,2,1],[2,2,2],[3,2,0]],
+      stat: [[0,0,0],[0,0,3],[0,1,0],[0,1,3],[0,2,0],[0,2,1],[0,2,3],[0,3,0],[0,3,3],[1,0,0],[1,0,3],[1,2,0],[1,3,0],[1,3,3],[2,0,0],[2,0,1],[2,0,3],[2,3,0],[2,3,3],[3,0,0],[3,0,3],[3,1,2],[3,1,3],[3,2,2],[3,2,3],[3,3,0],[3,3,1],[3,3,2],[3,3,3]],
+      axis: 0, sense: 1, h: [0, 4, 2], axisName: 'x',
+      familyFrom: 0.100,
+      plans: {
+        widest: { cl: 0.03059, upper: 0.04504, pts: P([[0,0,0],[-0.51487,-0.17,0.17],[-0.66322,-0.17,0.16],[-0.73304,-0.16,0.15],[-0.76794,-0.15,0.14],[-0.77667,0.47,0.14],[-1.18682,0.47,0.14],[-1.5708,0,0]]) },
+        fast: { cl: 0.00773, pts: P([[0,0,0],[-0.43633,0.2,0.08],[-0.57596,0.04,0.11],[-0.6545,-0.02,0.12],[-0.69813,-0.05,0.12],[-1.50971,0.1,0.11],[-1.5708,0,0]]) },
+        req: { needs: 0.05694, atLeast: 0.04087, cl: 0.00005, pts: P([[0,0,0],[-0.5236,-0.18,0.17],[-0.68941,-0.17,0.16],[-0.74177,-0.15,0.14],[-0.76794,-0.15,0.14],[-0.79412,0.48,0.14],[-1.23046,0.48,0.14],[-1.5708,0,0]]) }
+      }
+    },
+    mys: {
+      label: 'MysTIC, step 11',
+      blurb: 'Pieces c and d turn together, −90° about Z, in four layers at once. At play 0.081 the best motion keeps 0.0027 cells to spare: ramp out, hold the shift through most of the turn, ramp back. Fast mode and widest path find the same route.',
+      moving: [[1,0,2],[1,0,3],[1,1,2],[1,1,3],[1,2,2],[1,3,1],[1,3,2],[2,0,0],[2,0,2],[2,0,3],[2,1,2],[2,1,3],[2,3,2],[3,0,0],[3,0,2],[3,0,3],[3,1,3],[4,0,0],[4,0,1],[4,0,2],[4,0,3],[4,1,0],[4,1,3],[4,2,0],[4,2,3],[4,3,0]],
+      stat: [[0,2,1],[0,3,0],[0,3,1],[1,2,1],[2,2,1],[3,2,1],[3,2,2],[1,1,0],[1,1,1],[1,2,0],[1,3,3],[1,4,0],[1,4,3],[2,1,1],[2,2,0],[2,3,0],[2,3,3],[2,4,0],[2,4,1],[2,4,3],[3,1,1],[3,3,3],[3,4,0],[3,4,1],[3,4,2],[3,4,3],[4,3,2],[4,4,1],[4,4,2],[4,4,3]],
+      axis: 2, sense: 1, h: [2, 6, 0], axisName: 'z',
+      familyFrom: 0.100,
+      plans: {
+        widest: { cl: 0.00272, upper: 0.03225, pts: P([[0,0,0],[-0.40143,0.08,0.07],[-1.06465,0.2,0.2],[-1.33518,0.19,0.02],[-1.5708,0,0]]) },
+        req: { needs: 0.08006, atLeast: 0.0489, cl: 0.00236, pts: P([[0,0,0],[-0.40143,0.08,0.07],[-1.05592,0.2,0.2],[-1.32645,0.19,0.02],[-1.5708,0,0]]) }
+      }
+    },
+    box: {
+      label: 'Boxed-in cube',
+      blurb: 'The test case for impossibility: one cube turning +90° about a corner, surrounded by a ring of eight cubes. Scrub the angle and watch the slice: from about 11° on, every shift overlaps. The planner returns no path and a proof (optimistic bound below 0).',
+      moving: [[0,0,0]],
+      stat: [[1,0,0],[1,-1,0],[0,-1,0],[-1,-1,0],[-1,0,0],[0,1,0],[1,1,0],[-1,1,0]],
+      axis: 2, sense: 0, h: [1, 1, 0], axisName: 'z',
+      familyFrom: null,
+      plans: {}
+    }
+  };
+  const PATHS = [
+    { id: 'family', label: 'Best fixed path' },
+    { id: 'widest', label: 'Planner: widest' },
+    { id: 'fast', label: 'Planner: fast mode' },
+    { id: 'req', label: 'Planner at needed play' }
+  ];
+
+  /* ---------- state ---------- */
+  const st = { scene: 'pack', path: 'widest', play: 0.081, t: 0, playing: true };
+  try { const s = localStorage.getItem('turnplanner.scene'); if (s && SCENES[s]) st.scene = s; } catch (e) {}
+  let sc, fam = [], famBest = null, selP = null, profSel = [], profFam = [];
+  const $ = id => document.getElementById(id);
+  const css = () => { const g = getComputedStyle(document.documentElement); const o = {}; for (const k of ['paper','sheet','ink','ink-2','rule','grid','static','static-fill','moving','moving-fill','ghost','ok','ok-soft','hit','hit-soft']) o[k] = g.getPropertyValue('--' + k).trim(); return o; };
+  let C = css();
+
+  /* ---------- controls ---------- */
+  function segButtons(el, items, cur, on) {
+    el.innerHTML = '';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = it.label; b.setAttribute('aria-pressed', String(it.id === cur));
+      b.disabled = !!it.disabled;
+      b.addEventListener('click', () => on(it.id));
+      el.appendChild(b);
+    }
+  }
+  function availablePaths() {
+    const d = SCENES[st.scene];
+    return PATHS.map(p => ({ ...p, disabled: p.id !== 'family' && !d.plans[p.id] }));
+  }
+  function renderControls() {
+    segButtons($('sceneSeg'), Object.entries(SCENES).map(([id, d]) => ({ id, label: d.label })), st.scene, id => {
+      st.scene = id; try { localStorage.setItem('turnplanner.scene', id); } catch (e) {}
+      if (!SCENES[id].plans[st.path]) st.path = SCENES[id].plans.widest ? 'widest' : 'family';
+      st.play = 0.081; $('playIn').value = st.play; st.t = 0;
+      rebuild(true);
+    });
+    segButtons($('pathSeg'), availablePaths(), st.path, id => { st.path = id; if (id === 'req') { st.play = SCENES[st.scene].plans.req.needs; $('playIn').value = st.play; } rebuild(false); });
+    const d = SCENES[st.scene];
+    $('sceneBlurb').textContent = d.blurb;
+    $('needsBtn').disabled = !d.plans.req;
+    $('needsBtn').style.opacity = d.plans.req ? '' : '0.4';
+  }
+  $('playIn').addEventListener('input', e => { st.play = +e.target.value; schedule(); });
+  $('needsBtn').addEventListener('click', () => { const r = SCENES[st.scene].plans.req; if (!r) return; st.play = r.needs; $('playIn').value = st.play; rebuild(false); });
+  $('resetBtn').addEventListener('click', () => { st.play = 0.081; $('playIn').value = st.play; rebuild(false); });
+  $('tIn').addEventListener('input', e => { st.t = +e.target.value / 1000; st.playing = false; $('playBtn').textContent = 'Play'; draw(); });
+  $('playBtn').addEventListener('click', () => { st.playing = !st.playing; $('playBtn').textContent = st.playing ? 'Pause' : 'Play'; if (st.playing) { last = performance.now(); requestAnimationFrame(tick); } });
+  let pending = 0;
+  function schedule() { $('playOut').textContent = st.play.toFixed(3); clearTimeout(pending); pending = setTimeout(() => rebuild(false), 60); }
+
+  /* ---------- compute ---------- */
+  function rebuild(newScene) {
+    const d = SCENES[st.scene];
+    sc = buildScene(d, st.play);
+    if (newScene || !fam.length || fam.sense !== d.sense) { fam = familyPaths(d.sense); fam.sense = d.sense; }
+    // best of the family: the path with the largest sampled minimum (early exit once below the incumbent)
+    let best = -Infinity, bi = 0;
+    for (let i = 0; i < fam.length; i++) {
+      const Pp = prepPath(fam[i].pts, sc.rho);
+      const m = minAlong(sc, Pp, 90, best);
+      if (m > best) { best = m; bi = i; }
+    }
+    famBest = { i: bi, P: prepPath(fam[bi].pts, sc.rho) };
+    famBest.min = minAlong(sc, famBest.P, 400);
+    selP = st.path === 'family' ? famBest.P : prepPath(d.plans[st.path].pts, sc.rho);
+    const N = 240;
+    profSel = []; profFam = [];
+    for (let k = 0; k <= N; k++) {
+      profSel.push(clearance(sc, poseAt(selP, k / N)).cl);
+      profFam.push(clearance(sc, poseAt(famBest.P, k / N)).cl);
+    }
+    selP.min = Math.min(...profSel);
+    if (st.path === 'family') selP.min = famBest.min;
+    $('playOut').textContent = st.play.toFixed(3);
+    renderControls();
+    buildLayerCanvases();
+    sliceCache = null;
+    draw();
+  }
+
+  /* ---------- drawing ---------- */
+  function fitCanvas(cv, h) {
+    const r = window.devicePixelRatio || 1, w = cv.clientWidth || 300, hh = h || cv.clientHeight || w;
+    if (cv.width !== Math.round(w * r) || cv.height !== Math.round(hh * r)) { cv.width = Math.round(w * r); cv.height = Math.round(hh * r); }
+    const g = cv.getContext('2d'); g.setTransform(r, 0, 0, r, 0, 0); return [g, w, hh];
+  }
+  let layerEls = [];
+  function buildLayerCanvases() {
+    const box = $('layers');
+    if (box.dataset.scene === st.scene && layerEls.length === sc.layers.length) return;
+    box.dataset.scene = st.scene; box.innerHTML = ''; layerEls = [];
+    const d = SCENES[st.scene];
+    sc.layers.forEach(L => {
+      const div = document.createElement('div'); div.className = 'layer';
+      const cv = document.createElement('canvas');
+      cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', `Layer ${d.axisName} = ${L.k}`);
+      const cap = document.createElement('div'); cap.className = 'cap';
+      cap.innerHTML = `<span>${d.axisName} = ${L.k}</span><b></b>`;
+      div.append(cv, cap); box.appendChild(div);
+      layerEls.push({ div, cv, cap: cap.querySelector('b') });
+    });
+  }
+  function viewBox() {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    const add = (u, v) => { x0 = Math.min(x0, u); x1 = Math.max(x1, u); y0 = Math.min(y0, v); y1 = Math.max(y1, v); };
+    const sg = SCENES[st.scene].sense === 0 ? 1 : -1;
+    for (const L of sc.layers) {
+      for (const [u, v] of L.m) { add(u, v); add(-sg * v, sg * u); }
+      for (const [u, v] of L.st) add(u, v);
+    }
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, span = Math.max(x1 - x0, y1 - y0) + 1.6;
+    return { cx, cy, span };
+  }
+  function drawLayers(pose, info) {
+    const vb = viewBox(), sg = SCENES[st.scene].sense === 0 ? 1 : -1, h = sc.half;
+    const c = Math.cos(pose.theta), s = Math.sin(pose.theta);
+    layerEls.forEach((el, li) => {
+      const [g, w] = fitCanvas(el.cv);
+      const k = w / vb.span, X = u => w / 2 + (u - vb.cx) * k, Y = v => w / 2 - (v - vb.cy) * k;
+      g.fillStyle = C.sheet; g.fillRect(0, 0, w, w);
+      // squared paper: lines on cell boundaries
+      g.strokeStyle = C.grid; g.lineWidth = 1; g.beginPath();
+      const offU = sc.pivot[0] % 1, offV = sc.pivot[1] % 1;
+      for (let u = Math.floor(vb.cx - vb.span / 2) - 1; u <= vb.cx + vb.span / 2 + 1; u++) { const x = X(u + 0.5 - offU); g.moveTo(x, 0); g.lineTo(x, w); }
+      for (let v = Math.floor(vb.cy - vb.span / 2) - 1; v <= vb.cy + vb.span / 2 + 1; v++) { const y = Y(v + 0.5 - offV); g.moveTo(0, y); g.lineTo(w, y); }
+      g.stroke();
+      const L = sc.layers[li];
+      const crit = info.li === li;
+      const sq = (pts, fill, stroke, dash) => {
+        g.beginPath(); pts.forEach(([u, v], i) => i ? g.lineTo(X(u), Y(v)) : g.moveTo(X(u), Y(v))); g.closePath();
+        if (fill) { g.fillStyle = fill; g.fill(); }
+        if (stroke) { g.strokeStyle = stroke; g.lineWidth = 1.3; g.setLineDash(dash || []); g.stroke(); g.setLineDash([]); }
+      };
+      L.st.forEach(([u, v], b) => {
+        const hot = crit && b === info.si;
+        sq(LOC.map(([a, bb]) => [u + a * h, v + bb * h]), hot ? (info.cl < 0 ? C['hit-soft'] : C['static-fill']) : C['static-fill'], hot ? (info.cl < 0 ? C.hit : C.ink) : C.static);
+      });
+      // end pose ghost
+      L.m.forEach(([u, v]) => { const eu = -sg * v, ev = sg * u; sq(LOC.map(([a, b]) => [eu + a * h, ev + b * h]), null, C.ghost, [3, 3]); });
+      L.m.forEach(([u, v], a) => {
+        const mu = u * c - v * s + pose.du, mv = u * s + v * c + pose.dv;
+        const hot = crit && a === info.mi;
+        sq(LOC.map(([p, q]) => [mu + (p * c - q * s) * h, mv + (p * s + q * c) * h]), C['moving-fill'], hot && info.cl < 0 ? C.hit : C.moving);
+      });
+      // pivot and its current shifted position
+      g.fillStyle = C.hit; g.beginPath(); g.arc(X(pose.du), Y(pose.dv), 3, 0, 2 * Math.PI); g.fill();
+      g.strokeStyle = C.hit; g.lineWidth = 1; g.beginPath(); g.arc(X(0), Y(0), 5, 0, 2 * Math.PI); g.stroke();
+      el.div.classList.toggle('crit', crit);
+      el.cap.textContent = crit ? (info.cl < 0 ? 'overlap' : 'closest') : '';
+    });
+  }
+  function drawProfile() {
+    const cv = $('profile'), [g, w, h] = fitCanvas(cv, 260);
+    g.fillStyle = C.sheet; g.fillRect(0, 0, w, h);
+    const all = profSel.concat(profFam);
+    let lo = Math.min(-0.05, ...all), hi = Math.max(0.05, ...all);
+    lo = Math.max(lo, -0.6); hi = Math.min(hi, 0.6);
+    const step = (hi - lo) > 0.3 ? 0.1 : (hi - lo) > 0.12 ? 0.05 : 0.02;
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    const padL = 46, padR = 10, padT = 10, padB = 26;
+    const X = t => padL + t * (w - padL - padR), Y = v => padT + (hi - Math.max(lo, Math.min(hi, v))) / (hi - lo) * (h - padT - padB);
+    g.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); g.fillStyle = C['ink-2']; g.textAlign = 'right'; g.textBaseline = 'middle';
+    g.strokeStyle = C.grid; g.lineWidth = 1;
+    for (let v = lo; v <= hi + 1e-9; v += step) { g.beginPath(); g.moveTo(padL, Y(v)); g.lineTo(w - padR, Y(v)); g.stroke(); g.fillText((Math.abs(v) < 1e-9 ? 0 : v).toFixed(2), padL - 6, Y(v)); }
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    g.fillText('start', X(0) + 14, h - padB + 8); g.fillText('quarter turn', X(1) - 34, h - padB + 8);
+    // overlap band
+    g.fillStyle = C['hit-soft']; g.fillRect(padL, Y(0), w - padL - padR, Y(lo) - Y(0));
+    g.strokeStyle = C.hit; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(padL, Y(0)); g.lineTo(w - padR, Y(0)); g.stroke(); g.setLineDash([]);
+    const line = (arr, col, lw) => { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); arr.forEach((v, i) => { const x = X(i / (arr.length - 1)), y = Y(v); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); };
+    if (st.path !== 'family') line(profFam, C.static, 1.4);
+    line(profSel, C.moving, 2.2);
+    // scrub marker
+    g.strokeStyle = C.ink; g.lineWidth = 1; g.beginPath(); g.moveTo(X(st.t), padT); g.lineTo(X(st.t), h - padB); g.stroke();
+    const k = Math.round(st.t * (profSel.length - 1));
+    g.fillStyle = C.moving; g.beginPath(); g.arc(X(st.t), Y(profSel[k]), 4, 0, 2 * Math.PI); g.fill();
+  }
+  $('profile').addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); st.t = Math.max(0, Math.min(1, (e.clientX - r.left - 46) / (r.width - 56))); st.playing = false; $('playBtn').textContent = 'Play'; draw(); });
+
+  let sliceCache = null;
+  const hex = s => { s = s.replace('#', ''); if (s.length === 3) s = s.split('').map(x => x + x).join(''); const n = parseInt(s, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  function drawSlice(pose, fine) {
+    const cv = $('slice'), [g, w] = fitCanvas(cv);
+    const R = 0.5, N = fine ? 61 : 31;
+    const key = pose.theta.toFixed(3) + '|' + N;
+    if (!sliceCache || sliceCache.key !== key) {
+      const vals = new Float32Array(N * N);
+      for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+        const du = -R + 2 * R * i / (N - 1), dv = R - 2 * R * j / (N - 1);
+        vals[j * N + i] = clearance(sc, { theta: pose.theta, du, dv }, -0.2).cl;
+      }
+      sliceCache = { key, vals, N };
+    }
+    const { vals } = sliceCache;
+    const bg = hex(C.sheet), ok = hex(C.ok), hit = hex(C.hit);
+    const cell = w / N;
+    let anyClear = false;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const v = vals[j * N + i]; if (v >= 0) anyClear = true;
+      const tgt = v >= 0 ? ok : hit, a = Math.min(1, Math.abs(v) / 0.12) * 0.85 + 0.15;
+      g.fillStyle = `rgb(${bg.map((b, q) => Math.round(b + (tgt[q] - b) * a)).join(',')})`;
+      g.fillRect(i * cell, j * cell, cell + 0.6, cell + 0.6);
+    }
+    const X = u => (u + R) / (2 * R) * w, Y = v => (R - v) / (2 * R) * w;
+    // axes
+    g.strokeStyle = C.ink; g.globalAlpha = 0.35; g.lineWidth = 1; g.beginPath(); g.moveTo(X(0), 0); g.lineTo(X(0), w); g.moveTo(0, Y(0)); g.lineTo(w, Y(0)); g.stroke(); g.globalAlpha = 1;
+    // path trace projected
+    g.strokeStyle = C.moving; g.globalAlpha = 0.45; g.lineWidth = 1.5; g.beginPath();
+    for (let k = 0; k <= 120; k++) { const p = poseAt(selP, k / 120); k ? g.lineTo(X(p.du), Y(p.dv)) : g.moveTo(X(p.du), Y(p.dv)); }
+    g.stroke(); g.globalAlpha = 1;
+    g.fillStyle = C.moving; g.strokeStyle = C.sheet; g.lineWidth = 2; g.beginPath(); g.arc(X(pose.du), Y(pose.dv), 5.5, 0, 2 * Math.PI); g.fill(); g.stroke();
+    g.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'top';
+    g.fillText('du →', w - 40, Y(0) + 4); g.fillText('dv ↑', X(0) + 4, 4);
+    $('sliceLbl').innerHTML = `Configuration-space slice at ${Math.abs(pose.theta * 180 / Math.PI).toFixed(1)}° ` + (anyClear ? '' : '<span class="pill hit">no clear shift: proof</span>');
+  }
+  const fmt = v => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(4);
+  function drawReadout(info) {
+    const d = SCENES[st.scene], pl = d.plans[st.path];
+    const m = selP.min, ok = m >= 0;
+    let html = `<div><b>${fmt(info.cl)}</b><span>clearance now</span></div>`;
+    html += `<div><b>${fmt(m)} <span class="pill ${ok ? 'ok' : 'hit'}">${ok ? 'clear' : 'blocked'}</span></b><span>smallest along this motion at play ${st.play.toFixed(3)} (sampled)</span></div>`;
+    html += `<div><b>${fmt(famBest.min)} <span class="pill ${famBest.min >= 0 ? 'ok' : 'hit'}">${famBest.min >= 0 ? 'clear' : 'blocked'}</span></b><span>best fixed path: ${fam[famBest.i].name}</span></div>`;
+    if (pl) {
+      if (st.path === 'req') html += `<div><b>${pl.needs.toFixed(4)}</b><span>play this turn needs; impossible below ${pl.atLeast.toFixed(4)}</span></div>`;
+      else html += `<div><b>${fmt(pl.cl)}</b><span>library-certified minimum at 0.081${pl.upper != null ? `; no motion beats ${fmt(pl.upper)}` : ''}</span></div>`;
+    } else if (st.scene === 'box') html += `<div><b>none</b><span>planner: no path; optimistic bound &lt; 0 proves it</span></div>`;
+    else if (d.familyFrom) html += `<div><b>${d.familyFrom.toFixed(3)}</b><span>play from which the fixed family clears it</span></div>`;
+    $('readout').innerHTML = html;
+  }
+  function draw() {
+    if (!sc) return;
+    const pose = poseAt(selP, st.t), info = clearance(sc, pose);
+    $('tIn').value = Math.round(st.t * 1000);
+    $('tOut').textContent = Math.abs(pose.theta * 180 / Math.PI).toFixed(1) + '°';
+    drawLayers(pose, info);
+    drawProfile();
+    drawSlice(pose, !st.playing);
+    drawReadout(info);
+  }
+  let last = performance.now();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function tick(now) {
+    if (!st.playing) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    st.t += dt / 4.5; if (st.t > 1.15) st.t = 0;
+    const tt = st.t; st.t = Math.min(1, tt); draw(); st.t = tt;
+    requestAnimationFrame(tick);
+  }
+  if (reduced) { st.playing = false; st.t = 0.5; $('playBtn').textContent = 'Play'; }
+  const onTheme = () => { C = css(); sliceCache = null; draw(); drawSteps(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+  new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  window.addEventListener('resize', () => { sliceCache = null; draw(); drawSteps(); });
+
+  /* ---------- the 17 steps ---------- */
+  const STEPS = [
+    ['GemTIC', 15, 'f', '+X', 0.100, 0.0063, null, ''],
+    ['TriumviraTIC', 10, 'b', '+X', 0.100, 0.0079, null, ''],
+    ['HolopTIC', 11, 'd', '−Z', 0.100, 0.0266, null, ''],
+    ['TIC_Box_III', 23, 'b', '+Z', 0.100, 0.0422, null, ''],
+    ['TemplarCross', 13, 'b', '−Y', 0.100, 0.0551, null, 'Comes apart in a normal run anyway, from another assembly.'],
+    ['PackTIC_3', 21, 'd', '−X', 0.100, 0.0569, 0.0409, 'On the bench above.'],
+    ['PackTIC_5', 4, 'bdeg', '−X', 0.100, 0.0572, null, ''],
+    ['CagedCubeJr_4', 6, 'e', '+Y', 0.100, 0.0641, null, ''],
+    ['TritanIC_2', 8, 'c', '+Y', 0.100, 0.0701, null, ''],
+    ['MysTIC', 11, 'cd', '−Z', 0.100, 0.0801, 0.0489, '0.0766 on a 0.004 grid. Lower bounds 0.0489 and 0.0645 were computed. On the bench above.'],
+    ['SyntheTIC_3', 8, 'bcd', '−Y', 0.100, 0.0836, null, ''],
+    ['TacTICian', 12, 'b', '−Z', 0.100, 0.0843, null, ''],
+    ['HypnoTIC', 3, 'c', '−Y', 0.120, 0.0856, 0.0568, '-P on the disassembly -M finds proves 0.0823.'],
+    ['TritanIC_6', 19, 'c', '−X', 0.100, 0.0859, null, ''],
+    ['CagedCubeJr_2', 16, 'e', '−Z', 0.100, 0.0866, null, ''],
+    ['CagedCubeJr_1', 12, 'd', '−X', 0.100, 0.0913, null, 'Comes apart in a normal run anyway, from another assembly.'],
+    ['StarTIC_1', 15, 'cf', '−Y', 0.120, 0.0915, null, '']
+  ];
+  const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true;
+  function drawSteps() {
+    const svg = $('stepChart'), host = svg.parentElement;
+    if (!host.contains(tip)) host.appendChild(tip);
+    const W = Math.max(560, host.clientWidth), rowH = 24, padT = 26, padB = 30, labW = 190, padR = 18;
+    const H = padT + STEPS.length * rowH + padB;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    const x0 = 0, x1 = 0.13, X = p => labW + (p - x0) / (x1 - x0) * (W - labW - padR);
+    let s = '';
+    for (let p = 0; p <= 0.1301; p += 0.01) {
+      const x = X(p);
+      s += `<line x1="${x}" y1="${padT - 6}" x2="${x}" y2="${H - padB}" stroke="${C.grid}"/>`;
+      if (Math.round(p * 100) % 2 === 0) s += `<text x="${x}" y="${H - padB + 16}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="${C['ink-2']}">${p.toFixed(2)}</text>`;
+    }
+    s += `<text x="${X(0.13)}" y="${padT - 12}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="${C['ink-2']}">play (cells)</text>`;
+    const xd = X(0.081);
+    s += `<rect x="${X(0)}" y="${padT - 6}" width="${xd - X(0)}" height="${H - padB - padT + 6}" fill="${C['ok-soft']}" opacity="0.55"/>`;
+    s += `<line x1="${xd}" y1="${padT - 6}" x2="${xd}" y2="${H - padB}" stroke="${C.hit}" stroke-dasharray="4 3" stroke-width="1.5"/>`;
+    s += `<text x="${xd - 4}" y="${padT - 12}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="${C.hit}">default 0.081</text>`;
+    STEPS.forEach((r, i) => {
+      const [name, k, pcs, ax, fam, need, lo] = r, y = padT + i * rowH + rowH / 2, apart = need <= 0.081;
+      s += `<g class="row" data-i="${i}" tabindex="0">`;
+      s += `<rect x="0" y="${y - rowH / 2}" width="${W}" height="${rowH}" fill="transparent"/>`;
+      s += `<text x="0" y="${y + 4}" font-family="IBM Plex Sans, sans-serif" font-size="13" fill="${C.ink}" font-weight="${apart ? 600 : 400}">${name}</text>`;
+      s += `<text x="${labW - 10}" y="${y + 4}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="11" fill="${C['ink-2']}">${pcs} ${ax}</text>`;
+      s += `<line x1="${X(need)}" y1="${y}" x2="${X(fam)}" y2="${y}" stroke="${C.rule}" stroke-width="2"/>`;
+      if (lo != null) s += `<rect x="${X(lo)}" y="${y - 4}" width="${X(need) - X(lo)}" height="8" rx="2" fill="${C['moving-fill']}" stroke="${C.moving}" stroke-width="0.8"/>`;
+      s += `<rect x="${X(fam) - 4.5}" y="${y - 4.5}" width="9" height="9" fill="${C.static}"/>`;
+      s += `<circle cx="${X(need)}" cy="${y}" r="5" fill="${C.moving}"/>`;
+      s += `</g>`;
+    });
+    svg.innerHTML = s;
+    svg.querySelectorAll('.row').forEach(g => {
+      const show = e => {
+        const r = STEPS[+g.dataset.i], hb = host.getBoundingClientRect(), gb = g.getBoundingClientRect();
+        tip.innerHTML = `<b>${r[0]}</b>, snapshot ${r[1]}: pieces ${r[2]} turn ${r[3]}<br>family clears from ${r[4].toFixed(3)}<br>planner proves ${r[5].toFixed(4)}${r[6] != null ? `, impossible below ${r[6].toFixed(4)}` : ''}<br>${r[5] <= 0.081 ? 'comes apart at 0.081 with -Q' : 'needs more than 0.081'}${r[7] ? '<br>' + r[7] : ''}`;
+        tip.hidden = false;
+        const left = Math.min(hb.width - 290, Math.max(0, (e && e.clientX ? e.clientX - hb.left : 200) + 12));
+        tip.style.left = left + host.scrollLeft + 'px'; tip.style.top = (gb.bottom - hb.top + 4) + 'px';
+      };
+      g.addEventListener('mousemove', show); g.addEventListener('focus', show);
+      g.addEventListener('mouseleave', () => tip.hidden = true); g.addEventListener('blur', () => tip.hidden = true);
+    });
+  }
+
+  /* ---------- tables ---------- */
+  const RUNS = [
+    ['TriumviraTIC', 'none, 0.13 s', 'apart', 0.55], ['MysTIC', 'none, 0.13 s', 'apart', 0.65], ['PackTIC_3', 'none, 0.13 s', 'apart', 0.83],
+    ['PackTIC_5', 'none, 0.13 s', 'apart', 0.80], ['TritanIC_2', 'none, 0.20 s', 'apart', 2.4], ['CagedCubeJr_4', 'none, 0.21 s', 'apart', 2.4],
+    ['HolopTIC', 'none, 0.20 s', 'apart', 3.5], ['TemplarCross', '1 solution, 0.21 s', '2 solutions', 0.85], ['GemTIC', 'none, 0.21 s', 'apart', 0.78],
+    ['TIC_Box_III', 'none, 0.24 s', 'apart', 4.0], ['CagedCubeJr_2', 'none, 0.21 s', 'apart (another assembly)', 1.3], ['CagedCubeJr_1', '2 solutions, 0.21 s', '2 solutions', 2.5],
+    ['HypnoTIC, TacTICian, TritanIC_6, SyntheTIC_3, StarTIC_1', 'none', 'none: need 0.084–0.092', null]
+  ];
+  $('runs').querySelector('tbody').innerHTML = RUNS.map(([n, a, b, t]) => {
+    const pill = b.startsWith('none') ? 'hit' : b.startsWith('apart') ? 'ok' : 'split';
+    return `<tr><td>${n}</td><td class="n">${a}</td><td><span class="pill ${pill}">${b}</span></td><td class="n">${t == null ? '' : `<span class="bar" style="width:${Math.round(t / 4 * 90)}px"></span> ${t.toFixed(2)} s`}</td></tr>`;
+  }).join('');
+  const COST = [['HepTIC', 0.12, 0.6], ['FantasTIC', 0.13, 1.1], ['NervousTIC', 0.13, 5.9], ['HolisTIC', 0.23, 7.8], ['RIB', 0.8, 31], ['MagellanTIC', 0.27, 53], ['3KingsTIC', 0.25, 54]];
+  $('cost').querySelector('tbody').innerHTML = COST.map(([n, a, b]) => {
+    const f = b / a, w = Math.round(Math.log10(f) / Math.log10(220) * 140);
+    return `<tr><td>${n}</td><td class="n">${a} s</td><td class="n">${b} s</td><td class="n"><span class="bar" style="width:${w}px"></span> ${Math.round(f)}×</td></tr>`;
+  }).join('');
+
+  renderControls();
+  rebuild(true);
+  drawSteps();
+  if (st.playing) requestAnimationFrame(tick);
+})();
+</script>

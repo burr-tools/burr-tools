@@ -132,6 +132,22 @@ bool solverSettings_t::neon(void) const {
 #endif
 }
 
+rotationSettings_t rotationConfig_t::resolve(void) const {
+
+  /* the defaults are the initializers; choices and the environment on top */
+  rotationSettings_t s;
+  if (mode)
+    s.mode = *mode;
+  else if (auto v = readEnv("BURRTOOLS_ROT_MODE")) {
+    const std::optional<rotationMode_e> m = rotationModeFromName(*v);
+    if (!m)
+      bad("BURRTOOLS_ROT_MODE", "off, fast, balanced or slow");
+    s.mode = *m;
+  }
+  s.stats = flag("BURRTOOLS_ROT_STATS", stats, s.stats);
+  return s;
+}
+
 /* Names 0.8 shipped (and two that were only on master): setting one is an
  * error rather than silently measuring the default. 0.8 asked only whether
  * a name was there, so an empty value counts too. This is the transition:
@@ -200,5 +216,6 @@ solverSettings_t solverConfig_t::resolve(void) const {
   if (donateEvery)
     s.donateEvery = *donateEvery;
   s.threadBudget = flag("BURRTOOLS_THREAD_BUDGET", threadBudget, s.threadBudget);
+  s.rotation = rotation.resolve();
   return s;
 }

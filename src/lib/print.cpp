@@ -99,16 +99,23 @@ static void printRotation(const separation_c * s, unsigned int i, const std::vec
 
   const stateRotation_t * r = s->getState(i)->getRotation();
   static const char axes[] = "XYZ";
-  static const char * kinds[] = { "pure turn", "wiggle", "slide" };
+  /* a loaded turn is always a polyline (state_c::save writes every path
+   * as one), a solve names the family path it took */
+  static const char * kinds[] = { "pure turn", "wiggle", "slide", "path", "ramp" };
 
   printf(" turn");
   for (unsigned int pc : r->pieces)
     printf(" %c", 'a' + pieceNum[pc]);
   printf(" by %c90 degrees about %c through in-plane pivot (%g, %g), %s",
          r->turnSense() == 0 ? '+' : '-', axes[r->axis], 0.5 * r->pivotU, 0.5 * r->pivotV, kinds[r->path.kind]);
-  if (r->path.kind != rotationGeometry::PATH_PURE)
-    printf(" (%d, %d) by %g%s", r->path.dirU, r->path.dirV, r->path.amount,
-           r->inverse ? ", made by the other pieces" : "");
+  if (r->path.kind == rotationGeometry::PATH_PLANNED)
+    printf(" of %zu poses", r->path.waypoints.size());
+  if (r->path.kind == rotationGeometry::PATH_RAMP)
+    printf(" held %d-%d degrees", r->path.holdFrom, r->path.holdTo);
+  if (r->path.kind != rotationGeometry::PATH_PURE && r->path.kind != rotationGeometry::PATH_PLANNED)
+    printf(" towards %g degrees by %g", 360.0 * r->path.dir / rotationGeometry::DIRECTIONS, r->path.amount);
+  if (r->inverse)
+    printf(", made by the other pieces");
   printf("\n");
 }
 
