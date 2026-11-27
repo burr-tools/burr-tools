@@ -12,6 +12,7 @@
 #include "lib/disassembler_0.h"
 #include "lib/disassembly.h"
 #include "lib/rotationtables.h"
+#include "lib/solver_config.h"
 #include "lib/solution.h"
 #include "lib/voxel.h"
 #include "lib/gridtype.h"
@@ -251,8 +252,9 @@ int main(int argc, char ** argv) {
   const assembly_c * first = pr->getSavedSolution(0)->getAssembly();
   home = assemblyConfig(*pr, first);
 
-  auto ctx = rotationContextFor(*pr, defaultRotationSettings());
-  disassembler_0_c d(*pr, ctx);
+  const solverSettings_t settings;
+  auto ctx = rotationContextFor(*pr, settings.rotation);
+  disassembler_0_c d(*pr, settings, ctx);
   auto da = d.disassemble(first);
   if (!da) printf("OURS: no disassembly found\n");
   else {

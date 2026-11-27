@@ -25,6 +25,8 @@
  * contains the classes used for the assembler
  */
 
+#include "solver_config.h"
+
 #include <algorithm>
 #include <vector>
 #include <mutex>
@@ -179,9 +181,13 @@ public:
   }
 
   /**
-   * initialisation, only the things that can be done quickly are done here
+   * initialisation, only the things that can be done quickly are done here;
+   * settings: what the engines run with, fixed for the assembler's life
+   * except for the thread count (setNumThreads)
    */
-  assembler_c(void) {}
+  explicit assembler_c(const solverSettings_t & s) : settings(s) {
+    settings.threads = std::min(s.threads, MAX_THREADS);
+  }
 
   virtual ~assembler_c(void) { }
 
@@ -231,19 +237,23 @@ public:
   void assemble(std::function<bool(std::unique_ptr<assembly_c>)> callback_fn);
 
   /**
-   * Set the number of worker threads for multi-threaded solving.
-   * 0 means auto-detect (default).
+   * Set the number of worker threads for multi-threaded solving, 0 means
+   * auto-detect. The one setting that may change between runs: a paused
+   * search can be continued with another thread count; its engines stay.
    */
   /* clamped: the count reaches std::thread creation directly, and the value
    * from -t / BURRTOOLS_THREADS / Problem.solve(threads=...) is otherwise
    * unvalidated
    */
-  virtual void setNumThreads(unsigned int threads) { numThreads = std::min(threads, MAX_THREADS); }
+  void setNumThreads(unsigned int threads) { settings.threads = std::min(threads, MAX_THREADS); }
+
+  /** The settings the engines run with (solver_config.h). */
+  const solverSettings_t & getSettings(void) const { return settings; }
 
   /**
    * Get the configured number of threads (0 = auto-detect).
    */
-  virtual unsigned int getNumThreads(void) const { return numThreads; }
+  unsigned int getNumThreads(void) const { return settings.threads; }
 
   /**
    * How many worker threads the *next* assemble() call will actually run with.
@@ -361,18 +371,26 @@ public:
   static void prewarmSharedShapeCaches(const problem_c & problem);
 
   /* upper bound on worker threads. The count arrives from -t, from
-   * BURRTOOLS_THREADS and from Problem.solve(threads=...), none of which is
-   * otherwise validated, and it is used directly to size a thread vector.
+   * BURRTOOLS_THREADS and from Problem.solve(threads=...), which
+   * solverConfig_t::resolve() lets through up to 4096, and it is used
+   * directly to size a thread vector.
    * constexpr (not const) so odr-use through std::min needs no out-of-line
    * definition -- without it, low-optimization builds (e.g. sanitizers)
    * fail to link.
    */
   static constexpr unsigned int MAX_THREADS = 256;
 
-  /* Thread count and coarse progress, shared by both engines: one
-   * cancellation and progress contract is easier to keep correct than two.
+protected:
+  /* from the constructor: the engines read their toggles from here, never
+   * from the environment; threads (setNumThreads) is the only field that
+   * changes, getSettings() reads them */
+  solverSettings_t settings;
+
+public:
+
+  /* Coarse progress, shared by both engines: one cancellation and progress
+   * contract is easier to keep correct than two.
    */
-  unsigned int numThreads = 0;
 
   /* number of top level tasks the parallel search split itself into, and how
    * many have finished. totalTasks == 0 means "not running in parallel", which
@@ -427,9 +445,9 @@ public:
   /* serialises the hand off of a finished assembly to the callback */
   mutable std::mutex callbackMutex;
 
-  /* worker count actually used: numThreads, else BURRTOOLS_THREADS, else the
-   * hardware concurrency -- every path clamped to MAX_THREADS, and every path
-   * yields at least 1 (a zero setting means "auto", never "no workers")
+  /* worker count actually used: the settings' threads, else
+   * the hardware concurrency -- clamped to MAX_THREADS, and at least 1 (a
+   * zero setting means "auto", never "no workers")
    */
   unsigned int getEffectiveThreads(void) const;
 

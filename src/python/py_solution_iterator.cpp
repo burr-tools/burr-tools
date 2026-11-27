@@ -28,8 +28,7 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
     disassemble(disassemble),
     reduce(reduce),
     keep_rotations(keep_rotations),
-    keep_mirror(keep_mirror),
-    threads(threads)
+    keep_mirror(keep_mirror)
 {
   if (!puzzle) {
     throw std::invalid_argument("Puzzle pointer is null");
@@ -37,6 +36,16 @@ SolutionIterator::SolutionIterator(std::shared_ptr<puzzle_c> puz,
   if (problem_idx >= puzzle->getNumberOfProblems()) {
     throw std::out_of_range("Problem index out of range");
   }
+
+  // Resolve on the calling thread before spawning the worker so invalid or
+  // renamed BURRTOOLS_* variables and out-of-range threads raise ValueError
+  // immediately from solve() and std::getenv runs under the GIL.
+  // threads=0 (the default) leaves the count to BURRTOOLS_THREADS, else every core.
+  solverConfig_t config;
+  if (threads > 0) {
+    config.threads = threads;
+  }
+  settings = config.resolve();
 
   worker_thread = std::jthread([this](std::stop_token st) { worker_run(st); });
 }
@@ -145,7 +154,7 @@ void SolutionIterator::worker_run(std::stop_token st) {
       puzzle->getShape(i)->initHotspot();
     }
 
-    assm = gt->findAssembler(*problem);
+    assm = gt->findAssembler(*problem, settings);
     if (!assm) {
       push_item(QueueItem{QueueItem::ITEM_ERROR, {}, "Failed to create assembler for problem"}, st);
       return;
@@ -181,15 +190,11 @@ void SolutionIterator::worker_run(std::stop_token st) {
     }
 
     if (disassemble && (gt->getCapabilities() & gridType_c::CAP_DISASSEMBLE)) {
-      disasm = std::make_unique<disassembler_0_c>(*problem);
+      disasm = std::make_unique<disassembler_0_c>(*problem, settings);
     }
 
     unsigned int asm_count{0};
     unsigned int sol_count{0};
-
-    if (threads > 0) {
-      assm->setNumThreads(threads);
-    }
 
     assm->assemble([&](std::unique_ptr<assembly_c> a) -> bool {
       if (st.stop_requested()) {
